@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -25,7 +25,7 @@ vi.mock("#lib/get-messages", () => ({
   getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
 }));
 
-const action = (): Promise<FormActionState> => Promise.resolve(null);
+const action = (): Promise<ActionForm.State> => Promise.resolve(null);
 
 const banner: CampaignBannerListItem = {
   altText: "Summer sale, up to 50% off",

@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ActionFormSubmit,
-  useActionFormState,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { createContext, use } from "react";
 import type { ReactNode } from "react";
 
@@ -33,7 +30,7 @@ export const FollowButtonState = ({
   children: ReactNode;
   isFollowing: boolean;
 }) => {
-  const state = useActionFormState<NonNullable<FollowActionState>>();
+  const state = ActionForm.useState<NonNullable<FollowActionState>>();
   const following = state?.ok ? state.isFollowing : isFollowing;
 
   return (
@@ -57,7 +54,7 @@ export const FollowButtonFollow = ({
   children: ReactNode;
 }) =>
   useFollowing() ? null : (
-    <ActionFormSubmit
+    <ActionForm.Submit
       aria-label={ariaLabel}
       aria-pressed={false}
       className="shrink-0"
@@ -65,7 +62,7 @@ export const FollowButtonFollow = ({
       variant="outline"
     >
       {children}
-    </ActionFormSubmit>
+    </ActionForm.Submit>
   );
 
 /** The submit control while the reader is following. */
@@ -77,7 +74,7 @@ export const FollowButtonUnfollow = ({
   children: ReactNode;
 }) =>
   useFollowing() ? (
-    <ActionFormSubmit
+    <ActionForm.Submit
       aria-label={ariaLabel}
       aria-pressed
       className="shrink-0"
@@ -85,5 +82,5 @@ export const FollowButtonUnfollow = ({
       variant="outline"
     >
       {children}
-    </ActionFormSubmit>
+    </ActionForm.Submit>
   ) : null;

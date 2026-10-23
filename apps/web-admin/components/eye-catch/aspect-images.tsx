@@ -1,8 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -107,7 +103,7 @@ export const EyeCatchAspectImages = ({
           const current = largestVariant(variants, variantType);
 
           return (
-            <ActionForm
+            <ActionForm.Root
               action={uploadAction}
               className="grid gap-3 border border-border p-3"
               key={variantType}
@@ -168,20 +164,20 @@ export const EyeCatchAspectImages = ({
                     </Suspense>
                   </EyeCatchAspectAdjust>
                   <EyeCatchAspectUpload>
-                    <ActionFormIdle>
+                    <ActionForm.Idle>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
                       >
                         <Message message="admin.eye_catch.aspect.upload" />
                       </Suspense>
-                    </ActionFormIdle>
-                    <ActionFormPending>
+                    </ActionForm.Idle>
+                    <ActionForm.Pending>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-20" />}
                       >
                         <Message message="admin.eye_catch.aspect.uploading" />
                       </Suspense>
-                    </ActionFormPending>
+                    </ActionForm.Pending>
                   </EyeCatchAspectUpload>
                 </div>
 
@@ -191,7 +187,7 @@ export const EyeCatchAspectImages = ({
                   </ImageCropDialogTitle>
                 </EyeCatchAspectCropDialog>
               </EyeCatchAspectSlot>
-            </ActionForm>
+            </ActionForm.Root>
           );
         })}
       </div>

@@ -1,29 +1,10 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -155,15 +136,18 @@ const BannerCell = ({
         </Suspense>
       </span>
       {canEdit ? (
-        <ActionForm action={unpinAnnouncementAction} className="grid gap-2">
+        <ActionForm.Root
+          action={unpinAnnouncementAction}
+          className="grid gap-2"
+        >
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="announcement_id" type="hidden" value={announcement.id} />
-          <ActionFormSubmit className="justify-self-start" variant="outline">
+          <ActionForm.Submit className="justify-self-start" variant="outline">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.announcements.unpin_action" />
             </Suspense>
-          </ActionFormSubmit>
-        </ActionForm>
+          </ActionForm.Submit>
+        </ActionForm.Root>
       ) : null}
     </div>
   );
@@ -214,92 +198,96 @@ const AnnouncementListBody = ({
   // empty list state alongside the error or operators will read it as "none".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.announcements.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (announcements.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
-        <EmptyStateHeading>
-          <EmptyStateTitle>{emptyTitle}</EmptyStateTitle>
-          <EmptyStateDescription>{emptyDescription}</EmptyStateDescription>
-        </EmptyStateHeading>
+        <EmptyState.Heading>
+          <EmptyState.Title>{emptyTitle}</EmptyState.Title>
+          <EmptyState.Description>{emptyDescription}</EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-44">
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head className="w-44">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.columns.created_at" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.columns.title" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-32">
+          </Table.Head>
+          <Table.Head className="w-32">
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.announcements.columns.languages" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.columns.body" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-40">
+          </Table.Head>
+          <Table.Head className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.announcements.columns.delivery" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-40">
+          </Table.Head>
+          <Table.Head className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.announcements.columns.banner" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-60">
+          </Table.Head>
+          <Table.Head className="w-60">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.columns.link" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {announcements.map((announcement) => (
-          <TableRow key={announcement.id}>
-            <TableCell>
+          <Table.Row key={announcement.id}>
+            <Table.Cell>
               {formatAnnouncementDateTime(
                 announcement.createdAt,
                 locale,
                 timeZone
               )}
-            </TableCell>
-            <TableCell className="font-medium">{announcement.title}</TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell className="font-medium">
+              {announcement.title}
+            </Table.Cell>
+            <Table.Cell>
               <TranslatedLocales locales={announcement.translatedLocales} />
-            </TableCell>
-            <TableCell>{excerpt(announcement.body, 72)}</TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>{excerpt(announcement.body, 72)}</Table.Cell>
+            <Table.Cell>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <DeliveryLabel delivery={announcement.delivery} />
               </Suspense>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <BannerCell
                 announcement={announcement}
                 canEdit={canEdit}
@@ -307,12 +295,12 @@ const AnnouncementListBody = ({
                 tenantId={tenantId}
                 timeZone={timeZone}
               />
-            </TableCell>
-            <TableCell>{announcement.linkUrl || "—"}</TableCell>
-          </TableRow>
+            </Table.Cell>
+            <Table.Cell>{announcement.linkUrl || "—"}</Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

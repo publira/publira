@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
 import { redirect } from "next/navigation";
 import { createContext, use, useState } from "react";
@@ -59,7 +59,7 @@ export const MfaEnrollSteps = ({
 /** Moves `MfaEnrollSteps` on to `done` once the confirm form succeeds. */
 export const MfaEnrollmentConfirmed = () => {
   const confirm = use(ConfirmMfaEnrollmentContext);
-  useActionFormSettled<NonNullable<MfaEnrollmentConfirmState>>((state) => {
+  ActionForm.useSettled<NonNullable<MfaEnrollmentConfirmState>>((state) => {
     if (state?.ok) {
       confirm?.({
         recoveryCodes: state.recoveryCodes,

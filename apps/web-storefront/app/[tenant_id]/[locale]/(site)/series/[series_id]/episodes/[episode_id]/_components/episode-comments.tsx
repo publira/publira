@@ -1,16 +1,8 @@
 import { UserIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
@@ -203,40 +195,40 @@ export const EpisodeComments = async ({
       ) : null}
 
       {publicResult.ok ? null : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="storefront.episode.comments.list_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>
+            </SectionError.Title>
+            <SectionError.Description>
               {publicResult.message}
-            </SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
       {/* A failed per-viewer read is reported next to a list that still shows
           the public comments: silently dropping those rows would take the
           reader's own pending comment off the page with nothing saying so. */}
       {ownResult.ok ? null : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="storefront.episode.comments.own_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>
+            </SectionError.Title>
+            <SectionError.Description>
               {ownResult.message}
-            </SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
 
       {publicResult.ok && comments.length === 0 ? (
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-56" />}>
               {token ? (
                 <Message message="storefront.episode.comments.page_empty" />
@@ -244,8 +236,8 @@ export const EpisodeComments = async ({
                 <Message message="storefront.episode.comments.empty" />
               )}
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
       ) : null}
 
       {comments.length > 0 ? (

@@ -1,10 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -35,7 +30,7 @@ export const SeriesEyeCatchForm = ({
   tenantId,
   translationLocale,
 }: SeriesEyeCatchFormProps) => (
-  <ActionForm action={action} className="grid gap-4">
+  <ActionForm.Root action={action} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="series_id" type="hidden" value={series.id} />
     <input name="title" type="hidden" value={series.title} />
@@ -78,18 +73,18 @@ export const SeriesEyeCatchForm = ({
     />
 
     <div className="flex justify-end">
-      <ActionFormSubmit>
-        <ActionFormIdle>
+      <ActionForm.Submit>
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.series.form.eye_catch_update" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="admin.series.form.submitting" />
           </Suspense>
-        </ActionFormPending>
-      </ActionFormSubmit>
+        </ActionForm.Pending>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );

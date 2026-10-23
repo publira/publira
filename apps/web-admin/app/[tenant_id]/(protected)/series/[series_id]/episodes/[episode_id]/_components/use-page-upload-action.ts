@@ -1,4 +1,4 @@
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { useRouter } from "next/navigation";
 
 import type { EpisodePagesUploadResponse } from "#lib/episode-pages-upload";
@@ -74,9 +74,9 @@ export const usePageUploadAction = ({
   const router = useRouter();
 
   return async (
-    _prevState: FormActionState,
+    _prevState: ActionForm.State,
     formData: FormData
-  ): Promise<FormActionState> => {
+  ): Promise<ActionForm.State> => {
     // Refused here so a submission the route would refuse is not sent first.
     if (submittedBytes(formData) > maxBytes) {
       return { message: tooLarge, ok: false };

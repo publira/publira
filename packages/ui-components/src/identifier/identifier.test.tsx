@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Identifier, IdentifierCopy, IdentifierValue } from "./identifier";
+import * as Identifier from ".";
 
 afterEach(cleanup);
 
@@ -14,10 +14,10 @@ const renderIdentifier = (writeText: () => Promise<void>) => {
   });
 
   return render(
-    <Identifier>
-      <IdentifierValue>SeedMMBRAAA1</IdentifierValue>
-      <IdentifierCopy aria-label="Copy the public ID" value="SeedMMBRAAA1" />
-    </Identifier>
+    <Identifier.Root>
+      <Identifier.Value>SeedMMBRAAA1</Identifier.Value>
+      <Identifier.Copy aria-label="Copy the public ID" value="SeedMMBRAAA1" />
+    </Identifier.Root>
   );
 };
 

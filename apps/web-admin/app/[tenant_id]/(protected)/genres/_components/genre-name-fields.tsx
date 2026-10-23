@@ -1,6 +1,6 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -80,21 +80,21 @@ export const GenreNameFields = ({
 }: GenreNameFieldsProps) => {
   if (!tenantLocales) {
     return (
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.genres.form.name" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <NameInput
             name={nameField()}
             placeholder={namePlaceholder}
             required
             savedName={genre?.name ?? ""}
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
     );
   }
 
@@ -118,12 +118,12 @@ export const GenreNameFields = ({
         const isDefault = code === defaultLocale;
 
         return (
-          <Field key={code}>
-            <FieldLabel required={isDefault}>
+          <Field.Root key={code}>
+            <Field.Label required={isDefault}>
               {/* An autonym, read in the language it names. */}
               <span lang={code}>{getLocaleLabel(code)}</span>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <NameInput
                 name={nameField(code)}
                 placeholder={isDefault ? namePlaceholder : undefined}
@@ -131,8 +131,8 @@ export const GenreNameFields = ({
                 savedName={savedNames.get(code) ?? ""}
                 translationLocale={code}
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
         );
       })}
       <p className="text-xs text-muted-foreground">

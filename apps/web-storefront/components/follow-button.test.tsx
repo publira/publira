@@ -1,9 +1,6 @@
 // @vitest-environment jsdom
 
-import {
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -61,12 +58,12 @@ const SeriesFollowButton = ({ isFollowing }: { isFollowing: boolean }) => (
     tenantId={tenantId}
   >
     <FollowButtonFollow aria-label="Follow Published Series">
-      <ActionFormIdle>Follow</ActionFormIdle>
-      <ActionFormPending>Updating…</ActionFormPending>
+      <ActionForm.Idle>Follow</ActionForm.Idle>
+      <ActionForm.Pending>Updating…</ActionForm.Pending>
     </FollowButtonFollow>
     <FollowButtonUnfollow aria-label="Unfollow Published Series">
-      <ActionFormIdle>Unfollow</ActionFormIdle>
-      <ActionFormPending>Updating…</ActionFormPending>
+      <ActionForm.Idle>Unfollow</ActionForm.Idle>
+      <ActionForm.Pending>Updating…</ActionForm.Pending>
     </FollowButtonUnfollow>
   </FollowButton>
 );

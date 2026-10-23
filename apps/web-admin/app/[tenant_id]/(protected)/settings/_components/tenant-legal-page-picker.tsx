@@ -1,7 +1,6 @@
 "use client";
 
-import { Combobox, ComboboxInput } from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
+import * as Combobox from "@publira/ui-components/combobox";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -71,7 +70,7 @@ export const LegalPageCombobox = ({
   const { pageId, setPageId } = useLegalPageSelection();
 
   const items = useMemo(() => {
-    const options: ComboboxItem[] = [
+    const options: Combobox.Item[] = [
       { label: t("admin.settings.legal_pages.none"), value: "" },
       ...publishedPages.map((page) => ({
         label: t("admin.settings.legal_pages.option", {
@@ -98,12 +97,12 @@ export const LegalPageCombobox = ({
 
   return (
     <>
-      <Combobox items={items} onValueChange={setPageId} value={pageId}>
-        <ComboboxInput
+      <Combobox.Root items={items} onValueChange={setPageId} value={pageId}>
+        <Combobox.Input
           placeholder={t("admin.settings.legal_pages.placeholder")}
         />
         {children}
-      </Combobox>
+      </Combobox.Root>
       <input name={name} type="hidden" value={pageId} />
     </>
   );

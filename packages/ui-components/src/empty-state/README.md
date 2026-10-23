@@ -8,32 +8,25 @@ It is composed, so each region is an element the caller writes: a heading that s
 
 ```tsx
 import { CollectionIcon } from "@publira/icons";
-import {
-  EmptyState,
-  EmptyStateActions,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateIcon,
-  EmptyStateTitle,
-  LinkButton,
-} from "@publira/ui-components";
+import { LinkButton } from "@publira/ui-components/button";
+import * as EmptyState from "@publira/ui-components/empty-state";
 
 export default function Example() {
   return (
-    <EmptyState>
-      <EmptyStateIcon>
+    <EmptyState.Root>
+      <EmptyState.Icon>
         <CollectionIcon className="size-6" />
-      </EmptyStateIcon>
-      <EmptyStateHeading>
-        <EmptyStateTitle>No series yet</EmptyStateTitle>
-        <EmptyStateDescription>
+      </EmptyState.Icon>
+      <EmptyState.Heading>
+        <EmptyState.Title>No series yet</EmptyState.Title>
+        <EmptyState.Description>
           Publish one to see it here.
-        </EmptyStateDescription>
-      </EmptyStateHeading>
-      <EmptyStateActions>
+        </EmptyState.Description>
+      </EmptyState.Heading>
+      <EmptyState.Actions>
         <LinkButton href="/series/new">New series</LinkButton>
-      </EmptyStateActions>
-    </EmptyState>
+      </EmptyState.Actions>
+    </EmptyState.Root>
   );
 }
 ```
@@ -41,9 +34,9 @@ export default function Example() {
 ## Subpath import
 
 ```tsx
-import { EmptyState } from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 ```
 
 ## Props
 
-`EmptyState` takes the props of a `<div>`. Everything a reader sees comes from the slots.
+`EmptyState.Root` takes the props of a `<div>`. Everything a reader sees comes from the slots.

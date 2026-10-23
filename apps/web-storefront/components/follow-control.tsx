@@ -1,13 +1,5 @@
-import {
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -53,16 +45,16 @@ export const FollowControl = async ({
 
   if (!result.ok) {
     return (
-      <SectionError className="max-w-sm">
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root className="max-w-sm">
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.follow.status_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -90,30 +82,30 @@ export const FollowControl = async ({
       <FollowButtonFollow
         aria-label={t("storefront.follow.follow_aria", { name: targetName })}
       >
-        <ActionFormIdle>
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="storefront.follow.follow" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.follow.pending" />
           </Suspense>
-        </ActionFormPending>
+        </ActionForm.Pending>
       </FollowButtonFollow>
       <FollowButtonUnfollow
         aria-label={t("storefront.follow.unfollow_aria", { name: targetName })}
       >
-        <ActionFormIdle>
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.follow.unfollow" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.follow.pending" />
           </Suspense>
-        </ActionFormPending>
+        </ActionForm.Pending>
       </FollowButtonUnfollow>
     </FollowButton>
   );

@@ -1,9 +1,6 @@
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
@@ -16,14 +13,17 @@ import { requestPasswordResetAction } from "../_lib/actions";
 export const ResetPasswordForm = () => (
   <>
     <AuthScreenBody>
-      <ActionForm action={requestPasswordResetAction} className="grid gap-4">
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Root
+        action={requestPasswordResetAction}
+        className="grid gap-4"
+      >
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="platform.auth.fields.email_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="email"
               name="email"
@@ -31,14 +31,14 @@ export const ResetPasswordForm = () => (
               required
               type="email"
             />
-          </FieldContent>
-        </Field>
-        <ActionFormSubmit className="justify-self-start">
+          </Field.Content>
+        </Field.Root>
+        <ActionForm.Submit className="justify-self-start">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.auth.reset_password.submit" />
           </Suspense>
-        </ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Submit>
+      </ActionForm.Root>
     </AuthScreenBody>
 
     <AuthScreenFooter>

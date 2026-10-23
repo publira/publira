@@ -11,27 +11,17 @@ import { useActionState } from "react";
 import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-  useActionFormSettled,
-  useActionFormState,
-} from "./action-form";
-import type { ActionFormSettledListener, FormActionState } from "./action-form";
+import * as ActionForm from ".";
 
 afterEach(cleanup);
 
-const succeed = (): Promise<FormActionState> =>
+const succeed = (): Promise<ActionForm.State> =>
   Promise.resolve({
     message: "Role updated.",
     ok: true,
   });
 
-const fail = (): Promise<FormActionState> =>
+const fail = (): Promise<ActionForm.State> =>
   Promise.resolve({
     message: "Could not save.",
     ok: false,
@@ -65,7 +55,7 @@ const saveName = (
 
 /** Reads the name the Action saved, the way a control seeded from it would. */
 const SavedName = () => {
-  const state = useActionFormState<NonNullable<NameFormState>>();
+  const state = ActionForm.useState<NonNullable<NameFormState>>();
 
   return <p>{state?.ok ? `Saved as ${state.name}` : "Not saved yet"}</p>;
 };
@@ -74,18 +64,18 @@ const SavedName = () => {
 const SettledSpy = ({
   onSettled,
 }: {
-  onSettled: ActionFormSettledListener<NonNullable<NameFormState>>;
+  onSettled: ActionForm.SettledListener<NonNullable<NameFormState>>;
 }) => {
-  useActionFormSettled(onSettled);
+  ActionForm.useSettled(onSettled);
 
   return null;
 };
 
 /** Refuses a row's rename, naming the row it was sent from. */
 const renameRow = (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> =>
+): Promise<ActionForm.State> =>
   Promise.resolve({
     message: `Could not rename ${String(formData.get("public_id"))}.`,
     ok: false,
@@ -96,23 +86,23 @@ const TestedForm = ({
   save,
   test,
 }: {
-  save: () => Promise<FormActionState>;
+  save: () => Promise<ActionForm.State>;
   test: (previousState: null, formData: FormData) => Promise<null>;
 }) => {
   const [, dispatchTest] = useActionState(test, null);
 
   return (
-    <ActionForm action={save}>
+    <ActionForm.Root action={save}>
       <input aria-label="Bucket" defaultValue="media" name="bucket" />
-      <ActionFormSubmit formAction={dispatchTest}>
-        <ActionFormIdle>Test</ActionFormIdle>
-        <ActionFormPending>Testing...</ActionFormPending>
-      </ActionFormSubmit>
-      <ActionFormSubmit>
-        <ActionFormIdle>Save</ActionFormIdle>
-        <ActionFormPending>Saving...</ActionFormPending>
-      </ActionFormSubmit>
-    </ActionForm>
+      <ActionForm.Submit formAction={dispatchTest}>
+        <ActionForm.Idle>Test</ActionForm.Idle>
+        <ActionForm.Pending>Testing...</ActionForm.Pending>
+      </ActionForm.Submit>
+      <ActionForm.Submit>
+        <ActionForm.Idle>Save</ActionForm.Idle>
+        <ActionForm.Pending>Saving...</ActionForm.Pending>
+      </ActionForm.Submit>
+    </ActionForm.Root>
   );
 };
 
@@ -129,14 +119,14 @@ const PlainTestedForm = ({
 
   return (
     <form action={saveAction}>
-      <ActionFormSubmit formAction={testAction}>
-        <ActionFormIdle>Test</ActionFormIdle>
-        <ActionFormPending>Testing...</ActionFormPending>
-      </ActionFormSubmit>
-      <ActionFormSubmit formAction={saveAction}>
-        <ActionFormIdle>Save</ActionFormIdle>
-        <ActionFormPending>Saving...</ActionFormPending>
-      </ActionFormSubmit>
+      <ActionForm.Submit formAction={testAction}>
+        <ActionForm.Idle>Test</ActionForm.Idle>
+        <ActionForm.Pending>Testing...</ActionForm.Pending>
+      </ActionForm.Submit>
+      <ActionForm.Submit formAction={saveAction}>
+        <ActionForm.Idle>Save</ActionForm.Idle>
+        <ActionForm.Pending>Saving...</ActionForm.Pending>
+      </ActionForm.Submit>
     </form>
   );
 };
@@ -145,9 +135,9 @@ describe("ActionForm", () => {
   it("runs the Action for a submit control outside the form that names its id", async () => {
     render(
       <>
-        <ActionForm action={fail} id="outside-form">
+        <ActionForm.Root action={fail} id="outside-form">
           <input name="role" />
-        </ActionForm>
+        </ActionForm.Root>
         <button form="outside-form" type="submit">
           Confirm
         </button>
@@ -163,10 +153,10 @@ describe("ActionForm", () => {
 
   it("shows the success message a Server Action returns", async () => {
     render(
-      <ActionForm action={succeed}>
+      <ActionForm.Root action={succeed}>
         <input name="role" />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -178,12 +168,12 @@ describe("ActionForm", () => {
 
   it("the submit control shows its idle wording until the Action is in flight", () => {
     render(
-      <ActionForm action={succeed}>
-        <ActionFormSubmit>
-          <ActionFormIdle>Save</ActionFormIdle>
-          <ActionFormPending>Saving...</ActionFormPending>
-        </ActionFormSubmit>
-      </ActionForm>
+      <ActionForm.Root action={succeed}>
+        <ActionForm.Submit>
+          <ActionForm.Idle>Save</ActionForm.Idle>
+          <ActionForm.Pending>Saving...</ActionForm.Pending>
+        </ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
@@ -226,16 +216,16 @@ describe("ActionForm", () => {
       const [, dispatchTest] = useActionState(test, null);
 
       return (
-        <ActionForm action={succeed}>
+        <ActionForm.Root action={succeed}>
           <input aria-label="Bucket" defaultValue="media" name="bucket" />
-          <ActionFormSubmit
+          <ActionForm.Submit
             formAction={dispatchTest}
             name="intent"
             value="test"
           >
             Test
-          </ActionFormSubmit>
-        </ActionForm>
+          </ActionForm.Submit>
+        </ActionForm.Root>
       );
     };
 
@@ -252,15 +242,15 @@ describe("ActionForm", () => {
 
   it("sends a submit control's name and value to the form's Action", async () => {
     const save = vi.fn((_previousState: unknown, _formData: FormData) =>
-      Promise.resolve<FormActionState>({ message: "Deleted.", ok: true })
+      Promise.resolve<ActionForm.State>({ message: "Deleted.", ok: true })
     );
 
     render(
-      <ActionForm action={save}>
-        <ActionFormSubmit name="intent" value="delete">
+      <ActionForm.Root action={save}>
+        <ActionForm.Submit name="intent" value="delete">
           Delete
-        </ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -292,7 +282,7 @@ describe("ActionForm", () => {
   });
 
   it("sends a submission no control started to the form's own Action", async () => {
-    const save = Promise.withResolvers<FormActionState>();
+    const save = Promise.withResolvers<ActionForm.State>();
     const test = vi.fn(() => Promise.resolve(null));
 
     render(<TestedForm save={() => save.promise} test={test} />);
@@ -339,19 +329,19 @@ describe("ActionForm", () => {
   });
 
   it("reports the submission to a control a portal renders outside the form's DOM", async () => {
-    const save = Promise.withResolvers<FormActionState>();
+    const save = Promise.withResolvers<ActionForm.State>();
 
     render(
-      <ActionForm action={() => save.promise} id="portal-form">
+      <ActionForm.Root action={() => save.promise} id="portal-form">
         <input aria-label="Name" name="name" />
         {createPortal(
-          <ActionFormSubmit form="portal-form">
-            <ActionFormIdle>Save</ActionFormIdle>
-            <ActionFormPending>Saving...</ActionFormPending>
-          </ActionFormSubmit>,
+          <ActionForm.Submit form="portal-form">
+            <ActionForm.Idle>Save</ActionForm.Idle>
+            <ActionForm.Pending>Saving...</ActionForm.Pending>
+          </ActionForm.Submit>,
           document.body
         )}
-      </ActionForm>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -370,15 +360,15 @@ describe("ActionForm", () => {
   });
 
   it("closes the fields in its fieldset while the Action is in flight", async () => {
-    const save = Promise.withResolvers<FormActionState>();
+    const save = Promise.withResolvers<ActionForm.State>();
 
     render(
-      <ActionForm action={() => save.promise}>
-        <ActionFormFieldset>
+      <ActionForm.Root action={() => save.promise}>
+        <ActionForm.Fieldset>
           <input aria-label="Name" name="name" />
-        </ActionFormFieldset>
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Fieldset>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     expect(screen.getByLabelText("Name").matches(":disabled")).toBe(false);
@@ -398,11 +388,11 @@ describe("ActionForm", () => {
 
   it("names the control and states its toggle", () => {
     render(
-      <ActionForm action={succeed}>
-        <ActionFormSubmit aria-label="Unfollow Night Train" aria-pressed>
+      <ActionForm.Root action={succeed}>
+        <ActionForm.Submit aria-label="Unfollow Night Train" aria-pressed>
           Unfollow
-        </ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     const button = screen.getByRole("button", {
@@ -441,10 +431,10 @@ describe("ActionForm", () => {
 
   it("hides the success message when showSuccess is false", async () => {
     render(
-      <ActionForm action={succeed} showSuccess={false}>
+      <ActionForm.Root action={succeed} showSuccess={false}>
         <input name="role" />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -460,10 +450,10 @@ describe("ActionForm", () => {
 
   it("shows a failure message when showSuccess is false", async () => {
     render(
-      <ActionForm action={fail} showSuccess={false}>
+      <ActionForm.Root action={fail} showSuccess={false}>
         <input name="role" />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -475,10 +465,10 @@ describe("ActionForm", () => {
 
   it("keeps the typed values when the Action refuses the submission", async () => {
     render(
-      <ActionForm action={fail}>
+      <ActionForm.Root action={fail}>
         <input aria-label="Name" name="name" />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.change(screen.getByLabelText("Name"), {
@@ -497,10 +487,10 @@ describe("ActionForm", () => {
 
   it("resets the fields when the Action succeeds", async () => {
     render(
-      <ActionForm action={succeed}>
+      <ActionForm.Root action={succeed}>
         <input aria-label="Name" name="name" />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.change(screen.getByLabelText("Name"), {
@@ -517,20 +507,20 @@ describe("ActionForm", () => {
   it("sends the Action the fields and the submitter's name and value", async () => {
     let received: FormData | undefined;
     const record = (
-      _prevState: FormActionState,
+      _prevState: ActionForm.State,
       formData: FormData
-    ): Promise<FormActionState> => {
+    ): Promise<ActionForm.State> => {
       received = formData;
       return fail();
     };
 
     render(
-      <ActionForm action={record}>
+      <ActionForm.Root action={record}>
         <input aria-label="Name" name="name" />
         <button name="intent" type="submit" value="publish">
           Publish
         </button>
-      </ActionForm>
+      </ActionForm.Root>
     );
 
     fireEvent.change(screen.getByLabelText("Name"), {
@@ -547,19 +537,19 @@ describe("ActionForm", () => {
 
   it("places a refused field's error next to that field only", async () => {
     render(
-      <ActionForm action={refuseName}>
+      <ActionForm.Root action={refuseName}>
         <label>
           Name
           <input name="name" />
         </label>
         <div data-testid="name-field">
-          <ActionFormFieldError name="name" />
+          <ActionForm.FieldError name="name" />
         </div>
         <div data-testid="slug-field">
-          <ActionFormFieldError name="slug" />
+          <ActionForm.FieldError name="slug" />
         </div>
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -578,11 +568,11 @@ describe("ActionForm", () => {
     const answerName = (prevState: NameFormState, formData: FormData) =>
       answer(prevState, formData);
     render(
-      <ActionForm action={answerName}>
+      <ActionForm.Root action={answerName}>
         <input aria-label="Name" name="name" />
-        <ActionFormFieldError name="name" />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.FieldError name="name" />
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -600,11 +590,11 @@ describe("ActionForm", () => {
 
   it("lets a component inside the form read the data the Action returned", async () => {
     render(
-      <ActionForm action={saveName}>
+      <ActionForm.Root action={saveName}>
         <input aria-label="Name" name="name" />
         <SavedName />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     expect(screen.getByText("Not saved yet")).toBeTruthy();
@@ -622,11 +612,11 @@ describe("ActionForm", () => {
   it("calls a settled listener once with what each submission returned", async () => {
     const onSettled = vi.fn();
     render(
-      <ActionForm action={saveName}>
+      <ActionForm.Root action={saveName}>
         <input aria-label="Name" defaultValue="Ada" name="name" />
         <SettledSpy onSettled={onSettled} />
-        <ActionFormSubmit>Save</ActionFormSubmit>
-      </ActionForm>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -648,11 +638,11 @@ describe("ActionForm", () => {
       const [, dispatchTest] = useActionState(test, null);
 
       return (
-        <ActionForm action={saveName}>
+        <ActionForm.Root action={saveName}>
           <input aria-label="Name" defaultValue="Ada" name="name" />
           <SettledSpy onSettled={onSettled} />
-          <ActionFormSubmit formAction={dispatchTest}>Test</ActionFormSubmit>
-        </ActionForm>
+          <ActionForm.Submit formAction={dispatchTest}>Test</ActionForm.Submit>
+        </ActionForm.Root>
       );
     };
 
@@ -677,10 +667,10 @@ describe("ActionForm", () => {
       <ul>
         {["first", "second"].map((publicId) => (
           <li data-testid={publicId} key={publicId}>
-            <ActionForm action={renameRow}>
+            <ActionForm.Root action={renameRow}>
               <input name="public_id" type="hidden" value={publicId} />
-              <ActionFormSubmit>{`Rename ${publicId}`}</ActionFormSubmit>
-            </ActionForm>
+              <ActionForm.Submit>{`Rename ${publicId}`}</ActionForm.Submit>
+            </ActionForm.Root>
           </li>
         ))}
       </ul>

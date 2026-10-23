@@ -1,5 +1,5 @@
 import { Button } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -19,13 +19,13 @@ interface PeriodPickerProps {
  */
 export const PeriodPicker = ({ maxPeriod, period }: PeriodPickerProps) => (
   <form className="flex flex-wrap items-end gap-2">
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="admin.royalties.open.picker_label" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           defaultValue={period}
           max={maxPeriod}
@@ -33,8 +33,8 @@ export const PeriodPicker = ({ maxPeriod, period }: PeriodPickerProps) => (
           required
           type="month"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
     <Button type="submit" variant="outline">
       <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
         <Message message="admin.royalties.open.picker_submit" />

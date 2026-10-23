@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { useCallback, useState } from "react";
 
@@ -57,11 +52,11 @@ export const EpisodePurchaseAvailabilityField = ({
   }
 
   return (
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <ClientMessage message="admin.series.episodes.purchase_availability.label" />
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Select
           items={[
             { label: followSeries, value: "" },
@@ -73,10 +68,10 @@ export const EpisodePurchaseAvailabilityField = ({
           value={value}
         />
         <input name="purchase_availability" type="hidden" value={value} />
-        <FieldDescription>
+        <Field.Description>
           <ClientMessage message="admin.series.episodes.purchase_availability.field_description" />
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
   );
 };

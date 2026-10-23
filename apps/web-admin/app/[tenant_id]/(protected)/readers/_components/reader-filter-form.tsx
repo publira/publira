@@ -1,6 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -43,36 +43,36 @@ export const ReaderFilterForm = async ({
 
   return (
     <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <Field className="md:col-span-2">
-        <FieldLabel>
+      <Field.Root className="md:col-span-2">
+        <Field.Label>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.readers.filter.query" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             defaultValue={filters.query}
             name="q"
             placeholder={t("admin.readers.filter.query_placeholder")}
             type="search"
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel>
+      <Field.Root>
+        <Field.Label>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.readers.filter.status" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Select
             defaultValue={filters.status}
             items={await statusOptions(locale)}
             name="status"
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
       <div className="flex items-end gap-2">
         <Button type="submit">

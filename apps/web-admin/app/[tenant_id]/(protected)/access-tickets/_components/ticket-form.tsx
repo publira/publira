@@ -1,21 +1,6 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
-import {
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -73,58 +58,58 @@ export const TicketForm = async ({
   }));
 
   return (
-    <ActionForm action={action} className="grid gap-5" showSuccess={false}>
+    <ActionForm.Root action={action} className="grid gap-5" showSuccess={false}>
       <input name="tenant_id" type="hidden" value={tenantId} />
 
       <SubmitGate initialSubmittable={false}>
-        <ActionFormFieldset className="grid gap-5">
+        <ActionForm.Fieldset className="grid gap-5">
           <TicketTarget seriesItems={seriesItems} tenantId={tenantId}>
-            <Field>
-              <FieldLabel required>
+            <Field.Root>
+              <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.access_tickets.form.user" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <TicketReaderPicker />
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.access_tickets.form.user_description" />
                   </Suspense>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+                </Field.Description>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel required>
+            <Field.Root>
+              <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.access_tickets.form.series" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 {seriesErrorMessage ? (
                   <FormMessage variant="destructive">
                     {seriesErrorMessage}
                   </FormMessage>
                 ) : null}
                 <TicketSeriesCombobox>
-                  <ComboboxInput
+                  <Combobox.Input
                     placeholder={t(
                       "admin.access_tickets.form.series_placeholder"
                     )}
                   />
-                  <ComboboxPopup>
-                    <ComboboxEmpty>
+                  <Combobox.Popup>
+                    <Combobox.Empty>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.access_tickets.form.series_empty" />
                       </Suspense>
-                    </ComboboxEmpty>
-                    <ComboboxItems />
-                  </ComboboxPopup>
+                    </Combobox.Empty>
+                    <Combobox.Items />
+                  </Combobox.Popup>
                 </TicketSeriesCombobox>
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     {series.length === 0 && !seriesErrorMessage ? (
                       <Message message="admin.access_tickets.form.episode_no_series" />
@@ -132,36 +117,36 @@ export const TicketForm = async ({
                       <Message message="admin.access_tickets.form.series_description" />
                     )}
                   </Suspense>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+                </Field.Description>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel required>
+            <Field.Root>
+              <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.access_tickets.form.episode" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <TicketEpisodeCombobox>
                   <TicketEpisodeInput />
-                  <ComboboxPopup>
-                    <ComboboxEmpty>
+                  <Combobox.Popup>
+                    <Combobox.Empty>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.access_tickets.form.episode_empty" />
                       </Suspense>
-                    </ComboboxEmpty>
-                    <ComboboxItems />
-                  </ComboboxPopup>
+                    </Combobox.Empty>
+                    <Combobox.Items />
+                  </Combobox.Popup>
                 </TicketEpisodeCombobox>
                 <TicketEpisodeLoadError>
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                     <Message message="admin.common.retry" />
                   </Suspense>
                 </TicketEpisodeLoadError>
-                <FieldDescription>
+                <Field.Description>
                   <TicketSeriesWhile chosen={false}>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.access_tickets.form.episode_needs_series" />
@@ -172,62 +157,62 @@ export const TicketForm = async ({
                       <Message message="admin.access_tickets.form.episode_description" />
                     </Suspense>
                   </TicketSeriesWhile>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+                </Field.Description>
+              </Field.Content>
+            </Field.Root>
           </TicketTarget>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.access_tickets.form.expires_at" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <InstantInput name="expires_at" timeZone={timeZone} />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message
                     message="admin.access_tickets.form.expires_at_description"
                     values={{ time_zone: timeZone }}
                   />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="admin.access_tickets.form.note" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Textarea
                 maxLength={1000}
                 name="note"
                 placeholder={t("admin.access_tickets.form.note_placeholder")}
                 rows={3}
               />
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         <div className="flex justify-end">
           <SubmitGateSubmit>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.access_tickets.form.submit" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.access_tickets.form.submitting" />
               </Suspense>
-            </ActionFormPending>
+            </ActionForm.Pending>
           </SubmitGateSubmit>
         </div>
       </SubmitGate>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

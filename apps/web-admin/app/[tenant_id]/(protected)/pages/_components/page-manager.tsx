@@ -1,26 +1,10 @@
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
@@ -69,16 +53,18 @@ const PageListBody = async ({
   // list state alongside the error or operators will read it as "no pages".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.pages.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -90,58 +76,58 @@ const PageListBody = async ({
         hasPageLinks={hasPageLinks}
         itemLabel={t("admin.pages.title")}
       >
-        <EmptyStateHeading>
-          <EmptyStateTitle>{t("admin.pages.empty_title")}</EmptyStateTitle>
-          <EmptyStateDescription>
+        <EmptyState.Heading>
+          <EmptyState.Title>{t("admin.pages.empty_title")}</EmptyState.Title>
+          <EmptyState.Description>
             {t("admin.pages.empty_description")}
-          </EmptyStateDescription>
-        </EmptyStateHeading>
+          </EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.pages.columns.title" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.pages.columns.slug" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-32">
+          </Table.Head>
+          <Table.Head className="w-32">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.pages.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-28">
+          </Table.Head>
+          <Table.Head className="w-28">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.pages.columns.footer" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-40">
+          </Table.Head>
+          <Table.Head className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.pages.columns.updated_at" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-32">
+          </Table.Head>
+          <Table.Head className="w-32">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.pages.columns.actions" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {pages.map((page) => (
-          <TableRow key={page.id}>
-            <TableCell className="font-medium">{page.title}</TableCell>
-            <TableCell>{formatPagePath(page.slug)}</TableCell>
-            <TableCell>
+          <Table.Row key={page.id}>
+            <Table.Cell className="font-medium">{page.title}</Table.Cell>
+            <Table.Cell>{formatPagePath(page.slug)}</Table.Cell>
+            <Table.Cell>
               <Badge
                 tone={page.publishedVersionId.length > 0 ? "info" : "muted"}
               >
@@ -149,8 +135,8 @@ const PageListBody = async ({
                   ? t("admin.pages.published")
                   : t("admin.pages.draft")}
               </Badge>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {page.displayInFooter ? (
                 <Badge tone="info">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -164,11 +150,11 @@ const PageListBody = async ({
                   </Suspense>
                 </Badge>
               )}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {formatPageDateTime(page.updatedAt, locale, timeZone)}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <LinkButton href={`/pages/${page.id}`} variant="outline">
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   {canEdit ? (
@@ -178,11 +164,11 @@ const PageListBody = async ({
                   )}
                 </Suspense>
               </LinkButton>
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

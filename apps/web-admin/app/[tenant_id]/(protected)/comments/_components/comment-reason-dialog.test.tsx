@@ -4,8 +4,8 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import { ToastProvider, ToastViewport } from "@publira/ui-components/toast";
+import type * as ActionForm from "@publira/ui-components/action-form";
+import * as Toast from "@publira/ui-components/toast";
 import {
   cleanup,
   fireEvent,
@@ -21,15 +21,15 @@ import { CommentReasonDialog } from "./comment-reason-dialog";
 const hide =
   vi.fn<
     (
-      previousState: FormActionState,
+      previousState: ActionForm.State,
       formData: FormData
-    ) => Promise<FormActionState>
+    ) => Promise<ActionForm.State>
   >();
 
 // The Actions are `"use server"`, so the module they live in cannot be
 // evaluated here at all.
 vi.mock("../_lib/actions", () => ({
-  hideCommentAction: (previousState: FormActionState, formData: FormData) =>
+  hideCommentAction: (previousState: ActionForm.State, formData: FormData) =>
     hide(previousState, formData),
   purgeCommentAction: vi.fn(),
 }));
@@ -63,7 +63,7 @@ vi.mock("./comment-reason-input", async () => {
  */
 const renderRows = (secondCommentId = "COMMENT002") =>
   render(
-    <ToastProvider>
+    <Toast.Provider>
       <ul>
         <li data-testid="first">
           <CommentReasonDialog
@@ -80,8 +80,8 @@ const renderRows = (secondCommentId = "COMMENT002") =>
           />
         </li>
       </ul>
-      <ToastViewport />
-    </ToastProvider>
+      <Toast.Viewport />
+    </Toast.Provider>
   );
 
 /** Opens the dialog of the row `rowId` names, writes `reason`, and confirms it. */

@@ -23,7 +23,7 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("@publira/ui-components/toast", () => ({
-  useToastManager: () => ({ add: vi.fn() }),
+  useManager: () => ({ add: vi.fn() }),
 }));
 
 // dnd-kit measures the cells it sorts, which jsdom cannot do. What belongs

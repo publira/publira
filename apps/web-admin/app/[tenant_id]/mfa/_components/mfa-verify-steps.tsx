@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { redirect } from "next/navigation";
 import { createContext, use, useState } from "react";
@@ -45,7 +45,7 @@ export const MfaVerifySteps = ({
 /** Moves `MfaVerifySteps` on to `spent` once the verify form succeeds. */
 export const MfaRecoveryCodeSpent = () => {
   const spend = use(SpendRecoveryCodeContext);
-  useActionFormSettled((state) => {
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       spend?.(state.message);
     }

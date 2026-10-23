@@ -4,15 +4,8 @@ import type { DragEndEvent } from "@dnd-kit/react";
 import { toIntlLocale } from "@publira/i18n";
 import { CloseIcon, PlusIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -104,7 +97,7 @@ const toRoleItems = (
   rows: CreditRow[],
   creatorRoles: CreatorRoleOption[],
   row: CreditRow
-): ComboboxItem[] => {
+): Combobox.Item[] => {
   const heldElsewhere = new Set(
     rows.flatMap((other) =>
       other.key !== row.key && other.creatorId === row.creatorId
@@ -119,13 +112,16 @@ const toRoleItems = (
 };
 
 /** The role a row ends up stating, which is the one it can still be given. */
-const toResolvedRoleId = (roleItems: ComboboxItem[], roleId: string): string =>
+const toResolvedRoleId = (
+  roleItems: Combobox.Item[],
+  roleId: string
+): string =>
   roleItems.some((item) => item.value === roleId)
     ? roleId
     : (roleItems.at(0)?.value ?? "");
 
 interface CreatorCreditRowProps {
-  creatorItems: ComboboxItem[];
+  creatorItems: Combobox.Item[];
   creatorId: string;
   id: string;
   index: number;
@@ -134,7 +130,7 @@ interface CreatorCreditRowProps {
   onRoleChange: (nextRoleId: string) => void;
   onShareChange: (nextShareText: string) => void;
   position: number;
-  roleItems: ComboboxItem[];
+  roleItems: Combobox.Item[];
   roleId: string;
   shareText: string;
 }
@@ -189,56 +185,56 @@ const CreatorCreditRow = ({
           values={{ position: String(position) }}
         />
       </SortableItemHandle>
-      <Field className="min-w-40 flex-1">
-        <FieldLabel className="sr-only">
+      <Field.Root className="min-w-40 flex-1">
+        <Field.Label className="sr-only">
           <ClientMessage
             message="admin.series.form.creators_creator_field_label"
             values={{ position: String(position) }}
           />
-        </FieldLabel>
-        <FieldContent>
-          <Combobox
+        </Field.Label>
+        <Field.Content>
+          <Combobox.Root
             items={creatorItems}
             onValueChange={onCreatorChange}
             value={creatorId}
           >
-            <ComboboxInput
+            <Combobox.Input
               placeholder={t("admin.series.form.creators_search")}
             />
-            <ComboboxPopup>
-              <ComboboxEmpty>
+            <Combobox.Popup>
+              <Combobox.Empty>
                 <ClientMessage message="admin.series.form.creators_no_match" />
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </Combobox>
-        </FieldContent>
-      </Field>
-      <Field className="min-w-32 flex-1 sm:max-w-48">
-        <FieldLabel className="sr-only">
+              </Combobox.Empty>
+              <Combobox.Items />
+            </Combobox.Popup>
+          </Combobox.Root>
+        </Field.Content>
+      </Field.Root>
+      <Field.Root className="min-w-32 flex-1 sm:max-w-48">
+        <Field.Label className="sr-only">
           <ClientMessage
             message="admin.series.form.creators_role_field_label"
             values={{ position: String(position) }}
           />
-        </FieldLabel>
-        <FieldContent>
-          <Combobox
+        </Field.Label>
+        <Field.Content>
+          <Combobox.Root
             items={roleItems}
             onValueChange={onRoleChange}
             value={roleId}
           >
-            <ComboboxInput
+            <Combobox.Input
               placeholder={t("admin.series.form.creators_role_search")}
             />
-            <ComboboxPopup>
-              <ComboboxEmpty>
+            <Combobox.Popup>
+              <Combobox.Empty>
                 <ClientMessage message="admin.series.form.creators_role_no_match" />
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </Combobox>
-        </FieldContent>
-      </Field>
+              </Combobox.Empty>
+              <Combobox.Items />
+            </Combobox.Popup>
+          </Combobox.Root>
+        </Field.Content>
+      </Field.Root>
       <CreditShareInput
         onChange={onShareChange}
         position={position}
@@ -321,7 +317,7 @@ export const SeriesCreatorCreditsEditor = ({
   // state: bumping it must not redraw the list.
   const nextRowKey = useRef(initialCredits.length);
 
-  const creatorItems = useMemo<ComboboxItem[]>(
+  const creatorItems = useMemo<Combobox.Item[]>(
     () =>
       creators
         .map((creator) => ({ label: creator.name, value: creator.id }))

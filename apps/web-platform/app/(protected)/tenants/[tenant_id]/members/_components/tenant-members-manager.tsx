@@ -1,52 +1,15 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-  DialogBackdrop,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDate, formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -256,18 +219,18 @@ const TenantMemberRoleForm = ({
   tenantId: string;
 }) => (
   <TenantMemberRoleDialog>
-    <DialogTrigger
+    <Dialog.Trigger
       render={<Button size="sm" type="button" variant="outline" />}
     >
       <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
         <Message message="platform.tenants.change_role" />
       </Suspense>
-    </DialogTrigger>
-    <DialogPortal>
-      <DialogBackdrop />
-      <DialogViewport>
-        <DialogPopup>
-          <ActionForm
+    </Dialog.Trigger>
+    <Dialog.Portal>
+      <Dialog.Backdrop />
+      <Dialog.Viewport>
+        <Dialog.Popup>
+          <ActionForm.Root
             action={updateTenantMemberRoleAction}
             className="grid gap-4"
           >
@@ -275,29 +238,29 @@ const TenantMemberRoleForm = ({
             <input name="tenant_id" type="hidden" value={tenantId} />
             <input name="member_user_id" type="hidden" value={member.userId} />
 
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
+            <Dialog.Header>
+              <Dialog.Title className="text-lg font-semibold">
                 <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                   <Message message="platform.tenants.change_role_submit" />
                 </Suspense>
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
+              </Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                   <Message
                     message="platform.tenants.role_update_description"
                     values={{ email: member.email, name: member.name }}
                   />
                 </Suspense>
-              </DialogDescription>
-            </DialogHeader>
+              </Dialog.Description>
+            </Dialog.Header>
 
-            <Field>
-              <FieldLabel required>
+            <Field.Root>
+              <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="platform.tenants.new_role" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <div className="flex flex-wrap gap-2">
                   <TenantRoleRadio
                     defaultChecked={member.role === "tenant_admin"}
@@ -324,32 +287,32 @@ const TenantMemberRoleForm = ({
                     </Suspense>
                   </TenantRoleRadio>
                 </div>
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
-            <DialogFooter>
-              <DialogClose render={<Button type="button" variant="outline" />}>
+            <Dialog.Footer>
+              <Dialog.Close render={<Button type="button" variant="outline" />}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="platform.common.cancel" />
                 </Suspense>
-              </DialogClose>
-              <ActionFormSubmit variant="outline">
-                <ActionFormIdle>
+              </Dialog.Close>
+              <ActionForm.Submit variant="outline">
+                <ActionForm.Idle>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="platform.tenants.change_role_submit" />
                   </Suspense>
-                </ActionFormIdle>
-                <ActionFormPending>
+                </ActionForm.Idle>
+                <ActionForm.Pending>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="platform.tenants.change_role_updating" />
                   </Suspense>
-                </ActionFormPending>
-              </ActionFormSubmit>
-            </DialogFooter>
-          </ActionForm>
-        </DialogPopup>
-      </DialogViewport>
-    </DialogPortal>
+                </ActionForm.Pending>
+              </ActionForm.Submit>
+            </Dialog.Footer>
+          </ActionForm.Root>
+        </Dialog.Popup>
+      </Dialog.Viewport>
+    </Dialog.Portal>
   </TenantMemberRoleDialog>
 );
 
@@ -367,7 +330,7 @@ const TenantMemberDeleteButton = ({
   const formId = `tenant-member-remove-${userId}`;
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={removeTenantMemberAction}
       className="grid gap-1"
       id={formId}
@@ -376,51 +339,51 @@ const TenantMemberDeleteButton = ({
       <ReportTenantMemberRemoval />
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="member_user_id" type="hidden" value={userId} />
-      <ActionFormFieldset>
-        <ConfirmDialog>
-          <ConfirmDialogTrigger
+      <ActionForm.Fieldset>
+        <ConfirmDialog.Root>
+          <ConfirmDialog.Trigger
             render={<Button size="sm" type="button" variant="destructive" />}
           >
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="platform.tenants.delete_member" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.tenants.delete_member_pending" />
               </Suspense>
-            </ActionFormPending>
-          </ConfirmDialogTrigger>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>
+            </ActionForm.Pending>
+          </ConfirmDialog.Trigger>
+          <ConfirmDialog.Content>
+            <ConfirmDialog.Header>
+              <ConfirmDialog.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                   <Message message="platform.tenants.delete_member_title" />
                 </Suspense>
-              </ConfirmDialogTitle>
-              <ConfirmDialogDescription>
+              </ConfirmDialog.Title>
+              <ConfirmDialog.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                   <Message message="platform.tenants.delete_member_description" />
                 </Suspense>
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
-            <ConfirmDialogFooter>
-              <ConfirmDialogCancel>
+              </ConfirmDialog.Description>
+            </ConfirmDialog.Header>
+            <ConfirmDialog.Footer>
+              <ConfirmDialog.Cancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="platform.common.cancel" />
                 </Suspense>
-              </ConfirmDialogCancel>
-              <ConfirmDialogAction form={formId}>
+              </ConfirmDialog.Cancel>
+              <ConfirmDialog.Action form={formId}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="platform.tenants.delete_member_action" />
                 </Suspense>
-              </ConfirmDialogAction>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
-      </ActionFormFieldset>
-    </ActionForm>
+              </ConfirmDialog.Action>
+            </ConfirmDialog.Footer>
+          </ConfirmDialog.Content>
+        </ConfirmDialog.Root>
+      </ActionForm.Fieldset>
+    </ActionForm.Root>
   );
 };
 
@@ -445,70 +408,70 @@ const TenantInvitationActions = ({
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <ActionForm
+      <ActionForm.Root
         action={resendTenantAdminInvitationAction}
         className="grid gap-1"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="invitation_id" type="hidden" value={invitation.id} />
-        <ActionFormSubmit disabled={!canResend} size="sm" variant="outline">
+        <ActionForm.Submit disabled={!canResend} size="sm" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.tenants.resend_invite" />
           </Suspense>
-        </ActionFormSubmit>
-      </ActionForm>
-      <ActionForm
+        </ActionForm.Submit>
+      </ActionForm.Root>
+      <ActionForm.Root
         action={cancelTenantAdminInvitationAction}
         className="grid gap-1"
         id={cancelFormId}
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="invitation_id" type="hidden" value={invitation.id} />
-        <ActionFormFieldset disabled={!canCancel}>
-          <ConfirmDialog>
-            <ConfirmDialogTrigger
+        <ActionForm.Fieldset disabled={!canCancel}>
+          <ConfirmDialog.Root>
+            <ConfirmDialog.Trigger
               render={<Button size="sm" type="button" variant="destructive" />}
             >
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="platform.tenants.cancel_invite" />
                 </Suspense>
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="platform.tenants.cancel_invite_pending" />
                 </Suspense>
-              </ActionFormPending>
-            </ConfirmDialogTrigger>
-            <ConfirmDialogContent>
-              <ConfirmDialogHeader>
-                <ConfirmDialogTitle>
+              </ActionForm.Pending>
+            </ConfirmDialog.Trigger>
+            <ConfirmDialog.Content>
+              <ConfirmDialog.Header>
+                <ConfirmDialog.Title>
                   <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                     <Message message="platform.tenants.cancel_invite_title" />
                   </Suspense>
-                </ConfirmDialogTitle>
-                <ConfirmDialogDescription>
+                </ConfirmDialog.Title>
+                <ConfirmDialog.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                     <Message message="platform.tenants.cancel_invite_description" />
                   </Suspense>
-                </ConfirmDialogDescription>
-              </ConfirmDialogHeader>
-              <ConfirmDialogFooter>
-                <ConfirmDialogCancel>
+                </ConfirmDialog.Description>
+              </ConfirmDialog.Header>
+              <ConfirmDialog.Footer>
+                <ConfirmDialog.Cancel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                     <Message message="platform.common.cancel" />
                   </Suspense>
-                </ConfirmDialogCancel>
-                <ConfirmDialogAction form={cancelFormId}>
+                </ConfirmDialog.Cancel>
+                <ConfirmDialog.Action form={cancelFormId}>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="platform.tenants.cancel_invite_action" />
                   </Suspense>
-                </ConfirmDialogAction>
-              </ConfirmDialogFooter>
-            </ConfirmDialogContent>
-          </ConfirmDialog>
-        </ActionFormFieldset>
-      </ActionForm>
+                </ConfirmDialog.Action>
+              </ConfirmDialog.Footer>
+            </ConfirmDialog.Content>
+          </ConfirmDialog.Root>
+        </ActionForm.Fieldset>
+      </ActionForm.Root>
     </div>
   );
 };
@@ -524,87 +487,87 @@ const TenantInvitationsTable = ({
   tenantId: string;
   timeZone: string;
 }) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>
+  <Table.Root>
+    <Table.Header>
+      <Table.Row>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="platform.tenants.members_columns_email" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.tenants.members_columns_role" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.tenants.members_columns_status" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <Message message="platform.tenants.members_columns_invited_at" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <Message message="platform.tenants.members_columns_expires" />
           </Suspense>
-        </TableHead>
-        <TableHead className="w-56">
+        </Table.Head>
+        <Table.Head className="w-56">
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.tenants.members_columns_actions" />
           </Suspense>
-        </TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
+        </Table.Head>
+      </Table.Row>
+    </Table.Header>
+    <Table.Body>
       {invitations.length === 0 ? (
-        <TableRow>
-          <TableCell className="text-muted-foreground" colSpan={6}>
+        <Table.Row>
+          <Table.Cell className="text-muted-foreground" colSpan={6}>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
               <Message message="platform.tenants.invitations_empty" />
             </Suspense>
-          </TableCell>
-        </TableRow>
+          </Table.Cell>
+        </Table.Row>
       ) : null}
 
       {invitations.map((invitation) => (
-        <TableRow key={invitation.id}>
-          <TableCell>{invitation.email}</TableCell>
-          <TableCell>
+        <Table.Row key={invitation.id}>
+          <Table.Cell>{invitation.email}</Table.Cell>
+          <Table.Cell>
             <TenantRoleLabel role={invitation.role} />
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <Badge tone={invitationStatusTone(invitation.status)}>
               <InvitationStatusLabel status={invitation.status} />
             </Badge>
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             {formatDateTime(invitation.createdAt, {
               fallback: "-",
               locale,
               timeZone,
             })}
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             {formatDateTime(invitation.expiresAt, {
               fallback: "-",
               locale,
               timeZone,
             })}
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <TenantInvitationActions
               invitation={invitation}
               tenantId={tenantId}
             />
-          </TableCell>
-        </TableRow>
+          </Table.Cell>
+        </Table.Row>
       ))}
-    </TableBody>
-  </Table>
+    </Table.Body>
+  </Table.Root>
 );
 
 export const TenantMembersManager = async ({
@@ -639,42 +602,42 @@ export const TenantMembersManager = async ({
             </PlatformSectionDescription>
           </PlatformSectionHeading>
         </PlatformSectionHeader>
-        <ActionForm
+        <ActionForm.Root
           action={createTenantAdminInvitationAction}
           className="grid gap-4"
         >
           <input name="tenant_id" type="hidden" value={tenantId} />
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="platform.tenants.invite_admin_email" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 name="invite_email"
                 placeholder="admin@example.com"
                 required
                 type="email"
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
           <div className="flex justify-end">
-            <ActionFormSubmit variant="outline">
-              <ActionFormIdle>
+            <ActionForm.Submit variant="outline">
+              <ActionForm.Idle>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="platform.tenants.invite_admin" />
                 </Suspense>
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="platform.tenants.invite_admin_pending" />
                 </Suspense>
-              </ActionFormPending>
-            </ActionFormSubmit>
+              </ActionForm.Pending>
+            </ActionForm.Submit>
           </div>
-        </ActionForm>
+        </ActionForm.Root>
       </PlatformSection>
 
       <PlatformSection>
@@ -694,103 +657,103 @@ export const TenantMembersManager = async ({
         </PlatformSectionHeader>
         <TenantMemberRemovals>
           {membersErrorMessage ? (
-            <SectionError>
-              <SectionErrorHeading>
-                <SectionErrorTitle>
+            <SectionError.Root>
+              <SectionError.Heading>
+                <SectionError.Title>
                   <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                     <Message message="platform.tenants.members_load_failed" />
                   </Suspense>
-                </SectionErrorTitle>
-                <SectionErrorDescription>
+                </SectionError.Title>
+                <SectionError.Description>
                   {membersErrorMessage}
-                </SectionErrorDescription>
-              </SectionErrorHeading>
-            </SectionError>
+                </SectionError.Description>
+              </SectionError.Heading>
+            </SectionError.Root>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
+              <Table.Root>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.Head>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
                       >
                         <Message message="platform.tenants.members_columns_name" />
                       </Suspense>
-                    </TableHead>
-                    <TableHead>
+                    </Table.Head>
+                    <Table.Head>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-24" />}
                       >
                         <Message message="platform.tenants.members_columns_email" />
                       </Suspense>
-                    </TableHead>
-                    <TableHead>
+                    </Table.Head>
+                    <Table.Head>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-12" />}
                       >
                         <Message message="platform.tenants.members_columns_role" />
                       </Suspense>
-                    </TableHead>
-                    <TableHead>
+                    </Table.Head>
+                    <Table.Head>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
                       >
                         <Message message="platform.tenants.members_columns_status" />
                       </Suspense>
-                    </TableHead>
-                    <TableHead>
+                    </Table.Head>
+                    <Table.Head>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-20" />}
                       >
                         <Message message="platform.tenants.members_columns_created" />
                       </Suspense>
-                    </TableHead>
-                    <TableHead className="w-56">
+                    </Table.Head>
+                    <Table.Head className="w-56">
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
                       >
                         <Message message="platform.tenants.members_columns_actions" />
                       </Suspense>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                    </Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
                   {members.length === 0 ? (
-                    <TableRow>
-                      <TableCell className="text-muted-foreground" colSpan={6}>
+                    <Table.Row>
+                      <Table.Cell className="text-muted-foreground" colSpan={6}>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-48" />}
                         >
                           <Message message="platform.tenants.members_empty" />
                         </Suspense>
-                      </TableCell>
-                    </TableRow>
+                      </Table.Cell>
+                    </Table.Row>
                   ) : null}
                   {members.map((member) => (
-                    <TableRow key={member.userId || member.email}>
-                      <TableCell>
+                    <Table.Row key={member.userId || member.email}>
+                      <Table.Cell>
                         <p className="font-medium text-foreground">
                           {member.name}
                         </p>
-                      </TableCell>
-                      <TableCell>{member.email}</TableCell>
-                      <TableCell>
+                      </Table.Cell>
+                      <Table.Cell>{member.email}</Table.Cell>
+                      <Table.Cell>
                         <TenantRoleLabel role={member.role} />
-                      </TableCell>
-                      <TableCell>
+                      </Table.Cell>
+                      <Table.Cell>
                         <Badge tone={getEndUserStatusTone(member.status)}>
                           <AccountStatusLabel status={member.status} />
                         </Badge>
-                      </TableCell>
-                      <TableCell>
+                      </Table.Cell>
+                      <Table.Cell>
                         {formatDate(member.createdAt, {
                           fallback: t("platform.common.unset"),
                           locale,
                           timeZone,
                         })}
-                      </TableCell>
-                      <TableCell>
+                      </Table.Cell>
+                      <Table.Cell>
                         <div className="flex flex-wrap items-start gap-2">
                           <TenantMemberRoleForm
                             member={member}
@@ -801,11 +764,11 @@ export const TenantMembersManager = async ({
                             userId={member.userId}
                           />
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </Table.Cell>
+                    </Table.Row>
                   ))}
-                </TableBody>
-              </Table>
+                </Table.Body>
+              </Table.Root>
               <PaginationControls
                 aria-label={t("platform.tenants.members_pagination_aria")}
                 nextHref={membersNextHref}
@@ -831,30 +794,30 @@ export const TenantMembersManager = async ({
             </PlatformSectionDescription>
           </PlatformSectionHeading>
         </PlatformSectionHeader>
-        <ActionForm action={addTenantMemberAction} className="grid gap-4">
+        <ActionForm.Root action={addTenantMemberAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="platform.tenants.add_member_email" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 name="member_email"
                 placeholder="member@example.com"
                 required
                 type="email"
               />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel required>
+            </Field.Content>
+          </Field.Root>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="platform.common.role" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Select
                 defaultValue="tenant_admin"
                 items={[
@@ -892,23 +855,23 @@ export const TenantMembersManager = async ({
                 name="member_role"
                 required
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
           <div className="flex justify-end">
-            <ActionFormSubmit variant="outline">
-              <ActionFormIdle>
+            <ActionForm.Submit variant="outline">
+              <ActionForm.Idle>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="platform.tenants.add_member_submit" />
                 </Suspense>
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="platform.tenants.add_member_pending" />
                 </Suspense>
-              </ActionFormPending>
-            </ActionFormSubmit>
+              </ActionForm.Pending>
+            </ActionForm.Submit>
           </div>
-        </ActionForm>
+        </ActionForm.Root>
       </PlatformSection>
 
       <PlatformSection>
@@ -930,18 +893,18 @@ export const TenantMembersManager = async ({
             table header and the pager next to the error reads as "there are no
             invitations", so the error replaces the whole list. */}
         {invitationErrorMessage ? (
-          <SectionError>
-            <SectionErrorHeading>
-              <SectionErrorTitle>
+          <SectionError.Root>
+            <SectionError.Heading>
+              <SectionError.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                   <Message message="platform.tenants.invitations_load_failed" />
                 </Suspense>
-              </SectionErrorTitle>
-              <SectionErrorDescription>
+              </SectionError.Title>
+              <SectionError.Description>
                 {invitationErrorMessage}
-              </SectionErrorDescription>
-            </SectionErrorHeading>
-          </SectionError>
+              </SectionError.Description>
+            </SectionError.Heading>
+          </SectionError.Root>
         ) : (
           <>
             <TenantInvitationsTable

@@ -8,12 +8,7 @@ import {
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -119,26 +114,26 @@ const AgreementForm = async ({
   }
 
   return (
-    <ActionForm action={agreeToLegalPagesAction} className="grid gap-4">
+    <ActionForm.Root action={agreeToLegalPagesAction} className="grid gap-4">
       <LocaleField />
       <TenantIdField />
       <input name="returnTo" type="hidden" value={returnTo} />
 
       <LegalPagesConsentField pages={pages} />
 
-      <ActionFormSubmit className="justify-self-start">
-        <ActionFormIdle>
+      <ActionForm.Submit className="justify-self-start">
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="storefront.auth.agreement.submit" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="storefront.auth.agreement.submitting" />
           </Suspense>
-        </ActionFormPending>
-      </ActionFormSubmit>
-    </ActionForm>
+        </ActionForm.Pending>
+      </ActionForm.Submit>
+    </ActionForm.Root>
   );
 };
 

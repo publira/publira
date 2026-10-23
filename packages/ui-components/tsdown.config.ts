@@ -4,13 +4,13 @@ import { defineConfig } from "tsdown";
 export default defineConfig({
   dts: true,
   entry: [
-    "src/index.ts",
     "src/action-form/index.ts",
     "src/badge/index.ts",
     "src/button/index.ts",
     "src/card/index.ts",
     "src/checkbox/index.ts",
     "src/combobox/index.ts",
+    "src/confirm-dialog/index.ts",
     "src/dialog/index.ts",
     "src/drawer/index.ts",
     "src/empty-state/index.ts",
@@ -22,6 +22,7 @@ export default defineConfig({
     "src/identifier/index.ts",
     "src/input/index.ts",
     "src/locale-switcher/index.ts",
+    "src/multi-combobox/index.ts",
     "src/offline-notice/index.ts",
     "src/password-input/index.ts",
     "src/popover/index.ts",

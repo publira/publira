@@ -1,6 +1,6 @@
 "use client";
 
-import { Drawer, DrawerContent } from "@publira/ui-components/drawer";
+import * as Drawer from "@publira/ui-components/drawer";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -29,7 +29,7 @@ export const PurchaseDrawer = ({
   const [open, setOpen] = useState(true);
 
   return (
-    <Drawer
+    <Drawer.Root
       onOpenChange={setOpen}
       onOpenChangeComplete={(isOpen) => {
         if (!isOpen) {
@@ -38,7 +38,7 @@ export const PurchaseDrawer = ({
       }}
       open={open}
     >
-      <DrawerContent>{children}</DrawerContent>
-    </Drawer>
+      <Drawer.Content>{children}</Drawer.Content>
+    </Drawer.Root>
   );
 };

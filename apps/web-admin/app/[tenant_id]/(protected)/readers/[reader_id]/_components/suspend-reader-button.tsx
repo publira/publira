@@ -1,20 +1,6 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -40,53 +26,57 @@ export const SuspendReaderButton = ({
   const formId = `suspend-reader-${publicId}`;
 
   return (
-    <ActionForm action={suspendReaderAction} className="grid gap-1" id={formId}>
+    <ActionForm.Root
+      action={suspendReaderAction}
+      className="grid gap-1"
+      id={formId}
+    >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="public_id" type="hidden" value={publicId} />
       <input name="reader_id" type="hidden" value={readerId} />
-      <ConfirmDialog>
-        <ConfirmDialogTrigger
+      <ConfirmDialog.Root>
+        <ConfirmDialog.Trigger
           render={<Button type="button" variant="outline" />}
         >
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.readers.suspend" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.readers.suspending" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ConfirmDialogTrigger>
-        <ConfirmDialogContent>
-          <ConfirmDialogHeader>
-            <ConfirmDialogTitle>
+        </ConfirmDialog.Trigger>
+        <ConfirmDialog.Content>
+          <ConfirmDialog.Header>
+            <ConfirmDialog.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                 <Message
                   message="admin.readers.suspend_confirm_title"
                   values={{ name }}
                 />
               </Suspense>
-            </ConfirmDialogTitle>
-            <ConfirmDialogDescription>
+            </ConfirmDialog.Title>
+            <ConfirmDialog.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="admin.readers.suspend_confirm_description" />
               </Suspense>
-            </ConfirmDialogDescription>
-          </ConfirmDialogHeader>
-          <ConfirmDialogFooter>
-            <ConfirmDialogCancel>
+            </ConfirmDialog.Description>
+          </ConfirmDialog.Header>
+          <ConfirmDialog.Footer>
+            <ConfirmDialog.Cancel>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="admin.common.cancel" />
               </Suspense>
-            </ConfirmDialogCancel>
-            <ConfirmDialogAction form={formId}>
+            </ConfirmDialog.Cancel>
+            <ConfirmDialog.Action form={formId}>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.readers.suspend_confirm_action" />
               </Suspense>
-            </ConfirmDialogAction>
-          </ConfirmDialogFooter>
-        </ConfirmDialogContent>
-      </ConfirmDialog>
-    </ActionForm>
+            </ConfirmDialog.Action>
+          </ConfirmDialog.Footer>
+        </ConfirmDialog.Content>
+      </ConfirmDialog.Root>
+    </ActionForm.Root>
   );
 };

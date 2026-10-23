@@ -1,9 +1,4 @@
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -46,20 +41,20 @@ const MfaSection = async () => {
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="platform.settings.mfa.title" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>
+          </SectionError.Title>
+          <SectionError.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="platform.settings.mfa.load_failed" />
             </Suspense>
-          </SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 

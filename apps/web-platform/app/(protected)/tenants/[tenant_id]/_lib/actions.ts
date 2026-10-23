@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -186,9 +186,9 @@ export const resumeTenantAction = async (formData: FormData): Promise<void> => {
 };
 
 export const updateTenantNameAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([
@@ -222,9 +222,9 @@ export const updateTenantNameAction = async (
 };
 
 export const updateTenantDomainAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([
@@ -258,9 +258,9 @@ export const updateTenantDomainAction = async (
 };
 
 export const addTenantMemberAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([
@@ -297,9 +297,9 @@ export const addTenantMemberAction = async (
 };
 
 export const updateTenantMemberRoleAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([
@@ -339,9 +339,9 @@ export const updateTenantMemberRoleAction = async (
 };
 
 export const removeTenantMemberAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([
@@ -377,9 +377,9 @@ export const removeTenantMemberAction = async (
 };
 
 export const createTenantAdminInvitationAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([
@@ -427,9 +427,9 @@ export const createTenantAdminInvitationAction = async (
 };
 
 export const resendTenantAdminInvitationAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([
@@ -468,9 +468,9 @@ export const resendTenantAdminInvitationAction = async (
 };
 
 export const cancelTenantAdminInvitationAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, schema] = await Promise.all([

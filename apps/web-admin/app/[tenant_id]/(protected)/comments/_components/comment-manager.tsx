@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime, parseInstant } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -281,72 +265,74 @@ const CommentListBody = ({
 }) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.comments.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (comments.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
-        <EmptyStateHeading>
-          <EmptyStateTitle>{emptyTitle}</EmptyStateTitle>
-          <EmptyStateDescription>{emptyDescription}</EmptyStateDescription>
-        </EmptyStateHeading>
+        <EmptyState.Heading>
+          <EmptyState.Title>{emptyTitle}</EmptyState.Title>
+          <EmptyState.Description>{emptyDescription}</EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-56">
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.columns.comment" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-48">
+          </Table.Head>
+          <Table.Head className="w-48">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.columns.author" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-56">
+          </Table.Head>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.columns.episode" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-44">
+          </Table.Head>
+          <Table.Head className="w-44">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.columns.created_at" />
             </Suspense>
-          </TableHead>
+          </Table.Head>
           {canModerate ? (
-            <TableHead className="w-36">
+            <Table.Head className="w-36">
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.comments.columns.actions" />
               </Suspense>
-            </TableHead>
+            </Table.Head>
           ) : null}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {comments.map((comment) => (
-          <TableRow key={comment.id}>
-            <TableCell>
+          <Table.Row key={comment.id}>
+            <Table.Cell>
               <div className="grid gap-1">
                 <StatusChip status={commentStatusTone(comment.status)}>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -359,11 +345,11 @@ const CommentListBody = ({
                   timeZone={timeZone}
                 />
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <div className="flex min-w-0 items-start gap-2">
                 {/* The name beside it says whose icon it is. */}
                 <ReaderIcon alt="" icon={comment.authorIcon} size={32} />
@@ -386,8 +372,8 @@ const CommentListBody = ({
                   <CommentCreatorMark creator={comment.creator} />
                 </div>
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <div className="grid gap-0.5">
                 <Link
                   className="font-medium underline-offset-4 hover:underline"
@@ -399,19 +385,19 @@ const CommentListBody = ({
                   {comment.seriesTitle || comment.seriesPublicId}
                 </span>
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {formatCommentDateTime(comment.createdAt, locale, timeZone)}
-            </TableCell>
+            </Table.Cell>
             {canModerate ? (
-              <TableCell>
+              <Table.Cell>
                 <CommentRowActions comment={comment} tenantId={tenantId} />
-              </TableCell>
+              </Table.Cell>
             ) : null}
-          </TableRow>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

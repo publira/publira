@@ -1,21 +1,6 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -45,7 +30,7 @@ export const GenreDeleteButton = ({
   const formId = `delete-genre-${id}`;
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={deleteGenreAction}
       className="grid gap-1"
       id={formId}
@@ -53,51 +38,51 @@ export const GenreDeleteButton = ({
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="genre_id" type="hidden" value={id} />
-      <ActionFormFieldset className="grid">
-        <ConfirmDialog>
-          <ConfirmDialogTrigger
+      <ActionForm.Fieldset className="grid">
+        <ConfirmDialog.Root>
+          <ConfirmDialog.Trigger
             render={<Button size="sm" type="button" variant="destructive" />}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.genres.delete_action" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.genres.deleting" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ConfirmDialogTrigger>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>
+          </ConfirmDialog.Trigger>
+          <ConfirmDialog.Content>
+            <ConfirmDialog.Header>
+              <ConfirmDialog.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                   <Message message="admin.genres.delete_confirm_title" />
                 </Suspense>
-              </ConfirmDialogTitle>
-              <ConfirmDialogDescription>
+              </ConfirmDialog.Title>
+              <ConfirmDialog.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                   <Message
                     message="admin.genres.delete_confirm_description"
                     values={{ name }}
                   />
                 </Suspense>
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
-            <ConfirmDialogFooter>
-              <ConfirmDialogCancel>
+              </ConfirmDialog.Description>
+            </ConfirmDialog.Header>
+            <ConfirmDialog.Footer>
+              <ConfirmDialog.Cancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.common.cancel" />
                 </Suspense>
-              </ConfirmDialogCancel>
-              <ConfirmDialogAction form={formId}>
+              </ConfirmDialog.Cancel>
+              <ConfirmDialog.Action form={formId}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.genres.delete_confirm_action" />
                 </Suspense>
-              </ConfirmDialogAction>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
-      </ActionFormFieldset>
-    </ActionForm>
+              </ConfirmDialog.Action>
+            </ConfirmDialog.Footer>
+          </ConfirmDialog.Content>
+        </ConfirmDialog.Root>
+      </ActionForm.Fieldset>
+    </ActionForm.Root>
   );
 };

@@ -1,9 +1,4 @@
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -64,16 +59,16 @@ export const EpisodeReactionControl = async ({
 
   if (!result.ok) {
     return (
-      <SectionError className="max-w-sm">
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root className="max-w-sm">
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.episode.reaction.status_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 

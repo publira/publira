@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
-import type { ActionFormResult } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { createContext, use, useLayoutEffect, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
@@ -65,7 +64,7 @@ export const MfaSettingsOutcome = ({
  */
 export const ReportMfaSettingsChange = () => {
   const report = use(ReportMfaSettingsChangeContext);
-  useActionFormSettled<ActionFormResult & { recoveryCodes?: string[] }>(
+  ActionForm.useSettled<ActionForm.Result & { recoveryCodes?: string[] }>(
     (state) => {
       if (state?.ok) {
         report?.({

@@ -1,34 +1,11 @@
 "use client";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-  useActionFormSettled,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogDescription,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { useToastManager } from "@publira/ui-components/toast";
+import * as Toast from "@publira/ui-components/toast";
 import { useState } from "react";
 
 import { useClientMessages } from "#components/client-message";
@@ -40,9 +17,9 @@ import { useEpisodeSelection } from "./episode-selection";
 
 interface EpisodeCampaignPricesDialogProps {
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   /** ISO 4217 code of the currency the price is entered in, the tenant's. */
   currency: string;
   seriesId: string;
@@ -55,8 +32,8 @@ const CampaignPricesSettled = ({
 }: {
   onSucceeded: () => void;
 }) => {
-  const { add } = useToastManager();
-  useActionFormSettled((state) => {
+  const { add } = Toast.useManager();
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       add({ title: state.message, type: "success" });
       onSucceeded();
@@ -79,7 +56,7 @@ const EpisodeCampaignPricesForm = ({
   const selectedCount = selectedIds.size;
 
   return (
-    <ActionForm action={action} className="grid gap-4" showSuccess={false}>
+    <ActionForm.Root action={action} className="grid gap-4" showSuccess={false}>
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_id" type="hidden" value={seriesId} />
       <input
@@ -98,12 +75,15 @@ const EpisodeCampaignPricesForm = ({
           : t("admin.series.episodes.campaign_prices.bulk_none_selected")}
       </p>
 
-      <ActionFormFieldset className="grid gap-4" disabled={selectedCount === 0}>
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset
+        className="grid gap-4"
+        disabled={selectedCount === 0}
+      >
+        <Field.Root>
+          <Field.Label required>
             {t("admin.series.episodes.campaign_prices.price")}
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               className="sm:max-w-48"
               max={maxPriceInputValue(currency)}
@@ -113,52 +93,52 @@ const EpisodeCampaignPricesForm = ({
               step={priceInputStep(currency)}
               type="number"
             />
-            <FieldDescription>
+            <Field.Description>
               {t(
                 "admin.series.episodes.campaign_prices.bulk_price_description",
                 { currency }
               )}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               {t("admin.series.episodes.campaign_prices.starts_at")}
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <InstantInput name="starts_at" step={60} timeZone={timeZone} />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel>
+            </Field.Content>
+          </Field.Root>
+          <Field.Root>
+            <Field.Label>
               {t("admin.series.episodes.campaign_prices.ends_at")}
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <InstantInput name="ends_at" step={60} timeZone={timeZone} />
-              <FieldDescription>
+              <Field.Description>
                 {t(
                   "admin.series.episodes.campaign_prices.time_zone_description",
                   { time_zone: timeZone }
                 )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
         </div>
-      </ActionFormFieldset>
+      </ActionForm.Fieldset>
 
       <div className="flex justify-end gap-2">
-        <ActionFormSubmit disabled={selectedCount === 0}>
-          <ActionFormIdle>
+        <ActionForm.Submit disabled={selectedCount === 0}>
+          <ActionForm.Idle>
             {t("admin.series.episodes.campaign_prices.bulk_submit")}
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             {t("admin.series.episodes.campaign_prices.adding")}
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 
@@ -177,7 +157,7 @@ export const EpisodeCampaignPricesDialog = (
   const [sessionKey, setSessionKey] = useState(0);
 
   return (
-    <Dialog
+    <Dialog.Root
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
         if (nextOpen) {
@@ -188,25 +168,25 @@ export const EpisodeCampaignPricesDialog = (
       }}
       open={open}
     >
-      <DialogTrigger
+      <Dialog.Trigger
         render={
           <Button type="button" variant="outline">
             {t("admin.series.episodes.campaign_prices.bulk_action")}
           </Button>
         }
       />
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport>
-          <DialogPopup className="flex max-h-[min(90vh,44rem)] min-h-0 w-[min(92vw,36rem)] flex-col overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Viewport>
+          <Dialog.Popup className="flex max-h-[min(90vh,44rem)] min-h-0 w-[min(92vw,36rem)] flex-col overflow-y-auto">
+            <Dialog.Header>
+              <Dialog.Title className="text-lg font-semibold">
                 {t("admin.series.episodes.campaign_prices.bulk_title")}
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
+              </Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">
                 {t("admin.series.episodes.campaign_prices.bulk_description")}
-              </DialogDescription>
-            </DialogHeader>
+              </Dialog.Description>
+            </Dialog.Header>
             <div className="mt-4">
               <EpisodeCampaignPricesForm
                 {...props}
@@ -216,9 +196,9 @@ export const EpisodeCampaignPricesDialog = (
                 }}
               />
             </div>
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
-    </Dialog>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

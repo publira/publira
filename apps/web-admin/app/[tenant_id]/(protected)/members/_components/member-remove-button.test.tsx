@@ -4,8 +4,8 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import { ToastProvider } from "@publira/ui-components/toast";
+import type * as ActionForm from "@publira/ui-components/action-form";
+import * as Toast from "@publira/ui-components/toast";
 import {
   act,
   cleanup,
@@ -23,14 +23,14 @@ import { MemberRemoveButton } from "./member-remove-button";
 const remove =
   vi.fn<
     (
-      previousState: FormActionState,
+      previousState: ActionForm.State,
       formData: FormData
-    ) => Promise<FormActionState>
+    ) => Promise<ActionForm.State>
   >();
 
 vi.mock("../_lib/actions", () => ({
   removeTenantMemberAction: (
-    previousState: FormActionState,
+    previousState: ActionForm.State,
     formData: FormData
   ) => remove(previousState, formData),
 }));
@@ -46,7 +46,7 @@ vi.mock("#components/message", () => ({
 }));
 
 const Toasts = ({ children }: { children: ReactNode }) => (
-  <ToastProvider>{children}</ToastProvider>
+  <Toast.Provider>{children}</Toast.Provider>
 );
 
 const renderButton = async () => {

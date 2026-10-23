@@ -1,17 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -37,9 +25,9 @@ import {
 
 interface AppLinksFormProps {
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   association: TenantMobileAppAssociation;
   canEdit: boolean;
   loadErrorMessage?: string;
@@ -76,10 +64,10 @@ export const AppLinksForm = ({
         </FormMessage>
       ) : null}
 
-      <ActionForm action={action} className="grid gap-5 sm:max-w-3xl">
+      <ActionForm.Root action={action} className="grid gap-5 sm:max-w-3xl">
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ActionFormFieldset className="grid gap-5">
+        <ActionForm.Fieldset className="grid gap-5">
           {/* Keyed by what is stored, so a save the API normalized reseeds it. */}
           <AppLinksPlatform
             disabled={locked}
@@ -97,13 +85,13 @@ export const AppLinksForm = ({
               </Suspense>
             </AppLinksPlatformToggle>
             <AppLinksPlatformFields>
-              <Field>
-                <FieldLabel required>
+              <Field.Root>
+                <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                     <Message message="admin.settings.app_links.application_id" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <RetainedInput
                     autoCapitalize="off"
                     autoComplete="off"
@@ -114,21 +102,21 @@ export const AppLinksForm = ({
                     spellCheck={false}
                     type="text"
                   />
-                </FieldContent>
-                <FieldDescription>
+                </Field.Content>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
                     <Message message="admin.settings.app_links.application_id_description" />
                   </Suspense>
-                </FieldDescription>
-              </Field>
+                </Field.Description>
+              </Field.Root>
 
-              <Field>
-                <FieldLabel required>
+              <Field.Root>
+                <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
                     <Message message="admin.settings.app_links.fingerprints" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <RetainedTextarea
                     autoCapitalize="characters"
                     autoComplete="off"
@@ -141,16 +129,16 @@ export const AppLinksForm = ({
                     rows={5}
                     spellCheck={false}
                   />
-                </FieldContent>
-                <FieldDescription>
+                </Field.Content>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
                     <Message
                       message="admin.settings.app_links.fingerprints_description"
                       values={{ max: String(MAX_ANDROID_CERT_FINGERPRINTS) }}
                     />
                   </Suspense>
-                </FieldDescription>
-              </Field>
+                </Field.Description>
+              </Field.Root>
             </AppLinksPlatformFields>
           </AppLinksPlatform>
 
@@ -170,13 +158,13 @@ export const AppLinksForm = ({
               </Suspense>
             </AppLinksPlatformToggle>
             <AppLinksPlatformFields>
-              <Field>
-                <FieldLabel required>
+              <Field.Root>
+                <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                     <Message message="admin.settings.app_links.team_id" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <RetainedInput
                     autoCapitalize="characters"
                     autoComplete="off"
@@ -188,21 +176,21 @@ export const AppLinksForm = ({
                     spellCheck={false}
                     type="text"
                   />
-                </FieldContent>
-                <FieldDescription>
+                </Field.Content>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
                     <Message message="admin.settings.app_links.team_id_description" />
                   </Suspense>
-                </FieldDescription>
-              </Field>
+                </Field.Description>
+              </Field.Root>
 
-              <Field>
-                <FieldLabel required>
+              <Field.Root>
+                <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.app_links.bundle_identifier" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <RetainedInput
                     autoCapitalize="off"
                     autoComplete="off"
@@ -213,16 +201,16 @@ export const AppLinksForm = ({
                     spellCheck={false}
                     type="text"
                   />
-                </FieldContent>
-                <FieldDescription>
+                </Field.Content>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-3 w-72" />}>
                     <Message message="admin.settings.app_links.bundle_identifier_description" />
                   </Suspense>
-                </FieldDescription>
-              </Field>
+                </Field.Description>
+              </Field.Root>
             </AppLinksPlatformFields>
           </AppLinksPlatform>
-        </ActionFormFieldset>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -233,20 +221,20 @@ export const AppLinksForm = ({
         )}
 
         <div className="flex justify-end">
-          <ActionFormSubmit disabled={locked}>
-            <ActionFormIdle>
+          <ActionForm.Submit disabled={locked}>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.settings.app_links.submit" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.settings.saving" />
               </Suspense>
-            </ActionFormPending>
-          </ActionFormSubmit>
+            </ActionForm.Pending>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

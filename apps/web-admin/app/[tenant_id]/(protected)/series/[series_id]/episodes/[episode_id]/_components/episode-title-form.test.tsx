@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -28,9 +28,9 @@ vi.mock("#components/message", () => ({
 
 const renderForm = (
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState> = () => Promise.resolve(null)
+  ) => Promise<ActionForm.State> = () => Promise.resolve(null)
 ) =>
   render(
     <EpisodeTitleForm
@@ -57,7 +57,7 @@ describe("EpisodeTitleForm", () => {
   });
 
   it("sends the new title with the episode it names", async () => {
-    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
+    const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
     renderForm(action);
@@ -97,7 +97,7 @@ describe("EpisodeTitleForm", () => {
   });
 
   it("writes the title in the language of its tab", async () => {
-    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
+    const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
     render(
@@ -127,7 +127,7 @@ describe("EpisodeTitleForm", () => {
   });
 
   it("adds the title in a language the episode has none in yet", async () => {
-    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
+    const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
     render(

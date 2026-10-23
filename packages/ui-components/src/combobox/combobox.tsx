@@ -42,13 +42,13 @@ export interface ComboboxProps {
  * where they are rendered instead of arriving as props named after them.
  *
  * ```tsx
- * <Combobox items={items} onValueChange={setLabel} value={label}>
- *   <ComboboxInput placeholder="Search labels" />
- *   <ComboboxPopup>
- *     <ComboboxEmpty>No matching items.</ComboboxEmpty>
- *     <ComboboxItems />
- *   </ComboboxPopup>
- * </Combobox>
+ * <Combobox.Root items={items} onValueChange={setLabel} value={label}>
+ *   <Combobox.Input placeholder="Search labels" />
+ *   <Combobox.Popup>
+ *     <Combobox.Empty>No matching items.</Combobox.Empty>
+ *     <Combobox.Items />
+ *   </Combobox.Popup>
+ * </Combobox.Root>
  * ```
  */
 export const Combobox = ({

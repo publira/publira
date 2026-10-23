@@ -22,12 +22,12 @@ type DivProps = ComponentPropsWithoutRef<"div">;
  * placeholder into the same geometry.
  *
  * ```tsx
- * <FigureLine>
- *   <Figure>
- *     <FigureLabel>Published series</FigureLabel>
- *     <FigureValue>12</FigureValue>
- *   </Figure>
- * </FigureLine>
+ * <FigureLine.Root>
+ *   <FigureLine.Figure>
+ *     <FigureLine.Label>Published series</FigureLine.Label>
+ *     <FigureLine.Value>12</FigureLine.Value>
+ *   </FigureLine.Figure>
+ * </FigureLine.Root>
  * ```
  */
 export const FigureLine = ({ className, ...props }: DlProps) => (

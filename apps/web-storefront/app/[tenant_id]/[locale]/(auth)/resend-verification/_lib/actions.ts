@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -28,9 +28,9 @@ const requestEmailVerificationFormSchema = async (locale: Locale) => {
 };
 
 export const requestEmailVerificationAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.

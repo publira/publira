@@ -1,30 +1,9 @@
 import type { Locale } from "@publira/i18n";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "@publira/ui-components/identifier";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as Identifier from "@publira/ui-components/identifier";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -53,16 +32,18 @@ export const StoreProductList = async ({
 }: StoreProductListProps) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.settings.store_products.section_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -85,68 +66,68 @@ export const StoreProductList = async ({
         </AdminSectionHeading>
       </AdminSectionHeader>
       {products.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+        <EmptyState.Root>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                 <Message message="admin.settings.store_products.empty_title" />
               </Suspense>
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
                 <Message message="admin.settings.store_products.empty" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyStateHeading>
-        </EmptyState>
+            </EmptyState.Description>
+          </EmptyState.Heading>
+        </EmptyState.Root>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
+        <Table.Root>
+          <Table.Header>
+            <Table.Row>
+              <Table.Head>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.settings.store_products.product_id" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="text-right">
+              </Table.Head>
+              <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.settings.store_products.price" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="text-right">
+              </Table.Head>
+              <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.settings.store_products.episodes" />
                 </Suspense>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {products.map((product) => (
-              <TableRow key={product.productId}>
-                <TableCell>
-                  <Identifier>
-                    <IdentifierValue>{product.productId}</IdentifierValue>
-                    <IdentifierCopy
+              <Table.Row key={product.productId}>
+                <Table.Cell>
+                  <Identifier.Root>
+                    <Identifier.Value>{product.productId}</Identifier.Value>
+                    <Identifier.Copy
                       aria-label={t(
                         "admin.settings.store_products.copy_product_id"
                       )}
                       value={product.productId}
                     />
-                  </Identifier>
-                </TableCell>
-                <TableCell className="text-right">
+                  </Identifier.Root>
+                </Table.Cell>
+                <Table.Cell className="text-right">
                   {formatPrice(product.price, {
                     currency: product.currency,
                     locale,
                   })}
-                </TableCell>
-                <TableCell className="text-right">
+                </Table.Cell>
+                <Table.Cell className="text-right">
                   {product.episodeCount}
-                </TableCell>
-              </TableRow>
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </TableBody>
-        </Table>
+          </Table.Body>
+        </Table.Root>
       )}
     </AdminSection>
   );

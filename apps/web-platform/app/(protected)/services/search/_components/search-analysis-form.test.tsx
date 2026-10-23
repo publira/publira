@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -31,13 +31,13 @@ vi.mock("#components/message", () => ({
 const { save } = vi.hoisted(() => ({
   save: {
     calls: [] as FormData[],
-    current: Promise.withResolvers<FormActionState>(),
+    current: Promise.withResolvers<ActionForm.State>(),
   },
 }));
 
 vi.mock("../_lib/actions", () => ({
   updatePlatformSearchAnalysisAction: (
-    _state: FormActionState,
+    _state: ActionForm.State,
     data: FormData
   ) => {
     save.calls.push(data);
@@ -79,7 +79,7 @@ afterEach(() => {
   cleanup();
   // A submission left in flight would hold back the next test's transitions.
   save.current.resolve(null);
-  save.current = Promise.withResolvers<FormActionState>();
+  save.current = Promise.withResolvers<ActionForm.State>();
   save.calls = [];
 });
 

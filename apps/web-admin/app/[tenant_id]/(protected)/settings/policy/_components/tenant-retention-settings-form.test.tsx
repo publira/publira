@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -23,7 +23,7 @@ import type { TenantRetentionPeriods } from "#lib/tenant-retention-settings";
 import { TenantRetentionSettingsForm } from "./tenant-retention-settings-form";
 
 const { save } = vi.hoisted(() => ({
-  save: { current: Promise.withResolvers<FormActionState>() },
+  save: { current: Promise.withResolvers<ActionForm.State>() },
 }));
 
 vi.mock("../_lib/actions", () => ({
@@ -66,7 +66,7 @@ const withdrawnComments = () => group("Withdrawn comments");
 
 afterEach(() => {
   cleanup();
-  save.current = Promise.withResolvers<FormActionState>();
+  save.current = Promise.withResolvers<ActionForm.State>();
 });
 
 describe("TenantRetentionSettingsForm", () => {

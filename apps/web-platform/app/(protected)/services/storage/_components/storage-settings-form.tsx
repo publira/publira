@@ -1,14 +1,6 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -72,7 +64,7 @@ export const StorageSettingsForm = ({
         </FormMessage>
       ) : null}
 
-      <ActionForm
+      <ActionForm.Root
         action={updatePlatformStorageSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
       >
@@ -81,13 +73,13 @@ export const StorageSettingsForm = ({
         {/* A save refreshes the settings; the new revision remounts the fields
             instead of changing a mounted field's default. */}
         <Fragment key={settings.revision}>
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.storage.form.bucket" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="off"
                 defaultValue={settings.bucket}
@@ -98,21 +90,21 @@ export const StorageSettingsForm = ({
                 spellCheck={false}
                 type="text"
               />
-            </FieldContent>
-            <FieldDescription>
+            </Field.Content>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
                 <Message message="platform.storage.form.bucket_help" />
               </Suspense>
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.storage.form.region" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="off"
                 defaultValue={settings.region}
@@ -123,21 +115,21 @@ export const StorageSettingsForm = ({
                 spellCheck={false}
                 type="text"
               />
-            </FieldContent>
-            <FieldDescription>
+            </Field.Content>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
                 <Message message="platform.storage.form.region_help" />
               </Suspense>
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.storage.form.public_base_url" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="off"
                 defaultValue={settings.publicBaseUrl}
@@ -147,13 +139,13 @@ export const StorageSettingsForm = ({
                 spellCheck={false}
                 type="url"
               />
-            </FieldContent>
-            <FieldDescription>
+            </Field.Content>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
                 <Message message="platform.storage.form.public_base_url_help" />
               </Suspense>
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
           <fieldset className="grid gap-4">
             <legend className="mb-1 text-sm font-medium text-foreground">
@@ -167,13 +159,13 @@ export const StorageSettingsForm = ({
               </Suspense>
             </p>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="platform.storage.form.endpoint" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Input
                   autoComplete="off"
                   defaultValue={settings.endpoint}
@@ -183,33 +175,33 @@ export const StorageSettingsForm = ({
                   spellCheck={false}
                   type="url"
                 />
-              </FieldContent>
-              <FieldDescription>
+              </Field.Content>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
                   <Message message="platform.storage.form.endpoint_help" />
                 </Suspense>
-              </FieldDescription>
-            </Field>
+              </Field.Description>
+            </Field.Root>
 
-            <Field>
+            <Field.Root>
               <div className="flex items-center gap-2">
                 <Checkbox
                   defaultChecked={settings.forcePathStyle}
                   disabled={Boolean(loadErrorMessage)}
                   name="force_path_style"
                 />
-                <FieldLabel>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="platform.storage.form.force_path_style" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
               </div>
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
                   <Message message="platform.storage.form.force_path_style_help" />
                 </Suspense>
-              </FieldDescription>
-            </Field>
+              </Field.Description>
+            </Field.Root>
           </fieldset>
 
           <StorageCredentialFields settings={settings} />
@@ -218,13 +210,13 @@ export const StorageSettingsForm = ({
         <StorageConnectionTest action={testPlatformStorageConnectionAction} />
 
         <div className="flex justify-end">
-          <ActionFormSubmit disabled={Boolean(loadErrorMessage)}>
+          <ActionForm.Submit disabled={Boolean(loadErrorMessage)}>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="platform.storage.save" />
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </PlatformSection>
   );
 };

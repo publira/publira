@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -30,9 +30,9 @@ const NOT_RENTED = { initialRentalPeriodHours: 0, initialRentalPrice: 0 };
 
 const renderForm = (
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState> = () => Promise.resolve(null),
+  ) => Promise<ActionForm.State> = () => Promise.resolve(null),
   currency = "JPY",
   rental: {
     initialRentalPrice: number;
@@ -125,7 +125,7 @@ describe("EpisodePricingForm", () => {
   });
 
   it("sends the new values with the episode they belong to", async () => {
-    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
+    const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
     renderForm(action);

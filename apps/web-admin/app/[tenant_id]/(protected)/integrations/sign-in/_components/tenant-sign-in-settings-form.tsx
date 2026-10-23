@@ -1,21 +1,9 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Identifier, IdentifierValue } from "@publira/ui-components/identifier";
+import * as Identifier from "@publira/ui-components/identifier";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -274,10 +262,10 @@ const EmailSenderValue = ({
     );
   }
   return (
-    <Identifier>
-      <IdentifierValue>{fromAddress}</IdentifierValue>
+    <Identifier.Root>
+      <Identifier.Value>{fromAddress}</Identifier.Value>
       <EmailSenderCopy value={fromAddress} />
-    </Identifier>
+    </Identifier.Root>
   );
 };
 
@@ -293,24 +281,24 @@ const AppleEmailSender = ({
   fromAddress?: string;
 }) =>
   fromAddress === undefined && !errorMessage ? null : (
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="admin.settings.sign_in.apple.email_sender" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <EmailSenderValue
           errorMessage={errorMessage}
           fromAddress={fromAddress}
         />
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.sign_in.apple.email_sender_description" />
           </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
   );
 
 /**
@@ -375,7 +363,7 @@ export const TenantSignInSettingsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantSignInSettingsAction}
         className="grid gap-8 sm:max-w-3xl"
       >
@@ -411,60 +399,62 @@ export const TenantSignInSettingsForm = ({
                     sees disabled: whoever holds the provider account can still
                     copy it. */}
                 {callbackUrls?.apple ? (
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-24" />}
                       >
                         <Message message="admin.settings.sign_in.callback_url" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
-                      <Identifier>
-                        <IdentifierValue>{callbackUrls.apple}</IdentifierValue>
+                    </Field.Label>
+                    <Field.Content>
+                      <Identifier.Root>
+                        <Identifier.Value>
+                          {callbackUrls.apple}
+                        </Identifier.Value>
                         <CallbackUrlCopy value={callbackUrls.apple} />
-                      </Identifier>
-                      <FieldDescription>
+                      </Identifier.Root>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.apple.callback_url_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
                 ) : null}
                 {callbackUrls?.appleAndroid ? (
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.settings.sign_in.apple.android_callback_url" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
-                      <Identifier>
-                        <IdentifierValue>
+                    </Field.Label>
+                    <Field.Content>
+                      <Identifier.Root>
+                        <Identifier.Value>
                           {callbackUrls.appleAndroid}
-                        </IdentifierValue>
+                        </Identifier.Value>
                         <CallbackUrlCopy value={callbackUrls.appleAndroid} />
-                      </Identifier>
-                      <FieldDescription>
+                      </Identifier.Root>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.apple.android_callback_url_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
                 ) : null}
                 <AppleEmailSender
                   errorMessage={emailSenderErrorMessage}
                   fromAddress={emailSender}
                 />
-                <ActionFormFieldset
+                <ActionForm.Fieldset
                   className="grid gap-5"
                   disabled={fieldsDisabled}
                 >
@@ -473,15 +463,15 @@ export const TenantSignInSettingsForm = ({
                       <Message message="admin.settings.sign_in.apple.enabled" />
                     </Suspense>
                   </CredentialsEnabledCheckbox>
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-24" />}
                       >
                         <Message message="admin.settings.sign_in.apple.services_id" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       <Input
                         autoCapitalize="off"
                         autoComplete="off"
@@ -491,17 +481,17 @@ export const TenantSignInSettingsForm = ({
                         spellCheck={false}
                         type="text"
                       />
-                      <ActionFormFieldError name="servicesId" />
-                      <FieldDescription>
+                      <ActionForm.FieldError name="servicesId" />
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.apple.services_id_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                  <Field>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                  <Field.Root>
                     <CredentialsEnabledLabel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-20" />}
@@ -509,7 +499,7 @@ export const TenantSignInSettingsForm = ({
                         <Message message="admin.settings.sign_in.apple.team_id" />
                       </Suspense>
                     </CredentialsEnabledLabel>
-                    <FieldContent>
+                    <Field.Content>
                       <Input
                         autoCapitalize="characters"
                         autoComplete="off"
@@ -520,17 +510,17 @@ export const TenantSignInSettingsForm = ({
                         spellCheck={false}
                         type="text"
                       />
-                      <ActionFormFieldError name="teamId" />
-                      <FieldDescription>
+                      <ActionForm.FieldError name="teamId" />
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.apple.team_id_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                  <Field>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                  <Field.Root>
                     <CredentialsEnabledLabel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
@@ -538,7 +528,7 @@ export const TenantSignInSettingsForm = ({
                         <Message message="admin.settings.sign_in.apple.key_id" />
                       </Suspense>
                     </CredentialsEnabledLabel>
-                    <FieldContent>
+                    <Field.Content>
                       <Input
                         autoCapitalize="characters"
                         autoComplete="off"
@@ -549,31 +539,31 @@ export const TenantSignInSettingsForm = ({
                         spellCheck={false}
                         type="text"
                       />
-                      <ActionFormFieldError name="keyId" />
-                      <FieldDescription>
+                      <ActionForm.FieldError name="keyId" />
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.apple.key_id_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
                   <SecretKey
                     accept=".p8"
                     configured={settings.apple.privateKeyConfigured}
                     name="apple_private_key"
                   >
                     <SecretKeyWhile mode="keep">
-                      <Field>
-                        <FieldLabel>
+                      <Field.Root>
+                        <Field.Label>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-28" />}
                           >
                             <Message message="admin.settings.sign_in.apple.private_key" />
                           </Suspense>
-                        </FieldLabel>
-                        <FieldContent>
+                        </Field.Label>
+                        <Field.Content>
                           <div className="flex flex-wrap items-center gap-3">
                             <Input
                               disabled
@@ -596,19 +586,19 @@ export const TenantSignInSettingsForm = ({
                               </Suspense>
                             </SecretKeyModeButton>
                           </div>
-                          <ActionFormFieldError name="privateKey" />
-                          <FieldDescription>
+                          <ActionForm.FieldError name="privateKey" />
+                          <Field.Description>
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-3/4" />}
                             >
                               <Message message="admin.settings.sign_in.apple.private_key_description" />
                             </Suspense>
-                          </FieldDescription>
-                        </FieldContent>
-                      </Field>
+                          </Field.Description>
+                        </Field.Content>
+                      </Field.Root>
                     </SecretKeyWhile>
                     <SecretKeyWhile mode="replace">
-                      <Field>
+                      <Field.Root>
                         <CredentialsEnabledLabel>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-28" />}
@@ -616,28 +606,28 @@ export const TenantSignInSettingsForm = ({
                             <Message message="admin.settings.sign_in.apple.private_key" />
                           </Suspense>
                         </CredentialsEnabledLabel>
-                        <FieldContent>
+                        <Field.Content>
                           <SecretKeyFile />
-                          <FieldDescription>
+                          <Field.Description>
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-3/4" />}
                             >
                               <Message message="admin.settings.sign_in.apple.private_key_description" />
                             </Suspense>
-                          </FieldDescription>
-                        </FieldContent>
-                      </Field>
-                      <Field>
-                        <FieldLabel>
+                          </Field.Description>
+                        </Field.Content>
+                      </Field.Root>
+                      <Field.Root>
+                        <Field.Label>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-32" />}
                           >
                             <Message message="admin.settings.sign_in.key_text" />
                           </Suspense>
-                        </FieldLabel>
-                        <FieldContent>
+                        </Field.Label>
+                        <Field.Content>
                           <SecretKeyText />
-                          <ActionFormFieldError name="privateKey" />
+                          <ActionForm.FieldError name="privateKey" />
                           {settings.apple.privateKeyConfigured ? (
                             <div>
                               <SecretKeyModeButton mode="keep">
@@ -651,19 +641,19 @@ export const TenantSignInSettingsForm = ({
                               </SecretKeyModeButton>
                             </div>
                           ) : null}
-                        </FieldContent>
-                      </Field>
+                        </Field.Content>
+                      </Field.Root>
                     </SecretKeyWhile>
                     <SecretKeyWhile mode="clear">
-                      <Field>
-                        <FieldLabel>
+                      <Field.Root>
+                        <Field.Label>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-28" />}
                           >
                             <Message message="admin.settings.sign_in.apple.private_key" />
                           </Suspense>
-                        </FieldLabel>
-                        <FieldContent>
+                        </Field.Label>
+                        <Field.Content>
                           <div className="flex flex-wrap items-center gap-3">
                             <p className="text-sm text-foreground">
                               <Suspense
@@ -680,20 +670,20 @@ export const TenantSignInSettingsForm = ({
                               </Suspense>
                             </SecretKeyModeButton>
                           </div>
-                          <ActionFormFieldError name="privateKey" />
-                        </FieldContent>
-                      </Field>
+                          <ActionForm.FieldError name="privateKey" />
+                        </Field.Content>
+                      </Field.Root>
                     </SecretKeyWhile>
                   </SecretKey>
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-24" />}
                       >
                         <Message message="admin.settings.sign_in.apple.bundle_identifier" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       {settings.apple.bundleIdentifier ? (
                         <Input
                           disabled
@@ -710,16 +700,16 @@ export const TenantSignInSettingsForm = ({
                           </Suspense>
                         </p>
                       )}
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.apple.bundle_identifier_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                </ActionFormFieldset>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                </ActionForm.Fieldset>
               </fieldset>
             </CredentialsEnabled>
 
@@ -743,30 +733,32 @@ export const TenantSignInSettingsForm = ({
                   <ProviderOffers offers={offers.google} provider="google" />
                 ) : null}
                 {callbackUrls?.google ? (
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-24" />}
                       >
                         <Message message="admin.settings.sign_in.callback_url" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
-                      <Identifier>
-                        <IdentifierValue>{callbackUrls.google}</IdentifierValue>
+                    </Field.Label>
+                    <Field.Content>
+                      <Identifier.Root>
+                        <Identifier.Value>
+                          {callbackUrls.google}
+                        </Identifier.Value>
                         <CallbackUrlCopy value={callbackUrls.google} />
-                      </Identifier>
-                      <FieldDescription>
+                      </Identifier.Root>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.google.callback_url_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
                 ) : null}
-                <ActionFormFieldset
+                <ActionForm.Fieldset
                   className="grid gap-5"
                   disabled={fieldsDisabled}
                 >
@@ -775,15 +767,15 @@ export const TenantSignInSettingsForm = ({
                       <Message message="admin.settings.sign_in.google.enabled" />
                     </Suspense>
                   </CredentialsEnabledCheckbox>
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-28" />}
                       >
                         <Message message="admin.settings.sign_in.google.web_client_id" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       <Input
                         autoCapitalize="off"
                         autoComplete="off"
@@ -793,25 +785,25 @@ export const TenantSignInSettingsForm = ({
                         spellCheck={false}
                         type="text"
                       />
-                      <ActionFormFieldError name="webClientId" />
-                      <FieldDescription>
+                      <ActionForm.FieldError name="webClientId" />
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.google.web_client_id_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                  <Field>
-                    <FieldLabel>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-28" />}
                       >
                         <Message message="admin.settings.sign_in.google.ios_client_id" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       <Input
                         autoCapitalize="off"
                         autoComplete="off"
@@ -821,17 +813,17 @@ export const TenantSignInSettingsForm = ({
                         spellCheck={false}
                         type="text"
                       />
-                      <ActionFormFieldError name="iosClientId" />
-                      <FieldDescription>
+                      <ActionForm.FieldError name="iosClientId" />
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.sign_in.google.ios_client_id_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                </ActionFormFieldset>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                </ActionForm.Fieldset>
               </fieldset>
             </CredentialsEnabled>
           </div>
@@ -850,18 +842,18 @@ export const TenantSignInSettingsForm = ({
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.sign_in.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

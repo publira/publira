@@ -1,6 +1,6 @@
 "use server";
 
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
@@ -27,9 +27,9 @@ const markAllSchema = z.object({
 });
 
 export const markNotificationAsReadAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
@@ -63,9 +63,9 @@ export const markNotificationAsReadAction = async (
 };
 
 export const markAllNotificationsAsReadAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);

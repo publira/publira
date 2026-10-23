@@ -1,8 +1,5 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -32,17 +29,17 @@ export const OperatorRoleForm = async ({
   ]);
 
   return (
-    <ActionForm action={updateOperatorRoleAction}>
+    <ActionForm.Root action={updateOperatorRoleAction}>
       <input name="operator_id" type="hidden" value={operatorId} />
       <input name="operator_public_id" type="hidden" value={operatorPublicId} />
       <div className="grid gap-4">
-        <Field>
-          <FieldLabel required={!disabled}>
+        <Field.Root>
+          <Field.Label required={!disabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="platform.common.role" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Suspense fallback={<Skeleton className="h-10 w-full" />}>
               <Select
                 defaultValue={currentRole}
@@ -54,18 +51,18 @@ export const OperatorRoleForm = async ({
                 required={!disabled}
               />
             </Suspense>
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
       </div>
       {disabled ? null : (
         <div className="mt-4 flex justify-end">
-          <ActionFormSubmit variant="outline">
+          <ActionForm.Submit variant="outline">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="platform.common.save" />
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
       )}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

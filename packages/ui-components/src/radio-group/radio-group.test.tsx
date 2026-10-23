@@ -3,7 +3,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { Field, FieldLabel } from "../field/field";
+import * as Field from "../field";
 import { RadioGroup } from "./radio-group";
 
 const items = [
@@ -27,10 +27,10 @@ describe("RadioGroup", () => {
   // per-item association a screen reader announces every option as "Comments".
   it("names each option after its own label, not after the surrounding field", () => {
     render(
-      <Field>
-        <FieldLabel>Comments</FieldLabel>
+      <Field.Root>
+        <Field.Label>Comments</Field.Label>
         <RadioGroup items={items} value="immediate" />
-      </Field>
+      </Field.Root>
     );
 
     expect(

@@ -4,10 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import {
-  ConfirmDialogDescription,
-  ConfirmDialogTitle,
-} from "@publira/ui-components/dialog";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 import {
   act,
   cleanup,
@@ -53,10 +50,10 @@ const renderButton = async () => {
   await act(() => {
     render(
       <CloseStatementButton period="2026-08" tenantId="TENANT001">
-        <ConfirmDialogTitle>Close August 2026?</ConfirmDialogTitle>
-        <ConfirmDialogDescription>
+        <ConfirmDialog.Title>Close August 2026?</ConfirmDialog.Title>
+        <ConfirmDialog.Description>
           The payout to authors, ¥2,500 in total, will be fixed in a statement.
-        </ConfirmDialogDescription>
+        </ConfirmDialog.Description>
       </CloseStatementButton>
     );
   });

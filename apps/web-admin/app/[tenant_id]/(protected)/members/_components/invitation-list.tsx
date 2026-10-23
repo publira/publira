@@ -1,29 +1,10 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -106,18 +87,18 @@ const InvitationActions = ({
 }) =>
   invitation.status === "pending" ? (
     <div className="flex flex-wrap items-start gap-2">
-      <ActionForm
+      <ActionForm.Root
         action={resendTenantAdminInvitationAction}
         className="grid gap-1"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="invitation_id" type="hidden" value={invitation.id} />
-        <ActionFormSubmit variant="outline">
+        <ActionForm.Submit variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.resend_action" />
           </Suspense>
-        </ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Submit>
+      </ActionForm.Root>
       <InvitationCancelButton
         email={invitation.email}
         invitationId={invitation.id}
@@ -135,72 +116,72 @@ const InvitationTable = ({
   InvitationListProps,
   "invitations" | "locale" | "tenantId" | "timeZone"
 >) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>
+  <Table.Root>
+    <Table.Header>
+      <Table.Row>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.email" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.role" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.status" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.invited" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.expires" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.actions" />
           </Suspense>
-        </TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
+        </Table.Head>
+      </Table.Row>
+    </Table.Header>
+    <Table.Body>
       {invitations.map((invitation) => (
-        <TableRow key={invitation.id}>
-          <TableCell className="font-medium">{invitation.email}</TableCell>
-          <TableCell>
+        <Table.Row key={invitation.id}>
+          <Table.Cell className="font-medium">{invitation.email}</Table.Cell>
+          <Table.Cell>
             <MemberRoleLabel role={invitation.role} />
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <InvitationStatusBadge status={invitation.status} />
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             {formatDateTime(invitation.createdAt, {
               fallback: "-",
               locale,
               timeZone,
             })}
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             {formatDateTime(invitation.expiresAt, {
               fallback: "-",
               locale,
               timeZone,
             })}
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <InvitationActions invitation={invitation} tenantId={tenantId} />
-          </TableCell>
-        </TableRow>
+          </Table.Cell>
+        </Table.Row>
       ))}
-    </TableBody>
-  </Table>
+    </Table.Body>
+  </Table.Root>
 );
 
 export const InvitationList = async ({
@@ -217,16 +198,18 @@ export const InvitationList = async ({
   // error would read as "nobody has been invited".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
               <Message message="admin.members.invitations_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -240,14 +223,14 @@ export const InvitationList = async ({
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.members.invitations_title")}
         >
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               {t("admin.members.invitations_empty_title")}
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               {t("admin.members.invitations_empty_description")}
-            </EmptyStateDescription>
-          </EmptyStateHeading>
+            </EmptyState.Description>
+          </EmptyState.Heading>
         </CursorPageEmptyState>
       ) : (
         <InvitationTable

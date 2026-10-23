@@ -1,21 +1,11 @@
 "use client";
 
-import {
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import { DialogClose, DialogFooter } from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
@@ -40,11 +30,11 @@ export interface CreditPair {
 }
 
 interface CreditPairFieldsProps {
-  creatorItems: ComboboxItem[];
+  creatorItems: Combobox.Item[];
   onCreatorChange: (nextCreatorId: string) => void;
   onRoleChange: (nextRoleId: string) => void;
   pair: CreditPair;
-  roleItems: ComboboxItem[];
+  roleItems: Combobox.Item[];
 }
 
 const CreditPairFields = ({
@@ -58,46 +48,46 @@ const CreditPairFields = ({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <Field>
-        <FieldLabel>{t("admin.series.episodes.credits.creator")}</FieldLabel>
-        <FieldContent>
-          <Combobox
+      <Field.Root>
+        <Field.Label>{t("admin.series.episodes.credits.creator")}</Field.Label>
+        <Field.Content>
+          <Combobox.Root
             items={creatorItems}
             onValueChange={onCreatorChange}
             value={pair.creatorId}
           >
-            <ComboboxInput
+            <Combobox.Input
               placeholder={t("admin.series.episodes.credits.creator_search")}
             />
-            <ComboboxPopup>
-              <ComboboxEmpty>
+            <Combobox.Popup>
+              <Combobox.Empty>
                 {t("admin.series.episodes.credits.creator_no_match")}
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </Combobox>
-        </FieldContent>
-      </Field>
-      <Field>
-        <FieldLabel>{t("admin.series.episodes.credits.role")}</FieldLabel>
-        <FieldContent>
-          <Combobox
+              </Combobox.Empty>
+              <Combobox.Items />
+            </Combobox.Popup>
+          </Combobox.Root>
+        </Field.Content>
+      </Field.Root>
+      <Field.Root>
+        <Field.Label>{t("admin.series.episodes.credits.role")}</Field.Label>
+        <Field.Content>
+          <Combobox.Root
             items={roleItems}
             onValueChange={onRoleChange}
             value={pair.roleId}
           >
-            <ComboboxInput
+            <Combobox.Input
               placeholder={t("admin.series.episodes.credits.role_search")}
             />
-            <ComboboxPopup>
-              <ComboboxEmpty>
+            <Combobox.Popup>
+              <Combobox.Empty>
                 {t("admin.series.episodes.credits.role_no_match")}
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
-          </Combobox>
-        </FieldContent>
-      </Field>
+              </Combobox.Empty>
+              <Combobox.Items />
+            </Combobox.Popup>
+          </Combobox.Root>
+        </Field.Content>
+      </Field.Root>
     </div>
   );
 };
@@ -115,9 +105,9 @@ const ShareField = ({
     shareText.trim().length > 0 && sharePercentToBps(shareText) === undefined;
 
   return (
-    <Field className="sm:max-w-40">
-      <FieldLabel>{t("admin.series.episodes.credits.share")}</FieldLabel>
-      <FieldContent>
+    <Field.Root className="sm:max-w-40">
+      <Field.Label>{t("admin.series.episodes.credits.share")}</Field.Label>
+      <Field.Content>
         <Input
           aria-invalid={invalid}
           className="text-right tabular-nums"
@@ -125,13 +115,13 @@ const ShareField = ({
           onChange={(event) => onShareChange(event.currentTarget.value)}
           value={shareText}
         />
-      </FieldContent>
+      </Field.Content>
       {invalid ? (
         <FormMessage variant="destructive">
           {t("admin.series.episodes.credits.validation.share_invalid")}
         </FormMessage>
       ) : null}
-    </Field>
+    </Field.Root>
   );
 };
 
@@ -149,14 +139,14 @@ const CreditTargetFields = ({
   to,
 }: {
   credit: CreditPair;
-  creatorItems: ComboboxItem[];
+  creatorItems: Combobox.Item[];
   from: CreditPair;
   onCreditChange: (next: CreditPair) => void;
   onFromChange: (next: CreditPair) => void;
   onShareChange: (next: string) => void;
   onToChange: (next: CreditPair) => void;
   operation: CreditOperation;
-  roleItems: ComboboxItem[];
+  roleItems: Combobox.Item[];
   shareText: string;
   to: CreditPair;
 }) => {
@@ -283,11 +273,11 @@ const EpisodeSelectionFields = ({
       <legend className="text-sm font-medium text-foreground">
         {t("admin.series.episodes.credits.selection")}
       </legend>
-      <Field>
-        <FieldLabel>
+      <Field.Root>
+        <Field.Label>
           {t("admin.series.episodes.credits.selection_search")}
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             disabled={listDisabled}
             onChange={(event) => setQuery(event.currentTarget.value)}
@@ -295,8 +285,8 @@ const EpisodeSelectionFields = ({
             type="search"
             value={query}
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Checkbox
@@ -425,12 +415,12 @@ export const EpisodeCreditsRangeFooter = ({
   children,
 }: {
   children: ReactNode;
-}) => <DialogFooter className="mt-0 shrink-0 pt-4">{children}</DialogFooter>;
+}) => <Dialog.Footer className="mt-0 shrink-0 pt-4">{children}</Dialog.Footer>;
 
 export interface EpisodeCreditsRangeEditorProps {
   canSubmit: boolean;
   credit: CreditPair;
-  creatorItems: ComboboxItem[];
+  creatorItems: Combobox.Item[];
   creatorRolesEmpty: boolean;
   creatorRolesErrorMessage?: string;
   creatorsEmpty: boolean;
@@ -465,7 +455,7 @@ export interface EpisodeCreditsRangeEditorProps {
   operation: CreditOperation;
   preview?: string;
   replaceSame: boolean;
-  roleItems: ComboboxItem[];
+  roleItems: Combobox.Item[];
   selectedCount: number;
   selectedIds: ReadonlySet<string>;
   selectionTooMany: boolean;
@@ -531,11 +521,11 @@ export const EpisodeCreditsRangeEditor = ({
 
       <EpisodeCreditsRangeBody>
         <Fieldset className="grid gap-5" disabled={isPending}>
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               {t("admin.series.episodes.credits.operation")}
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <RadioGroup
                 items={[
                   {
@@ -572,8 +562,8 @@ export const EpisodeCreditsRangeEditor = ({
                 onValueChange={onOperationChange}
                 value={operation}
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
           <CreditTargetFields
             credit={credit}
@@ -636,7 +626,7 @@ export const EpisodeCreditsRangeEditor = ({
       </EpisodeCreditsRangeBody>
 
       <EpisodeCreditsRangeFooter>
-        <DialogClose
+        <Dialog.Close
           render={
             <Button type="button" variant="outline">
               {t("admin.common.cancel")}
@@ -644,12 +634,12 @@ export const EpisodeCreditsRangeEditor = ({
           }
         />
         <Button disabled={!canSubmit} type="submit">
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <ClientMessage message="admin.series.episodes.credits.apply" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <ClientMessage message="admin.series.episodes.credits.applying" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Button>
       </EpisodeCreditsRangeFooter>
     </form>

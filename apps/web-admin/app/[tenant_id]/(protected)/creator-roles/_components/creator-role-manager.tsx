@@ -1,21 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as Field from "@publira/ui-components/field";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -58,16 +44,18 @@ const CreatorRoleListBody = ({
   // error would read as "this tenant has no roles".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
               <Message message="admin.creator_roles.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -76,20 +64,20 @@ const CreatorRoleListBody = ({
   // not been used yet.
   if (creatorRoles.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
               <Message message="admin.creator_roles.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="admin.creator_roles.empty_description" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     );
   }
 
@@ -125,32 +113,35 @@ export const CreatorRoleManager = ({
             </AdminSectionDescription>
           </AdminSectionHeading>
         </AdminSectionHeader>
-        <ActionForm action={createCreatorRoleAction} className="grid gap-4">
+        <ActionForm.Root
+          action={createCreatorRoleAction}
+          className="grid gap-4"
+        >
           <input name="tenant_id" type="hidden" value={tenantId} />
-          <ActionFormFieldset>
-            <Field>
-              <FieldLabel required>
+          <ActionForm.Fieldset>
+            <Field.Root>
+              <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="admin.creator_roles.form.name" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Suspense
                   fallback={<Skeleton className="h-9 w-full sm:max-w-sm" />}
                 >
                   <CreatorRoleNameInput />
                 </Suspense>
-              </FieldContent>
-            </Field>
-          </ActionFormFieldset>
+              </Field.Content>
+            </Field.Root>
+          </ActionForm.Fieldset>
           <div className="flex justify-end">
-            <ActionFormSubmit>
+            <ActionForm.Submit>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.creator_roles.create_action" />
               </Suspense>
-            </ActionFormSubmit>
+            </ActionForm.Submit>
           </div>
-        </ActionForm>
+        </ActionForm.Root>
       </AdminSection>
     ) : null}
 

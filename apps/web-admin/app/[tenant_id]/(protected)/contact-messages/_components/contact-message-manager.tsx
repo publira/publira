@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -99,29 +83,31 @@ const ContactMessageListBody = ({
 }) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.contact_messages.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (messages.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.contact_messages.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               {filtered ? (
                 <Message message="admin.contact_messages.empty_filtered_description" />
@@ -129,52 +115,52 @@ const ContactMessageListBody = ({
                 <Message message="admin.contact_messages.empty_description" />
               )}
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
+          </EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.contact_messages.columns.subject" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.contact_messages.columns.sender" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.contact_messages.columns.reply_to" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-36">
+          </Table.Head>
+          <Table.Head className="w-36">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.contact_messages.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.contact_messages.columns.assignee" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-48">
+          </Table.Head>
+          <Table.Head className="w-48">
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.contact_messages.columns.created_at" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {messages.map((message) => (
-          <TableRow key={message.publicId}>
-            <TableCell>
+          <Table.Row key={message.publicId}>
+            <Table.Cell>
               <Link
                 className="font-medium underline-offset-4 hover:underline"
                 href={`/contact-messages/${message.publicId}`}
@@ -185,12 +171,12 @@ const ContactMessageListBody = ({
                   </Suspense>
                 )}
               </Link>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <ContactMessageSender message={message} />
-            </TableCell>
-            <TableCell>{message.replyToEmail}</TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>{message.replyToEmail}</Table.Cell>
+            <Table.Cell>
               <div className="flex flex-col items-start gap-1">
                 <StatusChip status={contactMessageStatusTone(message.status)}>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -207,19 +193,19 @@ const ContactMessageListBody = ({
                   </span>
                 ) : null}
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <ContactMessageAssignee message={message} />
-            </TableCell>
-            <TableCell className="tabular-nums">
+            </Table.Cell>
+            <Table.Cell className="tabular-nums">
               {message.createdAt
                 ? formatDateTime(message.createdAt, { locale, timeZone })
                 : "—"}
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

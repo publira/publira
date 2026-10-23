@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -23,20 +18,20 @@ const MarkNotificationAsReadSubmit = async ({ label }: { label: string }) => {
   const t = await getMessages();
 
   return (
-    <ActionFormSubmit
+    <ActionForm.Submit
       aria-label={t("admin.notifications.mark_read_aria", { label })}
       size="sm"
       variant="outline"
     >
       <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-        <ActionFormIdle>
+        <ActionForm.Idle>
           <Message message="admin.notifications.mark_read" />
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Message message="admin.notifications.updating" />
-        </ActionFormPending>
+        </ActionForm.Pending>
       </Suspense>
-    </ActionFormSubmit>
+    </ActionForm.Submit>
   );
 };
 
@@ -49,7 +44,7 @@ export const MarkNotificationAsReadButton = ({
   notificationId: string;
   tenantId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={markNotificationAsReadAction}
     className="grid justify-items-end gap-1"
     showSuccess={false}
@@ -59,7 +54,7 @@ export const MarkNotificationAsReadButton = ({
     <Suspense fallback={<Skeleton className="h-8 w-24" />}>
       <MarkNotificationAsReadSubmit label={label} />
     </Suspense>
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 export const MarkAllNotificationsAsReadButton = ({
@@ -67,21 +62,21 @@ export const MarkAllNotificationsAsReadButton = ({
 }: {
   tenantId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={markAllNotificationsAsReadAction}
     className="grid justify-items-end gap-1"
     showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ActionFormSubmit size="sm" variant="outline">
+    <ActionForm.Submit size="sm" variant="outline">
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-        <ActionFormIdle>
+        <ActionForm.Idle>
           <Message message="admin.notifications.mark_all_read" />
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Message message="admin.notifications.updating" />
-        </ActionFormPending>
+        </ActionForm.Pending>
       </Suspense>
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

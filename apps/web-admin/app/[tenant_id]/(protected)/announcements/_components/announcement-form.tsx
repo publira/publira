@@ -1,19 +1,8 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -73,13 +62,13 @@ const AnnouncementTranslationFields = ({
     <>
       <input name="translation_locale" type="hidden" value={locale ?? ""} />
 
-      <Field>
-        <FieldLabel required={required}>
+      <Field.Root>
+        <Field.Label required={required}>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.announcements.form.title" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             maxLength={120}
             name="title"
@@ -87,16 +76,16 @@ const AnnouncementTranslationFields = ({
             required={required}
             type="text"
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required={required}>
+      <Field.Root>
+        <Field.Label required={required}>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.announcements.form.body" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Textarea
             maxLength={2000}
             name="body"
@@ -104,8 +93,8 @@ const AnnouncementTranslationFields = ({
             required={required}
             rows={5}
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
     </>
   );
 };
@@ -169,10 +158,10 @@ export const AnnouncementForm = async ({
   const t = await getMessages();
 
   return (
-    <ActionForm action={action} className="grid gap-5">
+    <ActionForm.Root action={action} className="grid gap-5">
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <ActionFormFieldset className="grid gap-5">
+      <ActionForm.Fieldset className="grid gap-5">
         <AnnouncementTranslations
           placeholders={{
             body: t("admin.announcements.form.body_placeholder"),
@@ -182,100 +171,100 @@ export const AnnouncementForm = async ({
           tenantLocales={tenantLocales}
         />
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.announcements.form.link" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               name="link_url"
               placeholder={t("admin.announcements.form.link_placeholder")}
               type="text"
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.announcements.form.link_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.form.send_to_everyone" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Checkbox name="delivery" value="everyone" />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.announcements.form.send_to_everyone_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
         <AnnouncementPinned>
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.announcements.form.pinned" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <AnnouncementPinnedCheckbox />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.announcements.form.pinned_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
           <AnnouncementPinnedWhile>
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.announcements.form.pinned_until" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <InstantInput
                   name="pinned_until"
                   step={60}
                   timeZone={timeZone}
                 />
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message
                       message="admin.announcements.form.pinned_until_description"
                       values={{ time_zone: timeZone }}
                     />
                   </Suspense>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+                </Field.Description>
+              </Field.Content>
+            </Field.Root>
           </AnnouncementPinnedWhile>
         </AnnouncementPinned>
-      </ActionFormFieldset>
+      </ActionForm.Fieldset>
 
       <div className="flex justify-end">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.announcements.form.submit" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.announcements.form.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

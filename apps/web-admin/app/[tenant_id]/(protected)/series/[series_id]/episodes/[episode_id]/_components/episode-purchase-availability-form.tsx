@@ -1,11 +1,4 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -24,9 +17,9 @@ import { EpisodePurchaseAvailabilityField } from "../../_components/episode-purc
 
 interface EpisodePurchaseAvailabilityFormProps {
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   episodeId: string;
   episodePublicId: string;
   /**
@@ -64,33 +57,33 @@ export const EpisodePurchaseAvailabilityForm = ({
         </AdminSectionDescription>
       </AdminSectionHeading>
     </AdminSectionHeader>
-    <ActionForm action={action} className="grid gap-4">
+    <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
       <input name="episode_id" type="hidden" value={episodeId} />
       <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-      <ActionFormFieldset>
+      <ActionForm.Fieldset>
         <EpisodePurchaseAvailabilityField
           initialValue={initialPurchaseAvailability}
           seriesPurchaseAvailability={seriesPurchaseAvailability}
         />
-      </ActionFormFieldset>
+      </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.episodes.purchase_availability.update" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.episodes.updating" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

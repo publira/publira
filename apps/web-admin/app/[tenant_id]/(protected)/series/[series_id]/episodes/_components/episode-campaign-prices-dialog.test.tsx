@@ -13,7 +13,7 @@ vi.mock("#lib/use-tenant-id", () => ({
 }));
 
 vi.mock("@publira/ui-components/toast", () => ({
-  useToastManager: () => ({ add: vi.fn() }),
+  useManager: () => ({ add: vi.fn() }),
 }));
 
 const openDialog = (selectedIds: readonly string[]) => {

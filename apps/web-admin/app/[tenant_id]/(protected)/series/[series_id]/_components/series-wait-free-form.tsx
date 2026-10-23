@@ -1,18 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Switch } from "@publira/ui-components/switch";
@@ -34,9 +21,9 @@ import type { SeriesWaitFreeSettings } from "#lib/series-wait-free-shared";
 
 interface SeriesWaitFreeFormProps {
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   /**
    * The rule as stored, or the API's defaults for a series nobody configured.
    * Seeded once per mount: the page keys this form by it, so a saved change
@@ -75,37 +62,37 @@ export const SeriesWaitFreeForm = ({
         </AdminSectionDescription>
       </AdminSectionHeading>
     </AdminSectionHeader>
-    <ActionForm action={action} className="grid gap-4">
+    <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_id" type="hidden" value={seriesId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
-      <ActionFormFieldset className="grid gap-4">
-        <Field className="grid-cols-[auto_1fr] items-start gap-x-3">
+      <ActionForm.Fieldset className="grid gap-4">
+        <Field.Root className="grid-cols-[auto_1fr] items-start gap-x-3">
           <Switch
             className="row-span-2 mt-0.5"
             defaultChecked={initialSettings.enabled}
             name="enabled"
           />
-          <FieldLabel>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.series.wait_free.enabled" />
             </Suspense>
-          </FieldLabel>
-          <FieldDescription className="col-start-2">
+          </Field.Label>
+          <Field.Description className="col-start-2">
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               <Message message="admin.series.wait_free.enabled_description" />
             </Suspense>
-          </FieldDescription>
-        </Field>
+          </Field.Description>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.series.wait_free.recharge_hours" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               className="sm:max-w-40"
               defaultValue={initialSettings.rechargeHours}
@@ -116,25 +103,25 @@ export const SeriesWaitFreeForm = ({
               step={1}
               type="number"
             />
-            <ActionFormFieldError name="rechargeHours" />
-            <FieldDescription>
+            <ActionForm.FieldError name="rechargeHours" />
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                 <Message
                   message="admin.series.wait_free.recharge_hours_description"
                   values={{ max: String(MAX_WAIT_FREE_HOURS) }}
                 />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.series.wait_free.access_hours" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               className="sm:max-w-40"
               defaultValue={initialSettings.accessHours}
@@ -145,25 +132,25 @@ export const SeriesWaitFreeForm = ({
               step={1}
               type="number"
             />
-            <ActionFormFieldError name="accessHours" />
-            <FieldDescription>
+            <ActionForm.FieldError name="accessHours" />
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                 <Message
                   message="admin.series.wait_free.access_hours_description"
                   values={{ max: String(MAX_WAIT_FREE_HOURS) }}
                 />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.series.wait_free.excluded_latest_count" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               className="sm:max-w-40"
               defaultValue={initialSettings.excludedLatestCount}
@@ -174,30 +161,30 @@ export const SeriesWaitFreeForm = ({
               step={1}
               type="number"
             />
-            <ActionFormFieldError name="excludedLatestCount" />
-            <FieldDescription>
+            <ActionForm.FieldError name="excludedLatestCount" />
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                 <Message message="admin.series.wait_free.excluded_latest_count_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.wait_free.submit" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.series.form.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

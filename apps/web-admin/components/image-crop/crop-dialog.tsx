@@ -1,18 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
+import * as Dialog from "@publira/ui-components/dialog";
 import type { ReactEventHandler, ReactNode } from "react";
 
 import { useClientMessages } from "#components/client-message";
@@ -58,17 +47,17 @@ export const ImageCropDialog = ({
   const t = useClientMessages();
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport>
-          <DialogPopup className="w-[min(92vw,48rem)]">
-            <DialogHeader>
+    <Dialog.Root onOpenChange={onOpenChange} open={open}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Viewport>
+          <Dialog.Popup className="w-[min(92vw,48rem)]">
+            <Dialog.Header>
               {children}
-              <DialogDescription className="text-sm text-muted-foreground">
+              <Dialog.Description className="text-sm text-muted-foreground">
                 {t("admin.image_crop.description")}
-              </DialogDescription>
-            </DialogHeader>
+              </Dialog.Description>
+            </Dialog.Header>
             <div className="mt-4">
               <ImageCropFrame
                 aspect={aspect}
@@ -79,17 +68,17 @@ export const ImageCropDialog = ({
                 source={source}
               />
             </div>
-            <DialogFooter>
-              <DialogClose
+            <Dialog.Footer>
+              <Dialog.Close
                 render={
                   <Button type="button">{t("admin.image_crop.done")}</Button>
                 }
               />
-            </DialogFooter>
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
-    </Dialog>
+            </Dialog.Footer>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };
 
@@ -98,5 +87,5 @@ export const ImageCropDialog = ({
  * dialog covers that screen, so the image it is showing has to be named again.
  */
 export const ImageCropDialogTitle = ({ children }: { children: ReactNode }) => (
-  <DialogTitle className="text-lg font-semibold">{children}</DialogTitle>
+  <Dialog.Title className="text-lg font-semibold">{children}</Dialog.Title>
 );

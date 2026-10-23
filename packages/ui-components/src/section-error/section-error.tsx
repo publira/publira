@@ -19,16 +19,16 @@ type DivProps = ComponentPropsWithoutRef<"div">;
  * own `<Suspense>`.
  *
  * ```tsx
- * <SectionError>
- *   <SectionErrorHeading>
- *     <SectionErrorTitle>Could not display the operators</SectionErrorTitle>
- *     <SectionErrorDescription>Try again in a moment.</SectionErrorDescription>
- *   </SectionErrorHeading>
- *   <SectionErrorActions>
- *     <SectionErrorRetry>Try again</SectionErrorRetry>
- *   </SectionErrorActions>
- *   <SectionErrorDigest>Error ID:</SectionErrorDigest>
- * </SectionError>
+ * <SectionError.Root>
+ *   <SectionError.Heading>
+ *     <SectionError.Title>Could not display the operators</SectionError.Title>
+ *     <SectionError.Description>Try again in a moment.</SectionError.Description>
+ *   </SectionError.Heading>
+ *   <SectionError.Actions>
+ *     <SectionErrorCatch.Retry>Try again</SectionErrorCatch.Retry>
+ *   </SectionError.Actions>
+ *   <SectionErrorCatch.Digest>Error ID:</SectionErrorCatch.Digest>
+ * </SectionError.Root>
  * ```
  *
  * Sibling components, so a screen picks the one that matches what happened:

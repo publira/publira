@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -29,7 +24,10 @@ export const CampaignBannerImageForm = ({
   banner,
   tenantId,
 }: CampaignBannerImageFormProps) => (
-  <ActionForm action={updateCampaignBannerImageAction} className="grid gap-4">
+  <ActionForm.Root
+    action={updateCampaignBannerImageAction}
+    className="grid gap-4"
+  >
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="campaign_banner_id" type="hidden" value={banner.id} />
     <input name="link_url" type="hidden" value={banner.linkUrl} />
@@ -49,18 +47,18 @@ export const CampaignBannerImageForm = ({
       variants={banner.imageVariants}
     />
     <div className="flex justify-end">
-      <ActionFormSubmit>
-        <ActionFormIdle>
+      <ActionForm.Submit>
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.campaign_banners.form.image_update" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="admin.campaign_banners.form.submitting" />
           </Suspense>
-        </ActionFormPending>
-      </ActionFormSubmit>
+        </ActionForm.Pending>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );

@@ -11,7 +11,7 @@ import {
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
-} from "../popover";
+} from "../popover/popover";
 
 interface LocaleSwitcherContextValue {
   currentLocale: string;
@@ -52,20 +52,20 @@ export interface LocaleSwitcherProps {
  * ordinary `aria-label`.
  *
  * ```tsx
- * <LocaleSwitcher
+ * <LocaleSwitcher.Root
  *   action={setLocaleAction}
  *   currentLocale={locale}
  *   fieldName="locale"
  * >
- *   <LocaleSwitcherTrigger aria-label="Language" />
- *   <LocaleSwitcherContent>
- *     <LocaleSwitcherTitle>Language</LocaleSwitcherTitle>
- *     <LocaleSwitcherOptions aria-label="Language">
- *       <LocaleSwitcherOption locale="en">English</LocaleSwitcherOption>
- *       <LocaleSwitcherOption locale="ja">日本語</LocaleSwitcherOption>
- *     </LocaleSwitcherOptions>
- *   </LocaleSwitcherContent>
- * </LocaleSwitcher>
+ *   <LocaleSwitcher.Trigger aria-label="Language" />
+ *   <LocaleSwitcher.Content>
+ *     <LocaleSwitcher.Title>Language</LocaleSwitcher.Title>
+ *     <LocaleSwitcher.Options aria-label="Language">
+ *       <LocaleSwitcher.Option locale="en">English</LocaleSwitcher.Option>
+ *       <LocaleSwitcher.Option locale="ja">日本語</LocaleSwitcher.Option>
+ *     </LocaleSwitcher.Options>
+ *   </LocaleSwitcher.Content>
+ * </LocaleSwitcher.Root>
  * ```
  */
 export const LocaleSwitcher = ({

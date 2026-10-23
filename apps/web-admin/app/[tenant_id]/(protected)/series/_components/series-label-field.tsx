@@ -1,14 +1,7 @@
 "use client";
 
 import { toIntlLocale } from "@publira/i18n";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
+import * as Combobox from "@publira/ui-components/combobox";
 import { useMemo, useState } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
@@ -35,7 +28,7 @@ export const SeriesLabelCombobox = ({
   const locale = useAdminLocale();
   const t = useClientMessages();
   const [value, setValue] = useState(initialValue);
-  const items = useMemo<ComboboxItem[]>(
+  const items = useMemo<Combobox.Item[]>(
     () =>
       labels
         .map((option) => ({ label: option.name, value: option.id }))
@@ -47,15 +40,17 @@ export const SeriesLabelCombobox = ({
 
   return (
     <>
-      <Combobox items={items} onValueChange={setValue} value={value}>
-        <ComboboxInput placeholder={t("admin.series.form.label_placeholder")} />
-        <ComboboxPopup>
-          <ComboboxEmpty>
+      <Combobox.Root items={items} onValueChange={setValue} value={value}>
+        <Combobox.Input
+          placeholder={t("admin.series.form.label_placeholder")}
+        />
+        <Combobox.Popup>
+          <Combobox.Empty>
             <ClientMessage message="admin.series.form.label_empty" />
-          </ComboboxEmpty>
-          <ComboboxItems />
-        </ComboboxPopup>
-      </Combobox>
+          </Combobox.Empty>
+          <Combobox.Items />
+        </Combobox.Popup>
+      </Combobox.Root>
 
       <input name="label_id" type="hidden" value={value} />
     </>

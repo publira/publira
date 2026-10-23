@@ -1,13 +1,7 @@
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -102,19 +96,19 @@ const PageWorkspaceSkeleton = () => (
 );
 
 const PageLoadError = ({ message }: { message: string }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>
         <Message message="admin.pages.detail_error" />
-      </SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-    <SectionErrorActions>
+      </SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+    <SectionError.Actions>
       <LinkButton render={<Link href="/pages" />} variant="outline">
         <Message message="admin.pages.back_to_list" />
       </LinkButton>
-    </SectionErrorActions>
-  </SectionError>
+    </SectionError.Actions>
+  </SectionError.Root>
 );
 
 /**

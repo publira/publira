@@ -1,11 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
@@ -63,16 +58,16 @@ export const VolumeOwnershipFailure = async ({
   }
 
   return (
-    <SectionError>
-      <SectionErrorHeading>
-        <SectionErrorTitle>
+    <SectionError.Root>
+      <SectionError.Heading>
+        <SectionError.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message="storefront.series.volume_ownership_error" />
           </Suspense>
-        </SectionErrorTitle>
-        <SectionErrorDescription>{state.message}</SectionErrorDescription>
-      </SectionErrorHeading>
-    </SectionError>
+        </SectionError.Title>
+        <SectionError.Description>{state.message}</SectionError.Description>
+      </SectionError.Heading>
+    </SectionError.Root>
   );
 };
 

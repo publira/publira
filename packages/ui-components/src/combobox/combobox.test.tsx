@@ -4,21 +4,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "./combobox";
-import {
-  MultiCombobox,
-  MultiComboboxChip,
-  MultiComboboxChipRemove,
-  MultiComboboxChips,
-  MultiComboboxInput,
-  MultiComboboxInputGroup,
-} from "./multi-combobox";
+import * as Combobox from ".";
+import * as MultiCombobox from "../multi-combobox";
 
 const items = [{ label: "Apple", value: "apple" }] as const;
 
@@ -28,13 +15,13 @@ const SingleCombobox = () => {
   const [value, setValue] = useState("");
 
   return (
-    <Combobox items={items} onValueChange={setValue} value={value}>
-      <ComboboxInput aria-label="Label" />
-      <ComboboxPopup>
-        <ComboboxEmpty>No matching items.</ComboboxEmpty>
-        <ComboboxItems />
-      </ComboboxPopup>
-    </Combobox>
+    <Combobox.Root items={items} onValueChange={setValue} value={value}>
+      <Combobox.Input aria-label="Label" />
+      <Combobox.Popup>
+        <Combobox.Empty>No matching items.</Combobox.Empty>
+        <Combobox.Items />
+      </Combobox.Popup>
+    </Combobox.Root>
   );
 };
 
@@ -42,27 +29,27 @@ const Multi = () => {
   const [value, setValue] = useState<string[]>([]);
 
   return (
-    <MultiCombobox items={items} onValueChange={setValue} value={value}>
-      <MultiComboboxInputGroup>
-        <MultiComboboxChips>
+    <MultiCombobox.Root items={items} onValueChange={setValue} value={value}>
+      <MultiCombobox.InputGroup>
+        <MultiCombobox.Chips>
           {(selected) => (
             <>
               {selected.map((item) => (
-                <MultiComboboxChip item={item} key={item.value}>
+                <MultiCombobox.Chip item={item} key={item.value}>
                   {item.label}
-                  <MultiComboboxChipRemove aria-label="Remove" />
-                </MultiComboboxChip>
+                  <MultiCombobox.ChipRemove aria-label="Remove" />
+                </MultiCombobox.Chip>
               ))}
-              <MultiComboboxInput aria-label="Creators" />
+              <MultiCombobox.Input aria-label="Creators" />
             </>
           )}
-        </MultiComboboxChips>
-      </MultiComboboxInputGroup>
-      <ComboboxPopup>
-        <ComboboxEmpty>No matching items.</ComboboxEmpty>
-        <ComboboxItems />
-      </ComboboxPopup>
-    </MultiCombobox>
+        </MultiCombobox.Chips>
+      </MultiCombobox.InputGroup>
+      <MultiCombobox.Popup>
+        <MultiCombobox.Empty>No matching items.</MultiCombobox.Empty>
+        <MultiCombobox.Items />
+      </MultiCombobox.Popup>
+    </MultiCombobox.Root>
   );
 };
 
@@ -84,18 +71,18 @@ describe("Combobox onSearch", () => {
   it("passes the typed text to onSearch", () => {
     const onSearch = vi.fn();
     render(
-      <Combobox
+      <Combobox.Root
         items={items}
         onSearch={onSearch}
         onValueChange={vi.fn()}
         value=""
       >
-        <ComboboxInput aria-label="Label" />
-        <ComboboxPopup>
-          <ComboboxEmpty>No matching items.</ComboboxEmpty>
-          <ComboboxItems />
-        </ComboboxPopup>
-      </Combobox>
+        <Combobox.Input aria-label="Label" />
+        <Combobox.Popup>
+          <Combobox.Empty>No matching items.</Combobox.Empty>
+          <Combobox.Items />
+        </Combobox.Popup>
+      </Combobox.Root>
     );
 
     fireEvent.change(screen.getByRole("combobox", { name: "Label" }), {

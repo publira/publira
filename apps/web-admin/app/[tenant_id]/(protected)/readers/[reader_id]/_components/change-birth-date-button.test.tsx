@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangeBirthDateButton } from "./change-birth-date-button";
 
 const { save } = vi.hoisted(() => ({
-  save: { current: Promise.withResolvers<FormActionState>() },
+  save: { current: Promise.withResolvers<ActionForm.State>() },
 }));
 
 vi.mock("../_lib/actions", () => ({
@@ -36,7 +36,7 @@ vi.mock("#components/message", () => ({
 
 afterEach(() => {
   cleanup();
-  save.current = Promise.withResolvers<FormActionState>();
+  save.current = Promise.withResolvers<ActionForm.State>();
 });
 
 describe("ChangeBirthDateButton", () => {

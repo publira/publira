@@ -1,17 +1,8 @@
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -64,104 +55,104 @@ export const SignupFooter = () => (
 export const SignupForm = () => (
   <>
     <AuthScreenBody>
-      <ActionForm action={signupAction} className="grid gap-4">
+      <ActionForm.Root action={signupAction} className="grid gap-4">
         <LocaleField />
         <TenantIdField />
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="storefront.auth.signup.name_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Suspense fallback={<Skeleton className="h-10 w-full" />}>
               <NameInput />
             </Suspense>
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
         <Suspense fallback={null}>
           <BirthDateField />
         </Suspense>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="storefront.auth.fields.email_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="email"
               name="email"
               placeholder="your@email.com"
               type="email"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="storefront.auth.fields.password_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="new-password"
                 name="password"
                 placeholder="••••••••"
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="storefront.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-          </FieldContent>
-        </Field>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="storefront.auth.signup.password_confirm_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="new-password"
                 name="confirmPassword"
                 placeholder="••••••••"
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="storefront.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-          </FieldContent>
-        </Field>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
 
         <Suspense fallback={null}>
           <ConsentField />
         </Suspense>
 
-        <ActionFormSubmit className="justify-self-start">
-          <ActionFormIdle>
+        <ActionForm.Submit className="justify-self-start">
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="storefront.auth.signup.submit" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="storefront.auth.signup.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
-      </ActionForm>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
+      </ActionForm.Root>
 
       <Suspense fallback={null}>
         <SocialSignInButtons returnTo="/" />

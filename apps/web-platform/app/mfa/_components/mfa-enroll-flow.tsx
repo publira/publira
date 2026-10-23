@@ -3,12 +3,7 @@ import {
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -57,24 +52,24 @@ const MfaEnrollStart = () => (
         </Suspense>
       </AuthScreenNote>
 
-      <ActionForm
+      <ActionForm.Root
         action={startMfaEnrollmentAction}
         className="grid gap-4"
         showSuccess={false}
       >
         <MfaEnrollmentStarted />
 
-        <ActionFormSubmit className="justify-self-start">
+        <ActionForm.Submit className="justify-self-start">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="platform.auth.mfa.enroll_start" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="platform.auth.mfa.enroll_starting" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Submit>
+      </ActionForm.Root>
     </AuthScreenBody>
 
     <AuthScreenFooter>
@@ -96,7 +91,7 @@ const MfaEnrollConfirm = () => (
   <AuthScreenBody>
     <MfaEnrollmentSecret />
 
-    <ActionForm
+    <ActionForm.Root
       action={confirmMfaEnrollmentAction}
       className="grid gap-4"
       showSuccess={false}
@@ -105,17 +100,17 @@ const MfaEnrollConfirm = () => (
 
       <MfaCodeField allowRecoveryCode={false} />
 
-      <ActionFormSubmit className="justify-self-start">
+      <ActionForm.Submit className="justify-self-start">
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="platform.auth.mfa.enroll_confirm_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="platform.auth.mfa.enroll_confirm_submitting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
-    </ActionForm>
+      </ActionForm.Submit>
+    </ActionForm.Root>
   </AuthScreenBody>
 );
 

@@ -1,15 +1,7 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import { cache, Suspense } from "react";
@@ -146,8 +138,8 @@ const PasswordEmailChangeForm = ({ tenantId }: { tenantId: string }) => (
           <Message message="storefront.settings.current_password_label" />
         </Suspense>
       </label>
-      <PasswordInput>
-        <PasswordInputControl
+      <PasswordInput.Root>
+        <PasswordInput.Control
           autoComplete="current-password"
           className={fieldClassName}
           id="currentPassword"
@@ -155,12 +147,12 @@ const PasswordEmailChangeForm = ({ tenantId }: { tenantId: string }) => (
           placeholder="********"
           required
         />
-        <PasswordInputToggle>
+        <PasswordInput.Toggle>
           <Suspense fallback={null}>
             <Message message="storefront.common.show_password" />
           </Suspense>
-        </PasswordInputToggle>
-      </PasswordInput>
+        </PasswordInput.Toggle>
+      </PasswordInput.Root>
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
           <Message message="storefront.settings.password_required_help" />
@@ -366,8 +358,8 @@ const PasswordChangeSection = async () => {
               <Message message="storefront.settings.current_password_label" />
             </Suspense>
           </label>
-          <PasswordInput>
-            <PasswordInputControl
+          <PasswordInput.Root>
+            <PasswordInput.Control
               autoComplete="current-password"
               className={fieldClassName}
               id="passwordChangeCurrent"
@@ -375,12 +367,12 @@ const PasswordChangeSection = async () => {
               placeholder="********"
               required
             />
-            <PasswordInputToggle>
+            <PasswordInput.Toggle>
               <Suspense fallback={null}>
                 <Message message="storefront.common.show_password" />
               </Suspense>
-            </PasswordInputToggle>
-          </PasswordInput>
+            </PasswordInput.Toggle>
+          </PasswordInput.Root>
         </div>
 
         <div className="space-y-2">
@@ -389,8 +381,8 @@ const PasswordChangeSection = async () => {
               <Message message="storefront.settings.password_new_label" />
             </Suspense>
           </label>
-          <PasswordInput>
-            <PasswordInputControl
+          <PasswordInput.Root>
+            <PasswordInput.Control
               autoComplete="new-password"
               className={fieldClassName}
               id="passwordChangeNew"
@@ -398,12 +390,12 @@ const PasswordChangeSection = async () => {
               placeholder="********"
               required
             />
-            <PasswordInputToggle>
+            <PasswordInput.Toggle>
               <Suspense fallback={null}>
                 <Message message="storefront.common.show_password" />
               </Suspense>
-            </PasswordInputToggle>
-          </PasswordInput>
+            </PasswordInput.Toggle>
+          </PasswordInput.Root>
         </div>
 
         <div className="space-y-2">
@@ -415,8 +407,8 @@ const PasswordChangeSection = async () => {
               <Message message="storefront.settings.password_confirm_label" />
             </Suspense>
           </label>
-          <PasswordInput>
-            <PasswordInputControl
+          <PasswordInput.Root>
+            <PasswordInput.Control
               autoComplete="new-password"
               className={fieldClassName}
               id="passwordChangeConfirm"
@@ -424,12 +416,12 @@ const PasswordChangeSection = async () => {
               placeholder="********"
               required
             />
-            <PasswordInputToggle>
+            <PasswordInput.Toggle>
               <Suspense fallback={null}>
                 <Message message="storefront.common.show_password" />
               </Suspense>
-            </PasswordInputToggle>
-          </PasswordInput>
+            </PasswordInput.Toggle>
+          </PasswordInput.Root>
         </div>
 
         <div className="flex justify-end">
@@ -579,18 +571,18 @@ const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
     <input name="tenantId" type="hidden" value={tenantId} />
     <PasskeyAdded />
     <div className="flex justify-end">
-      <ActionFormSubmit variant="outline">
-        <ActionFormIdle>
+      <ActionForm.Submit variant="outline">
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="storefront.settings.passkey_add" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="storefront.settings.passkey_waiting" />
           </Suspense>
-        </ActionFormPending>
-      </ActionFormSubmit>
+        </ActionForm.Pending>
+      </ActionForm.Submit>
     </div>
   </PasskeyAddForm>
 );
@@ -634,18 +626,18 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
           <Message message="storefront.settings.passkey_name_skip" />
         </Suspense>
       </SkipPasskeyNaming>
-      <ActionFormSubmit>
-        <ActionFormIdle>
+      <ActionForm.Submit>
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="storefront.settings.save" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.settings.passkey_name_submitting" />
           </Suspense>
-        </ActionFormPending>
-      </ActionFormSubmit>
+        </ActionForm.Pending>
+      </ActionForm.Submit>
     </div>
   </PasskeyNameForm>
 );

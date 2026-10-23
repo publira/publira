@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -89,7 +89,7 @@ describe("CampaignBannerImageForm", () => {
 
   it("posts back the link, the alternative text, the window, and the flag the banner holds", async () => {
     // Never resolved: the assertions are about what the save was sent with.
-    const save = Promise.withResolvers<FormActionState>();
+    const save = Promise.withResolvers<ActionForm.State>();
     mockUpdateCampaignBannerImageAction.mockReturnValue(save.promise);
 
     await act(() => {
@@ -103,7 +103,7 @@ describe("CampaignBannerImageForm", () => {
       expect(mockUpdateCampaignBannerImageAction).toHaveBeenCalledOnce();
     });
     const [, formData] = mockUpdateCampaignBannerImageAction.mock
-      .calls[0] as unknown as [FormActionState, FormData];
+      .calls[0] as unknown as [ActionForm.State, FormData];
     expect(formData.get("campaign_banner_id")).toBe(banner.id);
     expect(formData.get("link_url")).toBe("/series/SERIES001");
     // The API replaces it with the image, so leaving it out would clear it.

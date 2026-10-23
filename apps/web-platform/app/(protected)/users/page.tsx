@@ -3,23 +3,10 @@ import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableSkeleton,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import {
   endOfDayIsoString,
   formatDate,
@@ -78,7 +65,7 @@ const UsersTableSkeleton = () => (
       <Skeleton className="h-10 w-44" />
       <Skeleton className="h-10 w-44" />
     </div>
-    <TableSkeleton />
+    <Table.Skeleton />
   </div>
 );
 
@@ -379,47 +366,47 @@ const UsersTableSection = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.users.columns_name" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.users.columns_tenant" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-44">
+          </Table.Head>
+          <Table.Head className="w-44">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.users.columns_created" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-32">
+          </Table.Head>
+          <Table.Head className="w-32">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.users.columns_status" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-28" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+          <Table.Head className="w-28" />
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {result.ok && users.length === 0 && !hideEmptyMessage ? (
-          <TableRow>
-            <TableCell className="text-muted-foreground" colSpan={5}>
+          <Table.Row>
+            <Table.Cell className="text-muted-foreground" colSpan={5}>
               {await buildEmptyMessage(hasFilter, locale)}
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ) : null}
         {result.ok
           ? users.map((user) => (
-              <TableRow key={user.publicId}>
-                <TableCell className="font-medium">
+              <Table.Row key={user.publicId}>
+                <Table.Cell className="font-medium">
                   {user.name || t("platform.common.unset")}
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   {user.primaryTenantPublicId ? (
                     <Link
                       className="underline-offset-4 hover:underline"
@@ -430,23 +417,23 @@ const UsersTableSection = async ({
                   ) : (
                     t("platform.users.no_tenant")
                   )}
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   {formatDate(user.createdAt, {
                     fallback: t("platform.common.unset"),
                     locale,
                     timeZone,
                   })}
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <Badge
                     tone={getEndUserStatusTone(user.status)}
                     variant="outline"
                   >
                     <EndUserStatusCell locale={locale} status={user.status} />
                   </Badge>
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <LinkButton
                     render={<Link href={`/users/${user.publicId}`} />}
                     size="sm"
@@ -456,12 +443,12 @@ const UsersTableSection = async ({
                       <Message message="platform.common.detail" />
                     </Suspense>
                   </LinkButton>
-                </TableCell>
-              </TableRow>
+                </Table.Cell>
+              </Table.Row>
             ))
           : null}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 
@@ -548,16 +535,18 @@ const UsersContent = async ({
       />
 
       {result.ok ? null : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="platform.users.load_failed" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>{result.message}</SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Title>
+            <SectionError.Description>
+              {result.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
 
       <UsersTableSection

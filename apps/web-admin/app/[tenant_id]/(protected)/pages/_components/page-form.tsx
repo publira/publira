@@ -1,19 +1,8 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -50,19 +39,19 @@ export const PageForm = async ({
   const t = await getMessages();
 
   return (
-    <ActionForm action={action} className="grid gap-4">
+    <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <ActionFormFieldset className="grid gap-4">
+      <ActionForm.Fieldset className="grid gap-4">
         <PageSlugField />
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.pages.form.title" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               name="title"
               placeholder={t("admin.pages.form.title_placeholder")}
@@ -70,73 +59,73 @@ export const PageForm = async ({
               type="text"
             />
             {defaultLocale ? (
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message
                     message="admin.pages.form.locale_description"
                     values={{ language: getLocaleLabel(defaultLocale) }}
                   />
                 </Suspense>
-              </FieldDescription>
+              </Field.Description>
             ) : null}
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
+        <Field.Root>
           <div className="flex items-center gap-2">
             <Checkbox
               name="display_in_footer"
               uncheckedValue="false"
               value="true"
             />
-            <FieldLabel>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.pages.form.footer_visible" />
               </Suspense>
-            </FieldLabel>
+            </Field.Label>
           </div>
-          <FieldDescription>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
               <Message message="admin.pages.form.footer_description" />
             </Suspense>
-          </FieldDescription>
-        </Field>
+          </Field.Description>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.pages.form.body" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Textarea
               name="content_markdown"
               placeholder={t("admin.pages.form.body_placeholder")}
               rows={16}
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.pages.form.body_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="flex justify-end">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.pages.form.create" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.pages.form.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

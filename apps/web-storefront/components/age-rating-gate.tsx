@@ -1,13 +1,7 @@
 "use client";
 
 import { Button, LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyState,
-  EmptyStateActions,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
@@ -100,17 +94,17 @@ export const AgeRatingGateConfirmation = ({
 
   return open ? null : (
     <div className="mx-auto grid max-w-6xl px-6 py-10">
-      <EmptyState>{children}</EmptyState>
+      <EmptyState.Root>{children}</EmptyState.Root>
     </div>
   );
 };
 
 export const AgeRatingGateHeading = ({ children }: { children: ReactNode }) => (
-  <EmptyStateHeading>{children}</EmptyStateHeading>
+  <EmptyState.Heading>{children}</EmptyState.Heading>
 );
 
 export const AgeRatingGateTitle = ({ children }: { children: ReactNode }) => (
-  <EmptyStateTitle>{children}</EmptyStateTitle>
+  <EmptyState.Title>{children}</EmptyState.Title>
 );
 
 /**
@@ -125,21 +119,21 @@ export const AgeRatingGateDescription = ({
   const { rating } = useAgeRatingGateState();
 
   return (
-    <EmptyStateDescription>
+    <EmptyState.Description>
       {children ??
         (rating === "r18" ? (
           <ClientMessage message="storefront.series.age_gate.r18_description" />
         ) : (
           <ClientMessage message="storefront.series.age_gate.r15_description" />
         ))}
-    </EmptyStateDescription>
+    </EmptyState.Description>
   );
 };
 
 export const AgeRatingGateActions = ({ children }: { children: ReactNode }) => (
-  <EmptyStateActions>
+  <EmptyState.Actions>
     <div className="flex flex-wrap justify-center gap-3">{children}</div>
-  </EmptyStateActions>
+  </EmptyState.Actions>
 );
 
 /** Stores the reader's confirmation of the gate's rating, which opens it. */

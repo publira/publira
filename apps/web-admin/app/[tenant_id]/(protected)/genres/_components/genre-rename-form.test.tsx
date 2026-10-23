@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -21,15 +21,15 @@ import { GenreRenameForm } from "./genre-rename-form";
 const rename =
   vi.fn<
     (
-      previousState: FormActionState,
+      previousState: ActionForm.State,
       formData: FormData
-    ) => Promise<FormActionState>
+    ) => Promise<ActionForm.State>
   >();
 
 // The Action is `"use server"`, so the module it lives in cannot be evaluated
 // here at all.
 vi.mock("../_lib/actions", () => ({
-  renameGenreAction: (previousState: FormActionState, formData: FormData) =>
+  renameGenreAction: (previousState: ActionForm.State, formData: FormData) =>
     rename(previousState, formData),
 }));
 
@@ -107,7 +107,7 @@ describe("GenreRenameForm", () => {
   it("closes the name field while the rename is in flight", async () => {
     // React entangles pending async actions across roots, so the rename is
     // settled before the test ends rather than left running into the next.
-    const { promise, resolve } = Promise.withResolvers<FormActionState>();
+    const { promise, resolve } = Promise.withResolvers<ActionForm.State>();
     rename.mockReturnValue(promise);
     renderRows();
     const field = nameField("Romance");

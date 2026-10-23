@@ -1,11 +1,6 @@
 import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -20,17 +15,20 @@ import { requestPasswordResetAction } from "../_lib/actions";
 export const ResetPasswordForm = () => (
   <>
     <AuthScreenBody>
-      <ActionForm action={requestPasswordResetAction} className="grid gap-4">
+      <ActionForm.Root
+        action={requestPasswordResetAction}
+        className="grid gap-4"
+      >
         <LocaleField />
         <TenantIdField />
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="storefront.auth.fields.email_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="email"
               name="email"
@@ -38,21 +36,21 @@ export const ResetPasswordForm = () => (
               required
               type="email"
             />
-          </FieldContent>
-        </Field>
-        <ActionFormSubmit className="justify-self-start">
-          <ActionFormIdle>
+          </Field.Content>
+        </Field.Root>
+        <ActionForm.Submit className="justify-self-start">
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="storefront.auth.reset_password.submit" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="storefront.auth.reset_password.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
-      </ActionForm>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
+      </ActionForm.Root>
     </AuthScreenBody>
 
     <AuthScreenFooter>

@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -26,19 +21,19 @@ export const UnsuspendReaderButton = ({
   readerId,
   tenantId,
 }: UnsuspendReaderButtonProps) => (
-  <ActionForm action={unsuspendReaderAction} className="grid gap-1">
+  <ActionForm.Root action={unsuspendReaderAction} className="grid gap-1">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="public_id" type="hidden" value={publicId} />
     <input name="reader_id" type="hidden" value={readerId} />
-    <ActionFormSubmit variant="outline">
+    <ActionForm.Submit variant="outline">
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-        <ActionFormIdle>
+        <ActionForm.Idle>
           <Message message="admin.readers.unsuspend" />
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Message message="admin.readers.unsuspending" />
-        </ActionFormPending>
+        </ActionForm.Pending>
       </Suspense>
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

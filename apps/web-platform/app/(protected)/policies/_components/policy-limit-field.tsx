@@ -1,4 +1,4 @@
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import type { ReactNode } from "react";
 
@@ -20,9 +20,9 @@ export const PolicyLimitField = ({
   min?: number;
   name: string;
 }) => (
-  <Field>
-    <FieldLabel required>{children}</FieldLabel>
-    <FieldContent>
+  <Field.Root>
+    <Field.Label required>{children}</Field.Label>
+    <Field.Content>
       <Input
         defaultValue={String(defaultValue)}
         disabled={disabled}
@@ -31,6 +31,6 @@ export const PolicyLimitField = ({
         required
         type="number"
       />
-    </FieldContent>
-  </Field>
+    </Field.Content>
+  </Field.Root>
 );

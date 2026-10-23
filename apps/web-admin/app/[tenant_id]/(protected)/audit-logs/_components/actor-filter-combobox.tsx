@@ -1,24 +1,13 @@
 "use client";
 
-import {
-  ComboboxEmpty,
-  ComboboxItems,
-  ComboboxPopup,
-  MultiCombobox,
-  MultiComboboxChip,
-  MultiComboboxChipRemove,
-  MultiComboboxChips,
-  MultiComboboxInput,
-  MultiComboboxInputGroup,
-} from "@publira/ui-components/combobox";
-import type { MultiComboboxItem } from "@publira/ui-components/combobox";
+import * as MultiCombobox from "@publira/ui-components/multi-combobox";
 import { useCallback, useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 
 interface ActorFilterComboboxProps {
   defaultValue: string;
-  items: MultiComboboxItem[];
+  items: MultiCombobox.Item[];
 }
 
 export const ActorFilterCombobox = ({
@@ -50,24 +39,24 @@ export const ActorFilterCombobox = ({
 
   return (
     <>
-      <MultiCombobox
+      <MultiCombobox.Root
         items={normalizedItems}
         onValueChange={handleValueChange}
         value={selectedValues}
       >
-        <MultiComboboxInputGroup>
-          <MultiComboboxChips>
+        <MultiCombobox.InputGroup>
+          <MultiCombobox.Chips>
             {(selected) => (
               <>
                 {selected.map((item) => (
-                  <MultiComboboxChip item={item} key={item.value}>
+                  <MultiCombobox.Chip item={item} key={item.value}>
                     {item.label}
-                    <MultiComboboxChipRemove
+                    <MultiCombobox.ChipRemove
                       aria-label={t("admin.audit.filter.actor_remove")}
                     />
-                  </MultiComboboxChip>
+                  </MultiCombobox.Chip>
                 ))}
-                <MultiComboboxInput
+                <MultiCombobox.Input
                   placeholder={
                     selected.length > 0
                       ? ""
@@ -76,15 +65,15 @@ export const ActorFilterCombobox = ({
                 />
               </>
             )}
-          </MultiComboboxChips>
-        </MultiComboboxInputGroup>
-        <ComboboxPopup>
-          <ComboboxEmpty>
+          </MultiCombobox.Chips>
+        </MultiCombobox.InputGroup>
+        <MultiCombobox.Popup>
+          <MultiCombobox.Empty>
             <ClientMessage message="admin.audit.filter.actor_empty" />
-          </ComboboxEmpty>
-          <ComboboxItems />
-        </ComboboxPopup>
-      </MultiCombobox>
+          </MultiCombobox.Empty>
+          <MultiCombobox.Items />
+        </MultiCombobox.Popup>
+      </MultiCombobox.Root>
       <input name="actor" type="hidden" value={selectedValues[0] ?? ""} />
     </>
   );

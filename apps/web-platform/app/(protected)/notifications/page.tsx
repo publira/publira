@@ -1,5 +1,5 @@
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -90,7 +90,7 @@ const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
           </Suspense>
         }
       >
-        <Suspense fallback={<TableSkeleton />}>
+        <Suspense fallback={<Table.Skeleton />}>
           <NotificationManagerData searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>

@@ -1,24 +1,8 @@
 "use client";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 
 import { useClientMessages } from "#components/client-message";
 import { SettledToast } from "#components/settled-toast";
@@ -26,9 +10,9 @@ import { useTenantId } from "#lib/use-tenant-id";
 
 interface EpisodeImageDeleteButtonProps {
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   episodeId: string;
   imageId: string;
   /** The page's 1-based place in the episode, as the grid shows it. */
@@ -50,7 +34,7 @@ export const EpisodeImageDeleteButton = ({
   const formId = `delete-episode-image-${imageId}`;
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={action}
       className="grid gap-1"
       id={formId}
@@ -60,9 +44,9 @@ export const EpisodeImageDeleteButton = ({
       <input name="episode_id" type="hidden" value={episodeId} />
       <input name="image_id" type="hidden" value={imageId} />
       <SettledToast />
-      <ActionFormFieldset className="grid">
-        <ConfirmDialog>
-          <ConfirmDialogTrigger
+      <ActionForm.Fieldset className="grid">
+        <ConfirmDialog.Root>
+          <ConfirmDialog.Trigger
             render={
               <Button
                 aria-label={t("admin.series.episodes.image_delete.label", {
@@ -74,35 +58,35 @@ export const EpisodeImageDeleteButton = ({
               />
             }
           >
-            <ActionFormIdle>
+            <ActionForm.Idle>
               {t("admin.series.episodes.image_delete.action")}
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               {t("admin.series.episodes.image_delete.pending")}
-            </ActionFormPending>
-          </ConfirmDialogTrigger>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>
+            </ActionForm.Pending>
+          </ConfirmDialog.Trigger>
+          <ConfirmDialog.Content>
+            <ConfirmDialog.Header>
+              <ConfirmDialog.Title>
                 {t("admin.series.episodes.image_delete.confirm_title", {
                   position: String(position),
                 })}
-              </ConfirmDialogTitle>
-              <ConfirmDialogDescription>
+              </ConfirmDialog.Title>
+              <ConfirmDialog.Description>
                 {t("admin.series.episodes.image_delete.confirm_description")}
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
-            <ConfirmDialogFooter>
-              <ConfirmDialogCancel>
+              </ConfirmDialog.Description>
+            </ConfirmDialog.Header>
+            <ConfirmDialog.Footer>
+              <ConfirmDialog.Cancel>
                 {t("admin.common.cancel")}
-              </ConfirmDialogCancel>
-              <ConfirmDialogAction form={formId}>
+              </ConfirmDialog.Cancel>
+              <ConfirmDialog.Action form={formId}>
                 {t("admin.series.episodes.image_delete.confirm_action")}
-              </ConfirmDialogAction>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
-      </ActionFormFieldset>
-    </ActionForm>
+              </ConfirmDialog.Action>
+            </ConfirmDialog.Footer>
+          </ConfirmDialog.Content>
+        </ConfirmDialog.Root>
+      </ActionForm.Fieldset>
+    </ActionForm.Root>
   );
 };

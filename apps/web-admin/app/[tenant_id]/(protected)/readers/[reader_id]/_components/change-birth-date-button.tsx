@@ -1,22 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -49,7 +34,7 @@ export const ChangeBirthDateButton = ({
   const formId = `birth-date-reader-${publicId}`;
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={setReaderBirthDateAction}
       className="grid justify-items-start gap-1"
       id={formId}
@@ -57,43 +42,43 @@ export const ChangeBirthDateButton = ({
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="public_id" type="hidden" value={publicId} />
       <input name="reader_id" type="hidden" value={readerId} />
-      <ActionFormFieldset>
-        <ConfirmDialog>
-          <ConfirmDialogTrigger
+      <ActionForm.Fieldset>
+        <ConfirmDialog.Root>
+          <ConfirmDialog.Trigger
             render={<Button size="sm" type="button" variant="outline" />}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.readers.birth_date_change" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.readers.birth_date_saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ConfirmDialogTrigger>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>
+          </ConfirmDialog.Trigger>
+          <ConfirmDialog.Content>
+            <ConfirmDialog.Header>
+              <ConfirmDialog.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                   <Message
                     message="admin.readers.birth_date_confirm_title"
                     values={{ name }}
                   />
                 </Suspense>
-              </ConfirmDialogTitle>
-              <ConfirmDialogDescription>
+              </ConfirmDialog.Title>
+              <ConfirmDialog.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                   <Message message="admin.readers.birth_date_confirm_description" />
                 </Suspense>
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
-            <Field className="mt-4">
-              <FieldLabel>
+              </ConfirmDialog.Description>
+            </ConfirmDialog.Header>
+            <Field.Root className="mt-4">
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="admin.readers.birth_date" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 {/* The popup is portaled out of the form, so the input joins it by id. */}
                 <Input
                   defaultValue={birthDate}
@@ -101,23 +86,23 @@ export const ChangeBirthDateButton = ({
                   name="birth_date"
                   type="date"
                 />
-              </FieldContent>
-            </Field>
-            <ConfirmDialogFooter>
-              <ConfirmDialogCancel>
+              </Field.Content>
+            </Field.Root>
+            <ConfirmDialog.Footer>
+              <ConfirmDialog.Cancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.common.cancel" />
                 </Suspense>
-              </ConfirmDialogCancel>
-              <ConfirmDialogAction form={formId} variant="default">
+              </ConfirmDialog.Cancel>
+              <ConfirmDialog.Action form={formId} variant="default">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.readers.birth_date_confirm_action" />
                 </Suspense>
-              </ConfirmDialogAction>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
-      </ActionFormFieldset>
-    </ActionForm>
+              </ConfirmDialog.Action>
+            </ConfirmDialog.Footer>
+          </ConfirmDialog.Content>
+        </ConfirmDialog.Root>
+      </ActionForm.Fieldset>
+    </ActionForm.Root>
   );
 };

@@ -2,8 +2,7 @@
 
 import { CloseIcon, PlusIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
-import { Field } from "@publira/ui-components/field";
-import type { FieldProps } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import type { InputProps } from "@publira/ui-components/input";
@@ -217,8 +216,8 @@ export const EntryListRows = ({ children }: { children: ReactNode }) => {
 };
 
 /** The row's field: its input and the message about it. */
-export const EntryListField = (props: Omit<FieldProps, "className">) => (
-  <Field className="min-w-0 flex-1" {...props} />
+export const EntryListField = (props: Omit<Field.RootProps, "className">) => (
+  <Field.Root className="min-w-0 flex-1" {...props} />
 );
 
 /** The row's input. `name` and `aria-label` are the caller's. */

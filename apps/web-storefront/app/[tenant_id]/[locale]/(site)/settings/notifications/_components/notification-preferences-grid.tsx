@@ -1,6 +1,6 @@
 "use client";
 
-import { Field, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Switch } from "@publira/ui-components/switch";
 import { cn } from "@publira/utils";
 import type { ReactNode } from "react";
@@ -177,14 +177,14 @@ const Cell = ({
   }
 
   return (
-    <Field className="flex items-center justify-between gap-3 @lg:justify-center">
-      <FieldLabel className="font-normal @lg:sr-only">{children}</FieldLabel>
+    <Field.Root className="flex items-center justify-between gap-3 @lg:justify-center">
+      <Field.Label className="font-normal @lg:sr-only">{children}</Field.Label>
       <Switch
         checked={cells[cell]}
         name={cell}
         onCheckedChange={(checked) => setCell(cell, checked)}
       />
-    </Field>
+    </Field.Root>
   );
 };
 

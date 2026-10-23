@@ -2,12 +2,7 @@ import { toViewerPages } from "@publira/comic-viewer-shell";
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -185,16 +180,16 @@ const EpisodeSectionError = ({
   message: string;
   title: ReactNode;
 }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
           {title}
         </Suspense>
-      </SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-  </SectionError>
+      </SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+  </SectionError.Root>
 );
 
 const resolveActiveTab = async (

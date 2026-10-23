@@ -7,18 +7,14 @@ The value is set in the console's own sans face with tabular figures, not in a m
 ## Usage
 
 ```tsx
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "@publira/ui-components";
+import * as Identifier from "@publira/ui-components/identifier";
 
 export default function Example() {
   return (
-    <Identifier>
-      <IdentifierValue>{user.publicId}</IdentifierValue>
-      <IdentifierCopy aria-label="Copy the public ID" value={user.publicId} />
-    </Identifier>
+    <Identifier.Root>
+      <Identifier.Value>{user.publicId}</Identifier.Value>
+      <Identifier.Copy aria-label="Copy the public ID" value={user.publicId} />
+    </Identifier.Root>
   );
 }
 ```
@@ -26,9 +22,9 @@ export default function Example() {
 ## Subpath import
 
 ```tsx
-import { Identifier } from "@publira/ui-components/identifier";
+import * as Identifier from "@publira/ui-components/identifier";
 ```
 
 ## Props
 
-`Identifier` takes the props of a `<div>`. `IdentifierCopy` takes the exact `value` the clipboard receives and the `aria-label` that names it, because the control is an icon on its own.
+`Identifier.Root` takes the props of a `<div>`. `Identifier.Copy` takes the exact `value` the clipboard receives and the `aria-label` that names it, because the control is an icon on its own.

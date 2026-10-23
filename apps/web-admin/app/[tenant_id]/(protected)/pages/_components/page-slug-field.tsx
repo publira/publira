@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  ActionFormFieldError,
-  useActionFormState,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { useState } from "react";
 
@@ -23,13 +15,15 @@ import { formatPagePath, normalizePageSlugInput } from "../page-types";
  * resolved here rather than on the server.
  */
 export const PageSlugField = () => {
-  const state = useActionFormState();
+  const state = ActionForm.useState();
   const [slug, setSlug] = useState("");
 
   return (
-    <Field invalid={state?.ok === false && Boolean(state.fieldErrors?.slug)}>
-      <FieldLabel>slug</FieldLabel>
-      <FieldContent>
+    <Field.Root
+      invalid={state?.ok === false && Boolean(state.fieldErrors?.slug)}
+    >
+      <Field.Label>slug</Field.Label>
+      <Field.Content>
         <Input
           name="slug"
           onBlur={() => {
@@ -42,14 +36,14 @@ export const PageSlugField = () => {
           type="text"
           value={slug}
         />
-        <FieldDescription>
+        <Field.Description>
           <ClientMessage
             message="admin.pages.form.slug_description"
             values={{ path: formatPagePath(slug) }}
           />
-        </FieldDescription>
-        <ActionFormFieldError name="slug" />
-      </FieldContent>
-    </Field>
+        </Field.Description>
+        <ActionForm.FieldError name="slug" />
+      </Field.Content>
+    </Field.Root>
   );
 };

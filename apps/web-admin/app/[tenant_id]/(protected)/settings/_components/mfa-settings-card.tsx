@@ -1,10 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -46,7 +41,7 @@ interface MfaSettingsCardProps {
 }
 
 const MfaStartForm = ({ tenantId }: { tenantId: string }) => (
-  <ActionForm
+  <ActionForm.Root
     action={startAccountMfaEnrollmentAction}
     className="grid gap-3"
     showSuccess={false}
@@ -54,22 +49,22 @@ const MfaStartForm = ({ tenantId }: { tenantId: string }) => (
     <input name="tenant_id" type="hidden" value={tenantId} />
     <MfaEnrollmentStarted />
     <div className="flex justify-end">
-      <ActionFormSubmit>
+      <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.settings.mfa.enable_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.auth.mfa.enroll_starting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 const MfaConfirmForm = ({ tenantId }: { tenantId: string }) => (
-  <ActionForm
+  <ActionForm.Root
     action={confirmAccountMfaEnrollmentAction}
     className="grid gap-4"
     showSuccess={false}
@@ -79,22 +74,22 @@ const MfaConfirmForm = ({ tenantId }: { tenantId: string }) => (
     <MfaEnrollmentSecret />
     <MfaCodeField accepts="authenticator" />
     <div className="flex justify-end">
-      <ActionFormSubmit>
+      <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.auth.mfa.enroll_confirm_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.auth.mfa.enroll_confirm_submitting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 const MfaRegenerateForm = ({ tenantId }: { tenantId: string }) => (
-  <ActionForm
+  <ActionForm.Root
     action={regenerateAccountMfaRecoveryCodesAction}
     className="grid gap-3"
     showSuccess={false}
@@ -115,18 +110,18 @@ const MfaRegenerateForm = ({ tenantId }: { tenantId: string }) => (
     </div>
     <MfaCodeField accepts="authenticator" />
     <div className="flex justify-end">
-      <ActionFormSubmit variant="outline">
+      <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.settings.mfa.regenerate_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.settings.mfa.regenerate_submitting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 /**
@@ -140,7 +135,7 @@ const MfaDisableForm = ({
   keepsPasskeys: boolean;
   tenantId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={disableAccountMfaAction}
     className="grid gap-3"
     showSuccess={false}
@@ -165,18 +160,18 @@ const MfaDisableForm = ({
     </div>
     <MfaCodeField accepts="authenticator_or_recovery" />
     <div className="flex justify-end">
-      <ActionFormSubmit variant="destructive">
+      <ActionForm.Submit variant="destructive">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.settings.mfa.disable_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.settings.mfa.disable_submitting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 const MfaStatusMessage = ({ status }: { status: AdminMfaStatus }) => {

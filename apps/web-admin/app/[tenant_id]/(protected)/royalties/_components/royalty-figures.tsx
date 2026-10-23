@@ -1,10 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import {
-  Figure,
-  FigureLabel,
-  FigureLine,
-  FigureValue,
-} from "@publira/ui-components/figure-line";
+import * as FigureLine from "@publira/ui-components/figure-line";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -31,46 +26,46 @@ export const RoyaltyFigures = ({
   locale,
   totals,
 }: RoyaltyFiguresProps) => (
-  <FigureLine>
-    <Figure>
-      <FigureLabel>
+  <FigureLine.Root>
+    <FigureLine.Figure>
+      <FigureLine.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="admin.royalties.totals.gross" />
         </Suspense>
-      </FigureLabel>
-      <FigureValue>
+      </FigureLine.Label>
+      <FigureLine.Value>
         {formatTenantAmount(totals.gross, { currency, locale })}
-      </FigureValue>
-    </Figure>
-    <Figure>
-      <FigureLabel>
+      </FigureLine.Value>
+    </FigureLine.Figure>
+    <FigureLine.Figure>
+      <FigureLine.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="admin.royalties.totals.refunded" />
         </Suspense>
-      </FigureLabel>
-      <FigureValue>
+      </FigureLine.Label>
+      <FigureLine.Value>
         {formatTenantAmount(totals.refunded, { currency, locale })}
-      </FigureValue>
-    </Figure>
-    <Figure>
-      <FigureLabel>
+      </FigureLine.Value>
+    </FigureLine.Figure>
+    <FigureLine.Figure>
+      <FigureLine.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
           <Message message="admin.royalties.totals.adjustment" />
         </Suspense>
-      </FigureLabel>
-      <FigureValue>
+      </FigureLine.Label>
+      <FigureLine.Value>
         {formatTenantAmount(totals.adjustment, { currency, locale })}
-      </FigureValue>
-    </Figure>
-    <Figure>
-      <FigureLabel>
+      </FigureLine.Value>
+    </FigureLine.Figure>
+    <FigureLine.Figure>
+      <FigureLine.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
           <Message message="admin.royalties.totals.payout" />
         </Suspense>
-      </FigureLabel>
-      <FigureValue>
+      </FigureLine.Label>
+      <FigureLine.Value>
         {formatTenantAmount(totals.payout, { currency, locale })}
-      </FigureValue>
-    </Figure>
-  </FigureLine>
+      </FigureLine.Value>
+    </FigureLine.Figure>
+  </FigureLine.Root>
 );

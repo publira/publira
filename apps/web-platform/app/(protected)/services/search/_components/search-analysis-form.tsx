@@ -1,38 +1,11 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from "@publira/ui-components/tabs";
+import * as Tabs from "@publira/ui-components/tabs";
 import { Textarea } from "@publira/ui-components/textarea";
 import { formatList } from "@publira/utils";
 import { Suspense } from "react";
@@ -110,12 +83,12 @@ const DefinitionEditor = ({
   revision: string;
 }) => (
   <>
-    <FieldLabel>
+    <Field.Label>
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <Message message="platform.search.analysis.definition" />
       </Suspense>
-    </FieldLabel>
-    <FieldContent>
+    </Field.Label>
+    <Field.Content>
       <Textarea
         autoCapitalize="off"
         autoComplete="off"
@@ -126,22 +99,22 @@ const DefinitionEditor = ({
         name="analysis"
         spellCheck={false}
       />
-      <ActionFormFieldError name="analysis" />
-    </FieldContent>
+      <ActionForm.FieldError name="analysis" />
+    </Field.Content>
   </>
 );
 
 const SaveButton = () => (
-  <ActionFormSubmit name="intent" value="replace">
+  <ActionForm.Submit name="intent" value="replace">
     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-      <ActionFormIdle>
+      <ActionForm.Idle>
         <Message message="platform.search.analysis.save" />
-      </ActionFormIdle>
-      <ActionFormPending>
+      </ActionForm.Idle>
+      <ActionForm.Pending>
         <Message message="platform.search.analysis.saving" />
-      </ActionFormPending>
+      </ActionForm.Pending>
     </Suspense>
-  </ActionFormSubmit>
+  </ActionForm.Submit>
 );
 
 /**
@@ -220,7 +193,7 @@ const SharedAnalysisForm = ({
       </p>
     </div>
 
-    <ActionForm
+    <ActionForm.Root
       action={updatePlatformSearchAnalysisAction}
       className="grid gap-5"
       id={SHARED_FORM_ID}
@@ -228,51 +201,51 @@ const SharedAnalysisForm = ({
       <input name="revision" type="hidden" value={settings.revision} />
       <input name="analysis_locale" type="hidden" value="" />
 
-      <ActionFormFieldset>
-        <Field>
+      <ActionForm.Fieldset>
+        <Field.Root>
           <DefinitionEditor
             definition={settings.analysis}
             revision={settings.revision}
           />
-          <FieldDescription>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
               <Message message="platform.search.analysis.definition_help" />
             </Suspense>
-          </FieldDescription>
-        </Field>
-      </ActionFormFieldset>
+          </Field.Description>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="flex flex-wrap justify-end gap-2">
         {settings.defaultAnalysis ? null : (
-          <ActionFormFieldset>
-            <ConfirmDialog>
-              <ConfirmDialogTrigger
+          <ActionForm.Fieldset>
+            <ConfirmDialog.Root>
+              <ConfirmDialog.Trigger
                 render={<Button type="button" variant="outline" />}
               >
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message message="platform.search.analysis.reset" />
                 </Suspense>
-              </ConfirmDialogTrigger>
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
+              </ConfirmDialog.Trigger>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
                     <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                       <Message message="platform.search.analysis.reset_title" />
                     </Suspense>
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                       <Message message="platform.search.analysis.reset_description" />
                     </Suspense>
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>
                     <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                       <Message message="platform.common.cancel" />
                     </Suspense>
-                  </ConfirmDialogCancel>
-                  <ConfirmDialogAction
+                  </ConfirmDialog.Cancel>
+                  <ConfirmDialog.Action
                     form={SHARED_FORM_ID}
                     name="intent"
                     value="default"
@@ -280,15 +253,15 @@ const SharedAnalysisForm = ({
                     <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                       <Message message="platform.search.analysis.reset_confirm" />
                     </Suspense>
-                  </ConfirmDialogAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
-            </ConfirmDialog>
-          </ActionFormFieldset>
+                  </ConfirmDialog.Action>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
+            </ConfirmDialog.Root>
+          </ActionForm.Fieldset>
         )}
         <SaveButton />
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </>
 );
 
@@ -334,7 +307,7 @@ const LocaleAnalysisForm = ({
         ) : null}
       </p>
 
-      <ActionForm
+      <ActionForm.Root
         action={updatePlatformSearchAnalysisAction}
         className="grid gap-5"
         id={formId}
@@ -342,34 +315,34 @@ const LocaleAnalysisForm = ({
         <input name="revision" type="hidden" value={settings.revision} />
         <input name="analysis_locale" type="hidden" value={analysisLocale} />
 
-        <ActionFormFieldset>
-          <Field>
+        <ActionForm.Fieldset>
+          <Field.Root>
             <DefinitionEditor
               definition={own ?? settings.analysis}
               revision={settings.revision}
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
                 <Message message="platform.search.analysis.locale_definition_help" />
               </Suspense>
-            </FieldDescription>
-          </Field>
-        </ActionFormFieldset>
+            </Field.Description>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         <div className="flex flex-wrap justify-end gap-2">
           {own === undefined ? null : (
-            <ActionFormFieldset>
-              <ConfirmDialog>
-                <ConfirmDialogTrigger
+            <ActionForm.Fieldset>
+              <ConfirmDialog.Root>
+                <ConfirmDialog.Trigger
                   render={<Button type="button" variant="outline" />}
                 >
                   <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
                     <Message message="platform.search.analysis.use_shared" />
                   </Suspense>
-                </ConfirmDialogTrigger>
-                <ConfirmDialogContent>
-                  <ConfirmDialogHeader>
-                    <ConfirmDialogTitle>
+                </ConfirmDialog.Trigger>
+                <ConfirmDialog.Content>
+                  <ConfirmDialog.Header>
+                    <ConfirmDialog.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-64" />}
                       >
@@ -378,8 +351,8 @@ const LocaleAnalysisForm = ({
                           values={language}
                         />
                       </Suspense>
-                    </ConfirmDialogTitle>
-                    <ConfirmDialogDescription>
+                    </ConfirmDialog.Title>
+                    <ConfirmDialog.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-72" />}
                       >
@@ -388,17 +361,17 @@ const LocaleAnalysisForm = ({
                           values={language}
                         />
                       </Suspense>
-                    </ConfirmDialogDescription>
-                  </ConfirmDialogHeader>
-                  <ConfirmDialogFooter>
-                    <ConfirmDialogCancel>
+                    </ConfirmDialog.Description>
+                  </ConfirmDialog.Header>
+                  <ConfirmDialog.Footer>
+                    <ConfirmDialog.Cancel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-12" />}
                       >
                         <Message message="platform.common.cancel" />
                       </Suspense>
-                    </ConfirmDialogCancel>
-                    <ConfirmDialogAction
+                    </ConfirmDialog.Cancel>
+                    <ConfirmDialog.Action
                       form={formId}
                       name="intent"
                       value="shared"
@@ -408,15 +381,15 @@ const LocaleAnalysisForm = ({
                       >
                         <Message message="platform.search.analysis.use_shared_confirm" />
                       </Suspense>
-                    </ConfirmDialogAction>
-                  </ConfirmDialogFooter>
-                </ConfirmDialogContent>
-              </ConfirmDialog>
-            </ActionFormFieldset>
+                    </ConfirmDialog.Action>
+                  </ConfirmDialog.Footer>
+                </ConfirmDialog.Content>
+              </ConfirmDialog.Root>
+            </ActionForm.Fieldset>
           )}
           <SaveButton />
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </>
   );
 };
@@ -459,27 +432,27 @@ export const SearchAnalysisForm = ({
 
     {/* Every panel stays mounted, so an edit in one tab survives a look at
         another. */}
-    <Tabs className="sm:max-w-3xl" defaultValue={SHARED_TAB}>
-      <TabsList className="flex-wrap">
-        <TabsTab value={SHARED_TAB}>
+    <Tabs.Root className="sm:max-w-3xl" defaultValue={SHARED_TAB}>
+      <Tabs.List className="flex-wrap">
+        <Tabs.Tab value={SHARED_TAB}>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="platform.search.analysis.shared_tab" />
           </Suspense>
-        </TabsTab>
+        </Tabs.Tab>
         {getLocales().map((code) => (
-          <TabsTab key={code} value={code}>
+          <Tabs.Tab key={code} value={code}>
             <span lang={code}>{getLocaleLabel(code)}</span>
-          </TabsTab>
+          </Tabs.Tab>
         ))}
-      </TabsList>
-      <TabsPanel className="grid gap-4" keepMounted value={SHARED_TAB}>
+      </Tabs.List>
+      <Tabs.Panel className="grid gap-4" keepMounted value={SHARED_TAB}>
         <SharedAnalysisForm locale={locale} settings={settings} />
-      </TabsPanel>
+      </Tabs.Panel>
       {getLocales().map((code) => (
-        <TabsPanel className="grid gap-4" key={code} keepMounted value={code}>
+        <Tabs.Panel className="grid gap-4" key={code} keepMounted value={code}>
           <LocaleAnalysisForm analysisLocale={code} settings={settings} />
-        </TabsPanel>
+        </Tabs.Panel>
       ))}
-    </Tabs>
+    </Tabs.Root>
   </PlatformSection>
 );

@@ -1,11 +1,6 @@
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import { searchParamEnum } from "@publira/utils/search-params";
@@ -239,18 +234,18 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
           tenantId={tenantId}
         />
       ) : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="admin.settings.section_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>
+            </SectionError.Title>
+            <SectionError.Description>
               {settingsResult.message}
-            </SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
 
       <TenantTimezoneForm

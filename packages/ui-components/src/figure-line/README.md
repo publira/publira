@@ -7,25 +7,20 @@ A console dashboard is read for what it lists, so its totals are a line of type 
 ## Usage
 
 ```tsx
-import {
-  Figure,
-  FigureLabel,
-  FigureLine,
-  FigureValue,
-} from "@publira/ui-components";
+import * as FigureLine from "@publira/ui-components/figure-line";
 
 export default function Example() {
   return (
-    <FigureLine>
-      <Figure>
-        <FigureLabel>Published series</FigureLabel>
-        <FigureValue>12</FigureValue>
-      </Figure>
-      <Figure>
-        <FigureLabel>Draft episodes</FigureLabel>
-        <FigureValue>4</FigureValue>
-      </Figure>
-    </FigureLine>
+    <FigureLine.Root>
+      <FigureLine.Figure>
+        <FigureLine.Label>Published series</FigureLine.Label>
+        <FigureLine.Value>12</FigureLine.Value>
+      </FigureLine.Figure>
+      <FigureLine.Figure>
+        <FigureLine.Label>Draft episodes</FigureLine.Label>
+        <FigureLine.Value>4</FigureLine.Value>
+      </FigureLine.Figure>
+    </FigureLine.Root>
   );
 }
 ```
@@ -33,9 +28,9 @@ export default function Example() {
 ## Subpath import
 
 ```tsx
-import { FigureLine } from "@publira/ui-components/figure-line";
+import * as FigureLine from "@publira/ui-components/figure-line";
 ```
 
 ## Props
 
-`FigureLine` takes the props of a `<dl>` and `Figure` those of a `<div>`; the label and the value are the `<dt>` and the `<dd>` of the pair.
+`FigureLine.Root` takes the props of a `<dl>` and `FigureLine.Figure` those of a `<div>`; the label and the value are the `<dt>` and the `<dd>` of the pair.

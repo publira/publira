@@ -1,17 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -54,7 +43,7 @@ export const SiteSettingsFields = async ({
   const t = await getMessages();
 
   return (
-    <ActionForm action={updateSiteSettingsAction} className="grid gap-4">
+    <ActionForm.Root action={updateSiteSettingsAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input
         name="translation_locale"
@@ -62,56 +51,56 @@ export const SiteSettingsFields = async ({
         value={translationLocale ?? ""}
       />
 
-      <ActionFormFieldset className="grid gap-4" disabled={!canEdit}>
-        <Field>
-          <FieldLabel>
+      <ActionForm.Fieldset className="grid gap-4" disabled={!canEdit}>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.settings.site.copyright" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={settings.copyrightText}
               name="copyright_text"
               placeholder={t("admin.settings.site.copyright_placeholder")}
               type="text"
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.settings.site.copyright_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="admin.settings.site.tagline" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={settings.siteTagline}
               name="site_tagline"
               placeholder={t("admin.settings.site.tagline_placeholder")}
               type="text"
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.settings.site.tagline_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.settings.site.site_description" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Textarea
               defaultValue={settings.siteDescription}
               name="site_description"
@@ -120,14 +109,14 @@ export const SiteSettingsFields = async ({
               )}
               rows={3}
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.settings.site.site_description_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       {canEdit ? null : (
         <FormMessage variant="destructive">
@@ -138,18 +127,18 @@ export const SiteSettingsFields = async ({
       )}
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit disabled={!canEdit}>
+        <ActionForm.Submit disabled={!canEdit}>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.settings.site.submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.settings.saving" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 

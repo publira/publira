@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -36,7 +31,7 @@ export const CommentDeleteButton = ({
   returnTo: string;
   tenantId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={withdrawEpisodeCommentAction}
     className="grid justify-items-end gap-2"
   >
@@ -46,18 +41,18 @@ export const CommentDeleteButton = ({
     <input name="returnTo" type="hidden" value={returnTo} />
     <input name="tenantId" type="hidden" value={tenantId} />
     <UntilActionSucceeds>
-      <ActionFormSubmit aria-label={ariaLabel} size="sm" variant="outline">
-        <ActionFormIdle>
+      <ActionForm.Submit aria-label={ariaLabel} size="sm" variant="outline">
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="storefront.episode.comments.delete" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.episode.comments.deleting" />
           </Suspense>
-        </ActionFormPending>
-      </ActionFormSubmit>
+        </ActionForm.Pending>
+      </ActionForm.Submit>
     </UntilActionSucceeds>
-  </ActionForm>
+  </ActionForm.Root>
 );

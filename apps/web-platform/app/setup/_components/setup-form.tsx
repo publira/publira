@@ -1,26 +1,10 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  ComboboxEmpty,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -58,14 +42,14 @@ export const SetupForm = async () => {
   }));
 
   return (
-    <ActionForm action={setupAction} className="space-y-4">
-      <Field>
-        <FieldLabel required>
+    <ActionForm.Root action={setupAction} className="space-y-4">
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <SetupMessage message="platform.auth.setup.name_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             autoComplete="name"
             name="name"
@@ -73,16 +57,16 @@ export const SetupForm = async () => {
             required
             type="text"
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <SetupMessage message="platform.auth.fields.email_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             autoComplete="email"
             name="email"
@@ -90,108 +74,108 @@ export const SetupForm = async () => {
             required
             type="email"
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <SetupMessage message="platform.auth.fields.password_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <PasswordInput>
-            <PasswordInputControl
+        </Field.Label>
+        <Field.Content>
+          <PasswordInput.Root>
+            <PasswordInput.Control
               autoComplete="new-password"
               name="password"
               placeholder="••••••••"
               required
             />
-            <PasswordInputToggle>
+            <PasswordInput.Toggle>
               <Suspense fallback={null}>
                 <SetupMessage message="platform.common.show_password" />
               </Suspense>
-            </PasswordInputToggle>
-          </PasswordInput>
-        </FieldContent>
-      </Field>
+            </PasswordInput.Toggle>
+          </PasswordInput.Root>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
             <SetupMessage message="platform.auth.setup.confirm_password_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <PasswordInput>
-            <PasswordInputControl
+        </Field.Label>
+        <Field.Content>
+          <PasswordInput.Root>
+            <PasswordInput.Control
               autoComplete="new-password"
               name="confirmPassword"
               placeholder="••••••••"
               required
             />
-            <PasswordInputToggle>
+            <PasswordInput.Toggle>
               <Suspense fallback={null}>
                 <SetupMessage message="platform.common.show_password" />
               </Suspense>
-            </PasswordInputToggle>
-          </PasswordInput>
-        </FieldContent>
-      </Field>
+            </PasswordInput.Toggle>
+          </PasswordInput.Root>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <SetupMessage message="platform.auth.setup.default_locale_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Select
             defaultValue={initialDefaultLocale}
             items={localeItems}
             name="default_locale"
             placeholder={t("platform.auth.setup.default_locale_placeholder")}
           />
-          <FieldDescription>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               <SetupMessage message="platform.auth.setup.default_locale_help" />
             </Suspense>
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+          </Field.Description>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <SetupMessage message="platform.auth.setup.default_timezone_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <SetupTimezoneCombobox>
-            <ComboboxPopup>
-              <ComboboxEmpty>
+            <Combobox.Popup>
+              <Combobox.Empty>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                   <SetupMessage message="platform.auth.setup.default_timezone_empty" />
                 </Suspense>
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
+              </Combobox.Empty>
+              <Combobox.Items />
+            </Combobox.Popup>
           </SetupTimezoneCombobox>
-          <FieldDescription>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               <SetupMessage message="platform.auth.setup.default_timezone_help" />
             </Suspense>
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+          </Field.Description>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <SetupMessage message="platform.auth.setup.default_currency_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <CurrencyCombobox
             disabled={currencyLocked || currencyUnread}
             initialCurrency={savedCurrency?.defaultCurrency ?? ""}
@@ -202,16 +186,16 @@ export const SetupForm = async () => {
             name="default_currency"
             placeholder={t("platform.auth.setup.default_currency_placeholder")}
           >
-            <ComboboxPopup>
-              <ComboboxEmpty>
+            <Combobox.Popup>
+              <Combobox.Empty>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                   <SetupMessage message="platform.auth.setup.default_currency_empty" />
                 </Suspense>
-              </ComboboxEmpty>
-              <ComboboxItems />
-            </ComboboxPopup>
+              </Combobox.Empty>
+              <Combobox.Items />
+            </Combobox.Popup>
           </CurrencyCombobox>
-          <FieldDescription>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               {currencyLocked ? (
                 <SetupMessage message="platform.auth.setup.default_currency_locked" />
@@ -219,7 +203,7 @@ export const SetupForm = async () => {
                 <SetupMessage message="platform.auth.setup.default_currency_help" />
               )}
             </Suspense>
-          </FieldDescription>
+          </Field.Description>
           {currencyUnread ? (
             <FormMessage variant="destructive">
               <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
@@ -227,14 +211,14 @@ export const SetupForm = async () => {
               </Suspense>
             </FormMessage>
           ) : null}
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <ActionFormSubmit className="mt-2 w-full">
+      <ActionForm.Submit className="mt-2 w-full">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
           <SetupMessage message="platform.auth.setup.submit" />
         </Suspense>
-      </ActionFormSubmit>
-    </ActionForm>
+      </ActionForm.Submit>
+    </ActionForm.Root>
   );
 };

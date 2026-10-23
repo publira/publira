@@ -1,6 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -79,52 +79,52 @@ export const CommentFilterForm = async ({
         />
         <input name="report_token" type="hidden" value={filters.reportToken} />
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.filter.status" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Select
               defaultValue={filters.status}
               items={await statusOptions(locale)}
               name="status"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.filter.series" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={filters.series}
               name="series"
               placeholder={t("admin.comments.filter.series_placeholder")}
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.filter.episode" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={filters.episode}
               name="episode"
               placeholder={t("admin.comments.filter.episode_placeholder")}
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
         <div className="flex items-end gap-2">
           <Button type="submit">

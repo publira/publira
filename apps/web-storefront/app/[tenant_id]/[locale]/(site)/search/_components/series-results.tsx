@@ -1,13 +1,5 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -133,16 +125,16 @@ export const SeriesResults = async ({
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.search.series_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -151,16 +143,16 @@ export const SeriesResults = async ({
   if (series.length === 0) {
     if (!token) {
       return (
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message
                 message="storefront.search.series_no_results"
                 values={{ query }}
               />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
       );
     }
 
@@ -169,13 +161,13 @@ export const SeriesResults = async ({
     // the only way out is the first page (`proto/README.md`).
     return (
       <div className="grid gap-8">
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.series.page_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
         {previousToken || nextToken ? (
           <SeriesPagination
             nextToken={nextToken}

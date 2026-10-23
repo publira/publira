@@ -1,16 +1,6 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateActions,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -222,16 +212,16 @@ const SeriesEpisodesData = async ({
       notFound();
     }
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Message message="admin.series.episodes.list_error" />
-          </SectionErrorTitle>
-          <SectionErrorDescription>
+          </SectionError.Title>
+          <SectionError.Description>
             {seriesResult.message}
-          </SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -245,14 +235,14 @@ const SeriesEpisodesData = async ({
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Message message="admin.series.episodes.list_error" />
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -263,22 +253,22 @@ const SeriesEpisodesData = async ({
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.series.episodes.title")}
         >
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               {t("admin.series.episodes.empty_title")}
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Message message="admin.series.episodes.empty_description" />
-            </EmptyStateDescription>
-          </EmptyStateHeading>
+            </EmptyState.Description>
+          </EmptyState.Heading>
           {canEdit ? (
-            <EmptyStateActions>
+            <EmptyState.Actions>
               <LinkButton
                 render={<Link href={`/series/${series_id}/episodes/new`} />}
               >
                 <Message message="admin.series.episodes.create_action" />
               </LinkButton>
-            </EmptyStateActions>
+            </EmptyState.Actions>
           ) : null}
         </CursorPageEmptyState>
         {hasPageLinks ? (

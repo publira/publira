@@ -1,7 +1,6 @@
 "use client";
 
-import { Combobox, ComboboxInput } from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
+import * as Combobox from "@publira/ui-components/combobox";
 import { listSupportedTimeZones } from "@publira/utils";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -24,7 +23,7 @@ export const TenantTimezoneCombobox = ({
   const t = useClientMessages();
   const [timezone, setTimezone] = useState(initialTimezone);
 
-  const items = useMemo<ComboboxItem[]>(() => {
+  const items = useMemo<Combobox.Item[]>(() => {
     const zones = listSupportedTimeZones();
     // A stored alias (`Asia/Calcutta`) is valid but is not always enumerated by
     // the runtime's ICU build, so keep it selectable instead of dropping it.
@@ -39,15 +38,17 @@ export const TenantTimezoneCombobox = ({
   return (
     <>
       <input name="timezone" type="hidden" value={timezone} />
-      <Combobox
+      <Combobox.Root
         disabled={disabled}
         items={items}
         onValueChange={setTimezone}
         value={timezone}
       >
-        <ComboboxInput placeholder={t("admin.settings.timezone.placeholder")} />
+        <Combobox.Input
+          placeholder={t("admin.settings.timezone.placeholder")}
+        />
         {children}
-      </Combobox>
+      </Combobox.Root>
     </>
   );
 };

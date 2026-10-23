@@ -1,6 +1,6 @@
 "use client";
 
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 
 import { useClientMessages } from "#components/client-message";
@@ -13,9 +13,9 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
   const t = useClientMessages();
 
   return (
-    <Field>
-      <FieldLabel>{t("admin.audit.filter.action")}</FieldLabel>
-      <FieldContent>
+    <Field.Root>
+      <Field.Label>{t("admin.audit.filter.action")}</Field.Label>
+      <Field.Content>
         <Select
           defaultValue={defaultValue}
           items={[
@@ -545,7 +545,7 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
           ]}
           name="action"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };

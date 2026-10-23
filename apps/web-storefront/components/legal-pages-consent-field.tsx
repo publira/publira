@@ -1,9 +1,5 @@
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -34,7 +30,7 @@ export const LegalPagesConsentField = ({
 }: {
   pages: TenantLegalPage[];
 }) => (
-  <Field key={pages.map((page) => page.versionId).join(" ")}>
+  <Field.Root key={pages.map((page) => page.versionId).join(" ")}>
     {pages.map((page) => (
       <input
         key={page.versionId}
@@ -45,16 +41,16 @@ export const LegalPagesConsentField = ({
     ))}
     <div className="flex items-center gap-2">
       <Checkbox name="consent" required />
-      <FieldLabel>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
           <Message message="storefront.auth.signup.consent_label" />
         </Suspense>
-      </FieldLabel>
+      </Field.Label>
     </div>
-    <FieldDescription className="flex flex-wrap gap-x-4 gap-y-1 pl-6">
+    <Field.Description className="flex flex-wrap gap-x-4 gap-y-1 pl-6">
       {pages.map((page) => (
         <LegalPageLink key={page.versionId} page={page} />
       ))}
-    </FieldDescription>
-  </Field>
+    </Field.Description>
+  </Field.Root>
 );

@@ -37,7 +37,11 @@ vi.mock("@publira/ui-components/combobox", async () => {
   const { Input } = await import("@publira/ui-components/input");
 
   return {
-    Combobox: ({
+    Empty: () => null,
+    Input: () => null,
+    Items: () => null,
+    Popup: () => null,
+    Root: ({
       items,
       onValueChange,
       value,
@@ -62,10 +66,6 @@ vi.mock("@publira/ui-components/combobox", async () => {
         value={value}
       />
     ),
-    ComboboxEmpty: () => null,
-    ComboboxInput: () => null,
-    ComboboxItems: () => null,
-    ComboboxPopup: () => null,
   };
 });
 

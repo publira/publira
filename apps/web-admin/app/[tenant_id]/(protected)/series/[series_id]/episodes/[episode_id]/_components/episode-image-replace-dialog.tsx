@@ -1,33 +1,11 @@
 "use client";
 
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-  useActionFormSettled,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogDescription,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import { useToastManager } from "@publira/ui-components/toast";
+import * as Toast from "@publira/ui-components/toast";
 import { useState } from "react";
 
 import { useClientMessages } from "#components/client-message";
@@ -48,8 +26,8 @@ interface EpisodeImageReplaceDialogProps {
 
 /** Raises the success as a toast and closes the dialog it sits in. */
 const ReplaceSettled = ({ onSucceeded }: { onSucceeded: () => void }) => {
-  const { add } = useToastManager();
-  useActionFormSettled((state) => {
+  const { add } = Toast.useManager();
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       add({ title: state.message, type: "success" });
       onSucceeded();
@@ -76,41 +54,45 @@ const EpisodeImageReplaceForm = ({
   });
 
   return (
-    <ActionForm action={replace} className="grid gap-4" showSuccess={false}>
+    <ActionForm.Root
+      action={replace}
+      className="grid gap-4"
+      showSuccess={false}
+    >
       <input name="episode_id" type="hidden" value={episodeId} />
       <input name="image_id" type="hidden" value={imageId} />
       <ReplaceSettled onSucceeded={onSucceeded} />
 
-      <ActionFormFieldset>
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset>
+        <Field.Root>
+          <Field.Label required>
             {t("admin.series.episodes.image_replace.file")}
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               accept={EPISODE_PAGE_IMAGE_ACCEPT}
               name="image"
               required
               type="file"
             />
-            <FieldDescription>
+            <Field.Description>
               {t("admin.series.episodes.image_replace.file_description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="flex justify-end gap-2">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             {t("admin.series.episodes.image_replace.submit")}
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             {t("admin.series.episodes.image_replace.pending")}
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 
@@ -129,7 +111,7 @@ export const EpisodeImageReplaceDialog = ({
   const [sessionKey, setSessionKey] = useState(0);
 
   return (
-    <Dialog
+    <Dialog.Root
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
         if (nextOpen) {
@@ -140,7 +122,7 @@ export const EpisodeImageReplaceDialog = ({
       }}
       open={open}
     >
-      <DialogTrigger
+      <Dialog.Trigger
         render={
           <Button
             aria-label={t("admin.series.episodes.image_replace.label", {
@@ -154,20 +136,20 @@ export const EpisodeImageReplaceDialog = ({
           </Button>
         }
       />
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport>
-          <DialogPopup>
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Viewport>
+          <Dialog.Popup>
+            <Dialog.Header>
+              <Dialog.Title className="text-lg font-semibold">
                 {t("admin.series.episodes.image_replace.title", {
                   position: String(position),
                 })}
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
+              </Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">
                 {t("admin.series.episodes.image_replace.description")}
-              </DialogDescription>
-            </DialogHeader>
+              </Dialog.Description>
+            </Dialog.Header>
             <div className="mt-4">
               <EpisodeImageReplaceForm
                 episodeId={episodeId}
@@ -178,9 +160,9 @@ export const EpisodeImageReplaceDialog = ({
                 }}
               />
             </div>
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
-    </Dialog>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

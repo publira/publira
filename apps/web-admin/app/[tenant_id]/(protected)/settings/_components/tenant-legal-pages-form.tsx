@@ -1,21 +1,6 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  ComboboxEmpty,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -80,36 +65,36 @@ export const TenantLegalPagesForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantLegalPagesAction}
         className="grid gap-4 sm:max-w-lg"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
-          <Field>
-            <FieldLabel>
+        <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.settings.legal_pages.terms" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <LegalPagePicker initialPageId={termsPage?.pageId ?? ""}>
                 <LegalPageCombobox
                   name="terms_page_id"
                   nominated={termsPage}
                   publishedPages={publishedPages}
                 >
-                  <ComboboxPopup>
-                    <ComboboxEmpty>
+                  <Combobox.Popup>
+                    <Combobox.Empty>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.settings.legal_pages.empty" />
                       </Suspense>
-                    </ComboboxEmpty>
-                    <ComboboxItems />
-                  </ComboboxPopup>
+                    </Combobox.Empty>
+                    <Combobox.Items />
+                  </Combobox.Popup>
                 </LegalPageCombobox>
                 {termsPage && !termsPage.published ? (
                   <LegalPageWhileSelected pageId={termsPage.pageId}>
@@ -126,37 +111,37 @@ export const TenantLegalPagesForm = ({
                   </LegalPageWhileSelected>
                 ) : null}
               </LegalPagePicker>
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.legal_pages.terms_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.settings.legal_pages.privacy" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <LegalPagePicker initialPageId={privacyPage?.pageId ?? ""}>
                 <LegalPageCombobox
                   name="privacy_page_id"
                   nominated={privacyPage}
                   publishedPages={publishedPages}
                 >
-                  <ComboboxPopup>
-                    <ComboboxEmpty>
+                  <Combobox.Popup>
+                    <Combobox.Empty>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.settings.legal_pages.empty" />
                       </Suspense>
-                    </ComboboxEmpty>
-                    <ComboboxItems />
-                  </ComboboxPopup>
+                    </Combobox.Empty>
+                    <Combobox.Items />
+                  </Combobox.Popup>
                 </LegalPageCombobox>
                 {privacyPage && !privacyPage.published ? (
                   <LegalPageWhileSelected pageId={privacyPage.pageId}>
@@ -173,14 +158,14 @@ export const TenantLegalPagesForm = ({
                   </LegalPageWhileSelected>
                 ) : null}
               </LegalPagePicker>
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.legal_pages.privacy_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -206,18 +191,18 @@ export const TenantLegalPagesForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.legal_pages.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

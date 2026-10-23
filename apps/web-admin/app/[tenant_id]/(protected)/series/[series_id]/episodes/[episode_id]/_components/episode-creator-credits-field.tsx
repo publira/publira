@@ -3,15 +3,8 @@
 import { CreatorCreditSource } from "@publira/api-client/admin/types";
 import { CloseIcon, PlusIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { useMemo, useRef, useState } from "react";
 
 import { ClientMessage } from "#components/client-message";
@@ -51,64 +44,64 @@ const EpisodeCreditRow = ({
   onChange,
   onRemove,
 }: {
-  creators: ComboboxItem[];
-  roles: ComboboxItem[];
+  creators: Combobox.Item[];
+  roles: Combobox.Item[];
   row: CreditEditorRow;
   position: number;
   onChange: (row: CreditEditorRow) => void;
   onRemove: () => void;
 }) => (
   <li className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3">
-    <Field className="min-w-40 flex-1">
-      <FieldLabel className="sr-only">
+    <Field.Root className="min-w-40 flex-1">
+      <Field.Label className="sr-only">
         <ClientMessage
           message="admin.series.form.creators_creator_field_label"
           values={{ position: String(position) }}
         />
-      </FieldLabel>
-      <FieldContent>
-        <Combobox
+      </Field.Label>
+      <Field.Content>
+        <Combobox.Root
           items={creators}
           onValueChange={(nextCreatorId) =>
             onChange({ ...row, creatorId: nextCreatorId })
           }
           value={row.creatorId}
         >
-          <ComboboxInput />
-          <ComboboxPopup>
-            <ComboboxEmpty>
+          <Combobox.Input />
+          <Combobox.Popup>
+            <Combobox.Empty>
               <ClientMessage message="admin.series.form.creators_no_match" />
-            </ComboboxEmpty>
-            <ComboboxItems />
-          </ComboboxPopup>
-        </Combobox>
-      </FieldContent>
-    </Field>
-    <Field className="min-w-32 flex-1 sm:max-w-48">
-      <FieldLabel className="sr-only">
+            </Combobox.Empty>
+            <Combobox.Items />
+          </Combobox.Popup>
+        </Combobox.Root>
+      </Field.Content>
+    </Field.Root>
+    <Field.Root className="min-w-32 flex-1 sm:max-w-48">
+      <Field.Label className="sr-only">
         <ClientMessage
           message="admin.series.form.creators_role_field_label"
           values={{ position: String(position) }}
         />
-      </FieldLabel>
-      <FieldContent>
-        <Combobox
+      </Field.Label>
+      <Field.Content>
+        <Combobox.Root
           items={roles}
           onValueChange={(nextRoleId) =>
             onChange({ ...row, roleId: nextRoleId })
           }
           value={row.roleId}
         >
-          <ComboboxInput />
-          <ComboboxPopup>
-            <ComboboxEmpty>
+          <Combobox.Input />
+          <Combobox.Popup>
+            <Combobox.Empty>
               <ClientMessage message="admin.series.form.creators_role_no_match" />
-            </ComboboxEmpty>
-            <ComboboxItems />
-          </ComboboxPopup>
-        </Combobox>
-      </FieldContent>
-    </Field>
+            </Combobox.Empty>
+            <Combobox.Items />
+          </Combobox.Popup>
+        </Combobox.Root>
+      </Field.Content>
+    </Field.Root>
     <CreditShareInput
       onChange={(shareText) => onChange({ ...row, shareText })}
       position={position}
@@ -162,7 +155,7 @@ export const EpisodeCreatorCreditsField = ({
     }))
   );
   const nextKey = useRef(initialCredits.length);
-  const creatorItems = useMemo<ComboboxItem[]>(
+  const creatorItems = useMemo<Combobox.Item[]>(
     () =>
       creators.map((creator) => ({
         label: creator.name,
@@ -170,7 +163,7 @@ export const EpisodeCreatorCreditsField = ({
       })),
     [creators]
   );
-  const roleItems = useMemo<ComboboxItem[]>(
+  const roleItems = useMemo<Combobox.Item[]>(
     () => creatorRoles.map((role) => ({ label: role.name, value: role.id })),
     [creatorRoles]
   );

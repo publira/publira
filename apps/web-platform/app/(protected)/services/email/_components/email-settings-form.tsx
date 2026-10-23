@@ -1,30 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
@@ -99,7 +76,7 @@ export const EmailSettingsForm = ({
     </PlatformSectionHeader>
     {/* An `ActionForm` resets the fields only after its own save succeeds,
         so a test run from the dialog leaves what the operator typed. */}
-    <ActionForm
+    <ActionForm.Root
       action={saveAction}
       className="grid gap-5 sm:max-w-3xl"
       id={formId}
@@ -109,13 +86,13 @@ export const EmailSettingsForm = ({
       {/* A save refreshes the settings; the new revision remounts the fields
           instead of changing a mounted field's default. */}
       <Fragment key={initialSettings.revision}>
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="platform.settings.host" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialSettings.host}
               name="host"
@@ -123,16 +100,16 @@ export const EmailSettingsForm = ({
               required
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="platform.settings.port" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={String(initialSettings.port || 587)}
               min={1}
@@ -141,38 +118,38 @@ export const EmailSettingsForm = ({
               required
               type="number"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="platform.settings.username" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialSettings.username}
               name="username"
               type="text"
             />
-            <ActionFormFieldError name="username" />
-          </FieldContent>
-          <FieldDescription>
+            <ActionForm.FieldError name="username" />
+          </Field.Content>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
               <Message message="platform.settings.username_help" />
             </Suspense>
-          </FieldDescription>
-        </Field>
+          </Field.Description>
+        </Field.Root>
 
         <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.settings.password" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <SmtpPasswordStored>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="platform.settings.password_change" />
@@ -183,24 +160,24 @@ export const EmailSettingsForm = ({
                   <Message message="platform.settings.password_undo" />
                 </Suspense>
               </SmtpPasswordEditor>
-            </FieldContent>
+            </Field.Content>
             <SmtpPasswordReplacing>
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
                   <Message message="platform.settings.password_clear_help" />
                 </Suspense>
-              </FieldDescription>
+              </Field.Description>
             </SmtpPasswordReplacing>
-          </Field>
+          </Field.Root>
         </SmtpPassword>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="platform.settings.smtp_encryption" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Select
               defaultValue={initialSettings.encryption || "starttls"}
               items={[
@@ -218,16 +195,16 @@ export const EmailSettingsForm = ({
               name="encryption"
               required
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="platform.settings.from_address" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialSettings.fromAddress}
               name="from_address"
@@ -235,24 +212,24 @@ export const EmailSettingsForm = ({
               required
               type="email"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="platform.settings.reply_to" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialSettings.replyTo}
               name="reply_to"
               placeholder="support@example.com"
               type="email"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
       </Fragment>
 
       {loadErrorMessage ? (
@@ -260,33 +237,33 @@ export const EmailSettingsForm = ({
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <Dialog>
-          <DialogTrigger render={<Button type="button" variant="outline" />}>
+        <Dialog.Root>
+          <Dialog.Trigger render={<Button type="button" variant="outline" />}>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="platform.settings.smtp_test" />
             </Suspense>
-          </DialogTrigger>
-          <DialogPortal>
-            <DialogBackdrop />
-            <DialogViewport>
-              <DialogPopup>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Backdrop />
+            <Dialog.Viewport>
+              <Dialog.Popup>
                 <SmtpTest action={testAction} form={formId}>
-                  <DialogHeader>
-                    <DialogTitle>
+                  <Dialog.Header>
+                    <Dialog.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-48" />}
                       >
                         <Message message="platform.settings.smtp_test_title" />
                       </Suspense>
-                    </DialogTitle>
-                    <DialogDescription>
+                    </Dialog.Title>
+                    <Dialog.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-72" />}
                       >
                         <Message message="platform.settings.smtp_test_description" />
                       </Suspense>
-                    </DialogDescription>
-                  </DialogHeader>
+                    </Dialog.Description>
+                  </Dialog.Header>
 
                   <div className="mt-4 grid gap-4">
                     <SmtpTestSendToSelf>
@@ -306,8 +283,8 @@ export const EmailSettingsForm = ({
                     <SmtpTestResult />
                   </div>
 
-                  <DialogFooter>
-                    <DialogClose
+                  <Dialog.Footer>
+                    <Dialog.Close
                       render={<Button type="button" variant="outline" />}
                     >
                       <Suspense
@@ -315,36 +292,36 @@ export const EmailSettingsForm = ({
                       >
                         <Message message="platform.settings.smtp_test_close" />
                       </Suspense>
-                    </DialogClose>
+                    </Dialog.Close>
                     <SmtpTestSubmit>
-                      <ActionFormIdle>
+                      <ActionForm.Idle>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-20" />}
                         >
                           <Message message="platform.settings.smtp_test_submit" />
                         </Suspense>
-                      </ActionFormIdle>
-                      <ActionFormPending>
+                      </ActionForm.Idle>
+                      <ActionForm.Pending>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-20" />}
                         >
                           <Message message="platform.settings.smtp_test_pending" />
                         </Suspense>
-                      </ActionFormPending>
+                      </ActionForm.Pending>
                     </SmtpTestSubmit>
-                  </DialogFooter>
+                  </Dialog.Footer>
                 </SmtpTest>
-              </DialogPopup>
-            </DialogViewport>
-          </DialogPortal>
-        </Dialog>
+              </Dialog.Popup>
+            </Dialog.Viewport>
+          </Dialog.Portal>
+        </Dialog.Root>
 
-        <ActionFormSubmit>
+        <ActionForm.Submit>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="platform.common.save" />
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </PlatformSection>
 );

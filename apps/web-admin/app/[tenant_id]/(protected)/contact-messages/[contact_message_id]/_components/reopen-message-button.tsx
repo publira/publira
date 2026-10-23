@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -23,19 +18,19 @@ export const ReopenMessageButton = ({
   publicId,
   tenantId,
 }: ReopenMessageButtonProps) => (
-  <ActionForm action={reopenContactMessageAction} className="grid gap-1">
+  <ActionForm.Root action={reopenContactMessageAction} className="grid gap-1">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="contact_message_id" type="hidden" value={contactMessageId} />
     <input name="public_id" type="hidden" value={publicId} />
-    <ActionFormSubmit variant="outline">
+    <ActionForm.Submit variant="outline">
       <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-        <ActionFormIdle>
+        <ActionForm.Idle>
           <Message message="admin.contact_messages.reopen" />
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Message message="admin.contact_messages.reopening" />
-        </ActionFormPending>
+        </ActionForm.Pending>
       </Suspense>
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

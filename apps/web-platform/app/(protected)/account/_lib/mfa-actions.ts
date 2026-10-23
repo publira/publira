@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toQrCodePath } from "@publira/ui-components/qr-code";
 import { updateTag } from "next/cache";
 
@@ -141,9 +141,9 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
 };
 
 export const disableAccountMfaAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [t, input] = await Promise.all([

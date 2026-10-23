@@ -1,14 +1,6 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -51,7 +43,7 @@ export const SecurityPolicyForm = ({
         </PlatformSectionDescription>
       </PlatformSectionHeading>
     </PlatformSectionHeader>
-    <ActionForm
+    <ActionForm.Root
       action={updatePlatformSecurityPolicyAction}
       className="grid gap-4 sm:max-w-3xl"
     >
@@ -189,37 +181,37 @@ export const SecurityPolicyForm = ({
             </Suspense>
           </PolicyLimitField>
         </div>
-        <Field className="flex items-center gap-2">
+        <Field.Root className="flex items-center gap-2">
           <Checkbox
             defaultChecked={values.mfaRequiredForPlatformOperator}
             disabled={Boolean(loadErrorMessage)}
             name="mfa_required_for_platform_operator"
           />
-          <FieldLabel>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="platform.policy.security.mfa_required_for_platform_operator" />
             </Suspense>
-          </FieldLabel>
-        </Field>
-        <Field className="flex items-center gap-2">
+          </Field.Label>
+        </Field.Root>
+        <Field.Root className="flex items-center gap-2">
           <Checkbox
             defaultChecked={values.mfaRequiredForTenantAdmin}
             disabled={Boolean(loadErrorMessage)}
             name="mfa_required_for_tenant_admin"
           />
-          <FieldLabel>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="platform.policy.security.mfa_required" />
             </Suspense>
-          </FieldLabel>
-        </Field>
-        <Field>
-          <FieldLabel>
+          </Field.Label>
+        </Field.Root>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
               <Message message="platform.policy.security.disposable_email_domains_url" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="off"
               defaultValue={values.disposableEmailDomainsUrl}
@@ -229,24 +221,24 @@ export const SecurityPolicyForm = ({
               spellCheck={false}
               type="url"
             />
-          </FieldContent>
-          <FieldDescription>
+          </Field.Content>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
               <Message message="platform.policy.security.disposable_email_domains_url_help" />
             </Suspense>
-          </FieldDescription>
-        </Field>
+          </Field.Description>
+        </Field.Root>
       </Fragment>
       {loadErrorMessage ? (
         <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
       ) : null}
       <div className="mt-2 flex justify-end">
-        <ActionFormSubmit disabled={Boolean(loadErrorMessage)}>
+        <ActionForm.Submit disabled={Boolean(loadErrorMessage)}>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="platform.policy.security.save" />
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </PlatformSection>
 );

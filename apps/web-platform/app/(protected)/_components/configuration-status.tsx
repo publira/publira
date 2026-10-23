@@ -1,7 +1,7 @@
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableCell, TableRow } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -101,36 +101,38 @@ export const ConfigurationRow = ({
   necessity: ReactNode;
   status: ReactNode;
 }) => (
-  <TableRow>
-    <TableCell className="align-top">
+  <Table.Row>
+    <Table.Cell className="align-top">
       <div className="grid gap-0.5">
         <span className="font-medium text-foreground">{name}</span>
         <span className="text-xs text-muted-foreground">{necessity}</span>
       </div>
-    </TableCell>
-    <TableCell className="align-top whitespace-nowrap">{status}</TableCell>
-    <TableCell className="align-top text-muted-foreground">{details}</TableCell>
-    <TableCell className="text-right align-top">{action}</TableCell>
-  </TableRow>
+    </Table.Cell>
+    <Table.Cell className="align-top whitespace-nowrap">{status}</Table.Cell>
+    <Table.Cell className="align-top text-muted-foreground">
+      {details}
+    </Table.Cell>
+    <Table.Cell className="text-right align-top">{action}</Table.Cell>
+  </Table.Row>
 );
 
 /** The same four cells, while the read behind a row is in flight. */
 export const ConfigurationRowSkeleton = () => (
-  <TableRow>
-    <TableCell>
+  <Table.Row>
+    <Table.Cell>
       <div className="grid gap-1">
         <SkeletonLine className="h-4 w-32" />
         <SkeletonLine className="h-3 w-16" />
       </div>
-    </TableCell>
-    <TableCell>
+    </Table.Cell>
+    <Table.Cell>
       <SkeletonLine className="h-4 w-20" />
-    </TableCell>
-    <TableCell>
+    </Table.Cell>
+    <Table.Cell>
       <SkeletonLine className="h-4 w-full" />
-    </TableCell>
-    <TableCell>
+    </Table.Cell>
+    <Table.Cell>
       <SkeletonLine className="ml-auto h-8 w-20" />
-    </TableCell>
-  </TableRow>
+    </Table.Cell>
+  </Table.Row>
 );

@@ -3,12 +3,7 @@
 import { getLocaleLabel, getLocales, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { useId, useState } from "react";
 
@@ -61,9 +56,9 @@ export const TenantLocalesFields = ({
 
   return (
     <>
-      <Field>
-        <FieldLabel>{t("admin.settings.locales.default_label")}</FieldLabel>
-        <FieldContent>
+      <Field.Root>
+        <Field.Label>{t("admin.settings.locales.default_label")}</Field.Label>
+        <Field.Content>
           {/* Autonyms read the same in every console language. */}
           <Select
             items={getLocales().map((locale) => ({
@@ -75,11 +70,11 @@ export const TenantLocalesFields = ({
             placeholder={t("admin.settings.locales.placeholder")}
             value={defaultLocale ?? null}
           />
-          <FieldDescription>
+          <Field.Description>
             {t("admin.settings.locales.default_description")}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+          </Field.Description>
+        </Field.Content>
+      </Field.Root>
 
       <fieldset aria-describedby={supportedDescriptionId} className="min-w-0">
         <legend className="mb-2 text-sm font-medium text-foreground">
@@ -91,7 +86,7 @@ export const TenantLocalesFields = ({
 
             return (
               <li key={code}>
-                <Field>
+                <Field.Root>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={isDefault || offered.has(code)}
@@ -109,11 +104,11 @@ export const TenantLocalesFields = ({
                         value={code}
                       />
                     ) : null}
-                    <FieldLabel>
+                    <Field.Label>
                       <span lang={code}>{getLocaleLabel(code)}</span>
-                    </FieldLabel>
+                    </Field.Label>
                   </div>
-                </Field>
+                </Field.Root>
               </li>
             );
           })}

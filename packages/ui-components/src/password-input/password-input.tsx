@@ -47,10 +47,10 @@ const usePasswordInputContext = (caller: string) => {
  * than by the error that comes back.
  *
  * ```tsx
- * <PasswordInput>
- *   <PasswordInputControl autoComplete="new-password" name="password" />
- *   <PasswordInputToggle>Show password</PasswordInputToggle>
- * </PasswordInput>
+ * <PasswordInput.Root>
+ *   <PasswordInput.Control autoComplete="new-password" name="password" />
+ *   <PasswordInput.Toggle>Show password</PasswordInput.Toggle>
+ * </PasswordInput.Root>
  * ```
  *
  * Every field starts masked and is revealed on its own, so the box that

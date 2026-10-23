@@ -1,26 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -84,85 +67,87 @@ const renderNotificationListBody = ({
 }) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="platform.notifications.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (notifications.length === 0) {
     return hasPageLinks ? (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="platform.notifications.empty_page_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="platform.notifications.empty_page_description" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     ) : (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="platform.notifications.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="platform.notifications.empty_description" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-24">
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head className="w-24">
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="platform.notifications.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-44">
+          </Table.Head>
+          <Table.Head className="w-44">
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="platform.notifications.columns.at" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="platform.notifications.columns.content" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-36">
+          </Table.Head>
+          <Table.Head className="w-36">
             <span className="sr-only">
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="platform.notifications.columns.action" />
               </Suspense>
             </span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {notifications.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell>
+          <Table.Row key={item.id}>
+            <Table.Cell>
               {item.isRead ? (
                 <StatusChip status="muted">
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -176,19 +161,19 @@ const renderNotificationListBody = ({
                   </Suspense>
                 </StatusChip>
               )}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {formatNotificationDateTime(item.createdAt, locale, timeZone)}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <div className="grid gap-1">
                 <NotificationTitle item={item} />
                 <p className="text-sm text-muted-foreground">
                   {item.description}
                 </p>
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {item.isRead ? null : (
                 <MarkNotificationAsReadButton
                   aria-label={markReadAriaLabel(item.title)}
@@ -199,11 +184,11 @@ const renderNotificationListBody = ({
                   </Suspense>
                 </MarkNotificationAsReadButton>
               )}
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

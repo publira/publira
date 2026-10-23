@@ -33,7 +33,7 @@ import { FormMessage } from "../form-message";
  * ```ts
  * // _lib/actions.ts
  * "use server";
- * import type { FormActionState } from "@publira/ui-components/action-form";
+ * import type * as ActionForm from "@publira/ui-components/action-form";
  * ```
  */
 export type FormActionState = ActionFormResult | null;
@@ -309,23 +309,23 @@ export const ActionFormPending = ({ children }: { children: ReactNode }) =>
  * its wording and its classes sit on the element itself:
  *
  * ```tsx
- * <ActionForm action={myAction}>
- *   <Field>...</Field>
- *   <ActionFormSubmit className="w-full">
- *     <ActionFormIdle>Save</ActionFormIdle>
- *     <ActionFormPending>Saving...</ActionFormPending>
- *   </ActionFormSubmit>
- * </ActionForm>
+ * <ActionForm.Root action={myAction}>
+ *   <Field.Root>...</Field.Root>
+ *   <ActionForm.Submit className="w-full">
+ *     <ActionForm.Idle>Save</ActionForm.Idle>
+ *     <ActionForm.Pending>Saving...</ActionForm.Pending>
+ *   </ActionForm.Submit>
+ * </ActionForm.Root>
  * ```
  *
  * **Render-function mode** — place the message yourself, and read the state
  * the Action returned:
  *
  * ```tsx
- * <ActionForm action={myAction}>
+ * <ActionForm.Root action={myAction}>
  *   {({ isPending, state }) => (
  *     <>
- *       <Field>...</Field>
+ *       <Field.Root>...</Field.Root>
  *       {state ? (
  *         <FormMessage variant={state.ok ? "success" : "destructive"}>
  *           {state.message}
@@ -334,7 +334,7 @@ export const ActionFormPending = ({ children }: { children: ReactNode }) =>
  *       <Button disabled={isPending} type="submit">Save</Button>
  *     </>
  *   )}
- * </ActionForm>
+ * </ActionForm.Root>
  * ```
  */
 

@@ -7,20 +7,12 @@ import {
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
-import {
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -107,13 +99,13 @@ const LoginForm = ({
         <TenantIdField />
         <input name="returnTo" type="hidden" value={returnToPath} />
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="storefront.auth.fields.email_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="username webauthn"
               name="email"
@@ -121,31 +113,31 @@ const LoginForm = ({
               required
               type="email"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="storefront.auth.fields.password_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="current-password"
                 name="password"
                 placeholder="••••••••"
                 required
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="storefront.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-          </FieldContent>
-        </Field>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
 
         {sessionRevoked ? (
           <FormMessage variant="destructive">
@@ -180,18 +172,18 @@ const LoginForm = ({
             <LocaleField />
             <TenantIdField />
             <input name="returnTo" type="hidden" value={returnToPath} />
-            <ActionFormSubmit className="w-full" variant="outline">
-              <ActionFormIdle>
+            <ActionForm.Submit className="w-full" variant="outline">
+              <ActionForm.Idle>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                   <Message message="storefront.auth.login.passkey_submit" />
                 </Suspense>
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                   <Message message="storefront.auth.login.passkey_pending" />
                 </Suspense>
-              </ActionFormPending>
-            </ActionFormSubmit>
+              </ActionForm.Pending>
+            </ActionForm.Submit>
           </PasskeySignIn>
         </SocialSignInButtons>
       </Suspense>

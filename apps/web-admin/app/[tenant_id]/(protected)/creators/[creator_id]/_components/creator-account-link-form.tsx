@@ -1,16 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -31,7 +20,7 @@ export const CreatorAccountLinkForm = ({
   creatorPublicId,
   tenantId,
 }: CreatorAccountLinkFormProps) => (
-  <ActionForm
+  <ActionForm.Root
     action={linkCreatorAccountAction}
     className="grid gap-4"
     showSuccess={false}
@@ -40,34 +29,34 @@ export const CreatorAccountLinkForm = ({
     <input name="creator_id" type="hidden" value={creatorId} />
     <input name="creator_public_id" type="hidden" value={creatorPublicId} />
     <SettledToast />
-    <ActionFormFieldset>
-      <Field>
-        <FieldLabel required>
+    <ActionForm.Fieldset>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="admin.creators.accounts.reader" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <CreatorAccountReaderField />
-          <FieldDescription>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="admin.creators.accounts.reader_description" />
             </Suspense>
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-    </ActionFormFieldset>
+          </Field.Description>
+        </Field.Content>
+      </Field.Root>
+    </ActionForm.Fieldset>
     <div className="flex justify-end">
-      <ActionFormSubmit>
+      <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.creators.accounts.link" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.creators.accounts.linking" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );

@@ -5,18 +5,18 @@ Tabs that show one panel at a time, implemented on top of [Base UI Tabs](https:/
 ## Usage
 
 ```tsx
-import { Tabs, TabsList, TabsPanel, TabsTab } from "@publira/ui-components";
+import * as Tabs from "@publira/ui-components/tabs";
 
 export default function Example() {
   return (
-    <Tabs defaultValue="write">
-      <TabsList>
-        <TabsTab value="write">Write</TabsTab>
-        <TabsTab value="preview">Preview</TabsTab>
-      </TabsList>
-      <TabsPanel value="write">{editor}</TabsPanel>
-      <TabsPanel value="preview">{preview}</TabsPanel>
-    </Tabs>
+    <Tabs.Root defaultValue="write">
+      <Tabs.List>
+        <Tabs.Tab value="write">Write</Tabs.Tab>
+        <Tabs.Tab value="preview">Preview</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value="write">{editor}</Tabs.Panel>
+      <Tabs.Panel value="preview">{preview}</Tabs.Panel>
+    </Tabs.Root>
   );
 }
 ```
@@ -24,22 +24,17 @@ export default function Example() {
 ## Subpath import
 
 ```tsx
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from "@publira/ui-components/tabs";
+import * as Tabs from "@publira/ui-components/tabs";
 ```
 
 ## Parts
 
 | Part | Renders | Role |
 | --- | --- | --- |
-| `Tabs` | `<div>` | Holds the list and the panels, and owns the selected value (`value` / `defaultValue` / `onValueChange`) |
-| `TabsList` | `<div role="tablist">` | The row of tabs |
-| `TabsTab` | `<button role="tab">` | One tab, selected by its `value` |
-| `TabsPanel` | `<div role="tabpanel">` | The panel shown for the tab with the same `value`. `keepMounted` leaves it in the DOM while it is hidden |
+| `Tabs.Root` | `<div>` | Holds the list and the panels, and owns the selected value (`value` / `defaultValue` / `onValueChange`) |
+| `Tabs.List` | `<div role="tablist">` | The row of tabs |
+| `Tabs.Tab` | `<button role="tab">` | One tab, selected by its `value` |
+| `Tabs.Panel` | `<div role="tabpanel">` | The panel shown for the tab with the same `value`. `keepMounted` leaves it in the DOM while it is hidden |
 
 ## Props
 

@@ -1,8 +1,5 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -15,82 +12,85 @@ import { createTenantAction } from "../_lib/actions";
 import { TenantLocalesFields } from "./tenant-locales-fields";
 
 export const CreateTenantForm = () => (
-  <ActionForm action={createTenantAction} className="grid gap-4 sm:max-w-2xl">
-    <Field>
-      <FieldLabel required>
+  <ActionForm.Root
+    action={createTenantAction}
+    className="grid gap-4 sm:max-w-2xl"
+  >
+    <Field.Root>
+      <Field.Label required>
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="platform.tenants.name" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input name="tenant_name" required type="text" />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
 
-    <Field>
-      <FieldLabel required>
+    <Field.Root>
+      <Field.Label required>
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
           <Message message="platform.tenants.domain" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           name="tenant_domain"
           placeholder="tenant-example.example.com"
           required
           type="text"
         />
-      </FieldContent>
+      </Field.Content>
       <Suspense
         fallback={<div className="h-24 animate-pulse rounded bg-muted/70" />}
       >
         <TenantDomainCautions />
       </Suspense>
-    </Field>
+    </Field.Root>
 
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="platform.tenants.admin_domain" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           name="tenant_admin_domain"
           placeholder="admin.tenant-example.example.com"
           type="text"
         />
-      </FieldContent>
+      </Field.Content>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <AdminDomainPreview showCurrentDomain={false} />
       </Suspense>
-    </Field>
+    </Field.Root>
 
     <Suspense fallback={<Skeleton className="h-64 w-full" />}>
       <TenantLocalesFields />
     </Suspense>
 
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
           <Message message="platform.tenants.initial_admin_emails" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           name="initial_admin_emails"
           placeholder="owner1@example.com, owner2@example.com"
           type="text"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
 
     <div className="mt-2 flex gap-3">
-      <ActionFormSubmit>
+      <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="platform.common.create" />
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );

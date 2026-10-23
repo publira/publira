@@ -5,12 +5,8 @@ A select box (dropdown) component, implemented on top of [Base UI Select](https:
 ## Usage
 
 ```tsx
-import {
-  Field,
-  FieldContent,
-  FieldLabel,
-  Select,
-} from "@publira/ui-components";
+import * as Field from "@publira/ui-components/field";
+import { Select } from "@publira/ui-components/select";
 
 const items = [
   { label: "Japanese", value: "ja" },
@@ -19,16 +15,16 @@ const items = [
 
 export default function Example() {
   return (
-    <Field>
-      <FieldLabel>Default language</FieldLabel>
-      <FieldContent>
+    <Field.Root>
+      <Field.Label>Default language</Field.Label>
+      <Field.Content>
         <Select
           items={items}
           name="default_locale"
           placeholder="Select a language"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 }
 ```

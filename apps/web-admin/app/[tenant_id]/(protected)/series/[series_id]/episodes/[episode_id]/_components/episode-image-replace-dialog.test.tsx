@@ -29,7 +29,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@publira/ui-components/toast", () => ({
-  useToastManager: () => ({ add: mockAddToast }),
+  useManager: () => ({ add: mockAddToast }),
 }));
 
 afterEach(() => {

@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -19,7 +19,7 @@ import { ReaderIconPolicyForm } from "./reader-icon-policy-form";
 
 const { save } = vi.hoisted(() => ({
   save: {
-    current: Promise.withResolvers<FormActionState>(),
+    current: Promise.withResolvers<ActionForm.State>(),
     formData: undefined as FormData | undefined,
   },
 }));
@@ -55,7 +55,7 @@ afterEach(() => {
   cleanup();
   // A submission left in flight would hold back the next test's transitions.
   save.current.resolve(null);
-  save.current = Promise.withResolvers<FormActionState>();
+  save.current = Promise.withResolvers<ActionForm.State>();
   save.formData = undefined;
 });
 

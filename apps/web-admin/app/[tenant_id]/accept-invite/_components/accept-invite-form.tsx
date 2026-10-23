@@ -1,15 +1,7 @@
 import { AuthScreenNote } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -29,7 +21,7 @@ export const AcceptInviteForm = ({
   tenantId: string;
   accountExists: boolean;
 }) => (
-  <ActionForm action={acceptInviteAction} className="grid gap-4">
+  <ActionForm.Root action={acceptInviteAction} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="token" type="hidden" value={token} />
     <input name="account_exists" type="hidden" value={String(accountExists)} />
@@ -42,63 +34,63 @@ export const AcceptInviteForm = ({
         </Suspense>
       </AuthScreenNote>
     ) : (
-      <ActionFormFieldset className="grid gap-4">
+      <ActionForm.Fieldset className="grid gap-4">
         <Suspense fallback={<Skeleton className="h-11 w-full" />}>
           <NameField />
         </Suspense>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.auth.fields.password_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="new-password"
                 name="password"
                 placeholder="••••••••"
                 required
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="admin.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-          </FieldContent>
-        </Field>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
               <Message message="admin.auth.accept_invite.password_confirm_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="new-password"
                 name="confirm_password"
                 placeholder="••••••••"
                 required
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="admin.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
     )}
 
-    <ActionFormSubmit className="justify-self-start">
+    <ActionForm.Submit className="justify-self-start">
       <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
         <Message message="admin.auth.accept_invite.submit" />
       </Suspense>
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

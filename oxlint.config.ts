@@ -28,13 +28,11 @@ export default defineConfig({
       },
     },
     {
-      // Generated protobuf re-exports intentionally use `export *`.
       // Cursor pagination helpers must await each page sequentially (token
       // depends on the previous response); parallel Promise.all is wrong there.
       files: ["packages/api-client/src/**/*.{ts,tsx}"],
       rules: {
         "no-await-in-loop": "off",
-        "sonarjs/no-wildcard-import": "off",
       },
     },
     {
@@ -315,6 +313,10 @@ export default defineConfig({
     "sonarjs/no-inconsistent-returns": "off",
     // TypeScript optional fields and API shapes use undefined, not null.
     "sonarjs/no-undefined-assignment": "off",
+    // A compound component's parts are reached through one namespace per
+    // subpath (`import * as Dialog from "@publira/ui-components/dialog"`),
+    // which is the import this rule refuses.
+    "sonarjs/no-wildcard-import": "off",
     // Complexity gates are valuable but need dedicated refactors; enable later.
     "sonarjs/too-many-break-or-continue-in-loop": "off",
   },

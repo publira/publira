@@ -1,28 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Image from "next/image";
@@ -77,20 +56,20 @@ export const TenantIconForm = async ({
         </AdminSectionHeading>
       </AdminSectionHeader>
 
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantIconAction}
         className="grid gap-5"
         id={FORM_ID}
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.settings.icon.current" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             {preview ? (
               <Image
                 alt={t("admin.settings.icon.current")}
@@ -106,68 +85,68 @@ export const TenantIconForm = async ({
                 </Suspense>
               </p>
             )}
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <ActionFormFieldset>
-          <Field>
-            <FieldLabel>
+        <ActionForm.Fieldset>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.settings.icon.file" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 accept="image/jpeg,image/png,image/webp"
                 name="icon"
                 type="file"
               />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.icon.file_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         <div className="flex justify-end gap-2">
           {preview ? (
-            <ActionFormFieldset>
-              <ConfirmDialog>
-                <ConfirmDialogTrigger
+            <ActionForm.Fieldset>
+              <ConfirmDialog.Root>
+                <ConfirmDialog.Trigger
                   render={<Button type="button" variant="outline" />}
                 >
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                     <Message message="admin.settings.delete" />
                   </Suspense>
-                </ConfirmDialogTrigger>
-                <ConfirmDialogContent>
-                  <ConfirmDialogHeader>
-                    <ConfirmDialogTitle>
+                </ConfirmDialog.Trigger>
+                <ConfirmDialog.Content>
+                  <ConfirmDialog.Header>
+                    <ConfirmDialog.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-48" />}
                       >
                         <Message message="admin.settings.icon.delete_title" />
                       </Suspense>
-                    </ConfirmDialogTitle>
-                    <ConfirmDialogDescription>
+                    </ConfirmDialog.Title>
+                    <ConfirmDialog.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-72" />}
                       >
                         <Message message="admin.settings.icon.delete_description" />
                       </Suspense>
-                    </ConfirmDialogDescription>
-                  </ConfirmDialogHeader>
-                  <ConfirmDialogFooter>
-                    <ConfirmDialogCancel>
+                    </ConfirmDialog.Description>
+                  </ConfirmDialog.Header>
+                  <ConfirmDialog.Footer>
+                    <ConfirmDialog.Cancel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-12" />}
                       >
                         <Message message="admin.common.cancel" />
                       </Suspense>
-                    </ConfirmDialogCancel>
-                    <ConfirmDialogAction
+                    </ConfirmDialog.Cancel>
+                    <ConfirmDialog.Action
                       form={FORM_ID}
                       name="intent"
                       value="delete"
@@ -177,24 +156,24 @@ export const TenantIconForm = async ({
                       >
                         <Message message="admin.settings.delete_action" />
                       </Suspense>
-                    </ConfirmDialogAction>
-                  </ConfirmDialogFooter>
-                </ConfirmDialogContent>
-              </ConfirmDialog>
-            </ActionFormFieldset>
+                    </ConfirmDialog.Action>
+                  </ConfirmDialog.Footer>
+                </ConfirmDialog.Content>
+              </ConfirmDialog.Root>
+            </ActionForm.Fieldset>
           ) : null}
-          <ActionFormSubmit name="intent" value="upload">
+          <ActionForm.Submit name="intent" value="upload">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.icon.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

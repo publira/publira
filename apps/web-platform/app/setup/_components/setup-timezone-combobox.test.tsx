@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { ComboboxItems, ComboboxPopup } from "@publira/ui-components/combobox";
+import * as Combobox from "@publira/ui-components/combobox";
 import { cleanup, render } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,9 +13,9 @@ vi.mock("#components/client-message", () => ({
 
 const field = (
   <SetupTimezoneCombobox>
-    <ComboboxPopup>
-      <ComboboxItems />
-    </ComboboxPopup>
+    <Combobox.Popup>
+      <Combobox.Items />
+    </Combobox.Popup>
   </SetupTimezoneCombobox>
 );
 

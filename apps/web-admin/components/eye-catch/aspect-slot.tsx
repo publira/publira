@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ActionFormSubmit,
-  useActionFormSettled,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
 import { cn } from "@publira/utils";
@@ -96,7 +93,7 @@ export const EyeCatchAspectSlot = ({
   // The preview stands in for the file only while it is being chosen. Once
   // the upload returns the ratio's own image is the truth, and a preview left
   // set would outrank it: the page redraws the slot without remounting it.
-  useActionFormSettled(() => {
+  ActionForm.useSettled(() => {
     setLocalPreviewUrl("");
     setSource(null);
     setCrop(null);
@@ -256,9 +253,9 @@ export const EyeCatchAspectUpload = ({ children }: { children: ReactNode }) => {
   const { localPreviewUrl } = useEyeCatchAspectSlot();
 
   return (
-    <ActionFormSubmit disabled={localPreviewUrl.length === 0} size="sm">
+    <ActionForm.Submit disabled={localPreviewUrl.length === 0} size="sm">
       {children}
-    </ActionFormSubmit>
+    </ActionForm.Submit>
   );
 };
 

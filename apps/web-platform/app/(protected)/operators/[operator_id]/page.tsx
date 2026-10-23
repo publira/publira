@@ -1,21 +1,8 @@
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-} from "@publira/ui-components/dialog";
-import { Field, FieldLabel } from "@publira/ui-components/field";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Field from "@publira/ui-components/field";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import {
@@ -108,23 +95,23 @@ const OperatorDetailSkeleton = () => (
  * back.
  */
 const OperatorLoadError = ({ message }: { message: string }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
           <Message message="platform.operators.load_one_failed" />
         </Suspense>
-      </SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-    <SectionErrorActions>
+      </SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+    <SectionError.Actions>
       <LinkButton render={<Link href="/operators" />} variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="platform.common.back_to_list" />
         </Suspense>
       </LinkButton>
-    </SectionErrorActions>
-  </SectionError>
+    </SectionError.Actions>
+  </SectionError.Root>
 );
 
 const OperatorDetailContent = async ({
@@ -199,22 +186,22 @@ const OperatorDetailContent = async ({
               <DangerConfirmButtonTrigger variant="outline">
                 {t("platform.operators.resume")}
               </DangerConfirmButtonTrigger>
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
                     {t("platform.operators.resume_title")}
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
                     {t("platform.operators.resume_description")}
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
                   <DangerConfirmButtonAction variant="default">
                     {t("platform.operators.resume_action")}
                   </DangerConfirmButtonAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
             </DangerConfirmButton>
           ) : null}
           {canSuspend ? (
@@ -225,22 +212,22 @@ const OperatorDetailContent = async ({
               <DangerConfirmButtonTrigger variant="outline">
                 {t("platform.operators.suspend")}
               </DangerConfirmButtonTrigger>
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
                     {t("platform.operators.suspend_title")}
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
                     {t("platform.operators.suspend_description")}
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
                   <DangerConfirmButtonAction>
                     {t("platform.operators.suspend_action")}
                   </DangerConfirmButtonAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
             </DangerConfirmButton>
           ) : null}
           {canModify ? (
@@ -251,22 +238,22 @@ const OperatorDetailContent = async ({
               <DangerConfirmButtonTrigger>
                 {t("platform.operators.deactivate")}
               </DangerConfirmButtonTrigger>
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
                     {t("platform.operators.deactivate_title")}
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
                     {t("platform.operators.deactivate_description")}
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
                   <DangerConfirmButtonAction>
                     {t("platform.operators.deactivate_action")}
                   </DangerConfirmButtonAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
             </DangerConfirmButton>
           ) : null}
         </PlatformPageActions>
@@ -289,40 +276,40 @@ const OperatorDetailContent = async ({
               </PlatformSectionHeading>
             </PlatformSectionHeader>
             <div className="grid gap-4">
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.common.name" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
                 <p className="text-sm">{operator.name}</p>
-              </Field>
-              <Field>
-                <FieldLabel>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.common.email" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
                 <p className="text-sm">{operator.email}</p>
-              </Field>
-              <Field>
-                <FieldLabel>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.operators.current_role" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
                 <p>
                   <Badge tone="info">
                     {await getOperatorRoleLabel(operator.role, locale)}
                   </Badge>
                 </p>
-              </Field>
-              <Field>
-                <FieldLabel>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.common.status" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
                 <p>
                   <StatusChip
                     status={
@@ -332,13 +319,13 @@ const OperatorDetailContent = async ({
                     {await getOperatorStatusLabel(operator.status, locale)}
                   </StatusChip>
                 </p>
-              </Field>
-              <Field>
-                <FieldLabel>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.common.created_at" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
                 <p className="text-sm">
                   {formatDateTime(operator.createdAt, {
                     fallback: t("platform.common.unset"),
@@ -346,19 +333,19 @@ const OperatorDetailContent = async ({
                     timeZone,
                   })}
                 </p>
-              </Field>
-              <Field>
-                <FieldLabel>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.operators.last_login" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
                 <p className="text-sm text-muted-foreground">
                   <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
                     <Message message="platform.operators.not_fetched" />
                   </Suspense>
                 </p>
-              </Field>
+              </Field.Root>
             </div>
           </PlatformSection>
 

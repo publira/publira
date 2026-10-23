@@ -2,7 +2,7 @@
 
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import { createContext, use, useMemo, useState } from "react";
@@ -73,7 +73,7 @@ export const CredentialsEnabledLabel = ({
 }) => {
   const { enabled } = useCredentialsEnabled();
 
-  return <FieldLabel required={enabled}>{children}</FieldLabel>;
+  return <Field.Label required={enabled}>{children}</Field.Label>;
 };
 
 type SecretKeyMode = "clear" | "keep" | "replace";

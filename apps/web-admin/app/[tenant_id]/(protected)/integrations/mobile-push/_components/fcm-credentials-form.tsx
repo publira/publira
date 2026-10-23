@@ -1,17 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -116,20 +105,20 @@ export const FcmCredentialsForm = ({
       </dl>
     ) : null}
 
-    <ActionForm
+    <ActionForm.Root
       action={saveFcmCredentialsAction}
       className="grid gap-5 sm:max-w-3xl"
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <ActionFormFieldset className="grid gap-5">
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset className="grid gap-5">
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.settings.mobile_push.project_id" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="off"
               defaultValue={settings.projectId}
@@ -139,21 +128,21 @@ export const FcmCredentialsForm = ({
               spellCheck={false}
               type="text"
             />
-          </FieldContent>
-          <FieldDescription>
+          </Field.Content>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
               <Message message="admin.settings.mobile_push.project_id_description" />
             </Suspense>
-          </FieldDescription>
-        </Field>
+          </Field.Description>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.settings.mobile_push.key_file" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               accept="application/json,.json"
               disabled={Boolean(loadErrorMessage)}
@@ -161,31 +150,31 @@ export const FcmCredentialsForm = ({
               required
               type="file"
             />
-          </FieldContent>
-          <FieldDescription>
+          </Field.Content>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
               <Message message="admin.settings.mobile_push.key_file_description" />
             </Suspense>
-          </FieldDescription>
-        </Field>
-      </ActionFormFieldset>
+          </Field.Description>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="flex justify-end">
-        <ActionFormSubmit disabled={Boolean(loadErrorMessage)}>
+        <ActionForm.Submit disabled={Boolean(loadErrorMessage)}>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               {settings.configured ? (
                 <Message message="admin.settings.mobile_push.replace" />
               ) : (
                 <Message message="admin.settings.mobile_push.save" />
               )}
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.settings.saving" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

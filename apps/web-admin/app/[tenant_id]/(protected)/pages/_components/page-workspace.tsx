@@ -1,36 +1,14 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from "@publira/ui-components/tabs";
+import * as Table from "@publira/ui-components/table";
+import * as Tabs from "@publira/ui-components/tabs";
 import { Suspense } from "react";
 
 import {
@@ -261,43 +239,43 @@ export const PageWorkspace = ({
             value={String(initialPage.displayInFooter)}
           />
 
-          <ActionFormFieldset className="grid gap-4">
+          <ActionForm.Fieldset className="grid gap-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field>
-                <FieldLabel>slug</FieldLabel>
-                <FieldContent>
+              <Field.Root>
+                <Field.Label>slug</Field.Label>
+                <Field.Content>
                   <Input
                     className="bg-muted/40 text-muted-foreground"
                     disabled
                     value={formatPagePath(initialPage.slug)}
                   />
-                  <FieldDescription>
+                  <Field.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.pages.workspace.slug_description" />
                     </Suspense>
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
+                  </Field.Description>
+                </Field.Content>
+              </Field.Root>
 
-              <Field>
-                <FieldLabel required>
+              <Field.Root>
+                <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                     <Message message="admin.pages.workspace.title" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={initialPage.title}
                     name="title"
                     required
                     type="text"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </div>
 
             {/* The page's, not the translation's: every language tab shows and saves the same value. */}
-            <Field>
+            <Field.Root>
               <div className="flex items-center gap-2">
                 {/* Keyed by the stored value, so a save that re-renders the screen with a new one starts the box from it: Base UI's uncontrolled default is read once. */}
                 <Checkbox
@@ -307,73 +285,73 @@ export const PageWorkspace = ({
                   uncheckedValue="false"
                   value="true"
                 />
-                <FieldLabel>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                     <Message message="admin.pages.workspace.footer_visible" />
                   </Suspense>
-                </FieldLabel>
+                </Field.Label>
               </div>
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.pages.workspace.footer_description" />
                 </Suspense>
-              </FieldDescription>
-            </Field>
+              </Field.Description>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.pages.workspace.body" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
-                <Tabs defaultValue="write">
-                  <TabsList>
-                    <TabsTab value="write">
+              </Field.Label>
+              <Field.Content>
+                <Tabs.Root defaultValue="write">
+                  <Tabs.List>
+                    <Tabs.Tab value="write">
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-10" />}
                       >
                         <Message message="admin.pages.workspace.tab_write" />
                       </Suspense>
-                    </TabsTab>
-                    <TabsTab value="preview">
+                    </Tabs.Tab>
+                    <Tabs.Tab value="preview">
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-14" />}
                       >
                         <Message message="admin.pages.workspace.tab_preview" />
                       </Suspense>
-                    </TabsTab>
-                  </TabsList>
+                    </Tabs.Tab>
+                  </Tabs.List>
                   {/* The textarea is the form control, so it stays mounted behind the preview tab: an unmounted one submits nothing and loses the caret. */}
-                  <TabsPanel keepMounted value="write">
+                  <Tabs.Panel keepMounted value="write">
                     <PageDraftTextarea />
-                  </TabsPanel>
-                  <TabsPanel className="min-h-72" value="preview">
+                  </Tabs.Panel>
+                  <Tabs.Panel className="min-h-72" value="preview">
                     <PageDraftPreview />
-                  </TabsPanel>
-                </Tabs>
-                <FieldDescription>
+                  </Tabs.Panel>
+                </Tabs.Root>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.pages.workspace.body_description" />
                   </Suspense>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-          </ActionFormFieldset>
+                </Field.Description>
+              </Field.Content>
+            </Field.Root>
+          </ActionForm.Fieldset>
 
           <div className="flex justify-end">
-            <ActionFormSubmit>
-              <ActionFormIdle>
+            <ActionForm.Submit>
+              <ActionForm.Idle>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="admin.pages.workspace.save" />
                 </Suspense>
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.pages.workspace.saving" />
                 </Suspense>
-              </ActionFormPending>
-            </ActionFormSubmit>
+              </ActionForm.Pending>
+            </ActionForm.Submit>
           </div>
         </PageSaveForm>
       </AdminSection>
@@ -400,52 +378,52 @@ export const PageWorkspace = ({
             </Suspense>
           </FormMessage>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-24">
+          <Table.Root>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head className="w-24">
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                     <Message message="admin.pages.workspace.columns.version" />
                   </Suspense>
-                </TableHead>
-                <TableHead className="w-24">
+                </Table.Head>
+                <Table.Head className="w-24">
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                     <Message message="admin.pages.workspace.columns.status" />
                   </Suspense>
-                </TableHead>
-                <TableHead>
+                </Table.Head>
+                <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.pages.workspace.columns.created_at" />
                   </Suspense>
-                </TableHead>
-                <TableHead>
+                </Table.Head>
+                <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.pages.workspace.columns.published_at" />
                   </Suspense>
-                </TableHead>
-                <TableHead className="w-[320px]">
+                </Table.Head>
+                <Table.Head className="w-[320px]">
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.pages.workspace.columns.actions" />
                   </Suspense>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {initialVersions.map((version) => (
-                <TableRow key={version.id}>
-                  <TableCell className="font-medium">
+                <Table.Row key={version.id}>
+                  <Table.Cell className="font-medium">
                     v{version.versionNumber}
-                  </TableCell>
-                  <TableCell>
+                  </Table.Cell>
+                  <Table.Cell>
                     <VersionStatusCell page={initialPage} version={version} />
-                  </TableCell>
-                  <TableCell>
+                  </Table.Cell>
+                  <Table.Cell>
                     {formatPageDateTime(version.createdAt, locale, timeZone)}
-                  </TableCell>
-                  <TableCell>
+                  </Table.Cell>
+                  <Table.Cell>
                     {formatPageDateTime(version.publishedAt, locale, timeZone)}
-                  </TableCell>
-                  <TableCell>
+                  </Table.Cell>
+                  <Table.Cell>
                     <div className="flex flex-wrap gap-2">
                       <PageVersionLoadButton versionId={version.id}>
                         <Suspense
@@ -495,11 +473,11 @@ export const PageWorkspace = ({
                         </Button>
                       </form>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </TableBody>
-          </Table>
+            </Table.Body>
+          </Table.Root>
         )}
       </AdminSection>
 
@@ -527,27 +505,27 @@ export const PageWorkspace = ({
         ) : (
           <>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                     <Message message="admin.pages.workspace.compare_from" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <PageDiffFromSelect />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
 
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                     <Message message="admin.pages.workspace.compare_to" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <PageDiffToSelect />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </div>
 
             <PageVersionDiff />

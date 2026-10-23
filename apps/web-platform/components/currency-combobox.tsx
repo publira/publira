@@ -1,7 +1,6 @@
 "use client";
 
-import { Combobox, ComboboxInput } from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
+import * as Combobox from "@publira/ui-components/combobox";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
@@ -24,7 +23,7 @@ export const CurrencyCombobox = ({
   disabled?: boolean;
   /** Empty when there is no currency to start on. */
   initialCurrency: string;
-  items: readonly ComboboxItem[];
+  items: readonly Combobox.Item[];
   name: string;
   placeholder?: string;
 }) => {
@@ -33,15 +32,15 @@ export const CurrencyCombobox = ({
   return (
     <>
       {disabled ? null : <input name={name} type="hidden" value={currency} />}
-      <Combobox
+      <Combobox.Root
         disabled={disabled}
         items={items}
         onValueChange={setCurrency}
         value={currency}
       >
-        <ComboboxInput placeholder={placeholder} />
+        <Combobox.Input placeholder={placeholder} />
         {children}
-      </Combobox>
+      </Combobox.Root>
     </>
   );
 };

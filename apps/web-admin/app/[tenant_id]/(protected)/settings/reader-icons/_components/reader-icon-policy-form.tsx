@@ -1,23 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -66,12 +50,12 @@ export const ReaderIconPolicyForm = ({
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
   const submitLabel = (
     <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-      <ActionFormIdle>
+      <ActionForm.Idle>
         <Message message="admin.settings.reader_icons.policy.submit" />
-      </ActionFormIdle>
-      <ActionFormPending>
+      </ActionForm.Idle>
+      <ActionForm.Pending>
         <Message message="admin.settings.saving" />
-      </ActionFormPending>
+      </ActionForm.Pending>
     </Suspense>
   );
 
@@ -91,7 +75,7 @@ export const ReaderIconPolicyForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateReaderIconPolicyAction}
         className="grid gap-4 sm:max-w-lg"
         id={FORM_ID}
@@ -99,14 +83,14 @@ export const ReaderIconPolicyForm = ({
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         <ReaderIconPolicySelection key={initialPolicy} saved={initialPolicy}>
-          <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
-            <Field>
-              <FieldLabel>
+          <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.settings.reader_icons.policy.label" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 {/* From the widest choice to the narrowest. */}
                 <ReaderIconPolicyRadioGroup
                   items={[
@@ -164,9 +148,9 @@ export const ReaderIconPolicyForm = ({
                   ]}
                   name="reader_icon_policy"
                 />
-              </FieldContent>
-            </Field>
-          </ActionFormFieldset>
+              </Field.Content>
+            </Field.Root>
+          </ActionForm.Fieldset>
 
           {canEdit ? null : (
             <FormMessage variant="destructive">
@@ -189,103 +173,103 @@ export const ReaderIconPolicyForm = ({
 
           <div className="mt-2 flex justify-end gap-2">
             <ReaderIconPolicyWhenClearing clearance="none">
-              <ActionFormSubmit disabled={fieldsDisabled}>
+              <ActionForm.Submit disabled={fieldsDisabled}>
                 {submitLabel}
-              </ActionFormSubmit>
+              </ActionForm.Submit>
             </ReaderIconPolicyWhenClearing>
 
             <ReaderIconPolicyWhenClearing clearance="uploads">
-              <ConfirmDialog>
-                <ConfirmDialogTrigger
+              <ConfirmDialog.Root>
+                <ConfirmDialog.Trigger
                   disabled={fieldsDisabled}
                   render={<Button type="button" />}
                 >
                   {submitLabel}
-                </ConfirmDialogTrigger>
-                <ConfirmDialogContent>
-                  <ConfirmDialogHeader>
-                    <ConfirmDialogTitle>
+                </ConfirmDialog.Trigger>
+                <ConfirmDialog.Content>
+                  <ConfirmDialog.Header>
+                    <ConfirmDialog.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-48" />}
                       >
                         <Message message="admin.settings.reader_icons.policy.confirm_title" />
                       </Suspense>
-                    </ConfirmDialogTitle>
-                    <ConfirmDialogDescription>
+                    </ConfirmDialog.Title>
+                    <ConfirmDialog.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-72" />}
                       >
                         <Message message="admin.settings.reader_icons.policy.confirm_clears_uploads" />
                       </Suspense>
-                    </ConfirmDialogDescription>
-                  </ConfirmDialogHeader>
-                  <ConfirmDialogFooter>
-                    <ConfirmDialogCancel>
+                    </ConfirmDialog.Description>
+                  </ConfirmDialog.Header>
+                  <ConfirmDialog.Footer>
+                    <ConfirmDialog.Cancel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-12" />}
                       >
                         <Message message="admin.common.cancel" />
                       </Suspense>
-                    </ConfirmDialogCancel>
-                    <ConfirmDialogAction form={FORM_ID}>
+                    </ConfirmDialog.Cancel>
+                    <ConfirmDialog.Action form={FORM_ID}>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-24" />}
                       >
                         <Message message="admin.settings.reader_icons.policy.confirm_action" />
                       </Suspense>
-                    </ConfirmDialogAction>
-                  </ConfirmDialogFooter>
-                </ConfirmDialogContent>
-              </ConfirmDialog>
+                    </ConfirmDialog.Action>
+                  </ConfirmDialog.Footer>
+                </ConfirmDialog.Content>
+              </ConfirmDialog.Root>
             </ReaderIconPolicyWhenClearing>
 
             <ReaderIconPolicyWhenClearing clearance="all">
-              <ConfirmDialog>
-                <ConfirmDialogTrigger
+              <ConfirmDialog.Root>
+                <ConfirmDialog.Trigger
                   disabled={fieldsDisabled}
                   render={<Button type="button" />}
                 >
                   {submitLabel}
-                </ConfirmDialogTrigger>
-                <ConfirmDialogContent>
-                  <ConfirmDialogHeader>
-                    <ConfirmDialogTitle>
+                </ConfirmDialog.Trigger>
+                <ConfirmDialog.Content>
+                  <ConfirmDialog.Header>
+                    <ConfirmDialog.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-48" />}
                       >
                         <Message message="admin.settings.reader_icons.policy.confirm_title" />
                       </Suspense>
-                    </ConfirmDialogTitle>
-                    <ConfirmDialogDescription>
+                    </ConfirmDialog.Title>
+                    <ConfirmDialog.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-72" />}
                       >
                         <Message message="admin.settings.reader_icons.policy.confirm_clears_all" />
                       </Suspense>
-                    </ConfirmDialogDescription>
-                  </ConfirmDialogHeader>
-                  <ConfirmDialogFooter>
-                    <ConfirmDialogCancel>
+                    </ConfirmDialog.Description>
+                  </ConfirmDialog.Header>
+                  <ConfirmDialog.Footer>
+                    <ConfirmDialog.Cancel>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-12" />}
                       >
                         <Message message="admin.common.cancel" />
                       </Suspense>
-                    </ConfirmDialogCancel>
-                    <ConfirmDialogAction form={FORM_ID}>
+                    </ConfirmDialog.Cancel>
+                    <ConfirmDialog.Action form={FORM_ID}>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-24" />}
                       >
                         <Message message="admin.settings.reader_icons.policy.confirm_action" />
                       </Suspense>
-                    </ConfirmDialogAction>
-                  </ConfirmDialogFooter>
-                </ConfirmDialogContent>
-              </ConfirmDialog>
+                    </ConfirmDialog.Action>
+                  </ConfirmDialog.Footer>
+                </ConfirmDialog.Content>
+              </ConfirmDialog.Root>
             </ReaderIconPolicyWhenClearing>
           </div>
         </ReaderIconPolicySelection>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

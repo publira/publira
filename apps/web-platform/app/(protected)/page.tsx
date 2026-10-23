@@ -1,26 +1,8 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  Figure,
-  FigureLabel,
-  FigureLine,
-  FigureValue,
-} from "@publira/ui-components/figure-line";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as FigureLine from "@publira/ui-components/figure-line";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmptyRow,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -126,18 +108,18 @@ const EventsHeading = () => (
  */
 const DashboardSkeleton = () => (
   <div className="grid gap-10">
-    <FigureLine>
+    <FigureLine.Root>
       {(["s1", "s2", "s3", "s4"] as const).map((key) => (
-        <Figure key={key}>
-          <FigureLabel>
+        <FigureLine.Figure key={key}>
+          <FigureLine.Label>
             <SkeletonLine className="h-4 w-28" />
-          </FigureLabel>
-          <FigureValue>
+          </FigureLine.Label>
+          <FigureLine.Value>
             <SkeletonLine className="h-6 w-10" />
-          </FigureValue>
-        </Figure>
+          </FigureLine.Value>
+        </FigureLine.Figure>
       ))}
-    </FigureLine>
+    </FigureLine.Root>
     <section className="grid gap-4">
       <EventsHeading />
       <div className="divide-y divide-border border-t-2 border-border">
@@ -162,16 +144,16 @@ const DashboardContent = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="platform.dashboard.load_failed" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -179,91 +161,91 @@ const DashboardContent = async () => {
 
   return (
     <div className="grid gap-10">
-      <FigureLine>
-        <Figure>
-          <FigureLabel>
+      <FigureLine.Root>
+        <FigureLine.Figure>
+          <FigureLine.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="platform.dashboard.stats.total_label" />
             </Suspense>
-          </FigureLabel>
-          <FigureValue>{summary.totalTenants}</FigureValue>
-        </Figure>
-        <Figure>
-          <FigureLabel>
+          </FigureLine.Label>
+          <FigureLine.Value>{summary.totalTenants}</FigureLine.Value>
+        </FigureLine.Figure>
+        <FigureLine.Figure>
+          <FigureLine.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="platform.dashboard.stats.active_label" />
             </Suspense>
-          </FigureLabel>
-          <FigureValue>{summary.activeTenants}</FigureValue>
-        </Figure>
-        <Figure>
-          <FigureLabel>
+          </FigureLine.Label>
+          <FigureLine.Value>{summary.activeTenants}</FigureLine.Value>
+        </FigureLine.Figure>
+        <FigureLine.Figure>
+          <FigureLine.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.dashboard.stats.suspended_label" />
             </Suspense>
-          </FigureLabel>
-          <FigureValue>{summary.suspendedTenants}</FigureValue>
-        </Figure>
-        <Figure>
-          <FigureLabel>
+          </FigureLine.Label>
+          <FigureLine.Value>{summary.suspendedTenants}</FigureLine.Value>
+        </FigureLine.Figure>
+        <FigureLine.Figure>
+          <FigureLine.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="platform.dashboard.stats.pending_label" />
             </Suspense>
-          </FigureLabel>
-          <FigureValue>{summary.pendingEndUsers}</FigureValue>
-        </Figure>
-      </FigureLine>
+          </FigureLine.Label>
+          <FigureLine.Value>{summary.pendingEndUsers}</FigureLine.Value>
+        </FigureLine.Figure>
+      </FigureLine.Root>
 
       <section className="grid gap-4">
         <EventsHeading />
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
+        <Table.Root>
+          <Table.Header>
+            <Table.Row>
+              <Table.Head>
                 <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
                   <Message message="platform.dashboard.columns.event" />
                 </Suspense>
-              </TableHead>
-              <TableHead>
+              </Table.Head>
+              <Table.Head>
                 <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
                   <Message message="platform.dashboard.columns.target" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="w-52">
+              </Table.Head>
+              <Table.Head className="w-52">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="platform.dashboard.columns.actor" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="w-52">
+              </Table.Head>
+              <Table.Head className="w-52">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="platform.dashboard.columns.at" />
                 </Suspense>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {summary.recentEvents.length === 0 ? (
-              <TableEmptyRow colSpan={4}>
+              <Table.EmptyRow colSpan={4}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                   <Message message="platform.dashboard.empty_events" />
                 </Suspense>
-              </TableEmptyRow>
+              </Table.EmptyRow>
             ) : (
               summary.recentEvents.map((event) => {
                 const href = buildTargetHref(event);
 
                 return (
-                  <TableRow
+                  <Table.Row
                     key={`${event.at}-${event.eventType}-${event.target}`}
                   >
-                    <TableCell className="font-medium">
+                    <Table.Cell className="font-medium">
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <RecentEventMessage event={event} />
                       </Suspense>
-                    </TableCell>
-                    <TableCell>
+                    </Table.Cell>
+                    <Table.Cell>
                       {href ? (
                         <Link
                           className="text-primary underline-offset-4 hover:underline"
@@ -274,21 +256,21 @@ const DashboardContent = async () => {
                       ) : (
                         <span>{event.target || "-"}</span>
                       )}
-                    </TableCell>
-                    <TableCell>{event.actor || "system"}</TableCell>
-                    <TableCell>
+                    </Table.Cell>
+                    <Table.Cell>{event.actor || "system"}</Table.Cell>
+                    <Table.Cell>
                       {formatDateTime(event.at, {
                         fallback: "-",
                         locale,
                         timeZone,
                       })}
-                    </TableCell>
-                  </TableRow>
+                    </Table.Cell>
+                  </Table.Row>
                 );
               })
             )}
-          </TableBody>
-        </Table>
+          </Table.Body>
+        </Table.Root>
       </section>
     </div>
   );

@@ -1,7 +1,4 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -97,13 +94,13 @@ const SearchResults = async ({
 
   if (!query) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="storefront.search.prompt" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 

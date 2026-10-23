@@ -2,7 +2,7 @@
 
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { refresh } from "next/cache";
@@ -172,9 +172,9 @@ const namePasskeyFormSchema = async (locale: Locale) => {
 
 /** Name the passkey the reader has just added. */
 export const namePasskeyAction = async (
-  _previousState: FormActionState,
+  _previousState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const [t, schema] = await Promise.all([

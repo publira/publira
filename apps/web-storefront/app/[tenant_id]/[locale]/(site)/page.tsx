@@ -1,15 +1,7 @@
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate, formatWeekdayName } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -228,16 +220,16 @@ const ContinueReadingSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.continue_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -310,16 +302,16 @@ const GenresSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.genres_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -383,16 +375,16 @@ const WeeklyScheduleSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.schedule_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -433,13 +425,13 @@ const WeeklyScheduleSection = async () => {
                   series={day.series}
                 />
               ) : (
-                <EmptyState>
-                  <EmptyStateDescription>
+                <EmptyState.Root>
+                  <EmptyState.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                       <Message message="storefront.top.schedule_day_empty" />
                     </Suspense>
-                  </EmptyStateDescription>
-                </EmptyState>
+                  </EmptyState.Description>
+                </EmptyState.Root>
               )}
             </WeeklyScheduleDayPanel>
           ))}
@@ -467,16 +459,16 @@ const FeaturedWorkSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.featured_work_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -646,16 +638,16 @@ const PopularSeriesShelf = ({
 }) => {
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.recommended_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -675,13 +667,13 @@ const PopularSeriesShelf = ({
 
   if (popular.series.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.top.recommended_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 
@@ -760,16 +752,16 @@ const FreeSeriesSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.free_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -777,13 +769,13 @@ const FreeSeriesSection = async () => {
 
   if (freeSeries.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.top.free_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 
@@ -800,16 +792,16 @@ const NewEpisodesSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.new_episodes_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -817,13 +809,13 @@ const NewEpisodesSection = async () => {
 
   if (newEpisodes.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.top.new_episodes_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 
@@ -910,16 +902,16 @@ const UpdatedSeriesSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.updated_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -927,13 +919,13 @@ const UpdatedSeriesSection = async () => {
 
   if (updatedSeries.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.top.updated_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 
@@ -1003,16 +995,16 @@ const FeaturedLabelsSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.featured_labels_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -1020,13 +1012,13 @@ const FeaturedLabelsSection = async () => {
 
   if (featuredLabels.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.top.featured_labels_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 
@@ -1063,16 +1055,16 @@ const FeaturedCreatorsSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.top.featured_creators_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -1080,13 +1072,13 @@ const FeaturedCreatorsSection = async () => {
 
   if (featuredCreators.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.top.featured_creators_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 

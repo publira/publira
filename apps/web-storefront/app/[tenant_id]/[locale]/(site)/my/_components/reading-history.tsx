@@ -1,15 +1,5 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
@@ -84,28 +74,30 @@ export const ReadingHistorySection = async ({
         {t("storefront.my.history_heading")}
       </h2>
       {result.ok ? null : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="storefront.my.history_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>{result.message}</SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Title>
+            <SectionError.Description>
+              {result.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
       {result.ok && result.reads.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+        <EmptyState.Root>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               {t("storefront.my.history_empty_title")}
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               {t("storefront.my.history_empty_description")}
-            </EmptyStateDescription>
-          </EmptyStateHeading>
-        </EmptyState>
+            </EmptyState.Description>
+          </EmptyState.Heading>
+        </EmptyState.Root>
       ) : null}
       {result.ok && result.reads.length > 0 ? (
         <div className="grid gap-6">

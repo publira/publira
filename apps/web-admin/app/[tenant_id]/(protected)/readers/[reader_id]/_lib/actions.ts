@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -62,7 +62,7 @@ const readerPage = (publicId: string, flash: string): string =>
 const moderate = async (
   action: ReaderModerationAction,
   formData: FormData
-): Promise<{ publicId: string } | { state: FormActionState }> => {
+): Promise<{ publicId: string } | { state: ActionForm.State }> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await readerActionSchema(locale);
@@ -96,9 +96,9 @@ const moderate = async (
 // the flash flag is what raises the toast, since the button that was pressed
 // is replaced by the other one once the status changes.
 export const suspendReaderAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   const outcome = await moderate("suspend", formData);
   if ("state" in outcome) {
     return outcome.state;
@@ -107,9 +107,9 @@ export const suspendReaderAction = async (
 };
 
 export const unsuspendReaderAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   const outcome = await moderate("unsuspend", formData);
   if ("state" in outcome) {
     return outcome.state;
@@ -124,9 +124,9 @@ const birthDateFormFields = {
 
 /** An empty date clears the stored one; the API validates a present one. */
 export const setReaderBirthDateAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const readerSchema = await readerActionSchema(locale);
@@ -157,9 +157,9 @@ export const setReaderBirthDateAction = async (
  * so the redirect is all it takes for each of them to draw the stand-in.
  */
 export const removeReaderIconAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await readerActionSchema(locale);
@@ -185,9 +185,9 @@ export const removeReaderIconAction = async (
 };
 
 export const deleteReaderAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   const outcome = await moderate("delete", formData);
   if ("state" in outcome) {
     return outcome.state;

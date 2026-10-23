@@ -6,7 +6,7 @@ import { cn } from "@publira/utils";
 import { useCallback, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 
-import { ComboboxIdContext } from "./combobox";
+import { ComboboxIdContext } from "../combobox/combobox";
 
 export interface MultiComboboxItem {
   label: string;
@@ -34,29 +34,29 @@ export interface MultiComboboxProps {
  * selected item.
  *
  * ```tsx
- * <MultiCombobox items={items} onValueChange={setCreators} value={creators}>
- *   <MultiComboboxInputGroup>
- *     <MultiComboboxChips>
+ * <MultiCombobox.Root items={items} onValueChange={setCreators} value={creators}>
+ *   <MultiCombobox.InputGroup>
+ *     <MultiCombobox.Chips>
  *       {(selected) => (
  *         <>
  *           {selected.map((item) => (
- *             <MultiComboboxChip item={item} key={item.value}>
+ *             <MultiCombobox.Chip item={item} key={item.value}>
  *               {item.label}
- *               <MultiComboboxChipRemove aria-label="Remove" />
- *             </MultiComboboxChip>
+ *               <MultiCombobox.ChipRemove aria-label="Remove" />
+ *             </MultiCombobox.Chip>
  *           ))}
- *           <MultiComboboxInput
+ *           <MultiCombobox.Input
  *             placeholder={selected.length > 0 ? "" : "Search authors"}
  *           />
  *         </>
  *       )}
- *     </MultiComboboxChips>
- *   </MultiComboboxInputGroup>
- *   <ComboboxPopup>
- *     <ComboboxEmpty>No matching items.</ComboboxEmpty>
- *     <ComboboxItems />
- *   </ComboboxPopup>
- * </MultiCombobox>
+ *     </MultiCombobox.Chips>
+ *   </MultiCombobox.InputGroup>
+ *   <MultiCombobox.Popup>
+ *     <MultiCombobox.Empty>No matching items.</MultiCombobox.Empty>
+ *     <MultiCombobox.Items />
+ *   </MultiCombobox.Popup>
+ * </MultiCombobox.Root>
  * ```
  */
 export const MultiCombobox = ({

@@ -1,15 +1,5 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import { Suspense } from "react";
@@ -89,35 +79,35 @@ export const FollowUpdatesSection = async ({
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.my.follow_updates_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (result.updates.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message message="storefront.my.follow_updates_empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.my.follow_updates_empty_description" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     );
   }
 

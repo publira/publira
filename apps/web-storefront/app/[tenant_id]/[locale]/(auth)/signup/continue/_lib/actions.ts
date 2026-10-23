@@ -6,7 +6,7 @@ import {
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -57,9 +57,9 @@ const continueSignUpFormSchema = async (locale: Locale) => {
  * refused again with the versions the reader agreed to.
  */
 export const continueSignUpAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const [t, schema] = await Promise.all([

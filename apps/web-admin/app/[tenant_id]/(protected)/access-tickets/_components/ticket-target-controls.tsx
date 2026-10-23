@@ -1,8 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
-import { Combobox, ComboboxInput } from "@publira/ui-components/combobox";
+import * as Combobox from "@publira/ui-components/combobox";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   createContext,
@@ -25,7 +24,7 @@ import type { TicketEpisodeOption } from "../ticket-types";
 
 interface TicketTargetContextValue {
   episodeId: string;
-  episodeItems: ComboboxItem[];
+  episodeItems: Combobox.Item[];
   episodesErrorMessage?: string;
   isEpisodePending: boolean;
   onEpisodeChange: (nextEpisodeId: string) => void;
@@ -33,7 +32,7 @@ interface TicketTargetContextValue {
   onRetryEpisodes: () => void;
   onSeriesChange: (nextSeriesId: string) => void;
   seriesId: string;
-  seriesItems: ComboboxItem[];
+  seriesItems: Combobox.Item[];
 }
 
 const TicketTargetContext = createContext<TicketTargetContextValue | null>(
@@ -59,7 +58,7 @@ export const TicketTarget = ({
   tenantId,
 }: {
   children: ReactNode;
-  seriesItems: ComboboxItem[];
+  seriesItems: Combobox.Item[];
   tenantId: string;
 }) => {
   const locale = useAdminLocale();
@@ -73,7 +72,7 @@ export const TicketTarget = ({
   const [episodesErrorMessage, setEpisodesErrorMessage] = useState<string>();
   const episodeRequestIdRef = useRef(0);
 
-  const episodeItems = useMemo<ComboboxItem[]>(
+  const episodeItems = useMemo<Combobox.Item[]>(
     () =>
       episodes.map((item) => ({
         label: t("admin.access_tickets.form.option", {
@@ -177,13 +176,13 @@ export const TicketSeriesCombobox = ({ children }: { children: ReactNode }) => {
   const { onSeriesChange, seriesId, seriesItems } = useTicketTarget();
 
   return (
-    <Combobox
+    <Combobox.Root
       items={seriesItems}
       onValueChange={onSeriesChange}
       value={seriesId}
     >
       {children}
-    </Combobox>
+    </Combobox.Root>
   );
 };
 
@@ -206,14 +205,14 @@ export const TicketEpisodeCombobox = ({
 
   return (
     <>
-      <Combobox
+      <Combobox.Root
         disabled={isEpisodePending || seriesId === ""}
         items={episodeItems}
         onValueChange={onEpisodeChange}
         value={episodeId}
       >
         {children}
-      </Combobox>
+      </Combobox.Root>
       <input name="episode_id" type="hidden" value={episodeId} />
     </>
   );
@@ -225,7 +224,7 @@ export const TicketEpisodeInput = () => {
   const { isEpisodePending } = useTicketTarget();
 
   return (
-    <ComboboxInput
+    <Combobox.Input
       placeholder={
         isEpisodePending
           ? t("admin.access_tickets.form.episode_loading")

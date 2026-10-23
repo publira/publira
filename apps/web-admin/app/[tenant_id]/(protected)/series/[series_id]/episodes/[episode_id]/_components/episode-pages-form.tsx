@@ -1,15 +1,5 @@
-import {
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -69,27 +59,27 @@ export const EpisodePagesForm = async ({
         <input name="episode_id" type="hidden" value={episodeId} />
 
         <EpisodePagesUpload>
-          <ActionFormFieldset className="grid gap-4">
-            <Field>
-              <FieldLabel>
+          <ActionForm.Fieldset className="grid gap-4">
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.series.episodes.pages.target" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <p className="text-sm text-muted-foreground">
                   Series: {seriesPublicId} / Episode: {episodePublicId}
                 </p>
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message message="admin.series.episodes.pages.method" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <div className="flex flex-wrap gap-2">
                   <EpisodePagesModeButton mode="pages">
                     <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -107,11 +97,11 @@ export const EpisodePagesForm = async ({
                     </Suspense>
                   </EpisodePagesModeButton>
                 </div>
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel required>
+            <Field.Root>
+              <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <EpisodePagesWhile mode="pages">
                     <Message message="admin.series.episodes.pages.image" />
@@ -123,8 +113,8 @@ export const EpisodePagesForm = async ({
                     <Message message="admin.series.episodes.pages.epub" />
                   </EpisodePagesWhile>
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <EpisodePagesDropZone>
                   <p className="mb-3 text-sm text-muted-foreground">
                     <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
@@ -140,7 +130,7 @@ export const EpisodePagesForm = async ({
                     </Suspense>
                   </p>
                 </EpisodePagesDropZone>
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <EpisodePagesWhile mode="pages">
                       <Message message="admin.series.episodes.pages.image_description" />
@@ -152,9 +142,9 @@ export const EpisodePagesForm = async ({
                       <Message message="admin.series.episodes.pages.epub_description" />
                     </EpisodePagesWhile>
                   </Suspense>
-                </FieldDescription>
+                </Field.Description>
                 <EpisodePagesSelectedFiles />
-                <ActionFormPending>
+                <ActionForm.Pending>
                   <div className="grid gap-2">
                     <progress
                       aria-label={t(
@@ -170,14 +160,14 @@ export const EpisodePagesForm = async ({
                       </Suspense>
                     </p>
                   </div>
-                </ActionFormPending>
-              </FieldContent>
-            </Field>
-          </ActionFormFieldset>
+                </ActionForm.Pending>
+              </Field.Content>
+            </Field.Root>
+          </ActionForm.Fieldset>
 
           <div className="mt-2 flex justify-end gap-2">
-            <ActionFormSubmit>
-              <ActionFormIdle>
+            <ActionForm.Submit>
+              <ActionForm.Idle>
                 <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                   <EpisodePagesWhile mode="pages">
                     <Message message="admin.series.episodes.pages.submit_image" />
@@ -189,13 +179,13 @@ export const EpisodePagesForm = async ({
                     <Message message="admin.series.episodes.pages.submit_epub" />
                   </EpisodePagesWhile>
                 </Suspense>
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="admin.series.episodes.pages.adding" />
                 </Suspense>
-              </ActionFormPending>
-            </ActionFormSubmit>
+              </ActionForm.Pending>
+            </ActionForm.Submit>
           </div>
         </EpisodePagesUpload>
       </EpisodePagesUploadForm>

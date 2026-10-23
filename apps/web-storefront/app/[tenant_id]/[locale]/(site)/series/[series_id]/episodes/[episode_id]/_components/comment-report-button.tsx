@@ -1,24 +1,7 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -68,21 +51,21 @@ const CommentReportNoteField = async ({ form }: { form: string }) => {
   const t = await getMessages();
 
   return (
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
           <Message message="storefront.episode.comments.report_note_label" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Textarea
           form={form}
           name="note"
           placeholder={t("storefront.episode.comments.report_note_placeholder")}
           rows={3}
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };
 
@@ -127,7 +110,7 @@ export const CommentReportButton = ({
   const formId = `comment-report-${commentId}`;
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={reportEpisodeCommentAction}
       className="grid justify-items-end gap-2"
       id={formId}
@@ -137,8 +120,8 @@ export const CommentReportButton = ({
       <input name="returnTo" type="hidden" value={returnTo} />
       <input name="tenantId" type="hidden" value={tenantId} />
       <UntilActionSucceeds>
-        <Dialog>
-          <DialogTrigger
+        <Dialog.Root>
+          <Dialog.Trigger
             render={
               <Button
                 aria-label={ariaLabel}
@@ -148,43 +131,43 @@ export const CommentReportButton = ({
               />
             }
           >
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="storefront.episode.comments.report" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="storefront.episode.comments.reporting" />
               </Suspense>
-            </ActionFormPending>
-          </DialogTrigger>
-          <DialogPortal>
-            <DialogBackdrop />
-            <DialogViewport>
-              <DialogPopup className="grid gap-4">
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-semibold">
+            </ActionForm.Pending>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Backdrop />
+            <Dialog.Viewport>
+              <Dialog.Popup className="grid gap-4">
+                <Dialog.Header>
+                  <Dialog.Title className="text-lg font-semibold">
                     <Suspense fallback={<SkeletonLine className="h-6 w-48" />}>
                       <Message message="storefront.episode.comments.report_title" />
                     </Suspense>
-                  </DialogTitle>
-                  <DialogDescription className="text-sm text-muted-foreground">
+                  </Dialog.Title>
+                  <Dialog.Description className="text-sm text-muted-foreground">
                     <Suspense
                       fallback={<SkeletonLine className="h-4 w-full" />}
                     >
                       <Message message="storefront.episode.comments.report_description" />
                     </Suspense>
-                  </DialogDescription>
-                </DialogHeader>
+                  </Dialog.Description>
+                </Dialog.Header>
 
-                <Field>
-                  <FieldLabel required>
+                <Field.Root>
+                  <Field.Label required>
                     <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
                       <Message message="storefront.episode.comments.report_reason_label" />
                     </Suspense>
-                  </FieldLabel>
-                  <FieldContent>
+                  </Field.Label>
+                  <Field.Content>
                     <RadioGroup
                       defaultValue={EPISODE_COMMENT_REPORT_REASONS[0]}
                       form={formId}
@@ -194,43 +177,43 @@ export const CommentReportButton = ({
                       }))}
                       name="reason"
                     />
-                  </FieldContent>
-                </Field>
+                  </Field.Content>
+                </Field.Root>
 
                 <Suspense fallback={<CommentReportNoteFieldSkeleton />}>
                   <CommentReportNoteField form={formId} />
                 </Suspense>
 
-                <DialogFooter>
-                  <DialogClose
+                <Dialog.Footer>
+                  <Dialog.Close
                     render={<Button type="button" variant="outline" />}
                   >
                     <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                       <Message message="storefront.common.cancel" />
                     </Suspense>
-                  </DialogClose>
-                  <ActionFormSubmit form={formId}>
-                    <ActionFormIdle>
+                  </Dialog.Close>
+                  <ActionForm.Submit form={formId}>
+                    <ActionForm.Idle>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-20" />}
                       >
                         <Message message="storefront.episode.comments.report_confirm" />
                       </Suspense>
-                    </ActionFormIdle>
-                    <ActionFormPending>
+                    </ActionForm.Idle>
+                    <ActionForm.Pending>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
                       >
                         <Message message="storefront.episode.comments.reporting" />
                       </Suspense>
-                    </ActionFormPending>
-                  </ActionFormSubmit>
-                </DialogFooter>
-              </DialogPopup>
-            </DialogViewport>
-          </DialogPortal>
-        </Dialog>
+                    </ActionForm.Pending>
+                  </ActionForm.Submit>
+                </Dialog.Footer>
+              </Dialog.Popup>
+            </Dialog.Viewport>
+          </Dialog.Portal>
+        </Dialog.Root>
       </UntilActionSucceeds>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

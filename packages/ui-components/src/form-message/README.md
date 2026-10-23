@@ -5,7 +5,7 @@ A component that displays a message within a form, such as an error, a warning, 
 ## Usage
 
 ```tsx
-import { FormMessage } from "@publira/ui-components";
+import { FormMessage } from "@publira/ui-components/form-message";
 
 export default function Example() {
   return <FormMessage>This is a form message</FormMessage>;

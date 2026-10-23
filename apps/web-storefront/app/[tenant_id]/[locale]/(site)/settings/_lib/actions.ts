@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -125,7 +125,7 @@ const deleteAccountWithPasskeyFormSchema = z.object({
  */
 export const deleteAccountWithPasskeyAction = async (
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);

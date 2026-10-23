@@ -16,18 +16,18 @@ type DivProps = ComponentPropsWithoutRef<"div">;
  * boundary, and the actions region takes whatever control belongs there.
  *
  * ```tsx
- * <EmptyState>
- *   <EmptyStateIcon>
+ * <EmptyState.Root>
+ *   <EmptyState.Icon>
  *     <InboxIcon className="size-6" />
- *   </EmptyStateIcon>
- *   <EmptyStateHeading>
- *     <EmptyStateTitle>No series yet</EmptyStateTitle>
- *     <EmptyStateDescription>Publish one to see it here.</EmptyStateDescription>
- *   </EmptyStateHeading>
- *   <EmptyStateActions>
+ *   </EmptyState.Icon>
+ *   <EmptyState.Heading>
+ *     <EmptyState.Title>No series yet</EmptyState.Title>
+ *     <EmptyState.Description>Publish one to see it here.</EmptyState.Description>
+ *   </EmptyState.Heading>
+ *   <EmptyState.Actions>
  *     <LinkButton href="/series/new">New series</LinkButton>
- *   </EmptyStateActions>
- * </EmptyState>
+ *   </EmptyState.Actions>
+ * </EmptyState.Root>
  * ```
  */
 export const EmptyState = ({ className, ...props }: DivProps) => (

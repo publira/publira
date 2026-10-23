@@ -1,8 +1,8 @@
 "use client";
 
-import { ToastProvider } from "@publira/ui-components/toast";
+import * as Toast from "@publira/ui-components/toast";
 import type { ReactNode } from "react";
 
 export const AdminToastProvider = ({ children }: { children: ReactNode }) => (
-  <ToastProvider>{children}</ToastProvider>
+  <Toast.Provider>{children}</Toast.Provider>
 );

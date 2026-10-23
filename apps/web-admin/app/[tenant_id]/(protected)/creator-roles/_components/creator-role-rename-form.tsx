@@ -1,11 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -24,7 +18,7 @@ interface CreatorRoleRenameFormProps {
 /**
  * The name of one role, edited in place.
  *
- * The field is named by a `<FieldLabel>` the sighted reader does not need —
+ * The field is named by a `<Field.Label>` the sighted reader does not need —
  * the value in the box is the name — rather than by an `aria-label`. The `key`
  * puts the name that came back from the write into the field a successful
  * rename leaves behind; a refused rename keeps what the editor typed, under
@@ -34,21 +28,24 @@ export const CreatorRoleRenameForm = ({
   creatorRole,
   tenantId,
 }: CreatorRoleRenameFormProps) => (
-  <ActionForm action={renameCreatorRoleAction} className="grid flex-1 gap-2">
+  <ActionForm.Root
+    action={renameCreatorRoleAction}
+    className="grid flex-1 gap-2"
+  >
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="creator_role_id" type="hidden" value={creatorRole.id} />
     <div className="flex flex-wrap items-center gap-2">
-      <ActionFormFieldset className="w-full sm:max-w-xs">
-        <Field>
-          <FieldLabel className="sr-only">
+      <ActionForm.Fieldset className="w-full sm:max-w-xs">
+        <Field.Root>
+          <Field.Label className="sr-only">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message
                 message="admin.creator_roles.name_field_label"
                 values={{ name: creatorRole.name }}
               />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={creatorRole.name}
               key={creatorRole.name}
@@ -57,19 +54,19 @@ export const CreatorRoleRenameForm = ({
               required
               type="text"
             />
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
-      <ActionFormSubmit size="sm" variant="outline">
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
+      <ActionForm.Submit size="sm" variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.creator_roles.save_action" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.creator_roles.saving" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );

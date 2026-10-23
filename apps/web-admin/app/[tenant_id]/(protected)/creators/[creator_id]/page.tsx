@@ -1,11 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -108,19 +102,19 @@ const EditCreatorFormData = async ({
     await redirectToLoginIfSessionRejected(result);
 
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Message message="admin.creators.detail_error" />
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-        <SectionErrorActions>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+        <SectionError.Actions>
           <LinkButton render={<Link href="/creators" />} variant="outline">
             <Message message="admin.creators.back_to_list" />
           </LinkButton>
-        </SectionErrorActions>
-      </SectionError>
+        </SectionError.Actions>
+      </SectionError.Root>
     );
   }
 

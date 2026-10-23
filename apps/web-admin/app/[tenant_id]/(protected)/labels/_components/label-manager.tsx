@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -65,16 +49,18 @@ const LabelListBody = async ({
   // list state alongside the error or operators will read it as "no labels".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.labels.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -86,37 +72,37 @@ const LabelListBody = async ({
         hasPageLinks={hasPageLinks}
         itemLabel={t("admin.labels.title")}
       >
-        <EmptyStateHeading>
-          <EmptyStateTitle>{t("admin.labels.empty_title")}</EmptyStateTitle>
-          <EmptyStateDescription>
+        <EmptyState.Heading>
+          <EmptyState.Title>{t("admin.labels.empty_title")}</EmptyState.Title>
+          <EmptyState.Description>
             {t("admin.labels.empty_description")}
-          </EmptyStateDescription>
-        </EmptyStateHeading>
+          </EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.labels.columns.name" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-56">
+          </Table.Head>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.labels.columns.actions" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {labels.map((label) => (
-          <TableRow key={label.publicId}>
-            <TableCell className="font-medium">{label.name}</TableCell>
-            <TableCell>
+          <Table.Row key={label.publicId}>
+            <Table.Cell className="font-medium">{label.name}</Table.Cell>
+            <Table.Cell>
               <div className="flex flex-wrap gap-2">
                 <LinkButton
                   render={<Link href={`/labels/${label.publicId}`} />}
@@ -131,11 +117,11 @@ const LabelListBody = async ({
                   </Suspense>
                 </LinkButton>
               </div>
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

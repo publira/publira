@@ -1,15 +1,5 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -146,16 +136,16 @@ const CreatorsListData = async ({
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.creators.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -164,20 +154,20 @@ const CreatorsListData = async ({
   if (creators.length === 0) {
     if (!token) {
       return (
-        <EmptyState>
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+        <EmptyState.Root>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="storefront.creators.list_empty_title" />
               </Suspense>
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="storefront.creators.list_empty_description" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyStateHeading>
-        </EmptyState>
+            </EmptyState.Description>
+          </EmptyState.Heading>
+        </EmptyState.Root>
       );
     }
 
@@ -186,13 +176,13 @@ const CreatorsListData = async ({
     // the only way out is the first page (`proto/README.md`).
     return (
       <div className="grid gap-8">
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.creators.page_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
         {previousToken || nextToken ? (
           <CreatorsPagination
             nextToken={nextToken}

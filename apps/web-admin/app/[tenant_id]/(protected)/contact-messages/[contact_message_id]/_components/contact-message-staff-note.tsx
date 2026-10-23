@@ -1,16 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { Suspense } from "react";
@@ -59,7 +48,7 @@ export const ContactMessageStaffNote = ({
       </AdminSectionHeading>
     </AdminSectionHeader>
 
-    <ActionForm
+    <ActionForm.Root
       action={updateContactMessageStaffNoteAction}
       className="grid gap-4 sm:max-w-2xl"
     >
@@ -70,14 +59,14 @@ export const ContactMessageStaffNote = ({
         value={contactMessage.id}
       />
       <input name="public_id" type="hidden" value={contactMessage.publicId} />
-      <ActionFormFieldset>
-        <Field>
-          <FieldLabel>
+      <ActionForm.Fieldset>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.contact_messages.staff_note.label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             {/* Keyed by the note so one saved here or by somebody else
                 replaces what the field holds once the page is read again. No
                 maxLength: the browser counts UTF-16 code units, and the
@@ -88,27 +77,27 @@ export const ContactMessageStaffNote = ({
               name="staff_note"
               rows={6}
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.contact_messages.staff_note.hint" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="flex justify-end">
-        <ActionFormSubmit>
+        <ActionForm.Submit>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.contact_messages.staff_note.submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.contact_messages.staff_note.saving" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

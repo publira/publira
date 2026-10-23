@@ -2,12 +2,7 @@
 
 import { ShareIcon } from "@publira/icons/share-icon";
 import { buttonVariants } from "@publira/ui-components/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@publira/ui-components/popover";
+import * as Popover from "@publira/ui-components/popover";
 import { cn } from "@publira/utils";
 import { useState } from "react";
 
@@ -127,18 +122,18 @@ export const ShareMenu = ({
   };
 
   return (
-    <Popover onOpenChange={handleOpenChange} open={open}>
-      <PopoverTrigger
+    <Popover.Root onOpenChange={handleOpenChange} open={open}>
+      <Popover.Trigger
         aria-label={t("storefront.share.aria", { title })}
         className={buttonVariants({ size: "lg", variant: "outline" })}
       >
         <ShareIcon aria-hidden="true" className="size-4" />
         {t("storefront.share.action")}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-56" sideOffset={8}>
-        <PopoverTitle className="px-2 py-1.5 text-sm font-medium text-foreground">
+      </Popover.Trigger>
+      <Popover.Content align="start" className="w-56" sideOffset={8}>
+        <Popover.Title className="px-2 py-1.5 text-sm font-medium text-foreground">
           {t("storefront.share.action")}
-        </PopoverTitle>
+        </Popover.Title>
         <div className="grid gap-0.5">
           <a
             className={SHARE_ROW}
@@ -175,7 +170,7 @@ export const ShareMenu = ({
               : t("storefront.share.copy_failed")}
           </output>
         ) : null}
-      </PopoverContent>
-    </Popover>
+      </Popover.Content>
+    </Popover.Root>
   );
 };

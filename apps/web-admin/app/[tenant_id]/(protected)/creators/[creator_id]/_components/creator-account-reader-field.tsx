@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { useState } from "react";
 
 import { ReaderPicker } from "#components/reader-picker";
@@ -11,7 +11,7 @@ import { ReaderPicker } from "#components/reader-picker";
  */
 export const CreatorAccountReaderField = () => {
   const [linkCount, setLinkCount] = useState(0);
-  useActionFormSettled((state) => {
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       setLinkCount((count) => count + 1);
     }

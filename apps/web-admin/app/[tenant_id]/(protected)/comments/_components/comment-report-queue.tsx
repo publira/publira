@@ -1,26 +1,10 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -309,87 +293,89 @@ const CommentReportListBody = ({
 }) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.comments.reports.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (reports.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.comments.reports.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.comments.reports.empty_description" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
+          </EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-56">
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.comments.reports.columns.report" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.comments.reports.columns.comment" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-56">
+          </Table.Head>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.comments.reports.columns.episode" />
             </Suspense>
-          </TableHead>
+          </Table.Head>
           {canModerate ? (
             <>
-              <TableHead className="w-40">
+              <Table.Head className="w-40">
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.comments.reports.columns.decision" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="w-36">
+              </Table.Head>
+              <Table.Head className="w-36">
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message message="admin.comments.reports.columns.comment_actions" />
                 </Suspense>
-              </TableHead>
+              </Table.Head>
             </>
           ) : null}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {reports.map((report) => (
-          <TableRow key={report.reportId}>
-            <TableCell>
+          <Table.Row key={report.reportId}>
+            <Table.Cell>
               <ReportSummary
                 locale={locale}
                 report={report}
                 timeZone={timeZone}
               />
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <ReportedComment report={report} />
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <div className="grid gap-0.5">
                 <Link
                   className="font-medium underline-offset-4 hover:underline"
@@ -402,10 +388,10 @@ const CommentReportListBody = ({
                   {report.comment.seriesTitle || report.comment.seriesPublicId}
                 </span>
               </div>
-            </TableCell>
+            </Table.Cell>
             {canModerate ? (
               <>
-                <TableCell>
+                <Table.Cell>
                   {report.status === "open" ? (
                     <div className="grid gap-2">
                       <CommentReportDecisionButton
@@ -428,16 +414,16 @@ const CommentReportListBody = ({
                       </Suspense>
                     </span>
                   )}
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <ReportedCommentActions report={report} tenantId={tenantId} />
-                </TableCell>
+                </Table.Cell>
               </>
             ) : null}
-          </TableRow>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

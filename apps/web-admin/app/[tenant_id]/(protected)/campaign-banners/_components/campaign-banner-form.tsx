@@ -1,18 +1,6 @@
-import type { FormActionState } from "@publira/ui-components/action-form";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -29,9 +17,9 @@ import type { CampaignBannerListItem } from "../campaign-banner-types";
 
 interface CampaignBannerFormProps {
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   /** The banner being edited; absent, the form creates one. */
   initialBanner?: CampaignBannerListItem;
   tenantId: string;
@@ -57,7 +45,7 @@ export const CampaignBannerForm = async ({
   const t = await getMessages();
 
   return (
-    <ActionForm action={action} className="grid gap-5">
+    <ActionForm.Root action={action} className="grid gap-5">
       <input name="tenant_id" type="hidden" value={tenantId} />
       {initialBanner ? (
         <input
@@ -67,37 +55,37 @@ export const CampaignBannerForm = async ({
         />
       ) : null}
 
-      <ActionFormFieldset className="grid gap-5">
+      <ActionForm.Fieldset className="grid gap-5">
         {initialBanner ? null : (
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.campaign_banners.form.image" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 accept="image/jpeg,image/png,image/webp"
                 name="eye_catch_image"
                 required
                 type="file"
               />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.campaign_banners.form.image_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
         )}
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="admin.campaign_banners.form.alt_text" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialBanner?.altText}
               maxLength={CAMPAIGN_BANNER_ALT_TEXT_MAX_LENGTH}
@@ -107,21 +95,21 @@ export const CampaignBannerForm = async ({
               )}
               type="text"
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.campaign_banners.form.alt_text_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.campaign_banners.form.link" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialBanner?.linkUrl}
               maxLength={CAMPAIGN_BANNER_LINK_MAX_LENGTH}
@@ -130,22 +118,22 @@ export const CampaignBannerForm = async ({
               required
               type="text"
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.campaign_banners.form.link_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.campaign_banners.form.starts_at" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <InstantInput
                 initialValue={initialBanner?.startsAt}
                 name="starts_at"
@@ -153,15 +141,15 @@ export const CampaignBannerForm = async ({
                 step={60}
                 timeZone={timeZone}
               />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel required>
+            </Field.Content>
+          </Field.Root>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.campaign_banners.form.ends_at" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <InstantInput
                 initialValue={initialBanner?.endsAt}
                 name="ends_at"
@@ -169,8 +157,8 @@ export const CampaignBannerForm = async ({
                 step={60}
                 timeZone={timeZone}
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
         </div>
         <p className="text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
@@ -181,7 +169,7 @@ export const CampaignBannerForm = async ({
           </Suspense>
         </p>
 
-        <Field>
+        <Field.Root>
           <div className="flex items-center gap-2">
             {/* Keyed by the stored value, so a save that re-renders the screen
                 with a new one starts the box from it: Base UI's uncontrolled
@@ -192,23 +180,23 @@ export const CampaignBannerForm = async ({
               name="published"
               value="on"
             />
-            <FieldLabel>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.campaign_banners.form.published" />
               </Suspense>
-            </FieldLabel>
+            </Field.Label>
           </div>
-          <FieldDescription>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
               <Message message="admin.campaign_banners.form.published_description" />
             </Suspense>
-          </FieldDescription>
-        </Field>
-      </ActionFormFieldset>
+          </Field.Description>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="flex justify-end">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               {initialBanner ? (
                 <Message message="admin.campaign_banners.form.update" />
@@ -216,14 +204,14 @@ export const CampaignBannerForm = async ({
                 <Message message="admin.campaign_banners.form.create" />
               )}
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.campaign_banners.form.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

@@ -1,8 +1,5 @@
 import type { Locale } from "@publira/i18n";
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -176,13 +173,13 @@ const LabelRelatedSeries = async ({
   if (label.series.length === 0) {
     if (!token) {
       return (
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.labels.series_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
       );
     }
 
@@ -191,13 +188,13 @@ const LabelRelatedSeries = async ({
     // then the only way out is the first page (`proto/README.md`).
     return (
       <div className="grid gap-8">
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.series.page_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
         {label.previousToken || label.nextToken ? (
           <LabelSeriesPagination
             labelId={label.id}

@@ -4,23 +4,10 @@ import { CloseIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableSkeleton,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
@@ -85,7 +72,7 @@ const AuditLogsSkeleton = () => (
       <Skeleton className="h-10 w-56" />
       <Skeleton className="h-10 w-24" />
     </div>
-    <TableSkeleton rows={4} />
+    <Table.Skeleton rows={4} />
   </div>
 );
 
@@ -361,37 +348,37 @@ const AuditLogsTableBody = async ({
   timeZone: string;
 }) => {
   if (!result.ok) {
-    return <TableBody />;
+    return <Table.Body />;
   }
 
   const emptyMessage = await buildEmptyMessage(hasFilter, locale);
 
   if (result.auditLogs.length === 0) {
     return (
-      <TableBody>
-        <TableRow>
-          <TableCell className="text-muted-foreground" colSpan={4}>
+      <Table.Body>
+        <Table.Row>
+          <Table.Cell className="text-muted-foreground" colSpan={4}>
             {emptyMessage}
-          </TableCell>
-        </TableRow>
-      </TableBody>
+          </Table.Cell>
+        </Table.Row>
+      </Table.Body>
     );
   }
 
   return (
-    <TableBody>
+    <Table.Body>
       {result.auditLogs.map((log) => (
-        <TableRow
+        <Table.Row
           key={`${log.createdAt}-${log.actorUserPublicId}-${log.action}-${log.targetType}-${log.targetId}`}
         >
-          <TableCell>
+          <Table.Cell>
             {formatDateTime(log.createdAt, {
               fallback: "-",
               locale,
               timeZone,
             })}
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <div className="grid gap-1">
               {log.actorUserPublicId ? (
                 <Link
@@ -409,8 +396,8 @@ const AuditLogsTableBody = async ({
                 </Badge>
               </p>
             </div>
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <div className="grid gap-1">
               <p className="font-medium">
                 <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
@@ -423,16 +410,16 @@ const AuditLogsTableBody = async ({
                 </Badge>
               </p>
             </div>
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <div className="grid gap-1">
               <AuditLogTarget log={log} />
               <AuditLogReason locale={locale} log={log} />
             </div>
-          </TableCell>
-        </TableRow>
+          </Table.Cell>
+        </Table.Row>
       ))}
-    </TableBody>
+    </Table.Body>
   );
 };
 
@@ -498,50 +485,52 @@ const AuditLogsContent = async ({
       </Suspense>
 
       {result.ok ? null : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="platform.audit.load_failed" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>{result.message}</SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Title>
+            <SectionError.Description>
+              {result.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
+      <Table.Root>
+        <Table.Header>
+          <Table.Row>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.audit.columns.at" />
               </Suspense>
-            </TableHead>
-            <TableHead>
+            </Table.Head>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.audit.columns.actor" />
               </Suspense>
-            </TableHead>
-            <TableHead>
+            </Table.Head>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.audit.columns.action" />
               </Suspense>
-            </TableHead>
-            <TableHead>
+            </Table.Head>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.audit.columns.target" />
               </Suspense>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
+            </Table.Head>
+          </Table.Row>
+        </Table.Header>
         <AuditLogsTableBody
           hasFilter={hasFilter}
           locale={locale}
           result={result}
           timeZone={timeZone}
         />
-      </Table>
+      </Table.Root>
 
       <Suspense fallback={<SkeletonLine className="ml-auto h-8 w-40" />}>
         <AuditLogsPagination

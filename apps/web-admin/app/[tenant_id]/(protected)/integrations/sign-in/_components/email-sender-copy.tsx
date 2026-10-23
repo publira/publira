@@ -1,6 +1,6 @@
 "use client";
 
-import { IdentifierCopy } from "@publira/ui-components/identifier";
+import * as Identifier from "@publira/ui-components/identifier";
 
 import { useClientMessages } from "#components/client-message";
 
@@ -9,7 +9,7 @@ export const EmailSenderCopy = ({ value }: { value: string }) => {
   const t = useClientMessages();
 
   return (
-    <IdentifierCopy
+    <Identifier.Copy
       aria-label={t("admin.settings.sign_in.apple.copy_email_sender")}
       value={value}
     />

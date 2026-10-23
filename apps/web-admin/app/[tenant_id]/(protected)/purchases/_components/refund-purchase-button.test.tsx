@@ -4,8 +4,8 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import { ToastProvider, ToastViewport } from "@publira/ui-components/toast";
+import type * as ActionForm from "@publira/ui-components/action-form";
+import * as Toast from "@publira/ui-components/toast";
 import {
   cleanup,
   fireEvent,
@@ -23,15 +23,15 @@ import { RefundPurchaseButton } from "./refund-purchase-button";
 const refund =
   vi.fn<
     (
-      previousState: FormActionState,
+      previousState: ActionForm.State,
       formData: FormData
-    ) => Promise<FormActionState>
+    ) => Promise<ActionForm.State>
   >();
 
 // The Action is `"use server"`, so the module it lives in cannot be evaluated
 // here at all.
 vi.mock("../_lib/actions", () => ({
-  refundPurchaseAction: (previousState: FormActionState, formData: FormData) =>
+  refundPurchaseAction: (previousState: ActionForm.State, formData: FormData) =>
     refund(previousState, formData),
 }));
 
@@ -50,10 +50,10 @@ const PURCHASE_ID = "018f0e6a-5000-7000-8000-000000000001";
 const renderButton = () =>
   render(
     <AdminLocaleTestProvider locale="en">
-      <ToastProvider>
+      <Toast.Provider>
         <RefundPurchaseButton purchaseId={PURCHASE_ID} tenantId="TENANT001" />
-        <ToastViewport />
-      </ToastProvider>
+        <Toast.Viewport />
+      </Toast.Provider>
     </AdminLocaleTestProvider>
   );
 

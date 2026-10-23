@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -21,12 +21,12 @@ import type { GenreListItem } from "../genre-types";
 import { GenreEyeCatchForm } from "./genre-eye-catch-form";
 
 const { save, submitted } = vi.hoisted(() => ({
-  save: { current: Promise.withResolvers<FormActionState>() },
+  save: { current: Promise.withResolvers<ActionForm.State>() },
   submitted: { current: Promise.withResolvers<FormData>() },
 }));
 
 vi.mock("../_lib/actions", () => ({
-  updateGenreEyeCatchAction: (_state: FormActionState, formData: FormData) => {
+  updateGenreEyeCatchAction: (_state: ActionForm.State, formData: FormData) => {
     submitted.current.resolve(formData);
     return save.current.promise;
   },
@@ -70,7 +70,7 @@ const genre: GenreListItem = {
 
 afterEach(() => {
   cleanup();
-  save.current = Promise.withResolvers<FormActionState>();
+  save.current = Promise.withResolvers<ActionForm.State>();
   submitted.current = Promise.withResolvers<FormData>();
 });
 

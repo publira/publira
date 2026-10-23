@@ -1,19 +1,7 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
@@ -49,9 +37,9 @@ interface EpisodeCampaignPricesSectionProps {
   /** ISO 4217 code of the currency the price is entered in, the tenant's. */
   currency: string;
   deleteAction: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   episodeId: string;
   /** The episode's own price, which a campaign has to undercut. */
   episodePrice: number;
@@ -194,20 +182,20 @@ export const EpisodeCampaignPricesSection = ({
     )}
 
     {episodePrice > 0 ? (
-      <ActionForm action={createAction} className="grid gap-4">
+      <ActionForm.Root action={createAction} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
         <input name="episode_id" type="hidden" value={episodeId} />
         <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-        <ActionFormFieldset className="grid gap-4 sm:grid-cols-2">
-          <Field className="sm:col-span-2">
-            <FieldLabel required>
+        <ActionForm.Fieldset className="grid gap-4 sm:grid-cols-2">
+          <Field.Root className="sm:col-span-2">
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.episodes.campaign_prices.price" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 className="sm:max-w-48"
                 max={maxPriceInputValue(currency)}
@@ -218,7 +206,7 @@ export const EpisodeCampaignPricesSection = ({
                 type="number"
               />
               <input name="price_currency" type="hidden" value={currency} />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message
                     message="admin.series.episodes.campaign_prices.price_description"
@@ -231,54 +219,54 @@ export const EpisodeCampaignPricesSection = ({
                     }}
                   />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.series.episodes.campaign_prices.starts_at" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <InstantInput name="starts_at" step={60} timeZone={timeZone} />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel>
+            </Field.Content>
+          </Field.Root>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.series.episodes.campaign_prices.ends_at" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <InstantInput name="ends_at" step={60} timeZone={timeZone} />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                   <Message
                     message="admin.series.episodes.campaign_prices.time_zone_description"
                     values={{ time_zone: timeZone }}
                   />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         <div className="flex justify-end gap-2">
-          <ActionFormSubmit>
-            <ActionFormIdle>
+          <ActionForm.Submit>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.series.episodes.campaign_prices.add" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.series.episodes.campaign_prices.adding" />
               </Suspense>
-            </ActionFormPending>
-          </ActionFormSubmit>
+            </ActionForm.Pending>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     ) : (
       <p className="text-sm text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>

@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 
 import { buttonVariants } from "../button/button";
 import type { ButtonProps } from "../button/button";
-import { useFieldsetDisabled } from "../fieldset/fieldset";
 import {
   DialogBackdrop,
   DialogDescription,
@@ -14,12 +13,13 @@ import {
   DialogPortal,
   DialogTitle,
   DialogViewport,
-} from "./dialog";
+} from "../dialog/dialog";
+import { useFieldsetDisabled } from "../fieldset/fieldset";
 
 export {
   DialogFooter as ConfirmDialogFooter,
   DialogHeader as ConfirmDialogHeader,
-} from "./dialog";
+} from "../dialog/dialog";
 
 /**
  * A confirmation flow: a trigger, and a modal that asks before the destructive
@@ -30,23 +30,23 @@ export {
  * after them.
  *
  * ```tsx
- * <ConfirmDialog>
- *   <ConfirmDialogTrigger
+ * <ConfirmDialog.Root>
+ *   <ConfirmDialog.Trigger
  *     render={<Button variant="destructive">Delete</Button>}
  *   />
- *   <ConfirmDialogContent>
- *     <ConfirmDialogHeader>
- *       <ConfirmDialogTitle>Delete this item?</ConfirmDialogTitle>
- *       <ConfirmDialogDescription>
+ *   <ConfirmDialog.Content>
+ *     <ConfirmDialog.Header>
+ *       <ConfirmDialog.Title>Delete this item?</ConfirmDialog.Title>
+ *       <ConfirmDialog.Description>
  *         This cannot be undone.
- *       </ConfirmDialogDescription>
- *     </ConfirmDialogHeader>
- *     <ConfirmDialogFooter>
- *       <ConfirmDialogCancel>Cancel</ConfirmDialogCancel>
- *       <ConfirmDialogAction onClick={remove}>Delete</ConfirmDialogAction>
- *     </ConfirmDialogFooter>
- *   </ConfirmDialogContent>
- * </ConfirmDialog>
+ *       </ConfirmDialog.Description>
+ *     </ConfirmDialog.Header>
+ *     <ConfirmDialog.Footer>
+ *       <ConfirmDialog.Cancel>Cancel</ConfirmDialog.Cancel>
+ *       <ConfirmDialog.Action onClick={remove}>Delete</ConfirmDialog.Action>
+ *     </ConfirmDialog.Footer>
+ *   </ConfirmDialog.Content>
+ * </ConfirmDialog.Root>
  * ```
  */
 export const ConfirmDialog = ({ children }: { children: ReactNode }) => (

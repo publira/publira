@@ -1,11 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -141,19 +135,19 @@ const EditGenreFormData = async ({
     }
 
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Message message="admin.genres.detail_error" />
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-        <SectionErrorActions>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+        <SectionError.Actions>
           <LinkButton render={<Link href="/genres" />} variant="outline">
             <Message message="admin.genres.back_to_list" />
           </LinkButton>
-        </SectionErrorActions>
-      </SectionError>
+        </SectionError.Actions>
+      </SectionError.Root>
     );
   }
 

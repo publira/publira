@@ -5,7 +5,7 @@ A switch (toggle) component, implemented on top of [Base UI Switch](https://base
 ## Usage
 
 ```tsx
-import { Switch } from "@publira/ui-components";
+import { Switch } from "@publira/ui-components/switch";
 
 export default function Example() {
   return <Switch />;

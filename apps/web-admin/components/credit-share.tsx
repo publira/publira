@@ -1,7 +1,7 @@
 "use client";
 
 import { toIntlLocale } from "@publira/i18n";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 
@@ -28,14 +28,14 @@ export const CreditShareInput = ({
   position: number;
   value: string;
 }) => (
-  <Field className="w-28 shrink-0">
-    <FieldLabel className="sr-only">
+  <Field.Root className="w-28 shrink-0">
+    <Field.Label className="sr-only">
       <ClientMessage
         message="admin.series.form.creators_share_field_label"
         values={{ position: String(position) }}
       />
-    </FieldLabel>
-    <FieldContent>
+    </Field.Label>
+    <Field.Content>
       <div className="flex items-center gap-1.5">
         <Input
           aria-invalid={sharePercentToBps(value) === undefined}
@@ -49,8 +49,8 @@ export const CreditShareInput = ({
           %
         </span>
       </div>
-    </FieldContent>
-  </Field>
+    </Field.Content>
+  </Field.Root>
 );
 
 /**

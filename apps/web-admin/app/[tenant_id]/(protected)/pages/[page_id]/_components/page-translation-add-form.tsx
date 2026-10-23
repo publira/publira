@@ -1,13 +1,7 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -69,7 +63,7 @@ export const PageTranslationAddForm = ({
         </AdminSectionHeading>
       </AdminSectionHeader>
 
-      <ActionForm action={action} className="grid gap-4">
+      <ActionForm.Root action={action} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="page_id" type="hidden" value={pageId} />
         <input
@@ -78,34 +72,34 @@ export const PageTranslationAddForm = ({
           value={translationLocale}
         />
 
-        <ActionFormFieldset className="grid gap-4">
-          <Field>
-            <FieldLabel required>
+        <ActionForm.Fieldset className="grid gap-4">
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="admin.pages.workspace.title" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input name="title" required type="text" />
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         <div className="flex justify-end">
-          <ActionFormSubmit>
-            <ActionFormIdle>
+          <ActionForm.Submit>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.pages.translations.add_action" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.pages.translations.adding" />
               </Suspense>
-            </ActionFormPending>
-          </ActionFormSubmit>
+            </ActionForm.Pending>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

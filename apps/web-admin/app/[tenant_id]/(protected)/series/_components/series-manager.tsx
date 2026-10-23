@@ -1,28 +1,12 @@
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as Field from "@publira/ui-components/field";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -81,9 +65,9 @@ const SeriesStatusFilter = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <Field className="w-52">
-      <FieldLabel>{t("admin.series.filter.status")}</FieldLabel>
-      <FieldContent>
+    <Field.Root className="w-52">
+      <Field.Label>{t("admin.series.filter.status")}</Field.Label>
+      <Field.Content>
         <Select
           defaultValue={filters.status}
           items={[
@@ -94,8 +78,8 @@ const SeriesStatusFilter = async ({
           ]}
           name="status"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };
 
@@ -109,9 +93,9 @@ const SeriesAgeRatingFilter = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <Field className="w-52">
-      <FieldLabel>{t("admin.series.filter.age_rating")}</FieldLabel>
-      <FieldContent>
+    <Field.Root className="w-52">
+      <Field.Label>{t("admin.series.filter.age_rating")}</Field.Label>
+      <Field.Content>
         <Select
           defaultValue={filters.ageRating}
           items={[
@@ -122,8 +106,8 @@ const SeriesAgeRatingFilter = async ({
           ]}
           name="age_rating"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };
 
@@ -290,122 +274,124 @@ const SeriesListBody = ({
   // list state alongside the error or operators will read it as "no series".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.series.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (series.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message message="admin.series.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="admin.series.empty_description" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
+          </EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.columns.title" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.columns.label" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-44">
+          </Table.Head>
+          <Table.Head className="w-44">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.columns.published_at" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-40">
+          </Table.Head>
+          <Table.Head className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.columns.reading_period" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.columns.synopsis" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-32">
+          </Table.Head>
+          <Table.Head className="w-32">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.series.columns.serialization" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-28">
+          </Table.Head>
+          <Table.Head className="w-28">
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.series.columns.age_rating" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-32">
+          </Table.Head>
+          <Table.Head className="w-32">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-56">
+          </Table.Head>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.columns.actions" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {series.map((item) => (
-          <TableRow key={item.publicId}>
-            <TableCell className="font-medium">
+          <Table.Row key={item.publicId}>
+            <Table.Cell className="font-medium">
               <div className="flex flex-wrap items-center gap-2">
                 <span>{item.title}</span>
                 <SeriesAvailabilityBadge availability={item.availability} />
               </div>
-            </TableCell>
-            <TableCell>{item.labelName || "-"}</TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>{item.labelName || "-"}</Table.Cell>
+            <Table.Cell>
               {formatDateTime(item.publishedAt, {
                 fallback: "-",
                 locale,
                 timeZone,
               })}
-            </TableCell>
-            <TableCell>{item.readingPeriodHours}</TableCell>
-            <TableCell>{excerpt(item.synopsis)}</TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>{item.readingPeriodHours}</Table.Cell>
+            <Table.Cell>{excerpt(item.synopsis)}</Table.Cell>
+            <Table.Cell>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <SeriesSerializationMessage status={item.status} />
               </Suspense>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <SeriesAgeRatingMessage ageRating={item.ageRating} />
               </Suspense>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <SeriesStatusBadge locale={locale} now={now} series={item} />
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <div className="flex flex-wrap gap-2">
                 <LinkButton href={`/series/${item.publicId}`} variant="outline">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -425,11 +411,11 @@ const SeriesListBody = ({
                   </Suspense>
                 </LinkButton>
               </div>
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

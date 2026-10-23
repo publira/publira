@@ -1,12 +1,6 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -93,22 +87,22 @@ const VolumeLoadError = ({
   message: string;
   seriesPublicId: string;
 }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>
         <Message message="admin.series.volumes.detail_error" />
-      </SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-    <SectionErrorActions>
+      </SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+    <SectionError.Actions>
       <LinkButton
         render={<Link href={`/series/${seriesPublicId}/volumes`} />}
         variant="outline"
       >
         <Message message="admin.series.volumes.back_to_list" />
       </LinkButton>
-    </SectionErrorActions>
-  </SectionError>
+    </SectionError.Actions>
+  </SectionError.Root>
 );
 
 const EditVolumeBackLink = async ({ params }: EditVolumePageProps) => {
@@ -204,16 +198,16 @@ const EditVolumeData = async ({ params }: EditVolumePageProps) => {
           volume={volume}
         />
       ) : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Message message="admin.series.volumes.episodes.load_error" />
-            </SectionErrorTitle>
-            <SectionErrorDescription>
+            </SectionError.Title>
+            <SectionError.Description>
               {episodesResult.message}
-            </SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
       <VolumeCoverForm
         seriesId={seriesId}

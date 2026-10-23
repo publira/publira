@@ -39,13 +39,9 @@ vi.mock("./close-statement-button", () => ({
   ),
 }));
 
-vi.mock("@publira/ui-components/dialog", () => ({
-  ConfirmDialogDescription: ({ children }: { children: ReactNode }) => (
-    <p>{children}</p>
-  ),
-  ConfirmDialogTitle: ({ children }: { children: ReactNode }) => (
-    <p>{children}</p>
-  ),
+vi.mock("@publira/ui-components/confirm-dialog", () => ({
+  Description: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+  Title: ({ children }: { children: ReactNode }) => <p>{children}</p>,
 }));
 
 const line = (

@@ -1,17 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Switch } from "@publira/ui-components/switch";
@@ -65,7 +53,7 @@ export const TenantSignUpSettingsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantSignUpSettingsAction}
         className="grid gap-4 sm:max-w-lg"
       >
@@ -81,49 +69,49 @@ export const TenantSignUpSettingsForm = ({
           </FormMessage>
         ) : null}
 
-        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
-          <Field className="grid-cols-[auto_1fr] items-start gap-x-3">
+        <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
+          <Field.Root className="grid-cols-[auto_1fr] items-start gap-x-3">
             <Switch
               className="row-span-2 mt-0.5"
               defaultChecked={initialSettings?.signUpOpen ?? true}
               name="sign_up_open"
             />
-            <FieldLabel>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.sign_up.open_label" />
               </Suspense>
-            </FieldLabel>
-            <FieldDescription className="col-start-2">
+            </Field.Label>
+            <Field.Description className="col-start-2">
               <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                 <Message message="admin.settings.sign_up.open_description" />
               </Suspense>
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="admin.settings.sign_up.message_label" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Textarea
                 defaultValue={initialSettings?.closedMessage ?? ""}
                 name="closed_message"
                 rows={4}
               />
-              <ActionFormFieldError name="closedMessage" />
-              <FieldDescription>
+              <ActionForm.FieldError name="closedMessage" />
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message
                     message="admin.settings.sign_up.message_description"
                     values={{ max: MAX_SIGN_UP_CLOSED_MESSAGE_LENGTH }}
                   />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -145,18 +133,18 @@ export const TenantSignUpSettingsForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.sign_up.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

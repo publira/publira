@@ -1,10 +1,4 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -49,27 +43,27 @@ export const VolumeCreateForm = ({
         </AdminSectionDescription>
       </AdminSectionHeading>
     </AdminSectionHeader>
-    <ActionForm action={createVolumeAction} className="grid gap-4">
+    <ActionForm.Root action={createVolumeAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_id" type="hidden" value={seriesId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
-      <ActionFormFieldset className="grid gap-4 sm:grid-cols-2 sm:items-start">
+      <ActionForm.Fieldset className="grid gap-4 sm:grid-cols-2 sm:items-start">
         <VolumeDetailsFields currency={currency} />
-      </ActionFormFieldset>
+      </ActionForm.Fieldset>
       <div className="flex justify-end">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="admin.series.volumes.form.create" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.series.volumes.form.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

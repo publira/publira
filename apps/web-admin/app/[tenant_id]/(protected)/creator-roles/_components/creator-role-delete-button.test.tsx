@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -21,9 +21,9 @@ import { CreatorRoleDeleteButton } from "./creator-role-delete-button";
 const remove =
   vi.fn<
     (
-      previousState: FormActionState,
+      previousState: ActionForm.State,
       formData: FormData
-    ) => Promise<FormActionState>
+    ) => Promise<ActionForm.State>
   >();
 
 // The Action is `"use server"`, so the module it lives in cannot be evaluated
@@ -31,7 +31,7 @@ const remove =
 // the role the row stands for, and reporting what comes back.
 vi.mock("../_lib/actions", () => ({
   deleteCreatorRoleAction: (
-    previousState: FormActionState,
+    previousState: ActionForm.State,
     formData: FormData
   ) => remove(previousState, formData),
 }));

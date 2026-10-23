@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -19,7 +19,7 @@ import { emptyTenantFcmSettings } from "#lib/fcm-settings";
 import { FcmCredentialsForm } from "./fcm-credentials-form";
 
 const { save } = vi.hoisted(() => ({
-  save: { current: Promise.withResolvers<FormActionState>() },
+  save: { current: Promise.withResolvers<ActionForm.State>() },
 }));
 
 vi.mock("../_lib/actions", () => ({
@@ -48,7 +48,7 @@ const fields = () => [
 
 afterEach(() => {
   cleanup();
-  save.current = Promise.withResolvers<FormActionState>();
+  save.current = Promise.withResolvers<ActionForm.State>();
 });
 
 describe("FcmCredentialsForm", () => {
