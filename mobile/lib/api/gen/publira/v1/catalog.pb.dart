@@ -989,12 +989,14 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
     EpisodeAccess? access,
     $core.String? episodeId,
     $core.bool? owned,
+    EpisodeEntitlementSource? entitlementSource,
   }) {
     final result = SeriesEpisodeAccess._();
     if (episodePublicId != null) result.episodePublicId = episodePublicId;
     if (access != null) result.access = access;
     if (episodeId != null) result.episodeId = episodeId;
     if (owned != null) result.owned = owned;
+    if (entitlementSource != null) result.entitlementSource = entitlementSource;
     return result;
   }
 
@@ -1016,6 +1018,9 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
         enumValues: EpisodeAccess.values)
     ..aOS(3, _omitFieldNames ? '' : 'episodeId')
     ..aOB(4, _omitFieldNames ? '' : 'owned')
+    ..aE<EpisodeEntitlementSource>(
+        5, _omitFieldNames ? '' : 'entitlementSource',
+        enumValues: EpisodeEntitlementSource.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1071,10 +1076,11 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
 
   /// Whether the caller holds an active permanent copy of the episode: a
   /// purchase of its permanent copy, of a volume holding it, or of the rest of
-  /// the series. A rental, an access ticket, and a creator's own episode open
-  /// it without owning it, so `access` may be EPISODE_ACCESS_ENTITLED while this
-  /// is false. Always false for a guest. It says nothing about the age rule,
-  /// which may still keep an owned episode closed.
+  /// the series. A rental, an access ticket, a creator's own episode, and a
+  /// staff role open it without owning it, so `access` may be
+  /// EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest. It
+  /// says nothing about the age rule, which may still keep an owned episode
+  /// closed.
   @$pb.TagNumber(4)
   $core.bool get owned => $_getBF(3);
   @$pb.TagNumber(4)
@@ -1083,6 +1089,17 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
   $core.bool hasOwned() => $_has(3);
   @$pb.TagNumber(4)
   void clearOwned() => $_clearField(4);
+
+  /// Which grant opens the episode, as GetEpisodeDetailResponse reports it. Set
+  /// only when access is EPISODE_ACCESS_ENTITLED, and unspecified otherwise.
+  @$pb.TagNumber(5)
+  EpisodeEntitlementSource get entitlementSource => $_getN(4);
+  @$pb.TagNumber(5)
+  set entitlementSource(EpisodeEntitlementSource value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasEntitlementSource() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearEntitlementSource() => $_clearField(5);
 }
 
 class GetSeriesEpisodeAccessResponse extends $pb.GeneratedMessage {
@@ -8666,12 +8683,14 @@ class GetMyEpisodeRatingResponse extends $pb.GeneratedMessage {
     $fixnum.Int64? ratingCount,
     EpisodeRatingMode? mode,
     $core.bool? readerCredited,
+    $core.bool? readerIsStaff,
   }) {
     final result = GetMyEpisodeRatingResponse._();
     if (score != null) result.score = score;
     if (ratingCount != null) result.ratingCount = ratingCount;
     if (mode != null) result.mode = mode;
     if (readerCredited != null) result.readerCredited = readerCredited;
+    if (readerIsStaff != null) result.readerIsStaff = readerIsStaff;
     return result;
   }
 
@@ -8693,6 +8712,7 @@ class GetMyEpisodeRatingResponse extends $pb.GeneratedMessage {
     ..aE<EpisodeRatingMode>(3, _omitFieldNames ? '' : 'mode',
         enumValues: EpisodeRatingMode.values)
     ..aOB(4, _omitFieldNames ? '' : 'readerCredited')
+    ..aOB(5, _omitFieldNames ? '' : 'readerIsStaff')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -8761,6 +8781,17 @@ class GetMyEpisodeRatingResponse extends $pb.GeneratedMessage {
   $core.bool hasReaderCredited() => $_has(3);
   @$pb.TagNumber(4)
   void clearReaderCredited() => $_clearField(4);
+
+  /// Whether the reader's account holds a staff role in the tenant, which
+  /// RateEpisode refuses the same way, free episode or not.
+  @$pb.TagNumber(5)
+  $core.bool get readerIsStaff => $_getBF(4);
+  @$pb.TagNumber(5)
+  set readerIsStaff($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasReaderIsStaff() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearReaderIsStaff() => $_clearField(5);
 }
 
 class GetMySeriesRatingRequest extends $pb.GeneratedMessage {
@@ -11574,7 +11605,10 @@ class RatingServiceApi {
   ///
   /// An episode that credits a creator the reader's account is linked to is
   /// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
-  /// free or not: the credit opens the body but not the rating.
+  /// free or not: the credit opens the body but not the rating. A reader whose
+  /// account holds a staff role in the tenant is refused the same way, with the
+  /// reason READER_IS_TENANT_STAFF: the role opens every episode, and a rating
+  /// from the tenant's own staff is not a reader's opinion either.
   $async.Future<RateEpisodeResponse> rateEpisode(
           $pb.ClientContext? ctx, RateEpisodeRequest request) =>
       _client.invoke<RateEpisodeResponse>(
@@ -11587,9 +11621,9 @@ class RatingServiceApi {
   /// its body: the answer is about a rating they already gave, and a rental that
   /// has run out does not take it back.
   ///
-  /// It also says whether the reader is credited on the episode, which is what
-  /// RateEpisode refuses by and what GetEpisodeDetail reports only beside
-  /// EPISODE_ACCESS_ENTITLED.
+  /// It also says whether the reader is credited on the episode, or holds a
+  /// staff role in the tenant, which are what RateEpisode refuses by and what
+  /// GetEpisodeDetail reports only beside EPISODE_ACCESS_ENTITLED.
   $async.Future<GetMyEpisodeRatingResponse> getMyEpisodeRating(
           $pb.ClientContext? ctx, GetMyEpisodeRatingRequest request) =>
       _client.invoke<GetMyEpisodeRatingResponse>(ctx, 'RatingService',

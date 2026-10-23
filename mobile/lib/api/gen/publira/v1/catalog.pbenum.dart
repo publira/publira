@@ -122,10 +122,18 @@ class EpisodeEntitlementSource extends $pb.ProtobufEnum {
           2, _omitEnumNames ? '' : 'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET');
 
   /// The reader's account is linked to a creator the episode credits. It is
-  /// reported over a purchase or a ticket the same reader also holds.
+  /// reported over any other grant the same reader also holds.
   static const EpisodeEntitlementSource EPISODE_ENTITLEMENT_SOURCE_CREATOR =
       EpisodeEntitlementSource._(
           3, _omitEnumNames ? '' : 'EPISODE_ENTITLEMENT_SOURCE_CREATOR');
+
+  /// The reader's account holds a staff role in the tenant — tenant_admin,
+  /// tenant_editor, or tenant_auditor — which opens every episode of it. It is
+  /// reported under any other grant the same reader also holds, so a member of
+  /// staff who bought an episode sees the purchase.
+  static const EpisodeEntitlementSource EPISODE_ENTITLEMENT_SOURCE_STAFF =
+      EpisodeEntitlementSource._(
+          4, _omitEnumNames ? '' : 'EPISODE_ENTITLEMENT_SOURCE_STAFF');
 
   static const $core.List<EpisodeEntitlementSource> values =
       <EpisodeEntitlementSource>[
@@ -133,10 +141,11 @@ class EpisodeEntitlementSource extends $pb.ProtobufEnum {
     EPISODE_ENTITLEMENT_SOURCE_PURCHASE,
     EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET,
     EPISODE_ENTITLEMENT_SOURCE_CREATOR,
+    EPISODE_ENTITLEMENT_SOURCE_STAFF,
   ];
 
   static final $core.List<EpisodeEntitlementSource?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 3);
+      $pb.ProtobufEnum.$_initByValueList(values, 4);
   static EpisodeEntitlementSource? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

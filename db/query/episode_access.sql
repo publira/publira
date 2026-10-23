@@ -1,8 +1,9 @@
 -- name: ListPublishedEpisodeAccessInSeries :many
 -- Every published episode of one series with the two facts its access state is
 -- decided from: whether published_free_episodes counts it free to everyone
--- right now, and whether episode_content_grants holds a grant for the reader.
--- owned is whether one of those grants is a permanent copy, which is the
+-- right now, and which grant in episode_content_grants opens it to the reader,
+-- in the order GetEpisodeEntitlementSource reports one, or '' when none
+-- does. owned is whether one of those grants is a permanent copy, which is the
 -- grant ListSeriesRemainderEpisodes counts as held. A guest passes a NULL
 -- user_id, which no grant matches. The episodes are the ones
 -- published_episode_surfaces opens on the calling surface, and the order is
@@ -14,13 +15,20 @@ SELECT e.id,
         FROM published_free_episodes fe
         WHERE fe.episode_id = e.id
     ) AS free_to_everyone,
-    EXISTS (
-        SELECT 1
+    COALESCE((
+        SELECT g.kind
         FROM episode_content_grants g
         WHERE g.tenant_id = e.tenant_id
             AND g.user_id = sqlc.narg('user_id')::uuid
             AND g.episode_id = e.id
-    ) AS has_grant,
+        ORDER BY CASE g.kind
+                WHEN 'creator' THEN 0
+                WHEN 'purchase' THEN 1
+                WHEN 'access_ticket' THEN 2
+                ELSE 3
+            END
+        LIMIT 1
+    ), '')::text AS grant_kind,
     EXISTS (
         SELECT 1
         FROM episode_content_grants g
@@ -41,7 +49,11 @@ ORDER BY e.order_index ASC,
 -- Which grant opens the episode to the reader, when one does. A reader can
 -- hold several, and the creator grant is reported first because it is the
 -- standing one: it is what the credit line says, where a purchase or a ticket
--- only says how a reader came to hold the episode. No row means no grant.
+-- only says how a reader came to hold the episode. The staff grant comes last:
+-- it holds every episode of the tenant, so it would otherwise hide the
+-- purchase a member of staff made to try the checkout.
+-- ListPublishedEpisodeAccessInSeries reports in the same order. No row means
+-- no grant.
 SELECT g.kind
 FROM episode_content_grants g
 WHERE g.tenant_id = sqlc.arg('tenant_id')
@@ -50,6 +62,20 @@ WHERE g.tenant_id = sqlc.arg('tenant_id')
 ORDER BY CASE g.kind
         WHEN 'creator' THEN 0
         WHEN 'purchase' THEN 1
-        ELSE 2
+        WHEN 'access_ticket' THEN 2
+        ELSE 3
     END
 LIMIT 1;
+
+-- name: ReaderHoldsStaffGrantOnEpisode :one
+-- Whether the reader's staff role opens the episode, whatever other grant they
+-- also hold. It reads the view rather than tenant_user_roles so the roles that
+-- count as staff stay written in one place.
+SELECT EXISTS (
+    SELECT 1
+    FROM episode_content_grants g
+    WHERE g.tenant_id = sqlc.arg('tenant_id')
+        AND g.user_id = sqlc.arg('user_id')::uuid
+        AND g.episode_id = sqlc.arg('episode_id')
+        AND g.kind = 'staff'
+) AS is_staff;

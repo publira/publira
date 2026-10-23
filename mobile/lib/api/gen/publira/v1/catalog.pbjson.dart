@@ -63,6 +63,7 @@ const EpisodeEntitlementSource$json = {
     {'1': 'EPISODE_ENTITLEMENT_SOURCE_PURCHASE', '2': 1},
     {'1': 'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET', '2': 2},
     {'1': 'EPISODE_ENTITLEMENT_SOURCE_CREATOR', '2': 3},
+    {'1': 'EPISODE_ENTITLEMENT_SOURCE_STAFF', '2': 4},
   ],
 };
 
@@ -71,7 +72,8 @@ final $typed_data.Uint8List episodeEntitlementSourceDescriptor = $convert.base64
     'ChhFcGlzb2RlRW50aXRsZW1lbnRTb3VyY2USKgomRVBJU09ERV9FTlRJVExFTUVOVF9TT1VSQ0'
     'VfVU5TUEVDSUZJRUQQABInCiNFUElTT0RFX0VOVElUTEVNRU5UX1NPVVJDRV9QVVJDSEFTRRAB'
     'EiwKKEVQSVNPREVfRU5USVRMRU1FTlRfU09VUkNFX0FDQ0VTU19USUNLRVQQAhImCiJFUElTT0'
-    'RFX0VOVElUTEVNRU5UX1NPVVJDRV9DUkVBVE9SEAM=');
+    'RFX0VOVElUTEVNRU5UX1NPVVJDRV9DUkVBVE9SEAMSJAogRVBJU09ERV9FTlRJVExFTUVOVF9T'
+    'T1VSQ0VfU1RBRkYQBA==');
 
 @$core.Deprecated('Use recommendationSourceDescriptor instead')
 const RecommendationSource$json = {
@@ -542,6 +544,14 @@ const SeriesEpisodeAccess$json = {
     },
     {'1': 'episode_id', '3': 3, '4': 1, '5': 9, '10': 'episodeId'},
     {'1': 'owned', '3': 4, '4': 1, '5': 8, '10': 'owned'},
+    {
+      '1': 'entitlement_source',
+      '3': 5,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.EpisodeEntitlementSource',
+      '10': 'entitlementSource'
+    },
   ],
 };
 
@@ -550,7 +560,8 @@ final $typed_data.Uint8List seriesEpisodeAccessDescriptor = $convert.base64Decod
     'ChNTZXJpZXNFcGlzb2RlQWNjZXNzEioKEWVwaXNvZGVfcHVibGljX2lkGAEgASgJUg9lcGlzb2'
     'RlUHVibGljSWQSMQoGYWNjZXNzGAIgASgOMhkucHVibGlyYS52MS5FcGlzb2RlQWNjZXNzUgZh'
     'Y2Nlc3MSHQoKZXBpc29kZV9pZBgDIAEoCVIJZXBpc29kZUlkEhQKBW93bmVkGAQgASgIUgVvd2'
-    '5lZA==');
+    '5lZBJTChJlbnRpdGxlbWVudF9zb3VyY2UYBSABKA4yJC5wdWJsaXJhLnYxLkVwaXNvZGVFbnRp'
+    'dGxlbWVudFNvdXJjZVIRZW50aXRsZW1lbnRTb3VyY2U=');
 
 @$core.Deprecated('Use getSeriesEpisodeAccessResponseDescriptor instead')
 const GetSeriesEpisodeAccessResponse$json = {
@@ -2828,6 +2839,7 @@ const GetMyEpisodeRatingResponse$json = {
       '10': 'mode'
     },
     {'1': 'reader_credited', '3': 4, '4': 1, '5': 8, '10': 'readerCredited'},
+    {'1': 'reader_is_staff', '3': 5, '4': 1, '5': 8, '10': 'readerIsStaff'},
   ],
 };
 
@@ -2836,7 +2848,7 @@ final $typed_data.Uint8List getMyEpisodeRatingResponseDescriptor = $convert.base
     'ChpHZXRNeUVwaXNvZGVSYXRpbmdSZXNwb25zZRIUCgVzY29yZRgBIAEoBVIFc2NvcmUSIQoMcm'
     'F0aW5nX2NvdW50GAIgASgDUgtyYXRpbmdDb3VudBIxCgRtb2RlGAMgASgOMh0ucHVibGlyYS52'
     'MS5FcGlzb2RlUmF0aW5nTW9kZVIEbW9kZRInCg9yZWFkZXJfY3JlZGl0ZWQYBCABKAhSDnJlYW'
-    'RlckNyZWRpdGVk');
+    'RlckNyZWRpdGVkEiYKD3JlYWRlcl9pc19zdGFmZhgFIAEoCFINcmVhZGVySXNTdGFmZg==');
 
 @$core.Deprecated('Use getMySeriesRatingRequestDescriptor instead')
 const GetMySeriesRatingRequest$json = {

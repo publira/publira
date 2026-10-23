@@ -677,7 +677,11 @@ type Querier interface {
 	// Which grant opens the episode to the reader, when one does. A reader can
 	// hold several, and the creator grant is reported first because it is the
 	// standing one: it is what the credit line says, where a purchase or a ticket
-	// only says how a reader came to hold the episode. No row means no grant.
+	// only says how a reader came to hold the episode. The staff grant comes last:
+	// it holds every episode of the tenant, so it would otherwise hide the
+	// purchase a member of staff made to try the checkout.
+	// ListPublishedEpisodeAccessInSeries reports in the same order. No row means
+	// no grant.
 	GetEpisodeEntitlementSource(ctx context.Context, arg GetEpisodeEntitlementSourceParams) (string, error)
 	// The eye-catch an episode shows, read behind LockEpisodeByIDForTenant by the
 	// RPCs that change it.
@@ -2116,8 +2120,9 @@ type Querier interface {
 	ListPublishedCreatorsBySearchNameDesc(ctx context.Context, arg ListPublishedCreatorsBySearchNameDescParams) ([]ListPublishedCreatorsBySearchNameDescRow, error)
 	// Every published episode of one series with the two facts its access state is
 	// decided from: whether published_free_episodes counts it free to everyone
-	// right now, and whether episode_content_grants holds a grant for the reader.
-	// owned is whether one of those grants is a permanent copy, which is the
+	// right now, and which grant in episode_content_grants opens it to the reader,
+	// in the order GetEpisodeEntitlementSource reports one, or '' when none
+	// does. owned is whether one of those grants is a permanent copy, which is the
 	// grant ListSeriesRemainderEpisodes counts as held. A guest passes a NULL
 	// user_id, which no grant matches. The episodes are the ones
 	// published_episode_surfaces opens on the calling surface, and the order is
@@ -3128,6 +3133,10 @@ type Querier interface {
 	// The caller resolves the episode through the published catalog query first, so
 	// publication and body access are settled before this runs.
 	RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error)
+	// Whether the reader's staff role opens the episode, whatever other grant they
+	// also hold. It reads the view rather than tenant_user_roles so the roles that
+	// count as staff stay written in one place.
+	ReaderHoldsStaffGrantOnEpisode(ctx context.Context, arg ReaderHoldsStaffGrantOnEpisodeParams) (bool, error)
 	// Whether the reader's account is linked to a creator one of the volume's
 	// episodes credits, which keeps them from buying it as it keeps them from
 	// buying the episode.

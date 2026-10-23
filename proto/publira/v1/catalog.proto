@@ -197,11 +197,15 @@ message SeriesEpisodeAccess {
   string episode_id = 3;
   // Whether the caller holds an active permanent copy of the episode: a
   // purchase of its permanent copy, of a volume holding it, or of the rest of
-  // the series. A rental, an access ticket, and a creator's own episode open
-  // it without owning it, so `access` may be EPISODE_ACCESS_ENTITLED while this
-  // is false. Always false for a guest. It says nothing about the age rule,
-  // which may still keep an owned episode closed.
+  // the series. A rental, an access ticket, a creator's own episode, and a
+  // staff role open it without owning it, so `access` may be
+  // EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest. It
+  // says nothing about the age rule, which may still keep an owned episode
+  // closed.
   bool owned = 4;
+  // Which grant opens the episode, as GetEpisodeDetailResponse reports it. Set
+  // only when access is EPISODE_ACCESS_ENTITLED, and unspecified otherwise.
+  EpisodeEntitlementSource entitlement_source = 5;
 }
 
 message GetSeriesEpisodeAccessResponse {
@@ -273,8 +277,13 @@ enum EpisodeEntitlementSource {
   // An access ticket neither revoked nor expired.
   EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET = 2;
   // The reader's account is linked to a creator the episode credits. It is
-  // reported over a purchase or a ticket the same reader also holds.
+  // reported over any other grant the same reader also holds.
   EPISODE_ENTITLEMENT_SOURCE_CREATOR = 3;
+  // The reader's account holds a staff role in the tenant — tenant_admin,
+  // tenant_editor, or tenant_auditor — which opens every episode of it. It is
+  // reported under any other grant the same reader also holds, so a member of
+  // staff who bought an episode sees the purchase.
+  EPISODE_ENTITLEMENT_SOURCE_STAFF = 4;
 }
 
 // A published episode of the series being read that the episode detail links
@@ -1529,6 +1538,9 @@ message GetMyEpisodeRatingResponse {
   // free or not. RateEpisode refuses such a reader, so a client can withhold
   // the control instead of offering a press that ends in that refusal.
   bool reader_credited = 4;
+  // Whether the reader's account holds a staff role in the tenant, which
+  // RateEpisode refuses the same way, free episode or not.
+  bool reader_is_staff = 5;
 }
 
 message GetMySeriesRatingRequest {
@@ -1569,7 +1581,10 @@ service RatingService {
   //
   // An episode that credits a creator the reader's account is linked to is
   // permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
-  // free or not: the credit opens the body but not the rating.
+  // free or not: the credit opens the body but not the rating. A reader whose
+  // account holds a staff role in the tenant is refused the same way, with the
+  // reason READER_IS_TENANT_STAFF: the role opens every episode, and a rating
+  // from the tenant's own staff is not a reader's opinion either.
   rpc RateEpisode(RateEpisodeRequest) returns (RateEpisodeResponse) {}
   // Returns the authenticated reader's rating of a currently published episode,
   // how many readers have rated it, and which press mode governs it.
@@ -1578,9 +1593,9 @@ service RatingService {
   // its body: the answer is about a rating they already gave, and a rental that
   // has run out does not take it back.
   //
-  // It also says whether the reader is credited on the episode, which is what
-  // RateEpisode refuses by and what GetEpisodeDetail reports only beside
-  // EPISODE_ACCESS_ENTITLED.
+  // It also says whether the reader is credited on the episode, or holds a
+  // staff role in the tenant, which are what RateEpisode refuses by and what
+  // GetEpisodeDetail reports only beside EPISODE_ACCESS_ENTITLED.
   rpc GetMyEpisodeRating(GetMyEpisodeRatingRequest) returns (GetMyEpisodeRatingResponse) {}
   // Returns what the authenticated reader's own reactions say about a currently
   // published series: the mean of the scores they gave its episodes.

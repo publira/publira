@@ -198,6 +198,17 @@ func (e *PostgresEnv) SeedTenantUser(t *testing.T, tenantID uuid.UUID, publicID,
 	t.Helper()
 
 	user := e.seedUser(t, tenantID, publicID, email, name)
+	e.SeedTenantUserRole(t, tenantID, user.ID, role)
+
+	user.Role = role
+	return user
+}
+
+// SeedTenantUserRole grants an existing account a row in tenant_user_roles.
+// The role is stored as given, so a test can also seed a string that is none
+// of the three staff roles.
+func (e *PostgresEnv) SeedTenantUserRole(t *testing.T, tenantID, userID uuid.UUID, role string) {
+	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -205,14 +216,11 @@ func (e *PostgresEnv) SeedTenantUser(t *testing.T, tenantID uuid.UUID, publicID,
 	if _, err := dbmodels.New(e.DB).CreateTenantUserRole(ctx, dbmodels.CreateTenantUserRoleParams{
 		ID:       uuid.Must(uuid.NewV7()),
 		TenantID: tenantID,
-		UserID:   user.ID,
+		UserID:   userID,
 		Role:     role,
 	}); err != nil {
-		t.Fatalf("CreateTenantUserRole for %s: %v", user.PublicID, err)
+		t.Fatalf("CreateTenantUserRole %s for %s: %v", role, userID, err)
 	}
-
-	user.Role = role
-	return user
 }
 
 // seedUser inserts the users row shared by every kind of account in a tenant.
