@@ -28,4 +28,4 @@ task docker:build:node APP_NAME=email-renderer PORT=8080
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
-The image runs as the distroless nonroot user and defaults to `HOST=0.0.0.0` and `PORT` (8080). It carries no shell, so it declares no `HEALTHCHECK`; configure the HTTP probes for `/livez` and `/readyz` in the orchestrator instead. For the layout conventions, see [`infra/docker/README.md`](../../infra/docker/README.md).
+The image runs as the distroless nonroot user and defaults to `HOST=0.0.0.0` and `PORT` (8080). It carries no shell, so it declares no `HEALTHCHECK`; configure the HTTP probes for `/livez` and `/readyz` in the orchestrator instead. For how the image is built, see [`infra/docker/README.md`](../../infra/docker/README.md).

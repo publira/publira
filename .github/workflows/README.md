@@ -142,7 +142,7 @@ Implementation:
 - pnpm and Node.js, with a second attempt when the first fails: [`.github/actions/pnpm-setup`](../actions/pnpm-setup/action.yml)
 - Migration version ordering for `Test / DB Migrations`: [`scripts/check-migration-order.sh`](../../scripts/check-migration-order.sh)
 
-[`infra/docker/README.md`](../../infra/docker/README.md) is authoritative for Docker image placement, build steps, and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
+[`infra/docker/AGENTS.md`](../../infra/docker/AGENTS.md) is authoritative for Docker image placement, and [`infra/docker/README.md`](../../infra/docker/README.md) for build steps and Docker-specific triage. This document covers only how the `Docker` job is started by CI.
 
 ## Jobs
 
@@ -218,7 +218,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |
 | `Test / Deploy` | `infra/deploy/**`, `infra/proxy/caddy/**`, `infra/docker/**`, `.dockerignore`, its two scripts and `scripts/package-deploy.sh`, `Taskfile.yaml`, and `server/cmd/publiractl/**` and `server/internal/deployenv/**`, whose `.env` generator the check runs |
 | `Build` | apps, packages, server, and build inputs |
-| `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |
+| `Docker` | The [role mapping for change detection](../../infra/docker/README.md#role-mapping-for-change-detection) |
 
 The heavyweight-job exclusion is implemented as:
 
