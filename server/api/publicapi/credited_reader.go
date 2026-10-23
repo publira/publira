@@ -43,6 +43,30 @@ func readerCreditedOnEpisodeError() error {
 		errors.New("the reader is credited on this episode"), rpcerrors.ReasonReaderCreditedOnEpisode)
 }
 
+// readerIsTenantStaff answers whether the reader's staff role opens the
+// episode. The staff grant is reported under a purchase or a ticket, so
+// episodeGrantKind does not say whether the reader is staff.
+func (s *apiServer) readerIsTenantStaff(ctx context.Context, tenantID, userID, episodeID uuid.UUID) (bool, error) {
+	isStaff, err := s.queriesFor(ctx).ReaderHoldsStaffGrantOnEpisode(ctx, dbmodels.ReaderHoldsStaffGrantOnEpisodeParams{
+		TenantID:  tenantID,
+		UserID:    userID,
+		EpisodeID: episodeID,
+	})
+	if err != nil {
+		return false, s.internalDBError(ctx, "failed to check whether the reader is tenant staff", err,
+			"tenant_id", tenantID.String(), "user_id", userID.String(), "episode_id", episodeID.String())
+	}
+	return isStaff, nil
+}
+
+// readerIsTenantStaffError refuses a rating from a reader whose account holds a
+// staff role in the tenant, which would count the tenant's own reading as a
+// reader's.
+func readerIsTenantStaffError() error {
+	return rpcerrors.NewErrorInfoError(connect.CodePermissionDenied,
+		errors.New("the reader holds a staff role in the tenant"), rpcerrors.ReasonReaderIsTenantStaff)
+}
+
 // refuseCreditedReader answers readerCreditedOnEpisodeError when the reader is
 // credited on the episode.
 func (s *apiServer) refuseCreditedReader(ctx context.Context, tenantID, userID, episodeID uuid.UUID) error {

@@ -20,6 +20,13 @@ import (
 // on the episode gets.
 func assertCreditedReaderRefusal(t *testing.T, err error) {
 	t.Helper()
+	assertPermissionDeniedReason(t, err, rpcerrors.ReasonReaderCreditedOnEpisode)
+}
+
+// assertPermissionDeniedReason fails unless err is permission_denied carrying
+// the ErrorInfo reason given.
+func assertPermissionDeniedReason(t *testing.T, err error, reason string) {
+	t.Helper()
 
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("code = %v, want permission_denied (err=%v)", connect.CodeOf(err), err)
@@ -33,12 +40,12 @@ func assertCreditedReaderRefusal(t *testing.T, err error) {
 			}
 			if info, ok := value.(*errdetails.ErrorInfo); ok &&
 				info.GetDomain() == rpcerrors.ErrorInfoDomain &&
-				info.GetReason() == rpcerrors.ReasonReaderCreditedOnEpisode {
+				info.GetReason() == reason {
 				return
 			}
 		}
 	}
-	t.Fatalf("missing %s ErrorInfo on %v", rpcerrors.ReasonReaderCreditedOnEpisode, err)
+	t.Fatalf("missing %s ErrorInfo on %v", reason, err)
 }
 
 // A credited creator's stars would enter the figures the storefront ranks by,

@@ -78,8 +78,9 @@ func (s *apiServer) resolveRatingEpisode(
 }
 
 // requireReaderMayRateEpisode refuses a rating unless the reader may open the
-// episode's body, by the rule the episode detail applies, and is not credited
-// on it: a creator's own stars are not a reader's opinion, free episode or not.
+// episode's body, by the rule the episode detail applies, and is neither
+// credited on it nor a member of the tenant's staff: a creator's own stars, or
+// the publisher's, are not a reader's opinion, free episode or not.
 func (s *apiServer) requireReaderMayRateEpisode(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
@@ -91,6 +92,13 @@ func (s *apiServer) requireReaderMayRateEpisode(
 	}
 	if kind == episodeGrantKindCreator {
 		return readerCreditedOnEpisodeError()
+	}
+	isStaff, err := s.readerIsTenantStaff(ctx, tenantID, userID, row.ID)
+	if err != nil {
+		return err
+	}
+	if isStaff {
+		return readerIsTenantStaffError()
 	}
 	if !row.IsFree && kind == "" {
 		// The answer an unpublished or foreign episode gets, so this RPC cannot
@@ -188,12 +196,17 @@ func (s *apiServer) GetMyEpisodeRating(
 	if err != nil {
 		return nil, err
 	}
+	isStaff, err := s.readerIsTenantStaff(ctx, tenant.ID, user.ID, row.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	return noStorePrivateResponse(ctx, &publirav1.GetMyEpisodeRatingResponse{
 		Score:          int32(score),
 		RatingCount:    row.RatingCount,
 		Mode:           mode,
 		ReaderCredited: kind == episodeGrantKindCreator,
+		ReaderIsStaff:  isStaff,
 	}), nil
 }
 

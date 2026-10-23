@@ -1298,7 +1298,8 @@ func (s *apiServer) GetEpisodeDetail(
 }
 
 // episodeEntitlementSourceFromGrantKind maps an episode_content_grants kind to
-// the reason GetEpisodeDetail reports beside EPISODE_ACCESS_ENTITLED.
+// the reason GetEpisodeDetail and GetSeriesEpisodeAccess report beside
+// EPISODE_ACCESS_ENTITLED.
 func episodeEntitlementSourceFromGrantKind(kind string) (publirav1.EpisodeEntitlementSource, error) {
 	switch kind {
 	case "purchase":
@@ -1307,6 +1308,8 @@ func episodeEntitlementSourceFromGrantKind(kind string) (publirav1.EpisodeEntitl
 		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET, nil
 	case episodeGrantKindCreator:
 		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_CREATOR, nil
+	case "staff":
+		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_STAFF, nil
 	default:
 		return publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED, fmt.Errorf("unknown episode grant kind %q", kind)
 	}

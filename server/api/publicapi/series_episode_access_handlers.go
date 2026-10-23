@@ -88,11 +88,20 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 		Episodes: make([]*publirav1.SeriesEpisodeAccess, 0, len(rows)),
 	}
 	for _, row := range rows {
+		access := episodeAccessFor(clearsAgeGate, row.FreeToEveryone, row.GrantKind != "")
+		entitlementSource := publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED
+		if access == publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED {
+			entitlementSource, err = episodeEntitlementSourceFromGrantKind(row.GrantKind)
+			if err != nil {
+				return nil, s.internalError(ctx, "episode grant holds a kind this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", row.ID.String())
+			}
+		}
 		res.Episodes = append(res.Episodes, &publirav1.SeriesEpisodeAccess{
-			EpisodeId:       row.ID.String(),
-			EpisodePublicId: row.PublicID,
-			Access:          episodeAccessFor(clearsAgeGate, row.FreeToEveryone, row.HasGrant),
-			Owned:           row.Owned,
+			EpisodeId:         row.ID.String(),
+			EpisodePublicId:   row.PublicID,
+			Access:            access,
+			Owned:             row.Owned,
+			EntitlementSource: entitlementSource,
 		})
 	}
 	res.Remainder, err = s.seriesRemainderOffer(ctx, tenant.ID, series.ID, surface, userID)

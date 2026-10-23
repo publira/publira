@@ -1601,7 +1601,10 @@ type RatingServiceClient interface {
 	//
 	// An episode that credits a creator the reader's account is linked to is
 	// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
-	// free or not: the credit opens the body but not the rating.
+	// free or not: the credit opens the body but not the rating. A reader whose
+	// account holds a staff role in the tenant is refused the same way, with the
+	// reason READER_IS_TENANT_STAFF: the role opens every episode, and a rating
+	// from the tenant's own staff is not a reader's opinion either.
 	RateEpisode(context.Context, *v1.RateEpisodeRequest) (*v1.RateEpisodeResponse, error)
 	// Returns the authenticated reader's rating of a currently published episode,
 	// how many readers have rated it, and which press mode governs it.
@@ -1610,9 +1613,9 @@ type RatingServiceClient interface {
 	// its body: the answer is about a rating they already gave, and a rental that
 	// has run out does not take it back.
 	//
-	// It also says whether the reader is credited on the episode, which is what
-	// RateEpisode refuses by and what GetEpisodeDetail reports only beside
-	// EPISODE_ACCESS_ENTITLED.
+	// It also says whether the reader is credited on the episode, or holds a
+	// staff role in the tenant, which are what RateEpisode refuses by and what
+	// GetEpisodeDetail reports only beside EPISODE_ACCESS_ENTITLED.
 	GetMyEpisodeRating(context.Context, *v1.GetMyEpisodeRatingRequest) (*v1.GetMyEpisodeRatingResponse, error)
 	// Returns what the authenticated reader's own reactions say about a currently
 	// published series: the mean of the scores they gave its episodes.
@@ -1647,7 +1650,10 @@ type RatingServiceHandler interface {
 	//
 	// An episode that credits a creator the reader's account is linked to is
 	// permission_denied with the ErrorInfo reason READER_CREDITED_ON_EPISODE,
-	// free or not: the credit opens the body but not the rating.
+	// free or not: the credit opens the body but not the rating. A reader whose
+	// account holds a staff role in the tenant is refused the same way, with the
+	// reason READER_IS_TENANT_STAFF: the role opens every episode, and a rating
+	// from the tenant's own staff is not a reader's opinion either.
 	RateEpisode(context.Context, *v1.RateEpisodeRequest) (*v1.RateEpisodeResponse, error)
 	// Returns the authenticated reader's rating of a currently published episode,
 	// how many readers have rated it, and which press mode governs it.
@@ -1656,9 +1662,9 @@ type RatingServiceHandler interface {
 	// its body: the answer is about a rating they already gave, and a rental that
 	// has run out does not take it back.
 	//
-	// It also says whether the reader is credited on the episode, which is what
-	// RateEpisode refuses by and what GetEpisodeDetail reports only beside
-	// EPISODE_ACCESS_ENTITLED.
+	// It also says whether the reader is credited on the episode, or holds a
+	// staff role in the tenant, which are what RateEpisode refuses by and what
+	// GetEpisodeDetail reports only beside EPISODE_ACCESS_ENTITLED.
 	GetMyEpisodeRating(context.Context, *v1.GetMyEpisodeRatingRequest) (*v1.GetMyEpisodeRatingResponse, error)
 	// Returns what the authenticated reader's own reactions say about a currently
 	// published series: the mean of the scores they gave its episodes.
