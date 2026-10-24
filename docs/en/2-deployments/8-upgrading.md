@@ -92,7 +92,7 @@ If the release adds a role, pass that role's password with its `--<name>-passwor
 Replace every process with the image of the new release, with any variable the release notes asked you to set, in this order:
 
 1. **`email-renderer`**, if you run it, so that the worker of either release finds the templates it renders.
-2. **`publira worker`, `publira server`, `web-storefront`, and `web-admin`**, together with `web-platform` if you run it, in any order and one copy at a time if you like: the install keeps serving while an orchestrator rolls them. A mail or a notification of a kind only the new release sends waits in the outbox for a copy of the new worker, and goes out a minute at most after the last copy of the release you run stops. The worker applies the migrations of its own job queue when it starts, so its tables need no step of their own.
+2. **`publira worker`, `publira server`, `web-storefront`, and `web-admin`**, together with `web-platform` if you run it, in any order and one copy at a time if you like: the install keeps serving while an orchestrator rolls them. A mail or a notification of a kind only the new release sends waits in the outbox until a copy of the new worker takes it. A copy of the release you run sets such an entry aside for a minute at a time, so once the last of those copies has stopped, the entry is free for a new worker to take within a minute, and is then sent like any other. The worker applies the migrations of its own job queue when it starts, so its tables need no step of their own.
 
 An install that runs `publira server --with-worker` replaces its copies the same way, one at a time if you like. If you stopped the processes in step 1, start them all.
 
