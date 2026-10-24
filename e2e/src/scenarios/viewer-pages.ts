@@ -14,6 +14,12 @@ export const VIEWER_EPISODE_TITLE = "Seed Episode 001-02";
 export const VIEWER_PAGE_COUNT = 8;
 
 /**
+ * The width every seeded page is stored at, as `db/seeds/dev/060_images.sql`
+ * records it. The reader never asks image-server for a page wider than this.
+ */
+export const VIEWER_PAGE_STORED_WIDTH = 1050;
+
+/**
  * Where `VIEWER_EPISODE_ID` sits in the seeded catalogue, counting every
  * episode of every seed series in the order the seed numbers them. The page
  * ids below are derived from it the way the seed derives them.

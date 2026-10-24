@@ -40,6 +40,64 @@ describe("toViewerPages", () => {
     expect(page?.height).toBe(1800);
   });
 
+  it("offers image-server's renditions up to the stored width, which is the widest", () => {
+    const [page] = toViewerPages(
+      "Episode 1",
+      [image({ imageUrl: "/images/episodes/IMG_001?t=abc", width: 1200 })],
+      formatPageTitle
+    );
+
+    expect(page?.srcset?.split(", ")).toEqual([
+      "/images/episodes/IMG_001?t=abc&w=480&fit=scale-down 480w",
+      "/images/episodes/IMG_001?t=abc&w=720&fit=scale-down 720w",
+      "/images/episodes/IMG_001?t=abc&w=1080&fit=scale-down 1080w",
+      "/images/episodes/IMG_001?t=abc&w=1200&fit=scale-down 1200w",
+    ]);
+  });
+
+  it("offers a page stored wider than every step of the ladder at its stored width too", () => {
+    const [page] = toViewerPages(
+      "Episode 1",
+      [image({ imageUrl: "/images/episodes/IMG_001", width: 4000 })],
+      formatPageTitle
+    );
+
+    expect(
+      page?.srcset?.split(", ").map((entry) => entry.split(" ")[1])
+    ).toEqual([
+      "480w",
+      "720w",
+      "1080w",
+      "1440w",
+      "2160w",
+      "2880w",
+      "3840w",
+      "4000w",
+    ]);
+  });
+
+  it("offers a page with no stored width the whole ladder", () => {
+    const [page] = toViewerPages(
+      "Episode 1",
+      [image({ height: 0, imageUrl: "/images/episodes/IMG_001", width: 0 })],
+      formatPageTitle
+    );
+
+    expect(
+      page?.srcset?.split(", ").map((entry) => entry.split(" ")[1])
+    ).toEqual(["480w", "720w", "1080w", "1440w", "2160w", "2880w", "3840w"]);
+  });
+
+  it("offers no renditions of an image image-server does not serve", () => {
+    const [page] = toViewerPages(
+      "Episode 1",
+      [image({ imageUrl: "blob:https://example.test/IMG_001" })],
+      formatPageTitle
+    );
+
+    expect(page?.srcset).toBeUndefined();
+  });
+
   it("Does not have placeholders", () => {
     const [page] = toViewerPages("Episode 1", [image()], formatPageTitle);
 
