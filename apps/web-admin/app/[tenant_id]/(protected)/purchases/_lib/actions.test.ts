@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
@@ -40,6 +40,12 @@ const refundFormData = (reason: string): FormData => {
   formData.set("reason", reason);
   return formData;
 };
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("refundPurchaseAction", () => {
   beforeEach(() => {

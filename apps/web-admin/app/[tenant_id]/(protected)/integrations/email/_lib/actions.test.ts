@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   SECRET_UPDATE_MODE_CLEAR,
@@ -74,6 +74,12 @@ const smtpFormData = (): FormData =>
     tenant_id: "TENANT001",
     username: "mailer",
   });
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("updateTenantEmailSettingsAction", () => {
   const savedSmtpSettings = {

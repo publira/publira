@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockAssertSameOrigin, mockUpdateAssociation, mockUpdateTag } =
   vi.hoisted(() => ({
@@ -61,6 +61,12 @@ const ios = {
   ios_enabled: "on",
   ios_team_id: " abcde12345 ",
 };
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("updateAppLinksAction", () => {
   beforeEach(() => {

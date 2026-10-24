@@ -1,5 +1,5 @@
 import { DEFAULT_TENANT_THEME_COLORS } from "@publira/utils/theme-css-variables";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
@@ -74,6 +74,12 @@ const themeFormData = (
     sans_font_family: fontFamilies?.sansFontFamily ?? "",
     serif_font_family: fontFamilies?.serifFontFamily ?? "",
   });
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("updateTenantThemeSettingsAction", () => {
   beforeEach(() => {
