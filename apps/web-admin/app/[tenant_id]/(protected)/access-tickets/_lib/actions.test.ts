@@ -136,3 +136,44 @@ describe("issueAccessTicketAction", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 });
+
+describe("issueAccessTicketInPlaceAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reports the issued ticket in the state and refreshes the list without leaving the page", async () => {
+    mockIssueAccessTicket.mockResolvedValueOnce({
+      created: true,
+      ok: true,
+      ticket: ticket("active"),
+    });
+
+    const { issueAccessTicketInPlaceAction } = await import("./actions");
+    const result = await issueAccessTicketInPlaceAction(null, issueFormData());
+
+    expect(result).toEqual({
+      message: "The ticket was issued.",
+      ok: true,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("names the ticket the pair already has, as the ticket screen does", async () => {
+    mockIssueAccessTicket.mockResolvedValueOnce({
+      created: false,
+      ok: true,
+      ticket: ticket("active"),
+    });
+
+    const { issueAccessTicketInPlaceAction } = await import("./actions");
+    const result = await issueAccessTicketInPlaceAction(null, issueFormData());
+
+    expect(result).toMatchObject({ ok: false });
+    expect(result?.message).toContain("TICKET000001");
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});

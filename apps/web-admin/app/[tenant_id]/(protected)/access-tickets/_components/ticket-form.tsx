@@ -5,6 +5,7 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
@@ -22,6 +23,16 @@ interface TicketFormProps {
     prevState: IssueAccessTicketActionState,
     formData: FormData
   ) => Promise<IssueAccessTicketActionState>;
+  /**
+   * Rendered inside the form, ahead of its fields: what the screen adds to
+   * the submission, such as what happens once the ticket is issued.
+   */
+  children?: ReactNode;
+  /**
+   * The reader the ticket is for, when the screen already names one. It is
+   * posted as `user_id`, and the form offers no reader picker.
+   */
+  readerId?: string;
   series: TicketSeriesOption[];
   seriesErrorMessage?: string;
   tenantId: string;
@@ -35,6 +46,8 @@ interface TicketFormProps {
  */
 export const TicketForm = async ({
   action,
+  children,
+  readerId,
   series,
   seriesErrorMessage,
   tenantId,
@@ -52,25 +65,35 @@ export const TicketForm = async ({
   return (
     <ActionForm.Root action={action} className="grid gap-5" showSuccess={false}>
       <input name="tenant_id" type="hidden" value={tenantId} />
+      {readerId ? (
+        <input name="user_id" type="hidden" value={readerId} />
+      ) : null}
+      {children}
 
       <SubmitGate.Root initialSubmittable={false}>
         <ActionForm.Fieldset className="grid gap-5">
-          <TicketTarget.Root seriesItems={seriesItems} tenantId={tenantId}>
-            <Field.Root>
-              <Field.Label required>
-                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                  <Message message="admin.access_tickets.form.user" />
-                </Suspense>
-              </Field.Label>
-              <Field.Content>
-                <TicketTarget.ReaderPicker />
-                <Field.Description>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                    <Message message="admin.access_tickets.form.user_description" />
+          <TicketTarget.Root
+            readerId={readerId}
+            seriesItems={seriesItems}
+            tenantId={tenantId}
+          >
+            {readerId ? null : (
+              <Field.Root>
+                <Field.Label required>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message message="admin.access_tickets.form.user" />
                   </Suspense>
-                </Field.Description>
-              </Field.Content>
-            </Field.Root>
+                </Field.Label>
+                <Field.Content>
+                  <TicketTarget.ReaderPicker />
+                  <Field.Description>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                      <Message message="admin.access_tickets.form.user_description" />
+                    </Suspense>
+                  </Field.Description>
+                </Field.Content>
+              </Field.Root>
+            )}
 
             <Field.Root>
               <Field.Label required>

@@ -224,6 +224,42 @@ describe("TicketForm", () => {
     expect(formData.has("episode_public_id")).toBe(false);
   });
 
+  it("issues to the reader the screen names once an episode is chosen, without a reader picker", async () => {
+    mockListEpisodeOptionsAction.mockResolvedValue({
+      episodes: [episodeOne],
+      ok: true,
+    });
+    const submitted = Promise.withResolvers<FormData>();
+    const recordingAction = (
+      _state: IssueAccessTicketActionState,
+      formData: FormData
+    ) => {
+      submitted.resolve(formData);
+      return Promise.resolve<IssueAccessTicketActionState>(null);
+    };
+
+    await renderForm({
+      action: recordingAction,
+      readerId: "018f0e6a-5000-7000-8000-000000000009",
+      series: [seriesA],
+    });
+    expect(screen.queryByLabelText(/^Reader/u)).toBeNull();
+
+    selectSeries(seriesA);
+    await screen.findByRole("option", { name: "Episode 1 (EPISODE001)" });
+    fireEvent.change(episodeCombobox(), { target: { value: episodeOne.id } });
+    await waitFor(() => {
+      expect(issueButton().hasAttribute("disabled")).toBe(false);
+    });
+    fireEvent.click(issueButton());
+
+    const formData = await submitted.promise;
+    expect(formData.getAll("user_id")).toEqual([
+      "018f0e6a-5000-7000-8000-000000000009",
+    ]);
+    expect(formData.get("episode_id")).toBe(episodeOne.id);
+  });
+
   it("says there is no episode to grant when the series list is empty", async () => {
     await renderForm({ action, series: [] });
 

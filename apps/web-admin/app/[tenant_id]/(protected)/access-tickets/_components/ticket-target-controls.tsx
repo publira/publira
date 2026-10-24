@@ -54,10 +54,13 @@ const useTicketTarget = () => {
  */
 const TicketTarget = ({
   children,
+  readerId: fixedReaderId,
   seriesItems,
   tenantId,
 }: {
   children: ReactNode;
+  /** The reader the screen already names, which leaves nobody to pick. */
+  readerId?: string;
   seriesItems: Combobox.Item[];
   tenantId: string;
 }) => {
@@ -65,7 +68,8 @@ const TicketTarget = ({
   const t = useClientMessages();
   const setSubmittable = SubmitGate.useSetSubmittable();
   const [isEpisodePending, startEpisodeTransition] = useTransition();
-  const [readerId, setReaderId] = useState("");
+  const [pickedReaderId, setPickedReaderId] = useState("");
+  const readerId = fixedReaderId ?? pickedReaderId;
   const [seriesId, setSeriesId] = useState("");
   const [episodeId, setEpisodeId] = useState("");
   const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
@@ -120,7 +124,7 @@ const TicketTarget = ({
         setSubmittable(readerId !== "" && nextEpisodeId !== "");
       },
       onReaderChange: (nextReaderId) => {
-        setReaderId(nextReaderId);
+        setPickedReaderId(nextReaderId);
         setSubmittable(nextReaderId !== "" && episodeId !== "");
       },
       onRetryEpisodes: () => {

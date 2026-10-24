@@ -118,10 +118,13 @@ const existingTicketMessage = async (
   });
 };
 
-export const issueAccessTicketAction = async (
-  _prevState: IssueAccessTicketActionState,
+/**
+ * Issues the ticket the form describes. `{ locale }` once a ticket was issued,
+ * for the caller to word what follows in; otherwise the state the form shows.
+ */
+const issueTicketFromForm = async (
   formData: FormData
-): Promise<IssueAccessTicketActionState> => {
+): Promise<{ locale: Locale } | { state: IssueAccessTicketActionState }> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await issueTicketSchema(locale);
@@ -136,8 +139,10 @@ export const issueAccessTicketAction = async (
   );
   if (!parsed.success) {
     return {
-      message: toFormErrorMessage(parsed.error, { locale }),
-      ok: false,
+      state: {
+        message: toFormErrorMessage(parsed.error, { locale }),
+        ok: false,
+      },
     };
   }
 
@@ -156,8 +161,10 @@ export const issueAccessTicketAction = async (
 
   if (!result.ok) {
     return {
-      message: result.message,
-      ok: false,
+      state: {
+        message: result.message,
+        ok: false,
+      },
     };
   }
 
@@ -170,17 +177,49 @@ export const issueAccessTicketAction = async (
     // and a list cached before another operator issued it would not show it.
     updateTag(accessTicketsCacheTag(parsed.data.tenantId));
     return {
-      message: await existingTicketMessage(
-        result.ticket.publicId,
-        result.ticket.status,
-        locale
-      ),
-      ok: false,
+      state: {
+        message: await existingTicketMessage(
+          result.ticket.publicId,
+          result.ticket.status,
+          locale
+        ),
+        ok: false,
+      },
     };
   }
 
   updateTag(accessTicketsCacheTag(parsed.data.tenantId));
+  return { locale };
+};
+
+export const issueAccessTicketAction = async (
+  _prevState: IssueAccessTicketActionState,
+  formData: FormData
+): Promise<IssueAccessTicketActionState> => {
+  const outcome = await issueTicketFromForm(formData);
+  if ("state" in outcome) {
+    return outcome.state;
+  }
+
   redirect("/access-tickets?created=1");
+};
+
+/**
+ * Issues a ticket from a screen that stays where it is, such as the reader
+ * page: the ticket list it reads is refreshed, and success is reported in the
+ * state rather than by a redirect to the ticket list.
+ */
+export const issueAccessTicketInPlaceAction = async (
+  _prevState: IssueAccessTicketActionState,
+  formData: FormData
+): Promise<IssueAccessTicketActionState> => {
+  const outcome = await issueTicketFromForm(formData);
+  if ("state" in outcome) {
+    return outcome.state;
+  }
+
+  const t = await getMessagesFor(outcome.locale);
+  return { message: t("admin.access_tickets.issued"), ok: true };
 };
 
 export const listEpisodeOptionsAction = async (

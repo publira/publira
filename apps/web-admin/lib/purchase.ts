@@ -263,6 +263,80 @@ export const listPurchases = async (
     )
   );
 
+const listReaderPurchasesForSession = async (
+  tenantId: string,
+  locale: Locale,
+  readerId: string,
+  options: CursorPageOptions,
+  sessionId: string
+): Promise<CachedRead<ListPurchasesResult>> => {
+  "use cache: private";
+  cacheTag(purchasesCacheTag(tenantId));
+  cacheLife("minutes");
+
+  const t = await getMessagesFor(locale);
+  if (!sessionId) {
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      purchases: [],
+      requiresSignIn: true,
+    };
+  }
+
+  try {
+    const response = await apiClient.purchases.listReaderPurchases(
+      {
+        ...cursorPageRequest(options),
+        readerId,
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ...cursorPageTokens(response),
+      ok: true,
+      purchases: response.purchases.map(mapPurchase),
+    };
+  } catch (error) {
+    dropFailedCacheEntry();
+    return {
+      ...emptyCursorPageTokens,
+      message: rpcErrorMessage(error, t("admin.purchases.list_failed"), {
+        locale,
+      }),
+      ok: false,
+      purchases: [],
+      requiresSignIn: isUnauthenticatedError(error),
+      unexpected: rpcErrorDisposition(error) === "unexpected",
+    };
+  }
+};
+
+/**
+ * One page of one reader's purchases, newest first, in the server's keyset
+ * order. The reader is named by their primary key (`ReaderDetail.id`), not by
+ * the public ID the reader page's URL carries.
+ */
+export const listReaderPurchases = async (
+  tenantId: string,
+  locale: Locale,
+  readerId: string,
+  options: CursorPageOptions = {}
+): Promise<ListPurchasesResult> =>
+  settleCachedRead(
+    await listReaderPurchasesForSession(
+      tenantId,
+      locale,
+      readerId,
+      options,
+      await getAccessToken()
+    )
+  );
+
 const getPurchaseForSession = async (
   tenantId: string,
   purchaseId: string,
