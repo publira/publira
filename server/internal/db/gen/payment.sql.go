@@ -1107,43 +1107,48 @@ WHERE p.tenant_id = $1
         OR p.episode_id = $3::uuid
     )
     AND (
-        $4::text IS NULL
+        $4::uuid IS NULL
+        OR p.user_id = $4::uuid
+    )
+    AND (
+        $5::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM users u
             WHERE u.tenant_id = p.tenant_id
                 AND u.id = p.user_id
-                AND lower(u.email) = lower($4::text)
+                AND lower(u.email) = lower($5::text)
         )
-    )
-    AND (
-        $5::timestamptz IS NULL
-        OR p.purchased_at >= $5::timestamptz
     )
     AND (
         $6::timestamptz IS NULL
-        OR p.purchased_at < $6::timestamptz
+        OR p.purchased_at >= $6::timestamptz
     )
     AND (
-        $7::uuid IS NULL
+        $7::timestamptz IS NULL
+        OR p.purchased_at < $7::timestamptz
+    )
+    AND (
+        $8::uuid IS NULL
         OR (
-            $8::boolean
-            AND (p.purchased_at, p.id) >= ($9::timestamptz, $7::uuid)
+            $9::boolean
+            AND (p.purchased_at, p.id) >= ($10::timestamptz, $8::uuid)
         )
         OR (
-            NOT $8::boolean
-            AND (p.purchased_at, p.id) > ($9::timestamptz, $7::uuid)
+            NOT $9::boolean
+            AND (p.purchased_at, p.id) > ($10::timestamptz, $8::uuid)
         )
     )
 ORDER BY p.purchased_at ASC,
     p.id ASC
-LIMIT $10
+LIMIT $11
 `
 
 type ListPurchaseIDsForTenantAscParams struct {
 	TenantID          uuid.UUID      `json:"tenant_id"`
 	SeriesID          uuid.NullUUID  `json:"series_id"`
 	EpisodeID         uuid.NullUUID  `json:"episode_id"`
+	ReaderID          uuid.NullUUID  `json:"reader_id"`
 	ReaderEmail       sql.NullString `json:"reader_email"`
 	PurchasedFrom     sql.NullTime   `json:"purchased_from"`
 	PurchasedTo       sql.NullTime   `json:"purchased_to"`
@@ -1163,6 +1168,7 @@ func (q *Queries) ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurch
 		arg.TenantID,
 		arg.SeriesID,
 		arg.EpisodeID,
+		arg.ReaderID,
 		arg.ReaderEmail,
 		arg.PurchasedFrom,
 		arg.PurchasedTo,
@@ -1226,43 +1232,48 @@ WHERE p.tenant_id = $1
         OR p.episode_id = $3::uuid
     )
     AND (
-        $4::text IS NULL
+        $4::uuid IS NULL
+        OR p.user_id = $4::uuid
+    )
+    AND (
+        $5::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM users u
             WHERE u.tenant_id = p.tenant_id
                 AND u.id = p.user_id
-                AND lower(u.email) = lower($4::text)
+                AND lower(u.email) = lower($5::text)
         )
-    )
-    AND (
-        $5::timestamptz IS NULL
-        OR p.purchased_at >= $5::timestamptz
     )
     AND (
         $6::timestamptz IS NULL
-        OR p.purchased_at < $6::timestamptz
+        OR p.purchased_at >= $6::timestamptz
     )
     AND (
-        $7::uuid IS NULL
+        $7::timestamptz IS NULL
+        OR p.purchased_at < $7::timestamptz
+    )
+    AND (
+        $8::uuid IS NULL
         OR (
-            $8::boolean
-            AND (p.purchased_at, p.id) <= ($9::timestamptz, $7::uuid)
+            $9::boolean
+            AND (p.purchased_at, p.id) <= ($10::timestamptz, $8::uuid)
         )
         OR (
-            NOT $8::boolean
-            AND (p.purchased_at, p.id) < ($9::timestamptz, $7::uuid)
+            NOT $9::boolean
+            AND (p.purchased_at, p.id) < ($10::timestamptz, $8::uuid)
         )
     )
 ORDER BY p.purchased_at DESC,
     p.id DESC
-LIMIT $10
+LIMIT $11
 `
 
 type ListPurchaseIDsForTenantDescParams struct {
 	TenantID          uuid.UUID      `json:"tenant_id"`
 	SeriesID          uuid.NullUUID  `json:"series_id"`
 	EpisodeID         uuid.NullUUID  `json:"episode_id"`
+	ReaderID          uuid.NullUUID  `json:"reader_id"`
 	ReaderEmail       sql.NullString `json:"reader_email"`
 	PurchasedFrom     sql.NullTime   `json:"purchased_from"`
 	PurchasedTo       sql.NullTime   `json:"purchased_to"`
@@ -1279,16 +1290,18 @@ type ListPurchaseIDsForTenantDescRow struct {
 
 // The console's purchase list is (purchased_at, id) DESC. A forward page reads
 // ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
-// both over idx_purchases_tenant_purchased_at_id, and the handler puts the
-// ascending rows back into display order. id is a UUIDv7, so the order stays
-// unique when purchased_at ties. These read the keys alone, and
-// ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+// both over idx_purchases_tenant_purchased_at_id, or over
+// idx_purchases_tenant_user_purchased_at for one reader's purchases, and the
+// handler puts the ascending rows back into display order. id is a UUIDv7, so
+// the order stays unique when purchased_at ties. These read the keys alone,
+// and ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
 // proto/README.md.
 func (q *Queries) ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPurchaseIDsForTenantDesc,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.EpisodeID,
+		arg.ReaderID,
 		arg.ReaderEmail,
 		arg.PurchasedFrom,
 		arg.PurchasedTo,

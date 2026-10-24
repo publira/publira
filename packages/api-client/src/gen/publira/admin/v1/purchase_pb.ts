@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/purchase.proto.
  */
 export const file_publira_admin_v1_purchase: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL2FkbWluL3YxL3B1cmNoYXNlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIucECg1BZG1pblB1cmNoYXNlEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAUgASgJEhQKDHNlcmllc190aXRsZRgGIAEoCRIYChByZWFkZXJfcHVibGljX2lkGAcgASgJEhMKC3JlYWRlcl9uYW1lGAggASgJEhQKDHJlYWRlcl9lbWFpbBgJIAEoCRINCgVwcmljZRgKIAEoAxIQCghjdXJyZW5jeRgLIAEoCRIUCgxwdXJjaGFzZWRfYXQYDCABKAkSEgoKZXhwaXJlc19hdBgNIAEoCRIQCghwcm92aWRlchgOIAEoCRINCgVzdG9yZRgPIAEoCRIMCgR0ZXN0GBAgASgIEhcKD3JlZnVuZGVkX2Ftb3VudBgRIAEoAxITCgtyZWZ1bmRlZF9hdBgSIAEoCRISCgpyZXZva2VkX2F0GBMgASgJEkUKEXJldm9jYXRpb25fcmVhc29uGBQgASgOMioucHVibGlyYS5hZG1pbi52MS5QdXJjaGFzZVJldm9jYXRpb25SZWFzb24SEgoKcmVmdW5kYWJsZRgVIAEoCBIRCgl2b2x1bWVfaWQYFiABKAkSGAoQdm9sdW1lX3B1YmxpY19pZBgXIAEoCRIUCgx2b2x1bWVfdGl0bGUYGCABKAkSNQoNc2VyaWVzX2J1bmRsZRgZIAEoCzIeLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzQnVuZGxlIt4BChRMaXN0UHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgFIAEoCRIUCgxyZWFkZXJfZW1haWwYBiABKAkSFgoOcHVyY2hhc2VkX2Zyb20YByABKAkSFAoMcHVyY2hhc2VkX3RvGAggASgJIncKFUxpc3RQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJaChJHZXRQdXJjaGFzZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhMKC3B1cmNoYXNlX2lkGAIgASgJIkgKE0dldFB1cmNoYXNlUmVzcG9uc2USMQoIcHVyY2hhc2UYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2UibQoVUmVmdW5kUHVyY2hhc2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBITCgtwdXJjaGFzZV9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSwoWUmVmdW5kUHVyY2hhc2VSZXNwb25zZRIxCghwdXJjaGFzZRgBIAEoCzIfLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5QdXJjaGFzZSq7AQoYUHVyY2hhc2VSZXZvY2F0aW9uUmVhc29uEioKJlBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1VOU1BFQ0lGSUVEEAASJQohUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fUkVGVU5EEAESJgoiUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fRElTUFVURRACEiQKIFBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1NUQUZGEAMyvwIKFEFkbWluUHVyY2hhc2VTZXJ2aWNlEmIKDUxpc3RQdXJjaGFzZXMSJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RQdXJjaGFzZXNSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5MaXN0UHVyY2hhc2VzUmVzcG9uc2UiABJcCgtHZXRQdXJjaGFzZRIkLnB1YmxpcmEuYWRtaW4udjEuR2V0UHVyY2hhc2VSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5HZXRQdXJjaGFzZVJlc3BvbnNlIgASZQoOUmVmdW5kUHVyY2hhc2USJy5wdWJsaXJhLmFkbWluLnYxLlJlZnVuZFB1cmNoYXNlUmVxdWVzdBooLnB1YmxpcmEuYWRtaW4udjEuUmVmdW5kUHVyY2hhc2VSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("Ch9wdWJsaXJhL2FkbWluL3YxL3B1cmNoYXNlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIucECg1BZG1pblB1cmNoYXNlEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAUgASgJEhQKDHNlcmllc190aXRsZRgGIAEoCRIYChByZWFkZXJfcHVibGljX2lkGAcgASgJEhMKC3JlYWRlcl9uYW1lGAggASgJEhQKDHJlYWRlcl9lbWFpbBgJIAEoCRINCgVwcmljZRgKIAEoAxIQCghjdXJyZW5jeRgLIAEoCRIUCgxwdXJjaGFzZWRfYXQYDCABKAkSEgoKZXhwaXJlc19hdBgNIAEoCRIQCghwcm92aWRlchgOIAEoCRINCgVzdG9yZRgPIAEoCRIMCgR0ZXN0GBAgASgIEhcKD3JlZnVuZGVkX2Ftb3VudBgRIAEoAxITCgtyZWZ1bmRlZF9hdBgSIAEoCRISCgpyZXZva2VkX2F0GBMgASgJEkUKEXJldm9jYXRpb25fcmVhc29uGBQgASgOMioucHVibGlyYS5hZG1pbi52MS5QdXJjaGFzZVJldm9jYXRpb25SZWFzb24SEgoKcmVmdW5kYWJsZRgVIAEoCBIRCgl2b2x1bWVfaWQYFiABKAkSGAoQdm9sdW1lX3B1YmxpY19pZBgXIAEoCRIUCgx2b2x1bWVfdGl0bGUYGCABKAkSNQoNc2VyaWVzX2J1bmRsZRgZIAEoCzIeLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzQnVuZGxlIt4BChRMaXN0UHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgFIAEoCRIUCgxyZWFkZXJfZW1haWwYBiABKAkSFgoOcHVyY2hhc2VkX2Zyb20YByABKAkSFAoMcHVyY2hhc2VkX3RvGAggASgJIncKFUxpc3RQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ+ChpMaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcmVhZGVyX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIn0KG0xpc3RSZWFkZXJQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJaChJHZXRQdXJjaGFzZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhMKC3B1cmNoYXNlX2lkGAIgASgJIkgKE0dldFB1cmNoYXNlUmVzcG9uc2USMQoIcHVyY2hhc2UYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2UibQoVUmVmdW5kUHVyY2hhc2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBITCgtwdXJjaGFzZV9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSwoWUmVmdW5kUHVyY2hhc2VSZXNwb25zZRIxCghwdXJjaGFzZRgBIAEoCzIfLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5QdXJjaGFzZSq7AQoYUHVyY2hhc2VSZXZvY2F0aW9uUmVhc29uEioKJlBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1VOU1BFQ0lGSUVEEAASJQohUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fUkVGVU5EEAESJgoiUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fRElTUFVURRACEiQKIFBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1NUQUZGEAMytQMKFEFkbWluUHVyY2hhc2VTZXJ2aWNlEmIKDUxpc3RQdXJjaGFzZXMSJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RQdXJjaGFzZXNSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5MaXN0UHVyY2hhc2VzUmVzcG9uc2UiABJ0ChNMaXN0UmVhZGVyUHVyY2hhc2VzEiwucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlclB1cmNoYXNlc1Jlc3BvbnNlIgASXAoLR2V0UHVyY2hhc2USJC5wdWJsaXJhLmFkbWluLnYxLkdldFB1cmNoYXNlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuR2V0UHVyY2hhc2VSZXNwb25zZSIAEmUKDlJlZnVuZFB1cmNoYXNlEicucHVibGlyYS5hZG1pbi52MS5SZWZ1bmRQdXJjaGFzZVJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLlJlZnVuZFB1cmNoYXNlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * A reader's purchase of one episode, of one volume, or of the rest of a
@@ -296,6 +296,79 @@ export const ListPurchasesResponseSchema: GenMessage<ListPurchasesResponse> = /*
   messageDesc(file_publira_admin_v1_purchase, 2);
 
 /**
+ * Cursor pagination, newest purchase first. Field shape and token rules:
+ * proto/README.md.
+ *
+ * @generated from message publira.admin.v1.ListReaderPurchasesRequest
+ */
+export type ListReaderPurchasesRequest = Message<"publira.admin.v1.ListReaderPurchasesRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * Required. The reader whose purchases to list, named by AdminReader.id.
+   *
+   * @generated from field: string reader_id = 2;
+   */
+  readerId: string;
+
+  /**
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 3;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page. A token
+   * issued for another reader is invalid_argument.
+   *
+   * @generated from field: string token = 4;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListReaderPurchasesRequest.
+ * Use `create(ListReaderPurchasesRequestSchema)` to create a new message.
+ */
+export const ListReaderPurchasesRequestSchema: GenMessage<ListReaderPurchasesRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_purchase, 3);
+
+/**
+ * @generated from message publira.admin.v1.ListReaderPurchasesResponse
+ */
+export type ListReaderPurchasesResponse = Message<"publira.admin.v1.ListReaderPurchasesResponse"> & {
+  /**
+   * @generated from field: repeated publira.admin.v1.AdminPurchase purchases = 1;
+   */
+  purchases: AdminPurchase[];
+
+  /**
+   * Token for the previous page. Empty on the first page.
+   *
+   * @generated from field: string previous_token = 2;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page.
+   *
+   * @generated from field: string next_token = 3;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ListReaderPurchasesResponse.
+ * Use `create(ListReaderPurchasesResponseSchema)` to create a new message.
+ */
+export const ListReaderPurchasesResponseSchema: GenMessage<ListReaderPurchasesResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_purchase, 4);
+
+/**
  * @generated from message publira.admin.v1.GetPurchaseRequest
  */
 export type GetPurchaseRequest = Message<"publira.admin.v1.GetPurchaseRequest"> & {
@@ -315,7 +388,7 @@ export type GetPurchaseRequest = Message<"publira.admin.v1.GetPurchaseRequest"> 
  * Use `create(GetPurchaseRequestSchema)` to create a new message.
  */
 export const GetPurchaseRequestSchema: GenMessage<GetPurchaseRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_purchase, 3);
+  messageDesc(file_publira_admin_v1_purchase, 5);
 
 /**
  * @generated from message publira.admin.v1.GetPurchaseResponse
@@ -332,7 +405,7 @@ export type GetPurchaseResponse = Message<"publira.admin.v1.GetPurchaseResponse"
  * Use `create(GetPurchaseResponseSchema)` to create a new message.
  */
 export const GetPurchaseResponseSchema: GenMessage<GetPurchaseResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_purchase, 4);
+  messageDesc(file_publira_admin_v1_purchase, 6);
 
 /**
  * @generated from message publira.admin.v1.RefundPurchaseRequest
@@ -363,7 +436,7 @@ export type RefundPurchaseRequest = Message<"publira.admin.v1.RefundPurchaseRequ
  * Use `create(RefundPurchaseRequestSchema)` to create a new message.
  */
 export const RefundPurchaseRequestSchema: GenMessage<RefundPurchaseRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_purchase, 5);
+  messageDesc(file_publira_admin_v1_purchase, 7);
 
 /**
  * @generated from message publira.admin.v1.RefundPurchaseResponse
@@ -380,7 +453,7 @@ export type RefundPurchaseResponse = Message<"publira.admin.v1.RefundPurchaseRes
  * Use `create(RefundPurchaseResponseSchema)` to create a new message.
  */
 export const RefundPurchaseResponseSchema: GenMessage<RefundPurchaseResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_purchase, 6);
+  messageDesc(file_publira_admin_v1_purchase, 8);
 
 /**
  * Why a purchase stopped opening its episode.
@@ -436,6 +509,21 @@ export const AdminPurchaseService: GenService<{
     methodKind: "unary";
     input: typeof ListPurchasesRequestSchema;
     output: typeof ListPurchasesResponseSchema;
+  },
+  /**
+   * Lists one reader's purchases, as ListPurchases lists the tenant's.
+   * not_found for a reader of another tenant, as GetReader answers it, and
+   * invalid_argument with a field violation on reader_id for an empty one or
+   * one that is not a UUID.
+   *
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminPurchaseService.ListReaderPurchases
+   */
+  listReaderPurchases: {
+    methodKind: "unary";
+    input: typeof ListReaderPurchasesRequestSchema;
+    output: typeof ListReaderPurchasesResponseSchema;
   },
   /**
    * Minimum role: tenant_admin.

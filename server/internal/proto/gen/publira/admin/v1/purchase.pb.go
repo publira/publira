@@ -516,6 +516,142 @@ func (x *ListPurchasesResponse) GetNextToken() string {
 	return ""
 }
 
+// Cursor pagination, newest purchase first. Field shape and token rules:
+// proto/README.md.
+type ListReaderPurchasesRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Required. The reader whose purchases to list, named by AdminReader.id.
+	ReaderId string `protobuf:"bytes,2,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page. A token
+	// issued for another reader is invalid_argument.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReaderPurchasesRequest) Reset() {
+	*x = ListReaderPurchasesRequest{}
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReaderPurchasesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReaderPurchasesRequest) ProtoMessage() {}
+
+func (x *ListReaderPurchasesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReaderPurchasesRequest.ProtoReflect.Descriptor instead.
+func (*ListReaderPurchasesRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ListReaderPurchasesRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ListReaderPurchasesRequest) GetReaderId() string {
+	if x != nil {
+		return x.ReaderId
+	}
+	return ""
+}
+
+func (x *ListReaderPurchasesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListReaderPurchasesRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type ListReaderPurchasesResponse struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Purchases []*AdminPurchase       `protobuf:"bytes,1,rep,name=purchases,proto3" json:"purchases,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReaderPurchasesResponse) Reset() {
+	*x = ListReaderPurchasesResponse{}
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReaderPurchasesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReaderPurchasesResponse) ProtoMessage() {}
+
+func (x *ListReaderPurchasesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReaderPurchasesResponse.ProtoReflect.Descriptor instead.
+func (*ListReaderPurchasesResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListReaderPurchasesResponse) GetPurchases() []*AdminPurchase {
+	if x != nil {
+		return x.Purchases
+	}
+	return nil
+}
+
+func (x *ListReaderPurchasesResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListReaderPurchasesResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
+}
+
 type GetPurchaseRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -526,7 +662,7 @@ type GetPurchaseRequest struct {
 
 func (x *GetPurchaseRequest) Reset() {
 	*x = GetPurchaseRequest{}
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -538,7 +674,7 @@ func (x *GetPurchaseRequest) String() string {
 func (*GetPurchaseRequest) ProtoMessage() {}
 
 func (x *GetPurchaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -551,7 +687,7 @@ func (x *GetPurchaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPurchaseRequest.ProtoReflect.Descriptor instead.
 func (*GetPurchaseRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{3}
+	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetPurchaseRequest) GetTenant() *v1.TenantContext {
@@ -577,7 +713,7 @@ type GetPurchaseResponse struct {
 
 func (x *GetPurchaseResponse) Reset() {
 	*x = GetPurchaseResponse{}
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -589,7 +725,7 @@ func (x *GetPurchaseResponse) String() string {
 func (*GetPurchaseResponse) ProtoMessage() {}
 
 func (x *GetPurchaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,7 +738,7 @@ func (x *GetPurchaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPurchaseResponse.ProtoReflect.Descriptor instead.
 func (*GetPurchaseResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{4}
+	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetPurchaseResponse) GetPurchase() *AdminPurchase {
@@ -626,7 +762,7 @@ type RefundPurchaseRequest struct {
 
 func (x *RefundPurchaseRequest) Reset() {
 	*x = RefundPurchaseRequest{}
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -638,7 +774,7 @@ func (x *RefundPurchaseRequest) String() string {
 func (*RefundPurchaseRequest) ProtoMessage() {}
 
 func (x *RefundPurchaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -651,7 +787,7 @@ func (x *RefundPurchaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefundPurchaseRequest.ProtoReflect.Descriptor instead.
 func (*RefundPurchaseRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RefundPurchaseRequest) GetTenant() *v1.TenantContext {
@@ -684,7 +820,7 @@ type RefundPurchaseResponse struct {
 
 func (x *RefundPurchaseResponse) Reset() {
 	*x = RefundPurchaseResponse{}
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -696,7 +832,7 @@ func (x *RefundPurchaseResponse) String() string {
 func (*RefundPurchaseResponse) ProtoMessage() {}
 
 func (x *RefundPurchaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_purchase_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_purchase_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -709,7 +845,7 @@ func (x *RefundPurchaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefundPurchaseResponse.ProtoReflect.Descriptor instead.
 func (*RefundPurchaseResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RefundPurchaseResponse) GetPurchase() *AdminPurchase {
@@ -771,6 +907,16 @@ const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\tpurchases\x18\x01 \x03(\v2\x1f.publira.admin.v1.AdminPurchaseR\tpurchases\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x9e\x01\n" +
+	"\x1aListReaderPurchasesRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\treader_id\x18\x02 \x01(\tR\breaderId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\"\xa2\x01\n" +
+	"\x1bListReaderPurchasesResponse\x12=\n" +
+	"\tpurchases\x18\x01 \x03(\v2\x1f.publira.admin.v1.AdminPurchaseR\tpurchases\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
 	"next_token\x18\x03 \x01(\tR\tnextToken\"n\n" +
 	"\x12GetPurchaseRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1f\n" +
@@ -789,9 +935,10 @@ const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"&PURCHASE_REVOCATION_REASON_UNSPECIFIED\x10\x00\x12%\n" +
 	"!PURCHASE_REVOCATION_REASON_REFUND\x10\x01\x12&\n" +
 	"\"PURCHASE_REVOCATION_REASON_DISPUTE\x10\x02\x12$\n" +
-	" PURCHASE_REVOCATION_REASON_STAFF\x10\x032\xbf\x02\n" +
+	" PURCHASE_REVOCATION_REASON_STAFF\x10\x032\xb5\x03\n" +
 	"\x14AdminPurchaseService\x12b\n" +
-	"\rListPurchases\x12&.publira.admin.v1.ListPurchasesRequest\x1a'.publira.admin.v1.ListPurchasesResponse\"\x00\x12\\\n" +
+	"\rListPurchases\x12&.publira.admin.v1.ListPurchasesRequest\x1a'.publira.admin.v1.ListPurchasesResponse\"\x00\x12t\n" +
+	"\x13ListReaderPurchases\x12,.publira.admin.v1.ListReaderPurchasesRequest\x1a-.publira.admin.v1.ListReaderPurchasesResponse\"\x00\x12\\\n" +
 	"\vGetPurchase\x12$.publira.admin.v1.GetPurchaseRequest\x1a%.publira.admin.v1.GetPurchaseResponse\"\x00\x12e\n" +
 	"\x0eRefundPurchase\x12'.publira.admin.v1.RefundPurchaseRequest\x1a(.publira.admin.v1.RefundPurchaseResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
@@ -808,39 +955,45 @@ func file_publira_admin_v1_purchase_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_purchase_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_publira_admin_v1_purchase_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_publira_admin_v1_purchase_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_publira_admin_v1_purchase_proto_goTypes = []any{
-	(PurchaseRevocationReason)(0),  // 0: publira.admin.v1.PurchaseRevocationReason
-	(*AdminPurchase)(nil),          // 1: publira.admin.v1.AdminPurchase
-	(*ListPurchasesRequest)(nil),   // 2: publira.admin.v1.ListPurchasesRequest
-	(*ListPurchasesResponse)(nil),  // 3: publira.admin.v1.ListPurchasesResponse
-	(*GetPurchaseRequest)(nil),     // 4: publira.admin.v1.GetPurchaseRequest
-	(*GetPurchaseResponse)(nil),    // 5: publira.admin.v1.GetPurchaseResponse
-	(*RefundPurchaseRequest)(nil),  // 6: publira.admin.v1.RefundPurchaseRequest
-	(*RefundPurchaseResponse)(nil), // 7: publira.admin.v1.RefundPurchaseResponse
-	(*v1.SeriesBundle)(nil),        // 8: publira.types.v1.SeriesBundle
-	(*v1.TenantContext)(nil),       // 9: publira.types.v1.TenantContext
+	(PurchaseRevocationReason)(0),       // 0: publira.admin.v1.PurchaseRevocationReason
+	(*AdminPurchase)(nil),               // 1: publira.admin.v1.AdminPurchase
+	(*ListPurchasesRequest)(nil),        // 2: publira.admin.v1.ListPurchasesRequest
+	(*ListPurchasesResponse)(nil),       // 3: publira.admin.v1.ListPurchasesResponse
+	(*ListReaderPurchasesRequest)(nil),  // 4: publira.admin.v1.ListReaderPurchasesRequest
+	(*ListReaderPurchasesResponse)(nil), // 5: publira.admin.v1.ListReaderPurchasesResponse
+	(*GetPurchaseRequest)(nil),          // 6: publira.admin.v1.GetPurchaseRequest
+	(*GetPurchaseResponse)(nil),         // 7: publira.admin.v1.GetPurchaseResponse
+	(*RefundPurchaseRequest)(nil),       // 8: publira.admin.v1.RefundPurchaseRequest
+	(*RefundPurchaseResponse)(nil),      // 9: publira.admin.v1.RefundPurchaseResponse
+	(*v1.SeriesBundle)(nil),             // 10: publira.types.v1.SeriesBundle
+	(*v1.TenantContext)(nil),            // 11: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_purchase_proto_depIdxs = []int32{
 	0,  // 0: publira.admin.v1.AdminPurchase.revocation_reason:type_name -> publira.admin.v1.PurchaseRevocationReason
-	8,  // 1: publira.admin.v1.AdminPurchase.series_bundle:type_name -> publira.types.v1.SeriesBundle
-	9,  // 2: publira.admin.v1.ListPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10, // 1: publira.admin.v1.AdminPurchase.series_bundle:type_name -> publira.types.v1.SeriesBundle
+	11, // 2: publira.admin.v1.ListPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	1,  // 3: publira.admin.v1.ListPurchasesResponse.purchases:type_name -> publira.admin.v1.AdminPurchase
-	9,  // 4: publira.admin.v1.GetPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 5: publira.admin.v1.GetPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
-	9,  // 6: publira.admin.v1.RefundPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 7: publira.admin.v1.RefundPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
-	2,  // 8: publira.admin.v1.AdminPurchaseService.ListPurchases:input_type -> publira.admin.v1.ListPurchasesRequest
-	4,  // 9: publira.admin.v1.AdminPurchaseService.GetPurchase:input_type -> publira.admin.v1.GetPurchaseRequest
-	6,  // 10: publira.admin.v1.AdminPurchaseService.RefundPurchase:input_type -> publira.admin.v1.RefundPurchaseRequest
-	3,  // 11: publira.admin.v1.AdminPurchaseService.ListPurchases:output_type -> publira.admin.v1.ListPurchasesResponse
-	5,  // 12: publira.admin.v1.AdminPurchaseService.GetPurchase:output_type -> publira.admin.v1.GetPurchaseResponse
-	7,  // 13: publira.admin.v1.AdminPurchaseService.RefundPurchase:output_type -> publira.admin.v1.RefundPurchaseResponse
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	11, // 4: publira.admin.v1.ListReaderPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 5: publira.admin.v1.ListReaderPurchasesResponse.purchases:type_name -> publira.admin.v1.AdminPurchase
+	11, // 6: publira.admin.v1.GetPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 7: publira.admin.v1.GetPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
+	11, // 8: publira.admin.v1.RefundPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 9: publira.admin.v1.RefundPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
+	2,  // 10: publira.admin.v1.AdminPurchaseService.ListPurchases:input_type -> publira.admin.v1.ListPurchasesRequest
+	4,  // 11: publira.admin.v1.AdminPurchaseService.ListReaderPurchases:input_type -> publira.admin.v1.ListReaderPurchasesRequest
+	6,  // 12: publira.admin.v1.AdminPurchaseService.GetPurchase:input_type -> publira.admin.v1.GetPurchaseRequest
+	8,  // 13: publira.admin.v1.AdminPurchaseService.RefundPurchase:input_type -> publira.admin.v1.RefundPurchaseRequest
+	3,  // 14: publira.admin.v1.AdminPurchaseService.ListPurchases:output_type -> publira.admin.v1.ListPurchasesResponse
+	5,  // 15: publira.admin.v1.AdminPurchaseService.ListReaderPurchases:output_type -> publira.admin.v1.ListReaderPurchasesResponse
+	7,  // 16: publira.admin.v1.AdminPurchaseService.GetPurchase:output_type -> publira.admin.v1.GetPurchaseResponse
+	9,  // 17: publira.admin.v1.AdminPurchaseService.RefundPurchase:output_type -> publira.admin.v1.RefundPurchaseResponse
+	14, // [14:18] is the sub-list for method output_type
+	10, // [10:14] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_purchase_proto_init() }
@@ -854,7 +1007,7 @@ func file_publira_admin_v1_purchase_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_purchase_proto_rawDesc), len(file_publira_admin_v1_purchase_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

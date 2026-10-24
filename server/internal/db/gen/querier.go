@@ -2275,10 +2275,11 @@ type Querier interface {
 	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
 	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
 	// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
-	// both over idx_purchases_tenant_purchased_at_id, and the handler puts the
-	// ascending rows back into display order. id is a UUIDv7, so the order stays
-	// unique when purchased_at ties. These read the keys alone, and
-	// ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+	// both over idx_purchases_tenant_purchased_at_id, or over
+	// idx_purchases_tenant_user_purchased_at for one reader's purchases, and the
+	// handler puts the ascending rows back into display order. id is a UUIDv7, so
+	// the order stays unique when purchased_at ties. These read the keys alone,
+	// and ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
 	// proto/README.md.
 	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
 	// What the console shows of each purchase named, in no particular order: the

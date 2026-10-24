@@ -104,6 +104,27 @@ message ListPurchasesResponse {
   string next_token = 3;
 }
 
+// Cursor pagination, newest purchase first. Field shape and token rules:
+// proto/README.md.
+message ListReaderPurchasesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required. The reader whose purchases to list, named by AdminReader.id.
+  string reader_id = 2;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 3;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // issued for another reader is invalid_argument.
+  string token = 4;
+}
+
+message ListReaderPurchasesResponse {
+  repeated AdminPurchase purchases = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
 message GetPurchaseRequest {
   publira.types.v1.TenantContext tenant = 1;
   string purchase_id = 2;
@@ -129,6 +150,13 @@ message RefundPurchaseResponse {
 service AdminPurchaseService {
   // Minimum role: tenant_admin.
   rpc ListPurchases(ListPurchasesRequest) returns (ListPurchasesResponse) {}
+  // Lists one reader's purchases, as ListPurchases lists the tenant's.
+  // not_found for a reader of another tenant, as GetReader answers it, and
+  // invalid_argument with a field violation on reader_id for an empty one or
+  // one that is not a UUID.
+  //
+  // Minimum role: tenant_admin.
+  rpc ListReaderPurchases(ListReaderPurchasesRequest) returns (ListReaderPurchasesResponse) {}
   // Minimum role: tenant_admin.
   rpc GetPurchase(GetPurchaseRequest) returns (GetPurchaseResponse) {}
   // Asks the provider the reader paid through to refund whatever of the
