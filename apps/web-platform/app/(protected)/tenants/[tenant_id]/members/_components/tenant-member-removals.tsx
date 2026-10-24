@@ -13,7 +13,7 @@ const ReportRemovalContext = createContext<
  * Where the members list says a removal went through. The removed row leaves
  * the list with its form, so the row cannot carry that message itself.
  */
-export const TenantMemberRemovals = ({ children }: { children: ReactNode }) => {
+const TenantMemberRemovals = ({ children }: { children: ReactNode }) => {
   const [message, setMessage] = useState<string | null>(null);
 
   return (
@@ -28,7 +28,7 @@ export const TenantMemberRemovals = ({ children }: { children: ReactNode }) => {
  * Hands a successful removal's message to `TenantMemberRemovals`; a refused one
  * stays on its row, and clears the last success so the two do not disagree.
  */
-export const ReportTenantMemberRemoval = () => {
+const TenantMemberRemovalsReport = () => {
   const report = use(ReportRemovalContext);
   ActionForm.useSettled((state) => {
     report?.(state?.ok ? state.message : null);
@@ -36,3 +36,5 @@ export const ReportTenantMemberRemoval = () => {
 
   return null;
 };
+
+export { TenantMemberRemovals as Root, TenantMemberRemovalsReport as Report };

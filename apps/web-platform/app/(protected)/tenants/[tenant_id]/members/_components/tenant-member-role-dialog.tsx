@@ -10,11 +10,7 @@ const SetRoleDialogOpenContext = createContext<
 >(null);
 
 /** The dialog a member's role is changed in; its form closes it on success. */
-export const TenantMemberRoleDialog = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const TenantMemberRoleDialog = ({ children }: { children: ReactNode }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -30,7 +26,7 @@ export const TenantMemberRoleDialog = ({
  * Closes the surrounding `TenantMemberRoleDialog` once the form it sits in
  * saves the role: the form has nothing left to show.
  */
-export const CloseTenantMemberRoleDialogOnSuccess = () => {
+const TenantMemberRoleDialogCloseOnSuccess = () => {
   const setOpen = use(SetRoleDialogOpenContext);
   ActionForm.useSettled((state) => {
     if (state?.ok) {
@@ -39,4 +35,9 @@ export const CloseTenantMemberRoleDialogOnSuccess = () => {
   });
 
   return null;
+};
+
+export {
+  TenantMemberRoleDialog as Root,
+  TenantMemberRoleDialogCloseOnSuccess as CloseOnSuccess,
 };

@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -5,15 +6,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-} from "#components/platform-page";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
@@ -27,34 +19,34 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const OperatorNewPage = () => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-44" />}>
             <Message message="platform.operators.add_title" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
             <Message message="platform.operators.add_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-      <PlatformPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/operators" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="platform.common.back_to_list" />
           </Suspense>
         </LinkButton>
-      </PlatformPageActions>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <Suspense fallback={<Skeleton className="h-48 w-full" />}>
         <CreateOperatorForm />
       </Suspense>
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default OperatorNewPage;

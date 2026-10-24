@@ -20,23 +20,7 @@ import {
 import { getOperatorRoleLabel } from "../lib/operator-labels";
 import { PlatformLocaleSwitcher } from "./locale-switcher";
 import { Message } from "./message";
-import {
-  NotificationBell,
-  NotificationBellContent,
-  NotificationBellEmpty,
-  NotificationBellEmptyDescription,
-  NotificationBellEmptyTitle,
-  NotificationBellError,
-  NotificationBellHeader,
-  NotificationBellItem,
-  NotificationBellItemDescription,
-  NotificationBellItemState,
-  NotificationBellItemTitle,
-  NotificationBellList,
-  NotificationBellMore,
-  NotificationBellSkeleton,
-  NotificationBellTrigger,
-} from "./notification-bell";
+import * as NotificationBell from "./notification-bell";
 import { NotificationBellErrorBoundary } from "./notification-bell-error-boundary";
 import { PlatformNavigation } from "./platform-navigation";
 
@@ -109,40 +93,40 @@ export const PlatformNotificationBell = async () => {
         })
       : t("platform.shell.notifications_none");
   let notificationContent = (
-    <NotificationBellError>
+    <NotificationBell.Error>
       <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
         <Message message="platform.notifications.list_error" />
       </Suspense>
-    </NotificationBellError>
+    </NotificationBell.Error>
   );
 
   if (list.ok && list.notifications.length === 0) {
     notificationContent = (
-      <NotificationBellEmpty>
-        <NotificationBellEmptyTitle>
+      <NotificationBell.Empty>
+        <NotificationBell.EmptyTitle>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.notifications.empty_title" />
           </Suspense>
-        </NotificationBellEmptyTitle>
-        <NotificationBellEmptyDescription>
+        </NotificationBell.EmptyTitle>
+        <NotificationBell.EmptyDescription>
           <Suspense fallback={<SkeletonLine className="mt-1 h-4 w-56" />}>
             <Message message="platform.notifications.empty_description" />
           </Suspense>
-        </NotificationBellEmptyDescription>
-      </NotificationBellEmpty>
+        </NotificationBell.EmptyDescription>
+      </NotificationBell.Empty>
     );
   }
 
   if (list.ok && list.notifications.length > 0) {
     notificationContent = (
-      <NotificationBellList>
+      <NotificationBell.List>
         {list.notifications.map((notification) => (
-          <NotificationBellItem
+          <NotificationBell.Item
             href={notification.href}
             isRead={notification.isRead}
             key={notification.id}
           >
-            <NotificationBellItemState>
+            <NotificationBell.ItemState>
               <Suspense fallback={null}>
                 {notification.isRead ? (
                   <Message message="platform.notifications.read" />
@@ -150,38 +134,38 @@ export const PlatformNotificationBell = async () => {
                   <Message message="platform.notifications.unread" />
                 )}
               </Suspense>
-            </NotificationBellItemState>
-            <NotificationBellItemTitle>
+            </NotificationBell.ItemState>
+            <NotificationBell.ItemTitle>
               {notification.title}
-            </NotificationBellItemTitle>
-            <NotificationBellItemDescription>
+            </NotificationBell.ItemTitle>
+            <NotificationBell.ItemDescription>
               {notification.description}
-            </NotificationBellItemDescription>
-          </NotificationBellItem>
+            </NotificationBell.ItemDescription>
+          </NotificationBell.Item>
         ))}
-      </NotificationBellList>
+      </NotificationBell.List>
     );
   }
 
   return (
-    <NotificationBell>
-      <NotificationBellTrigger unreadCount={unread.unreadCount}>
+    <NotificationBell.Root>
+      <NotificationBell.Trigger unreadCount={unread.unreadCount}>
         {ariaLabel}
-      </NotificationBellTrigger>
-      <NotificationBellContent>
-        <NotificationBellHeader unreadCount={unread.unreadCount}>
+      </NotificationBell.Trigger>
+      <NotificationBell.Content>
+        <NotificationBell.Header unreadCount={unread.unreadCount}>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.notifications.title" />
           </Suspense>
-        </NotificationBellHeader>
+        </NotificationBell.Header>
         {notificationContent}
-        <NotificationBellMore href="/notifications">
+        <NotificationBell.More href="/notifications">
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="platform.notifications.menu_more" />
           </Suspense>
-        </NotificationBellMore>
-      </NotificationBellContent>
-    </NotificationBell>
+        </NotificationBell.More>
+      </NotificationBell.Content>
+    </NotificationBell.Root>
   );
 };
 
@@ -240,7 +224,7 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
             <PlatformLocaleSwitcher />
           </Suspense>
           <NotificationBellErrorBoundary>
-            <Suspense fallback={<NotificationBellSkeleton />}>
+            <Suspense fallback={<NotificationBell.Skeleton />}>
               <PlatformNotificationBell />
             </Suspense>
           </NotificationBellErrorBoundary>

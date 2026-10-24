@@ -23,7 +23,7 @@ const StartMfaEnrollmentContext =
  * then `confirm`. The confirm step is a form of its own, so the secret the
  * start step returned is held here rather than in either form.
  */
-export const MfaEnrollment = ({
+const MfaEnrollment = ({
   confirm,
   start,
 }: {
@@ -44,7 +44,7 @@ export const MfaEnrollment = ({
 };
 
 /** Moves `MfaEnrollment` on to its confirm step once the start form succeeds. */
-export const MfaEnrollmentStarted = () => {
+const MfaEnrollmentStarted = () => {
   const start = use(StartMfaEnrollmentContext);
   ActionForm.useSettled<NonNullable<MfaEnrollmentStartState>>((state) => {
     if (state?.ok) {
@@ -56,7 +56,7 @@ export const MfaEnrollmentStarted = () => {
 };
 
 /** The started enrollment's secret as a code to scan. */
-export const MfaEnrollmentQrCode = ({ label }: { label: string }) => {
+const MfaEnrollmentQrCode = ({ label }: { label: string }) => {
   const enrollment = use(MfaEnrollmentContext);
 
   return enrollment ? (
@@ -73,7 +73,7 @@ export const MfaEnrollmentQrCode = ({ label }: { label: string }) => {
  * by hand when the QR code cannot be scanned, so it is set in the monospace
  * face that keeps its ambiguous characters apart.
  */
-export const MfaEnrollmentSecretText = () => {
+const MfaEnrollmentSecretText = () => {
   const enrollment = use(MfaEnrollmentContext);
 
   return (
@@ -81,4 +81,11 @@ export const MfaEnrollmentSecretText = () => {
       {enrollment?.secret}
     </code>
   );
+};
+
+export {
+  MfaEnrollment as Root,
+  MfaEnrollmentQrCode as QrCode,
+  MfaEnrollmentSecretText as SecretText,
+  MfaEnrollmentStarted as Started,
 };

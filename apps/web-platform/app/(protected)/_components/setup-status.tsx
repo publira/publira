@@ -1,17 +1,11 @@
 import { getLocaleLabel } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
   emailConfigurationState,
@@ -405,21 +399,21 @@ const PoliciesRow = async () => {
  * a way into the screen that configures it.
  */
 export const SetupStatusSection = () => (
-  <PlatformSection>
-    <PlatformSectionHeader>
-      <PlatformSectionHeading>
-        <PlatformSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
             <Message message="platform.configuration.title" />
           </Suspense>
-        </PlatformSectionTitle>
-        <PlatformSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
             <Message message="platform.configuration.description" />
           </Suspense>
-        </PlatformSectionDescription>
-      </PlatformSectionHeading>
-    </PlatformSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <Suspense fallback={<Skeleton className="h-9 w-full" />}>
       <ConfigurationSummary />
     </Suspense>
@@ -465,5 +459,5 @@ export const SetupStatusSection = () => (
         </Suspense>
       </Table.Body>
     </Table.Root>
-  </PlatformSection>
+  </ConsoleSection.Root>
 );

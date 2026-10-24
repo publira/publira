@@ -1,17 +1,10 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-  PlatformSection,
-} from "#components/platform-page";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -32,16 +25,16 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 const SectionsSkeleton = () => (
   <>
-    <PlatformSection>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-16 w-full" />
-    </PlatformSection>
-    <PlatformSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-36 w-full" />
       <Skeleton className="h-9 w-full" />
       <Skeleton className="h-9 w-40" />
-    </PlatformSection>
+    </ConsoleSection.Root>
   </>
 );
 
@@ -78,27 +71,27 @@ const SearchSettingsSections = async () => {
 };
 
 const PlatformSearchSettingsPage = () => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
             <Message message="platform.search.heading" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="platform.search.page_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <Suspense fallback={<SectionsSkeleton />}>
         <SearchSettingsSections />
       </Suspense>
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default PlatformSearchSettingsPage;

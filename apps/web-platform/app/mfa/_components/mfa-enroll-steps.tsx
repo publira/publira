@@ -25,7 +25,7 @@ const SignedInContext = createContext(false);
  * here rather than in the form. A challenge spent with no answer held here
  * belongs to an earlier visit, so the login goes on to `nextPath`.
  */
-export const MfaEnrollSteps = ({
+const MfaEnrollSteps = ({
   done,
   enroll,
   finished,
@@ -57,7 +57,7 @@ export const MfaEnrollSteps = ({
 };
 
 /** Moves `MfaEnrollSteps` on to `done` once the confirm form succeeds. */
-export const MfaEnrollmentConfirmed = () => {
+const MfaEnrollStepsConfirmed = () => {
   const confirm = use(ConfirmMfaEnrollmentContext);
   ActionForm.useSettled<NonNullable<MfaEnrollmentConfirmState>>((state) => {
     if (state?.ok) {
@@ -77,7 +77,7 @@ export const MfaEnrollmentConfirmed = () => {
  * leaves by a document navigation so the router does not keep this page, and
  * the recovery codes in its state, to show again on Back.
  */
-export const MfaEnrollDoneLink = ({
+const MfaEnrollStepsDoneLink = ({
   nextPath,
   signedIn,
   signedOut,
@@ -96,4 +96,10 @@ export const MfaEnrollDoneLink = ({
       {isSignedIn ? signedIn : signedOut}
     </LinkButton>
   );
+};
+
+export {
+  MfaEnrollSteps as Root,
+  MfaEnrollStepsConfirmed as Confirmed,
+  MfaEnrollStepsDoneLink as DoneLink,
 };

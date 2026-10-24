@@ -1,16 +1,10 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-} from "#components/platform-page";
 
 /**
  * 404 for everything under the signed-in platform console. The tenant /
@@ -53,9 +47,9 @@ import {
  * outer boundary.
  */
 const NotFound = () => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
         {/* The one heading this screen leads with is set in the serif face:
             a 404 is a statement, not one of the console's workbench pages. */}
         <h1 className="font-serif text-2xl font-semibold text-foreground">
@@ -63,21 +57,21 @@ const NotFound = () => (
             <Message message="platform.not_found.title" />
           </Suspense>
         </h1>
-        <PlatformPageDescription>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="platform.not_found.description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-      <PlatformPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
             <Message message="platform.common.back_to_dashboard" />
           </Suspense>
         </LinkButton>
-      </PlatformPageActions>
-    </PlatformPageHeader>
-  </PlatformPage>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+  </ConsolePage.Root>
 );
 
 export default NotFound;

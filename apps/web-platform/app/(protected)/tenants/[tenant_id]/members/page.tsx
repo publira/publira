@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -13,16 +15,6 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-  PlatformSection,
-} from "#components/platform-page";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
@@ -73,15 +65,15 @@ export const generateMetadata = async ({
 };
 
 const TenantMembersSkeleton = () => (
-  <PlatformPageContent>
+  <ConsolePage.Content>
     <div className="grid gap-6">
       <Skeleton className="h-10 w-64" />
-      <PlatformSection>
+      <ConsoleSection.Root>
         <SkeletonLine className="h-5 w-40" />
         <Table.Skeleton />
-      </PlatformSection>
+      </ConsoleSection.Root>
     </div>
-  </PlatformPageContent>
+  </ConsolePage.Content>
 );
 
 /**
@@ -177,31 +169,31 @@ const TenantMembersContent = async ({
 
   return (
     <>
-      <PlatformPageHeader>
-        <PlatformPageHeading>
-          <PlatformPageTitle>
+      <ConsolePage.Header>
+        <ConsolePage.Heading>
+          <ConsolePage.Title>
             <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
               <Message
                 message="platform.tenants.members_title"
                 values={{ name: tenant.name }}
               />
             </Suspense>
-          </PlatformPageTitle>
-          <PlatformPageDescription>
+          </ConsolePage.Title>
+          <ConsolePage.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
               <Message message="platform.tenants.members_description" />
             </Suspense>
-          </PlatformPageDescription>
-        </PlatformPageHeading>
-        <PlatformPageActions>
+          </ConsolePage.Description>
+        </ConsolePage.Heading>
+        <ConsolePage.Actions>
           <LinkButton render={<Link href="/tenants" />} variant="outline">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="platform.common.back_to_list" />
             </Suspense>
           </LinkButton>
-        </PlatformPageActions>
-      </PlatformPageHeader>
-      <PlatformPageContent>
+        </ConsolePage.Actions>
+      </ConsolePage.Header>
+      <ConsolePage.Content>
         <div className="grid gap-6">
           <TenantSectionNav current="members" tenantId={tenant.publicId} />
 
@@ -223,22 +215,22 @@ const TenantMembersContent = async ({
             timeZone={timeZone}
           />
         </div>
-      </PlatformPageContent>
+      </ConsolePage.Content>
     </>
   );
 };
 
-// `PlatformPage` stays in the static shell so the max width and padding are
+// `ConsolePage.Root` stays in the static shell so the max width and padding are
 // painted before `params` resolves; only the header and body stream in.
 const TenantMembersPage = ({
   params,
   searchParams,
 }: TenantMembersPageProps) => (
-  <PlatformPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantMembersSkeleton />}>
       <TenantMembersContent params={params} searchParams={searchParams} />
     </Suspense>
-  </PlatformPage>
+  </ConsolePage.Root>
 );
 
 export default TenantMembersPage;

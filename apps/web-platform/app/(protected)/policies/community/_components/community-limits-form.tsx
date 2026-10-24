@@ -1,16 +1,10 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import type { PlatformCommunityLimits } from "#lib/platform-policy";
 
 import { PolicyLimitField } from "../../_components/policy-limit-field";
@@ -25,21 +19,21 @@ export const CommunityLimitsForm = ({
   revision: string;
   loadErrorMessage?: string;
 }) => (
-  <PlatformSection>
-    <PlatformSectionHeader>
-      <PlatformSectionHeading>
-        <PlatformSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
             <Message message="platform.policy.community.title" />
           </Suspense>
-        </PlatformSectionTitle>
-        <PlatformSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="platform.policy.community.description" />
           </Suspense>
-        </PlatformSectionDescription>
-      </PlatformSectionHeading>
-    </PlatformSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <ActionForm.Root
       action={updatePlatformCommunityLimitsAction}
       className="grid gap-4 sm:max-w-3xl"
@@ -200,5 +194,5 @@ export const CommunityLimitsForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </PlatformSection>
+  </ConsoleSection.Root>
 );

@@ -4,13 +4,15 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
-import { MfaEnrollmentQrCode, MfaEnrollmentSecretText } from "./mfa-enrollment";
+import * as MfaEnrollment from "./mfa-enrollment";
 
 /** The QR code's name is an attribute rather than a node, so it waits for the catalog alone. */
 const LabelledMfaEnrollmentQrCode = async () => {
   const t = await getMessages();
 
-  return <MfaEnrollmentQrCode label={t("platform.auth.mfa.enroll_qr_label")} />;
+  return (
+    <MfaEnrollment.QrCode label={t("platform.auth.mfa.enroll_qr_label")} />
+  );
 };
 
 /**
@@ -45,7 +47,7 @@ export const MfaEnrollmentSecret = () => (
           <Message message="platform.auth.mfa.enroll_secret_label" />
         </Suspense>
       </p>
-      <MfaEnrollmentSecretText />
+      <MfaEnrollment.SecretText />
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
           <Message message="platform.auth.mfa.enroll_secret_help" />

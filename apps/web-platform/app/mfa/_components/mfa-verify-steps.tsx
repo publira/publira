@@ -16,7 +16,7 @@ const RecoveryCodeSpentContext = createContext("");
  * should know how many are left. A challenge spent with no answer held here
  * belongs to an earlier visit, so the login goes on to `nextPath`.
  */
-export const MfaVerifySteps = ({
+const MfaVerifySteps = ({
   finished,
   nextPath,
   spent,
@@ -42,7 +42,7 @@ export const MfaVerifySteps = ({
 };
 
 /** Moves `MfaVerifySteps` on to `spent` once the verify form succeeds. */
-export const MfaRecoveryCodeSpent = () => {
+const MfaVerifyStepsRecoveryCodeSpent = () => {
   const spend = use(SpendRecoveryCodeContext);
   ActionForm.useSettled((state) => {
     if (state?.ok) {
@@ -54,4 +54,11 @@ export const MfaRecoveryCodeSpent = () => {
 };
 
 /** How many recovery codes are left, as the verify form's Action worded it. */
-export const MfaRemainingRecoveryCodes = () => use(RecoveryCodeSpentContext);
+const MfaVerifyStepsRemainingRecoveryCodes = () =>
+  use(RecoveryCodeSpentContext);
+
+export {
+  MfaVerifySteps as Root,
+  MfaVerifyStepsRecoveryCodeSpent as RecoveryCodeSpent,
+  MfaVerifyStepsRemainingRecoveryCodes as RemainingRecoveryCodes,
+};

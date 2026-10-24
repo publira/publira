@@ -1,16 +1,10 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import type { PlatformSearchSettings } from "#lib/search-settings-shared";
 
 import {
@@ -28,21 +22,21 @@ export const SearchSettingsForm = ({
   loadErrorMessage,
   settings,
 }: SearchSettingsFormProps) => (
-  <PlatformSection>
-    <PlatformSectionHeader>
-      <PlatformSectionHeading>
-        <PlatformSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
             <Message message="platform.search.title" />
           </Suspense>
-        </PlatformSectionTitle>
-        <PlatformSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="platform.search.description" />
           </Suspense>
-        </PlatformSectionDescription>
-      </PlatformSectionHeading>
-    </PlatformSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
 
     {loadErrorMessage ? (
       <FormMessage className="sm:max-w-3xl" variant="destructive">
@@ -73,5 +67,5 @@ export const SearchSettingsForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </PlatformSection>
+  </ConsoleSection.Root>
 );

@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
@@ -15,26 +17,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  DangerConfirmButton,
-  DangerConfirmButtonAction,
-  DangerConfirmButtonTrigger,
-} from "#components/danger-confirm-button";
+import * as DangerConfirmButton from "#components/danger-confirm-button";
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import { verifyPlatformSession } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -72,20 +56,20 @@ const operatorDetailParamsSchema = z.object({
 });
 
 const OperatorDetailSkeleton = () => (
-  <PlatformPageContent>
+  <ConsolePage.Content>
     <div className="grid gap-10 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
-      <PlatformSection>
+      <ConsoleSection.Root>
         <SkeletonLine className="h-5 w-28" />
         <Skeleton className="h-16" />
         <Skeleton className="h-16" />
         <Skeleton className="h-16" />
-      </PlatformSection>
-      <PlatformSection>
+      </ConsoleSection.Root>
+      <ConsoleSection.Root>
         <SkeletonLine className="h-5 w-28" />
         <Skeleton className="h-20" />
-      </PlatformSection>
+      </ConsoleSection.Root>
     </div>
-  </PlatformPageContent>
+  </ConsolePage.Content>
 );
 
 /**
@@ -154,9 +138,9 @@ const OperatorDetailContent = async ({
 
   return (
     <>
-      <PlatformPageHeader>
-        <PlatformPageHeading>
-          <PlatformPageTitle>
+      <ConsolePage.Header>
+        <ConsolePage.Heading>
+          <ConsolePage.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message
                 message="platform.operators.detail_title"
@@ -165,27 +149,27 @@ const OperatorDetailContent = async ({
                 }}
               />
             </Suspense>
-          </PlatformPageTitle>
-          <PlatformPageDescription>
+          </ConsolePage.Title>
+          <ConsolePage.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.operators.detail_description" />
             </Suspense>
-          </PlatformPageDescription>
-        </PlatformPageHeading>
-        <PlatformPageActions>
+          </ConsolePage.Description>
+        </ConsolePage.Heading>
+        <ConsolePage.Actions>
           <LinkButton render={<Link href="/operators" />} variant="outline">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.common.back_to_list" />
             </Suspense>
           </LinkButton>
           {canUnsuspend ? (
-            <DangerConfirmButton
+            <DangerConfirmButton.Root
               actionArg={{ id: operator.id, publicId: operator.publicId }}
               actionCreator={unsuspendOperatorAction}
             >
-              <DangerConfirmButtonTrigger variant="outline">
+              <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.operators.resume")}
-              </DangerConfirmButtonTrigger>
+              </DangerConfirmButton.Trigger>
               <ConfirmDialog.Content>
                 <ConfirmDialog.Header>
                   <ConfirmDialog.Title>
@@ -197,21 +181,21 @@ const OperatorDetailContent = async ({
                 </ConfirmDialog.Header>
                 <ConfirmDialog.Footer>
                   <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
-                  <DangerConfirmButtonAction variant="default">
+                  <DangerConfirmButton.Action variant="default">
                     {t("platform.operators.resume_action")}
-                  </DangerConfirmButtonAction>
+                  </DangerConfirmButton.Action>
                 </ConfirmDialog.Footer>
               </ConfirmDialog.Content>
-            </DangerConfirmButton>
+            </DangerConfirmButton.Root>
           ) : null}
           {canSuspend ? (
-            <DangerConfirmButton
+            <DangerConfirmButton.Root
               actionArg={{ id: operator.id, publicId: operator.publicId }}
               actionCreator={suspendOperatorAction}
             >
-              <DangerConfirmButtonTrigger variant="outline">
+              <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.operators.suspend")}
-              </DangerConfirmButtonTrigger>
+              </DangerConfirmButton.Trigger>
               <ConfirmDialog.Content>
                 <ConfirmDialog.Header>
                   <ConfirmDialog.Title>
@@ -223,21 +207,21 @@ const OperatorDetailContent = async ({
                 </ConfirmDialog.Header>
                 <ConfirmDialog.Footer>
                   <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
-                  <DangerConfirmButtonAction>
+                  <DangerConfirmButton.Action>
                     {t("platform.operators.suspend_action")}
-                  </DangerConfirmButtonAction>
+                  </DangerConfirmButton.Action>
                 </ConfirmDialog.Footer>
               </ConfirmDialog.Content>
-            </DangerConfirmButton>
+            </DangerConfirmButton.Root>
           ) : null}
           {canModify ? (
-            <DangerConfirmButton
+            <DangerConfirmButton.Root
               actionArg={{ id: operator.id, publicId: operator.publicId }}
               actionCreator={deactivateOperatorAction}
             >
-              <DangerConfirmButtonTrigger>
+              <DangerConfirmButton.Trigger>
                 {t("platform.operators.deactivate")}
-              </DangerConfirmButtonTrigger>
+              </DangerConfirmButton.Trigger>
               <ConfirmDialog.Content>
                 <ConfirmDialog.Header>
                   <ConfirmDialog.Title>
@@ -249,32 +233,32 @@ const OperatorDetailContent = async ({
                 </ConfirmDialog.Header>
                 <ConfirmDialog.Footer>
                   <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
-                  <DangerConfirmButtonAction>
+                  <DangerConfirmButton.Action>
                     {t("platform.operators.deactivate_action")}
-                  </DangerConfirmButtonAction>
+                  </DangerConfirmButton.Action>
                 </ConfirmDialog.Footer>
               </ConfirmDialog.Content>
-            </DangerConfirmButton>
+            </DangerConfirmButton.Root>
           ) : null}
-        </PlatformPageActions>
-      </PlatformPageHeader>
-      <PlatformPageContent>
+        </ConsolePage.Actions>
+      </ConsolePage.Header>
+      <ConsolePage.Content>
         <div className="grid gap-10 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,1fr)]">
-          <PlatformSection>
-            <PlatformSectionHeader>
-              <PlatformSectionHeading>
-                <PlatformSectionTitle>
+          <ConsoleSection.Root>
+            <ConsoleSection.Header>
+              <ConsoleSection.Heading>
+                <ConsoleSection.Title>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.operators.info_title" />
                   </Suspense>
-                </PlatformSectionTitle>
-                <PlatformSectionDescription>
+                </ConsoleSection.Title>
+                <ConsoleSection.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.operators.info_description" />
                   </Suspense>
-                </PlatformSectionDescription>
-              </PlatformSectionHeading>
-            </PlatformSectionHeader>
+                </ConsoleSection.Description>
+              </ConsoleSection.Heading>
+            </ConsoleSection.Header>
             <div className="grid gap-4">
               <Field.Root>
                 <Field.Label>
@@ -347,47 +331,47 @@ const OperatorDetailContent = async ({
                 </p>
               </Field.Root>
             </div>
-          </PlatformSection>
+          </ConsoleSection.Root>
 
           {isDeactivated ? null : (
-            <PlatformSection>
-              <PlatformSectionHeader>
-                <PlatformSectionHeading>
-                  <PlatformSectionTitle>
+            <ConsoleSection.Root>
+              <ConsoleSection.Header>
+                <ConsoleSection.Heading>
+                  <ConsoleSection.Title>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="platform.operators.change_role" />
                     </Suspense>
-                  </PlatformSectionTitle>
-                  <PlatformSectionDescription>
+                  </ConsoleSection.Title>
+                  <ConsoleSection.Description>
                     {await getOperatorRoleCardDescription(
                       { isSelf, isSuperAdmin },
                       locale
                     )}
-                  </PlatformSectionDescription>
-                </PlatformSectionHeading>
-              </PlatformSectionHeader>
+                  </ConsoleSection.Description>
+                </ConsoleSection.Heading>
+              </ConsoleSection.Header>
               <OperatorRoleForm
                 currentRole={operator.role}
                 disabled={!canModify}
                 operatorId={operator.id}
                 operatorPublicId={operator.publicId}
               />
-            </PlatformSection>
+            </ConsoleSection.Root>
           )}
         </div>
-      </PlatformPageContent>
+      </ConsolePage.Content>
     </>
   );
 };
 
-// `PlatformPage` stays in the static shell so the max width and padding are
+// `ConsolePage.Root` stays in the static shell so the max width and padding are
 // painted before `params` resolves; only the header and body stream in.
 const OperatorDetailPage = ({ params }: OperatorDetailPageProps) => (
-  <PlatformPage>
+  <ConsolePage.Root>
     <Suspense fallback={<OperatorDetailSkeleton />}>
       <OperatorDetailContent params={params} />
     </Suspense>
-  </PlatformPage>
+  </ConsolePage.Root>
 );
 
 export default OperatorDetailPage;

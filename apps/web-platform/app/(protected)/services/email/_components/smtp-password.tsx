@@ -16,22 +16,6 @@ import type { PlatformEmailSettingsFormState } from "../_lib/actions";
 
 type SavedSettingsState = NonNullable<PlatformEmailSettingsFormState>;
 
-/**
- * The revision the next save is compared against: the one the page was read
- * at, then the one each successful save wrote.
- */
-export const SmtpRevisionField = ({ revision }: { revision: string }) => {
-  const state = ActionForm.useState<SavedSettingsState>();
-
-  return (
-    <input
-      name="revision"
-      type="hidden"
-      value={state?.ok ? state.settings.revision : revision}
-    />
-  );
-};
-
 interface SmtpPasswordContextValue {
   hasStoredPassword: boolean;
   isEditing: boolean;
@@ -58,19 +42,19 @@ const useSmtpPassword = () => {
  * relay that takes no credentials.
  *
  * ```tsx
- * <SmtpPassword hasStoredPassword={…}>
+ * <SmtpPassword.Root hasStoredPassword={…}>
  *   <Field.Root>
  *     <Field.Label>…</Field.Label>
  *     <Field.Content>
- *       <SmtpPasswordStored>{change}</SmtpPasswordStored>
- *       <SmtpPasswordEditor>{undo}</SmtpPasswordEditor>
+ *       <SmtpPassword.Stored>{change}</SmtpPassword.Stored>
+ *       <SmtpPassword.Editor>{undo}</SmtpPassword.Editor>
  *     </Field.Content>
- *     <SmtpPasswordReplacing>{note}</SmtpPasswordReplacing>
+ *     <SmtpPassword.Replacing>{note}</SmtpPassword.Replacing>
  *   </Field.Root>
- * </SmtpPassword>
+ * </SmtpPassword.Root>
  * ```
  */
-export const SmtpPassword = ({
+const SmtpPassword = ({
   children,
   hasStoredPassword: initialHasStoredPassword,
 }: {
@@ -112,7 +96,7 @@ export const SmtpPassword = ({
  * The masked stored password and the control that opens it for editing, whose
  * wording is `children`. Renders nothing while a password is being entered.
  */
-export const SmtpPasswordStored = ({ children }: { children: ReactNode }) => {
+const SmtpPasswordStored = ({ children }: { children: ReactNode }) => {
   const { hasStoredPassword, isEditing, setIsEditing } = useSmtpPassword();
 
   if (!hasStoredPassword || isEditing) {
@@ -140,7 +124,7 @@ export const SmtpPasswordStored = ({ children }: { children: ReactNode }) => {
  * it instead, whose wording is `children`. Renders nothing while the stored one
  * is kept.
  */
-export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
+const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
   const { hasStoredPassword, isEditing, setHasEntry, setIsEditing } =
     useSmtpPassword();
 
@@ -178,12 +162,15 @@ export const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
  * that box empty does to it. With nothing stored, an empty box has nothing to
  * remove.
  */
-export const SmtpPasswordReplacing = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const SmtpPasswordReplacing = ({ children }: { children: ReactNode }) => {
   const { hasStoredPassword, isEditing } = useSmtpPassword();
 
   return hasStoredPassword && isEditing ? children : null;
+};
+
+export {
+  SmtpPassword as Root,
+  SmtpPasswordEditor as Editor,
+  SmtpPasswordReplacing as Replacing,
+  SmtpPasswordStored as Stored,
 };

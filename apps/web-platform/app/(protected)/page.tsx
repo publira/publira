@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as FigureLine from "@publira/ui-components/figure-line";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -9,16 +11,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-  PlatformSections,
-} from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPlatformDashboardSummary } from "#lib/dashboard";
 import type { PlatformDashboardRecentEvent } from "#lib/dashboard";
@@ -277,21 +269,21 @@ const DashboardContent = async () => {
 };
 
 const Page = () => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-72" />}>
             <Message message="platform.dashboard.heading" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="platform.dashboard.page_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-      <PlatformPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/audit-logs" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="platform.dashboard.view_audit" />
@@ -302,10 +294,10 @@ const Page = () => (
             <Message message="platform.dashboard.view_tenants" />
           </Suspense>
         </LinkButton>
-      </PlatformPageActions>
-    </PlatformPageHeader>
-    <PlatformPageContent>
-      <PlatformSections>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
+      <ConsoleSection.Stack>
         <SetupStatusSection />
         <SectionErrorBoundary
           title={
@@ -318,9 +310,9 @@ const Page = () => (
             <DashboardContent />
           </Suspense>
         </SectionErrorBoundary>
-      </PlatformSections>
-    </PlatformPageContent>
-  </PlatformPage>
+      </ConsoleSection.Stack>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default Page;

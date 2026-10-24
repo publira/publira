@@ -32,7 +32,7 @@ const useDangerConfirm = (): DangerConfirmState => {
 interface DangerConfirmButtonProps<T> {
   actionArg: T;
   actionCreator: (arg: T) => Promise<void>;
-  /** A `DangerConfirmButtonTrigger` and the `ConfirmDialog.Content` it opens, with a `DangerConfirmButtonAction` in its footer. */
+  /** A `DangerConfirmButton.Trigger` and the `ConfirmDialog.Content` it opens, with a `DangerConfirmButton.Action` in its footer. */
   children: ReactNode;
 }
 
@@ -41,8 +41,8 @@ interface DangerConfirmButtonProps<T> {
  * confirms.
  *
  * ```tsx
- * <DangerConfirmButton actionArg={…} actionCreator={…}>
- *   <DangerConfirmButtonTrigger>…</DangerConfirmButtonTrigger>
+ * <DangerConfirmButton.Root actionArg={…} actionCreator={…}>
+ *   <DangerConfirmButton.Trigger>…</DangerConfirmButton.Trigger>
  *   <ConfirmDialog.Content>
  *     <ConfirmDialog.Header>
  *       <ConfirmDialog.Title>…</ConfirmDialog.Title>
@@ -50,13 +50,13 @@ interface DangerConfirmButtonProps<T> {
  *     </ConfirmDialog.Header>
  *     <ConfirmDialog.Footer>
  *       <ConfirmDialog.Cancel>…</ConfirmDialog.Cancel>
- *       <DangerConfirmButtonAction>…</DangerConfirmButtonAction>
+ *       <DangerConfirmButton.Action>…</DangerConfirmButton.Action>
  *     </ConfirmDialog.Footer>
  *   </ConfirmDialog.Content>
- * </DangerConfirmButton>
+ * </DangerConfirmButton.Root>
  * ```
  */
-export const DangerConfirmButton = <T,>({
+const DangerConfirmButton = <T,>({
   actionArg,
   actionCreator,
   children,
@@ -79,7 +79,7 @@ export const DangerConfirmButton = <T,>({
 };
 
 /** The button that opens the dialog, disabled while the action runs. */
-export const DangerConfirmButtonTrigger = ({
+const DangerConfirmButtonTrigger = ({
   children,
   variant = "destructive",
 }: {
@@ -100,7 +100,7 @@ export const DangerConfirmButtonTrigger = ({
 };
 
 /** The dialog's confirm control, which runs the action. */
-export const DangerConfirmButtonAction = ({
+const DangerConfirmButtonAction = ({
   children,
   variant = "destructiveFilled",
 }: {
@@ -114,4 +114,10 @@ export const DangerConfirmButtonAction = ({
       {children}
     </ConfirmDialog.Action>
   );
+};
+
+export {
+  DangerConfirmButton as Root,
+  DangerConfirmButtonAction as Action,
+  DangerConfirmButtonTrigger as Trigger,
 };

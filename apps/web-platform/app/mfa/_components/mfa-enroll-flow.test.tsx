@@ -63,10 +63,9 @@ vi.mock("#components/mfa-code-field", () => ({
 }));
 
 vi.mock("#components/mfa-enrollment-secret", async () => {
-  const { MfaEnrollmentSecretText } =
-    await import("#components/mfa-enrollment");
+  const MfaEnrollment = await import("#components/mfa-enrollment");
 
-  return { MfaEnrollmentSecret: MfaEnrollmentSecretText };
+  return { MfaEnrollmentSecret: MfaEnrollment.SecretText };
 });
 
 const confirmEnrollment = async () => {

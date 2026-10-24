@@ -1,21 +1,11 @@
 "use client";
 
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { ErrorBoundaryMessage } from "#components/error-boundary-message";
-import {
-  ErrorScreen,
-  ErrorScreenDigest,
-  ErrorScreenRetry,
-} from "#components/error-screen";
-import {
-  PlatformPageActions,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-} from "#components/platform-page";
+import * as ErrorScreen from "#components/error-screen";
 
 /**
  * Error boundary for the root segment. It catches what
@@ -52,34 +42,34 @@ const RootError = ({
   // Neither the failing layout nor the pre-login pages get to render their own
   // landmark, so this boundary owns the `<main>` element itself.
   <main>
-    <ErrorScreen digest={error.digest} retry={retry}>
-      <PlatformPageHeader>
-        <PlatformPageHeading>
-          <PlatformPageTitle>
+    <ErrorScreen.Root digest={error.digest} retry={retry}>
+      <ConsolePage.Header>
+        <ConsolePage.Heading>
+          <ConsolePage.Title>
             <Suspense fallback={<SkeletonLine className="h-8 w-96" />}>
               <ErrorBoundaryMessage message="platform.errors.root_title" />
             </Suspense>
-          </PlatformPageTitle>
-          <PlatformPageDescription>
+          </ConsolePage.Title>
+          <ConsolePage.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
               <ErrorBoundaryMessage message="platform.errors.root_description" />
             </Suspense>
-          </PlatformPageDescription>
-        </PlatformPageHeading>
-        <PlatformPageActions>
-          <ErrorScreenRetry>
+          </ConsolePage.Description>
+        </ConsolePage.Heading>
+        <ConsolePage.Actions>
+          <ErrorScreen.Retry>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <ErrorBoundaryMessage message="platform.common.retry" />
             </Suspense>
-          </ErrorScreenRetry>
-        </PlatformPageActions>
-      </PlatformPageHeader>
-      <ErrorScreenDigest>
+          </ErrorScreen.Retry>
+        </ConsolePage.Actions>
+      </ConsolePage.Header>
+      <ErrorScreen.Digest>
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
           <ErrorBoundaryMessage message="platform.common.error_id" />
         </Suspense>
-      </ErrorScreenDigest>
-    </ErrorScreen>
+      </ErrorScreen.Digest>
+    </ErrorScreen.Root>
   </main>
 );
 

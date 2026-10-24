@@ -1,17 +1,11 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import {
   isSameSearchTarget,
   searchEngineName,
@@ -47,21 +41,21 @@ export const SearchStatus = ({
   const rebuild = isSameSearchTarget(settings);
 
   return (
-    <PlatformSection>
-      <PlatformSectionHeader>
-        <PlatformSectionHeading>
-          <PlatformSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="platform.search.status.title" />
             </Suspense>
-          </PlatformSectionTitle>
-          <PlatformSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="platform.search.status.description" />
             </Suspense>
-          </PlatformSectionDescription>
-        </PlatformSectionHeading>
-      </PlatformSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
 
       <dl className="grid gap-x-8 gap-y-4 sm:max-w-3xl sm:grid-cols-[12rem_minmax(0,1fr)]">
         <dt className={labelClassName}>
@@ -170,6 +164,6 @@ export const SearchStatus = ({
       {/* A failed build is retried on the worker's every pass, so a page left
           open on the failure still notices an engine that was repaired. */}
       {settings.buildState === "serving" ? null : <SearchBuildRefresh />}
-    </PlatformSection>
+    </ConsoleSection.Root>
   );
 };
