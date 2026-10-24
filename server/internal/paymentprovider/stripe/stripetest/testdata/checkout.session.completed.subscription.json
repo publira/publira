@@ -1,0 +1,41 @@
+{
+  "id": "evt_1QgK2mLk4f8bA7xYc5Rt8uV1",
+  "object": "event",
+  "api_version": "",
+  "created": 1767312000,
+  "data": {
+    "object": {
+      "id": "cs_test_b1C2d3E4f5G6h7I8j9K0",
+      "object": "checkout.session",
+      "amount_subtotal": 980,
+      "amount_total": 980,
+      "cancel_url": "https://tenant.example/plans?subscription=cancelled",
+      "created": 1767311940,
+      "currency": "jpy",
+      "customer": "cus_RbC1dE2fG3hI4j",
+      "customer_details": {
+        "email": "reader@example.com",
+        "name": null
+      },
+      "expires_at": 1767398340,
+      "invoice": "in_1QgK2lLk4f8bA7xYmN0pQ1rS",
+      "livemode": false,
+      "metadata": {},
+      "mode": "subscription",
+      "payment_intent": null,
+      "payment_method_types": ["card"],
+      "payment_status": "paid",
+      "status": "complete",
+      "subscription": "sub_1QgK2lLk4f8bA7xYw3Xy4Za5",
+      "success_url": "https://tenant.example/my?subscription=success&session_id=%7BCHECKOUT_SESSION_ID%7D",
+      "url": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed"
+}

@@ -125,16 +125,18 @@ A store's refund takes the purchase back as a provider's refund does, for the wh
 
 | Event | Answered as |
 | --- | --- |
-| `checkout.session.completed` | `PurchaseCompleted`, or `Ignored` while a delayed method such as konbini is unpaid |
-| `checkout.session.async_payment_succeeded` | `PurchaseCompleted` for a delayed method once it is paid |
-| `checkout.session.expired` | `CheckoutExpired`, or `Ignored` for a session that names no purchase |
+| `checkout.session.completed` | `PurchaseCompleted`, or `Ignored` while a delayed method such as konbini is unpaid; for a session in subscription mode, `SubscriptionChanged`, or `Ignored` for one that names no plan |
+| `checkout.session.async_payment_succeeded` | `PurchaseCompleted` for a delayed method once it is paid; `SubscriptionChanged` in subscription mode |
+| `checkout.session.expired` | `CheckoutExpired`, or `Ignored` for a session that names no purchase or is in subscription mode |
 | `charge.refunded` | `Refunded` |
 | `refund.updated`, `refund.failed` | `RefundFailed` for a refund that failed or was canceled, with what stays refunded read from the payment intent's charge, or `Ignored` for any other change |
 | `charge.dispute.created` | `Disputed` |
 | `charge.dispute.closed` | `DisputeLost` for a dispute closed as lost, or `Ignored` for one won or an inquiry closed without becoming a chargeback |
+| `customer.subscription.updated`, `customer.subscription.deleted` | `SubscriptionChanged` with the subscription as the API answers it now, or `Ignored` for one that names no plan |
+| `invoice.payment_failed` | `SubscriptionChanged` with the subscription the invoice bills, or `Ignored` for an invoice no plan's subscription raised |
 | Any other | `Ignored` |
 
-In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the seven events above. For local development, forward with the Stripe CLI:
+In the Stripe Dashboard, register the tenant's public domain `https://<tenant-domain>/api/v1/webhook/payment/stripe` as the webhook endpoint and enable the events above. A tenant that sells no subscription plan may leave out `customer.subscription.updated`, `customer.subscription.deleted`, and `invoice.payment_failed`. For local development, forward with the Stripe CLI:
 
 ```bash
 stripe listen --forward-to localhost:3080/api/v1/webhook/payment/stripe
@@ -163,6 +165,7 @@ GMO Payment Gateway, SB Payment Service, Sony Payment Services, and Veritrans gi
 internal/paymentprovider/
 ├── provider.go           # Provider, Declaration, Field, Credentials, and the events
 ├── registry.go           # Registry, and the rules a declaration is checked against
+├── subscription.go       # Subscriptions, which a provider that sells plans implements too, and SubscriptionChanged
 ├── paymentprovidertest/  # The contract suite: Fixture, RunParse, Harness, Run
 ├── providers/            # providers.Registry(), the providers this build ships
 │   └── providerstest/    # The contract fixture of every registered provider
@@ -183,6 +186,14 @@ internal/paymentprovider/
 6. **Document its setup** in a section beside [Stripe](#stripe): what a tenant registers with the provider, and how to reach the sandbox from local development.
 
 The settings store, the admin RPCs, the console form, the webhook route, and the proxy routes are generic over the declaration, so nothing else changes.
+
+## Subscription plans
+
+A tenant sells a subscription plan through a provider that implements `paymentprovider.Subscriptions` beside `paymentprovider.Provider`, which in this build is Stripe alone. A plan (`subscription_plans`) names a recurring Stripe Price, keeps the amount and interval that Price bills, which never change in Stripe, and opens the whole catalog, the series of some labels, or some series (`subscription_plan_targets`). `AdminSubscriptionPlanService` manages them, reading the Price from the tenant's Stripe account whenever a plan is saved with a new one, and `SubscriptionService` in `publira.v1` lists the published ones, starts a checkout, and answers the reader's subscription.
+
+- **Start.** `StartSubscriptionCheckout` starts a Checkout Session in subscription mode for the plan's Price, naming the Stripe customer the reader last subscribed as, if any. The session and the subscription it starts both carry the tenant, the reader, and the plan in their metadata. A reader who already holds a subscription that is trialing, active, past due, unpaid, or paused is refused.
+- **Record.** Every notification about a subscription answers `SubscriptionChanged` with the subscription as Stripe's API answers it at that moment, rather than as the event carried it, and `ProcessPaymentWebhook` writes that state into `subscriptions`, keyed by the subscription's id, on the plan of the Price it bills at, else the plan its checkout named. A notification that arrives late or twice therefore writes nothing older than what is there.
+- **Manage.** `CreateBillingPortalSession` opens Stripe's customer portal for the reader's customer, configured in the tenant's own Stripe Dashboard, where the reader changes their payment method or cancels. What they change reaches `subscriptions` through the webhook.
 
 ## Contact message replies by email
 

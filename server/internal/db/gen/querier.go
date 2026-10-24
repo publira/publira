@@ -147,6 +147,8 @@ type Querier interface {
 	// volume first.
 	CountEpisodesInOtherVolumes(ctx context.Context, arg CountEpisodesInOtherVolumesParams) (int32, error)
 	CountGenreTranslations(ctx context.Context, arg CountGenreTranslationsParams) (int32, error)
+	// How many of the labels a plan is saved with belong to the tenant.
+	CountLabelsForSubscriptionPlan(ctx context.Context, arg CountLabelsForSubscriptionPlanParams) (int32, error)
 	// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
 	// tenant other than one user: who is left to sign in to the console once that
 	// user is removed or demoted.
@@ -175,7 +177,12 @@ type Querier interface {
 	// How many of the listed episodes belong to the series. An assignment naming
 	// an episode of another series, or none at all, counts short.
 	CountSeriesEpisodesByIDs(ctx context.Context, arg CountSeriesEpisodesByIDsParams) (int32, error)
+	// How many of the series a plan is saved with belong to the tenant.
+	CountSeriesForSubscriptionPlan(ctx context.Context, arg CountSeriesForSubscriptionPlanParams) (int32, error)
 	CountSeriesTranslations(ctx context.Context, arg CountSeriesTranslationsParams) (int32, error)
+	CountSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
+	// Every subscription the plan bills or billed, whatever its state.
+	CountSubscriptionsForPlan(ctx context.Context, arg CountSubscriptionsForPlanParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
@@ -395,6 +402,9 @@ type Querier interface {
 	// Records a verified store transaction. A transaction is sold once, so a
 	// second insert of the same one is no row and the caller reads the first.
 	CreateStorePurchase(ctx context.Context, arg CreateStorePurchaseParams) (Purchase, error)
+	CreateSubscriptionPlan(ctx context.Context, arg CreateSubscriptionPlanParams) (CreateSubscriptionPlanRow, error)
+	CreateSubscriptionPlanLabelTargets(ctx context.Context, arg CreateSubscriptionPlanLabelTargetsParams) error
+	CreateSubscriptionPlanSeriesTargets(ctx context.Context, arg CreateSubscriptionPlanSeriesTargetsParams) error
 	// Tenant creation for platform administrators.
 	// default_locale and supported_locales have no column DEFAULT, so the caller
 	// always passes them explicitly. timezone is not left to its column DEFAULT
@@ -506,6 +516,8 @@ type Querier interface {
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteSeriesTranslation(ctx context.Context, arg DeleteSeriesTranslationParams) (int64, error)
+	DeleteSubscriptionPlan(ctx context.Context, arg DeleteSubscriptionPlanParams) (int64, error)
+	DeleteSubscriptionPlanTargets(ctx context.Context, arg DeleteSubscriptionPlanTargetsParams) error
 	// A locale whose copy is cleared has no row, so its readers are served the
 	// copy tenant_config_translation_for falls back to.
 	DeleteTenantConfigTranslation(ctx context.Context, arg DeleteTenantConfigTranslationParams) (int64, error)
@@ -777,6 +789,12 @@ type Querier interface {
 	// files its snapshots beside the old ones rather than replacing them, and wins
 	// here because it was computed later.
 	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
+	// The Stripe customer the reader last subscribed as, which a later checkout
+	// and the billing portal name, so the reader's invoices stay on one customer.
+	GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (string, error)
+	// The reader's latest subscription, which a checkout's idempotency key names
+	// so that subscribing again after one ends starts a new checkout.
+	GetLatestSubscriptionIDForUser(ctx context.Context, arg GetLatestSubscriptionIDForUserParams) (string, error)
 	// Where a newly created banner goes: after everything that already exists.
 	GetMaxCampaignBannerDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Where a newly created role goes: after everything that already exists.
@@ -817,6 +835,9 @@ type Querier interface {
 	// an expired rental hands the reader the episode before it instead of a
 	// position they cannot act on.
 	GetMySeriesReadingProgress(ctx context.Context, arg GetMySeriesReadingProgressParams) (GetMySeriesReadingProgressRow, error)
+	// The reader's latest subscription that is not over, or failing that the
+	// latest one that is.
+	GetMySubscription(ctx context.Context, arg GetMySubscriptionParams) (GetMySubscriptionRow, error)
 	// The first published episode after one episode in its own series whose body
 	// is public at the moment of the read: priced at 0, or inside an open free
 	// window, which is what published_free_episodes answers. It is where a reader
@@ -912,6 +933,7 @@ type Querier interface {
 	// Shared by every member-facing RPC that acts on a series (follow, rating), so
 	// they all treat a foreign, unpublished, or missing series the same way.
 	GetPublishedSeriesID(ctx context.Context, arg GetPublishedSeriesIDParams) (uuid.UUID, error)
+	GetPublishedSubscriptionPlanByIDForTenant(ctx context.Context, arg GetPublishedSubscriptionPlanByIDForTenantParams) (GetPublishedSubscriptionPlanByIDForTenantRow, error)
 	// The public key browsers subscribe with, read by the storefront role, which is
 	// granted only the columns named here. No rows while Web Push is not
 	// configured, so the key is never offered before a push could be signed.
@@ -1054,6 +1076,11 @@ type Querier interface {
 	// which the caller answers with the column defaults: off.
 	GetSeriesWaitFreeSettings(ctx context.Context, arg GetSeriesWaitFreeSettingsParams) (GetSeriesWaitFreeSettingsRow, error)
 	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
+	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
+	// The plan a subscription is recorded on: the one billed at the Price Stripe
+	// reports, which follows a reader who changed their Price in the billing
+	// portal, else the one the checkout named.
+	GetSubscriptionPlanForSubscriptionForTenant(ctx context.Context, arg GetSubscriptionPlanForSubscriptionForTenantParams) (uuid.UUID, error)
 	// Whether a slug the series list was filtered by names a tag of this tenant.
 	// A filter naming nothing is refused rather than answered with an empty list,
 	// for the reason GetGenreIDByPublicIDForTenant gives.
@@ -2256,6 +2283,7 @@ type Querier interface {
 	ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error)
 	// The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 	ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error)
+	ListPublishedSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListPublishedSubscriptionPlansForTenantRow, error)
 	// ListPublishedTagsByTenantDesc walked the other way. It exists only to build
 	// a previous page; the order it describes is the same one.
 	ListPublishedTagsByTenantAsc(ctx context.Context, arg ListPublishedTagsByTenantAscParams) ([]ListPublishedTagsByTenantAscRow, error)
@@ -2547,6 +2575,12 @@ type Querier interface {
 	ListSitemapEntriesAsc(ctx context.Context, arg ListSitemapEntriesAscParams) ([]ListSitemapEntriesAscRow, error)
 	// The backward direction of ListSitemapEntriesAsc.
 	ListSitemapEntriesDesc(ctx context.Context, arg ListSitemapEntriesDescParams) ([]ListSitemapEntriesDescRow, error)
+	// The labels and series the plans name, each row one of the two.
+	ListSubscriptionPlanTargetsForTenant(ctx context.Context, arg ListSubscriptionPlanTargetsForTenantParams) ([]ListSubscriptionPlanTargetsForTenantRow, error)
+	// Every plan of the tenant, in the order they were created, with how many
+	// readers hold a subscription to it that is trialing, active, or past due. The
+	// admin API caps how many plans a tenant holds, so the list is read whole.
+	ListSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListSubscriptionPlansForTenantRow, error)
 	// Who the mail announcing a message goes to: every active tenant_admin of the
 	// tenant, with the address their own account is reached at. The inbox is
 	// theirs alone, so an editor or an auditor is not mailed a message, and the
@@ -2873,6 +2907,11 @@ type Querier interface {
 	// is on the tenant rather than its row, which a tenant that has saved nothing
 	// does not have, for the reasons LockTenantForAnalyticsSettings gives.
 	LockTenantForSiteVerification(ctx context.Context, tenantID uuid.UUID) (uuid.UUID, error)
+	// Serializes the creates of one tenant, so two of them cannot both count one
+	// short of the cap and both be stored. NO KEY UPDATE rather than UPDATE, so it
+	// does not hold back the foreign key checks every write naming the tenant
+	// makes.
+	LockTenantForSubscriptionPlans(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Lock the tenant row so concurrent writes to the tenant theme serialize: the
 	// branding image uploads and deletes (icon, logo, sign-in image), and the
 	// theme saves, each of which reads the theme first to decide what it changes.
@@ -3241,6 +3280,12 @@ type Querier interface {
 	// repeated notification or poll leaves the instants already stored.
 	// Nothing matches when the transaction has no purchase here yet.
 	RecordStoreRefundOnPurchase(ctx context.Context, arg RecordStoreRefundOnPurchaseParams) (Purchase, error)
+	// Writes a subscription as Stripe reports it now. A subscription already here
+	// takes the new state, and keeps the reader it was recorded for: the account
+	// may have been deleted since, which leaves user_id NULL rather than naming
+	// whoever the metadata says. A reader whose account no longer exists is
+	// recorded as NULL too.
+	RecordSubscriptionFromStripe(ctx context.Context, arg RecordSubscriptionFromStripeParams) (RecordSubscriptionFromStripeRow, error)
 	// One refused code or assertion, whichever second factor it was for.
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
@@ -3574,6 +3619,7 @@ type Querier interface {
 	// series any more. The old row is read through the self-join, which sees it as
 	// it was before this statement.
 	UpdateSeriesPublication(ctx context.Context, arg UpdateSeriesPublicationParams) (bool, error)
+	UpdateSubscriptionPlan(ctx context.Context, arg UpdateSubscriptionPlanParams) (int64, error)
 	// A resend passes the role the invitation already grants; inviting the same
 	// address again passes the role that invitation asks for.
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
@@ -3740,6 +3786,11 @@ type Querier interface {
 	// Whether the body is free to everyone — price = 0, or an open free window —
 	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)
+	// Whether the reader holds a subscription Stripe will go on billing, which a
+	// second checkout would run beside. An incomplete one is not among them:
+	// Stripe drops it within a day unless its first payment goes through, and a
+	// reader whose payment failed starts again.
+	UserHoldsLiveSubscription(ctx context.Context, arg UserHoldsLiveSubscriptionParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns
 	// are cleared because no removal is in force on a withdrawn row any more;

@@ -307,6 +307,7 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	publirav1connect.RegisterCatalogServiceHandler(services, server)
 	publirav1connect.RegisterEpisodeReadServiceHandler(services, server)
 	publirav1connect.RegisterPurchaseServiceHandler(services, server)
+	publirav1connect.RegisterSubscriptionServiceHandler(services, server)
 	publirav1connect.RegisterFollowServiceHandler(services, server)
 	publirav1connect.RegisterRatingServiceHandler(services, server)
 	publirav1connect.RegisterWaitFreeServiceHandler(services, server)

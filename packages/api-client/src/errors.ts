@@ -39,6 +39,8 @@ export const RPC_ERROR_REASON = {
   smtpTestTimeout: "SMTP_TEST_TIMEOUT",
   smtpTestUnknown: "SMTP_TEST_UNKNOWN",
   storageNotConfigured: "STORAGE_NOT_CONFIGURED",
+  subscriptionPlanInUse: "SUBSCRIPTION_PLAN_IN_USE",
+  subscriptionPlanLimit: "SUBSCRIPTION_PLAN_LIMIT",
   tenantSuspended: "TENANT_SUSPENDED",
   waitFreeEpisodeExcluded: "WAIT_FREE_EPISODE_EXCLUDED",
   waitFreeEpisodeFree: "WAIT_FREE_EPISODE_FREE",

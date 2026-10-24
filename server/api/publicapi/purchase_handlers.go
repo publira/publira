@@ -686,6 +686,13 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if err := s.createPurchase(ctx, tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
+	case paymentprovider.SubscriptionChanged:
+		if event.Subscription.TenantID != tenant.ID {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "subscription tenant does not match webhook path")
+		}
+		if err := s.recordSubscription(ctx, tenant.ID, event); err != nil {
+			return nil, err
+		}
 	}
 	return &publirav1.ProcessPaymentWebhookResponse{}, nil
 }
