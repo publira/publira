@@ -11,7 +11,7 @@ The parts are the `Viewer` namespace of `@publira/comic-viewer-shell/viewer`, im
 From `@publira/comic-viewer-shell/viewer`:
 
 - The root: `Viewer.Root`, which takes the pages, the resolved reading direction and spread start, and the page to open on, and fetches every page through a plugin that sends the `Accept` header image-server resizes by, decrypts a page delivered encrypted, and fetches a page whose URL was renewed at the width of the `srcset` candidate being loaded
-- The rail: `Viewer.Rail`, holding the page template, which takes as `boxHeight` the height `useBoxHeight` measures, so that a box taller than it is wide shows one page at a time
+- The rail: `Viewer.Rail`, holding the page template, which takes as `boxHeight` the height `useBoxHeight` measures, so that a box taller than it is wide shows one page at a time, and passes `gestures` on to the library's `Viewport`
 - The page template: `Viewer.Page`, with `Viewer.PageLoading` and `Viewer.PageError` (`Viewer.PageErrorMessage`, `Viewer.PageRetryButton`) inside it
 - An episode with no pages: `Viewer.Empty`
 - The toolbar: `Viewer.Toolbar`, `Viewer.Progress` with `Viewer.ProgressSlider` and `Viewer.PageStatus`, and `Viewer.ToolbarActions` for the app's own controls
