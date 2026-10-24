@@ -241,6 +241,17 @@ const fetchWith = (
     url: viewerPage.src,
   });
 
+const fetchCandidate = (
+  plugin: ReturnType<typeof createImageFetchPlugin>,
+  viewerPage: ViewerPage,
+  url: string
+): Promise<ArrayBuffer | undefined> | undefined =>
+  plugin.customFetch?.({
+    page: viewerPage,
+    signal: new AbortController().signal,
+    url,
+  });
+
 describe("createImageFetchPlugin", () => {
   it("asks again at a renewed URL once the page's own is refused, and goes there from then on", async () => {
     const imageBuffer = Uint8Array.from([7, 8, 9]).buffer;
@@ -272,6 +283,64 @@ describe("createImageFetchPlugin", () => {
       "/images/episodes/page-1?t=fresh",
       expect.anything()
     );
+    expect(renewPageUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for a refused candidate again at its own width", async () => {
+    const imageBuffer = Uint8Array.from([7, 8, 9]).buffer;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(imageBuffer));
+    vi.stubGlobal("fetch", fetchMock);
+    const viewerPage = page("?t=expired");
+    const plugin = createImageFetchPlugin(() =>
+      Promise.resolve("/images/episodes/page-1?t=fresh")
+    );
+
+    await expect(
+      fetchCandidate(
+        plugin,
+        viewerPage,
+        "/images/episodes/page-1?t=expired&w=720&fit=scale-down"
+      )
+    ).resolves.toEqual(imageBuffer);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/images/episodes/page-1?t=fresh&w=720&fit=scale-down",
+      expect.anything()
+    );
+  });
+
+  it("fetches a wider candidate of a renewed page at that candidate's width", async () => {
+    const imageBuffer = Uint8Array.from([7, 8, 9]).buffer;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockImplementation(() => Promise.resolve(new Response(imageBuffer)));
+    vi.stubGlobal("fetch", fetchMock);
+    const viewerPage = page("?t=expired");
+    const renewPageUrl = vi.fn<RenewPageUrl>(() =>
+      Promise.resolve("/images/episodes/page-1?t=fresh")
+    );
+    const plugin = createImageFetchPlugin(renewPageUrl);
+
+    await fetchCandidate(
+      plugin,
+      viewerPage,
+      "/images/episodes/page-1?t=expired&w=720&fit=scale-down"
+    );
+    // The slot grew, so the viewer asks for the next candidate up.
+    await fetchCandidate(
+      plugin,
+      viewerPage,
+      "/images/episodes/page-1?t=expired&w=1440&fit=scale-down"
+    );
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/images/episodes/page-1?t=fresh&w=1440&fit=scale-down",
+      expect.anything()
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(renewPageUrl).toHaveBeenCalledTimes(1);
   });
 

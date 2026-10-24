@@ -10,7 +10,7 @@ The parts are the `Viewer` namespace of `@publira/comic-viewer-shell/viewer`, im
 
 From `@publira/comic-viewer-shell/viewer`:
 
-- The root: `Viewer.Root`, which takes the pages, the resolved reading direction and spread start, and the page to open on, and fetches every page through a plugin that sends the `Accept` header image-server resizes by and decrypts a page delivered encrypted
+- The root: `Viewer.Root`, which takes the pages, the resolved reading direction and spread start, and the page to open on, and fetches every page through a plugin that sends the `Accept` header image-server resizes by, decrypts a page delivered encrypted, and fetches a page whose URL was renewed at the width of the `srcset` candidate being loaded
 - The rail: `Viewer.Rail`, holding the page template, which takes as `boxHeight` the height `useBoxHeight` measures, so that a box taller than it is wide shows one page at a time
 - The page template: `Viewer.Page`, with `Viewer.PageLoading` and `Viewer.PageError` (`Viewer.PageErrorMessage`, `Viewer.PageRetryButton`) inside it
 - An episode with no pages: `Viewer.Empty`
@@ -22,7 +22,7 @@ From the package root:
 - `useBoxHeight(box)`: the measured height of the box the viewer fills, for `Viewer.Rail`'s `boxHeight`
 - `describeVisiblePages(value)`: what a `PageStatusValue` has on screen — no page, the end page, one page, or a spread — for the formatter each app words from its own catalog
 - `renewFromPageUrls(readPageUrls)`: a `renewPageUrl` for `Viewer.Root` that answers every page refused at once from one read of all the pages' URLs, keyed by image id
-- `toViewerPages(title, images, formatPageTitle)`: an episode's body images as the viewer's pages
+- `toViewerPages(title, images, formatPageTitle)`: an episode's body images as the viewer's pages, each offering image-server's renditions of its image as `srcset`, no wider than the image is stored
 
 ## Colours
 

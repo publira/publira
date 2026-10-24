@@ -2,6 +2,8 @@ import { definePlugin } from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 import { decodeBase64Url } from "@publira/utils";
 
+import { atRenditionWidth, renditionWidthOf } from "./page-renditions";
+
 /**
  * What the viewer will accept for a page, mirroring what a browser sends for an
  * `img` element. The viewer fetches pages with `fetch()`, which defaults to
@@ -245,6 +247,17 @@ const requestPage = (url: string, signal: AbortSignal): Promise<Response> =>
   });
 
 /**
+ * `renewed`, a page's fresh URL, asked for at the width `candidate` asks for.
+ * The viewer hands the plugin one `srcset` candidate at a time and moves to a
+ * wider one as the page's slot grows, while a renewal answers the page's
+ * stored image, so the width has to come from the candidate on every fetch.
+ */
+const renewedAtWidthOf = (candidate: string, renewed: string): string => {
+  const width = renditionWidthOf(candidate);
+  return width === undefined ? renewed : atRenditionWidth(renewed, width);
+};
+
+/**
  * The URL `renewPageUrl` answers, or `undefined` where it fails: a renewal
  * that cannot be had leaves the page refused, with its reload control, rather
  * than failing it with the renewal's own error.
@@ -269,21 +282,26 @@ const renewOrNothing = async (
  * `renewPageUrl`, a refused page is asked for once more at the URL it answers,
  * and the plugin fetches that page from there from then on, so the reload
  * control a failed page offers retries the fresh URL rather than the one
- * already refused. The page's own `src` is left alone: the viewer keys a
- * page's load by it, and a load whose key changed under it would be dropped.
+ * already refused. What it keeps is the page's renewed URL, which every
+ * candidate of the page's `srcset` is then fetched from at its own width. The
+ * page's own `src` is left alone: the viewer keys a page's load by it, and a
+ * load whose key changed under it would be dropped.
  */
 export const createImageFetchPlugin = (renewPageUrl?: RenewPageUrl) => {
   const renewedUrls = new Map<string, string>();
 
   return definePlugin({
     customFetch: async ({ page, signal, url }) => {
-      let source = renewedUrls.get(page.id) ?? url;
+      const kept = renewedUrls.get(page.id);
+      let source = kept === undefined ? url : renewedAtWidthOf(url, kept);
       let response = await requestPage(source, signal);
       if (renewPageUrl && RENEWABLE_STATUSES.has(response.status)) {
         const renewed = await renewOrNothing(renewPageUrl, page);
-        if (renewed !== undefined && renewed !== source) {
+        const sized =
+          renewed === undefined ? source : renewedAtWidthOf(url, renewed);
+        if (renewed !== undefined && sized !== source) {
           renewedUrls.set(page.id, renewed);
-          source = renewed;
+          source = sized;
           response = await requestPage(source, signal);
         }
       }
