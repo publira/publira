@@ -111,7 +111,7 @@ const NextCampaignButton = ({ onClick }: { onClick: () => void }) => {
 };
 
 /** One banner of the strip. */
-export const CampaignBannerSlide = ({ children }: { children: ReactNode }) => (
+const CampaignBannerCarouselSlide = ({ children }: { children: ReactNode }) => (
   <li className={SLIDE}>{children}</li>
 );
 
@@ -155,12 +155,12 @@ const CampaignBannerCopy = ({
  * opened on the first banner, so a page that has not run its script yet shows
  * the same first screen it will show once it has.
  *
- * The banners arrive as {@link CampaignBannerSlide} children, already rendered
+ * The banners arrive as `CampaignBannerCarousel.Slide` children, already rendered
  * on the server, in a list: a list is what tells a screen reader how many there
  * are and which one it is on. `first` and `last` are the same two banners again,
  * for the copies.
  */
-export const CampaignBannerCarousel = ({
+const CampaignBannerCarousel = ({
   "aria-label": ariaLabel,
   children,
   count,
@@ -300,3 +300,5 @@ export const CampaignBannerCarousel = ({
     </section>
   );
 };
+
+export { CampaignBannerCarousel as Root, CampaignBannerCarouselSlide as Slide };

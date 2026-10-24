@@ -3,10 +3,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  ListPagination,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import type { FollowListItem } from "#lib/follow-list";
@@ -58,22 +55,22 @@ export const FollowList = async ({
   const returnTo = followsListHref(token);
 
   const pagination = (
-    <ListPagination
+    <ListPagination.Root
       aria-label={t("storefront.settings.follows_pagination_aria")}
     >
-      <ListPaginationStep
+      <ListPagination.Step
         href={previousToken ? followsListHref(previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep href={nextToken ? followsListHref(nextToken) : ""}>
+      </ListPagination.Step>
+      <ListPagination.Step href={nextToken ? followsListHref(nextToken) : ""}>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
-    </ListPagination>
+      </ListPagination.Step>
+    </ListPagination.Root>
   );
 
   const emptyState = token ? (

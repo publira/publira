@@ -10,30 +10,9 @@ import {
   CatalogSearchForm,
   CatalogSearchFormSkeleton,
 } from "#components/catalog-search-form";
-import {
-  LocaleSwitcher,
-  LocaleSwitcherDisclosure,
-  LocaleSwitcherDisclosureSkeleton,
-  LocaleSwitcherSkeleton,
-} from "#components/locale-switcher";
+import * as LocaleSwitcher from "#components/locale-switcher";
 import { Message } from "#components/message";
-import {
-  NotificationBell,
-  NotificationBellContent,
-  NotificationBellEmpty,
-  NotificationBellEmptyDescription,
-  NotificationBellEmptyTitle,
-  NotificationBellError,
-  NotificationBellHeader,
-  NotificationBellItem,
-  NotificationBellItemDescription,
-  NotificationBellItemState,
-  NotificationBellItemTitle,
-  NotificationBellList,
-  NotificationBellMore,
-  NotificationBellSkeleton,
-  NotificationBellTrigger,
-} from "#components/notification-bell";
+import * as NotificationBell from "#components/notification-bell";
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { SignOutForm } from "#components/sign-out-form";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
@@ -72,35 +51,35 @@ const StorefrontNotificationBell = async ({
     countUnreadNotifications(tenantId, locale),
   ]);
   let notificationContent = (
-    <NotificationBellError>
+    <NotificationBell.Error>
       <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
         <Message message="storefront.notifications.list_failed" />
       </Suspense>
-    </NotificationBellError>
+    </NotificationBell.Error>
   );
 
   if (list.ok && list.notifications.length === 0) {
     notificationContent = (
-      <NotificationBellEmpty>
-        <NotificationBellEmptyTitle>
+      <NotificationBell.Empty>
+        <NotificationBell.EmptyTitle>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="storefront.notifications.empty_title" />
           </Suspense>
-        </NotificationBellEmptyTitle>
-        <NotificationBellEmptyDescription>
+        </NotificationBell.EmptyTitle>
+        <NotificationBell.EmptyDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
             <Message message="storefront.notifications.empty_description" />
           </Suspense>
-        </NotificationBellEmptyDescription>
-      </NotificationBellEmpty>
+        </NotificationBell.EmptyDescription>
+      </NotificationBell.Empty>
     );
   }
 
   if (list.ok && list.notifications.length > 0) {
     notificationContent = (
-      <NotificationBellList>
+      <NotificationBell.List>
         {list.notifications.map((notification) => (
-          <NotificationBellItem
+          <NotificationBell.Item
             href={
               notification.href
                 ? withLocalePrefix(locale, defaultLocale, notification.href)
@@ -109,7 +88,7 @@ const StorefrontNotificationBell = async ({
             isRead={notification.isRead}
             key={notification.id}
           >
-            <NotificationBellItemState>
+            <NotificationBell.ItemState>
               <Suspense fallback={null}>
                 {notification.isRead ? (
                   <Message message="storefront.common.read" />
@@ -117,22 +96,22 @@ const StorefrontNotificationBell = async ({
                   <Message message="storefront.common.unread" />
                 )}
               </Suspense>
-            </NotificationBellItemState>
-            <NotificationBellItemTitle>
+            </NotificationBell.ItemState>
+            <NotificationBell.ItemTitle>
               {notification.title}
-            </NotificationBellItemTitle>
-            <NotificationBellItemDescription>
+            </NotificationBell.ItemTitle>
+            <NotificationBell.ItemDescription>
               {notification.description}
-            </NotificationBellItemDescription>
-          </NotificationBellItem>
+            </NotificationBell.ItemDescription>
+          </NotificationBell.Item>
         ))}
-      </NotificationBellList>
+      </NotificationBell.List>
     );
   }
 
   return (
-    <NotificationBell>
-      <NotificationBellTrigger unreadCount={unread.unreadCount}>
+    <NotificationBell.Root>
+      <NotificationBell.Trigger unreadCount={unread.unreadCount}>
         <Suspense fallback={null}>
           {unread.unreadCount > 0 ? (
             <Message
@@ -143,21 +122,21 @@ const StorefrontNotificationBell = async ({
             <Message message="storefront.nav.notifications_none" />
           )}
         </Suspense>
-      </NotificationBellTrigger>
-      <NotificationBellContent>
-        <NotificationBellHeader unreadCount={unread.unreadCount}>
+      </NotificationBell.Trigger>
+      <NotificationBell.Content>
+        <NotificationBell.Header unreadCount={unread.unreadCount}>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.notifications.list_heading" />
           </Suspense>
-        </NotificationBellHeader>
+        </NotificationBell.Header>
         {notificationContent}
-        <NotificationBellMore href={moreHref}>
+        <NotificationBell.More href={moreHref}>
           <Suspense fallback={<Skeleton className="h-4 w-16" />}>
             <Message message="storefront.notifications.menu_more" />
           </Suspense>
-        </NotificationBellMore>
-      </NotificationBellContent>
-    </NotificationBell>
+        </NotificationBell.More>
+      </NotificationBell.Content>
+    </NotificationBell.Root>
   );
 };
 
@@ -248,7 +227,7 @@ const HeaderActions = async () => {
   return (
     <div className="flex items-center gap-2">
       <NotificationBellErrorBoundary moreHref={moreHref}>
-        <Suspense fallback={<NotificationBellSkeleton />}>
+        <Suspense fallback={<NotificationBell.Skeleton />}>
           <StorefrontNotificationBell moreHref={moreHref} />
         </Suspense>
       </NotificationBellErrorBoundary>
@@ -516,8 +495,8 @@ const SiteMobileNavigation = () => (
       <Suspense fallback={<MobileNavigationLinksSkeleton />}>
         <MobileNavigationLinks />
       </Suspense>
-      <Suspense fallback={<LocaleSwitcherDisclosureSkeleton />}>
-        <LocaleSwitcherDisclosure />
+      <Suspense fallback={<LocaleSwitcher.DisclosureSkeleton />}>
+        <LocaleSwitcher.Disclosure />
       </Suspense>
       <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
         <MobileNavigationAccountActions />
@@ -631,8 +610,8 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
         </Suspense>
       </SiteLayout.HeaderSearch>
       <SiteLayout.HeaderWideControls>
-        <Suspense fallback={<LocaleSwitcherSkeleton />}>
-          <LocaleSwitcher />
+        <Suspense fallback={<LocaleSwitcher.Skeleton />}>
+          <LocaleSwitcher.Root />
         </Suspense>
       </SiteLayout.HeaderWideControls>
       <SiteLayout.HeaderActions>

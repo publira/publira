@@ -13,20 +13,18 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import { FollowControlSkeleton } from "#components/follow-button";
-import { FollowControl } from "#components/follow-control";
-import { JsonLd } from "#components/json-ld";
 import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+  FollowControlSkeleton,
+  FollowControl,
+} from "#components/follow-control";
+import { JsonLd } from "#components/json-ld";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
 import { Prose } from "#components/prose";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import { getPublishedCreatorDetail } from "#lib/creators";
 import type { PublishedCreatorDetail } from "#lib/creators";
 import { getMessages } from "#lib/get-messages";
@@ -128,7 +126,7 @@ const CreatorDetailSkeleton = () => (
       </div>
       <Skeleton className="h-16 w-full max-w-measure-prose" />
     </div>
-    <SeriesShelfSkeleton />
+    <SeriesShelf.Skeleton />
   </div>
 );
 
@@ -165,11 +163,11 @@ const CreatorSeriesPaginationNav = async ({
   const t = await getMessages();
 
   return (
-    <ListPagination
+    <ListPagination.Root
       aria-label={t("storefront.creators.series_pagination_aria")}
     >
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -182,22 +180,22 @@ const CreatorSeriesPagination = ({
   nextToken: string;
   previousToken: string;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <CreatorSeriesPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={previousToken ? creatorDetailHref(creatorId, previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={nextToken ? creatorDetailHref(creatorId, nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </CreatorSeriesPaginationNav>
   </Suspense>
 );
@@ -260,7 +258,7 @@ const CreatorRelatedSeries = async ({
 
   return (
     <div className="grid gap-8">
-      <SeriesShelf locale={locale} series={creator.series} />
+      <SeriesShelf.Root locale={locale} series={creator.series} />
       <CreatorSeriesPagination
         creatorId={creator.id}
         nextToken={creator.nextToken}
@@ -405,7 +403,7 @@ const CreatorDetailContent = async ({
           </p>
         </div>
 
-        <Suspense fallback={<SeriesShelfSkeleton />}>
+        <Suspense fallback={<SeriesShelf.Skeleton />}>
           <CreatorRelatedSeries creator={creator} token={token} />
         </Suspense>
       </section>

@@ -6,11 +6,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -18,7 +14,7 @@ import {
   SeriesFilterForm,
   SeriesFilterFormSkeleton,
 } from "#components/series-filter-form";
-import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import { listPublishedGenres, listPublishedSeries } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
@@ -107,9 +103,9 @@ const SeriesPaginationNav = async ({ children }: { children: ReactNode }) => {
   const t = await getMessages();
 
   return (
-    <ListPagination aria-label={t("storefront.series.pagination_aria")}>
+    <ListPagination.Root aria-label={t("storefront.series.pagination_aria")}>
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -123,9 +119,9 @@ const SeriesPagination = ({
   previousToken: string;
   query: SeriesListSearchParams;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <SeriesPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={
           previousToken
             ? seriesListHref({ ...query, token: previousToken })
@@ -135,14 +131,14 @@ const SeriesPagination = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={nextToken ? seriesListHref({ ...query, token: nextToken }) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </SeriesPaginationNav>
   </Suspense>
 );
@@ -257,7 +253,7 @@ const SeriesListData = async ({
 
   return (
     <div className="grid gap-8">
-      <SeriesShelf locale={locale} series={series} />
+      <SeriesShelf.Root locale={locale} series={series} />
 
       <SeriesPagination
         nextToken={nextToken}
@@ -297,7 +293,7 @@ const SeriesPage = ({
       }
     >
       <Suspense
-        fallback={<SeriesShelfSkeleton count={SERIES_SKELETON_COUNT} />}
+        fallback={<SeriesShelf.Skeleton count={SERIES_SKELETON_COUNT} />}
       >
         <SeriesListData searchParams={searchParams} />
       </Suspense>

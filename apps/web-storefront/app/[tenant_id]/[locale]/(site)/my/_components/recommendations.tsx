@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { SeriesShelf } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import {
   getCatalogTopFeaturedCreators,
   getCatalogTopReaderRecommendedSeries,
@@ -94,7 +94,11 @@ export const RecommendedSeriesSection = async () => {
   }
 
   return (
-    <SeriesShelf hideUntilConfirmed locale={locale} series={result.value} />
+    <SeriesShelf.Root
+      hideUntilConfirmed
+      locale={locale}
+      series={result.value}
+    />
   );
 };
 

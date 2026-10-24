@@ -13,7 +13,7 @@ const rowClassName = cn(
  * The pagination under a cursor list.
  *
  * A cursor list has no page numbers to set in ink, so the two directions are
- * all there is to render, and {@link ListPaginationStep} is what renders one.
+ * all there is to render, and `ListPagination.Step` is what renders one.
  *
  * `aria-label` cannot be a node, so it arrives as the string it will be, under
  * its own attribute name because the element it lands on is this component's
@@ -22,7 +22,7 @@ const rowClassName = cn(
  * key handed across a file boundary is one `git grep` can no longer account
  * for.
  */
-export const ListPagination = ({
+const ListPagination = ({
   "aria-label": ariaLabel,
   children,
 }: {
@@ -35,7 +35,7 @@ export const ListPagination = ({
 );
 
 /** What stands in for the pagination while its `aria-label` resolves. */
-export const ListPaginationSkeleton = () => (
+const ListPaginationSkeleton = () => (
   <div className={rowClassName}>
     <SkeletonLine className="h-4 w-24" />
     <SkeletonLine className="h-4 w-16" />
@@ -50,7 +50,7 @@ export const ListPaginationSkeleton = () => (
  * words themselves are the caller's children, so the catalog key stays written
  * out at the call site.
  */
-export const ListPaginationStep = ({
+const ListPaginationStep = ({
   children,
   href,
 }: {
@@ -67,3 +67,9 @@ export const ListPaginationStep = ({
   ) : (
     <span className="text-sm text-muted-foreground">{children}</span>
   );
+
+export {
+  ListPagination as Root,
+  ListPaginationSkeleton as Skeleton,
+  ListPaginationStep as Step,
+};

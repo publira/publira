@@ -17,7 +17,7 @@ import type { SeriesListItem } from "#lib/catalog";
  * recorded rather than the index on the shelf, since a series unpublished after
  * the batch ran leaves a gap instead of moving the rest up.
  */
-export const SeriesShelfCard = ({
+const SeriesShelfCard = ({
   item,
   locale,
   rank,
@@ -90,7 +90,7 @@ export const SeriesShelfCard = ({
  * is, inside the link rather than beside it: it is what decides whether this
  * cover is worth opening, so it belongs to the link's own text.
  */
-export const SeriesShelf = ({
+const SeriesShelf = ({
   hideUntilConfirmed = false,
   locale,
   series,
@@ -124,7 +124,7 @@ export const SeriesShelf = ({
 );
 
 /** What stands on the shelf while the catalogue read is in flight. */
-export const SeriesShelfSkeleton = ({ count = 6 }: { count?: number }) => (
+const SeriesShelfSkeleton = ({ count = 6 }: { count?: number }) => (
   <div className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
     {Array.from({ length: count }, (_, index) => (
       <div className="grid gap-2" key={index}>
@@ -135,3 +135,9 @@ export const SeriesShelfSkeleton = ({ count = 6 }: { count?: number }) => (
     ))}
   </div>
 );
+
+export {
+  SeriesShelf as Root,
+  SeriesShelfCard as Card,
+  SeriesShelfSkeleton as Skeleton,
+};

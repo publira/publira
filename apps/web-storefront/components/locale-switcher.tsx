@@ -33,7 +33,7 @@ import {
  *
  * `usePathname()` aborts the prerender of a route whose own dynamic segment has
  * no value yet, so the site layout renders this inside a `<Suspense>` with
- * {@link LocaleSwitcherSkeleton}: the control streams in and the rest of the
+ * `LocaleSwitcher.Skeleton`: the control streams in and the rest of the
  * shell stays static.
  *
  * It lists the locales the tenant offers, the ones `proxy.ts` serves under a
@@ -50,7 +50,7 @@ import {
  * shell is shared by every tenant, so a tenant that offers one locale sees this
  * give way to nothing.
  */
-export const LocaleSwitcherSkeleton = () => (
+const LocaleSwitcherSkeleton = () => (
   <div
     aria-hidden="true"
     className="size-9 animate-pulse rounded-control bg-muted pointer-coarse:size-11"
@@ -70,7 +70,7 @@ const useSwitchableLocales = (currentLocale: Locale): readonly Locale[] =>
 /** Whether the locales leave a reader anything to switch to. */
 const offersChoice = (locales: readonly Locale[]) => locales.length > 1;
 
-export const LocaleSwitcher = () => {
+const LocaleSwitcher = () => {
   const currentLocale = useLocale();
   const defaultLocale = useTenantDefaultLocale();
   const locales = useSwitchableLocales(currentLocale);
@@ -148,12 +148,12 @@ const LocaleSwitcherLinks = ({
 };
 
 /**
- * Stands in for the row {@link LocaleSwitcherDisclosure} draws, at the height
+ * Stands in for the row `LocaleSwitcher.Disclosure` draws, at the height
  * of its trigger, while the tenant read is pending: the shell cannot know
  * whether the tenant offers more than one locale. It is not a button, so
  * nothing reaches a control that has no name yet and may never appear.
  */
-export const LocaleSwitcherDisclosureSkeleton = () => (
+const LocaleSwitcherDisclosureSkeleton = () => (
   <div aria-hidden="true" className="px-3 py-2 text-sm pointer-coarse:py-3">
     <SkeletonLine className="h-4 w-16" />
   </div>
@@ -169,7 +169,7 @@ export const LocaleSwitcherDisclosureSkeleton = () => (
  * drawer on the way to the other language. The row goes with the options: a
  * tenant that offers one locale gets neither, as the band gets no button.
  */
-export const LocaleSwitcherDisclosure = () => {
+const LocaleSwitcherDisclosure = () => {
   const currentLocale = useLocale();
   const locales = useSwitchableLocales(currentLocale);
 
@@ -187,4 +187,11 @@ export const LocaleSwitcherDisclosure = () => {
       </SiteLayout.MobileNavigationDisclosurePanel>
     </SiteLayout.MobileNavigationDisclosure>
   );
+};
+
+export {
+  LocaleSwitcher as Root,
+  LocaleSwitcherDisclosure as Disclosure,
+  LocaleSwitcherDisclosureSkeleton as DisclosureSkeleton,
+  LocaleSwitcherSkeleton as Skeleton,
 };

@@ -2,7 +2,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import { listRelatedSeries } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 
@@ -52,7 +52,7 @@ export const RelatedSeries = async ({
           <Message message="storefront.related.heading" />
         </Suspense>
       </h2>
-      <SeriesShelf locale={locale} series={result.value.series} />
+      <SeriesShelf.Root locale={locale} series={result.value.series} />
     </section>
   );
 };
@@ -65,6 +65,6 @@ export const RelatedSeries = async ({
 export const RelatedSeriesSkeleton = ({ count }: { count: number }) => (
   <div className="grid gap-4">
     <Skeleton className="h-7 w-40" />
-    <SeriesShelfSkeleton count={count} />
+    <SeriesShelf.Skeleton count={count} />
   </div>
 );

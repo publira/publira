@@ -5,13 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
-import {
-  ErrorScreen,
-  ErrorScreenActions,
-  ErrorScreenDigest,
-  ErrorScreenRetry,
-  ErrorScreenTitle,
-} from "./error-screen";
+import * as ErrorScreen from "./error-screen";
 
 afterEach(() => {
   cleanup();
@@ -20,9 +14,9 @@ afterEach(() => {
 describe("ErrorScreen", () => {
   it("shows the caller's title as the page heading", async () => {
     await renderWithClientMessages(
-      <ErrorScreen retry={vi.fn()}>
-        <ErrorScreenTitle>Could not show this page</ErrorScreenTitle>
-      </ErrorScreen>
+      <ErrorScreen.Root retry={vi.fn()}>
+        <ErrorScreen.Title>Could not show this page</ErrorScreen.Title>
+      </ErrorScreen.Root>
     );
 
     expect(
@@ -35,9 +29,9 @@ describe("ErrorScreen", () => {
 
   it("shows the digest behind the catalog's prefix", async () => {
     await renderWithClientMessages(
-      <ErrorScreen digest="2870412426" retry={vi.fn()}>
-        <ErrorScreenDigest />
-      </ErrorScreen>
+      <ErrorScreen.Root digest="2870412426" retry={vi.fn()}>
+        <ErrorScreen.Digest />
+      </ErrorScreen.Root>
     );
 
     expect(screen.getByText("2870412426")).toBeDefined();
@@ -46,9 +40,9 @@ describe("ErrorScreen", () => {
 
   it("leaves the digest line out when the error carries none", async () => {
     await renderWithClientMessages(
-      <ErrorScreen retry={vi.fn()}>
-        <ErrorScreenDigest />
-      </ErrorScreen>
+      <ErrorScreen.Root retry={vi.fn()}>
+        <ErrorScreen.Digest />
+      </ErrorScreen.Root>
     );
 
     expect(screen.queryByText(/Error ID:/u)).toBeNull();
@@ -57,11 +51,11 @@ describe("ErrorScreen", () => {
   it("re-renders the boundary from the retry control", async () => {
     const retry = vi.fn();
     await renderWithClientMessages(
-      <ErrorScreen retry={retry}>
-        <ErrorScreenActions>
-          <ErrorScreenRetry />
-        </ErrorScreenActions>
-      </ErrorScreen>
+      <ErrorScreen.Root retry={retry}>
+        <ErrorScreen.Actions>
+          <ErrorScreen.Retry />
+        </ErrorScreen.Actions>
+      </ErrorScreen.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));

@@ -8,10 +8,7 @@ import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
 import { AccountIcon } from "#components/account-icon";
-import {
-  ListPagination,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getMe } from "#lib/auth";
@@ -124,10 +121,10 @@ export const EpisodeComments = async ({
   const comments = mergeOwnEpisodeComments(page, ownComments);
 
   const pagination = (
-    <ListPagination
+    <ListPagination.Root
       aria-label={t("storefront.episode.comments.pagination_aria")}
     >
-      <ListPaginationStep
+      <ListPagination.Step
         href={
           page.previousToken
             ? episodeCommentsHref(episodePath, page.previousToken)
@@ -137,8 +134,8 @@ export const EpisodeComments = async ({
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={
           page.nextToken ? episodeCommentsHref(episodePath, page.nextToken) : ""
         }
@@ -146,8 +143,8 @@ export const EpisodeComments = async ({
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
-    </ListPagination>
+      </ListPagination.Step>
+    </ListPagination.Root>
   );
 
   const commentedAt = (comment: EpisodeCommentItem) =>

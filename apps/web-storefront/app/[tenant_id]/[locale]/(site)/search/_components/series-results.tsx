@@ -11,11 +11,7 @@ import {
 import { AgeRatingBadge } from "#components/age-rating-badge";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { searchPublishedSeries } from "#lib/catalog";
@@ -58,9 +54,11 @@ const SeriesPaginationNav = async ({ children }: { children: ReactNode }) => {
   const t = await getMessages();
 
   return (
-    <ListPagination aria-label={t("storefront.search.series_pagination_aria")}>
+    <ListPagination.Root
+      aria-label={t("storefront.search.series_pagination_aria")}
+    >
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -74,9 +72,9 @@ const SeriesPagination = ({
   previousToken: string;
   query: string;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <SeriesPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={
           previousToken ? searchPageHref(query, "series", previousToken) : ""
         }
@@ -84,14 +82,14 @@ const SeriesPagination = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={nextToken ? searchPageHref(query, "series", nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </SeriesPaginationNav>
   </Suspense>
 );

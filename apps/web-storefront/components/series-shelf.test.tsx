@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SeriesListItem } from "#lib/catalog";
 
-import { SeriesShelf } from "./series-shelf";
+import * as SeriesShelf from "./series-shelf";
 
 // `<Message>` is an async Server Component, which the client renderer cannot
 // mount. It resolves through the real catalog here, so the assertions stay on
@@ -59,7 +59,7 @@ const series = (overrides: Partial<SeriesListItem> = {}): SeriesListItem => ({
 describe("SeriesShelf", () => {
   it("Says how many episodes of a series can be read without paying", () => {
     render(
-      <SeriesShelf
+      <SeriesShelf.Root
         locale="en"
         series={[series({ freeEpisodeCount: 3, title: "Free Series" })]}
       />
@@ -69,14 +69,14 @@ describe("SeriesShelf", () => {
   });
 
   it("Leaves a series with no free episode without a badge", () => {
-    render(<SeriesShelf locale="en" series={[series()]} />);
+    render(<SeriesShelf.Root locale="en" series={[series()]} />);
 
     expect(screen.queryByText(/free episodes/u)).toBeNull();
   });
 
   it("Keeps the count inside the link to the series", () => {
     render(
-      <SeriesShelf
+      <SeriesShelf.Root
         locale="en"
         series={[series({ freeEpisodeCount: 2, publicId: "SERIES02" })]}
       />
@@ -91,7 +91,7 @@ describe("SeriesShelf", () => {
 
   it("Names each credit with the role it is held in", () => {
     render(
-      <SeriesShelf
+      <SeriesShelf.Root
         locale="en"
         series={[
           series({
@@ -112,7 +112,7 @@ describe("SeriesShelf", () => {
 
   it("Marks a rated series with its age rating inside the link", () => {
     render(
-      <SeriesShelf
+      <SeriesShelf.Root
         locale="en"
         series={[series({ ageRating: "r18", publicId: "SERIES18" })]}
       />

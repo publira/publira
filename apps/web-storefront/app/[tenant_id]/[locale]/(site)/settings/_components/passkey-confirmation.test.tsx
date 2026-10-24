@@ -7,11 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import type { PasskeyConfirmationStartState } from "../_lib/passkey-confirmation-state";
-import {
-  PasskeyConfirmation,
-  PasskeyConfirmationMessage,
-  PasskeyConfirmationSubmit,
-} from "./passkey-confirmation";
+import * as PasskeyConfirmation from "./passkey-confirmation";
 
 const { begin, browserSupportsWebAuthn, confirm, startAuthentication } =
   vi.hoisted(() => ({
@@ -49,12 +45,12 @@ const renderControl = () =>
         New email address
         <input name="newEmail" required type="email" />
       </label>
-      <PasskeyConfirmation begin={begin} confirm={confirm}>
-        <PasskeyConfirmationSubmit>
+      <PasskeyConfirmation.Root begin={begin} confirm={confirm}>
+        <PasskeyConfirmation.Submit>
           Confirm with a passkey
-        </PasskeyConfirmationSubmit>
-        <PasskeyConfirmationMessage />
-      </PasskeyConfirmation>
+        </PasskeyConfirmation.Submit>
+        <PasskeyConfirmation.Message />
+      </PasskeyConfirmation.Root>
     </form>
   );
 

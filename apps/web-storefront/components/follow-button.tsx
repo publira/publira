@@ -1,7 +1,4 @@
 import * as ActionForm from "@publira/ui-components/action-form";
-import { LinkButton } from "@publira/ui-components/button";
-import { Skeleton } from "@publira/ui-components/skeleton";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { FollowTargetKind } from "#lib/follow";
@@ -10,50 +7,24 @@ import { toggleFollowAction } from "#lib/follow-actions";
 import { FollowButtonState } from "./follow-button-state";
 import { LocaleField } from "./locale-field";
 
-export const FollowControlSkeleton = () => <Skeleton className="h-10 w-28" />;
-
-/**
- * The follow control a signed-out reader gets. `aria-label` names what signing
- * in would follow.
- */
-export const FollowLoginLink = ({
-  "aria-label": ariaLabel,
-  children,
-  href,
-}: {
-  "aria-label": string;
-  children: ReactNode;
-  href: string;
-}) => (
-  <LinkButton
-    aria-label={ariaLabel}
-    className="shrink-0"
-    render={<Link href={href} />}
-    size="lg"
-    variant="outline"
-  >
-    {children}
-  </LinkButton>
-);
-
 /**
  * A toggle between following and not. The reader's current state decides
  * which of its two slots renders, so each carries the accessible name for its
  * own intent:
  *
  * ```tsx
- * <FollowButton isFollowing={…} returnTo={…} targetId={…} targetKind="series" tenantId={…}>
- *   <FollowButtonFollow aria-label={t("storefront.follow.follow_aria", { name })}>
+ * <FollowButton.Root isFollowing={…} returnTo={…} targetId={…} targetKind="series" tenantId={…}>
+ *   <FollowButton.Follow aria-label={t("storefront.follow.follow_aria", { name })}>
  *     <ActionForm.Idle>…</ActionForm.Idle>
  *     <ActionForm.Pending>…</ActionForm.Pending>
- *   </FollowButtonFollow>
- *   <FollowButtonUnfollow aria-label={t("storefront.follow.unfollow_aria", { name })}>
+ *   </FollowButton.Follow>
+ *   <FollowButton.Unfollow aria-label={t("storefront.follow.unfollow_aria", { name })}>
  *     …
- *   </FollowButtonUnfollow>
- * </FollowButton>
+ *   </FollowButton.Unfollow>
+ * </FollowButton.Root>
  * ```
  */
-export const FollowButton = ({
+const FollowButton = ({
   children,
   isFollowing,
   returnTo,
@@ -61,7 +32,7 @@ export const FollowButton = ({
   targetKind,
   tenantId,
 }: {
-  /** `FollowButtonFollow` and `FollowButtonUnfollow`. */
+  /** `FollowButton.Follow` and `FollowButton.Unfollow`. */
   children: ReactNode;
   isFollowing: boolean;
   returnTo: string;
@@ -82,3 +53,9 @@ export const FollowButton = ({
     <FollowButtonState isFollowing={isFollowing}>{children}</FollowButtonState>
   </ActionForm.Root>
 );
+
+export { FollowButton as Root };
+export {
+  FollowButtonFollow as Follow,
+  FollowButtonUnfollow as Unfollow,
+} from "./follow-button-state";

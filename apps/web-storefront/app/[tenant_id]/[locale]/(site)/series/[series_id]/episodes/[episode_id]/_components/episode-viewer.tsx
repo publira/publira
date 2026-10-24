@@ -4,7 +4,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import { Suspense } from "react";
 
-import { EpisodeReactionSkeleton } from "#components/episode-reaction";
+import * as EpisodeReaction from "#components/episode-reaction";
 import { EpisodeReactionControl } from "#components/episode-reaction-control";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -133,7 +133,7 @@ export const EpisodeViewer = async ({
                 </Suspense>
               }
             >
-              <Suspense fallback={<EpisodeReactionSkeleton />}>
+              <Suspense fallback={<EpisodeReaction.Skeleton />}>
                 <EpisodeReactionControl
                   episodeId={episode.id}
                   ratingCount={episode.ratingCount}

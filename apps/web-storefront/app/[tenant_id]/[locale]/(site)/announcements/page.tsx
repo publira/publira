@@ -6,11 +6,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -68,9 +64,11 @@ const AnnouncementsPaginationNav = async ({
   const t = await getMessages();
 
   return (
-    <ListPagination aria-label={t("storefront.announcements.pagination_aria")}>
+    <ListPagination.Root
+      aria-label={t("storefront.announcements.pagination_aria")}
+    >
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -82,22 +80,22 @@ const AnnouncementsPagination = ({
   nextToken: string;
   previousToken: string;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <AnnouncementsPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={previousToken ? announcementsListHref(previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={nextToken ? announcementsListHref(nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </AnnouncementsPaginationNav>
   </Suspense>
 );

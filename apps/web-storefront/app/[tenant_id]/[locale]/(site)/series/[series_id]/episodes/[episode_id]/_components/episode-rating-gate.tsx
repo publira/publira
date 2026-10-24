@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import type { ReactNode } from "react";
 
-import { AgeRatingGate } from "#components/age-rating-gate";
+import * as AgeRatingGate from "#components/age-rating-gate";
 import type { RestrictedAgeRating } from "#lib/age-rating";
 import type {
   EpisodeAccessState,
@@ -39,8 +39,8 @@ export const EpisodeRatingGate = async ({
   access: EpisodeAccessState;
   checkoutSessionId: string;
   /**
-   * The rating confirmation's `AgeRatingGateConfirmation` and the page as
-   * `AgeRatingGateContent`, which the tenant's rule replaces outright.
+   * The rating confirmation's `AgeRatingGate.Confirmation` and the page as
+   * `AgeRatingGate.Content`, which the tenant's rule replaces outright.
    */
   children: ReactNode;
   episodePublicId: string;
@@ -94,8 +94,8 @@ export const EpisodeRatingGate = async ({
     : undefined;
 
   return (
-    <AgeRatingGate provenAgeRating={provenAgeRating} rating={rating}>
+    <AgeRatingGate.Root provenAgeRating={provenAgeRating} rating={rating}>
       {children}
-    </AgeRatingGate>
+    </AgeRatingGate.Root>
   );
 };

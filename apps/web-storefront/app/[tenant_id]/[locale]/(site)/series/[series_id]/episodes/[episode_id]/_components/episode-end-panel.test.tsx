@@ -65,6 +65,7 @@ vi.mock("#components/follow-control", () => ({
       Follow
     </button>
   ),
+  FollowControlSkeleton: () => null,
 }));
 
 // The share control resolves the tenant's own origin, which

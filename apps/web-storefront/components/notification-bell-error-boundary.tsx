@@ -4,41 +4,34 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 
-import {
-  NotificationBell,
-  NotificationBellContent,
-  NotificationBellError,
-  NotificationBellHeader,
-  NotificationBellMore,
-  NotificationBellTrigger,
-} from "./notification-bell";
+import * as NotificationBell from "./notification-bell";
 import { NotificationBellErrorCatch } from "./notification-bell-error-catch";
 
 const NotificationBellErrorFallback = ({ moreHref }: { moreHref: string }) => (
-  <NotificationBell>
-    <NotificationBellTrigger unreadCount={0}>
+  <NotificationBell.Root>
+    <NotificationBell.Trigger unreadCount={0}>
       <Suspense fallback={null}>
         <Message message="storefront.nav.notifications_none" />
       </Suspense>
-    </NotificationBellTrigger>
-    <NotificationBellContent>
-      <NotificationBellHeader unreadCount={0}>
+    </NotificationBell.Trigger>
+    <NotificationBell.Content>
+      <NotificationBell.Header unreadCount={0}>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.notifications.list_heading" />
         </Suspense>
-      </NotificationBellHeader>
-      <NotificationBellError>
+      </NotificationBell.Header>
+      <NotificationBell.Error>
         <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
           <Message message="storefront.notifications.list_failed" />
         </Suspense>
-      </NotificationBellError>
-      <NotificationBellMore href={moreHref}>
+      </NotificationBell.Error>
+      <NotificationBell.More href={moreHref}>
         <Suspense fallback={<Skeleton className="h-4 w-16" />}>
           <Message message="storefront.notifications.menu_more" />
         </Suspense>
-      </NotificationBellMore>
-    </NotificationBellContent>
-  </NotificationBell>
+      </NotificationBell.More>
+    </NotificationBell.Content>
+  </NotificationBell.Root>
 );
 
 /**

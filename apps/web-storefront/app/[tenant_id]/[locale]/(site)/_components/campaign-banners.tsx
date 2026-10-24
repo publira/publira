@@ -6,10 +6,7 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
-import {
-  CampaignBannerCarousel,
-  CampaignBannerSlide,
-} from "./campaign-banner-carousel";
+import * as CampaignBannerCarousel from "./campaign-banner-carousel";
 
 /**
  * One banner, drawn in the ratio the console labels as the band's: the
@@ -93,7 +90,7 @@ export const CampaignBannersSection = async () => {
   const lastBanner = rest.at(-1) ?? firstBanner;
 
   return (
-    <CampaignBannerCarousel
+    <CampaignBannerCarousel.Root
       aria-label={ariaLabel}
       count={banners.length}
       first={
@@ -112,14 +109,14 @@ export const CampaignBannersSection = async () => {
       }
     >
       {banners.map((banner, index) => (
-        <CampaignBannerSlide key={banner.publicId}>
+        <CampaignBannerCarousel.Slide key={banner.publicId}>
           <CampaignBannerLink
             banner={banner}
             fallbackAlt={fallbackAlt}
             first={index === 0}
           />
-        </CampaignBannerSlide>
+        </CampaignBannerCarousel.Slide>
       ))}
-    </CampaignBannerCarousel>
+    </CampaignBannerCarousel.Root>
   );
 };
