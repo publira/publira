@@ -60,8 +60,17 @@ export const TenantSiteVerificationForm = ({
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
+          {/* The fields hold what they were mounted with, so a read that
+              arrives later — one that failed and then recovered, which also
+              opens the fields — remounts them on it. Left mounted on the empty
+              codes they were given, they would clear the stored ones on save. */}
           <TenantSiteVerificationFields
             initialSiteVerification={initialSiteVerification}
+            key={
+              initialSiteVerification
+                ? `${initialSiteVerification.google}\n${initialSiteVerification.bing}`
+                : ""
+            }
           />
         </ActionForm.Fieldset>
 

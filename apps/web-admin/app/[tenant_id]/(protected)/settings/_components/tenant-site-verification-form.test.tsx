@@ -127,6 +127,30 @@ describe("TenantSiteVerificationForm", () => {
     expect(submitButton().disabled).toBe(true);
   });
 
+  it("shows the stored codes once a read that failed recovers, so a save does not clear them", () => {
+    const { rerender } = renderForm({
+      initialSiteVerification: undefined,
+      loadErrorMessage:
+        "Could not load the verification codes. Please try again later.",
+    });
+
+    expect(googleField().value).toBe("");
+
+    rerender(
+      <AdminLocaleTestProvider locale="en">
+        <TenantSiteVerificationForm
+          canEdit
+          initialSiteVerification={{ bing: "0123ABCD", google: "aBc-123" }}
+          tenantId="TENANT001"
+        />
+      </AdminLocaleTestProvider>
+    );
+
+    expect(googleField().value).toBe("aBc-123");
+    expect(bingField().value).toBe("0123ABCD");
+    expect(submitButton().disabled).toBe(false);
+  });
+
   it("replaces a pasted <meta> element with its content value once the field is left", () => {
     renderForm();
 
