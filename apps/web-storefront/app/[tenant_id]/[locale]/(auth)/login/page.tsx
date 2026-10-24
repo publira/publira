@@ -21,6 +21,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { SignInPanel } from "../_components/sign-in-panel";
 import { PasskeySignIn } from "./_components/passkey-sign-in";
 import {
   RefusedSignUpNotice,
@@ -261,6 +262,8 @@ const LoginPage = ({
         <LoginFormContent searchParams={searchParams} />
       </Suspense>
     </AuthScreen.Main>
+
+    <SignInPanel />
   </AuthScreen.Root>
 );
 

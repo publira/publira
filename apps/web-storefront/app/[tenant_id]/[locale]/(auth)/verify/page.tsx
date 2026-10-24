@@ -15,6 +15,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { SignInPanel } from "../_components/sign-in-panel";
 import { parseVerifySearchParams } from "./_lib/search-params";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -187,6 +188,8 @@ const VerifyPage = ({
         <VerificationContent searchParams={searchParams} />
       </Suspense>
     </AuthScreen.Main>
+
+    <SignInPanel />
   </AuthScreen.Root>
 );
 

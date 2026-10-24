@@ -183,6 +183,11 @@ export interface TenantSiteInfo {
   name: string;
   publicId: string;
   /**
+   * The image beside the sign-in and sign-up forms. Absent while the tenant
+   * has not uploaded one.
+   */
+  signInImageVariants?: TenantImageVariant[];
+  /**
    * The tenant's own words for a visitor while sign-up is closed. Absent while
    * it is open, and where the tenant wrote none and the site shows its own.
    */
@@ -336,6 +341,9 @@ export const getTenantSiteInfo = async (
       ),
       name,
       publicId,
+      signInImageVariants: toTenantImageVariants(
+        response.theme?.signInImageVariants
+      ),
       signUpClosedMessage: nonEmpty(response.signUpClosedMessage),
       signUpOpen: response.signUpOpen,
       supportedLocales: toSupportedLocales(

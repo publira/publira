@@ -18,6 +18,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { SignInPanel } from "../_components/sign-in-panel";
 import { confirmPasswordAction } from "./_lib/actions";
 import { parseConfirmPasswordSearchParams } from "./_lib/search-params";
 
@@ -222,6 +223,8 @@ const ConfirmPasswordPage = ({
         <ConfirmPasswordFormContent searchParams={searchParams} />
       </Suspense>
     </AuthScreen.Main>
+
+    <SignInPanel />
   </AuthScreen.Root>
 );
 
