@@ -1177,14 +1177,22 @@ void main() {
     );
     final reactionControl = find.byKey(const ValueKey('episode-reaction'));
 
+    final staffNotice = find.byKey(
+      const ValueKey('episode-reaction-reader-is-staff'),
+    );
+    const staffCopy =
+        'You cannot react to episodes while you hold a staff role, so your '
+        'reading does not count toward the ratings readers see.';
+
     /// The reaction state the API answers for [episodeId].
-    void react({required bool readerCredited}) {
+    void react({required bool readerCredited, bool readerIsStaff = false}) {
       catalog.reactions = {
         fixtureInternalId(episodeId): EpisodeReaction(
           score: 0,
           ratingCount: 2,
           allowsMultiplePresses: false,
           readerCredited: readerCredited,
+          readerIsStaff: readerIsStaff,
         ),
       };
     }
@@ -1265,6 +1273,71 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(
+        find.text('Could not record the reaction. Try again.'),
+        findsNothing,
+      );
+      expect(tester.widget<FilledButton>(press).onPressed, isNull);
+    });
+
+    testWidgets('a member of staff is told why in place of the reaction on '
+        'a free episode', (tester) async {
+      react(readerCredited: false, readerIsStaff: true);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(reactionControl, findsNothing);
+      expect(staffNotice, findsOneWidget);
+      expect(find.text(staffCopy), findsOneWidget);
+    });
+
+    testWidgets('a member of staff is told why in place of the reaction on '
+        'a paid episode', (tester) async {
+      // The staff role opens the body under a source this build does not
+      // name, so the reaction state is what says the reader is on staff.
+      catalog.episodes = fixtureEpisodes(access: EpisodeAccess.entitled);
+      react(readerCredited: false, readerIsStaff: true);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(reactionControl, findsNothing);
+      expect(staffNotice, findsOneWidget);
+      expect(creatorAccess, findsNothing);
+    });
+
+    testWidgets('a linked creator who is also on staff is shown nothing in '
+        'place of the reaction, as any author is', (tester) async {
+      react(readerCredited: true, readerIsStaff: true);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(reactionControl, findsNothing);
+      expect(staffNotice, findsNothing);
+    });
+
+    testWidgets('a press refused because the reader is on staff says so', (
+      tester,
+    ) async {
+      // Granted the role after the control was drawn: the state read before
+      // the grant still offers the press, and the API refuses it.
+      react(readerCredited: false);
+      catalog.pressError = const CatalogFailure(
+        CatalogFailureKind.unexpected,
+        refused: true,
+        reasons: [readerIsTenantStaffReason],
+      );
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      final press = find.byKey(const ValueKey('episode-reaction-press'));
+      tester.widget<FilledButton>(press).onPressed!.call();
+      await tester.pumpAndSettle();
+
+      expect(find.text(staffCopy), findsOneWidget);
       expect(
         find.text('Could not record the reaction. Try again.'),
         findsNothing,

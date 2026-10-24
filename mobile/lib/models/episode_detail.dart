@@ -268,6 +268,7 @@ class EpisodeReaction {
     required this.ratingCount,
     required this.allowsMultiplePresses,
     this.readerCredited = false,
+    this.readerIsStaff = false,
   });
 
   /// Zero before this reader reacts, otherwise their score from one to five.
@@ -281,4 +282,9 @@ class EpisodeReaction {
   /// free or not. The API refuses such a reader's rating, so the control is
   /// not offered to them.
   final bool readerCredited;
+
+  /// Whether the reader's account holds a staff role in the tenant, free
+  /// episode or not. The API refuses such a reader's rating too, so the
+  /// control is replaced by a notice saying why.
+  final bool readerIsStaff;
 }

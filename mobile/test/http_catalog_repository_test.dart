@@ -3044,6 +3044,29 @@ void main() {
       },
     );
 
+    test(
+      'getEpisodeReaction reads whether the member holds a staff role',
+      () async {
+        final internalId = ConnectFixtureServer.internalIdOf(
+          ConnectFixtureServer.seedEpisodeId,
+        );
+        expect(
+          (await signedIn.getEpisodeReaction(internalId))!.readerIsStaff,
+          isFalse,
+        );
+
+        server.episodeRatingResponse = pb.GetMyEpisodeRatingResponse(
+          ratingCount: Int64(3),
+          readerIsStaff: true,
+        );
+        final staff = await signedIn.getEpisodeReaction(internalId);
+
+        expect(staff!.readerIsStaff, isTrue);
+        expect(staff.readerCredited, isFalse);
+        expect(staff.ratingCount, 3);
+      },
+    );
+
     test('reactToEpisode carries the reason the press was refused', () async {
       server.rateEpisodeError = (
         status: HttpStatus.forbidden,

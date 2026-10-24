@@ -5499,6 +5499,7 @@
         "failed": "Could not record the reaction. Try again.",
         "press": "React",
         "reader_credited": "You cannot react to an episode you are credited on as its author.",
+        "reader_is_staff": "You cannot react to episodes while you hold a staff role, so your reading does not count toward the ratings readers see.",
         "score": "React ({$score}/5)",
         "sign_in": "Sign in to react",
         "submitting": "Reacting…"
