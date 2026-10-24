@@ -434,6 +434,23 @@ export const WEB_STOREFRONT_SIGN_UP_SETTINGS_BASE_URL = envUrl(
 );
 
 /**
+ * Console of the tenant whose search engine verification codes the E2E saves,
+ * from `db/seeds/scenarios/620_site_verification.sql`. Every page of a tenant's
+ * site carries the codes, so they are not saved on a tenant another suite
+ * reads pages of.
+ */
+export const WEB_ADMIN_SITE_VERIFICATION_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_SITE_VERIFICATION_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.verify.localhost")
+);
+
+/** Public site of the same tenant, whose pages carry the codes. */
+export const WEB_STOREFRONT_SITE_VERIFICATION_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SITE_VERIFICATION_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "verify.localhost")
+);
+
+/**
  * Public site of the tenant that names its terms and privacy pages, from
  * `db/seeds/scenarios/300_signup_consent.sql`. The nomination is tenant-wide,
  * so the sign-up that asks for consent is not the one another suite drives.

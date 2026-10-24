@@ -26,4 +26,7 @@ export type {
   WaitFreeTicket,
 } from "../gen/publira/v1/catalog_pb.js";
 export type { NotificationItem } from "../gen/publira/v1/notification_pb.js";
-export type { TenantGoogleTag } from "../gen/publira/v1/tenant_pb.js";
+export type {
+  TenantGoogleTag,
+  TenantSiteVerification,
+} from "../gen/publira/v1/tenant_pb.js";

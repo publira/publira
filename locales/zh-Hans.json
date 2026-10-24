@@ -2903,6 +2903,23 @@
           "crawler_refused": "{$crawler}已无法排除。请重新加载页面后再选择。"
         }
       },
+      "site_verification": {
+        "title": "搜索引擎所有权验证",
+        "description": "向Google Search Console和Bing Webmaster Tools证明网站归您所有的代码。每个代码都会以<meta>标签的形式添加到网站的所有页面。",
+        "google_label": "Google Search Console",
+        "google_description": "粘贴Search Console显示的完整HTML标签，或仅粘贴其content值。留空则删除该标签。",
+        "bing_label": "Bing Webmaster Tools",
+        "bing_description": "粘贴Bing Webmaster Tools显示的完整meta标签，或仅粘贴其content值。留空则删除该标签。",
+        "submit": "保存验证代码",
+        "saved": "验证代码已保存。",
+        "load_failed": "无法加载验证代码。请稍后再试。",
+        "save_failed": "无法保存验证代码。请稍后再试。",
+        "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
+        "validation": {
+          "invalid": "请粘贴完整的<meta>标签，或仅粘贴其content值：最多128个字母、数字、连字符和下划线。",
+          "other_service": "这不是{$name}标签。请复制此服务显示的标签。"
+        }
+      },
       "icon": {
         "title": "图标",
         "description": "公开站点在浏览器标签页和地址栏中显示的图标。",

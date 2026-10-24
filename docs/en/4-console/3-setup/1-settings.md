@@ -1,8 +1,8 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, reader sign-up, refused email addresses, and crawler exclusions, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
+description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, and search engine verification codes, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-10-22
+updated: 2026-10-24
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -136,6 +136,21 @@ Choose **Save the crawler exclusions** to save. Each path is saved without a tra
 ![The Crawler exclusions card: Crawlers kept off the whole site with a box for each crawler under AI training, AI assistants, and Image search, a field for a path with Add a path, and Save the crawler exclusions.](./settings-crawler-exclusions.png)
 
 Saves are recorded in the [audit log](./8-audit-log.md) as **Crawler exclusions updated**.
+
+### Search engine verification
+
+The codes Google Search Console and Bing Webmaster Tools give to prove that the site is yours. Each code that is set is added to every page of the site as a `<meta>` tag, which is the method both services call **HTML tag** or **HTML Meta Tag**.
+
+- **Google Search Console** takes the tag Search Console shows when the site is added as a URL-prefix property, such as `<meta name="google-site-verification" content="…" />`.
+- **Bing Webmaster Tools** takes the tag Bing Webmaster Tools shows, such as `<meta name="msvalidate.01" content="…" />`.
+
+Paste the whole tag, or only its `content` value. Only the value is saved, and the field shows it once you leave it. A tag copied from the other service is refused. Leave a field empty to remove that tag from the site.
+
+Choose **Save the verification codes** to save, then ask the service to verify the site.
+
+![The Search engine verification card: a Google Search Console field and a Bing Webmaster Tools field, each with what to paste under it, and Save the verification codes.](./settings-search-engine-verification.png)
+
+Only a Tenant admin can see this card's contents. Saves are recorded in the [audit log](./8-audit-log.md) as **Search engine verification updated**.
 
 ## Limits and retention
 
