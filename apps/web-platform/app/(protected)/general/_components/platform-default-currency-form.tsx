@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Combobox from "@publira/ui-components/combobox";
 import * as Field from "@publira/ui-components/field";
@@ -7,13 +8,6 @@ import { Suspense } from "react";
 
 import { CurrencyCombobox } from "#components/currency-combobox";
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import { currencyItems } from "#lib/currency-items";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -45,21 +39,21 @@ export const PlatformDefaultCurrencyForm = async ({
   const disabled = Boolean(loadErrorMessage) || locked;
 
   return (
-    <PlatformSection>
-      <PlatformSectionHeader>
-        <PlatformSectionHeading>
-          <PlatformSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
               <Message message="platform.settings.default_currency_title" />
             </Suspense>
-          </PlatformSectionTitle>
-          <PlatformSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
               <Message message="platform.settings.default_currency_description" />
             </Suspense>
-          </PlatformSectionDescription>
-        </PlatformSectionHeading>
-      </PlatformSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updatePlatformDefaultCurrencyAction}
         className="grid gap-4 sm:max-w-lg"
@@ -119,6 +113,6 @@ export const PlatformDefaultCurrencyForm = async ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </PlatformSection>
+    </ConsoleSection.Root>
   );
 };

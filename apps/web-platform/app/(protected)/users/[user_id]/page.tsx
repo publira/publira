@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
@@ -16,26 +18,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  DangerConfirmButton,
-  DangerConfirmButtonAction,
-  DangerConfirmButtonTrigger,
-} from "#components/danger-confirm-button";
+import * as DangerConfirmButton from "#components/danger-confirm-button";
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import { verifyPlatformSession } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -68,20 +52,20 @@ const userDetailParamsSchema = z.object({
 });
 
 const UserDetailSkeleton = () => (
-  <PlatformPageContent>
+  <ConsolePage.Content>
     <div className="grid gap-10 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
-      <PlatformSection>
+      <ConsoleSection.Root>
         <SkeletonLine className="h-5 w-28" />
         <Skeleton className="h-12" />
         <Skeleton className="h-12" />
         <Skeleton className="h-12" />
-      </PlatformSection>
-      <PlatformSection>
+      </ConsoleSection.Root>
+      <ConsoleSection.Root>
         <SkeletonLine className="h-5 w-28" />
         <Skeleton className="h-16" />
-      </PlatformSection>
+      </ConsoleSection.Root>
     </div>
-  </PlatformPageContent>
+  </ConsolePage.Content>
 );
 
 /**
@@ -149,9 +133,9 @@ const UserDetailContent = async ({
 
   return (
     <>
-      <PlatformPageHeader>
-        <PlatformPageHeading>
-          <PlatformPageTitle>
+      <ConsolePage.Header>
+        <ConsolePage.Heading>
+          <ConsolePage.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message
                 message="platform.users.detail_title"
@@ -160,27 +144,27 @@ const UserDetailContent = async ({
                 }}
               />
             </Suspense>
-          </PlatformPageTitle>
-          <PlatformPageDescription>
+          </ConsolePage.Title>
+          <ConsolePage.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.users.detail_description" />
             </Suspense>
-          </PlatformPageDescription>
-        </PlatformPageHeading>
-        <PlatformPageActions>
+          </ConsolePage.Description>
+        </ConsolePage.Heading>
+        <ConsolePage.Actions>
           <LinkButton render={<Link href="/users" />} variant="outline">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.common.back_to_list" />
             </Suspense>
           </LinkButton>
           {canUnsuspend ? (
-            <DangerConfirmButton
+            <DangerConfirmButton.Root
               actionArg={user.id}
               actionCreator={unsuspendEndUserAction}
             >
-              <DangerConfirmButtonTrigger variant="outline">
+              <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.users.unsuspend")}
-              </DangerConfirmButtonTrigger>
+              </DangerConfirmButton.Trigger>
               <ConfirmDialog.Content>
                 <ConfirmDialog.Header>
                   <ConfirmDialog.Title>
@@ -192,21 +176,21 @@ const UserDetailContent = async ({
                 </ConfirmDialog.Header>
                 <ConfirmDialog.Footer>
                   <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
-                  <DangerConfirmButtonAction variant="default">
+                  <DangerConfirmButton.Action variant="default">
                     {t("platform.users.unsuspend_action")}
-                  </DangerConfirmButtonAction>
+                  </DangerConfirmButton.Action>
                 </ConfirmDialog.Footer>
               </ConfirmDialog.Content>
-            </DangerConfirmButton>
+            </DangerConfirmButton.Root>
           ) : null}
           {canSuspend ? (
-            <DangerConfirmButton
+            <DangerConfirmButton.Root
               actionArg={user.id}
               actionCreator={suspendEndUserAction}
             >
-              <DangerConfirmButtonTrigger variant="outline">
+              <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.users.suspend")}
-              </DangerConfirmButtonTrigger>
+              </DangerConfirmButton.Trigger>
               <ConfirmDialog.Content>
                 <ConfirmDialog.Header>
                   <ConfirmDialog.Title>
@@ -218,21 +202,21 @@ const UserDetailContent = async ({
                 </ConfirmDialog.Header>
                 <ConfirmDialog.Footer>
                   <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
-                  <DangerConfirmButtonAction>
+                  <DangerConfirmButton.Action>
                     {t("platform.users.suspend_action")}
-                  </DangerConfirmButtonAction>
+                  </DangerConfirmButton.Action>
                 </ConfirmDialog.Footer>
               </ConfirmDialog.Content>
-            </DangerConfirmButton>
+            </DangerConfirmButton.Root>
           ) : null}
           {canDelete ? (
-            <DangerConfirmButton
+            <DangerConfirmButton.Root
               actionArg={user.id}
               actionCreator={deleteEndUserAction}
             >
-              <DangerConfirmButtonTrigger>
+              <DangerConfirmButton.Trigger>
                 {t("platform.users.delete")}
-              </DangerConfirmButtonTrigger>
+              </DangerConfirmButton.Trigger>
               <ConfirmDialog.Content>
                 <ConfirmDialog.Header>
                   <ConfirmDialog.Title>
@@ -244,32 +228,32 @@ const UserDetailContent = async ({
                 </ConfirmDialog.Header>
                 <ConfirmDialog.Footer>
                   <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
-                  <DangerConfirmButtonAction>
+                  <DangerConfirmButton.Action>
                     {t("platform.users.delete_action")}
-                  </DangerConfirmButtonAction>
+                  </DangerConfirmButton.Action>
                 </ConfirmDialog.Footer>
               </ConfirmDialog.Content>
-            </DangerConfirmButton>
+            </DangerConfirmButton.Root>
           ) : null}
-        </PlatformPageActions>
-      </PlatformPageHeader>
-      <PlatformPageContent>
+        </ConsolePage.Actions>
+      </ConsolePage.Header>
+      <ConsolePage.Content>
         <div className="grid gap-10 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)]">
-          <PlatformSection>
-            <PlatformSectionHeader>
-              <PlatformSectionHeading>
-                <PlatformSectionTitle>
+          <ConsoleSection.Root>
+            <ConsoleSection.Header>
+              <ConsoleSection.Heading>
+                <ConsoleSection.Title>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.users.info_title" />
                   </Suspense>
-                </PlatformSectionTitle>
-                <PlatformSectionDescription>
+                </ConsoleSection.Title>
+                <ConsoleSection.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.users.info_description" />
                   </Suspense>
-                </PlatformSectionDescription>
-              </PlatformSectionHeading>
-            </PlatformSectionHeader>
+                </ConsoleSection.Description>
+              </ConsoleSection.Heading>
+            </ConsoleSection.Header>
             <Field.Root>
               <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -328,23 +312,23 @@ const UserDetailContent = async ({
                 </Badge>
               </p>
             </Field.Root>
-          </PlatformSection>
+          </ConsoleSection.Root>
 
-          <PlatformSection>
-            <PlatformSectionHeader>
-              <PlatformSectionHeading>
-                <PlatformSectionTitle>
+          <ConsoleSection.Root>
+            <ConsoleSection.Header>
+              <ConsoleSection.Heading>
+                <ConsoleSection.Title>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.users.affiliated_title" />
                   </Suspense>
-                </PlatformSectionTitle>
-                <PlatformSectionDescription>
+                </ConsoleSection.Title>
+                <ConsoleSection.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="platform.users.affiliated_description" />
                   </Suspense>
-                </PlatformSectionDescription>
-              </PlatformSectionHeading>
-            </PlatformSectionHeader>
+                </ConsoleSection.Description>
+              </ConsoleSection.Heading>
+            </ConsoleSection.Header>
             {user.tenantIds.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
@@ -367,21 +351,21 @@ const UserDetailContent = async ({
                 ))}
               </ul>
             )}
-          </PlatformSection>
+          </ConsoleSection.Root>
         </div>
-      </PlatformPageContent>
+      </ConsolePage.Content>
     </>
   );
 };
 
-// `PlatformPage` stays in the static shell so the max width and padding are
+// `ConsolePage.Root` stays in the static shell so the max width and padding are
 // painted before `params` resolves; only the header and body stream in.
 const UserDetailPage = ({ params }: UserDetailPageProps) => (
-  <PlatformPage>
+  <ConsolePage.Root>
     <Suspense fallback={<UserDetailSkeleton />}>
       <UserDetailContent params={params} />
     </Suspense>
-  </PlatformPage>
+  </ConsolePage.Root>
 );
 
 export default UserDetailPage;

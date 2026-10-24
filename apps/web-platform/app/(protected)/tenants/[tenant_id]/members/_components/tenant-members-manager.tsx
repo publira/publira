@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -16,14 +17,6 @@ import type { ReactNode } from "react";
 
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSections,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import { getMessagesFor } from "#lib/messages";
 import type {
   PlatformTenantAdminInvitation,
@@ -39,14 +32,8 @@ import {
   resendTenantAdminInvitationAction,
   updateTenantMemberRoleAction,
 } from "../../_lib/actions";
-import {
-  ReportTenantMemberRemoval,
-  TenantMemberRemovals,
-} from "./tenant-member-removals";
-import {
-  CloseTenantMemberRoleDialogOnSuccess,
-  TenantMemberRoleDialog,
-} from "./tenant-member-role-dialog";
+import * as TenantMemberRemovals from "./tenant-member-removals";
+import * as TenantMemberRoleDialog from "./tenant-member-role-dialog";
 
 interface TenantMembersManagerProps {
   invitationErrorMessage?: string;
@@ -218,7 +205,7 @@ const TenantMemberRoleForm = ({
   member: PlatformTenantMemberSummary;
   tenantId: string;
 }) => (
-  <TenantMemberRoleDialog>
+  <TenantMemberRoleDialog.Root>
     <Dialog.Trigger
       render={<Button size="sm" type="button" variant="outline" />}
     >
@@ -234,7 +221,7 @@ const TenantMemberRoleForm = ({
             action={updateTenantMemberRoleAction}
             className="grid gap-4"
           >
-            <CloseTenantMemberRoleDialogOnSuccess />
+            <TenantMemberRoleDialog.CloseOnSuccess />
             <input name="tenant_id" type="hidden" value={tenantId} />
             <input name="member_user_id" type="hidden" value={member.userId} />
 
@@ -313,7 +300,7 @@ const TenantMemberRoleForm = ({
         </Dialog.Popup>
       </Dialog.Viewport>
     </Dialog.Portal>
-  </TenantMemberRoleDialog>
+  </TenantMemberRoleDialog.Root>
 );
 
 /**
@@ -336,7 +323,7 @@ const TenantMemberDeleteButton = ({
       id={formId}
       showSuccess={false}
     >
-      <ReportTenantMemberRemoval />
+      <TenantMemberRemovals.Report />
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="member_user_id" type="hidden" value={userId} />
       <ActionForm.Fieldset>
@@ -586,22 +573,22 @@ export const TenantMembersManager = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <PlatformSections>
-      <PlatformSection>
-        <PlatformSectionHeader>
-          <PlatformSectionHeading>
-            <PlatformSectionTitle>
+    <ConsoleSection.Stack>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
                 <Message message="platform.tenants.invite_admin_title" />
               </Suspense>
-            </PlatformSectionTitle>
-            <PlatformSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="platform.tenants.invite_admin_description" />
               </Suspense>
-            </PlatformSectionDescription>
-          </PlatformSectionHeading>
-        </PlatformSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         <ActionForm.Root
           action={createTenantAdminInvitationAction}
           className="grid gap-4"
@@ -638,24 +625,24 @@ export const TenantMembersManager = async ({
             </ActionForm.Submit>
           </div>
         </ActionForm.Root>
-      </PlatformSection>
+      </ConsoleSection.Root>
 
-      <PlatformSection>
-        <PlatformSectionHeader>
-          <PlatformSectionHeading>
-            <PlatformSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                 <Message message="platform.tenants.members_list_title" />
               </Suspense>
-            </PlatformSectionTitle>
-            <PlatformSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="platform.tenants.members_list_description" />
               </Suspense>
-            </PlatformSectionDescription>
-          </PlatformSectionHeading>
-        </PlatformSectionHeader>
-        <TenantMemberRemovals>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
+        <TenantMemberRemovals.Root>
           {membersErrorMessage ? (
             <SectionError.Root>
               <SectionError.Heading>
@@ -776,24 +763,24 @@ export const TenantMembersManager = async ({
               />
             </>
           )}
-        </TenantMemberRemovals>
-      </PlatformSection>
+        </TenantMemberRemovals.Root>
+      </ConsoleSection.Root>
 
-      <PlatformSection>
-        <PlatformSectionHeader>
-          <PlatformSectionHeading>
-            <PlatformSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                 <Message message="platform.tenants.add_member" />
               </Suspense>
-            </PlatformSectionTitle>
-            <PlatformSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="platform.tenants.add_member_description" />
               </Suspense>
-            </PlatformSectionDescription>
-          </PlatformSectionHeading>
-        </PlatformSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         <ActionForm.Root action={addTenantMemberAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
           <Field.Root>
@@ -872,23 +859,23 @@ export const TenantMembersManager = async ({
             </ActionForm.Submit>
           </div>
         </ActionForm.Root>
-      </PlatformSection>
+      </ConsoleSection.Root>
 
-      <PlatformSection>
-        <PlatformSectionHeader>
-          <PlatformSectionHeading>
-            <PlatformSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                 <Message message="platform.tenants.invitations_title" />
               </Suspense>
-            </PlatformSectionTitle>
-            <PlatformSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="platform.tenants.invitations_description" />
               </Suspense>
-            </PlatformSectionDescription>
-          </PlatformSectionHeading>
-        </PlatformSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         {/* A failed fetch still hands an empty `invitations` array. Keeping the
             table header and the pager next to the error reads as "there are no
             invitations", so the error replaces the whole list. */}
@@ -920,7 +907,7 @@ export const TenantMembersManager = async ({
             />
           </>
         )}
-      </PlatformSection>
-    </PlatformSections>
+      </ConsoleSection.Root>
+    </ConsoleSection.Stack>
   );
 };

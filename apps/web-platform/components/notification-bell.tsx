@@ -21,7 +21,7 @@ const useNotificationBellClose = () => {
   return close;
 };
 
-export const NotificationBellSkeleton = () => (
+const NotificationBellSkeleton = () => (
   <span
     aria-hidden="true"
     className="inline-flex size-9 items-center justify-center pointer-coarse:size-11"
@@ -34,7 +34,7 @@ export const NotificationBellSkeleton = () => (
  * Header notification menu frame. Its trigger, state, and rows are explicit
  * child slots so callers keep copy and loading boundaries at their call sites.
  */
-export const NotificationBell = ({ children }: { children: ReactNode }) => {
+const NotificationBell = ({ children }: { children: ReactNode }) => {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
 
@@ -47,7 +47,7 @@ export const NotificationBell = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const NotificationBellTrigger = ({
+const NotificationBellTrigger = ({
   children,
   unreadCount,
 }: {
@@ -72,17 +72,13 @@ export const NotificationBellTrigger = ({
   );
 };
 
-export const NotificationBellContent = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
+const NotificationBellContent = ({ children }: { children: ReactNode }) => (
   <Popover.Content align="end" className="w-80" sideOffset={8}>
     {children}
   </Popover.Content>
 );
 
-export const NotificationBellHeader = ({
+const NotificationBellHeader = ({
   children,
   unreadCount,
 }: {
@@ -101,47 +97,35 @@ export const NotificationBellHeader = ({
   </div>
 );
 
-export const NotificationBellLoading = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <p className="px-2.5 py-4 text-sm text-muted-foreground">{children}</p>;
+const NotificationBellLoading = ({ children }: { children: ReactNode }) => (
+  <p className="px-2.5 py-4 text-sm text-muted-foreground">{children}</p>
+);
 
-export const NotificationBellError = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
+const NotificationBellError = ({ children }: { children: ReactNode }) => (
   <p className="px-2.5 py-4 text-sm text-muted-foreground" role="alert">
     {children}
   </p>
 );
 
-export const NotificationBellEmpty = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
+const NotificationBellEmpty = ({ children }: { children: ReactNode }) => (
   <div className="px-2.5 py-4 text-sm text-muted-foreground">{children}</div>
 );
 
-export const NotificationBellEmptyTitle = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <p className="font-medium text-foreground">{children}</p>;
+const NotificationBellEmptyTitle = ({ children }: { children: ReactNode }) => (
+  <p className="font-medium text-foreground">{children}</p>
+);
 
-export const NotificationBellEmptyDescription = ({
+const NotificationBellEmptyDescription = ({
   children,
 }: {
   children: ReactNode;
 }) => <p className="mt-1">{children}</p>;
 
-export const NotificationBellList = ({ children }: { children: ReactNode }) => (
+const NotificationBellList = ({ children }: { children: ReactNode }) => (
   <div className="grid gap-1">{children}</div>
 );
 
-export const NotificationBellItem = ({
+const NotificationBellItem = ({
   children,
   href,
   isRead,
@@ -178,19 +162,15 @@ export const NotificationBellItem = ({
   );
 };
 
-export const NotificationBellItemState = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <span className="sr-only">{children}</span>;
+const NotificationBellItemState = ({ children }: { children: ReactNode }) => (
+  <span className="sr-only">{children}</span>
+);
 
-export const NotificationBellItemTitle = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <span className="block truncate text-sm font-medium">{children}</span>;
+const NotificationBellItemTitle = ({ children }: { children: ReactNode }) => (
+  <span className="block truncate text-sm font-medium">{children}</span>
+);
 
-export const NotificationBellItemDescription = ({
+const NotificationBellItemDescription = ({
   children,
 }: {
   children: ReactNode;
@@ -200,7 +180,7 @@ export const NotificationBellItemDescription = ({
   </span>
 );
 
-export const NotificationBellMore = ({
+const NotificationBellMore = ({
   children,
   href,
 }: {
@@ -221,4 +201,23 @@ export const NotificationBellMore = ({
       </Link>
     </>
   );
+};
+
+export {
+  NotificationBell as Root,
+  NotificationBellContent as Content,
+  NotificationBellEmpty as Empty,
+  NotificationBellEmptyDescription as EmptyDescription,
+  NotificationBellEmptyTitle as EmptyTitle,
+  NotificationBellError as Error,
+  NotificationBellHeader as Header,
+  NotificationBellItem as Item,
+  NotificationBellItemDescription as ItemDescription,
+  NotificationBellItemState as ItemState,
+  NotificationBellItemTitle as ItemTitle,
+  NotificationBellList as List,
+  NotificationBellLoading as Loading,
+  NotificationBellMore as More,
+  NotificationBellSkeleton as Skeleton,
+  NotificationBellTrigger as Trigger,
 };

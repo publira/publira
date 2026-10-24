@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Combobox from "@publira/ui-components/combobox";
 import * as Field from "@publira/ui-components/field";
@@ -6,13 +7,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import { PlatformTimezoneCombobox } from "#components/platform-timezone-combobox";
 
 import { updatePlatformDefaultTimezoneAction } from "../_lib/actions";
@@ -32,21 +26,21 @@ export const PlatformTimezoneForm = ({
   const hasLoadError = Boolean(loadErrorMessage);
 
   return (
-    <PlatformSection>
-      <PlatformSectionHeader>
-        <PlatformSectionHeading>
-          <PlatformSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
               <Message message="platform.settings.default_timezone_title" />
             </Suspense>
-          </PlatformSectionTitle>
-          <PlatformSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
               <Message message="platform.settings.default_timezone_description" />
             </Suspense>
-          </PlatformSectionDescription>
-        </PlatformSectionHeading>
-      </PlatformSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updatePlatformDefaultTimezoneAction}
         className="grid gap-4 sm:max-w-lg"
@@ -96,6 +90,6 @@ export const PlatformTimezoneForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </PlatformSection>
+    </ConsoleSection.Root>
   );
 };

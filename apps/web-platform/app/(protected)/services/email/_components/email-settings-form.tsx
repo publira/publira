@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import * as Dialog from "@publira/ui-components/dialog";
@@ -9,33 +10,15 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Fragment, Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import type { PlatformSmtpSettings } from "#lib/email-settings-shared";
 
 import type {
   PlatformEmailSettingsFormState,
   PlatformSmtpTestFormState,
 } from "../_lib/actions";
-import {
-  SmtpPassword,
-  SmtpPasswordEditor,
-  SmtpPasswordReplacing,
-  SmtpPasswordStored,
-  SmtpRevisionField,
-} from "./smtp-password-field";
-import {
-  SmtpTest,
-  SmtpTestRecipient,
-  SmtpTestResult,
-  SmtpTestSendToSelf,
-  SmtpTestSubmit,
-} from "./smtp-test";
+import * as SmtpPassword from "./smtp-password";
+import { SmtpRevisionField } from "./smtp-revision-field";
+import * as SmtpTest from "./smtp-test";
 
 /** The screen holds one settings form, which the test dialog's fields join. */
 const formId = "platform-smtp-settings";
@@ -59,21 +42,21 @@ export const EmailSettingsForm = ({
   saveAction,
   testAction,
 }: EmailSettingsFormProps) => (
-  <PlatformSection>
-    <PlatformSectionHeader>
-      <PlatformSectionHeading>
-        <PlatformSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
             <Message message="platform.settings.smtp_card_title" />
           </Suspense>
-        </PlatformSectionTitle>
-        <PlatformSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="platform.settings.smtp_card_description" />
           </Suspense>
-        </PlatformSectionDescription>
-      </PlatformSectionHeading>
-    </PlatformSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     {/* An `ActionForm` resets the fields only after its own save succeeds,
         so a test run from the dialog leaves what the operator typed. */}
     <ActionForm.Root
@@ -142,7 +125,7 @@ export const EmailSettingsForm = ({
           </Field.Description>
         </Field.Root>
 
-        <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
+        <SmtpPassword.Root hasStoredPassword={initialSettings.hasPassword}>
           <Field.Root>
             <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -150,26 +133,26 @@ export const EmailSettingsForm = ({
               </Suspense>
             </Field.Label>
             <Field.Content>
-              <SmtpPasswordStored>
+              <SmtpPassword.Stored>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="platform.settings.password_change" />
                 </Suspense>
-              </SmtpPasswordStored>
-              <SmtpPasswordEditor>
+              </SmtpPassword.Stored>
+              <SmtpPassword.Editor>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="platform.settings.password_undo" />
                 </Suspense>
-              </SmtpPasswordEditor>
+              </SmtpPassword.Editor>
             </Field.Content>
-            <SmtpPasswordReplacing>
+            <SmtpPassword.Replacing>
               <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
                   <Message message="platform.settings.password_clear_help" />
                 </Suspense>
               </Field.Description>
-            </SmtpPasswordReplacing>
+            </SmtpPassword.Replacing>
           </Field.Root>
-        </SmtpPassword>
+        </SmtpPassword.Root>
 
         <Field.Root>
           <Field.Label required>
@@ -247,7 +230,7 @@ export const EmailSettingsForm = ({
             <Dialog.Backdrop />
             <Dialog.Viewport>
               <Dialog.Popup>
-                <SmtpTest action={testAction} form={formId}>
+                <SmtpTest.Root action={testAction} form={formId}>
                   <Dialog.Header>
                     <Dialog.Title>
                       <Suspense
@@ -266,21 +249,21 @@ export const EmailSettingsForm = ({
                   </Dialog.Header>
 
                   <div className="mt-4 grid gap-4">
-                    <SmtpTestSendToSelf>
+                    <SmtpTest.SendToSelf>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="platform.settings.smtp_test_self" />
                       </Suspense>
-                    </SmtpTestSendToSelf>
-                    <SmtpTestRecipient>
+                    </SmtpTest.SendToSelf>
+                    <SmtpTest.Recipient>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <Message message="platform.settings.smtp_test_custom" />
                       </Suspense>
-                    </SmtpTestRecipient>
-                    <SmtpTestResult />
+                    </SmtpTest.Recipient>
+                    <SmtpTest.Result />
                   </div>
 
                   <Dialog.Footer>
@@ -293,7 +276,7 @@ export const EmailSettingsForm = ({
                         <Message message="platform.settings.smtp_test_close" />
                       </Suspense>
                     </Dialog.Close>
-                    <SmtpTestSubmit>
+                    <SmtpTest.Submit>
                       <ActionForm.Idle>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-20" />}
@@ -308,9 +291,9 @@ export const EmailSettingsForm = ({
                           <Message message="platform.settings.smtp_test_pending" />
                         </Suspense>
                       </ActionForm.Pending>
-                    </SmtpTestSubmit>
+                    </SmtpTest.Submit>
                   </Dialog.Footer>
-                </SmtpTest>
+                </SmtpTest.Root>
               </Dialog.Popup>
             </Dialog.Viewport>
           </Dialog.Portal>
@@ -323,5 +306,5 @@ export const EmailSettingsForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </PlatformSection>
+  </ConsoleSection.Root>
 );

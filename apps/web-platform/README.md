@@ -16,7 +16,7 @@ The cross-tenant operations console for platform operators. Its responsibilities
 
 - Left: sidebar (main navigation plus a note on the responsibility split)
 - Top: header (the current operator plus the main actions)
-- Body: `PlatformPage` gives every page the same page header and content container
+- Body: `ConsolePage` from `@publira/layouts/admin/console-page` gives every page the same page header and content container
 - Mobile: the sidebar is reused as a drawer
 
 ### UI locale

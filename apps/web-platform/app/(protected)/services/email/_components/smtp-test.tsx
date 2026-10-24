@@ -37,7 +37,7 @@ const useSmtpTest = () => {
  * second submission of that form. `form` is its id: the dialog this sits in
  * portals out of the form, so the fields here join it through `form=`.
  */
-export const SmtpTest = ({
+const SmtpTest = ({
   action,
   children,
   form,
@@ -74,7 +74,7 @@ export const SmtpTest = ({
 };
 
 /** Whether the test goes to the signed-in operator; `children` labels it. */
-export const SmtpTestSendToSelf = ({ children }: { children: ReactNode }) => {
+const SmtpTestSendToSelf = ({ children }: { children: ReactNode }) => {
   const { sendToSelf, setSendToSelf } = useSmtpTest();
 
   return (
@@ -95,7 +95,7 @@ export const SmtpTestSendToSelf = ({ children }: { children: ReactNode }) => {
  * The address to send to instead, labelled by `children`. Renders nothing
  * while the test goes to the operator.
  */
-export const SmtpTestRecipient = ({ children }: { children: ReactNode }) => {
+const SmtpTestRecipient = ({ children }: { children: ReactNode }) => {
   const { form, sendToSelf } = useSmtpTest();
 
   if (sendToSelf) {
@@ -119,7 +119,7 @@ export const SmtpTestRecipient = ({ children }: { children: ReactNode }) => {
 };
 
 /** What the last test answered. */
-export const SmtpTestResult = () => {
+const SmtpTestResult = () => {
   const { state } = useSmtpTest();
 
   return state ? (
@@ -130,7 +130,7 @@ export const SmtpTestResult = () => {
 };
 
 /** Sends the test. `children` is its wording, idle and pending. */
-export const SmtpTestSubmit = ({ children }: { children: ReactNode }) => {
+const SmtpTestSubmit = ({ children }: { children: ReactNode }) => {
   const { dispatch, form } = useSmtpTest();
 
   return (
@@ -138,4 +138,12 @@ export const SmtpTestSubmit = ({ children }: { children: ReactNode }) => {
       {children}
     </ActionForm.Submit>
   );
+};
+
+export {
+  SmtpTest as Root,
+  SmtpTestRecipient as Recipient,
+  SmtpTestResult as Result,
+  SmtpTestSendToSelf as SendToSelf,
+  SmtpTestSubmit as Submit,
 };

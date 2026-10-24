@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import * as Field from "@publira/ui-components/field";
@@ -7,13 +8,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Fragment, Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import type { PlatformStorageSettings } from "#lib/storage-settings-shared";
 
 import {
@@ -35,21 +29,21 @@ export const StorageSettingsForm = ({
   const isUnconfigured = !loadErrorMessage && settings.revision === "0";
 
   return (
-    <PlatformSection>
-      <PlatformSectionHeader>
-        <PlatformSectionHeading>
-          <PlatformSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="platform.storage.title" />
             </Suspense>
-          </PlatformSectionTitle>
-          <PlatformSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="platform.storage.description" />
             </Suspense>
-          </PlatformSectionDescription>
-        </PlatformSectionHeading>
-      </PlatformSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
 
       {loadErrorMessage ? (
         <FormMessage className="sm:max-w-3xl" variant="destructive">
@@ -217,6 +211,6 @@ export const StorageSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </PlatformSection>
+    </ConsoleSection.Root>
   );
 };

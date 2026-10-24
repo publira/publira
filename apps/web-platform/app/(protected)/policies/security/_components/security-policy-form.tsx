@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
 import * as Field from "@publira/ui-components/field";
@@ -7,13 +8,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Fragment, Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import type { PlatformSecurityPolicy } from "#lib/platform-policy";
 
 import { PolicyLimitField } from "../../_components/policy-limit-field";
@@ -28,21 +22,21 @@ export const SecurityPolicyForm = ({
   revision: string;
   loadErrorMessage?: string;
 }) => (
-  <PlatformSection>
-    <PlatformSectionHeader>
-      <PlatformSectionHeading>
-        <PlatformSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
             <Message message="platform.policy.security.title" />
           </Suspense>
-        </PlatformSectionTitle>
-        <PlatformSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="platform.policy.security.description" />
           </Suspense>
-        </PlatformSectionDescription>
-      </PlatformSectionHeading>
-    </PlatformSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <ActionForm.Root
       action={updatePlatformSecurityPolicyAction}
       className="grid gap-4 sm:max-w-3xl"
@@ -240,5 +234,5 @@ export const SecurityPolicyForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </PlatformSection>
+  </ConsoleSection.Root>
 );

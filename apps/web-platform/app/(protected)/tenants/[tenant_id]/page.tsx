@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
@@ -18,21 +20,6 @@ import { z } from "zod";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSections,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -80,23 +67,23 @@ export const generateMetadata = async ({
 };
 
 const TenantDetailSkeleton = () => (
-  <PlatformPageContent>
+  <ConsolePage.Content>
     <div className="grid gap-6">
       <Skeleton className="h-10 w-64" />
-      <PlatformSections>
-        <PlatformSection>
+      <ConsoleSection.Stack>
+        <ConsoleSection.Root>
           <SkeletonLine className="h-5 w-40" />
           <Skeleton className="h-16" />
           <Skeleton className="h-16" />
-        </PlatformSection>
-        <PlatformSection>
+        </ConsoleSection.Root>
+        <ConsoleSection.Root>
           <SkeletonLine className="h-5 w-40" />
           <Skeleton className="h-16" />
           <Skeleton className="h-16" />
-        </PlatformSection>
-      </PlatformSections>
+        </ConsoleSection.Root>
+      </ConsoleSection.Stack>
     </div>
-  </PlatformPageContent>
+  </ConsolePage.Content>
 );
 
 /**
@@ -155,9 +142,9 @@ const TenantDetailContent = async ({
 
   return (
     <>
-      <PlatformPageHeader>
-        <PlatformPageHeading>
-          <PlatformPageTitle>
+      <ConsolePage.Header>
+        <ConsolePage.Heading>
+          <ConsolePage.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message
                 message="platform.tenants.detail_title"
@@ -166,14 +153,14 @@ const TenantDetailContent = async ({
                 }}
               />
             </Suspense>
-          </PlatformPageTitle>
-          <PlatformPageDescription>
+          </ConsolePage.Title>
+          <ConsolePage.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.tenants.detail_description" />
             </Suspense>
-          </PlatformPageDescription>
-        </PlatformPageHeading>
-        <PlatformPageActions>
+          </ConsolePage.Description>
+        </ConsolePage.Heading>
+        <ConsolePage.Actions>
           <LinkButton render={<Link href="/tenants" />} variant="outline">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.common.back_to_list" />
@@ -210,28 +197,28 @@ const TenantDetailContent = async ({
               </Button>
             </form>
           )}
-        </PlatformPageActions>
-      </PlatformPageHeader>
-      <PlatformPageContent>
+        </ConsolePage.Actions>
+      </ConsolePage.Header>
+      <ConsolePage.Content>
         <div className="grid gap-6">
           <TenantSectionNav current="detail" tenantId={tenant.publicId} />
 
-          <PlatformSections>
-            <PlatformSection>
-              <PlatformSectionHeader>
-                <PlatformSectionHeading>
-                  <PlatformSectionTitle>
+          <ConsoleSection.Stack>
+            <ConsoleSection.Root>
+              <ConsoleSection.Header>
+                <ConsoleSection.Heading>
+                  <ConsoleSection.Title>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="platform.tenants.basic_title" />
                     </Suspense>
-                  </PlatformSectionTitle>
-                  <PlatformSectionDescription>
+                  </ConsoleSection.Title>
+                  <ConsoleSection.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="platform.tenants.basic_description" />
                     </Suspense>
-                  </PlatformSectionDescription>
-                </PlatformSectionHeading>
-              </PlatformSectionHeader>
+                  </ConsoleSection.Description>
+                </ConsoleSection.Heading>
+              </ConsoleSection.Header>
               <ActionForm.Root action={updateTenantNameAction}>
                 <input name="tenant_id" type="hidden" value={tenant.id} />
                 <div className="grid gap-4">
@@ -288,23 +275,23 @@ const TenantDetailContent = async ({
                   <ActionForm.Pending>{savingLabel}</ActionForm.Pending>
                 </ActionForm.Submit>
               </ActionForm.Root>
-            </PlatformSection>
+            </ConsoleSection.Root>
 
-            <PlatformSection>
-              <PlatformSectionHeader>
-                <PlatformSectionHeading>
-                  <PlatformSectionTitle>
+            <ConsoleSection.Root>
+              <ConsoleSection.Header>
+                <ConsoleSection.Heading>
+                  <ConsoleSection.Title>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="platform.tenants.domain_settings_title" />
                     </Suspense>
-                  </PlatformSectionTitle>
-                  <PlatformSectionDescription>
+                  </ConsoleSection.Title>
+                  <ConsoleSection.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="platform.tenants.domain_settings_description" />
                     </Suspense>
-                  </PlatformSectionDescription>
-                </PlatformSectionHeading>
-              </PlatformSectionHeader>
+                  </ConsoleSection.Description>
+                </ConsoleSection.Heading>
+              </ConsoleSection.Header>
               <TenantDomainCautions showUpdateCaution />
               <ActionForm.Root action={updateTenantDomainAction}>
                 <input name="tenant_id" type="hidden" value={tenant.id} />
@@ -356,22 +343,22 @@ const TenantDetailContent = async ({
                   <ActionForm.Pending>{savingLabel}</ActionForm.Pending>
                 </ActionForm.Submit>
               </ActionForm.Root>
-            </PlatformSection>
-          </PlatformSections>
+            </ConsoleSection.Root>
+          </ConsoleSection.Stack>
         </div>
-      </PlatformPageContent>
+      </ConsolePage.Content>
     </>
   );
 };
 
-// `PlatformPage` stays in the static shell so the max width and padding are
+// `ConsolePage.Root` stays in the static shell so the max width and padding are
 // painted before `params` resolves; only the header and body stream in.
 const TenantDetailPage = ({ params }: TenantDetailPageProps) => (
-  <PlatformPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantDetailSkeleton />}>
       <TenantDetailContent params={params} />
     </Suspense>
-  </PlatformPage>
+  </ConsolePage.Root>
 );
 
 export default TenantDetailPage;

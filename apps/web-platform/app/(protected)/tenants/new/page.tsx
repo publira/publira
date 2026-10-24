@@ -1,16 +1,9 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-} from "#components/platform-page";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
@@ -24,25 +17,25 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const TenantNewPage = () => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
             <Message message="platform.tenants.create_heading" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="platform.tenants.create_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <CreateTenantForm />
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default TenantNewPage;

@@ -6,10 +6,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
-import {
-  MfaEnrollment,
-  MfaEnrollmentStarted,
-} from "#components/mfa-enrollment";
+import * as MfaEnrollment from "#components/mfa-enrollment";
 import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
 
@@ -17,11 +14,7 @@ import {
   confirmMfaEnrollmentAction,
   startMfaEnrollmentAction,
 } from "../_lib/actions";
-import {
-  MfaEnrollDoneLink,
-  MfaEnrollmentConfirmed,
-  MfaEnrollSteps,
-} from "./mfa-enroll-steps";
+import * as MfaEnrollSteps from "./mfa-enroll-steps";
 
 interface MfaEnrollFlowProps {
   /** Whether the challenge has already been spent. */
@@ -53,7 +46,7 @@ const MfaEnrollStart = () => (
         className="grid gap-4"
         showSuccess={false}
       >
-        <MfaEnrollmentStarted />
+        <MfaEnrollment.Started />
 
         <ActionForm.Submit className="justify-self-start">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -92,7 +85,7 @@ const MfaEnrollConfirm = () => (
       className="grid gap-4"
       showSuccess={false}
     >
-      <MfaEnrollmentConfirmed />
+      <MfaEnrollSteps.Confirmed />
 
       <MfaCodeField allowRecoveryCode={false} />
 
@@ -115,13 +108,13 @@ const MfaEnrollConfirm = () => (
  * finish their sign-in: start, scan, confirm, and keep the recovery codes.
  */
 export const MfaEnrollFlow = ({ finished, nextPath }: MfaEnrollFlowProps) => (
-  <MfaEnrollSteps
+  <MfaEnrollSteps.Root
     finished={finished}
     nextPath={nextPath}
     done={
       <AuthScreen.Body>
         <MfaRecoveryCodes />
-        <MfaEnrollDoneLink
+        <MfaEnrollSteps.DoneLink
           nextPath={nextPath}
           signedIn={
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -137,7 +130,7 @@ export const MfaEnrollFlow = ({ finished, nextPath }: MfaEnrollFlowProps) => (
       </AuthScreen.Body>
     }
     enroll={
-      <MfaEnrollment
+      <MfaEnrollment.Root
         confirm={<MfaEnrollConfirm />}
         start={<MfaEnrollStart />}
       />

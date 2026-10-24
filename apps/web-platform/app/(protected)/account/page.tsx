@@ -1,17 +1,10 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-} from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getPlatformLocale } from "#lib/locale";
@@ -62,22 +55,22 @@ const MfaSection = async () => {
 };
 
 const PlatformAccountSettingsPage = () => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
             <Message message="platform.settings.account_heading" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="platform.settings.account_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <div className="grid gap-6">
         <EmailChangeForm />
         <SectionErrorBoundary
@@ -92,8 +85,8 @@ const PlatformAccountSettingsPage = () => (
           </Suspense>
         </SectionErrorBoundary>
       </div>
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default PlatformAccountSettingsPage;

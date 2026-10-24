@@ -1,5 +1,6 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
@@ -11,13 +12,6 @@ import { formatList } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import type { PlatformSearchSettings } from "#lib/search-settings-shared";
 
 import { updatePlatformSearchAnalysisAction } from "../_lib/actions";
@@ -412,21 +406,21 @@ export const SearchAnalysisForm = ({
   locale,
   settings,
 }: SearchAnalysisFormProps) => (
-  <PlatformSection>
-    <PlatformSectionHeader>
-      <PlatformSectionHeading>
-        <PlatformSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-28" />}>
             <Message message="platform.search.analysis.title" />
           </Suspense>
-        </PlatformSectionTitle>
-        <PlatformSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="platform.search.analysis.description" />
           </Suspense>
-        </PlatformSectionDescription>
-      </PlatformSectionHeading>
-    </PlatformSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
 
     <AnalysisRoles />
 
@@ -454,5 +448,5 @@ export const SearchAnalysisForm = ({
         </Tabs.Panel>
       ))}
     </Tabs.Root>
-  </PlatformSection>
+  </ConsoleSection.Root>
 );

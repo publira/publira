@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
@@ -14,15 +15,6 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-} from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -235,29 +227,29 @@ const TenantsContent = async ({
 };
 
 const TenantsPage = ({ searchParams }: TenantsPageProps) => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
             <Message message="platform.tenants.heading" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="platform.tenants.page_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-      <PlatformPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/tenants/new" />}>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.tenants.new_tenant" />
           </Suspense>
         </LinkButton>
-      </PlatformPageActions>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
@@ -269,8 +261,8 @@ const TenantsPage = ({ searchParams }: TenantsPageProps) => (
           <TenantsContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default TenantsPage;

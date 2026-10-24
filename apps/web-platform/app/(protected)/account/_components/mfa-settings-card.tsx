@@ -1,22 +1,13 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
-import {
-  MfaEnrollment,
-  MfaEnrollmentStarted,
-} from "#components/mfa-enrollment";
+import * as MfaEnrollment from "#components/mfa-enrollment";
 import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
-import {
-  PlatformSection,
-  PlatformSectionDescription,
-  PlatformSectionHeader,
-  PlatformSectionHeading,
-  PlatformSectionTitle,
-} from "#components/platform-page";
 import type { PlatformMfaStatus } from "#lib/platform-mfa";
 
 import {
@@ -25,10 +16,7 @@ import {
   regenerateAccountMfaRecoveryCodesAction,
   startAccountMfaEnrollmentAction,
 } from "../_lib/mfa-actions";
-import {
-  MfaSettingsOutcome,
-  ReportMfaSettingsChange,
-} from "./mfa-settings-outcome";
+import * as MfaSettingsOutcome from "./mfa-settings-outcome";
 
 interface MfaSettingsCardProps {
   status: PlatformMfaStatus;
@@ -40,7 +28,7 @@ const MfaStartForm = () => (
     className="grid gap-3"
     showSuccess={false}
   >
-    <MfaEnrollmentStarted />
+    <MfaEnrollment.Started />
     <div className="flex justify-end">
       <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -62,7 +50,7 @@ const MfaConfirmForm = () => (
     className="grid gap-4"
     showSuccess={false}
   >
-    <ReportMfaSettingsChange />
+    <MfaSettingsOutcome.Report />
     <MfaEnrollmentSecret />
     <MfaCodeField allowRecoveryCode={false} />
     <div className="flex justify-end">
@@ -86,7 +74,7 @@ const MfaRegenerateForm = () => (
     className="grid gap-3"
     showSuccess={false}
   >
-    <ReportMfaSettingsChange />
+    <MfaSettingsOutcome.Report />
     <div className="grid gap-1">
       <p className="text-sm font-medium text-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
@@ -121,7 +109,7 @@ const MfaDisableForm = () => (
     className="grid gap-3"
     showSuccess={false}
   >
-    <ReportMfaSettingsChange />
+    <MfaSettingsOutcome.Report />
     <div className="grid gap-1">
       <p className="text-sm font-medium text-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
@@ -186,32 +174,35 @@ const MfaStatusSummary = ({ status }: { status: PlatformMfaStatus }) => (
  * turn it off.
  */
 export const MfaSettingsCard = ({ status }: MfaSettingsCardProps) => (
-  <PlatformSection>
-    <PlatformSectionHeader>
-      <PlatformSectionHeading>
-        <PlatformSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
             <Message message="platform.settings.mfa.title" />
           </Suspense>
-        </PlatformSectionTitle>
-        <PlatformSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="platform.settings.mfa.description" />
           </Suspense>
-        </PlatformSectionDescription>
-      </PlatformSectionHeading>
-    </PlatformSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <MfaStatusSummary status={status} />
 
-    <MfaSettingsOutcome recoveryCodes={<MfaRecoveryCodes />}>
+    <MfaSettingsOutcome.Root recoveryCodes={<MfaRecoveryCodes />}>
       {status.enabled ? (
         <>
           <MfaRegenerateForm />
           <MfaDisableForm />
         </>
       ) : (
-        <MfaEnrollment confirm={<MfaConfirmForm />} start={<MfaStartForm />} />
+        <MfaEnrollment.Root
+          confirm={<MfaConfirmForm />}
+          start={<MfaStartForm />}
+        />
       )}
-    </MfaSettingsOutcome>
-  </PlatformSection>
+    </MfaSettingsOutcome.Root>
+  </ConsoleSection.Root>
 );

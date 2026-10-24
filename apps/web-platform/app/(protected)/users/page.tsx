@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -19,14 +20,6 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
-import {
-  PlatformPage,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-} from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -575,22 +568,22 @@ const UsersContent = async ({
 };
 
 const UsersPage = ({ searchParams }: UsersPageProps) => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-36" />}>
             <Message message="platform.users.title" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="platform.users.page_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
@@ -602,8 +595,8 @@ const UsersPage = ({ searchParams }: UsersPageProps) => (
           <UsersContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default UsersPage;

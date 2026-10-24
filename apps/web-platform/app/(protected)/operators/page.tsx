@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -10,15 +11,6 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { PaginationControls } from "#components/pagination-controls";
-import {
-  PlatformPage,
-  PlatformPageActions,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-} from "#components/platform-page";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -188,29 +180,29 @@ const OperatorsContent = async ({
 };
 
 const OperatorsPage = ({ searchParams }: OperatorsPageProps) => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-40" />}>
             <Message message="platform.operators.title" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
             <Message message="platform.operators.page_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-      <PlatformPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/operators/new" />}>
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
             <Message message="platform.operators.add" />
           </Suspense>
         </LinkButton>
-      </PlatformPageActions>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
@@ -222,8 +214,8 @@ const OperatorsPage = ({ searchParams }: OperatorsPageProps) => (
           <OperatorsContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default OperatorsPage;

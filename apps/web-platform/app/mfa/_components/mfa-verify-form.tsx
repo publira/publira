@@ -9,11 +9,7 @@ import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
 
 import { verifyMfaAction } from "../_lib/actions";
-import {
-  MfaRecoveryCodeSpent,
-  MfaRemainingRecoveryCodes,
-  MfaVerifySteps,
-} from "./mfa-verify-steps";
+import * as MfaVerifySteps from "./mfa-verify-steps";
 
 interface MfaVerifyFormProps {
   /** Whether the challenge has already been spent. */
@@ -23,7 +19,7 @@ interface MfaVerifyFormProps {
 }
 
 export const MfaVerifyForm = ({ finished, nextPath }: MfaVerifyFormProps) => (
-  <MfaVerifySteps
+  <MfaVerifySteps.Root
     finished={finished}
     nextPath={nextPath}
     spent={
@@ -34,7 +30,7 @@ export const MfaVerifyForm = ({ finished, nextPath }: MfaVerifyFormProps) => (
           </Suspense>
         </h2>
         <AuthScreen.Note>
-          <MfaRemainingRecoveryCodes />
+          <MfaVerifySteps.RemainingRecoveryCodes />
         </AuthScreen.Note>
         <LinkButton
           className="justify-self-start"
@@ -60,7 +56,7 @@ export const MfaVerifyForm = ({ finished, nextPath }: MfaVerifyFormProps) => (
             className="grid gap-4"
             showSuccess={false}
           >
-            <MfaRecoveryCodeSpent />
+            <MfaVerifySteps.RecoveryCodeSpent />
 
             <MfaCodeField allowRecoveryCode />
 

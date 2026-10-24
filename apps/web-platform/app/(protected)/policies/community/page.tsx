@@ -1,17 +1,10 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import {
-  PlatformPage,
-  PlatformPageContent,
-  PlatformPageDescription,
-  PlatformPageHeader,
-  PlatformPageHeading,
-  PlatformPageTitle,
-  PlatformSection,
-} from "#components/platform-page";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getPlatformPolicy } from "#lib/platform-policy";
@@ -37,11 +30,11 @@ const emptyValues: PlatformCommunityLimits = {
 };
 
 const FormSkeleton = () => (
-  <PlatformSection>
+  <ConsoleSection.Root>
     <SkeletonLine className="h-6 w-32" />
     <Skeleton className="h-9 w-full" />
     <Skeleton className="h-9 w-full" />
-  </PlatformSection>
+  </ConsoleSection.Root>
 );
 
 const Content = async () => {
@@ -56,27 +49,27 @@ const Content = async () => {
 };
 
 const CommunityPage = () => (
-  <PlatformPage>
-    <PlatformPageHeader>
-      <PlatformPageHeading>
-        <PlatformPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-8 w-28" />}>
             <Message message="platform.policy.community.heading" />
           </Suspense>
-        </PlatformPageTitle>
-        <PlatformPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="platform.policy.community.page_description" />
           </Suspense>
-        </PlatformPageDescription>
-      </PlatformPageHeading>
-    </PlatformPageHeader>
-    <PlatformPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <Suspense fallback={<FormSkeleton />}>
         <Content />
       </Suspense>
-    </PlatformPageContent>
-  </PlatformPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default CommunityPage;

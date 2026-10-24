@@ -4,23 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  NotificationBell,
-  NotificationBellContent,
-  NotificationBellEmpty,
-  NotificationBellEmptyDescription,
-  NotificationBellEmptyTitle,
-  NotificationBellError,
-  NotificationBellHeader,
-  NotificationBellItem,
-  NotificationBellItemDescription,
-  NotificationBellItemState,
-  NotificationBellItemTitle,
-  NotificationBellList,
-  NotificationBellLoading,
-  NotificationBellMore,
-  NotificationBellTrigger,
-} from "./notification-bell";
+import * as NotificationBell from "./notification-bell";
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
@@ -40,54 +24,54 @@ const renderBell = ({
   unreadCount?: number;
 } = {}) =>
   render(
-    <NotificationBell>
-      <NotificationBellTrigger unreadCount={unreadCount}>
+    <NotificationBell.Root>
+      <NotificationBell.Trigger unreadCount={unreadCount}>
         {unreadCount > 0
           ? `Notifications, ${unreadCount} unread`
           : "Notifications, none unread"}
-      </NotificationBellTrigger>
-      <NotificationBellContent>
-        <NotificationBellHeader unreadCount={unreadCount}>
+      </NotificationBell.Trigger>
+      <NotificationBell.Content>
+        <NotificationBell.Header unreadCount={unreadCount}>
           Notifications
-        </NotificationBellHeader>
+        </NotificationBell.Header>
         {state === "empty" ? (
-          <NotificationBellEmpty>
-            <NotificationBellEmptyTitle>
+          <NotificationBell.Empty>
+            <NotificationBell.EmptyTitle>
               No notifications yet.
-            </NotificationBellEmptyTitle>
-            <NotificationBellEmptyDescription>
+            </NotificationBell.EmptyTitle>
+            <NotificationBell.EmptyDescription>
               New notifications will appear here.
-            </NotificationBellEmptyDescription>
-          </NotificationBellEmpty>
+            </NotificationBell.EmptyDescription>
+          </NotificationBell.Empty>
         ) : null}
         {state === "loading" ? (
-          <NotificationBellLoading>
+          <NotificationBell.Loading>
             Loading notifications.
-          </NotificationBellLoading>
+          </NotificationBell.Loading>
         ) : null}
         {state === "error" ? (
-          <NotificationBellError>
+          <NotificationBell.Error>
             Could not show the notifications.
-          </NotificationBellError>
+          </NotificationBell.Error>
         ) : null}
         {state === "notification" ? (
-          <NotificationBellList>
-            <NotificationBellItem href="/tenants/tenant_01" isRead={false}>
-              <NotificationBellItemState>Unread</NotificationBellItemState>
-              <NotificationBellItemTitle>
+          <NotificationBell.List>
+            <NotificationBell.Item href="/tenants/tenant_01" isRead={false}>
+              <NotificationBell.ItemState>Unread</NotificationBell.ItemState>
+              <NotificationBell.ItemTitle>
                 Scheduled publication failed
-              </NotificationBellItemTitle>
-              <NotificationBellItemDescription>
+              </NotificationBell.ItemTitle>
+              <NotificationBell.ItemDescription>
                 Check the publication settings of this tenant.
-              </NotificationBellItemDescription>
-            </NotificationBellItem>
-          </NotificationBellList>
+              </NotificationBell.ItemDescription>
+            </NotificationBell.Item>
+          </NotificationBell.List>
         ) : null}
-        <NotificationBellMore href="/notifications">
+        <NotificationBell.More href="/notifications">
           See more
-        </NotificationBellMore>
-      </NotificationBellContent>
-    </NotificationBell>
+        </NotificationBell.More>
+      </NotificationBell.Content>
+    </NotificationBell.Root>
   );
 
 describe("NotificationBell", () => {
