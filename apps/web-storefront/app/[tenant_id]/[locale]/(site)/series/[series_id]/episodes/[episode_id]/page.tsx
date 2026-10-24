@@ -36,8 +36,8 @@ import { getTenantId } from "#lib/tenant-id";
 import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { CheckoutNotice } from "./_components/checkout-notice";
+import { EpisodeAccessReason } from "./_components/episode-access-reason";
 import { EpisodeBody } from "./_components/episode-body";
-import { EpisodeCreatorAccess } from "./_components/episode-creator-access";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
 import { EpisodeRatingGate } from "./_components/episode-rating-gate";
 import { WaitFreeNotice } from "./_components/wait-free-notice";
@@ -445,7 +445,7 @@ const EpisodeContent = async (
                     />
                   </span>
                   <Suspense fallback={null}>
-                    <EpisodeCreatorAccess
+                    <EpisodeAccessReason
                       access={access}
                       checkoutSessionId={checkoutSessionId}
                       episodePublicId={episode.publicId}

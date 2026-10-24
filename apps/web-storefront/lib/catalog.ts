@@ -535,13 +535,15 @@ export const isPublicEpisodeBody = (access: EpisodeAccessState): boolean =>
 
 /**
  * Which grant opens an entitled body, from `EpisodeEntitlementSource`. A
- * purchase and a creator's own episode are both `entitled`, so this is what
- * tells the author apart from a reader who bought the episode.
+ * purchase, a creator's own episode, and a staff role are all `entitled`, so
+ * this is what tells the author and the staff apart from a reader who bought
+ * the episode.
  */
 export type EpisodeEntitlementSourceState =
   | "access_ticket"
   | "creator"
-  | "purchase";
+  | "purchase"
+  | "staff";
 
 export const toEpisodeEntitlementSource = (
   source: EpisodeEntitlementSource | number | undefined
@@ -554,6 +556,9 @@ export const toEpisodeEntitlementSource = (
   }
   if (source === EpisodeEntitlementSource.CREATOR) {
     return "creator";
+  }
+  if (source === EpisodeEntitlementSource.STAFF) {
+    return "staff";
   }
   return undefined;
 };

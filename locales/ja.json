@@ -4423,6 +4423,7 @@
       "reading_period_hours": "{$hours :integer}時間",
       "reading_period_unlimited": "制限なし",
       "scheduled_at": "公開予定",
+      "staff_access": "スタッフとして閲覧できます。読者にはここに購入の案内が表示されます。",
       "to_series_detail": "シリーズを開く",
       "viewer": {
         "collapse_viewer": "ページの幅を元に戻す",

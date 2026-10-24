@@ -4423,6 +4423,7 @@
       "reading_period_hours": ".input {$hours :integer}\n.match $hours\none {{{$hours} hour}}\n* {{{$hours} hours}}",
       "reading_period_unlimited": "Unlimited",
       "scheduled_at": "Scheduled",
+      "staff_access": "Open to you through your staff role. Readers see a purchase prompt here.",
       "to_series_detail": "Open the series",
       "viewer": {
         "collapse_viewer": "Restore the page width",

@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodeAccessState } from "#lib/catalog";
 
-import { EpisodeCreatorAccess } from "./episode-creator-access";
+import { EpisodeAccessReason } from "./episode-access-reason";
 
 const { mockGetEpisodeViewer, mockResolveAccessToken } = vi.hoisted(() => ({
   mockGetEpisodeViewer: vi.fn(),
@@ -50,10 +50,10 @@ const props = {
   tenantId: "TENANT_001",
 };
 
-const renderCreatorAccess = async (access: EpisodeAccessState = "locked") =>
-  render(<div>{await EpisodeCreatorAccess({ ...props, access })}</div>);
+const renderAccessReason = async (access: EpisodeAccessState = "locked") =>
+  render(<div>{await EpisodeAccessReason({ ...props, access })}</div>);
 
-describe("EpisodeCreatorAccess", () => {
+describe("EpisodeAccessReason", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveAccessToken.mockResolvedValue("session-token");
@@ -65,7 +65,7 @@ describe("EpisodeCreatorAccess", () => {
       value: { access: "entitled", entitlementSource: "creator", images: [] },
     });
 
-    await renderCreatorAccess();
+    await renderAccessReason();
 
     expect(screen.getByText("Open to you as its author")).toBeTruthy();
     expect(mockGetEpisodeViewer).toHaveBeenCalledWith(
@@ -78,13 +78,54 @@ describe("EpisodeCreatorAccess", () => {
     );
   });
 
+  it("tells staff the episode is open through their role and that readers meet the gate", async () => {
+    mockGetEpisodeViewer.mockResolvedValueOnce({
+      ok: true,
+      value: { access: "entitled", entitlementSource: "staff", images: [] },
+    });
+
+    await renderAccessReason();
+
+    expect(
+      screen.getByText(
+        "Open to you through your staff role. Readers see a purchase prompt here."
+      )
+    ).toBeTruthy();
+  });
+
   it("says nothing to a reader who bought the episode", async () => {
     mockGetEpisodeViewer.mockResolvedValueOnce({
       ok: true,
       value: { access: "entitled", entitlementSource: "purchase", images: [] },
     });
 
-    const { container } = await renderCreatorAccess();
+    const { container } = await renderAccessReason();
+
+    expect(container.textContent).toBe("");
+  });
+
+  it("says nothing to a reader holding a ticket", async () => {
+    mockGetEpisodeViewer.mockResolvedValueOnce({
+      ok: true,
+      value: {
+        access: "entitled",
+        entitlementSource: "access_ticket",
+        images: [],
+      },
+    });
+
+    const { container } = await renderAccessReason();
+
+    expect(container.textContent).toBe("");
+  });
+
+  it("says nothing to a reader the episode is locked to", async () => {
+    mockGetEpisodeViewer.mockResolvedValueOnce({
+      ok: true,
+      value: { access: "locked", images: [] },
+    });
+
+    const { container } = await renderAccessReason();
 
     expect(container.textContent).toBe("");
   });
@@ -92,14 +133,14 @@ describe("EpisodeCreatorAccess", () => {
   it("says nothing to a guest, without reading the body", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
-    const { container } = await renderCreatorAccess();
+    const { container } = await renderAccessReason();
 
     expect(container.textContent).toBe("");
     expect(mockGetEpisodeViewer).not.toHaveBeenCalled();
   });
 
   it("reads nothing for a body free to everyone", async () => {
-    const { container } = await renderCreatorAccess("free");
+    const { container } = await renderAccessReason("free");
 
     expect(container.textContent).toBe("");
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
@@ -112,7 +153,7 @@ describe("EpisodeCreatorAccess", () => {
       ok: false,
     });
 
-    const { container } = await renderCreatorAccess();
+    const { container } = await renderAccessReason();
 
     expect(container.textContent).toBe("");
   });
