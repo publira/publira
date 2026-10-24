@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
@@ -86,6 +86,12 @@ const aspectFormData = (fields: Record<string, string | File> = {}) => {
 
 const imageFile = () =>
   new File([new Uint8Array([1, 2, 3])], "cover.png", { type: "image/png" });
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 beforeEach(() => {
   vi.clearAllMocks();

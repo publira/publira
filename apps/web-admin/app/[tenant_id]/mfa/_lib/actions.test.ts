@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
@@ -101,6 +101,12 @@ const session = {
   accessToken: "session-token",
   expiresAt: Temporal.Instant.from("2026-09-03T00:00:00Z"),
 };
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("verifyMfaAction", () => {
   beforeEach(() => {

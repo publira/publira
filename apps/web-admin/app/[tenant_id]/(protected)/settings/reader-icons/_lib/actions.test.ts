@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
@@ -52,6 +52,12 @@ const formDataOf = (values: Record<string, File | string>): FormData => {
 
 const imageFile = (type = "image/png", size = 16) =>
   new File([new Uint8Array(size)], "icon.png", { type });
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("reader icon settings actions", () => {
   beforeEach(() => {

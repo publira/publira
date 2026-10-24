@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
@@ -47,6 +47,12 @@ const MEASUREMENT_ID_INVALID =
   "Enter the measurement ID as G- followed by letters and digits, such as G-ABC123DEF4.";
 const URL_INVALID =
   "Enter an https address on a domain name, with no path, such as https://sgtm.example.com.";
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("updateGoogleTagAction", () => {
   beforeEach(() => {

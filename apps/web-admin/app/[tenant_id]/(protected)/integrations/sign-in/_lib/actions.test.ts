@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockAssertSameOrigin, mockUpdateTag, mockUpdateTenantSignInSettings } =
   vi.hoisted(() => ({
@@ -60,6 +60,12 @@ const signInFormData = (
 };
 
 const VALIDATION = "Please check the information you entered.";
+
+// Evaluating the Actions' module graph for the first time takes far longer than
+// any test's own work, so it is paid here rather than inside one test's timeout.
+beforeAll(async () => {
+  await import("./actions");
+});
 
 describe("updateTenantSignInSettingsAction", () => {
   beforeEach(() => {
