@@ -392,7 +392,10 @@ export const EpisodeComicViewer = ({
         renewPageUrl={renewPageUrl}
         spreadStartIndex={spreadStartIndex}
       >
-        <Viewer.Rail boxHeight={boxHeight}>
+        <Viewer.Rail
+          aria-label={t("storefront.episode.viewer.pages")}
+          boxHeight={boxHeight}
+        >
           <Viewer.Page>
             <Viewer.PageLoading>
               <ClientMessage message="storefront.episode.viewer.loading" />

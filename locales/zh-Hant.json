@@ -2121,7 +2121,8 @@
           "no_pages": "目前沒有頁面",
           "page_status": "第{$first}頁，共{$total}頁",
           "page_status_range": "第{$first}–{$last}頁，共{$total}頁",
-          "page_title": "{$title}第{$page}頁"
+          "page_title": "{$title}第{$page}頁",
+          "pages": "漫畫頁面"
         },
         "credits": {
           "title": "作者",
@@ -4419,6 +4420,7 @@
         "page_status": "第{$first}頁，共{$total}頁",
         "page_status_range": "第{$first}–{$last}頁，共{$total}頁",
         "page_title": "{$title}第{$page}頁",
+        "pages": "漫畫頁面",
         "progress": "閱讀進度",
         "reload": "重新載入"
       },

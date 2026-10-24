@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
@@ -21,20 +22,28 @@ const pages = [
 
 const noRenewal = () => Promise.resolve({});
 
-const renderPreview = ({
+/**
+ * Renders inside an awaited act: the catalog read with use() can leave React
+ * work queued in the synchronous act that render() opens, and the updates the
+ * viewer commits afterwards are then never rendered.
+ */
+const renderPreview = async ({
   renewPageUrls = noRenewal,
   ...props
 }: Omit<Parameters<typeof EpisodePreview>[0], "renewPageUrls"> &
-  Partial<Pick<Parameters<typeof EpisodePreview>[0], "renewPageUrls">>) =>
-  render(
-    <AdminLocaleTestProvider locale="en">
-      <EpisodePreview {...props} renewPageUrls={renewPageUrls} />
-    </AdminLocaleTestProvider>
-  );
+  Partial<Pick<Parameters<typeof EpisodePreview>[0], "renewPageUrls">>) => {
+  await act(() => {
+    render(
+      <AdminLocaleTestProvider locale="en">
+        <EpisodePreview {...props} renewPageUrls={renewPageUrls} />
+      </AdminLocaleTestProvider>
+    );
+  });
+};
 
 /** Press the viewer the way a keyboard does, which shows its controls. */
 const pressViewer = () => {
-  fireEvent.keyDown(screen.getByRole("button", { name: /^Pilot, page/u }), {
+  fireEvent.keyDown(screen.getByRole("region", { name: "Comic pages" }), {
     key: "Enter",
   });
 };
@@ -42,20 +51,20 @@ const pressViewer = () => {
 const pageStatus = () => screen.getByText(/^Pages? \d/u);
 
 describe("EpisodePreview", () => {
-  it("turns the pages in the episode's reading direction", () => {
-    renderPreview({
+  it("turns the pages in the episode's reading direction", async () => {
+    await renderPreview({
       layout: { readingDirection: "ltr", spreadStartIndex: 1 },
       pages,
     });
 
     expect(
-      screen.getByRole("button", { name: /Pilot, page 1/u }).dataset
+      screen.getByRole("region", { name: "Comic pages" }).dataset
         .readingDirection
     ).toBe("ltr");
   });
 
-  it("shows the first page alone where spreads start from the second", () => {
-    renderPreview({
+  it("shows the first page alone where spreads start from the second", async () => {
+    await renderPreview({
       layout: { readingDirection: "rtl", spreadStartIndex: 1 },
       pages,
     });
@@ -68,8 +77,8 @@ describe("EpisodePreview", () => {
     expect(pageStatus().textContent).toBe("Pages 2–3 of 4");
   });
 
-  it("pairs the first page with the second where spreads start from it", () => {
-    renderPreview({
+  it("pairs the first page with the second where spreads start from it", async () => {
+    await renderPreview({
       layout: { readingDirection: "rtl", spreadStartIndex: 0 },
       pages,
     });
@@ -83,8 +92,8 @@ describe("EpisodePreview", () => {
     ).toBe("Pages 1–2 of 4");
   });
 
-  it("says an episode with no pages has none rather than showing a bare mat", () => {
-    renderPreview({
+  it("says an episode with no pages has none rather than showing a bare mat", async () => {
+    await renderPreview({
       layout: { readingDirection: "rtl", spreadStartIndex: 1 },
       pages: [],
     });
@@ -113,7 +122,7 @@ describe("EpisodePreview", () => {
       )
     );
 
-    renderPreview({
+    await renderPreview({
       layout: { readingDirection: "rtl", spreadStartIndex: 1 },
       pages: pages.map((page) => ({ ...page, src: `${page.src}?t=expired` })),
       renewPageUrls,

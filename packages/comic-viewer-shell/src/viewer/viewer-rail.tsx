@@ -63,16 +63,21 @@ export const useBoxHeight = (box: HTMLElement | null): number => {
  * at least {@link DOUBLE_PAGE_THRESHOLD} wide and at least as wide as it is
  * tall.
  *
- * `children` is the template every visible page is drawn from.
+ * `children` is the template every visible page is drawn from, and
+ * `aria-label` names the region the pages are read in, in the reader's
+ * language.
  */
 export const ViewerRail = ({
+  "aria-label": ariaLabel,
   boxHeight,
   children,
 }: {
+  "aria-label": string;
   boxHeight: number;
   children: ReactNode;
 }) => (
   <Viewport
+    aria-label={ariaLabel}
     className="group relative flex size-full min-h-0 min-w-0 flex-1 touch-pan-y items-stretch overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"
     doublePageThreshold={Math.max(DOUBLE_PAGE_THRESHOLD, boxHeight)}
   >

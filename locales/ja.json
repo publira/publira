@@ -2121,7 +2121,8 @@
           "no_pages": "ページがありません",
           "page_status": "{$first} / {$total}ページ",
           "page_status_range": "{$first}–{$last} / {$total}ページ",
-          "page_title": "{$title} {$page}ページ"
+          "page_title": "{$title} {$page}ページ",
+          "pages": "漫画のページ"
         },
         "credits": {
           "title": "著者",
@@ -4419,6 +4420,7 @@
         "page_status": "{$first} / {$total}ページ",
         "page_status_range": "{$first}–{$last} / {$total}ページ",
         "page_title": "{$title} {$page}ページ",
+        "pages": "漫画のページ",
         "progress": "読み進み",
         "reload": "再読み込み"
       },

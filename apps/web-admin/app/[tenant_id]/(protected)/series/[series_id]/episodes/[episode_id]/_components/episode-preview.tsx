@@ -93,7 +93,10 @@ export const EpisodePreview = ({
         renewPageUrl={renewPageUrl}
         spreadStartIndex={layout.spreadStartIndex}
       >
-        <Viewer.Rail boxHeight={boxHeight}>
+        <Viewer.Rail
+          aria-label={t("admin.series.episodes.preview.pages")}
+          boxHeight={boxHeight}
+        >
           <Viewer.Page>
             <Viewer.PageLoading>
               <ClientMessage message="admin.series.episodes.preview.loading" />

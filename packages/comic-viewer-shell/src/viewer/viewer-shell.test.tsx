@@ -65,7 +65,7 @@ const Shell = ({
     readingDirection={readingDirection}
     spreadStartIndex={spreadStartIndex}
   >
-    <Viewer.Rail boxHeight={0}>
+    <Viewer.Rail aria-label="Episode pages" boxHeight={0}>
       <Viewer.Page>
         <Viewer.PageLoading>Loading…</Viewer.PageLoading>
         <Viewer.PageError>
@@ -114,7 +114,7 @@ const iconOf = (name: string) =>
 
 /** Press the viewer the way a keyboard does, which shows or hides its controls. */
 const pressViewer = () => {
-  fireEvent.keyDown(screen.getByRole("button", { name: /^Page \d/u }), {
+  fireEvent.keyDown(screen.getByRole("region", { name: "Episode pages" }), {
     key: "Enter",
   });
 };
@@ -129,7 +129,8 @@ describe("Viewer.Root", () => {
 
     expect(screen.getByText("ltr:0:0")).toBeDefined();
     expect(
-      screen.getByRole("button", { name: /Page 1/u }).dataset.readingDirection
+      screen.getByRole("region", { name: "Episode pages" }).dataset
+        .readingDirection
     ).toBe("ltr");
   });
 
