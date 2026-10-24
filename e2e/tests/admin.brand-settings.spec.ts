@@ -38,6 +38,12 @@ const SEED_TENANT_LOGO_ALT = `${SEED_TENANT_NAME} logo`;
 
 const BRANDING_FIXTURE = EYE_CATCH_ASPECT_FIXTURES.square;
 
+/**
+ * 1200x1600, so its shorter side clears the 512px the sign-in image needs and
+ * a stored portrait is told apart from the square the other slots take.
+ */
+const SIGN_IN_IMAGE_FIXTURE = EYE_CATCH_ASPECT_FIXTURES.portrait;
+
 /** `BRANDING_IMAGE_MAX_BYTES` in `branding/_lib/actions.ts`. */
 const BRANDING_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -318,6 +324,21 @@ const headerBrand = (page: Page): Locator =>
 const headerLogo = (page: Page): Locator =>
   headerBrand(page).getByRole("img", { name: SEED_TENANT_LOGO_ALT });
 
+/**
+ * The preview the sign-in image card draws, and the path of the stored image
+ * behind it. `next/image` asks the image server for a resized copy, so the
+ * query string the loader adds is dropped.
+ */
+const signInImagePreview = (page: Page): Locator =>
+  brandingForm(page, "sign_in_image").getByRole("img", {
+    name: "Current sign-in image",
+  });
+
+const signInImagePreviewPath = (page: Page): Promise<string> =>
+  signInImagePreview(page).evaluate(
+    (image: HTMLImageElement) => new URL(image.src).pathname
+  );
+
 const iconLink = (page: Page): Locator => page.locator('link[rel="icon"]');
 
 const appleTouchIconLink = (page: Page): Locator =>
@@ -352,7 +373,8 @@ const declaredIconHref = async (page: Page): Promise<string> => {
  * Tenant brand settings reaching the public site: a colour saved on
  * `/branding` is what `GET /theme.css` serves and what the public
  * document paints, a logo or icon is what the public header and icon links
- * show, and none of that crosses the tenant boundary.
+ * show, and none of that crosses the tenant boundary. The sign-in image is
+ * followed as far as the console's own card, which is where it is read back.
  *
  * `packages/utils` covers generation and the contrast check in isolation;
  * this is the end-to-end counterpart. The suite writes the seed tenant's
@@ -365,6 +387,7 @@ test.describe("admin brand settings", () => {
   let restoreTheme = false;
   let restoreLogo = false;
   let restoreIcon = false;
+  let restoreSignInImage = false;
 
   test.beforeAll(() => {
     applyScenarioSql(MULTI_TENANT_SCENARIO);
@@ -374,15 +397,21 @@ test.describe("admin brand settings", () => {
     restoreTheme = false;
     restoreLogo = false;
     restoreIcon = false;
+    restoreSignInImage = false;
     await signInAsSeedAdmin(page, "/branding");
     await expect(primaryColorField(page)).toBeVisible({ timeout: 30_000 });
     await deleteBrandingIfSet(page, "logo", "The logo was deleted.");
     await deleteBrandingIfSet(page, "icon", "The icon was deleted.");
+    await deleteBrandingIfSet(
+      page,
+      "sign_in_image",
+      "The sign-in image was deleted."
+    );
     await restorePrimaryColor(page, request);
   });
 
   test.afterEach(async ({ page, request }) => {
-    if (!(restoreTheme || restoreLogo || restoreIcon)) {
+    if (!(restoreTheme || restoreLogo || restoreIcon || restoreSignInImage)) {
       return;
     }
     await signInAsSeedAdmin(page, "/branding");
@@ -392,6 +421,13 @@ test.describe("admin brand settings", () => {
     }
     if (restoreIcon) {
       await deleteBrandingIfSet(page, "icon", "The icon was deleted.");
+    }
+    if (restoreSignInImage) {
+      await deleteBrandingIfSet(
+        page,
+        "sign_in_image",
+        "The sign-in image was deleted."
+      );
     }
     if (restoreTheme) {
       await restorePrimaryColor(page, request);
@@ -565,7 +601,52 @@ test.describe("admin brand settings", () => {
     await expect(appleTouchIconLink(page)).toHaveCount(0);
   });
 
-  test("a logo and an icon of the 10 MiB the console accepts are saved", async ({
+  test("an uploaded sign-in image is what the Branding screen shows after a reload, and removing it empties the slot", async ({
+    page,
+    request,
+  }) => {
+    const form = brandingForm(page, "sign_in_image");
+    await expect(form.getByText("No sign-in image is set.")).toBeVisible();
+
+    restoreSignInImage = true;
+    await uploadBranding(
+      page,
+      "sign_in_image",
+      "Save the sign-in image",
+      "The sign-in image was saved.",
+      SIGN_IN_IMAGE_FIXTURE
+    );
+
+    await openThemeSettings(page);
+    await expect(signInImagePreview(page)).toBeVisible();
+    const storedPath = await signInImagePreviewPath(page);
+    expect(storedPath).toMatch(/^\/images\/tenants\/[^/]+\/sign_in$/u);
+    await expectDeliveredImage(request, storedPath);
+    // The stored image keeps the upload's portrait shape rather than being
+    // cropped to the square the icon is.
+    await expect
+      .poll(() =>
+        signInImagePreview(page).evaluate(
+          (image: HTMLImageElement) => image.naturalHeight > image.naturalWidth
+        )
+      )
+      .toBe(true);
+
+    await deleteBrandingIfSet(
+      page,
+      "sign_in_image",
+      "The sign-in image was deleted."
+    );
+    restoreSignInImage = false;
+
+    await openThemeSettings(page);
+    await expect(signInImagePreview(page)).toHaveCount(0);
+    await expect(
+      brandingForm(page, "sign_in_image").getByText("No sign-in image is set.")
+    ).toBeVisible();
+  });
+
+  test("a logo, an icon, and a sign-in image of the 10 MiB the console accepts are saved", async ({
     page,
   }) => {
     const image = await largestBrandingImage();
@@ -585,6 +666,15 @@ test.describe("admin brand settings", () => {
       "icon",
       "Save the icon",
       "The icon was saved.",
+      image
+    );
+
+    restoreSignInImage = true;
+    await uploadBranding(
+      page,
+      "sign_in_image",
+      "Save the sign-in image",
+      "The sign-in image was saved.",
       image
     );
   });

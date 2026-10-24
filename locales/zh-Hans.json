@@ -2955,6 +2955,22 @@
         "upload_failed": "无法上传标志。请稍后再试。",
         "delete_failed": "无法删除标志。请稍后再试。"
       },
+      "sign_in_image": {
+        "title": "登录页面图片",
+        "description": "在宽屏上，公开站点的登录和注册页面显示在表单旁边的图片。未设置时，该区域以主题颜色填充。",
+        "current": "当前的登录页面图片",
+        "unset": "尚未设置登录页面图片。",
+        "file": "登录页面图片文件",
+        "file_description": "请选择不超过10MB的JPEG、PNG或WebP图片。长边超过2560px的图片会被缩小，缩小后短边仍须至少512px。图片保持原有长宽比，由站点裁剪以适合表单旁边的区域。",
+        "delete_title": "删除登录页面图片？",
+        "delete_description": "登录和注册页面表单旁边的区域将回退为主题颜色。",
+        "submit": "保存登录页面图片",
+        "saved": "登录页面图片已保存。",
+        "deleted": "登录页面图片已删除。",
+        "rejected": "无法读取该图片。请选择短边至少512px的JPEG、PNG或WebP图片。",
+        "upload_failed": "无法上传登录页面图片。请稍后再试。",
+        "delete_failed": "无法删除登录页面图片。请稍后再试。"
+      },
       "email": {
         "title": "发件",
         "description": "未设置或未启用时，邮件将由平台自身的发件人发送。",
@@ -3690,7 +3706,7 @@
     },
     "branding": {
       "title": "品牌",
-      "page_description": "管理该租户的主题颜色、标志和图标。",
+      "page_description": "管理该租户的主题颜色、标志、图标和登录页面图片。",
       "section_error": "无法显示品牌设置"
     },
     "integrations": {

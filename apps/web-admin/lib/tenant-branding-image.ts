@@ -1,10 +1,10 @@
 import type { TenantImageVariant } from "@publira/api-client/admin/types";
 
 /**
- * The theme's icon and logo arrive the way the eye-catch images do — the
- * image's `updated_at` plus its variants — rather than as a URL string. A
- * tenant that has not uploaded one has no variants, so an empty list is how a
- * screen tells "unset" from "set".
+ * The theme's icon, logo, and sign-in image arrive the way the eye-catch images
+ * do — the image's `updated_at` plus its variants — rather than as a URL
+ * string. A tenant that has not uploaded one has no variants, so an empty list
+ * is how a screen tells "unset" from "set".
  */
 export interface TenantBrandingImageVariant {
   label: string;

@@ -2955,6 +2955,22 @@
         "upload_failed": "Could not upload the logo. Please try again later.",
         "delete_failed": "Could not delete the logo. Please try again later."
       },
+      "sign_in_image": {
+        "title": "Sign-in image",
+        "description": "The image the public site shows beside its sign-in and sign-up forms on a wide screen. Without one, that side is filled with the theme's colors.",
+        "current": "Current sign-in image",
+        "unset": "No sign-in image is set.",
+        "file": "Sign-in image file",
+        "file_description": "Choose a JPEG, PNG, or WebP image of at most 10MB. An image whose longer side exceeds 2560px is scaled down, and its shorter side must still be at least 512px afterwards. Its aspect ratio is kept, and the site crops it to fit the space beside the form.",
+        "delete_title": "Delete the sign-in image?",
+        "delete_description": "The sign-in and sign-up screens fall back to the theme's colors beside the form.",
+        "submit": "Save the sign-in image",
+        "saved": "The sign-in image was saved.",
+        "deleted": "The sign-in image was deleted.",
+        "rejected": "The image could not be read. Choose a JPEG, PNG, or WebP whose shorter side is at least 512px.",
+        "upload_failed": "Could not upload the sign-in image. Please try again later.",
+        "delete_failed": "Could not delete the sign-in image. Please try again later."
+      },
       "email": {
         "title": "Outgoing email",
         "description": "Left unset or disabled, mail is sent from the platform's own sender.",
@@ -3690,7 +3706,7 @@
     },
     "branding": {
       "title": "Branding",
-      "page_description": "Manage this tenant's theme colors, logo, and icon.",
+      "page_description": "Manage this tenant's theme colors, logo, icon, and sign-in image.",
       "section_error": "Could not display the branding settings"
     },
     "integrations": {

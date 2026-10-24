@@ -5,20 +5,24 @@ const {
   mockAssertSameOrigin,
   mockDeleteTenantIcon,
   mockDeleteTenantLogo,
+  mockDeleteTenantSignInImage,
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantThemeSettings,
   mockUploadTenantIcon,
   mockUploadTenantLogo,
+  mockUploadTenantSignInImage,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockDeleteTenantIcon: vi.fn(),
   mockDeleteTenantLogo: vi.fn(),
+  mockDeleteTenantSignInImage: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantThemeSettings: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
   mockUploadTenantLogo: vi.fn(),
+  mockUploadTenantSignInImage: vi.fn(),
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -44,11 +48,13 @@ vi.mock("#lib/session", () => ({
 vi.mock("#lib/theme-settings", () => ({
   deleteTenantIcon: mockDeleteTenantIcon,
   deleteTenantLogo: mockDeleteTenantLogo,
+  deleteTenantSignInImage: mockDeleteTenantSignInImage,
   tenantThemeCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:theme-settings`,
   updateTenantThemeSettings: mockUpdateTenantThemeSettings,
   uploadTenantIcon: mockUploadTenantIcon,
   uploadTenantLogo: mockUploadTenantLogo,
+  uploadTenantSignInImage: mockUploadTenantSignInImage,
 }));
 
 const textFormData = (values: Record<string, string>): FormData => {
@@ -118,6 +124,7 @@ describe("updateTenantThemeSettingsAction", () => {
       icon: null,
       logo: null,
       ok: true,
+      signInImage: null,
       theme: DEFAULT_TENANT_THEME_COLORS,
     });
 
@@ -480,6 +487,160 @@ describe("updateTenantLogoAction", () => {
 
     expect(result).toEqual({
       message: "Could not upload the logo.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const signInImageFormData = (
+  values: Record<string, string>,
+  file?: File
+): FormData => {
+  const formData = new FormData();
+  for (const [name, value] of Object.entries(values)) {
+    formData.set(name, value);
+  }
+  if (file) {
+    formData.set("sign_in_image", file);
+  }
+  return formData;
+};
+
+describe("updateTenantSignInImageAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("uploads the chosen image and revalidates the cache of the public site and the settings screen", async () => {
+    mockUploadTenantSignInImage.mockResolvedValueOnce({
+      ok: true,
+      signInImage: storedImage("/images/tenants/sign-in-1"),
+    });
+
+    const { updateTenantSignInImageAction } = await import("./actions");
+
+    const result = await updateTenantSignInImageAction(
+      null,
+      signInImageFormData(
+        { intent: "upload", tenant_id: "TENANT001" },
+        pngFile()
+      )
+    );
+
+    expect(result).toEqual({
+      message: "The sign-in image was saved.",
+      ok: true,
+    });
+    expect(mockUploadTenantSignInImage).toHaveBeenCalledWith(
+      {
+        imageContentType: "image/png",
+        imageData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
+  });
+
+  it("calls the delete API without sending an image on removal", async () => {
+    mockDeleteTenantSignInImage.mockResolvedValueOnce({
+      ok: true,
+      signInImage: null,
+    });
+
+    const { updateTenantSignInImageAction } = await import("./actions");
+
+    const result = await updateTenantSignInImageAction(
+      null,
+      signInImageFormData({ intent: "delete", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "The sign-in image was deleted.",
+      ok: true,
+    });
+    expect(mockDeleteTenantSignInImage).toHaveBeenCalledWith("TENANT001", "en");
+    expect(mockUploadTenantSignInImage).not.toHaveBeenCalled();
+  });
+
+  it("does not call the API when uploading without choosing an image", async () => {
+    const { updateTenantSignInImageAction } = await import("./actions");
+
+    const result = await updateTenantSignInImageAction(
+      null,
+      signInImageFormData({ intent: "upload", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      message: "Select an image file.",
+      ok: false,
+    });
+    expect(mockUploadTenantSignInImage).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("rejects a file over the size limit without reading it", async () => {
+    const file = oversizedPngFile();
+    const arrayBuffer = vi.spyOn(file, "arrayBuffer");
+
+    const { updateTenantSignInImageAction } = await import("./actions");
+
+    const result = await updateTenantSignInImageAction(
+      null,
+      signInImageFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+    );
+
+    expect(result).toEqual({
+      message: "The image must be 10MB or smaller.",
+      ok: false,
+    });
+    expect(arrayBuffer).not.toHaveBeenCalled();
+    expect(mockUploadTenantSignInImage).not.toHaveBeenCalled();
+  });
+
+  it("rejects a file whose MIME type is not accepted", async () => {
+    const file = new File([new Uint8Array([1])], "sign-in.svg", {
+      type: "image/svg+xml",
+    });
+
+    const { updateTenantSignInImageAction } = await import("./actions");
+
+    const result = await updateTenantSignInImageAction(
+      null,
+      signInImageFormData({ intent: "upload", tenant_id: "TENANT001" }, file)
+    );
+
+    expect(result).toEqual({
+      message: "Select a JPEG, PNG, or WebP image.",
+      ok: false,
+    });
+    expect(mockUploadTenantSignInImage).not.toHaveBeenCalled();
+  });
+
+  it("leaves the cache alone when the upload fails", async () => {
+    mockUploadTenantSignInImage.mockResolvedValueOnce({
+      message: "Could not upload the sign-in image.",
+      ok: false,
+    });
+
+    const { updateTenantSignInImageAction } = await import("./actions");
+
+    const result = await updateTenantSignInImageAction(
+      null,
+      signInImageFormData(
+        { intent: "upload", tenant_id: "TENANT001" },
+        pngFile()
+      )
+    );
+
+    expect(result).toEqual({
+      message: "Could not upload the sign-in image.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

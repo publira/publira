@@ -1,34 +1,36 @@
 ---
 title: Branding
-description: Give the site the publisher's logo, browser icon, colors, and typefaces, and check them in the preview before readers see them.
+description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, and check them in the preview before readers see them.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-24
 ---
 
-**Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, its colors, and the faces its text is set in. The screen has three cards: **Logo**, **Icon**, and the theme's colors and typefaces. Each card is saved on its own, and saving one leaves the others as they are.
+**Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, its colors, and the faces its text is set in. The screen has four cards: **Logo**, **Icon**, **Sign-in image**, and the theme's colors and typefaces. Each card is saved on its own, and saving one leaves the others as they are.
 
 Only a Tenant admin can change branding. Editors and Auditors see the same screen with its controls turned off.
 
-## Logo and icon
+## Logo, icon, and sign-in image
 
-Both take a JPEG, PNG, or WebP image of at most 10MB. Each is stored as a PNG, so a transparent background stays transparent.
+All three take a JPEG, PNG, or WebP image of at most 10MB. The logo and the icon are stored as PNG, so a transparent background stays transparent. The sign-in image keeps a JPEG as JPEG and stores anything else as PNG.
 
-|  | **Logo** | **Icon** |
-| --- | --- | --- |
-| Where it appears | In place of the site's name at the top of every page of the site and of this console. The tenant's app shows it in place of the name on its catalog screen | In the browser's tab and address bar, and as the icon a phone uses when a reader adds the site to their home screen |
-| Shape | Kept as it is | Cropped to a square from the center |
-| Size | An image wider or taller than 1024px is scaled down, and must still be at least 32px on each side afterwards | At least 32×32px. An image larger than 512×512px is scaled down |
-| Without one | The site shows the tenant's name | The browser shows its default icon |
+|  | **Logo** | **Icon** | **Sign-in image** |
+| --- | --- | --- | --- |
+| Where it appears | In place of the site's name at the top of every page of the site and of this console. The tenant's app shows it in place of the name on its catalog screen | In the browser's tab and address bar, and as the icon a phone uses when a reader adds the site to their home screen | Beside the form on the site's sign-in and sign-up screens, on a screen at least 1024px wide. A narrower screen shows the form alone |
+| Shape | Kept as it is | Cropped to a square from the center | Kept as it is. The site crops it to fill the space beside the form, whose shape changes with the window |
+| Size | An image wider or taller than 1024px is scaled down, and must still be at least 32px on each side afterwards | At least 32×32px. An image larger than 512×512px is scaled down | An image wider or taller than 2560px is scaled down, and its shorter side must still be at least 512px afterwards |
+| Without one | The site shows the tenant's name | The browser shows its default icon | The space beside the form is filled with the theme's colors |
 
-Choose the file under **Logo image** or **Icon image**, then **Save the logo** or **Save the icon**. Saving again replaces the image. **Delete** removes it after you confirm.
+Choose the file under **Logo image**, **Icon image**, or **Sign-in image file**, then **Save the logo**, **Save the icon**, or **Save the sign-in image**. Saving again replaces the image. **Delete** removes it after you confirm.
 
 ![The Logo and Icon cards: each with its file picker, Save the logo or Save the icon, and the formats they take.](./branding-logo-and-icon.png)
 
 Give the icon a square image with the mark in its middle, since anything outside the central square is cut off. Give the logo an image with little empty space around the mark. The site's header shows it 32px tall and at most 144px wide, so a logo more than four and a half times as wide as it is tall is shown shorter than that.
 
-An upload is refused with "Images cannot be uploaded because image storage has not been set up on the platform yet. Ask a platform operator to set it up." when the operator has not set up object storage for the install, as [Object storage](../../3-operations/5-object-storage.md) describes.
+Give the sign-in image a picture that still works with its edges cut away: keep what matters near its middle, and put no text in it that a reader has to read. Neither the logo nor a series' image stands in for it, so upload the same artwork here if you want it in both places.
 
-Neither image is used in the tenant's mail, which is sent in Publira's own colors, or as the picture shown when a link to the site is shared, which comes from the series being linked.
+An upload of any of the three is refused with "Images cannot be uploaded because image storage has not been set up on the platform yet. Ask a platform operator to set it up." when the operator has not set up object storage for the install, as [Object storage](../../3-operations/5-object-storage.md) describes.
+
+None of the three is used in the tenant's mail, which is sent in Publira's own colors, or as the picture shown when a link to the site is shared, which comes from the series being linked.
 
 ## Theme colors and typefaces
 
@@ -62,7 +64,7 @@ The tenant's app uses the theme's colors but not its typefaces.
 
 ### Previewing and saving
 
-While you edit, the console itself takes on the new colors, so you can see them before saving. The **Preview** tab shows them on the parts a site is built from: a header, a featured series, a list of episodes, badges, and a footer, with a line of Japanese, Latin, Korean, and Chinese text in both stacks. The preview does not show the logo or the icon.
+While you edit, the console itself takes on the new colors, so you can see them before saving. The **Preview** tab shows them on the parts a site is built from: a header, a featured series, a list of episodes, badges, and a footer, with a line of Japanese, Latin, Korean, and Chinese text in both stacks. The preview does not show the logo, the icon, or the sign-in image.
 
 ![The Preview tab: a header, a featured series, a list of episodes, badges, a footer, and a line of Japanese, Latin, Korean, and Chinese text in both stacks.](./branding-preview.png)
 

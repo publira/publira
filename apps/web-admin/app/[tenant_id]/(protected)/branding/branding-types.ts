@@ -69,3 +69,14 @@ export type TenantLogoActionState =
       message: string;
     }
   | null;
+
+export type TenantSignInImageActionState =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;

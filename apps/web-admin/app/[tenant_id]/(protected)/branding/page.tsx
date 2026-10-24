@@ -16,6 +16,7 @@ import { getTenantThemeSettings } from "#lib/theme-settings";
 
 import { TenantIconForm } from "./_components/tenant-icon-form";
 import { TenantLogoForm } from "./_components/tenant-logo-form";
+import { TenantSignInImageForm } from "./_components/tenant-sign-in-image-form";
 import { ThemeSettingsForm } from "./_components/theme-settings-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -75,6 +76,10 @@ const BrandingForms = async () => {
     <>
       <TenantLogoForm logo={themeResult.logo} tenantId={tenantId} />
       <TenantIconForm icon={themeResult.icon} tenantId={tenantId} />
+      <TenantSignInImageForm
+        signInImage={themeResult.signInImage}
+        tenantId={tenantId}
+      />
       <ThemeSettingsForm initialTheme={themeResult.theme} tenantId={tenantId} />
     </>
   );
