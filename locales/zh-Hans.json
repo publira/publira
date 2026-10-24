@@ -4423,6 +4423,7 @@
       "reading_period_hours": "{$hours :integer}小时",
       "reading_period_unlimited": "无期限",
       "scheduled_at": "预约发布",
+      "staff_access": "您作为工作人员可以阅读本章。读者在此处会看到购买提示。",
       "to_series_detail": "前往该系列",
       "viewer": {
         "collapse_viewer": "恢复页面宽度",

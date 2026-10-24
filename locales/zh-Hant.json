@@ -4423,6 +4423,7 @@
       "reading_period_hours": "{$hours :integer}小時",
       "reading_period_unlimited": "無期限",
       "scheduled_at": "預約發布",
+      "staff_access": "您作為工作人員可以閱讀本章。讀者在此處會看到購買提示。",
       "to_series_detail": "前往該系列",
       "viewer": {
         "collapse_viewer": "恢復頁面寬度",

@@ -1119,6 +1119,9 @@ describe("toEpisodeEntitlementSource", () => {
     expect(toEpisodeEntitlementSource(EpisodeEntitlementSource.CREATOR)).toBe(
       "creator"
     );
+    expect(toEpisodeEntitlementSource(EpisodeEntitlementSource.STAFF)).toBe(
+      "staff"
+    );
   });
 
   it("reports no grant when the API names none", () => {
@@ -1239,6 +1242,29 @@ describe("catalog.getEpisodeViewer", () => {
     ).resolves.toEqual({
       ok: true,
       value: { access: "entitled", entitlementSource: "creator", images: [] },
+    });
+  });
+
+  it("names an episode opened by a staff role apart from a bought one", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.ENTITLED,
+      entitlementSource: EpisodeEntitlementSource.STAFF,
+      episode: { price: 500, publicId: "EP_010", title: "Episode 10" },
+      images: [],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    await expect(
+      getEpisodeViewer(
+        "TENANT_001",
+        "SERIES_001",
+        "EP_010",
+        "session-token",
+        "en"
+      )
+    ).resolves.toEqual({
+      ok: true,
+      value: { access: "entitled", entitlementSource: "staff", images: [] },
     });
   });
 
