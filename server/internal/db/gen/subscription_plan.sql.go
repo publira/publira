@@ -66,21 +66,29 @@ func (q *Queries) CountSubscriptionPlansForTenant(ctx context.Context, tenantID 
 	return plan_count, err
 }
 
-const CountSubscriptionsForPlan = `-- name: CountSubscriptionsForPlan :one
-SELECT COUNT(*)::int4 AS subscription_count
-FROM subscriptions
-WHERE tenant_id = $1
-    AND plan_id = $2
+const CountSubscriptionsAndCheckoutsForPlan = `-- name: CountSubscriptionsAndCheckoutsForPlan :one
+SELECT (
+        SELECT COUNT(*)
+        FROM subscriptions s
+        WHERE s.tenant_id = $1
+            AND s.plan_id = $2
+    )::int4 + (
+        SELECT COUNT(*)
+        FROM subscription_checkouts c
+        WHERE c.tenant_id = $1
+            AND c.plan_id = $2
+    )::int4 AS subscription_count
 `
 
-type CountSubscriptionsForPlanParams struct {
+type CountSubscriptionsAndCheckoutsForPlanParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	PlanID   uuid.UUID `json:"plan_id"`
 }
 
-// Every subscription the plan bills or billed, whatever its state.
-func (q *Queries) CountSubscriptionsForPlan(ctx context.Context, arg CountSubscriptionsForPlanParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, CountSubscriptionsForPlan, arg.TenantID, arg.PlanID)
+// Every subscription the plan bills or billed, whatever its state, and every
+// reader whose latest checkout was of it.
+func (q *Queries) CountSubscriptionsAndCheckoutsForPlan(ctx context.Context, arg CountSubscriptionsAndCheckoutsForPlanParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, CountSubscriptionsAndCheckoutsForPlan, arg.TenantID, arg.PlanID)
 	var subscription_count int32
 	err := row.Scan(&subscription_count)
 	return subscription_count, err

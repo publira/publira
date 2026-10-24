@@ -181,8 +181,9 @@ type Querier interface {
 	CountSeriesForSubscriptionPlan(ctx context.Context, arg CountSeriesForSubscriptionPlanParams) (int32, error)
 	CountSeriesTranslations(ctx context.Context, arg CountSeriesTranslationsParams) (int32, error)
 	CountSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
-	// Every subscription the plan bills or billed, whatever its state.
-	CountSubscriptionsForPlan(ctx context.Context, arg CountSubscriptionsForPlanParams) (int32, error)
+	// Every subscription the plan bills or billed, whatever its state, and every
+	// reader whose latest checkout was of it.
+	CountSubscriptionsAndCheckoutsForPlan(ctx context.Context, arg CountSubscriptionsAndCheckoutsForPlanParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
@@ -785,9 +786,6 @@ type Querier interface {
 	// The Stripe customer the reader last subscribed as, which a later checkout
 	// and the billing portal name, so the reader's invoices stay on one customer.
 	GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (string, error)
-	// The reader's latest subscription, which a checkout's idempotency key names
-	// so that subscribing again after one ends starts a new checkout.
-	GetLatestSubscriptionIDForUser(ctx context.Context, arg GetLatestSubscriptionIDForUserParams) (string, error)
 	// Where a newly created banner goes: after everything that already exists.
 	GetMaxCampaignBannerDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Where a newly created role goes: after everything that already exists.
@@ -1069,6 +1067,7 @@ type Querier interface {
 	// which the caller answers with the column defaults: off.
 	GetSeriesWaitFreeSettings(ctx context.Context, arg GetSeriesWaitFreeSettingsParams) (GetSeriesWaitFreeSettingsRow, error)
 	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
+	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
 	// The plan a subscription is recorded on: the one billed at the Price Stripe
 	// reports, which follows a reader who changed their Price in the billing
@@ -2844,6 +2843,13 @@ type Querier interface {
 	// records the purchase looked for a held refund, and the purchase would keep
 	// opening the episode.
 	LockStoreTransaction(ctx context.Context, arg LockStoreTransactionParams) error
+	// Serializes one reader's subscription checkouts, so two requests cannot each
+	// find no open checkout and each start one.
+	LockSubscriptionCheckoutsOfUser(ctx context.Context, arg LockSubscriptionCheckoutsOfUserParams) error
+	// Serializes the notifications about one subscription, so a read of it from
+	// Stripe and the write of what was read are never split by another delivery
+	// that read it later and wrote first.
+	LockSubscriptionForTenant(ctx context.Context, arg LockSubscriptionForTenantParams) error
 	LockTenantAdminInvitationByHashForTenant(ctx context.Context, arg LockTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
@@ -3273,6 +3279,8 @@ type Querier interface {
 	// repeated notification or poll leaves the instants already stored.
 	// Nothing matches when the transaction has no purchase here yet.
 	RecordStoreRefundOnPurchase(ctx context.Context, arg RecordStoreRefundOnPurchaseParams) (Purchase, error)
+	// Makes checkout the reader's latest, in place of the one before.
+	RecordSubscriptionCheckout(ctx context.Context, arg RecordSubscriptionCheckoutParams) error
 	// Writes a subscription as Stripe reports it now. A subscription already here
 	// takes the new state, and keeps the reader it was recorded for: the account
 	// may have been deleted since, which leaves user_id NULL rather than naming
@@ -3493,6 +3501,7 @@ type Querier interface {
 	// The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
 	// counts are the ones there are.
 	StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error
+	SubscriptionIsRecorded(ctx context.Context, arg SubscriptionIsRecordedParams) (bool, error)
 	// Suspends an account and invalidates the sessions it holds. An account that
 	// is already suspended is no rows, like another tenant's. Keeping the tenant an
 	// active tenant_admin is the handler's, which checks before this runs.

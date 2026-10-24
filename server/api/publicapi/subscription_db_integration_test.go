@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http/httptest"
+	"path"
 	"slices"
 	"strings"
 	"testing"
@@ -88,6 +89,12 @@ func (f *subscriptionFixture) deliver(t *testing.T, payload []byte, headers map[
 	t.Helper()
 	_, err := f.purchases.ProcessPaymentWebhook(context.Background(), stripeWebhookRequest(f.tenant.ID.String(), payload, headers))
 	return err
+}
+
+// checkoutIDOf answers the id of the Checkout Session a checkout URL of the
+// Stripe fake pays.
+func checkoutIDOf(checkoutURL string) string {
+	return path.Base(checkoutURL)
 }
 
 func withoutScheme(raw string) string {
@@ -194,7 +201,7 @@ func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {
 		CurrentPeriodEnd: periodEnd.Unix(),
 		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID),
 	}
-	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, subscription)
+	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, checkoutIDOf(started.CheckoutUrl), subscription)
 	for range 2 {
 		if err := f.deliver(t, payload, headers); err != nil {
 			t.Fatalf("deliver the completed checkout: %v", err)
@@ -243,12 +250,21 @@ func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {
 		t.Fatalf("subscription = %+v, want it past due", got)
 	}
 
+	stale, staleHeaders := f.stripe.SubscriptionUpdated(t, f.credentials, subscription)
 	payload, headers = f.stripe.SubscriptionDeleted(t, f.credentials, subscription)
 	if err := f.deliver(t, payload, headers); err != nil {
 		t.Fatalf("deliver the deletion: %v", err)
 	}
 	if got := f.mySubscription(t); got.Status != publirattypesv1.SubscriptionStatus_SUBSCRIPTION_STATUS_CANCELED {
 		t.Fatalf("subscription = %+v, want it canceled", got)
+	}
+	// A notification Stripe sent before the deletion and delivered after it
+	// records what Stripe holds now, not what it carried.
+	if err := f.deliver(t, stale, staleHeaders); err != nil {
+		t.Fatalf("deliver the late update: %v", err)
+	}
+	if got := f.mySubscription(t); got.Status != publirattypesv1.SubscriptionStatus_SUBSCRIPTION_STATUS_CANCELED {
+		t.Fatalf("subscription after a late update = %+v, want it still canceled", got)
 	}
 
 	// The reader may subscribe again once it has ended, as the customer they
@@ -327,7 +343,7 @@ func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testi
 		Status:     "active",
 		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, monthly.ID),
 	}
-	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, subscription)
+	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, "cs_switch", subscription)
 	if err := f.deliver(t, payload, headers); err != nil {
 		t.Fatalf("deliver the completed checkout: %v", err)
 	}
@@ -382,5 +398,75 @@ func TestDBGetMySubscriptionPrefersOneThatIsNotOver(t *testing.T) {
 	}
 	if _, err := f.subscriptions.GetMySubscription(context.Background(), &publirav1.GetMySubscriptionRequest{Tenant: tenantContext(f.tenant)}); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetMySubscription without a session = %v, want unauthenticated", err)
+	}
+}
+
+// A reader holds at most one checkout they could pay: asking again for the
+// same plan answers the open checkout, and asking for another expires it
+// first, so two subscriptions can never be paid for side by side.
+func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
+	f := newSubscriptionFixture(t)
+	monthly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	yearly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_yearly", Published: true})
+	start := func(planID uuid.UUID) (string, error) {
+		t.Helper()
+		res, err := f.subscriptions.StartSubscriptionCheckout(f.readerCtx(t), &publirav1.StartSubscriptionCheckoutRequest{Tenant: tenantContext(f.tenant), PlanId: planID.String()})
+		return res.GetCheckoutUrl(), err
+	}
+
+	first, err := start(monthly.ID)
+	if err != nil {
+		t.Fatalf("StartSubscriptionCheckout: %v", err)
+	}
+	again, err := start(monthly.ID)
+	if err != nil {
+		t.Fatalf("StartSubscriptionCheckout of the same plan again: %v", err)
+	}
+	if again != first || len(f.stripe.API.CheckoutSessions()) != 1 {
+		t.Fatalf("checkout = %q after %q with %d sessions, want the open one reused", again, first, len(f.stripe.API.CheckoutSessions()))
+	}
+
+	other, err := start(yearly.ID)
+	if err != nil {
+		t.Fatalf("StartSubscriptionCheckout of another plan: %v", err)
+	}
+	if other == first || f.stripe.API.CheckoutSessionStatus(checkoutIDOf(first)) != "expired" {
+		t.Fatalf("checkout of another plan = %q, first is %s, want a new one and the first expired", other, f.stripe.API.CheckoutSessionStatus(checkoutIDOf(first)))
+	}
+
+	// The reader pays the open checkout, and asks for another before Stripe's
+	// notification has recorded the subscription.
+	f.stripe.API.CompleteCheckoutSession(checkoutIDOf(other), "sub_on_its_way")
+	if _, err := start(monthly.ID); connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("StartSubscriptionCheckout after paying one = %v, want already_exists", err)
+	}
+	if got := len(f.stripe.API.CheckoutSessions()); got != 2 {
+		t.Fatalf("checkout sessions = %d, want no third", got)
+	}
+
+	// Once the subscription is recorded and has ended, the reader may start
+	// again.
+	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], stripetest.Subscription{
+		ID:         "sub_on_its_way",
+		CustomerID: "cus_on_its_way",
+		PriceID:    "price_yearly",
+		Status:     "canceled",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+	})
+	payload, headers := f.stripe.SubscriptionDeleted(t, f.credentials, stripetest.Subscription{
+		ID:         "sub_on_its_way",
+		CustomerID: "cus_on_its_way",
+		PriceID:    "price_yearly",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+	})
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the deletion: %v", err)
+	}
+	if _, err := start(monthly.ID); err != nil {
+		t.Fatalf("StartSubscriptionCheckout after the subscription ended: %v", err)
+	}
+	sessions := f.stripe.API.CheckoutSessions()
+	if len(sessions) != 3 || sessions[2].Form.Get("customer") != "cus_on_its_way" {
+		t.Fatalf("sessions = %d, the last for %q, want a third for the reader's customer", len(sessions), sessions[len(sessions)-1].Form.Get("customer"))
 	}
 }

@@ -195,3 +195,48 @@ ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- POLICY: subscriptions subscriptions_tenant_isolation
 CREATE POLICY subscriptions_tenant_isolation ON subscriptions USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+-- TABLE: subscription_checkouts
+-- The latest subscription checkout each reader started, so the next one can
+-- find it: reuse it while it is open on the same plan, expire it before
+-- starting one on another, and refuse a new one while it has completed and
+-- its subscription is still on its way. Without it a reader could hold two
+-- open checkouts at once and pay both, and be billed twice.
+CREATE TABLE subscription_checkouts (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    plan_id uuid NOT NULL,
+    stripe_checkout_session_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT subscription_checkouts_stripe_checkout_session_id_check CHECK ((char_length(stripe_checkout_session_id) >= 1))
+);
+
+-- CONSTRAINT: subscription_checkouts subscription_checkouts_pkey
+ALTER TABLE ONLY subscription_checkouts
+    ADD CONSTRAINT subscription_checkouts_pkey PRIMARY KEY (tenant_id, user_id);
+
+-- FK CONSTRAINT: subscription_checkouts subscription_checkouts_tenant_id_fkey
+ALTER TABLE ONLY subscription_checkouts
+    ADD CONSTRAINT subscription_checkouts_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: subscription_checkouts subscription_checkouts_tenant_user_id_fkey
+ALTER TABLE ONLY subscription_checkouts
+    ADD CONSTRAINT subscription_checkouts_tenant_user_id_fkey FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE;
+
+-- FK CONSTRAINT: subscription_checkouts subscription_checkouts_tenant_plan_id_fkey
+-- A checkout a reader may still pay names its plan, so the plan is not
+-- deleted out from under it, as one a subscription names is not. NO ACTION
+-- rather than RESTRICT, so a tenant deleted as a whole takes both rows in the
+-- one statement.
+ALTER TABLE ONLY subscription_checkouts
+    ADD CONSTRAINT subscription_checkouts_tenant_plan_id_fkey FOREIGN KEY (tenant_id, plan_id) REFERENCES subscription_plans(tenant_id, id);
+
+-- INDEX: idx_subscription_checkouts_tenant_plan_id
+-- Backs the composite foreign key to subscription_plans.
+CREATE INDEX idx_subscription_checkouts_tenant_plan_id ON subscription_checkouts USING btree (tenant_id, plan_id);
+
+-- ROW SECURITY: subscription_checkouts
+ALTER TABLE subscription_checkouts ENABLE ROW LEVEL SECURITY;
+
+-- POLICY: subscription_checkouts subscription_checkouts_tenant_isolation
+CREATE POLICY subscription_checkouts_tenant_isolation ON subscription_checkouts USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));

@@ -489,7 +489,7 @@ func (s *adminServer) DeleteSubscriptionPlan(
 		return nil, err
 	}
 	queries := s.queriesFor(ctx)
-	subscribed, err := queries.CountSubscriptionsForPlan(ctx, dbmodels.CountSubscriptionsForPlanParams{TenantID: tenant.ID, PlanID: current.ID})
+	subscribed, err := queries.CountSubscriptionsAndCheckoutsForPlan(ctx, dbmodels.CountSubscriptionsAndCheckoutsForPlanParams{TenantID: tenant.ID, PlanID: current.ID})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to count the subscriptions of a plan", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", current.ID.String())
 	}
@@ -497,7 +497,8 @@ func (s *adminServer) DeleteSubscriptionPlan(
 		return nil, subscriptionPlanInUseError()
 	}
 	if _, err := queries.DeleteSubscriptionPlan(ctx, dbmodels.DeleteSubscriptionPlanParams{TenantID: tenant.ID, ID: current.ID}); err != nil {
-		// A subscription can be recorded between the count and the delete.
+		// A subscription or a checkout can be recorded between the count and
+		// the delete.
 		// The foreign key is what actually holds the line, so its refusal is
 		// reported as the same failed precondition rather than as a fault.
 		if dberr.IsForeignKeyViolation(err) {
@@ -511,7 +512,8 @@ func (s *adminServer) DeleteSubscriptionPlan(
 	return &publiraadminv1.DeleteSubscriptionPlanResponse{}, nil
 }
 
-// subscriptionPlanInUseError refuses to delete a plan a subscription names.
+// subscriptionPlanInUseError refuses to delete a plan a subscription or a
+// reader's latest checkout names.
 func subscriptionPlanInUseError() error {
 	return rpcerrors.NewErrorInfoError(
 		connect.CodeFailedPrecondition,

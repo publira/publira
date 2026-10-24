@@ -704,7 +704,8 @@ func (x *UpdateSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
 // Removes a plan nobody has ever subscribed to. One a subscription names, in
 // whatever state, is failed_precondition with the ErrorInfo reason
 // SUBSCRIPTION_PLAN_IN_USE: the subscription is a record of what the reader
-// paid for. Unpublish such a plan instead.
+// paid for. So is one a reader's latest checkout was of, which the reader may
+// still be paying. Unpublish such a plan instead.
 type DeleteSubscriptionPlanRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

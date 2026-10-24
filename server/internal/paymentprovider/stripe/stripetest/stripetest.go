@@ -98,6 +98,14 @@ type API struct {
 	prices        map[string]map[string]Price
 	subscriptions map[string]map[string]Subscription
 	portals       []BillingPortalSession
+	// sessionStates holds where each Checkout Session the fake made stands,
+	// by its id, and the subscription a completed one started.
+	sessionStates map[string]sessionState
+}
+
+type sessionState struct {
+	status         string
+	subscriptionID string
 }
 
 // Price is a Price on a fake account, in the shape Stripe answers it.
@@ -175,11 +183,14 @@ func NewAPI(t testing.TB) *API {
 		idempotent:    map[string]map[string]Refund{},
 		prices:        map[string]map[string]Price{},
 		subscriptions: map[string]map[string]Subscription{},
+		sessionStates: map[string]sessionState{},
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/refunds", api.createRefund)
 	mux.HandleFunc("POST /v1/coupons", api.createCoupon)
 	mux.HandleFunc("POST /v1/checkout/sessions", api.createCheckoutSession)
+	mux.HandleFunc("GET /v1/checkout/sessions/{id}", api.getCheckoutSession)
+	mux.HandleFunc("POST /v1/checkout/sessions/{id}/expire", api.expireCheckoutSession)
 	mux.HandleFunc("GET /v1/payment_intents/{id}", api.getPaymentIntent)
 	mux.HandleFunc("GET /v1/prices/{id}", api.getPrice)
 	mux.HandleFunc("GET /v1/subscriptions/{id}", api.getSubscription)
@@ -317,14 +328,78 @@ func (a *API) createCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		Form:           r.PostForm,
 	})
 	id := fmt.Sprintf("cs_fake%04d", len(a.sessions))
+	a.sessionStates[id] = sessionState{status: "open"}
 	a.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	_ = json.NewEncoder(w).Encode(sessionObject(id, sessionState{status: "open"}))
+}
+
+// CompleteCheckoutSession makes the Checkout Session id one the reader paid,
+// which started subscriptionID, as paying it on Stripe's page does.
+func (a *API) CompleteCheckoutSession(id, subscriptionID string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.sessionStates[id] = sessionState{status: "complete", subscriptionID: subscriptionID}
+}
+
+// CheckoutSessionStatus answers where the Checkout Session id stands: open,
+// complete, or expired, and empty for one the fake never made.
+func (a *API) CheckoutSessionStatus(id string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.sessionStates[id].status
+}
+
+func sessionObject(id string, state sessionState) map[string]any {
+	object := map[string]any{
 		"id":     id,
 		"object": "checkout.session",
-		"url":    "https://checkout.stripe.com/c/pay/" + id,
-	})
+		"status": state.status,
+	}
+	if state.status == "open" {
+		object["url"] = "https://checkout.stripe.com/c/pay/" + id
+	}
+	if state.subscriptionID != "" {
+		object["subscription"] = state.subscriptionID
+	}
+	return object
+}
+
+func (a *API) getCheckoutSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	a.mu.Lock()
+	state, ok := a.sessionStates[id]
+	a.mu.Unlock()
+	if !ok {
+		writeError(w, http.StatusNotFound, "resource_missing", "No such checkout.session: '"+id+"'")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(sessionObject(id, state))
+}
+
+// expireCheckoutSession expires an open session, and refuses one that is not
+// open any more, as Stripe does.
+func (a *API) expireCheckoutSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	a.mu.Lock()
+	state, ok := a.sessionStates[id]
+	wasOpen := ok && state.status == "open"
+	if wasOpen {
+		state = sessionState{status: "expired"}
+		a.sessionStates[id] = state
+	}
+	a.mu.Unlock()
+	switch {
+	case !ok:
+		writeError(w, http.StatusNotFound, "resource_missing", "No such checkout.session: '"+id+"'")
+	case !wasOpen:
+		writeError(w, http.StatusBadRequest, "", "Only Checkout Sessions with a status of `open` can be expired.")
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(sessionObject(id, state))
+	}
 }
 
 // intent answers the payment intent id under secretKey, making one that has
@@ -710,14 +785,16 @@ func SubscriptionMetadata(tenantID, readerID, planID uuid.UUID) map[string]strin
 }
 
 // SubscriptionCheckoutCompleted answers Stripe's notification that the
-// subscription checkout which started subscription completed, and puts
-// subscription on the account of the credentials, as completing the checkout
-// does. It is not part of the contract, which no provider but Stripe sells a
+// subscription checkout checkoutID completed, starting subscription, and puts
+// subscription on the account of the credentials and marks the checkout
+// complete, as paying it does. It is not part of the contract, which no provider but Stripe sells a
 // subscription through.
-func (f *Fixture) SubscriptionCheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription) ([]byte, http.Header) {
+func (f *Fixture) SubscriptionCheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkoutID string, subscription Subscription) ([]byte, http.Header) {
 	t.Helper()
 	f.API.SetSubscription(credentials[stripe.FieldSecretKey], subscription)
+	f.API.CompleteCheckoutSession(checkoutID, subscription.ID)
 	return recorded(t, credentials, "checkout.session.completed.subscription.json", map[string]any{
+		"id":           checkoutID,
 		"customer":     subscription.CustomerID,
 		"metadata":     subscription.Metadata,
 		"subscription": subscription.ID,

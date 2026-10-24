@@ -274,17 +274,27 @@ func TestDBDeleteSubscriptionPlanKeepsAPlanSomeoneSubscribedTo(t *testing.T) {
 	reader := f.env.PG.SeedEndUser(t, f.admin.Tenant.ID, "READER01", "reader@example.com", "Reader")
 	subscribed := f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{})
 	f.env.PG.SeedSubscription(t, f.admin.Tenant.ID, reader.ID, subscribed.ID, testutil.SubscriptionSeed{Status: "canceled"})
+	checkedOut := f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{})
+	if _, err := f.env.PG.DB.ExecContext(context.Background(),
+		"INSERT INTO subscription_checkouts (tenant_id, user_id, plan_id, stripe_checkout_session_id) VALUES ($1, $2, $3, 'cs_open')",
+		f.admin.Tenant.ID, reader.ID, checkedOut.ID,
+	); err != nil {
+		t.Fatalf("seed a checkout: %v", err)
+	}
 	unused := f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{})
 
-	_, err := f.client().DeleteSubscriptionPlan(f.ctx(), &publiraadminv1.DeleteSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: subscribed.ID.String()})
-	if reason := errorInfoReason(t, err); connect.CodeOf(err) != connect.CodeFailedPrecondition || reason != rpcerrors.ReasonSubscriptionPlanInUse {
-		t.Fatalf("DeleteSubscriptionPlan of a subscribed plan = %v (reason %q), want failed_precondition %s", err, reason, rpcerrors.ReasonSubscriptionPlanInUse)
+	// A reader's open checkout may still be paid, so its plan stays too.
+	for name, plan := range map[string]testutil.SubscriptionPlan{"a subscribed plan": subscribed, "a plan a reader is checking out": checkedOut} {
+		_, err := f.client().DeleteSubscriptionPlan(f.ctx(), &publiraadminv1.DeleteSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: plan.ID.String()})
+		if reason := errorInfoReason(t, err); connect.CodeOf(err) != connect.CodeFailedPrecondition || reason != rpcerrors.ReasonSubscriptionPlanInUse {
+			t.Fatalf("DeleteSubscriptionPlan of %s = %v (reason %q), want failed_precondition %s", name, err, reason, rpcerrors.ReasonSubscriptionPlanInUse)
+		}
 	}
 	if _, err := f.client().DeleteSubscriptionPlan(f.ctx(), &publiraadminv1.DeleteSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: unused.ID.String()}); err != nil {
 		t.Fatalf("DeleteSubscriptionPlan: %v", err)
 	}
-	if got := f.env.countRows(t, "SELECT count(*) FROM subscription_plans WHERE tenant_id = $1", f.admin.Tenant.ID); got != 1 {
-		t.Fatalf("plans = %d, want the subscribed one alone", got)
+	if got := f.env.countRows(t, "SELECT count(*) FROM subscription_plans WHERE tenant_id = $1", f.admin.Tenant.ID); got != 2 {
+		t.Fatalf("plans = %d, want the two in use", got)
 	}
 	if got := f.env.countRows(t,
 		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'subscription_plan_deleted' AND target_id = $2",

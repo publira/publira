@@ -84,13 +84,57 @@ ORDER BY created_at DESC,
     id DESC
 LIMIT 1;
 
--- name: GetLatestSubscriptionIDForUser :one
--- The reader's latest subscription, which a checkout's idempotency key names
--- so that subscribing again after one ends starts a new checkout.
-SELECT stripe_subscription_id
-FROM subscriptions
+-- name: LockSubscriptionForTenant :exec
+-- Serializes the notifications about one subscription, so a read of it from
+-- Stripe and the write of what was read are never split by another delivery
+-- that read it later and wrote first.
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('stripe_subscription_id')::text,
+            0
+        )
+    );
+
+-- name: LockSubscriptionCheckoutsOfUser :exec
+-- Serializes one reader's subscription checkouts, so two requests cannot each
+-- find no open checkout and each start one.
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription-checkout:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('user_id')::uuid::text,
+            0
+        )
+    );
+
+-- name: GetSubscriptionCheckoutForUser :one
+SELECT plan_id,
+    stripe_checkout_session_id
+FROM subscription_checkouts
 WHERE tenant_id = $1
-    AND user_id = $2
-ORDER BY created_at DESC,
-    id DESC
-LIMIT 1;
+    AND user_id = $2;
+
+-- name: RecordSubscriptionCheckout :exec
+-- Makes checkout the reader's latest, in place of the one before.
+INSERT INTO subscription_checkouts (
+        tenant_id,
+        user_id,
+        plan_id,
+        stripe_checkout_session_id
+    )
+VALUES (
+        sqlc.arg('tenant_id'),
+        sqlc.arg('user_id'),
+        sqlc.arg('plan_id'),
+        sqlc.arg('stripe_checkout_session_id')
+    ) ON CONFLICT (tenant_id, user_id) DO
+UPDATE
+SET plan_id = EXCLUDED.plan_id,
+    stripe_checkout_session_id = EXCLUDED.stripe_checkout_session_id,
+    created_at = NOW();
+
+-- name: SubscriptionIsRecorded :one
+SELECT EXISTS (
+        SELECT 1
+        FROM subscriptions
+        WHERE tenant_id = $1
+            AND stripe_subscription_id = $2
+    ) AS recorded;

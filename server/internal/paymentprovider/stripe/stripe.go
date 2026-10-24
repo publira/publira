@@ -292,7 +292,7 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, header
 			return nil, err
 		}
 		if mode == stripego.CheckoutSessionModeSubscription {
-			return p.subscriptionCheckoutEvent(ctx, credentials, &event)
+			return subscriptionCheckoutEvent(&event)
 		}
 		return purchaseCompletedEvent(&event)
 	case stripego.EventTypeCheckoutSessionExpired:
@@ -307,9 +307,9 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, header
 		}
 		return checkoutExpiredEvent(&event)
 	case stripego.EventTypeCustomerSubscriptionUpdated, stripego.EventTypeCustomerSubscriptionDeleted:
-		return p.subscriptionUpdatedEvent(ctx, credentials, &event)
+		return subscriptionUpdatedEvent(&event)
 	case stripego.EventTypeInvoicePaymentFailed:
-		return p.invoicePaymentFailedEvent(ctx, credentials, &event)
+		return invoicePaymentFailedEvent(&event)
 	default:
 		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}

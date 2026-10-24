@@ -167,12 +167,20 @@ DELETE FROM subscription_plans
 WHERE tenant_id = $1
     AND id = $2;
 
--- name: CountSubscriptionsForPlan :one
--- Every subscription the plan bills or billed, whatever its state.
-SELECT COUNT(*)::int4 AS subscription_count
-FROM subscriptions
-WHERE tenant_id = $1
-    AND plan_id = $2;
+-- name: CountSubscriptionsAndCheckoutsForPlan :one
+-- Every subscription the plan bills or billed, whatever its state, and every
+-- reader whose latest checkout was of it.
+SELECT (
+        SELECT COUNT(*)
+        FROM subscriptions s
+        WHERE s.tenant_id = sqlc.arg('tenant_id')
+            AND s.plan_id = sqlc.arg('plan_id')
+    )::int4 + (
+        SELECT COUNT(*)
+        FROM subscription_checkouts c
+        WHERE c.tenant_id = sqlc.arg('tenant_id')
+            AND c.plan_id = sqlc.arg('plan_id')
+    )::int4 AS subscription_count;
 
 -- name: ListSubscriptionPlanTargetsForTenant :many
 -- The labels and series the plans name, each row one of the two.

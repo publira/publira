@@ -1217,6 +1217,14 @@ type Subscription struct {
 	UpdatedAt            time.Time     `json:"updated_at"`
 }
 
+type SubscriptionCheckout struct {
+	TenantID                uuid.UUID `json:"tenant_id"`
+	UserID                  uuid.UUID `json:"user_id"`
+	PlanID                  uuid.UUID `json:"plan_id"`
+	StripeCheckoutSessionID string    `json:"stripe_checkout_session_id"`
+	CreatedAt               time.Time `json:"created_at"`
+}
+
 type SubscriptionPlan struct {
 	ID                     uuid.UUID `json:"id"`
 	TenantID               uuid.UUID `json:"tenant_id"`
