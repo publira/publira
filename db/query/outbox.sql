@@ -191,6 +191,23 @@ WHERE id = sqlc.arg('id')
     AND status = 'processing'
 RETURNING *;
 
+-- Hand back an event whose type this worker has no handler for, so that a
+-- worker of a newer release, which writes the type, claims it later. Like
+-- ResumeOutboxEvent it charges no attempt: nothing failed, and the worker
+-- that handles the type starts on the whole retry budget. The payload keeps
+-- any token, as a retry does, until that worker finishes the event or the
+-- worker gives the type up and marks the event dead.
+-- name: DeferOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    available_at = sqlc.arg('available_at'),
+    last_error = sqlc.narg('last_error'),
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
+    AND status = 'processing'
+RETURNING *;
+
 -- Same token drop as MarkOutboxEventDone: a dead auth-mail event is
 -- as terminal as a successful one, and the secret is no longer
 -- needed to send the mail.

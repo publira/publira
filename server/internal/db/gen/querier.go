@@ -439,6 +439,13 @@ type Querier interface {
 	// that decides access sees it through episode_content_grants, and it expires
 	// by the series' access period from the same clock.
 	CreateWaitFreeAccessTicket(ctx context.Context, arg CreateWaitFreeAccessTicketParams) (CreateWaitFreeAccessTicketRow, error)
+	// Hand back an event whose type this worker has no handler for, so that a
+	// worker of a newer release, which writes the type, claims it later. Like
+	// ResumeOutboxEvent it charges no attempt: nothing failed, and the worker
+	// that handles the type starts on the whole retry budget. The payload keeps
+	// any token, as a retry does, until that worker finishes the event or the
+	// worker gives the type up and marks the event dead.
+	DeferOutboxEvent(ctx context.Context, arg DeferOutboxEventParams) (OutboxEvent, error)
 	DeleteCampaignBanner(ctx context.Context, arg DeleteCampaignBannerParams) (int64, error)
 	// Clears one aspect ratio of a banner image.
 	DeleteCampaignBannerImageVariantsByType(ctx context.Context, arg DeleteCampaignBannerImageVariantsByTypeParams) (int64, error)

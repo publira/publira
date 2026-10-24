@@ -21,8 +21,8 @@ const EventTypeTest = "outbox_test"
 type Handler func(ctx context.Context, event dbmodels.OutboxEvent) error
 
 // Permanent wraps err so the worker marks the event dead instead of
-// retrying. Use it for unknown types and poison payloads, not for
-// transient dependency failures.
+// retrying. Use it for poison payloads, not for transient dependency
+// failures.
 func Permanent(err error) error {
 	if err == nil {
 		return nil

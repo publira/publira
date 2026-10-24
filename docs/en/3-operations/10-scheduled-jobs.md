@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -138,7 +138,7 @@ The waiting interval is what keeps a restart or a deploy from being a sweep of e
 
 Every side effect a request leaves for later — a mail, a push notification, the drop of a cached page, an index update for the search engine — is written to the outbox in the same transaction as the change that caused it. So a change is never saved without its side effect, and the worker sends the entry within a few seconds.
 
-An entry that fails is tried again, waiting twice as long after each failure: one second, then two, then four. After the tenth failed attempt, about nine minutes after the first, the entry is given up for good: it becomes **dead**, and nothing sends it again. An entry that can never succeed, such as a mail to an account that was deleted, is given up at once. What failing means depends on the entry:
+An entry that fails is tried again, waiting twice as long after each failure: one second, then two, then four. After the tenth failed attempt, about nine minutes after the first, the entry is given up for good: it becomes **dead**, and nothing sends it again. An entry that can never succeed, such as a mail to an account that was deleted, is given up at once. An entry of a kind the worker does not know has not failed: during an upgrade it is one only the new release writes, so the worker leaves it for a worker of the new release, looking at it again every minute, and gives it up only a day after it was written. What failing means depends on the entry:
 
 - **Mail** fails while the SMTP server, or `email-renderer` once it is on, refuses or cannot be reached, as [Email](./6-email.md#the-mail-the-install-sends) describes.
 - **A push notification** to a phone is skipped rather than failed while the tenant has no Firebase credentials saved, so it is not retried once they are. Browser notifications are sent only once Web Push is turned on, as [Web Push](./8-web-push.md) describes.

@@ -72,6 +72,50 @@ func (q *Queries) ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]
 	return items, nil
 }
 
+const DeferOutboxEvent = `-- name: DeferOutboxEvent :one
+UPDATE outbox_events
+SET
+    status = 'pending',
+    available_at = $1,
+    last_error = $2,
+    updated_at = NOW()
+WHERE id = $3
+    AND status = 'processing'
+RETURNING id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
+`
+
+type DeferOutboxEventParams struct {
+	AvailableAt time.Time      `json:"available_at"`
+	LastError   sql.NullString `json:"last_error"`
+	ID          uuid.UUID      `json:"id"`
+}
+
+// Hand back an event whose type this worker has no handler for, so that a
+// worker of a newer release, which writes the type, claims it later. Like
+// ResumeOutboxEvent it charges no attempt: nothing failed, and the worker
+// that handles the type starts on the whole retry budget. The payload keeps
+// any token, as a retry does, until that worker finishes the event or the
+// worker gives the type up and marks the event dead.
+func (q *Queries) DeferOutboxEvent(ctx context.Context, arg DeferOutboxEventParams) (OutboxEvent, error) {
+	row := q.db.QueryRowContext(ctx, DeferOutboxEvent, arg.AvailableAt, arg.LastError, arg.ID)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.EventType,
+		&i.Payload,
+		&i.IdempotencyKey,
+		&i.Status,
+		&i.Attempts,
+		&i.AvailableAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProgressCursor,
+	)
+	return i, err
+}
+
 const GetOutboxEvent = `-- name: GetOutboxEvent :one
 SELECT id, tenant_id, event_type, payload, idempotency_key, status, attempts, available_at, last_error, created_at, updated_at, progress_cursor
 FROM outbox_events
