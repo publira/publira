@@ -213,6 +213,69 @@ final $typed_data.Uint8List ageVerificationDescriptor = $convert.base64Decode(
     'FHRV9WRVJJRklDQVRJT05fTk9ORRABEhgKFEFHRV9WRVJJRklDQVRJT05fUjE4EAISIAocQUdF'
     'X1ZFUklGSUNBVElPTl9SMTVfQU5EX1IxOBAD');
 
+@$core.Deprecated('Use subscriptionPlanScopeDescriptor instead')
+const SubscriptionPlanScope$json = {
+  '1': 'SubscriptionPlanScope',
+  '2': [
+    {'1': 'SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED', '2': 0},
+    {'1': 'SUBSCRIPTION_PLAN_SCOPE_ALL', '2': 1},
+    {'1': 'SUBSCRIPTION_PLAN_SCOPE_LABEL', '2': 2},
+    {'1': 'SUBSCRIPTION_PLAN_SCOPE_SERIES', '2': 3},
+  ],
+};
+
+/// Descriptor for `SubscriptionPlanScope`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List subscriptionPlanScopeDescriptor = $convert.base64Decode(
+    'ChVTdWJzY3JpcHRpb25QbGFuU2NvcGUSJwojU1VCU0NSSVBUSU9OX1BMQU5fU0NPUEVfVU5TUE'
+    'VDSUZJRUQQABIfChtTVUJTQ1JJUFRJT05fUExBTl9TQ09QRV9BTEwQARIhCh1TVUJTQ1JJUFRJ'
+    'T05fUExBTl9TQ09QRV9MQUJFTBACEiIKHlNVQlNDUklQVElPTl9QTEFOX1NDT1BFX1NFUklFUx'
+    'AD');
+
+@$core.Deprecated('Use subscriptionIntervalDescriptor instead')
+const SubscriptionInterval$json = {
+  '1': 'SubscriptionInterval',
+  '2': [
+    {'1': 'SUBSCRIPTION_INTERVAL_UNSPECIFIED', '2': 0},
+    {'1': 'SUBSCRIPTION_INTERVAL_DAY', '2': 1},
+    {'1': 'SUBSCRIPTION_INTERVAL_WEEK', '2': 2},
+    {'1': 'SUBSCRIPTION_INTERVAL_MONTH', '2': 3},
+    {'1': 'SUBSCRIPTION_INTERVAL_YEAR', '2': 4},
+  ],
+};
+
+/// Descriptor for `SubscriptionInterval`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List subscriptionIntervalDescriptor = $convert.base64Decode(
+    'ChRTdWJzY3JpcHRpb25JbnRlcnZhbBIlCiFTVUJTQ1JJUFRJT05fSU5URVJWQUxfVU5TUEVDSU'
+    'ZJRUQQABIdChlTVUJTQ1JJUFRJT05fSU5URVJWQUxfREFZEAESHgoaU1VCU0NSSVBUSU9OX0lO'
+    'VEVSVkFMX1dFRUsQAhIfChtTVUJTQ1JJUFRJT05fSU5URVJWQUxfTU9OVEgQAxIeChpTVUJTQ1'
+    'JJUFRJT05fSU5URVJWQUxfWUVBUhAE');
+
+@$core.Deprecated('Use subscriptionStatusDescriptor instead')
+const SubscriptionStatus$json = {
+  '1': 'SubscriptionStatus',
+  '2': [
+    {'1': 'SUBSCRIPTION_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'SUBSCRIPTION_STATUS_INCOMPLETE', '2': 1},
+    {'1': 'SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED', '2': 2},
+    {'1': 'SUBSCRIPTION_STATUS_TRIALING', '2': 3},
+    {'1': 'SUBSCRIPTION_STATUS_ACTIVE', '2': 4},
+    {'1': 'SUBSCRIPTION_STATUS_PAST_DUE', '2': 5},
+    {'1': 'SUBSCRIPTION_STATUS_CANCELED', '2': 6},
+    {'1': 'SUBSCRIPTION_STATUS_UNPAID', '2': 7},
+    {'1': 'SUBSCRIPTION_STATUS_PAUSED', '2': 8},
+  ],
+};
+
+/// Descriptor for `SubscriptionStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List subscriptionStatusDescriptor = $convert.base64Decode(
+    'ChJTdWJzY3JpcHRpb25TdGF0dXMSIwofU1VCU0NSSVBUSU9OX1NUQVRVU19VTlNQRUNJRklFRB'
+    'AAEiIKHlNVQlNDUklQVElPTl9TVEFUVVNfSU5DT01QTEVURRABEioKJlNVQlNDUklQVElPTl9T'
+    'VEFUVVNfSU5DT01QTEVURV9FWFBJUkVEEAISIAocU1VCU0NSSVBUSU9OX1NUQVRVU19UUklBTE'
+    'lORxADEh4KGlNVQlNDUklQVElPTl9TVEFUVVNfQUNUSVZFEAQSIAocU1VCU0NSSVBUSU9OX1NU'
+    'QVRVU19QQVNUX0RVRRAFEiAKHFNVQlNDUklQVElPTl9TVEFUVVNfQ0FOQ0VMRUQQBhIeChpTVU'
+    'JTQ1JJUFRJT05fU1RBVFVTX1VOUEFJRBAHEh4KGlNVQlNDUklQVElPTl9TVEFUVVNfUEFVU0VE'
+    'EAg=');
+
 @$core.Deprecated('Use tenantContextDescriptor instead')
 const TenantContext$json = {
   '1': 'TenantContext',

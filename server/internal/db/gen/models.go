@@ -747,6 +747,8 @@ type PlatformPolicyConfig struct {
 	SeriesRemainderCheckoutLimitPerDay    int32     `json:"series_remainder_checkout_limit_per_day"`
 	NotificationSettingsLimitPerMinute    int32     `json:"notification_settings_limit_per_minute"`
 	NotificationSettingsLimitPerDay       int32     `json:"notification_settings_limit_per_day"`
+	SubscriptionCheckoutLimitPerMinute    int32     `json:"subscription_checkout_limit_per_minute"`
+	SubscriptionCheckoutLimitPerDay       int32     `json:"subscription_checkout_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -1201,6 +1203,52 @@ type StorePurchaseIntent struct {
 	CreatedAt          time.Time     `json:"created_at"`
 	ConsumedAt         sql.NullTime  `json:"consumed_at"`
 	Currency           string        `json:"currency"`
+}
+
+type Subscription struct {
+	ID                   uuid.UUID     `json:"id"`
+	TenantID             uuid.UUID     `json:"tenant_id"`
+	UserID               uuid.NullUUID `json:"user_id"`
+	PlanID               uuid.UUID     `json:"plan_id"`
+	StripeCustomerID     string        `json:"stripe_customer_id"`
+	StripeSubscriptionID string        `json:"stripe_subscription_id"`
+	Status               string        `json:"status"`
+	CurrentPeriodEnd     sql.NullTime  `json:"current_period_end"`
+	CancelAtPeriodEnd    bool          `json:"cancel_at_period_end"`
+	CreatedAt            time.Time     `json:"created_at"`
+	UpdatedAt            time.Time     `json:"updated_at"`
+}
+
+type SubscriptionCheckout struct {
+	TenantID                uuid.UUID `json:"tenant_id"`
+	UserID                  uuid.UUID `json:"user_id"`
+	PlanID                  uuid.UUID `json:"plan_id"`
+	StripeCheckoutSessionID string    `json:"stripe_checkout_session_id"`
+	CreatedAt               time.Time `json:"created_at"`
+}
+
+type SubscriptionPlan struct {
+	ID                     uuid.UUID `json:"id"`
+	TenantID               uuid.UUID `json:"tenant_id"`
+	PublicID               string    `json:"public_id"`
+	Name                   string    `json:"name"`
+	Description            string    `json:"description"`
+	StripePriceID          string    `json:"stripe_price_id"`
+	PriceAmount            int32     `json:"price_amount"`
+	Currency               string    `json:"currency"`
+	RecurringInterval      string    `json:"recurring_interval"`
+	RecurringIntervalCount int32     `json:"recurring_interval_count"`
+	Scope                  string    `json:"scope"`
+	IsPublished            bool      `json:"is_published"`
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
+}
+
+type SubscriptionPlanTarget struct {
+	TenantID uuid.UUID     `json:"tenant_id"`
+	PlanID   uuid.UUID     `json:"plan_id"`
+	LabelID  uuid.NullUUID `json:"label_id"`
+	SeriesID uuid.NullUUID `json:"series_id"`
 }
 
 type Tag struct {

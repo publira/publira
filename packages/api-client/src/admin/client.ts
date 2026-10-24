@@ -26,6 +26,7 @@ import { AdminPaymentSettingsService } from "../gen/publira/admin/v1/payment_pb.
 import { AdminPurchaseService } from "../gen/publira/admin/v1/purchase_pb.js";
 import { AdminRoyaltyService } from "../gen/publira/admin/v1/royalty_pb.js";
 import { AdminSeriesService } from "../gen/publira/admin/v1/series_pb.js";
+import { AdminSubscriptionPlanService } from "../gen/publira/admin/v1/subscription_plan_pb.js";
 import { TenantSettingsService } from "../gen/publira/admin/v1/tenant_pb.js";
 import { TenantThemeService } from "../gen/publira/admin/v1/theme_pb.js";
 import { AdminUserService } from "../gen/publira/admin/v1/user_pb.js";
@@ -67,6 +68,7 @@ export interface AdminApiClient {
   purchases: Client<typeof AdminPurchaseService>;
   royalties: Client<typeof AdminRoyaltyService>;
   series: Client<typeof AdminSeriesService>;
+  subscriptionPlans: Client<typeof AdminSubscriptionPlanService>;
   tenantSettings: Client<typeof TenantSettingsService>;
   theme: Client<typeof TenantThemeService>;
   users: Client<typeof AdminUserService>;
@@ -137,6 +139,10 @@ export const createAdminApiClient = (
     purchases: createClient(AdminPurchaseService, transportInstance),
     royalties: createClient(AdminRoyaltyService, transportInstance),
     series: createClient(AdminSeriesService, transportInstance),
+    subscriptionPlans: createClient(
+      AdminSubscriptionPlanService,
+      transportInstance
+    ),
     tenantSettings: createClient(TenantSettingsService, transportInstance),
     theme: createClient(TenantThemeService, transportInstance),
     users: createClient(AdminUserService, transportInstance),

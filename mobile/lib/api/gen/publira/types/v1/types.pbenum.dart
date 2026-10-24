@@ -437,5 +437,146 @@ class AgeVerification extends $pb.ProtobufEnum {
   const AgeVerification._(super.value, super.name);
 }
 
+/// What a subscription plan opens while it is paid
+/// (subscription_plans.scope).
+class SubscriptionPlanScope extends $pb.ProtobufEnum {
+  /// Never answered by a read. A write naming it is rejected: a plan states
+  /// one of the three.
+  static const SubscriptionPlanScope SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED =
+      SubscriptionPlanScope._(
+          0, _omitEnumNames ? '' : 'SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED');
+
+  /// Every episode of the tenant. Such a plan names no labels and no series.
+  static const SubscriptionPlanScope SUBSCRIPTION_PLAN_SCOPE_ALL =
+      SubscriptionPlanScope._(
+          1, _omitEnumNames ? '' : 'SUBSCRIPTION_PLAN_SCOPE_ALL');
+
+  /// Every episode of the series of the labels the plan names.
+  static const SubscriptionPlanScope SUBSCRIPTION_PLAN_SCOPE_LABEL =
+      SubscriptionPlanScope._(
+          2, _omitEnumNames ? '' : 'SUBSCRIPTION_PLAN_SCOPE_LABEL');
+
+  /// Every episode of the series the plan names.
+  static const SubscriptionPlanScope SUBSCRIPTION_PLAN_SCOPE_SERIES =
+      SubscriptionPlanScope._(
+          3, _omitEnumNames ? '' : 'SUBSCRIPTION_PLAN_SCOPE_SERIES');
+
+  static const $core.List<SubscriptionPlanScope> values =
+      <SubscriptionPlanScope>[
+    SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED,
+    SUBSCRIPTION_PLAN_SCOPE_ALL,
+    SUBSCRIPTION_PLAN_SCOPE_LABEL,
+    SUBSCRIPTION_PLAN_SCOPE_SERIES,
+  ];
+
+  static final $core.List<SubscriptionPlanScope?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static SubscriptionPlanScope? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const SubscriptionPlanScope._(super.value, super.name);
+}
+
+/// The unit a subscription plan's recurring price is billed every so many of,
+/// as its Stripe Price states it (subscription_plans.recurring_interval).
+class SubscriptionInterval extends $pb.ProtobufEnum {
+  static const SubscriptionInterval SUBSCRIPTION_INTERVAL_UNSPECIFIED =
+      SubscriptionInterval._(
+          0, _omitEnumNames ? '' : 'SUBSCRIPTION_INTERVAL_UNSPECIFIED');
+  static const SubscriptionInterval SUBSCRIPTION_INTERVAL_DAY =
+      SubscriptionInterval._(
+          1, _omitEnumNames ? '' : 'SUBSCRIPTION_INTERVAL_DAY');
+  static const SubscriptionInterval SUBSCRIPTION_INTERVAL_WEEK =
+      SubscriptionInterval._(
+          2, _omitEnumNames ? '' : 'SUBSCRIPTION_INTERVAL_WEEK');
+  static const SubscriptionInterval SUBSCRIPTION_INTERVAL_MONTH =
+      SubscriptionInterval._(
+          3, _omitEnumNames ? '' : 'SUBSCRIPTION_INTERVAL_MONTH');
+  static const SubscriptionInterval SUBSCRIPTION_INTERVAL_YEAR =
+      SubscriptionInterval._(
+          4, _omitEnumNames ? '' : 'SUBSCRIPTION_INTERVAL_YEAR');
+
+  static const $core.List<SubscriptionInterval> values = <SubscriptionInterval>[
+    SUBSCRIPTION_INTERVAL_UNSPECIFIED,
+    SUBSCRIPTION_INTERVAL_DAY,
+    SUBSCRIPTION_INTERVAL_WEEK,
+    SUBSCRIPTION_INTERVAL_MONTH,
+    SUBSCRIPTION_INTERVAL_YEAR,
+  ];
+
+  static final $core.List<SubscriptionInterval?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 4);
+  static SubscriptionInterval? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const SubscriptionInterval._(super.value, super.name);
+}
+
+/// A subscription's state, as Stripe last reported it (subscriptions.status).
+/// Each value is Stripe's own status of the same name.
+class SubscriptionStatus extends $pb.ProtobufEnum {
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_UNSPECIFIED =
+      SubscriptionStatus._(
+          0, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_UNSPECIFIED');
+
+  /// The first payment has not gone through yet, such as one waiting on the
+  /// reader's 3-D Secure.
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_INCOMPLETE =
+      SubscriptionStatus._(
+          1, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_INCOMPLETE');
+
+  /// The first payment never went through, and the subscription was dropped.
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED =
+      SubscriptionStatus._(
+          2, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED');
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_TRIALING =
+      SubscriptionStatus._(
+          3, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_TRIALING');
+
+  /// Paid up.
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_ACTIVE =
+      SubscriptionStatus._(
+          4, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_ACTIVE');
+
+  /// A renewal payment failed, and Stripe is retrying it.
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_PAST_DUE =
+      SubscriptionStatus._(
+          5, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_PAST_DUE');
+
+  /// Ended: canceled at once, at the end of its period, or after its retries
+  /// ran out.
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_CANCELED =
+      SubscriptionStatus._(
+          6, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_CANCELED');
+
+  /// Stripe's retries ran out and the tenant's Stripe settings keep the
+  /// subscription open, unpaid.
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_UNPAID =
+      SubscriptionStatus._(
+          7, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_UNPAID');
+  static const SubscriptionStatus SUBSCRIPTION_STATUS_PAUSED =
+      SubscriptionStatus._(
+          8, _omitEnumNames ? '' : 'SUBSCRIPTION_STATUS_PAUSED');
+
+  static const $core.List<SubscriptionStatus> values = <SubscriptionStatus>[
+    SUBSCRIPTION_STATUS_UNSPECIFIED,
+    SUBSCRIPTION_STATUS_INCOMPLETE,
+    SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED,
+    SUBSCRIPTION_STATUS_TRIALING,
+    SUBSCRIPTION_STATUS_ACTIVE,
+    SUBSCRIPTION_STATUS_PAST_DUE,
+    SUBSCRIPTION_STATUS_CANCELED,
+    SUBSCRIPTION_STATUS_UNPAID,
+    SUBSCRIPTION_STATUS_PAUSED,
+  ];
+
+  static final $core.List<SubscriptionStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 8);
+  static SubscriptionStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const SubscriptionStatus._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

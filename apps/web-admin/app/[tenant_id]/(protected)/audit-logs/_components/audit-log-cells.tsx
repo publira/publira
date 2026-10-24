@@ -328,6 +328,30 @@ const purchaseActionName = (action: string) => {
   }
 };
 
+/** An action on subscription plans. */
+const subscriptionPlanActionName = (action: string) => {
+  switch (action) {
+    case "subscription_plan_created": {
+      return (
+        <Message message="admin.audit.actions.subscription_plan_created" />
+      );
+    }
+    case "subscription_plan_updated": {
+      return (
+        <Message message="admin.audit.actions.subscription_plan_updated" />
+      );
+    }
+    case "subscription_plan_deleted": {
+      return (
+        <Message message="admin.audit.actions.subscription_plan_deleted" />
+      );
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on readers, access tickets, royalties, or members. */
 const readerActionName = (action: string) => {
   switch (action) {
@@ -629,6 +653,7 @@ const actionName = (action: string) =>
   contactMessageActionName(action) ??
   readerActionName(action) ??
   purchaseActionName(action) ??
+  subscriptionPlanActionName(action) ??
   settingsActionName(action) ??
   brandingActionName(action) ??
   integrationActionName(action) ??
@@ -776,7 +801,10 @@ const settingTargetName = (targetType: string) => {
   }
 };
 
-/** The name of an integration, royalty, or account target type. */
+/**
+ * The name of an integration, subscription plan, royalty, or account target
+ * type.
+ */
 const tenantTargetName = (targetType: string) => {
   switch (targetType) {
     case "fcm_config": {
@@ -796,6 +824,9 @@ const tenantTargetName = (targetType: string) => {
     }
     case "smtp_config": {
       return <Message message="admin.audit.targets.smtp_config" />;
+    }
+    case "subscription_plan": {
+      return <Message message="admin.audit.targets.subscription_plan" />;
     }
     case "tenant_admin_invitation": {
       return <Message message="admin.audit.targets.tenant_admin_invitation" />;

@@ -92,6 +92,12 @@ type Policy struct {
 	// payment provider for a checkout, so what this bounds is the writes and
 	// the provider requests one account can make the storefront repeat.
 	SeriesRemainderCheckout MinuteDay
+	// SubscriptionCheckout bounds the subscription checkouts one reader may
+	// start. Each start writes the reader's latest checkout, may expire the one
+	// before it, and asks the payment provider for a checkout, so what this
+	// bounds is the writes and the provider requests one account can make the
+	// storefront repeat.
+	SubscriptionCheckout MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console. A sign-in
 	// whose password is right clears it.
@@ -150,6 +156,7 @@ func Defaults() Policy {
 		IconChange:                MinuteDay{PerMinute: 5, PerDay: 20},
 		Passkey:                   MinuteDay{PerMinute: 10, PerDay: 50},
 		SeriesRemainderCheckout:   MinuteDay{PerMinute: 10, PerDay: 50},
+		SubscriptionCheckout:      MinuteDay{PerMinute: 10, PerDay: 50},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 	}
@@ -183,6 +190,7 @@ func (p Policy) Validate() error {
 		{"icon_change", "per_minute", p.IconChange.PerMinute, p.IconChange.PerDay},
 		{"passkey", "per_minute", p.Passkey.PerMinute, p.Passkey.PerDay},
 		{"series_remainder_checkout", "per_minute", p.SeriesRemainderCheckout.PerMinute, p.SeriesRemainderCheckout.PerDay},
+		{"subscription_checkout", "per_minute", p.SubscriptionCheckout.PerMinute, p.SubscriptionCheckout.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 	} {
@@ -248,6 +256,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		IconChange:                MinuteDay{PerMinute: int(config.IconChangeLimitPerMinute), PerDay: int(config.IconChangeLimitPerDay)},
 		Passkey:                   MinuteDay{PerMinute: int(config.PasskeyLimitPerMinute), PerDay: int(config.PasskeyLimitPerDay)},
 		SeriesRemainderCheckout:   MinuteDay{PerMinute: int(config.SeriesRemainderCheckoutLimitPerMinute), PerDay: int(config.SeriesRemainderCheckoutLimitPerDay)},
+		SubscriptionCheckout:      MinuteDay{PerMinute: int(config.SubscriptionCheckoutLimitPerMinute), PerDay: int(config.SubscriptionCheckoutLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
@@ -297,6 +306,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		PasskeyLimitPerDay:                    int32(policy.Passkey.PerDay),
 		SeriesRemainderCheckoutLimitPerMinute: int32(policy.SeriesRemainderCheckout.PerMinute),
 		SeriesRemainderCheckoutLimitPerDay:    int32(policy.SeriesRemainderCheckout.PerDay),
+		SubscriptionCheckoutLimitPerMinute:    int32(policy.SubscriptionCheckout.PerMinute),
+		SubscriptionCheckoutLimitPerDay:       int32(policy.SubscriptionCheckout.PerDay),
 		LoginAccountLimitPerMinute:            int32(policy.LoginAttemptsPerAccount.PerMinute),
 		LoginAccountLimitPerDay:               int32(policy.LoginAttemptsPerAccount.PerDay),
 		LoginSourceLimitPerHour:               int32(policy.LoginAttemptsPerSource.PerHour),
