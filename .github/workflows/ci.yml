@@ -128,6 +128,7 @@ jobs:
               - '.gitattributes'
               - 'scripts/check-design-tokens.ts'
               - 'scripts/check-jsx-svg.ts'
+              - 'scripts/check-proto-compat.sh'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/go-setup/**'
               - '.github/actions/pnpm-setup/**'
@@ -571,6 +572,11 @@ jobs:
             echo "::error::Generated protobuf code is out of date. Run \`task gen\` and commit the result."
             exit 1
           fi
+
+      # scripts/check-proto-compat.sh carries the reasoning; run it before
+      # pushing a change to proto/.
+      - name: Validate / buf Breaking Against the Previous Release
+        run: scripts/check-proto-compat.sh
 
       - name: Validate / No hand-written SVG in JSX
         run: pnpm jsx-svg:check

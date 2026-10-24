@@ -1,11 +1,11 @@
 ---
 title: Releases
-description: What a version number tells you, what each kind of release may change, how 0.x differs, and which releases receive fixes.
+description: What a version number tells you, what each kind of release may change, how 0.x differs, which releases run side by side, and which releases receive fixes.
 published: 2026-10-11
-updated: 2026-10-21
+updated: 2026-10-23
 ---
 
-Publira is released as tags of the repository named `vMAJOR.MINOR.PATCH`, starting at `v0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the release's version, the tag without its `v`, and no other tag: `v0.1.0` is pulled as `ghcr.io/publira/<name>:0.1.0`. There is no `latest` and no `0.1`, so an install moves to a new release only when you change the version it runs. The release also carries the [Docker Compose](./3-docker-compose.md) install as `publira-deploy-<version>.tar.gz`: the Compose file, its `.env.example` naming the release's images, and the proxy's `Caddyfile`, as they are in the repository at the tag. It carries no signature, and neither do the images. This page says what the number of a release tells you before you upgrade to it, and which releases receive fixes.
+Publira is released as tags of the repository named `vMAJOR.MINOR.PATCH`, starting at `v0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the release's version, the tag without its `v`, and no other tag: `v0.1.0` is pulled as `ghcr.io/publira/<name>:0.1.0`. There is no `latest` and no `0.1`, so an install moves to a new release only when you change the version it runs. The release also carries the [Docker Compose](./3-docker-compose.md) install as `publira-deploy-<version>.tar.gz`: the Compose file, its `.env.example` naming the release's images, and the proxy's `Caddyfile`, as they are in the repository at the tag. It carries no signature, and neither do the images. This page says what the number of a release tells you before you upgrade to it, which releases run side by side, and which releases receive fixes.
 
 ## What the number tells you
 
@@ -20,8 +20,6 @@ Releases before `1.0.0` number these differently, as [Before 1.0.0](#before-100)
 
 A change that takes more from you than the steps every upgrade runs lands in a major release:
 
-- a table, a column, or another part of the database schema that the release before it reads, dropped or renamed;
-- a part of the API between the web apps and `publira server` that the release before it calls, dropped or renamed;
 - the environment variables: one added that a process requires, one renamed, or one no longer read;
 - the database roles: a role added, or what a role may reach;
 - [what the edge has to do](./4-edge/index.md#what-the-edge-has-to-do), and the sample proxy configurations that do it;
@@ -31,13 +29,22 @@ A change that takes more from you than the steps every upgrade runs lands in a m
 
 Every such change is named in the **Upgrade notes** that open the release notes, and the notes say so when there is none; [Read the release notes](./8-upgrading.md#read-the-release-notes) says what to do about each.
 
-Nothing promises yet that the processes of two releases work side by side, so upgrade to such a release the way [Upgrading](./8-upgrading.md) describes, whatever its notes say: the migrations and the roles first, and then every process together.
+Upgrade to such a release the way [Upgrading](./8-upgrading.md) describes, whatever its notes say: the migrations and the roles first, and then the processes.
+
+## Two releases side by side
+
+Every release works with the release right before it, prereleases aside, whatever its number:
+
+- The web apps and `publira server` of the two releases call each other, in either direction.
+- The processes of the earlier release keep working on the schema and the roles that the later release's `db migrate` and `db roles` leave. A release drops or renames a table, a column, or a grant only once the release before it no longer reads it.
+
+So an upgrade to the next release can keep the install serving, with its processes replaced one copy at a time, and what the new release adds works once every process runs it. The worker is the exception, and is replaced whole, as [Replace the processes](./8-upgrading.md#4-replace-the-processes) describes. The promise reaches one release: between releases further apart, stop the processes before you upgrade, or upgrade one release at a time.
 
 ## Patch releases
 
 A patch release carries fixes alone and is held to what can be applied by replacing the images: no migration, no environment variable added, renamed, or no longer read, no database role, no change to the routing in `infra/proxy/`, no process or service the install did not run before, and no search index to rebuild. A fix that needs any of them is released in the next minor release instead.
 
-Its Upgrade notes therefore ask nothing of you. Upgrade to it the way [Upgrading](./8-upgrading.md) describes all the same, from the backup to replacing every process together: the steps cost little when the schema does not change, and the backup is still the way back if a patch release ever carries a change it should not.
+Its Upgrade notes therefore ask nothing of you. Upgrade to it the way [Upgrading](./8-upgrading.md) describes all the same, from the backup to replacing the processes: the steps cost little when the schema does not change, and the backup is still the way back if a patch release ever carries a change it should not.
 
 ## Before 1.0.0
 
@@ -55,7 +62,7 @@ Report a vulnerability privately, from [Report a vulnerability](https://github.c
 
 You can upgrade from any release to any later one in a single step. `db migrate` applies the migrations of every release in between in one run, so the schema needs nothing from you.
 
-What it does not apply is what the release notes ask of you, so read the notes of every release after the one you run, up to and including the one you upgrade to. Only the major releases among them name anything, and before `1.0.0` the minor releases. Their Upgrade notes add up: set every variable they add, pass `db roles` a password for every role added in between, and carry every routing change into your proxy.
+What it does not apply is what the release notes ask of you, so read the notes of every release after the one you run, up to and including the one you upgrade to. Only the major releases among them name anything, and before `1.0.0` the minor releases. Their Upgrade notes add up: set every variable they add, pass `db roles` a password for every role added in between, and carry every routing change into your proxy. A release in between may also have retired something the release you run still reads, so [stop the processes](./8-upgrading.md#decide-whether-to-stop-the-processes-first) before you skip one.
 
 ## Next steps
 

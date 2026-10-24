@@ -2,6 +2,19 @@
 
 This directory contains Protobuf definitions and contract decisions shared by multiple RPCs. As specified in [buf.gen.yaml](../buf.gen.yaml), generated output goes to `server/internal/proto/gen` (Go / Connect) and `packages/api-client/src/gen` (TypeScript); regenerate both with `task gen`.
 
+## Compatibility with the previous release
+
+The web apps and `publira server` of a release work with those of the release before it, in either direction. An install replaces its processes one copy at a time, may bring up either side first, and may roll one of them back, so for a while the newer web apps call the older server, or the older web apps the newer one. A change to `proto/` is therefore made so that both pairs keep working: what the newest release sends still means what it meant, and what it reads still arrives. A contract that no release tag carries yet is not held to this, and changes freely until one does.
+
+The Next.js apps call the server over gRPC, and the mobile app and the server's calls to `email-renderer` use the Connect protocol, all of them in binary Protobuf; the server answers the Connect protocol's JSON as well. In binary a field is known by its number and an enum value by its integer, and a side keeps what it does not know without acting on it. That is what makes an addition safe, and what decides how every other change is made:
+
+- **Add rather than change.** A new field, message, or RPC is safe in both directions. The older side ignores a field it does not know, and answers an RPC it does not have with `unimplemented`, which costs the newer side only what that RPC adds.
+- **A field keeps the meaning, type, name, number, and presence it shipped with.** Turning an implicit-presence field into `optional` reads an older client's empty value as "not sent"; renumbering or retyping a field makes the older side read other bytes, and renaming one changes the name a JSON caller sends and looks for. When a field has to mean something else, add another field and replace the old one as below.
+- **A new enum value reaches the older side as an integer it has no name for.** Go and protobuf-es both keep the number rather than turning it into `*_UNSPECIFIED`, so what happens next is whatever the older code does with a value outside its `switch`: a handler that answers `invalid_argument` for it, as `rankingKeyForPeriod` does, fails the request, and a web app that falls through to a default shows that default. Read how the newest release treats a value it does not know before adding one, and add a field instead when that treatment does harm. Over JSON the older side drops a name it does not know, and the field reads as unspecified.
+- **Replacing a field or an RPC takes two releases.** The first adds the replacement and keeps the old one working on both sides, and marks the old one `deprecated = true`. Its server accepts and answers both, because the older web apps know only the old one. Its web apps keep working against the older server too: they send the old field beside the new one and read the old one when the new one is missing, and they fall back to the old RPC when the new one answers `unimplemented`. The release after it removes the old one, and puts a removed field's number and name in `reserved`, so neither is reused with another meaning. Retiring one with no replacement takes the same two releases with nothing added: the first stops reading the field but keeps sending it, or stops calling the RPC from its web apps while its server keeps answering it, and the release after removes it.
+
+`scripts/check-proto-compat.sh` runs `buf breaking` against the newest release tag with the rules in [`buf.yaml`](../buf.yaml), and the `Check` job runs it on every pull request: a field renamed, retyped, or deleted without reserving its number and name, or one whose presence changed, fails it. Run it before pushing a change to `proto/`. What no rule can see is the author's judgement and the reviewer's: whether a field still means what it meant, whether the release before handles a new enum value it does not know, and whether the release before still calls an RPC that a change deletes.
+
 ## Request size
 
 A procedure reads at most 1 MiB of one request message. A request past its procedure's bound is refused as `resource_exhausted` while it is read, before it is decoded, so a caller with no session cannot make the server hold more than that. The procedures whose request carries an upload or a webhook body read more: one that carries an image reads that image's own limit in the base64 the JSON encoding carries it in, and 1 MiB beside it; `UploadEpisodeImages` reads its 128 MiB upload the same way; and `ProcessInboundEmailWebhook` reads 33 MiB. The payment and App Store webhooks cap their payloads at 64 KiB and stay within the 1 MiB.
@@ -75,11 +88,11 @@ Go encoding and validation live in [server/internal/pagination](../server/intern
 
 ### Existing `limit` / `offset`
 
-For an RPC migrated to cursors, **remove** `offset` and put both its field number and name in `reserved`. This product is not public yet, so there is no reason to retain a deprecated field for backward compatibility. Keep `limit` as the number of items per page.
+No list RPC takes `offset` any longer: every one that did has its number and name in `reserved`. Moving a list from `offset` to cursors changes what its request means, so it is a replacement as [Compatibility with the previous release](#compatibility-with-the-previous-release) describes: the release that adds `token` keeps honouring `offset` while `token` is empty, and the release after it removes `offset` and reserves its number and name. Keep `limit` as the number of items per page.
 
 ### Implementation checklist
 
-1. Add `token` to the proto, remove `offset`, and reserve it. Add `previous_token` and `next_token` to the response.
+1. Add `token` and `limit` to the request, and `previous_token` and `next_token` to the response.
 2. Rewrite SQL as a keyset scan. Provide queries with a fixed `ORDER BY` for each sort order (and a reverse for previous-page direction), and index the sort-key combination.
 3. In the handler, process `pagination.NormalizeLimit`, `pagination.Decode`, fetch `limit + 1` items, then `pagination.Page`, assembling tokens from boundary rows.
 4. Run `task gen` and confirm `sqlc diff` is clean.

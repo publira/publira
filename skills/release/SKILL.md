@@ -37,18 +37,17 @@ git log --format=%s "$previous"..origin/main | sed -nE 's/.*\(#([0-9]+)\)$/\1/p'
 
 `main` is squash-merged through its queue, so every commit subject ends in `(#N)`; a commit without one reached `main` some other way, and its change has to be judged from its diff.
 
-Then look at the diff for the changes that break an install:
+Then look at the diff for the changes that break an install, or the release before:
 
 ```bash
 git diff --name-status "$previous"..origin/main -- infra/proxy server/internal/dbroles/dbroles.go infra/deploy/compose.yaml
 git diff "$previous"..origin/main -- 'db/migrations/*.up.sql' | grep -inE '^\+.*\b(drop|rename)\b'
 ```
 
-The first command lists the proxy configuration, the roles, and the Compose services, any change to which asks something of an operator. The second lists every line an up migration adds that drops or renames something. A migration that only adds a table, a column, or an index prints nothing there and breaks nothing; each line it does print is judged on whether the release before reads what it removes. A dropped or renamed table, column, type, or function that the previous release's queries name breaks an install, while a `DROP DEFAULT` on a column the same migration adds, or a constraint dropped to be recreated, does not.
+The first command lists the proxy configuration, the roles, and the Compose services, any change to which asks something of an operator. The second lists every line an up migration adds that drops or renames something. A migration that only adds a table, a column, or an index prints nothing there and breaks nothing; each line it does print is judged on whether the release before reads what it removes. A `DROP DEFAULT` on a column the same migration adds, a constraint dropped to be recreated, and anything the previous release no longer reads are fine. A dropped or renamed table, column, type, or function that the previous release's queries name is not: every release works beside the one before it, as [Two releases side by side](../../docs/en/2-deployments/10-releases.md#two-releases-side-by-side) promises, and no version number makes up for breaking that. Stop and tell the user which pull request did it rather than cutting any release. Run `scripts/check-proto-compat.sh` too, and stop the same way when it fails.
 
 Something since `$previous` breaks an install, judged on the list under **Changes that break an install** in [`10-releases.md`](../../docs/en/2-deployments/10-releases.md#changes-that-break-an-install), unless every one of these holds:
 
-- the second diff command shows no up migration dropping or renaming a table, a column, or anything else the previous release reads, and no pull request drops or renames an RPC, a message field, or an endpoint the previous release's web apps call;
 - the first diff command shows no change to the proxy configuration, `dbroles.go`, or the services, secrets, and volumes of `compose.yaml`;
 - the previewed Upgrade notes ask nothing — no environment variable added as required, renamed, or no longer read, no role, no routing change, no new process, no migration that runs long or locks a busy table, no search index to rebuild.
 

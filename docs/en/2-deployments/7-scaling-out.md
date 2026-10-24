@@ -165,7 +165,7 @@ Copies of the processes spread their own work. The services they depend on are e
 
 ### Restarting the copies
 
-A change that keeps the release, such as a new value of a variable, can be rolled out one copy at a time, and the install keeps serving while it is. A saved setting needs no restart at all. A new release is different: [Upgrading](./8-upgrading.md#decide-whether-to-stop-the-processes-first) has you replace every process together rather than one copy at a time, because the copies of two releases do not promise to agree on the API or on the schema.
+A change that keeps the release, such as a new value of a variable, can be rolled out one copy at a time, and the install keeps serving while it is. A saved setting needs no restart at all. The release right after the one you run can be rolled out one copy at a time too, since the copies of two adjacent releases work side by side, except that every copy of the old worker stops before a new one starts: [Upgrading](./8-upgrading.md#decide-whether-to-stop-the-processes-first) says why, and what changes when you skip a release.
 
 ### Backups
 

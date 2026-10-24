@@ -2,3 +2,16 @@ version: v2
 modules:
   - path: proto
     name: buf.build/publira/publira
+# `scripts/check-proto-compat.sh` holds proto/ to the newest release with these
+# rules. Every client in the repository speaks binary Protobuf, but the server
+# answers the Connect protocol's JSON as well, where a field is known by its
+# name, so WIRE_JSON is the category that matches both: a field renumbered,
+# retyped, renamed, or deleted without reserving its number and name fails it.
+# It lets a field's presence change, which reads an older client's empty value
+# as "not sent", so FIELD_SAME_CARDINALITY is added for that. Deleting an RPC
+# passes on purpose: one the release before no longer calls may go, and no rule
+# can tell that apart from one it still calls.
+breaking:
+  use:
+    - WIRE_JSON
+    - FIELD_SAME_CARDINALITY
