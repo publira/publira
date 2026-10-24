@@ -209,8 +209,10 @@ export const ListSubscriptionPlansResponseSchema: GenMessage<ListSubscriptionPla
  * no subscriptions, is failed_precondition. A reader who already holds a
  * subscription that is trialing, active, past due, unpaid, or paused is
  * already_exists, and so is one who has paid a checkout whose subscription
- * Stripe has not reported yet: one reader holds one subscription, and changing
- * it is what CreateBillingPortalSession is for.
+ * Stripe has not reported as ended: one reader holds one subscription, and
+ * changing it is what CreateBillingPortalSession is for. Each call spends the
+ * reader's allowance for subscription checkouts, and a reader past it is
+ * resource_exhausted before anything is asked of Stripe.
  *
  * The reader returns to `/my` on the tenant's site with `subscription=success`
  * in the query, or to `/plans` with `subscription=cancelled`.

@@ -94,6 +94,9 @@ func (s *apiServer) StartSubscriptionCheckout(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionStartSubscriptionCheckout, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	origin, err := tenantorigin.Site(tenant)
 	if errors.Is(err, tenantorigin.ErrDomainNotConfigured) {
 		s.logger.WarnContext(ctx, "subscription checkout refused because tenant domain is not configured", "tenant_id", tenant.ID)
@@ -195,10 +198,12 @@ func readerHoldsSubscriptionError() error {
 // settlePreviousSubscriptionCheckout deals with the reader's latest checkout
 // before another is started, so at most one checkout of a reader can ever be
 // paid. One still open on the same plan is reused, and its URL answered; one
-// open on another plan is expired. One the reader has paid whose subscription
-// is not recorded yet is a subscription on its way, which already_exists
-// refuses a second of. An expired one, and a paid one whose subscription is
-// recorded and has since ended, leave nothing to do.
+// open on another plan is expired. One the reader has paid is a subscription
+// already_exists refuses a second of, unless that subscription is recorded and
+// has ended: one not recorded yet is on its way, and one recorded since the
+// reader's live subscriptions were checked may have been recorded live, since
+// the webhook records it under a lock of its own. An expired one leaves
+// nothing to do.
 func (s *apiServer) settlePreviousSubscriptionCheckout(
 	ctx context.Context,
 	queries *dbmodels.Queries,
@@ -236,11 +241,11 @@ func (s *apiServer) settlePreviousSubscriptionCheckout(
 	if checkout.Status != paymentprovider.SubscriptionCheckoutComplete {
 		return "", nil
 	}
-	recorded, err := queries.SubscriptionIsRecorded(ctx, dbmodels.SubscriptionIsRecordedParams{TenantID: tenantID, StripeSubscriptionID: checkout.SubscriptionID})
+	ended, err := queries.SubscriptionHasEnded(ctx, dbmodels.SubscriptionHasEndedParams{TenantID: tenantID, StripeSubscriptionID: checkout.SubscriptionID})
 	if err != nil {
-		return "", s.internalDBError(ctx, "failed to check whether a paid checkout's subscription is recorded", err, "tenant_id", tenantID.String(), "checkout_id", checkout.ID)
+		return "", s.internalDBError(ctx, "failed to check whether a paid checkout's subscription has ended", err, "tenant_id", tenantID.String(), "checkout_id", checkout.ID)
 	}
-	if !recorded {
+	if !ended {
 		return "", readerHoldsSubscriptionError()
 	}
 	return "", nil
@@ -447,7 +452,8 @@ func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPl
 // never written over the newer one.
 //
 // The plan it is recorded on is the one billed at the Price the provider
-// reports, else the one its checkout named. A subscription to neither — a
+// reports, else the one it is already recorded on, else the one its checkout
+// named. A subscription to neither — a
 // checkout started for a plan deleted before it completed — is logged and
 // acknowledged, since no delivery of the same notification would find one.
 func (s *apiServer) recordSubscription(
@@ -482,9 +488,10 @@ func (s *apiServer) recordSubscription(
 		return connect.NewError(connect.CodeInvalidArgument, "subscription tenant does not match webhook path")
 	}
 	planID, err := queries.GetSubscriptionPlanForSubscriptionForTenant(ctx, dbmodels.GetSubscriptionPlanForSubscriptionForTenantParams{
-		TenantID:      tenantID,
-		StripePriceID: subscription.PriceID,
-		PlanID:        subscription.PlanID,
+		TenantID:             tenantID,
+		StripePriceID:        subscription.PriceID,
+		StripeSubscriptionID: subscription.ID,
+		PlanID:               subscription.PlanID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		s.logger.ErrorContext(ctx, "a subscription names no plan of the tenant and is not recorded",

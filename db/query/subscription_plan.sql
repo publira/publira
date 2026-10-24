@@ -89,15 +89,25 @@ LIMIT 1;
 -- name: GetSubscriptionPlanForSubscriptionForTenant :one
 -- The plan a subscription is recorded on: the one billed at the Price Stripe
 -- reports, which follows a reader who changed their Price in the billing
--- portal, else the one the checkout named.
-SELECT id
-FROM subscription_plans
-WHERE tenant_id = sqlc.arg('tenant_id')
+-- portal; else the one it is already recorded on, which keeps it where it is
+-- when its plan has since been given another Price; else, for one not
+-- recorded yet, the one its checkout named.
+SELECT sp.id
+FROM subscription_plans sp
+    LEFT JOIN subscriptions s ON s.tenant_id = sp.tenant_id
+    AND s.plan_id = sp.id
+    AND s.stripe_subscription_id = sqlc.arg('stripe_subscription_id')
+WHERE sp.tenant_id = sqlc.arg('tenant_id')
     AND (
-        stripe_price_id = sqlc.arg('stripe_price_id')
-        OR id = sqlc.arg('plan_id')
+        sp.stripe_price_id = sqlc.arg('stripe_price_id')
+        OR s.id IS NOT NULL
+        OR sp.id = sqlc.arg('plan_id')
     )
-ORDER BY (stripe_price_id = sqlc.arg('stripe_price_id')) DESC
+ORDER BY CASE
+        WHEN sp.stripe_price_id = sqlc.arg('stripe_price_id') THEN 0
+        WHEN s.id IS NOT NULL THEN 1
+        ELSE 2
+    END
 LIMIT 1;
 
 -- name: LockTenantForSubscriptionPlans :one

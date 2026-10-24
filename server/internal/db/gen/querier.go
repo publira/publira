@@ -1071,7 +1071,9 @@ type Querier interface {
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
 	// The plan a subscription is recorded on: the one billed at the Price Stripe
 	// reports, which follows a reader who changed their Price in the billing
-	// portal, else the one the checkout named.
+	// portal; else the one it is already recorded on, which keeps it where it is
+	// when its plan has since been given another Price; else, for one not
+	// recorded yet, the one its checkout named.
 	GetSubscriptionPlanForSubscriptionForTenant(ctx context.Context, arg GetSubscriptionPlanForSubscriptionForTenantParams) (uuid.UUID, error)
 	// Whether a slug the series list was filtered by names a tag of this tenant.
 	// A filter naming nothing is refused rather than answered with an empty list,
@@ -3501,7 +3503,10 @@ type Querier interface {
 	// The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
 	// counts are the ones there are.
 	StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error
-	SubscriptionIsRecorded(ctx context.Context, arg SubscriptionIsRecordedParams) (bool, error)
+	// Whether the subscription is recorded and over. One not recorded yet has not
+	// ended as far as the reader's next checkout is concerned: Stripe's
+	// notification about it is still on its way.
+	SubscriptionHasEnded(ctx context.Context, arg SubscriptionHasEndedParams) (bool, error)
 	// Suspends an account and invalidates the sessions it holds. An account that
 	// is already suspended is no rows, like another tenant's. Keeping the tenant an
 	// active tenant_admin is the handler's, which checks before this runs.

@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -41,6 +42,11 @@ type subscriptionFixture struct {
 
 func newSubscriptionFixture(t *testing.T) *subscriptionFixture {
 	t.Helper()
+	return newSubscriptionFixtureWithGuards(t, openReaderGuards())
+}
+
+func newSubscriptionFixtureWithGuards(t *testing.T, guards readerGuards) *subscriptionFixture {
+	t.Helper()
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -59,7 +65,7 @@ func newSubscriptionFixture(t *testing.T) *subscriptionFixture {
 	}
 
 	db := pg.OpenPublicDB(t)
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard(), nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), guards, openMailGuard(), nil)
 	server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
@@ -355,6 +361,19 @@ func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testi
 	if got := f.mySubscription(t); got.GetPlan().GetId() != yearly.ID.String() {
 		t.Fatalf("subscription plan = %s, want the yearly plan its price now names", got.GetPlan().GetId())
 	}
+	// Staff give the yearly plan another Price. The reader goes on being billed
+	// at the old one, which no plan names any more, and stays on the yearly
+	// plan rather than falling back to the monthly one the checkout named.
+	if _, err := f.pg.DB.ExecContext(context.Background(), "UPDATE subscription_plans SET stripe_price_id = 'price_yearly_v2' WHERE id = $1", yearly.ID); err != nil {
+		t.Fatalf("give the yearly plan another price: %v", err)
+	}
+	payload, headers = f.stripe.SubscriptionUpdated(t, f.credentials, subscription)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the update after the price changed: %v", err)
+	}
+	if got := f.mySubscription(t); got.GetPlan().GetId() != yearly.ID.String() {
+		t.Fatalf("subscription plan after the price changed = %s, want it kept on the yearly plan", got.GetPlan().GetId())
+	}
 	// A subscription with no current period recorded is answered without one.
 	if got := f.mySubscription(t); got.CurrentPeriodEnd != "" {
 		t.Fatalf("current period end = %q, want none", got.CurrentPeriodEnd)
@@ -444,6 +463,29 @@ func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
 		t.Fatalf("checkout sessions = %d, want no third", got)
 	}
 
+	// Recorded but not over, as one whose first payment is still pending is,
+	// it still holds the reader to the one subscription.
+	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], stripetest.Subscription{
+		ID:         "sub_on_its_way",
+		CustomerID: "cus_on_its_way",
+		PriceID:    "price_yearly",
+		Status:     "incomplete",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+	})
+	payload, headers := f.stripe.SubscriptionUpdated(t, f.credentials, stripetest.Subscription{
+		ID:         "sub_on_its_way",
+		CustomerID: "cus_on_its_way",
+		PriceID:    "price_yearly",
+		Status:     "incomplete",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+	})
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the incomplete subscription: %v", err)
+	}
+	if _, err := start(monthly.ID); connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("StartSubscriptionCheckout while the paid checkout's subscription is incomplete = %v, want already_exists", err)
+	}
+
 	// Once the subscription is recorded and has ended, the reader may start
 	// again.
 	f.stripe.API.SetSubscription(f.credentials[stripe.FieldSecretKey], stripetest.Subscription{
@@ -453,7 +495,7 @@ func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
 		Status:     "canceled",
 		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
 	})
-	payload, headers := f.stripe.SubscriptionDeleted(t, f.credentials, stripetest.Subscription{
+	payload, headers = f.stripe.SubscriptionDeleted(t, f.credentials, stripetest.Subscription{
 		ID:         "sub_on_its_way",
 		CustomerID: "cus_on_its_way",
 		PriceID:    "price_yearly",
@@ -468,5 +510,24 @@ func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
 	sessions := f.stripe.API.CheckoutSessions()
 	if len(sessions) != 3 || sessions[2].Form.Get("customer") != "cus_on_its_way" {
 		t.Fatalf("sessions = %d, the last for %q, want a third for the reader's customer", len(sessions), sessions[len(sessions)-1].Form.Get("customer"))
+	}
+}
+
+// Starting a subscription checkout spends the reader's allowance before
+// anything is written or asked of the provider.
+func TestDBStartSubscriptionCheckoutSpendsTheReadersAllowance(t *testing.T) {
+	f := newSubscriptionFixtureWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.SubscriptionCheckout = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	}))
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{Published: true})
+	request := &publirav1.StartSubscriptionCheckoutRequest{Tenant: tenantContext(f.tenant), PlanId: plan.ID.String()}
+	if _, err := f.subscriptions.StartSubscriptionCheckout(f.readerCtx(t), request); err != nil {
+		t.Fatalf("StartSubscriptionCheckout: %v", err)
+	}
+	if _, err := f.subscriptions.StartSubscriptionCheckout(f.readerCtx(t), request); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a second start over the limit = %v, want resource_exhausted", err)
+	}
+	if got := len(f.stripe.API.CheckoutSessions()); got != 1 {
+		t.Fatalf("checkout sessions = %d, want the refused start to have asked Stripe for nothing", got)
 	}
 }
