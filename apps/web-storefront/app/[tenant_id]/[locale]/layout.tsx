@@ -7,6 +7,10 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { StorefrontMessagesProvider } from "#components/storefront-messages-provider";
+import {
+  getTenantSiteVerification,
+  siteVerificationMetadata,
+} from "#lib/site-verification";
 import { getTenantPublicOrigin, getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";
@@ -43,17 +47,26 @@ export const generateStaticParams = () =>
  * `metadataBase` is the tenant's own domain, so every relative URL a page puts
  * in its metadata — canonical and language alternates, Open Graph — resolves
  * there rather than against the request's `Host`.
+ *
+ * The search engine verification tags sit here too, so the auth screens carry
+ * them as well: a service may check any page of the site, and no page sets
+ * `verification` of its own.
+ * Each service's verifier, `Google-Site-Verification` and `Bingbot`, is among
+ * the user agents Next.js renders metadata into `<head>` for rather than
+ * streaming it into `<body>`, and `<head>` is where both look.
  */
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
-  const [info, origin] = await Promise.all([
+  const [info, origin, siteVerification] = await Promise.all([
     getTenantSiteInfo(tenantId),
     getTenantPublicOrigin(tenantId),
+    getTenantSiteVerification(tenantId),
   ]);
 
   return {
     icons: resolveTenantIcons(info),
     metadataBase: origin ? new URL(origin) : undefined,
+    verification: siteVerificationMetadata(siteVerification),
   };
 };
 

@@ -68,6 +68,15 @@ import {
   MAX_SIGN_UP_CLOSED_MESSAGE_LENGTH,
   signUpClosedMessageLength,
 } from "#lib/tenant-sign-up-settings-shared";
+import {
+  tenantSiteVerificationCacheTag,
+  updateTenantSiteVerification,
+} from "#lib/tenant-site-verification";
+import type { SiteVerificationService } from "#lib/tenant-site-verification-shared";
+import {
+  parseSiteVerificationCode,
+  siteVerificationCodeMessage,
+} from "#lib/tenant-site-verification-shared";
 import { updateTenantTimezone } from "#lib/tenant-timezone";
 
 import type {
@@ -80,6 +89,7 @@ import type {
   TenantLegalPagesActionState,
   TenantLocalesActionState,
   TenantSignUpSettingsActionState,
+  TenantSiteVerificationActionState,
   TenantTimezoneActionState,
 } from "../settings-types";
 
@@ -737,6 +747,87 @@ export const updateTenantCrawlerSettingsAction = async (
     message: t("admin.settings.crawlers.saved"),
     ok: true,
     settings: result.settings,
+  };
+};
+
+/**
+ * Each field holds a bare code or the whole `<meta>` element the service
+ * shows, and is read with the rule the settings card applies as it is left,
+ * so what is sent is the code alone. Blank clears the code.
+ */
+const tenantSiteVerificationSchema = async (locale: Locale) => {
+  const [t, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
+  const code = (service: SiteVerificationService) =>
+    z.string().transform((value, context) => {
+      const result = parseSiteVerificationCode(service, value);
+      if (result.ok) {
+        return result.code;
+      }
+      context.addIssue({
+        code: "custom",
+        message: siteVerificationCodeMessage(t, service, result.reason),
+      });
+      return z.NEVER;
+    });
+
+  return z.object({
+    bing: code("bing"),
+    google: code("google"),
+    tenantId,
+  });
+};
+
+export const updateTenantSiteVerificationAction = async (
+  _prevState: TenantSiteVerificationActionState,
+  formData: FormData
+): Promise<TenantSiteVerificationActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantSiteVerificationSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      bing: { kind: "value", name: "bing_site_verification" },
+      google: { kind: "value", name: "google_site_verification" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    const fieldErrors = toFieldErrors(parsed.error);
+    return {
+      fieldErrors: { bing: fieldErrors.bing, google: fieldErrors.google },
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const { bing, google, tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateTenantSiteVerification({ bing, google, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return {
+      fieldErrors: result.fieldErrors,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the codes through a private cache, so without
+  // this the operator would keep seeing the previous ones in the same session.
+  // The storefront's copy is dropped by the API as the update lands.
+  updateTag(tenantSiteVerificationCacheTag(tenantId));
+
+  return {
+    message: t("admin.settings.site_verification.saved"),
+    ok: true,
+    siteVerification: result.siteVerification,
   };
 };
 

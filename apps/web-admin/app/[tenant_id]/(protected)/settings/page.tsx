@@ -41,6 +41,8 @@ import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 import { getTenantLocales } from "#lib/tenant-locales";
 import type { GetTenantLocalesResult } from "#lib/tenant-locales";
 import { getTenantSignUpSettings } from "#lib/tenant-sign-up-settings";
+import { getTenantSiteVerification } from "#lib/tenant-site-verification";
+import type { TenantSiteVerificationResult } from "#lib/tenant-site-verification";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
@@ -52,6 +54,7 @@ import { TenantEmailRejectionForm } from "./_components/tenant-email-rejection-f
 import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
 import { TenantLocalesForm } from "./_components/tenant-locales-form";
 import { TenantSignUpSettingsForm } from "./_components/tenant-sign-up-settings-form";
+import { TenantSiteVerificationForm } from "./_components/tenant-site-verification-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -151,6 +154,11 @@ const SettingsFormsSkeleton = () => (
       <Skeleton className="h-40" />
       <Skeleton className="h-10" />
     </AdminSection>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-48" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-10" />
+    </AdminSection>
   </AdminSections>
 );
 
@@ -180,6 +188,29 @@ const emailRejectionFormState = (
       }
     : { loadErrorMessage: result?.message };
 
+/**
+ * The API answers the verification codes to a tenant administrator alone, so
+ * anyone else is shown the card read-only without asking it.
+ */
+const readSiteVerification = async (
+  tenantId: string,
+  locale: Locale,
+  currentUser: Promise<AdminCurrentUser>
+): Promise<TenantSiteVerificationResult | null> => {
+  const { role } = await currentUser;
+  return isTenantAdminRole(role)
+    ? getTenantSiteVerification(tenantId, locale)
+    : null;
+};
+
+/** The card's saved codes, or what it says about the read that failed. */
+const siteVerificationFormState = (
+  result: TenantSiteVerificationResult | null
+) =>
+  result?.ok
+    ? { initialSiteVerification: result.siteVerification }
+    : { loadErrorMessage: result?.message };
+
 const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
@@ -198,6 +229,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     signUpSettingsResult,
     emailRejectionResult,
     crawlerSettingsResult,
+    siteVerificationResult,
   ] = await Promise.all([
     readSiteSettingsTabs({ locale, localesPromise, searchParams, tenantId }),
     getTenantTimezone(tenantId, locale),
@@ -210,6 +242,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     getTenantSignUpSettings(tenantId, locale),
     readEmailRejectionSettings(tenantId, locale, currentUserPromise),
     getTenantCrawlerSettings(tenantId, locale),
+    readSiteVerification(tenantId, locale, currentUserPromise),
   ]);
 
   await redirectToLoginIfSessionRejected(
@@ -220,7 +253,10 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     publishedPagesResult,
     signUpSettingsResult,
     crawlerSettingsResult,
-    ...(emailRejectionResult ? [emailRejectionResult] : [])
+    // Read for a tenant administrator alone, and null for anyone else.
+    ...[emailRejectionResult, siteVerificationResult].filter(
+      (result) => result !== null
+    )
   );
 
   const canEdit = isTenantAdminRole(currentUser.role);
@@ -336,6 +372,12 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
             }
           : { loadErrorMessage: crawlerSettingsResult.message })}
         tenantId={tenantId}
+      />
+
+      <TenantSiteVerificationForm
+        canEdit={canEdit}
+        tenantId={tenantId}
+        {...siteVerificationFormState(siteVerificationResult)}
       />
     </AdminSections>
   );

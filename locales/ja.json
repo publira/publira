@@ -2903,6 +2903,23 @@
           "crawler_refused": "{$crawler}は除外できなくなりました。再読み込みしてから選び直してください。"
         }
       },
+      "site_verification": {
+        "title": "検索エンジンの所有権確認",
+        "description": "Google Search ConsoleとBing Webmaster Toolsに、サイトの所有者であることを示すコードです。それぞれ<meta>タグとしてサイトのすべてのページに追加されます。",
+        "google_label": "Google Search Console",
+        "google_description": "Search Consoleに表示されるHTMLタグ全体、またはそのcontentの値だけを貼り付けます。空にするとタグを削除します。",
+        "bing_label": "Bing Webmaster Tools",
+        "bing_description": "Bing Webmaster Toolsに表示されるmetaタグ全体、またはそのcontentの値だけを貼り付けます。空にするとタグを削除します。",
+        "submit": "所有権確認のコードを保存",
+        "saved": "所有権確認のコードを保存しました。",
+        "load_failed": "所有権確認のコードの取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "所有権確認のコードの保存に失敗しました。時間をおいて再試行してください。",
+        "load_error_hint": "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
+        "validation": {
+          "invalid": "<meta>タグ全体か、そのcontentの値だけを貼り付けてください。値は128文字以内の英数字、ハイフン、アンダースコアです。",
+          "other_service": "{$name}のタグではありません。このサービスに表示されたタグをコピーしてください。"
+        }
+      },
       "icon": {
         "title": "アイコン",
         "description": "公開サイトのタブやロケーションバーに表示するアイコンです。",

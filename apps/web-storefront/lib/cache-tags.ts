@@ -51,8 +51,10 @@ export const tenantMobileAppAssociationTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:mobile-app-association`;
 
 /**
- * The Google tag the tenant's pages load. The console's save drops it, so a
- * changed ID or serving mode reaches the next page a reader opens.
+ * The Google tag the tenant's pages load and the search engine verification
+ * codes they carry, both answered by one public read. The console's save of
+ * either drops it, so a changed ID, serving mode, or code reaches the next page
+ * a reader opens.
  */
 export const tenantAnalyticsSettingsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:analytics-settings`;

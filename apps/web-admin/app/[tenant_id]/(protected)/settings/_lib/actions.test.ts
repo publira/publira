@@ -10,6 +10,7 @@ const {
   mockUpdateTenantLocales,
   mockUpdateTenantSignUpSettings,
   mockUpdateTenantSiteSettings,
+  mockUpdateTenantSiteVerification,
   mockUpdateTenantTimezone,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
@@ -21,6 +22,7 @@ const {
   mockUpdateTenantLocales: vi.fn(),
   mockUpdateTenantSignUpSettings: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
+  mockUpdateTenantSiteVerification: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
 }));
 
@@ -104,6 +106,12 @@ vi.mock("#lib/tenant-sign-up-settings", () => ({
   tenantSignUpSettingsCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:sign-up-settings`,
   updateTenantSignUpSettings: mockUpdateTenantSignUpSettings,
+}));
+
+vi.mock("#lib/tenant-site-verification", () => ({
+  tenantSiteVerificationCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:site-verification`,
+  updateTenantSiteVerification: mockUpdateTenantSiteVerification,
 }));
 
 vi.mock("#lib/tenant-timezone", () => ({
@@ -1110,6 +1118,161 @@ describe("updateTenantSignUpSettingsAction", () => {
         closedMessage: "Keep the message to 1,000 characters or fewer.",
       },
       message: "Keep the message to 1,000 characters or fewer.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const SITE_VERIFICATION_TENANT_ID = "018f1140-0001-7000-8000-000000000001";
+
+const siteVerificationFormData = (
+  google: string,
+  bing: string,
+  tenantId: string = SITE_VERIFICATION_TENANT_ID
+): FormData =>
+  textFormData({
+    bing_site_verification: bing,
+    google_site_verification: google,
+    tenant_id: tenantId,
+  });
+
+describe("updateTenantSiteVerificationAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("sends only the content value of a pasted <meta> element, then revalidates the tag", async () => {
+    const siteVerification = { bing: "0123ABCD", google: "abc-DEF_123" };
+    mockUpdateTenantSiteVerification.mockResolvedValueOnce({
+      ok: true,
+      siteVerification,
+    });
+
+    const { updateTenantSiteVerificationAction } = await import("./actions");
+
+    const result = await updateTenantSiteVerificationAction(
+      null,
+      siteVerificationFormData(
+        '<meta name="google-site-verification" content="abc-DEF_123" />',
+        " 0123ABCD "
+      )
+    );
+
+    expect(result).toEqual({
+      message: "The verification codes were saved.",
+      ok: true,
+      siteVerification,
+    });
+    expect(mockUpdateTenantSiteVerification).toHaveBeenCalledWith(
+      {
+        bing: "0123ABCD",
+        google: "abc-DEF_123",
+        tenantId: SITE_VERIFICATION_TENANT_ID,
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant:${SITE_VERIFICATION_TENANT_ID}:site-verification`
+    );
+  });
+
+  it("sends empty fields as clearing both codes", async () => {
+    mockUpdateTenantSiteVerification.mockResolvedValueOnce({
+      ok: true,
+      siteVerification: { bing: "", google: "" },
+    });
+
+    const { updateTenantSiteVerificationAction } = await import("./actions");
+
+    await updateTenantSiteVerificationAction(
+      null,
+      siteVerificationFormData("", "  ")
+    );
+
+    expect(mockUpdateTenantSiteVerification).toHaveBeenCalledWith(
+      { bing: "", google: "", tenantId: SITE_VERIFICATION_TENANT_ID },
+      "en"
+    );
+  });
+
+  it.each([
+    [
+      "a value with a space",
+      "abc def",
+      "",
+      {
+        google:
+          "Paste the whole <meta> tag, or only its content value: up to 128 letters, digits, hyphens, and underscores.",
+      },
+    ],
+    [
+      "the other service's element",
+      "",
+      '<meta name="google-site-verification" content="abc123" />',
+      {
+        bing: "This is not a msvalidate.01 tag. Copy the tag this service shows.",
+      },
+    ],
+  ])(
+    "names the field holding %s without calling the API",
+    async (_, google, bing, fieldErrors) => {
+      const { updateTenantSiteVerificationAction } = await import("./actions");
+
+      const result = await updateTenantSiteVerificationAction(
+        null,
+        siteVerificationFormData(google, bing)
+      );
+
+      expect(result).toEqual({
+        fieldErrors: { bing: undefined, google: undefined, ...fieldErrors },
+        message: expect.any(String),
+        ok: false,
+      });
+      expect(mockUpdateTenantSiteVerification).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ["missing", ""],
+    ["not a tenant id", "TENANT001"],
+  ])(
+    "refuses a tenant id that is %s without calling the API",
+    async (_, tenantId) => {
+      const { updateTenantSiteVerificationAction } = await import("./actions");
+
+      const result = await updateTenantSiteVerificationAction(
+        null,
+        siteVerificationFormData("abc123", "", tenantId)
+      );
+
+      expect(result?.ok).toBe(false);
+      expect(mockUpdateTenantSiteVerification).not.toHaveBeenCalled();
+    }
+  );
+
+  it("puts the API's refusal beside the field it refused without revalidating", async () => {
+    const message =
+      "Paste the whole <meta> tag, or only its content value: up to 128 letters, digits, hyphens, and underscores.";
+    mockUpdateTenantSiteVerification.mockResolvedValueOnce({
+      fieldErrors: { bing: message },
+      message,
+      ok: false,
+    });
+
+    const { updateTenantSiteVerificationAction } = await import("./actions");
+
+    const result = await updateTenantSiteVerificationAction(
+      null,
+      siteVerificationFormData("abc123", "0123ABCD")
+    );
+
+    expect(result).toEqual({
+      fieldErrors: { bing: message },
+      message,
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

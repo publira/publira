@@ -242,6 +242,7 @@ services:
         social.localhost
         tag-docs.localhost
         team.localhost
+        verify.localhost
         waitfree.localhost
         unknown-tenant.localhost
       PUBLIRA_EDGE_ADMIN_HOSTS: >-
@@ -278,6 +279,7 @@ services:
         admin.social.localhost
         admin.tag-docs.localhost
         admin.team.localhost
+        admin.verify.localhost
         admin.waitfree.localhost
       PUBLIRA_EDGE_PLATFORM_HOSTS: platform.localhost
       # The suite stands in for a hop in front of the edge that looks up the

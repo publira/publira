@@ -2903,6 +2903,23 @@
           "crawler_refused": "{$crawler}은(는) 더 이상 제외할 수 없습니다. 페이지를 새로 고친 뒤 다시 선택해 주세요."
         }
       },
+      "site_verification": {
+        "title": "검색 엔진 소유권 확인",
+        "description": "Google Search Console과 Bing Webmaster Tools에 사이트의 소유자임을 증명하는 코드입니다. 각 코드는 <meta> 태그로 사이트의 모든 페이지에 추가됩니다.",
+        "google_label": "Google Search Console",
+        "google_description": "Search Console에 표시되는 HTML 태그 전체 또는 content 값만 붙여 넣습니다. 비워 두면 태그가 삭제됩니다.",
+        "bing_label": "Bing Webmaster Tools",
+        "bing_description": "Bing Webmaster Tools에 표시되는 meta 태그 전체 또는 content 값만 붙여 넣습니다. 비워 두면 태그가 삭제됩니다.",
+        "submit": "소유권 확인 코드 저장",
+        "saved": "소유권 확인 코드를 저장했습니다.",
+        "load_failed": "소유권 확인 코드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "소유권 확인 코드를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "load_error_hint": "지금 저장하면 저장된 설정을 덮어쓰게 되므로, 페이지를 새로 고친 뒤에 변경해 주세요.",
+        "validation": {
+          "invalid": "<meta> 태그 전체 또는 content 값만 붙여 넣어 주세요. 값은 128자 이내의 영문자, 숫자, 하이픈, 밑줄입니다.",
+          "other_service": "{$name} 태그가 아닙니다. 이 서비스에 표시된 태그를 복사해 주세요."
+        }
+      },
       "icon": {
         "title": "아이콘",
         "description": "공개 사이트가 브라우저 탭과 주소 표시줄에 보여 주는 아이콘입니다.",

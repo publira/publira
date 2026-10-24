@@ -2903,6 +2903,23 @@
           "crawler_refused": "{$crawler}已無法排除。請重新載入頁面後再選擇。"
         }
       },
+      "site_verification": {
+        "title": "搜尋引擎擁有權驗證",
+        "description": "向Google Search Console和Bing Webmaster Tools證明網站歸您所有的代碼。每個代碼都會以<meta>標籤的形式新增到網站的所有頁面。",
+        "google_label": "Google Search Console",
+        "google_description": "貼上Search Console顯示的完整HTML標籤，或僅貼上其content值。留空則刪除該標籤。",
+        "bing_label": "Bing Webmaster Tools",
+        "bing_description": "貼上Bing Webmaster Tools顯示的完整meta標籤，或僅貼上其content值。留空則刪除該標籤。",
+        "submit": "儲存驗證代碼",
+        "saved": "驗證代碼已儲存。",
+        "load_failed": "無法載入驗證代碼。請稍後再試。",
+        "save_failed": "無法儲存驗證代碼。請稍後再試。",
+        "load_error_hint": "此時儲存會覆蓋已儲存的設定，請先重新載入頁面，再進行修改。",
+        "validation": {
+          "invalid": "請貼上完整的<meta>標籤，或僅貼上其content值：最多128個字母、數字、連字號和底線。",
+          "other_service": "這不是{$name}標籤。請複製此服務顯示的標籤。"
+        }
+      },
       "icon": {
         "title": "圖示",
         "description": "公開網站在瀏覽器分頁與網址列中顯示的圖示。",

@@ -2903,6 +2903,23 @@
           "crawler_refused": "{$crawler} can no longer be excluded. Reload the page and choose again."
         }
       },
+      "site_verification": {
+        "title": "Search engine verification",
+        "description": "The codes that prove to Google Search Console and Bing Webmaster Tools that the site is yours. Each one is added to every page of the site as a <meta> tag.",
+        "google_label": "Google Search Console",
+        "google_description": "Paste the HTML tag Search Console shows, or only its content value. Leave it empty to remove the tag.",
+        "bing_label": "Bing Webmaster Tools",
+        "bing_description": "Paste the meta tag Bing Webmaster Tools shows, or only its content value. Leave it empty to remove the tag.",
+        "submit": "Save the verification codes",
+        "saved": "The verification codes were saved.",
+        "load_failed": "Could not load the verification codes. Please try again later.",
+        "save_failed": "Could not save the verification codes. Please try again later.",
+        "load_error_hint": "Saving now would overwrite the stored settings, so reload the page before changing them.",
+        "validation": {
+          "invalid": "Paste the whole <meta> tag, or only its content value: up to 128 letters, digits, hyphens, and underscores.",
+          "other_service": "This is not a {$name} tag. Copy the tag this service shows."
+        }
+      },
       "icon": {
         "title": "Icon",
         "description": "The icon the public site shows in a browser tab and in the address bar.",

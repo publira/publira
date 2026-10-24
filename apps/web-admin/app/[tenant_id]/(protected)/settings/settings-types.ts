@@ -4,6 +4,10 @@ import type {
 } from "#lib/tenant-crawler-settings";
 import type { TenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
 import type { TenantSignUpSettings } from "#lib/tenant-sign-up-settings";
+import type {
+  TenantSiteVerification,
+  TenantSiteVerificationFieldErrors,
+} from "#lib/tenant-site-verification";
 
 export type SiteSettingsActionState =
   | {
@@ -105,6 +109,23 @@ export type TenantCrawlerSettingsActionState =
       ok: false;
       message: string;
       fieldErrors?: TenantCrawlerSettingsFieldErrors;
+    }
+  | null;
+
+/**
+ * A save answers the codes as the server stored them — each the bare `content`
+ * value, trimmed — so the card shows that rather than the element pasted.
+ */
+export type TenantSiteVerificationActionState =
+  | {
+      ok: true;
+      message: string;
+      siteVerification: TenantSiteVerification;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: TenantSiteVerificationFieldErrors;
     }
   | null;
 
