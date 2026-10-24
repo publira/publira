@@ -747,6 +747,8 @@ type PlatformPolicyConfig struct {
 	SeriesRemainderCheckoutLimitPerDay    int32     `json:"series_remainder_checkout_limit_per_day"`
 	NotificationSettingsLimitPerMinute    int32     `json:"notification_settings_limit_per_minute"`
 	NotificationSettingsLimitPerDay       int32     `json:"notification_settings_limit_per_day"`
+	SubscriptionCheckoutLimitPerMinute    int32     `json:"subscription_checkout_limit_per_minute"`
+	SubscriptionCheckoutLimitPerDay       int32     `json:"subscription_checkout_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {

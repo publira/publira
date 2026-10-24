@@ -131,10 +131,14 @@ SET plan_id = EXCLUDED.plan_id,
     stripe_checkout_session_id = EXCLUDED.stripe_checkout_session_id,
     created_at = NOW();
 
--- name: SubscriptionIsRecorded :one
+-- name: SubscriptionHasEnded :one
+-- Whether the subscription is recorded and over. One not recorded yet has not
+-- ended as far as the reader's next checkout is concerned: Stripe's
+-- notification about it is still on its way.
 SELECT EXISTS (
         SELECT 1
         FROM subscriptions
         WHERE tenant_id = $1
             AND stripe_subscription_id = $2
-    ) AS recorded;
+            AND status IN ('canceled', 'incomplete_expired')
+    ) AS ended;

@@ -364,28 +364,44 @@ func (q *Queries) GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetS
 }
 
 const GetSubscriptionPlanForSubscriptionForTenant = `-- name: GetSubscriptionPlanForSubscriptionForTenant :one
-SELECT id
-FROM subscription_plans
-WHERE tenant_id = $1
+SELECT sp.id
+FROM subscription_plans sp
+    LEFT JOIN subscriptions s ON s.tenant_id = sp.tenant_id
+    AND s.plan_id = sp.id
+    AND s.stripe_subscription_id = $1
+WHERE sp.tenant_id = $2
     AND (
-        stripe_price_id = $2
-        OR id = $3
+        sp.stripe_price_id = $3
+        OR s.id IS NOT NULL
+        OR sp.id = $4
     )
-ORDER BY (stripe_price_id = $2) DESC
+ORDER BY CASE
+        WHEN sp.stripe_price_id = $3 THEN 0
+        WHEN s.id IS NOT NULL THEN 1
+        ELSE 2
+    END
 LIMIT 1
 `
 
 type GetSubscriptionPlanForSubscriptionForTenantParams struct {
-	TenantID      uuid.UUID `json:"tenant_id"`
-	StripePriceID string    `json:"stripe_price_id"`
-	PlanID        uuid.UUID `json:"plan_id"`
+	StripeSubscriptionID string    `json:"stripe_subscription_id"`
+	TenantID             uuid.UUID `json:"tenant_id"`
+	StripePriceID        string    `json:"stripe_price_id"`
+	PlanID               uuid.UUID `json:"plan_id"`
 }
 
 // The plan a subscription is recorded on: the one billed at the Price Stripe
 // reports, which follows a reader who changed their Price in the billing
-// portal, else the one the checkout named.
+// portal; else the one it is already recorded on, which keeps it where it is
+// when its plan has since been given another Price; else, for one not
+// recorded yet, the one its checkout named.
 func (q *Queries) GetSubscriptionPlanForSubscriptionForTenant(ctx context.Context, arg GetSubscriptionPlanForSubscriptionForTenantParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, GetSubscriptionPlanForSubscriptionForTenant, arg.TenantID, arg.StripePriceID, arg.PlanID)
+	row := q.db.QueryRowContext(ctx, GetSubscriptionPlanForSubscriptionForTenant,
+		arg.StripeSubscriptionID,
+		arg.TenantID,
+		arg.StripePriceID,
+		arg.PlanID,
+	)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

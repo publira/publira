@@ -275,25 +275,29 @@ func (q *Queries) RecordSubscriptionFromStripe(ctx context.Context, arg RecordSu
 	return i, err
 }
 
-const SubscriptionIsRecorded = `-- name: SubscriptionIsRecorded :one
+const SubscriptionHasEnded = `-- name: SubscriptionHasEnded :one
 SELECT EXISTS (
         SELECT 1
         FROM subscriptions
         WHERE tenant_id = $1
             AND stripe_subscription_id = $2
-    ) AS recorded
+            AND status IN ('canceled', 'incomplete_expired')
+    ) AS ended
 `
 
-type SubscriptionIsRecordedParams struct {
+type SubscriptionHasEndedParams struct {
 	TenantID             uuid.UUID `json:"tenant_id"`
 	StripeSubscriptionID string    `json:"stripe_subscription_id"`
 }
 
-func (q *Queries) SubscriptionIsRecorded(ctx context.Context, arg SubscriptionIsRecordedParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, SubscriptionIsRecorded, arg.TenantID, arg.StripeSubscriptionID)
-	var recorded bool
-	err := row.Scan(&recorded)
-	return recorded, err
+// Whether the subscription is recorded and over. One not recorded yet has not
+// ended as far as the reader's next checkout is concerned: Stripe's
+// notification about it is still on its way.
+func (q *Queries) SubscriptionHasEnded(ctx context.Context, arg SubscriptionHasEndedParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, SubscriptionHasEnded, arg.TenantID, arg.StripeSubscriptionID)
+	var ended bool
+	err := row.Scan(&ended)
+	return ended, err
 }
 
 const UserHoldsLiveSubscription = `-- name: UserHoldsLiveSubscription :one

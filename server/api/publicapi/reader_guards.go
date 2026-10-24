@@ -97,6 +97,10 @@ const (
 	// series bundle and asks the payment provider for a checkout, which a
 	// reader could otherwise make the storefront repeat as fast as they ask.
 	actionStartSeriesRemainderCheckout readerAction = "series_remainder_checkout.start"
+	// A subscription checkout started. Each start writes the reader's latest
+	// checkout, may expire the one before it, and asks the payment provider
+	// for a checkout.
+	actionStartSubscriptionCheckout readerAction = "subscription_checkout.start"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -137,6 +141,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionChangeIcon:                     minuteDayRules(policy.IconChange),
 		actionPasskey:                        minuteDayRules(policy.Passkey),
 		actionStartSeriesRemainderCheckout:   minuteDayRules(policy.SeriesRemainderCheckout),
+		actionStartSubscriptionCheckout:      minuteDayRules(policy.SubscriptionCheckout),
 	}
 }
 
