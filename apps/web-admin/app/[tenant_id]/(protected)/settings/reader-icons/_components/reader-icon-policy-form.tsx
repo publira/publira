@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
@@ -6,22 +7,11 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type { TenantReaderIconPolicy } from "#lib/reader-icon-settings-shared";
 
 import { updateReaderIconPolicyAction } from "../_lib/actions";
-import {
-  ReaderIconPolicyRadioGroup,
-  ReaderIconPolicySelection,
-  ReaderIconPolicyWhenClearing,
-} from "./reader-icon-policy-selection";
+import * as ReaderIconPolicySelection from "./reader-icon-policy-selection";
 
 const FORM_ID = "reader-icon-policy-form";
 
@@ -60,21 +50,21 @@ export const ReaderIconPolicyForm = ({
   );
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="admin.settings.reader_icons.policy.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.reader_icons.policy.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateReaderIconPolicyAction}
         className="grid gap-4 sm:max-w-lg"
@@ -82,7 +72,10 @@ export const ReaderIconPolicyForm = ({
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ReaderIconPolicySelection key={initialPolicy} saved={initialPolicy}>
+        <ReaderIconPolicySelection.Root
+          key={initialPolicy}
+          saved={initialPolicy}
+        >
           <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
             <Field.Root>
               <Field.Label>
@@ -92,7 +85,7 @@ export const ReaderIconPolicyForm = ({
               </Field.Label>
               <Field.Content>
                 {/* From the widest choice to the narrowest. */}
-                <ReaderIconPolicyRadioGroup
+                <ReaderIconPolicySelection.RadioGroup
                   items={[
                     {
                       description: (
@@ -172,13 +165,13 @@ export const ReaderIconPolicyForm = ({
           ) : null}
 
           <div className="mt-2 flex justify-end gap-2">
-            <ReaderIconPolicyWhenClearing clearance="none">
+            <ReaderIconPolicySelection.WhenClearing clearance="none">
               <ActionForm.Submit disabled={fieldsDisabled}>
                 {submitLabel}
               </ActionForm.Submit>
-            </ReaderIconPolicyWhenClearing>
+            </ReaderIconPolicySelection.WhenClearing>
 
-            <ReaderIconPolicyWhenClearing clearance="uploads">
+            <ReaderIconPolicySelection.WhenClearing clearance="uploads">
               <ConfirmDialog.Root>
                 <ConfirmDialog.Trigger
                   disabled={fieldsDisabled}
@@ -221,9 +214,9 @@ export const ReaderIconPolicyForm = ({
                   </ConfirmDialog.Footer>
                 </ConfirmDialog.Content>
               </ConfirmDialog.Root>
-            </ReaderIconPolicyWhenClearing>
+            </ReaderIconPolicySelection.WhenClearing>
 
-            <ReaderIconPolicyWhenClearing clearance="all">
+            <ReaderIconPolicySelection.WhenClearing clearance="all">
               <ConfirmDialog.Root>
                 <ConfirmDialog.Trigger
                   disabled={fieldsDisabled}
@@ -266,10 +259,10 @@ export const ReaderIconPolicyForm = ({
                   </ConfirmDialog.Footer>
                 </ConfirmDialog.Content>
               </ConfirmDialog.Root>
-            </ReaderIconPolicyWhenClearing>
+            </ReaderIconPolicySelection.WhenClearing>
           </div>
-        </ReaderIconPolicySelection>
+        </ReaderIconPolicySelection.Root>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

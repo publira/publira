@@ -20,19 +20,7 @@ import type {
 } from "#lib/tenant-crawler-settings-shared";
 
 import type { TenantCrawlerSettingsActionState } from "../settings-types";
-import {
-  EntryList,
-  EntryListAdd,
-  EntryListDescription,
-  EntryListField,
-  EntryListInput,
-  EntryListLegend,
-  EntryListMessage,
-  EntryListRemove,
-  EntryListRows,
-  useEntryListRow,
-  useEntryListValues,
-} from "./entry-list";
+import * as EntryList from "./entry-list";
 
 type SettledState = NonNullable<TenantCrawlerSettingsActionState>;
 
@@ -100,7 +88,7 @@ const CrawlerPurposeHeading = ({ purpose }: { purpose: CrawlerPurpose }) => {
  */
 const CrawlerPath = () => {
   const t = useClientMessages();
-  const { position, touched, value } = useEntryListRow();
+  const { position, touched, value } = EntryList.useRow();
   const result = parseCrawlerPaths([value]);
   const message =
     touched && !result.ok && result.reason !== "too_many"
@@ -109,16 +97,16 @@ const CrawlerPath = () => {
 
   return (
     <>
-      <EntryListField invalid={message !== undefined}>
-        <EntryListInput
+      <EntryList.Field invalid={message !== undefined}>
+        <EntryList.Input
           aria-label={t("admin.settings.crawlers.path_label", { position })}
           name="excluded_paths"
         />
         {message === undefined ? null : (
           <FormMessage variant="destructive">{message}</FormMessage>
         )}
-      </EntryListField>
-      <EntryListRemove
+      </EntryList.Field>
+      <EntryList.Remove
         aria-label={t("admin.settings.crawlers.path_remove", { position })}
       />
     </>
@@ -129,21 +117,21 @@ const CrawlerPath = () => {
 const CrawlerPathsMessage = () => {
   const t = useClientMessages();
   const state = ActionForm.useState<SettledState>();
-  const list = parseCrawlerPaths(useEntryListValues());
+  const list = parseCrawlerPaths(EntryList.useValues());
 
   if (!list.ok && list.reason === "too_many") {
     return (
-      <EntryListMessage>
+      <EntryList.Message>
         {t("admin.settings.crawlers.validation.too_many", {
           max: MAX_CRAWLER_EXCLUDED_PATHS,
         })}
-      </EntryListMessage>
+      </EntryList.Message>
     );
   }
   return (
-    <EntryListMessage>
+    <EntryList.Message>
       {state?.ok === false ? state.fieldErrors?.excludedPaths : undefined}
-    </EntryListMessage>
+    </EntryList.Message>
   );
 };
 
@@ -253,21 +241,21 @@ export const TenantCrawlerSettingsFields = ({
         )}
       </fieldset>
 
-      <EntryList initialEntries={paths} key={savedCount}>
-        <EntryListLegend>
+      <EntryList.Root initialEntries={paths} key={savedCount}>
+        <EntryList.Legend>
           <ClientMessage message="admin.settings.crawlers.paths_label" />
-        </EntryListLegend>
-        <EntryListRows>
+        </EntryList.Legend>
+        <EntryList.Rows>
           <CrawlerPath />
-        </EntryListRows>
-        <EntryListAdd>
+        </EntryList.Rows>
+        <EntryList.Add>
           <ClientMessage message="admin.settings.crawlers.paths_add" />
-        </EntryListAdd>
-        <EntryListDescription>
+        </EntryList.Add>
+        <EntryList.Description>
           <ClientMessage message="admin.settings.crawlers.paths_description" />
-        </EntryListDescription>
+        </EntryList.Description>
         <CrawlerPathsMessage />
-      </EntryList>
+      </EntryList.Root>
     </>
   );
 };

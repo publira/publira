@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
@@ -7,27 +8,10 @@ import * as Identifier from "@publira/ui-components/identifier";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
-import {
-  ProviderChangeNotice,
-  ProviderChoice,
-  ProviderCredential,
-  ProviderCredentialLabel,
-  ProviderCredentialTextInput,
-  ProviderEnabled,
-  ProviderEnabledCheckbox,
-  ProviderEnabledRequiredInput,
-  ProviderEnabledRequiredLabel,
-  ProviderPanel,
-  ProviderSelect,
-} from "#components/provider-credentials";
+import * as ProviderChoice from "#components/provider-choice";
+import * as ProviderCredential from "#components/provider-credential";
+import * as ProviderEnabled from "#components/provider-enabled";
 import {
   ProviderSecretControls,
   ProviderSecretDescription,
@@ -435,21 +419,21 @@ export const TenantInboundEmailSettingsForm = ({
     : undefined;
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="admin.settings.inbound_email.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.inbound_email.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantInboundEmailSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
@@ -486,7 +470,7 @@ export const TenantInboundEmailSettingsForm = ({
             ),
           ].join(":")}
         >
-          <ProviderChoice
+          <ProviderChoice.Root
             credentialsProvider={credentialsProvider}
             initialProvider={initialProvider}
           >
@@ -497,13 +481,13 @@ export const TenantInboundEmailSettingsForm = ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <ProviderSelect providers={providers} />
+                <ProviderChoice.Select providers={providers} />
                 <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
                     <Message message="admin.settings.inbound_email.provider_description" />
                   </Suspense>
                 </Field.Description>
-                <ProviderChangeNotice>
+                <ProviderChoice.ChangeNotice>
                   <FormMessage variant="warning">
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                       <Message
@@ -512,11 +496,11 @@ export const TenantInboundEmailSettingsForm = ({
                       />
                     </Suspense>
                   </FormMessage>
-                </ProviderChangeNotice>
+                </ProviderChoice.ChangeNotice>
               </Field.Content>
             </Field.Root>
 
-            <ProviderEnabled initialEnabled={settings.enabled}>
+            <ProviderEnabled.Root initialEnabled={settings.enabled}>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -524,11 +508,11 @@ export const TenantInboundEmailSettingsForm = ({
                   </Suspense>
                 </Field.Label>
                 <Field.Content>
-                  <ProviderEnabledCheckbox>
+                  <ProviderEnabled.Checkbox>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                       <Message message="admin.settings.inbound_email.enabled_checkbox" />
                     </Suspense>
-                  </ProviderEnabledCheckbox>
+                  </ProviderEnabled.Checkbox>
                   <Field.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.settings.inbound_email.enabled_description" />
@@ -538,13 +522,13 @@ export const TenantInboundEmailSettingsForm = ({
               </Field.Root>
 
               <Field.Root>
-                <ProviderEnabledRequiredLabel>
+                <ProviderEnabled.RequiredLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                     <Message message="admin.settings.inbound_email.domain" />
                   </Suspense>
-                </ProviderEnabledRequiredLabel>
+                </ProviderEnabled.RequiredLabel>
                 <Field.Content>
-                  <ProviderEnabledRequiredInput
+                  <ProviderEnabled.RequiredInput
                     autoComplete="off"
                     defaultValue={settings.domain}
                     name="domain"
@@ -560,18 +544,21 @@ export const TenantInboundEmailSettingsForm = ({
                   </Suspense>
                 </Field.Description>
                 {providers.map((provider) => (
-                  <ProviderPanel key={provider.id} provider={provider.id}>
+                  <ProviderChoice.Panel
+                    key={provider.id}
+                    provider={provider.id}
+                  >
                     <InboundEmailDomainNote provider={provider.id} />
-                  </ProviderPanel>
+                  </ProviderChoice.Panel>
                 ))}
               </Field.Root>
 
               {providers.map((provider) => (
-                <ProviderPanel key={provider.id} provider={provider.id}>
+                <ProviderChoice.Panel key={provider.id} provider={provider.id}>
                   {provider.fields.map((field) => {
                     const state = stateOf(provider.id, field.name);
                     return (
-                      <ProviderCredential
+                      <ProviderCredential.Root
                         configured={Boolean(state?.configured)}
                         disabled={fieldsDisabled}
                         hint={state?.hint ?? ""}
@@ -580,7 +567,7 @@ export const TenantInboundEmailSettingsForm = ({
                         required={field.required}
                       >
                         <Field.Root>
-                          <ProviderCredentialLabel>
+                          <ProviderCredential.Label>
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-32" />}
                             >
@@ -589,7 +576,7 @@ export const TenantInboundEmailSettingsForm = ({
                                 provider={provider.id}
                               />
                             </Suspense>
-                          </ProviderCredentialLabel>
+                          </ProviderCredential.Label>
                           <Field.Content>
                             {field.secret ? (
                               <ProviderSecretControls
@@ -597,7 +584,7 @@ export const TenantInboundEmailSettingsForm = ({
                                 required={field.required}
                               />
                             ) : (
-                              <ProviderCredentialTextInput />
+                              <ProviderCredential.TextInput />
                             )}
                             <ActionForm.FieldError
                               name={`credential_${field.name}`}
@@ -609,12 +596,12 @@ export const TenantInboundEmailSettingsForm = ({
                           />
                           {field.secret ? <ProviderSecretDescription /> : null}
                         </Field.Root>
-                      </ProviderCredential>
+                      </ProviderCredential.Root>
                     );
                   })}
-                </ProviderPanel>
+                </ProviderChoice.Panel>
               ))}
-            </ProviderEnabled>
+            </ProviderEnabled.Root>
 
             {/* The URL is shown before the settings are ready: Resend's
                 signing secret, one of the fields that makes them ready, only
@@ -626,7 +613,10 @@ export const TenantInboundEmailSettingsForm = ({
                     provider
                   );
                   return (
-                    <ProviderPanel key={provider.id} provider={provider.id}>
+                    <ProviderChoice.Panel
+                      key={provider.id}
+                      provider={provider.id}
+                    >
                       <Field.Root>
                         <Field.Label>
                           <Suspense
@@ -649,7 +639,7 @@ export const TenantInboundEmailSettingsForm = ({
                           </Field.Description>
                         </Field.Content>
                       </Field.Root>
-                    </ProviderPanel>
+                    </ProviderChoice.Panel>
                   );
                 })
               : null}
@@ -674,7 +664,7 @@ export const TenantInboundEmailSettingsForm = ({
                 </Field.Content>
               </Field.Root>
             ) : null}
-          </ProviderChoice>
+          </ProviderChoice.Root>
         </ActionForm.Fieldset>
 
         {canEdit ? null : (
@@ -702,6 +692,6 @@ export const TenantInboundEmailSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

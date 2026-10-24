@@ -1,26 +1,13 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
-import {
-  EpisodePagesDropZone,
-  EpisodePagesModeButton,
-  EpisodePagesSelectedFiles,
-  EpisodePagesUpload,
-  EpisodePagesUploadForm,
-  EpisodePagesWhile,
-} from "./episode-pages-upload-controls";
+import * as EpisodePages from "./episode-pages-upload-controls";
 
 interface EpisodePagesFormProps {
   seriesId: string;
@@ -39,26 +26,26 @@ export const EpisodePagesForm = async ({
   const t = await getMessages();
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="admin.series.episodes.pages.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="admin.series.episodes.pages.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
-      <EpisodePagesUploadForm>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
+      <EpisodePages.UploadForm>
         <input name="series_id" type="hidden" value={seriesId} />
         <input name="episode_id" type="hidden" value={episodeId} />
 
-        <EpisodePagesUpload>
+        <EpisodePages.Root>
           <ActionForm.Fieldset className="grid gap-4">
             <Field.Root>
               <Field.Label>
@@ -81,21 +68,21 @@ export const EpisodePagesForm = async ({
               </Field.Label>
               <Field.Content>
                 <div className="flex flex-wrap gap-2">
-                  <EpisodePagesModeButton mode="pages">
+                  <EpisodePages.ModeButton mode="pages">
                     <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                       <Message message="admin.series.episodes.pages.select_images" />
                     </Suspense>
-                  </EpisodePagesModeButton>
-                  <EpisodePagesModeButton mode="zip">
+                  </EpisodePages.ModeButton>
+                  <EpisodePages.ModeButton mode="zip">
                     <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                       <Message message="admin.series.episodes.pages.select_zip" />
                     </Suspense>
-                  </EpisodePagesModeButton>
-                  <EpisodePagesModeButton mode="epub">
+                  </EpisodePages.ModeButton>
+                  <EpisodePages.ModeButton mode="epub">
                     <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                       <Message message="admin.series.episodes.pages.select_epub" />
                     </Suspense>
-                  </EpisodePagesModeButton>
+                  </EpisodePages.ModeButton>
                 </div>
               </Field.Content>
             </Field.Root>
@@ -103,47 +90,47 @@ export const EpisodePagesForm = async ({
             <Field.Root>
               <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                  <EpisodePagesWhile mode="pages">
+                  <EpisodePages.While mode="pages">
                     <Message message="admin.series.episodes.pages.image" />
-                  </EpisodePagesWhile>
-                  <EpisodePagesWhile mode="zip">
+                  </EpisodePages.While>
+                  <EpisodePages.While mode="zip">
                     <Message message="admin.series.episodes.pages.zip" />
-                  </EpisodePagesWhile>
-                  <EpisodePagesWhile mode="epub">
+                  </EpisodePages.While>
+                  <EpisodePages.While mode="epub">
                     <Message message="admin.series.episodes.pages.epub" />
-                  </EpisodePagesWhile>
+                  </EpisodePages.While>
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <EpisodePagesDropZone>
+                <EpisodePages.DropZone>
                   <p className="mb-3 text-sm text-muted-foreground">
                     <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                      <EpisodePagesWhile mode="pages">
+                      <EpisodePages.While mode="pages">
                         <Message message="admin.series.episodes.pages.drop_image" />
-                      </EpisodePagesWhile>
-                      <EpisodePagesWhile mode="zip">
+                      </EpisodePages.While>
+                      <EpisodePages.While mode="zip">
                         <Message message="admin.series.episodes.pages.drop_zip" />
-                      </EpisodePagesWhile>
-                      <EpisodePagesWhile mode="epub">
+                      </EpisodePages.While>
+                      <EpisodePages.While mode="epub">
                         <Message message="admin.series.episodes.pages.drop_epub" />
-                      </EpisodePagesWhile>
+                      </EpisodePages.While>
                     </Suspense>
                   </p>
-                </EpisodePagesDropZone>
+                </EpisodePages.DropZone>
                 <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-                    <EpisodePagesWhile mode="pages">
+                    <EpisodePages.While mode="pages">
                       <Message message="admin.series.episodes.pages.image_description" />
-                    </EpisodePagesWhile>
-                    <EpisodePagesWhile mode="zip">
+                    </EpisodePages.While>
+                    <EpisodePages.While mode="zip">
                       <Message message="admin.series.episodes.pages.zip_description" />
-                    </EpisodePagesWhile>
-                    <EpisodePagesWhile mode="epub">
+                    </EpisodePages.While>
+                    <EpisodePages.While mode="epub">
                       <Message message="admin.series.episodes.pages.epub_description" />
-                    </EpisodePagesWhile>
+                    </EpisodePages.While>
                   </Suspense>
                 </Field.Description>
-                <EpisodePagesSelectedFiles />
+                <EpisodePages.SelectedFiles />
                 <ActionForm.Pending>
                   <div className="grid gap-2">
                     <progress
@@ -169,15 +156,15 @@ export const EpisodePagesForm = async ({
             <ActionForm.Submit>
               <ActionForm.Idle>
                 <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                  <EpisodePagesWhile mode="pages">
+                  <EpisodePages.While mode="pages">
                     <Message message="admin.series.episodes.pages.submit_image" />
-                  </EpisodePagesWhile>
-                  <EpisodePagesWhile mode="zip">
+                  </EpisodePages.While>
+                  <EpisodePages.While mode="zip">
                     <Message message="admin.series.episodes.pages.submit_zip" />
-                  </EpisodePagesWhile>
-                  <EpisodePagesWhile mode="epub">
+                  </EpisodePages.While>
+                  <EpisodePages.While mode="epub">
                     <Message message="admin.series.episodes.pages.submit_epub" />
-                  </EpisodePagesWhile>
+                  </EpisodePages.While>
                 </Suspense>
               </ActionForm.Idle>
               <ActionForm.Pending>
@@ -187,8 +174,8 @@ export const EpisodePagesForm = async ({
               </ActionForm.Pending>
             </ActionForm.Submit>
           </div>
-        </EpisodePagesUpload>
-      </EpisodePagesUploadForm>
-    </AdminSection>
+        </EpisodePages.Root>
+      </EpisodePages.UploadForm>
+    </ConsoleSection.Root>
   );
 };

@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -5,13 +6,6 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type {
   TenantCommunityLimitOverrides,
@@ -23,14 +17,7 @@ import {
 } from "#lib/tenant-policy-shared";
 
 import { updateTenantCommunityLimitsAction } from "../_lib/actions";
-import {
-  PolicyOverrideDescription,
-  PolicyOverrideGroup,
-  PolicyOverrideLegend,
-  PolicyOverridePlatformValue,
-  PolicyOverrideUseDefault,
-  PolicyOverrideValues,
-} from "./policy-override-group";
+import * as PolicyOverride from "./policy-override-group";
 
 interface TenantCommunityLimitsFormProps {
   canEdit: boolean;
@@ -57,21 +44,21 @@ export const TenantCommunityLimitsForm = ({
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
               <Message message="admin.settings.policy.community.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.policy.community.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantCommunityLimitsAction}
         className="grid gap-4 sm:max-w-3xl"
@@ -80,20 +67,20 @@ export const TenantCommunityLimitsForm = ({
         <input name="revision" type="hidden" value={revision} />
 
         <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.commentPost === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.comment_post_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_minute_day"
@@ -103,8 +90,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -145,23 +132,23 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.commentReport === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.comment_report_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_minute_day"
@@ -173,8 +160,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -219,25 +206,25 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={
               overrides.duplicateCommentWindowMinutes === undefined
             }
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.duplicate_window_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_window"
@@ -246,8 +233,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -269,28 +256,28 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-            <PolicyOverrideDescription>
+            </PolicyOverride.Values>
+            <PolicyOverride.Description>
               <Suspense fallback={<SkeletonLine className="h-3 w-3/4" />}>
                 <Message message="admin.settings.policy.community.duplicate_window_description" />
               </Suspense>
-            </PolicyOverrideDescription>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Description>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.episodeRating === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.episode_rating_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_minute_day"
@@ -302,8 +289,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -348,23 +335,23 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.contactMessagePerAccount === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.contact_per_account_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_hour_day"
@@ -378,8 +365,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -424,23 +411,23 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.contactMessagePerClient === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.contact_per_client_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_hour_day"
@@ -454,8 +441,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -500,23 +487,23 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.viewerPreferences === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.viewer_preferences_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_minute_day"
@@ -528,8 +515,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -574,23 +561,23 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.notificationSettings === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.community.notification_settings_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
                 <Message
                   message="admin.settings.policy.community.platform_minute_day"
@@ -604,8 +591,8 @@ export const TenantCommunityLimitsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -650,8 +637,8 @@ export const TenantCommunityLimitsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
         </ActionForm.Fieldset>
 
         {canEdit ? null : (
@@ -686,6 +673,6 @@ export const TenantCommunityLimitsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

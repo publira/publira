@@ -1,16 +1,10 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import type { ContactMessageItem } from "../../contact-message-types";
@@ -32,21 +26,21 @@ export const ContactMessageStaffNote = ({
   contactMessage,
   tenantId,
 }: ContactMessageStaffNoteProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
             <Message message="admin.contact_messages.staff_note.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.contact_messages.staff_note.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
 
     <ActionForm.Root
       action={updateContactMessageStaffNoteAction}
@@ -99,5 +93,5 @@ export const ContactMessageStaffNote = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </AdminSection>
+  </ConsoleSection.Root>
 );

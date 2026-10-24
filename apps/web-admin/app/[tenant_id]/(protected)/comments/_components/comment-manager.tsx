@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { StatusChip } from "@publira/ui-components/badge";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -8,21 +9,10 @@ import { formatDateTime, parseInstant } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import { ReaderIcon } from "#components/reader-icon";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
@@ -419,21 +409,21 @@ export const CommentManager = async ({
     !listErrorMessage && (comments.length > 0 || hasPageLinks);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.list_title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.comments.list_description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
 
       <CommentListBody
         canModerate={canModerate}
@@ -450,19 +440,19 @@ export const CommentManager = async ({
       />
 
       {showPagination ? (
-        <PaginationFooter>
-          <PaginationFooterDescription>
+        <PaginationFooter.Root>
+          <PaginationFooter.Description>
             {t("admin.comments.pagination_description", {
               count: pageSize,
             })}
-          </PaginationFooterDescription>
-          <PaginationControls
+          </PaginationFooter.Description>
+          <PaginationFooter.Controls
             aria-label={t("admin.comments.pagination_aria")}
             nextHref={nextHref}
             previousHref={previousHref}
           />
-        </PaginationFooter>
+        </PaginationFooter.Root>
       ) : null}
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

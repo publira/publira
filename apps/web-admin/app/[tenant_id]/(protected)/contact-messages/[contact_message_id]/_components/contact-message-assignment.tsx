@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -6,14 +7,6 @@ import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionActions,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 
@@ -107,22 +100,22 @@ export const ContactMessageAssignment = async ({
     self.userId !== contactMessage.assigneeUserId;
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
               <Message message="admin.contact_messages.assignment.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.contact_messages.assignment.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
         {canAssignSelf ? (
-          <AdminSectionActions>
+          <ConsoleSection.Actions>
             <ActionForm.Root action={assignContactMessageAction}>
               <HiddenFields
                 contactMessage={contactMessage}
@@ -144,9 +137,9 @@ export const ContactMessageAssignment = async ({
                 </Suspense>
               </ActionForm.Submit>
             </ActionForm.Root>
-          </AdminSectionActions>
+          </ConsoleSection.Actions>
         ) : null}
-      </AdminSectionHeader>
+      </ConsoleSection.Header>
 
       <ActionForm.Root
         action={assignContactMessageAction}
@@ -192,6 +185,6 @@ export const ContactMessageAssignment = async ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

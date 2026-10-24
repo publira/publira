@@ -1,17 +1,10 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
@@ -69,27 +62,27 @@ const NotificationManagerData = async ({
 };
 
 const NotificationsPage = ({ searchParams }: NotificationsPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.notifications.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
             <Message message="admin.notifications.page_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <Suspense fallback={<Table.Skeleton />}>
         <NotificationManagerData searchParams={searchParams} />
       </Suspense>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default NotificationsPage;

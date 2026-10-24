@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { Badge } from "@publira/ui-components/badge";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as FigureLine from "@publira/ui-components/figure-line";
@@ -9,13 +10,6 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getDashboard } from "#lib/dashboard";
@@ -252,17 +246,17 @@ const DashboardContent = async () => {
 };
 
 const DashboardPage = () => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
             <Message message="admin.dashboard.title" />
           </Suspense>
-        </AdminPageTitle>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Title>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -274,8 +268,8 @@ const DashboardPage = () => (
           <DashboardContent />
         </Suspense>
       </SectionErrorBoundary>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default DashboardPage;

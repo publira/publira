@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -12,15 +13,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -187,29 +179,29 @@ const EditGenreFormData = async ({
 };
 
 const EditGenrePage = ({ params, searchParams }: EditGenrePageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-64" />}>
             <EditGenreTitle searchParams={searchParams} />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <EditGenreDescription searchParams={searchParams} />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/genres" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
             <Message message="admin.genres.back_to_list" />
           </Suspense>
         </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <div className="grid gap-6">
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
           <EditGenreTabNav params={params} searchParams={searchParams} />
@@ -228,8 +220,8 @@ const EditGenrePage = ({ params, searchParams }: EditGenrePageProps) => (
           </Suspense>
         </SectionErrorBoundary>
       </div>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default EditGenrePage;

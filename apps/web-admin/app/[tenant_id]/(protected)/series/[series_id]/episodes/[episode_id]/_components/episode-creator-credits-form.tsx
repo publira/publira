@@ -3,7 +3,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { SubmitGate, SubmitGateSubmit } from "#components/submit-gate";
+import * as SubmitGate from "#components/submit-gate";
 
 import type {
   EpisodeCreatorCredit,
@@ -60,7 +60,7 @@ export const EpisodeCreatorCreditsForm = ({
       <input name="episode_public_id" type="hidden" value={episodePublicId} />
       {/* The stored shares already passed the server's cap, so the form opens
           submittable. */}
-      <SubmitGate initialSubmittable>
+      <SubmitGate.Root initialSubmittable>
         <ActionForm.Fieldset className="grid gap-3">
           <EpisodeCreatorCreditsField
             creatorRoles={creatorRoles}
@@ -69,7 +69,7 @@ export const EpisodeCreatorCreditsForm = ({
           />
         </ActionForm.Fieldset>
         <div className="flex justify-end">
-          <SubmitGateSubmit>
+          <SubmitGate.Submit>
             <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.episodes.credits.save" />
@@ -80,9 +80,9 @@ export const EpisodeCreatorCreditsForm = ({
                 <Message message="admin.series.episodes.credits.saving" />
               </Suspense>
             </ActionForm.Pending>
-          </SubmitGateSubmit>
+          </SubmitGate.Submit>
         </div>
-      </SubmitGate>
+      </SubmitGate.Root>
     </ActionForm.Root>
   </section>
 );

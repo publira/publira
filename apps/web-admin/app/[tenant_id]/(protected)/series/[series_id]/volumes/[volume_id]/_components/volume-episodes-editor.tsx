@@ -9,12 +9,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import {
-  SortableItem,
-  SortableItemHandle,
-  SortableList,
-  withItemMoved,
-} from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 
 import type { VolumeEpisodeOption } from "../../volume-types";
 
@@ -53,19 +48,19 @@ const VolumeEpisodeRow = ({
   const { pending } = useFormStatus();
 
   return (
-    <SortableItem
+    <Sortable.Item
       className="flex items-center gap-2 border border-border bg-background px-2 py-2 sm:gap-3 sm:px-3"
       disabled={pending}
       id={episode.id}
       index={index}
       label={episode.title}
     >
-      <SortableItemHandle>
+      <Sortable.ItemHandle>
         <ClientMessage
           message="admin.series.volumes.episodes.reorder"
           values={{ title: episode.title }}
         />
-      </SortableItemHandle>
+      </Sortable.ItemHandle>
       <span className="w-6 shrink-0 text-right text-sm text-muted-foreground tabular-nums">
         {index + 1}
       </span>
@@ -94,7 +89,7 @@ const VolumeEpisodeRow = ({
           </span>
         </Button>
       )}
-    </SortableItem>
+    </Sortable.Item>
   );
 };
 
@@ -139,7 +134,9 @@ export const VolumeEpisodesEditor = ({
   }, [episodeIds, episodes, takenEpisodeIds]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setEpisodeIds((current) => withItemMoved(current, identity, event));
+    setEpisodeIds((current) =>
+      Sortable.withItemMoved(current, identity, event)
+    );
   }, []);
 
   const handleAdd = useCallback(() => {
@@ -166,7 +163,7 @@ export const VolumeEpisodesEditor = ({
           <ClientMessage message="admin.series.volumes.episodes.none" />
         </p>
       ) : (
-        <SortableList
+        <Sortable.Root
           aria-label={t("admin.series.volumes.episodes.title")}
           className="grid gap-2"
           onDragEnd={handleDragEnd}
@@ -184,7 +181,7 @@ export const VolumeEpisodesEditor = ({
               onRemove={() => handleRemove(id)}
             />
           ))}
-        </SortableList>
+        </Sortable.Root>
       )}
 
       {candidateItems.length > 0 ? (

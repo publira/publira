@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
@@ -10,25 +11,10 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { currencyDisplayName } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
-import {
-  ProviderChangeNotice,
-  ProviderChoice,
-  ProviderCredential,
-  ProviderCredentialLabel,
-  ProviderCredentialTextInput,
-  ProviderEnabled,
-  ProviderEnabledCheckbox,
-  ProviderPanel,
-  ProviderSelect,
-} from "#components/provider-credentials";
+import * as ProviderChoice from "#components/provider-choice";
+import * as ProviderCredential from "#components/provider-credential";
+import * as ProviderEnabled from "#components/provider-enabled";
 import {
   ProviderSecretControls,
   ProviderSecretDescription,
@@ -290,21 +276,21 @@ export const TenantPaymentSettingsForm = ({
       : undefined;
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
               <Message message="admin.settings.payment.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.payment.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantPaymentSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
@@ -342,7 +328,7 @@ export const TenantPaymentSettingsForm = ({
             ),
           ].join(":")}
         >
-          <ProviderChoice
+          <ProviderChoice.Root
             credentialsProvider={credentialsProvider}
             initialProvider={initialProvider}
           >
@@ -353,13 +339,13 @@ export const TenantPaymentSettingsForm = ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <ProviderSelect providers={providers} />
+                <ProviderChoice.Select providers={providers} />
                 <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
                     <Message message="admin.settings.payment.provider_description" />
                   </Suspense>
                 </Field.Description>
-                <ProviderChangeNotice>
+                <ProviderChoice.ChangeNotice>
                   <FormMessage variant="warning">
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                       <Message
@@ -368,21 +354,21 @@ export const TenantPaymentSettingsForm = ({
                       />
                     </Suspense>
                   </FormMessage>
-                </ProviderChangeNotice>
+                </ProviderChoice.ChangeNotice>
               </Field.Content>
             </Field.Root>
 
             {providers.map((provider) => (
-              <ProviderPanel key={provider.id} provider={provider.id}>
+              <ProviderChoice.Panel key={provider.id} provider={provider.id}>
                 <PaymentCurrencyField
                   locale={locale}
                   provider={provider}
                   settings={settings}
                 />
-              </ProviderPanel>
+              </ProviderChoice.Panel>
             ))}
 
-            <ProviderEnabled initialEnabled={settings.enabled}>
+            <ProviderEnabled.Root initialEnabled={settings.enabled}>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -390,11 +376,11 @@ export const TenantPaymentSettingsForm = ({
                   </Suspense>
                 </Field.Label>
                 <Field.Content>
-                  <ProviderEnabledCheckbox>
+                  <ProviderEnabled.Checkbox>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                       <Message message="admin.settings.payment.enabled_checkbox" />
                     </Suspense>
-                  </ProviderEnabledCheckbox>
+                  </ProviderEnabled.Checkbox>
                   <Field.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.settings.payment.enabled_description" />
@@ -404,11 +390,11 @@ export const TenantPaymentSettingsForm = ({
               </Field.Root>
 
               {providers.map((provider) => (
-                <ProviderPanel key={provider.id} provider={provider.id}>
+                <ProviderChoice.Panel key={provider.id} provider={provider.id}>
                   {provider.fields.map((field) => {
                     const state = stateOf(provider.id, field.name);
                     return (
-                      <ProviderCredential
+                      <ProviderCredential.Root
                         configured={Boolean(state?.configured)}
                         disabled={fieldsDisabled}
                         hint={state?.hint ?? ""}
@@ -417,7 +403,7 @@ export const TenantPaymentSettingsForm = ({
                         required={field.required}
                       >
                         <Field.Root>
-                          <ProviderCredentialLabel>
+                          <ProviderCredential.Label>
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-32" />}
                             >
@@ -426,7 +412,7 @@ export const TenantPaymentSettingsForm = ({
                                 provider={provider.id}
                               />
                             </Suspense>
-                          </ProviderCredentialLabel>
+                          </ProviderCredential.Label>
                           <Field.Content>
                             {field.secret ? (
                               <ProviderSecretControls
@@ -434,7 +420,7 @@ export const TenantPaymentSettingsForm = ({
                                 required={field.required}
                               />
                             ) : (
-                              <ProviderCredentialTextInput />
+                              <ProviderCredential.TextInput />
                             )}
                             <ActionForm.FieldError
                               name={`credential_${field.name}`}
@@ -446,16 +432,19 @@ export const TenantPaymentSettingsForm = ({
                           />
                           <PaymentCredentialDescription field={field} />
                         </Field.Root>
-                      </ProviderCredential>
+                      </ProviderCredential.Root>
                     );
                   })}
-                </ProviderPanel>
+                </ProviderChoice.Panel>
               ))}
-            </ProviderEnabled>
+            </ProviderEnabled.Root>
 
             {webhookOrigin
               ? providers.map((provider) => (
-                  <ProviderPanel key={provider.id} provider={provider.id}>
+                  <ProviderChoice.Panel
+                    key={provider.id}
+                    provider={provider.id}
+                  >
                     <Field.Root>
                       <Field.Label>
                         <Suspense
@@ -484,10 +473,10 @@ export const TenantPaymentSettingsForm = ({
                         <PaymentWebhookNote provider={provider.id} />
                       </Field.Content>
                     </Field.Root>
-                  </ProviderPanel>
+                  </ProviderChoice.Panel>
                 ))
               : null}
-          </ProviderChoice>
+          </ProviderChoice.Root>
         </ActionForm.Fieldset>
 
         {canEdit ? null : (
@@ -515,6 +504,6 @@ export const TenantPaymentSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

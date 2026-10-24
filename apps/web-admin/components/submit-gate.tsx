@@ -24,7 +24,7 @@ const useSubmitGateContext = (caller: string) => {
  * Carries whether a form can be submitted from the client control that knows
  * to its submit control, which sit apart in a form composed on the server.
  */
-export const SubmitGate = ({
+const SubmitGate = ({
   children,
   initialSubmittable,
 }: {
@@ -38,14 +38,16 @@ export const SubmitGate = ({
 };
 
 /** Tells the submit control whether the form can be submitted as it stands. */
-export const useSetSubmittable = () =>
+const useSetSubmittable = () =>
   useSubmitGateContext("useSetSubmittable").setSubmittable;
 
 /** The form's submit control, closed while a control says it cannot be submitted. */
-export const SubmitGateSubmit = ({ children }: { children: ReactNode }) => {
+const SubmitGateSubmit = ({ children }: { children: ReactNode }) => {
   const { submittable } = useSubmitGateContext("SubmitGateSubmit");
 
   return (
     <ActionForm.Submit disabled={!submittable}>{children}</ActionForm.Submit>
   );
 };
+
+export { SubmitGate as Root, SubmitGateSubmit as Submit, useSetSubmittable };

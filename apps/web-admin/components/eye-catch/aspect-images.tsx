@@ -1,15 +1,9 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
-import { ImageCropDialogTitle } from "#components/image-crop/crop-dialog";
+import * as ImageCropDialog from "#components/image-crop/crop-dialog";
 import { Message } from "#components/message";
 
 import type { EyeCatchEntity } from "./aspect-messages";
@@ -17,15 +11,7 @@ import {
   EyeCatchAspectNameMessage,
   EyeCatchAspectUsageMessage,
 } from "./aspect-messages";
-import {
-  EyeCatchAspectAdjust,
-  EyeCatchAspectCropDialog,
-  EyeCatchAspectCropTitle,
-  EyeCatchAspectFileInput,
-  EyeCatchAspectPicker,
-  EyeCatchAspectSlot,
-  EyeCatchAspectUpload,
-} from "./aspect-slot";
+import * as EyeCatchAspect from "./aspect-slot";
 import { EYE_CATCH_ASPECTS } from "./aspects";
 import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
 
@@ -75,21 +61,21 @@ export const EyeCatchAspectImages = ({
   uploadAction,
   variants,
 }: EyeCatchAspectImagesProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
             <Message message="admin.eye_catch.aspect.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.eye_catch.aspect.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     {variants.length === 0 ? (
       <p className="text-sm text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
@@ -112,7 +98,7 @@ export const EyeCatchAspectImages = ({
               <input name={ID_FIELDS[entity]} type="hidden" value={id} />
               <input name="variant_type" type="hidden" value={variantType} />
 
-              <EyeCatchAspectSlot
+              <EyeCatchAspect.Root
                 aspect={aspect}
                 currentUrl={current?.url ?? ""}
               >
@@ -138,11 +124,11 @@ export const EyeCatchAspectImages = ({
                   </Suspense>
                 </p>
 
-                <EyeCatchAspectPicker>
+                <EyeCatchAspect.Picker>
                   <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
                     <Message message="admin.eye_catch.aspect.empty" />
                   </Suspense>
-                </EyeCatchAspectPicker>
+                </EyeCatchAspect.Picker>
 
                 <p className="text-xs text-muted-foreground">
                   <Suspense fallback={<SkeletonLine className="h-3 w-24" />}>
@@ -157,13 +143,13 @@ export const EyeCatchAspectImages = ({
                 </p>
 
                 <div className="grid gap-2">
-                  <EyeCatchAspectFileInput />
-                  <EyeCatchAspectAdjust>
+                  <EyeCatchAspect.FileInput />
+                  <EyeCatchAspect.Adjust>
                     <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                       <Message message="admin.image_crop.adjust" />
                     </Suspense>
-                  </EyeCatchAspectAdjust>
-                  <EyeCatchAspectUpload>
+                  </EyeCatchAspect.Adjust>
+                  <EyeCatchAspect.Upload>
                     <ActionForm.Idle>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
@@ -178,19 +164,19 @@ export const EyeCatchAspectImages = ({
                         <Message message="admin.eye_catch.aspect.uploading" />
                       </Suspense>
                     </ActionForm.Pending>
-                  </EyeCatchAspectUpload>
+                  </EyeCatchAspect.Upload>
                 </div>
 
-                <EyeCatchAspectCropDialog>
-                  <ImageCropDialogTitle>
-                    <EyeCatchAspectCropTitle />
-                  </ImageCropDialogTitle>
-                </EyeCatchAspectCropDialog>
-              </EyeCatchAspectSlot>
+                <EyeCatchAspect.CropDialog>
+                  <ImageCropDialog.Title>
+                    <EyeCatchAspect.CropTitle />
+                  </ImageCropDialog.Title>
+                </EyeCatchAspect.CropDialog>
+              </EyeCatchAspect.Root>
             </ActionForm.Root>
           );
         })}
       </div>
     )}
-  </AdminSection>
+  </ConsoleSection.Root>
 );

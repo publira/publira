@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
@@ -8,24 +9,13 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { gatewayTagId } from "#lib/tenant-analytics-settings-shared";
 import type { TenantAnalyticsSettings } from "#lib/tenant-analytics-settings-shared";
 
 import { updateGoogleTagAction } from "../_lib/actions";
-import {
-  GatewayPathCopy,
-  GoogleTagModeRadioGroup,
-  GoogleTagModeScope,
-  GoogleTagModeWhile,
-  ServerContainerUrlInput,
-} from "./google-tag-controls";
+import { GatewayPathCopy } from "./gateway-path-copy";
+import * as GoogleTagMode from "./google-tag-controls";
 
 const FORM_ID = "google-tag-form";
 
@@ -108,16 +98,16 @@ export const GoogleTagForm = ({
   const tagId = settings === undefined ? "" : gatewayTagId(settings);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionDescription>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.google_tag.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <div className="grid gap-8 xl:grid-cols-[minmax(0,48rem)_minmax(0,1fr)] xl:items-start">
         <ActionForm.Root
           action={updateGoogleTagAction}
@@ -130,7 +120,7 @@ export const GoogleTagForm = ({
             // A save refreshes the settings; keying on them remounts the
             // fields on what the API stored instead of changing a mounted
             // default.
-            <GoogleTagModeScope
+            <GoogleTagMode.Root
               initialServerContainerUrl={settings.serverContainerUrl}
               initialServingMode={settings.servingMode}
               key={JSON.stringify(settings)}
@@ -195,7 +185,7 @@ export const GoogleTagForm = ({
                     </Suspense>
                   </Field.Label>
                   <Field.Content>
-                    <GoogleTagModeRadioGroup
+                    <GoogleTagMode.RadioGroup
                       items={[
                         {
                           description: (
@@ -254,7 +244,7 @@ export const GoogleTagForm = ({
                   </Field.Content>
                 </Field.Root>
 
-                <GoogleTagModeWhile mode="server_container">
+                <GoogleTagMode.While mode="server_container">
                   <Field.Root>
                     <Field.Label required>
                       <Suspense
@@ -264,7 +254,7 @@ export const GoogleTagForm = ({
                       </Suspense>
                     </Field.Label>
                     <Field.Content>
-                      <ServerContainerUrlInput />
+                      <GoogleTagMode.ServerContainerUrlInput />
                       <ActionForm.FieldError name="serverContainerUrl" />
                       <Field.Description>
                         <Suspense
@@ -275,10 +265,10 @@ export const GoogleTagForm = ({
                       </Field.Description>
                     </Field.Content>
                   </Field.Root>
-                </GoogleTagModeWhile>
+                </GoogleTagMode.While>
               </ActionForm.Fieldset>
 
-              <GoogleTagModeWhile mode="gateway">
+              <GoogleTagMode.While mode="gateway">
                 <div className="grid gap-6">
                   {/* Registered in Google Tag Manager rather than typed here,
                       so they sit outside the fields a save submits. */}
@@ -340,7 +330,7 @@ export const GoogleTagForm = ({
                         </Suspense>
                       </Field.Label>
                       <Field.Content>
-                        <ServerContainerUrlInput />
+                        <GoogleTagMode.ServerContainerUrlInput />
                         <ActionForm.FieldError name="serverContainerUrl" />
                         <Field.Description>
                           <Suspense
@@ -353,8 +343,8 @@ export const GoogleTagForm = ({
                     </Field.Root>
                   </ActionForm.Fieldset>
                 </div>
-              </GoogleTagModeWhile>
-            </GoogleTagModeScope>
+              </GoogleTagMode.While>
+            </GoogleTagMode.Root>
           )}
 
           {loadErrorMessage ? (
@@ -399,6 +389,6 @@ export const GoogleTagForm = ({
           </ul>
         </aside>
       </div>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

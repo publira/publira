@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Button } from "@publira/ui-components/button";
 import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 import * as EmptyState from "@publira/ui-components/empty-state";
@@ -10,15 +11,6 @@ import {
 } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionActions,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { formatTenantAmount } from "#lib/price";
 import type { RoyaltyTotals } from "#lib/royalties";
@@ -147,19 +139,19 @@ export const OpenMonth = ({
   timeZone,
   totals,
 }: OpenMonthProps) => (
-  <AdminSections>
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message
                 message="admin.royalties.open.title"
                 values={{ period: formatPlainYearMonth(period, { locale }) }}
               />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
               <Message
                 message="admin.royalties.open.period_note"
@@ -170,9 +162,9 @@ export const OpenMonth = ({
                 }}
               />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-        <AdminSectionActions>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+        <ConsoleSection.Actions>
           <p className="text-sm text-muted-foreground">
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="admin.royalties.export.open_month_note" />
@@ -183,8 +175,8 @@ export const OpenMonth = ({
               <Message message="admin.royalties.export.button" />
             </Suspense>
           </Button>
-        </AdminSectionActions>
-      </AdminSectionHeader>
+        </ConsoleSection.Actions>
+      </ConsoleSection.Header>
       <RoyaltyFigures currency={currency} locale={locale} totals={totals} />
       <CloseStatus
         closeState={closeState}
@@ -194,23 +186,23 @@ export const OpenMonth = ({
         tenantId={tenantId}
         totals={totals}
       />
-    </AdminSection>
+    </ConsoleSection.Root>
 
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="admin.royalties.lines.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
               <Message message="admin.royalties.lines.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       {lines.length === 0 ? (
         <EmptyState.Root>
           <EmptyState.Heading>
@@ -229,6 +221,6 @@ export const OpenMonth = ({
       ) : (
         <RoyaltyLinesTable currency={currency} lines={lines} locale={locale} />
       )}
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );

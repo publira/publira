@@ -10,13 +10,8 @@ import { MfaCodeField } from "#components/mfa-code-field";
 import type { MfaMethodName } from "#lib/mfa-challenge";
 
 import { verifyMfaAction } from "../_lib/actions";
-import {
-  MfaRecoveryCodeSpent,
-  MfaRemainingRecoveryCodes,
-  MfaVerifyMethods,
-  MfaVerifyMethodSwitch,
-  MfaVerifySteps,
-} from "./mfa-verify-steps";
+import * as MfaVerifyMethods from "./mfa-verify-methods";
+import * as MfaVerifySteps from "./mfa-verify-steps";
 import { PasskeyVerifyForm } from "./passkey-forms";
 
 interface MfaVerifyFormProps {
@@ -58,7 +53,7 @@ const MfaPasskeyVerify = ({
       </ActionForm.Submit>
     </PasskeyVerifyForm>
 
-    <MfaVerifyMethodSwitch to="code">
+    <MfaVerifyMethods.Switch to="code">
       <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
         {passkeyOnly ? (
           <Message message="admin.auth.mfa.use_recovery_code_instead" />
@@ -66,7 +61,7 @@ const MfaPasskeyVerify = ({
           <Message message="admin.auth.mfa.use_code_instead" />
         )}
       </Suspense>
-    </MfaVerifyMethodSwitch>
+    </MfaVerifyMethods.Switch>
   </>
 );
 
@@ -101,7 +96,7 @@ const MfaCodeVerify = ({
         showSuccess={false}
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
-        <MfaRecoveryCodeSpent />
+        <MfaVerifySteps.RecoveryCodeSpent />
 
         <MfaCodeField
           accepts={recoveryOnly ? "recovery" : "authenticator_or_recovery"}
@@ -120,11 +115,11 @@ const MfaCodeVerify = ({
       </ActionForm.Root>
 
       {passkey ? (
-        <MfaVerifyMethodSwitch to="passkey">
+        <MfaVerifyMethods.Switch to="passkey">
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
             <Message message="admin.auth.mfa.use_passkey_instead" />
           </Suspense>
-        </MfaVerifyMethodSwitch>
+        </MfaVerifyMethods.Switch>
       ) : null}
     </>
   );
@@ -136,7 +131,7 @@ export const MfaVerifyForm = ({
   nextPath,
   tenantId,
 }: MfaVerifyFormProps) => (
-  <MfaVerifySteps
+  <MfaVerifySteps.Root
     finished={finished}
     nextPath={nextPath}
     spent={
@@ -147,7 +142,7 @@ export const MfaVerifyForm = ({
           </Suspense>
         </h2>
         <AuthScreen.Note>
-          <MfaRemainingRecoveryCodes />
+          <MfaVerifySteps.RemainingRecoveryCodes />
         </AuthScreen.Note>
         <LinkButton
           className="justify-self-start"
@@ -162,7 +157,7 @@ export const MfaVerifyForm = ({
     verify={
       <>
         <AuthScreen.Body>
-          <MfaVerifyMethods
+          <MfaVerifyMethods.Root
             code={<MfaCodeVerify methods={methods} tenantId={tenantId} />}
             passkey={
               methods.includes("passkey") ? (

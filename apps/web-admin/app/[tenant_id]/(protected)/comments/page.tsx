@@ -1,19 +1,11 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
@@ -52,22 +44,22 @@ export const generateStaticParams = () =>
 
 /** The three parts of the screen, in the geometry they arrive in. */
 const CommentsSkeleton = () => (
-  <AdminSections>
-    <AdminSection>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-48" />
       <Table.Skeleton rows={2} />
-    </AdminSection>
+    </ConsoleSection.Root>
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Skeleton className="h-16" />
       <Skeleton className="h-16" />
       <Skeleton className="h-16" />
       <Skeleton className="h-16" />
     </div>
-    <AdminSection>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Table.Skeleton />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );
 
 /**
@@ -138,7 +130,7 @@ const CommentsContent = async ({
   await redirectToLoginIfSessionRejected(reportResult);
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       {/*
         The reports come first because they are the work that arrived from
         outside the console: a reader flagged something, and nobody has looked
@@ -194,27 +186,27 @@ const CommentsContent = async ({
         tenantId={tenantId}
         timeZone={timeZone}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const CommentsPage = ({ searchParams }: CommentsPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
             <Message message="admin.comments.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
             <Message message="admin.comments.page_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -226,8 +218,8 @@ const CommentsPage = ({ searchParams }: CommentsPageProps) => (
           <CommentsContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default CommentsPage;

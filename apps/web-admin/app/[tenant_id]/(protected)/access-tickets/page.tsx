@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
@@ -6,15 +7,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import {
@@ -112,23 +104,23 @@ const TicketManagerData = async ({
 };
 
 const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
                 <Message message="admin.access_tickets.title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.access_tickets.page_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-          <AdminPageActions>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+          <ConsolePage.Actions>
             <LinkButton
               render={<Link href="/access-tickets/new" />}
               variant="outline"
@@ -137,17 +129,17 @@ const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
                 <Message message="admin.access_tickets.new_action" />
               </Suspense>
             </LinkButton>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
+          </ConsolePage.Actions>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <FlashToast message="admin.access_tickets.issued" />
           <Suspense fallback={<Table.Skeleton />}>
             <TicketManagerData searchParams={searchParams} />
           </Suspense>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default AccessTicketsPage;

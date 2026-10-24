@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -5,13 +6,6 @@ import * as PasswordInput from "@publira/ui-components/password-input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import { requestEmailChangeAction } from "../_lib/actions";
@@ -21,21 +15,21 @@ interface EmailChangeFormProps {
 }
 
 export const EmailChangeForm = ({ tenantId }: EmailChangeFormProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
             <Message message="admin.settings.email_change.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.email_change.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <ActionForm.Root action={requestEmailChangeAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
 
@@ -116,5 +110,5 @@ export const EmailChangeForm = ({ tenantId }: EmailChangeFormProps) => (
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </AdminSection>
+  </ConsoleSection.Root>
 );

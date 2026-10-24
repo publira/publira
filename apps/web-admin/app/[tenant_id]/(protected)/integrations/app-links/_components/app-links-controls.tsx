@@ -2,10 +2,6 @@
 
 import { Checkbox } from "@publira/ui-components/checkbox";
 import * as Field from "@publira/ui-components/field";
-import { Input } from "@publira/ui-components/input";
-import type { InputProps } from "@publira/ui-components/input";
-import { Textarea } from "@publira/ui-components/textarea";
-import type { TextareaProps } from "@publira/ui-components/textarea";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 
@@ -41,7 +37,7 @@ interface AppLinksPlatformProps {
  * Unticked, the fields are disabled and submit nothing, which is how a save
  * clears the platform.
  */
-export const AppLinksPlatform = ({
+const AppLinksPlatform = ({
   children,
   disabled,
   initialEnabled,
@@ -61,18 +57,14 @@ export const AppLinksPlatform = ({
   );
 };
 
-export const AppLinksPlatformLegend = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
+const AppLinksPlatformLegend = ({ children }: { children: ReactNode }) => (
   <legend className="px-1 text-sm font-medium text-foreground">
     {children}
   </legend>
 );
 
 /** The checkbox, labelled by its children. `name` is posted as `on` while it is ticked. */
-export const AppLinksPlatformToggle = ({
+const AppLinksPlatformToggle = ({
   children,
   name,
 }: {
@@ -95,11 +87,7 @@ export const AppLinksPlatformToggle = ({
 };
 
 /** The platform's own fields, disabled while the toggle is unticked. */
-export const AppLinksPlatformFields = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const AppLinksPlatformFields = ({ children }: { children: ReactNode }) => {
   const { disabled, enabled } = useAppLinksPlatform();
 
   return (
@@ -109,39 +97,9 @@ export const AppLinksPlatformFields = ({
   );
 };
 
-// React resets an uncontrolled form once its Action settles, which would wipe
-// the value a refused save asks the operator to fix.
-
-export const RetainedInput = ({
-  defaultValue,
-  ...props
-}: Omit<InputProps, "defaultValue" | "onChange" | "value"> & {
-  defaultValue: string;
-}) => {
-  const [value, setValue] = useState(() => defaultValue);
-
-  return (
-    <Input
-      {...props}
-      onChange={(event) => setValue(event.target.value)}
-      value={value}
-    />
-  );
-};
-
-export const RetainedTextarea = ({
-  defaultValue,
-  ...props
-}: Omit<TextareaProps, "defaultValue" | "onChange" | "value"> & {
-  defaultValue: string;
-}) => {
-  const [value, setValue] = useState(() => defaultValue);
-
-  return (
-    <Textarea
-      {...props}
-      onChange={(event) => setValue(event.target.value)}
-      value={value}
-    />
-  );
+export {
+  AppLinksPlatform as Root,
+  AppLinksPlatformFields as Fields,
+  AppLinksPlatformLegend as Legend,
+  AppLinksPlatformToggle as Toggle,
 };

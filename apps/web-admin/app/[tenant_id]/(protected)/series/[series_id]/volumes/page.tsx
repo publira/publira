@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -14,15 +15,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
@@ -163,29 +155,29 @@ const SeriesVolumesData = async ({ params }: SeriesVolumesPageProps) => {
 };
 
 const SeriesVolumesPage = ({ params }: SeriesVolumesPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.series.volumes.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.series.volumes.page_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/series" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
             <Message message="admin.series.back_to_list" />
           </Suspense>
         </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <div className="grid gap-6">
         <Suspense fallback={<SkeletonLine className="h-9 w-72" />}>
           <SeriesVolumesTabs params={params} />
@@ -209,8 +201,8 @@ const SeriesVolumesPage = ({ params }: SeriesVolumesPageProps) => (
           </Suspense>
         </SectionErrorBoundary>
       </div>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default SeriesVolumesPage;

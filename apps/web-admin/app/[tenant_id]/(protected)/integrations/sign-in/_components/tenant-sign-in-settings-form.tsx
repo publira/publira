@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
@@ -8,23 +9,9 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-} from "#components/admin-page";
-import {
-  CredentialsEnabled,
-  CredentialsEnabledCheckbox,
-  CredentialsEnabledLabel,
-  SecretKey,
-  SecretKeyFile,
-  SecretKeyModeButton,
-  SecretKeyText,
-  SecretKeyWhile,
-} from "#components/credential-controls";
+import * as CredentialsEnabled from "#components/credentials-enabled";
 import { Message } from "#components/message";
+import * as SecretKey from "#components/secret-key";
 import { storeStatus } from "#lib/store-payment-settings-shared";
 import type { StoreStatus } from "#lib/store-payment-settings-shared";
 import type { SignInProvider } from "#lib/storefront-url";
@@ -353,16 +340,16 @@ export const TenantSignInSettingsForm = ({
       : signInOffers(settings, androidApplicationId);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionDescription>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.sign_in.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantSignInSettingsAction}
         className="grid gap-8 sm:max-w-3xl"
@@ -373,7 +360,7 @@ export const TenantSignInSettingsForm = ({
           // A save refreshes the settings; keying on them remounts the fields
           // on what the API stored instead of changing a mounted default.
           <div className="grid gap-8" key={JSON.stringify(settings)}>
-            <CredentialsEnabled initialEnabled={settings.apple.enabled}>
+            <CredentialsEnabled.Root initialEnabled={settings.apple.enabled}>
               <fieldset className="grid gap-5">
                 <legend className="mb-3 text-base font-semibold text-foreground">
                   <Suspense fallback={<SkeletonLine className="h-5 w-16" />}>
@@ -458,11 +445,11 @@ export const TenantSignInSettingsForm = ({
                   className="grid gap-5"
                   disabled={fieldsDisabled}
                 >
-                  <CredentialsEnabledCheckbox name="apple_enabled">
+                  <CredentialsEnabled.Checkbox name="apple_enabled">
                     <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                       <Message message="admin.settings.sign_in.apple.enabled" />
                     </Suspense>
-                  </CredentialsEnabledCheckbox>
+                  </CredentialsEnabled.Checkbox>
                   <Field.Root>
                     <Field.Label>
                       <Suspense
@@ -492,13 +479,13 @@ export const TenantSignInSettingsForm = ({
                     </Field.Content>
                   </Field.Root>
                   <Field.Root>
-                    <CredentialsEnabledLabel>
+                    <CredentialsEnabled.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-20" />}
                       >
                         <Message message="admin.settings.sign_in.apple.team_id" />
                       </Suspense>
-                    </CredentialsEnabledLabel>
+                    </CredentialsEnabled.Label>
                     <Field.Content>
                       <Input
                         autoCapitalize="characters"
@@ -521,13 +508,13 @@ export const TenantSignInSettingsForm = ({
                     </Field.Content>
                   </Field.Root>
                   <Field.Root>
-                    <CredentialsEnabledLabel>
+                    <CredentialsEnabled.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
                       >
                         <Message message="admin.settings.sign_in.apple.key_id" />
                       </Suspense>
-                    </CredentialsEnabledLabel>
+                    </CredentialsEnabled.Label>
                     <Field.Content>
                       <Input
                         autoCapitalize="characters"
@@ -549,12 +536,12 @@ export const TenantSignInSettingsForm = ({
                       </Field.Description>
                     </Field.Content>
                   </Field.Root>
-                  <SecretKey
+                  <SecretKey.Root
                     accept=".p8"
                     configured={settings.apple.privateKeyConfigured}
                     name="apple_private_key"
                   >
-                    <SecretKeyWhile mode="keep">
+                    <SecretKey.While mode="keep">
                       <Field.Root>
                         <Field.Label>
                           <Suspense
@@ -571,20 +558,20 @@ export const TenantSignInSettingsForm = ({
                               type="text"
                               value={settings.apple.privateKeyHint}
                             />
-                            <SecretKeyModeButton mode="replace">
+                            <SecretKey.ModeButton mode="replace">
                               <Suspense
                                 fallback={<SkeletonLine className="h-4 w-16" />}
                               >
                                 <Message message="admin.settings.sign_in.key_change" />
                               </Suspense>
-                            </SecretKeyModeButton>
-                            <SecretKeyModeButton mode="clear">
+                            </SecretKey.ModeButton>
+                            <SecretKey.ModeButton mode="clear">
                               <Suspense
                                 fallback={<SkeletonLine className="h-4 w-16" />}
                               >
                                 <Message message="admin.settings.sign_in.key_clear" />
                               </Suspense>
-                            </SecretKeyModeButton>
+                            </SecretKey.ModeButton>
                           </div>
                           <ActionForm.FieldError name="privateKey" />
                           <Field.Description>
@@ -596,18 +583,18 @@ export const TenantSignInSettingsForm = ({
                           </Field.Description>
                         </Field.Content>
                       </Field.Root>
-                    </SecretKeyWhile>
-                    <SecretKeyWhile mode="replace">
+                    </SecretKey.While>
+                    <SecretKey.While mode="replace">
                       <Field.Root>
-                        <CredentialsEnabledLabel>
+                        <CredentialsEnabled.Label>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-28" />}
                           >
                             <Message message="admin.settings.sign_in.apple.private_key" />
                           </Suspense>
-                        </CredentialsEnabledLabel>
+                        </CredentialsEnabled.Label>
                         <Field.Content>
-                          <SecretKeyFile />
+                          <SecretKey.File />
                           <Field.Description>
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-3/4" />}
@@ -626,11 +613,11 @@ export const TenantSignInSettingsForm = ({
                           </Suspense>
                         </Field.Label>
                         <Field.Content>
-                          <SecretKeyText />
+                          <SecretKey.Text />
                           <ActionForm.FieldError name="privateKey" />
                           {settings.apple.privateKeyConfigured ? (
                             <div>
-                              <SecretKeyModeButton mode="keep">
+                              <SecretKey.ModeButton mode="keep">
                                 <Suspense
                                   fallback={
                                     <SkeletonLine className="h-4 w-24" />
@@ -638,13 +625,13 @@ export const TenantSignInSettingsForm = ({
                                 >
                                   <Message message="admin.settings.sign_in.key_change_cancel" />
                                 </Suspense>
-                              </SecretKeyModeButton>
+                              </SecretKey.ModeButton>
                             </div>
                           ) : null}
                         </Field.Content>
                       </Field.Root>
-                    </SecretKeyWhile>
-                    <SecretKeyWhile mode="clear">
+                    </SecretKey.While>
+                    <SecretKey.While mode="clear">
                       <Field.Root>
                         <Field.Label>
                           <Suspense
@@ -662,19 +649,19 @@ export const TenantSignInSettingsForm = ({
                                 <Message message="admin.settings.sign_in.key_cleared" />
                               </Suspense>
                             </p>
-                            <SecretKeyModeButton mode="keep">
+                            <SecretKey.ModeButton mode="keep">
                               <Suspense
                                 fallback={<SkeletonLine className="h-4 w-24" />}
                               >
                                 <Message message="admin.settings.sign_in.key_clear_cancel" />
                               </Suspense>
-                            </SecretKeyModeButton>
+                            </SecretKey.ModeButton>
                           </div>
                           <ActionForm.FieldError name="privateKey" />
                         </Field.Content>
                       </Field.Root>
-                    </SecretKeyWhile>
-                  </SecretKey>
+                    </SecretKey.While>
+                  </SecretKey.Root>
                   <Field.Root>
                     <Field.Label>
                       <Suspense
@@ -711,9 +698,9 @@ export const TenantSignInSettingsForm = ({
                   </Field.Root>
                 </ActionForm.Fieldset>
               </fieldset>
-            </CredentialsEnabled>
+            </CredentialsEnabled.Root>
 
-            <CredentialsEnabled initialEnabled={settings.google.enabled}>
+            <CredentialsEnabled.Root initialEnabled={settings.google.enabled}>
               <fieldset className="grid gap-5">
                 <legend className="mb-3 text-base font-semibold text-foreground">
                   <Suspense fallback={<SkeletonLine className="h-5 w-16" />}>
@@ -762,11 +749,11 @@ export const TenantSignInSettingsForm = ({
                   className="grid gap-5"
                   disabled={fieldsDisabled}
                 >
-                  <CredentialsEnabledCheckbox name="google_enabled">
+                  <CredentialsEnabled.Checkbox name="google_enabled">
                     <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                       <Message message="admin.settings.sign_in.google.enabled" />
                     </Suspense>
-                  </CredentialsEnabledCheckbox>
+                  </CredentialsEnabled.Checkbox>
                   <Field.Root>
                     <Field.Label>
                       <Suspense
@@ -825,7 +812,7 @@ export const TenantSignInSettingsForm = ({
                   </Field.Root>
                 </ActionForm.Fieldset>
               </fieldset>
-            </CredentialsEnabled>
+            </CredentialsEnabled.Root>
           </div>
         )}
 
@@ -854,6 +841,6 @@ export const TenantSignInSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -12,17 +14,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSections,
-} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -87,10 +78,10 @@ const contactMessageReplyRoute = (
 };
 
 const DetailSkeleton = () => (
-  <AdminSection>
+  <ConsoleSection.Root>
     <SkeletonLine className="h-5 w-24" />
     <Skeleton className="h-64" />
-  </AdminSection>
+  </ConsoleSection.Root>
 );
 
 const ContactMessageDetailContent = async ({
@@ -158,7 +149,7 @@ const ContactMessageDetailContent = async ({
   );
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       <ContactMessageDetail
         contactMessage={result.contactMessage}
         locale={locale}
@@ -186,30 +177,30 @@ const ContactMessageDetailContent = async ({
         contactMessage={result.contactMessage}
         tenantId={tenantId}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const ContactMessageDetailPage = ({
   params,
 }: ContactMessageDetailPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
                 <Message message="admin.contact_messages.detail_title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.contact_messages.detail_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-          <AdminPageActions>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+          <ConsolePage.Actions>
             <LinkButton
               render={<Link href="/contact-messages" />}
               variant="outline"
@@ -218,9 +209,9 @@ const ContactMessageDetailPage = ({
                 <Message message="admin.contact_messages.back_to_list" />
               </Suspense>
             </LinkButton>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
+          </ConsolePage.Actions>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <FlashToast
             keyName="handled"
             message="admin.contact_messages.marked_handled"
@@ -260,10 +251,10 @@ const ContactMessageDetailPage = ({
               <ContactMessageDetailContent params={params} />
             </Suspense>
           </SectionErrorBoundary>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default ContactMessageDetailPage;

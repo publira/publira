@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -5,13 +6,6 @@ import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import {
   MAX_RETENTION_DAYS,
@@ -24,13 +18,7 @@ import type {
 } from "#lib/tenant-retention-settings";
 
 import { updateTenantRetentionSettingsAction } from "../_lib/actions";
-import {
-  PolicyOverrideGroup,
-  PolicyOverrideLegend,
-  PolicyOverridePlatformValue,
-  PolicyOverrideUseDefault,
-  PolicyOverrideValues,
-} from "./policy-override-group";
+import * as PolicyOverride from "./policy-override-group";
 
 interface TenantRetentionSettingsFormProps {
   canEdit: boolean;
@@ -57,21 +45,21 @@ export const TenantRetentionSettingsForm = ({
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
               <Message message="admin.settings.policy.retention.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.policy.retention.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantRetentionSettingsAction}
         className="grid gap-4 sm:max-w-3xl"
@@ -80,20 +68,20 @@ export const TenantRetentionSettingsForm = ({
         <input name="revision" type="hidden" value={revision} />
 
         <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.withdrawnCommentDays === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.retention.withdrawn_comment_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
                 <Message
                   message="admin.settings.policy.retention.platform_days"
@@ -102,8 +90,8 @@ export const TenantRetentionSettingsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -125,31 +113,31 @@ export const TenantRetentionSettingsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.contentEventDays === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.retention.content_event_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
                 <Message
                   message="admin.settings.policy.retention.platform_days"
                   values={{ days: platformDefaults.contentEventDays }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -171,23 +159,23 @@ export const TenantRetentionSettingsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={overrides.dailyRankingSnapshotDays === undefined}
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="admin.settings.policy.retention.daily_ranking_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
                 <Message
                   message="admin.settings.policy.retention.platform_days"
@@ -196,8 +184,8 @@ export const TenantRetentionSettingsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -219,25 +207,25 @@ export const TenantRetentionSettingsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
 
-          <PolicyOverrideGroup
+          <PolicyOverride.Root
             initialUseDefault={
               overrides.weeklyRankingSnapshotDays === undefined
             }
           >
-            <PolicyOverrideLegend>
+            <PolicyOverride.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="admin.settings.policy.retention.weekly_ranking_legend" />
               </Suspense>
-            </PolicyOverrideLegend>
-            <PolicyOverrideUseDefault>
+            </PolicyOverride.Legend>
+            <PolicyOverride.UseDefault>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.policy.use_platform_default" />
               </Suspense>
-            </PolicyOverrideUseDefault>
-            <PolicyOverridePlatformValue>
+            </PolicyOverride.UseDefault>
+            <PolicyOverride.PlatformValue>
               <Suspense fallback={<SkeletonLine className="h-3 w-40" />}>
                 <Message
                   message="admin.settings.policy.retention.platform_days"
@@ -246,8 +234,8 @@ export const TenantRetentionSettingsForm = ({
                   }}
                 />
               </Suspense>
-            </PolicyOverridePlatformValue>
-            <PolicyOverrideValues>
+            </PolicyOverride.PlatformValue>
+            <PolicyOverride.Values>
               <Field.Root>
                 <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -269,8 +257,8 @@ export const TenantRetentionSettingsForm = ({
                   />
                 </Field.Content>
               </Field.Root>
-            </PolicyOverrideValues>
-          </PolicyOverrideGroup>
+            </PolicyOverride.Values>
+          </PolicyOverride.Root>
         </ActionForm.Fieldset>
 
         {canEdit ? null : (
@@ -305,6 +293,6 @@ export const TenantRetentionSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

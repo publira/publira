@@ -2,7 +2,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { SortableItem, SortableItemHandle } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 
 import type { CreatorRoleListItem } from "../creator-role-types";
 import { CREATOR_ROLE_LIST_TITLE_ID } from "../creator-role-types";
@@ -30,7 +30,7 @@ const CreatorRoleRow = ({
   creatorRole: CreatorRoleListItem;
   tenantId: string;
 }) => (
-  <SortableItem
+  <Sortable.Item
     className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
     id={creatorRole.id}
     label={creatorRole.name}
@@ -38,14 +38,14 @@ const CreatorRoleRow = ({
     {/* The height of the name field beside it, so the grip and the position
         are level with the row's first line. */}
     <div className="flex h-10 items-center gap-2 sm:w-28">
-      <SortableItemHandle className="h-full">
+      <Sortable.ItemHandle className="h-full">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message
             message="admin.creator_roles.reorder_action"
             values={{ name: creatorRole.name }}
           />
         </Suspense>
-      </SortableItemHandle>
+      </Sortable.ItemHandle>
       <p className="text-xs text-muted-foreground">
         <CreatorRolePriority />
       </p>
@@ -56,7 +56,7 @@ const CreatorRoleRow = ({
       name={creatorRole.name}
       tenantId={tenantId}
     />
-  </SortableItem>
+  </Sortable.Item>
 );
 
 /**

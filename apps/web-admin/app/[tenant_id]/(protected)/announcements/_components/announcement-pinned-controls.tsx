@@ -23,7 +23,7 @@ const useAnnouncementPinned = () => {
 };
 
 /** Whether the announcement goes out as a site banner, which asks for its stop time. */
-export const AnnouncementPinned = ({ children }: { children: ReactNode }) => {
+const AnnouncementPinned = ({ children }: { children: ReactNode }) => {
   const [pinned, setPinned] = useState(false);
   const context = useMemo(() => ({ pinned, setPinned }), [pinned]);
 
@@ -35,7 +35,7 @@ export const AnnouncementPinned = ({ children }: { children: ReactNode }) => {
 };
 
 /** The banner switch, posted as `pinned`. */
-export const AnnouncementPinnedCheckbox = () => {
+const AnnouncementPinnedCheckbox = () => {
   const { pinned, setPinned } = useAnnouncementPinned();
 
   return (
@@ -49,8 +49,11 @@ export const AnnouncementPinnedCheckbox = () => {
 };
 
 /** Renders its children while the announcement is a banner. */
-export const AnnouncementPinnedWhile = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (useAnnouncementPinned().pinned ? children : null);
+const AnnouncementPinnedWhile = ({ children }: { children: ReactNode }) =>
+  useAnnouncementPinned().pinned ? children : null;
+
+export {
+  AnnouncementPinned as Root,
+  AnnouncementPinnedCheckbox as Checkbox,
+  AnnouncementPinnedWhile as While,
+};

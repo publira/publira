@@ -9,7 +9,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
-import { useSetSubmittable } from "#components/submit-gate";
+import * as SubmitGate from "#components/submit-gate";
 import {
   isCreditShareTotalSavable,
   shareBpsToPercentText,
@@ -146,7 +146,7 @@ export const EpisodeCreatorCreditsField = ({
 }) => {
   // The save button belongs to the form around this field, which is told
   // whether the shares as typed can be saved whenever that changes.
-  const setSubmittable = useSetSubmittable();
+  const setSubmittable = SubmitGate.useSetSubmittable();
   const [rows, setRows] = useState<CreditEditorRow[]>(() =>
     initialCredits.map(({ shareBps, ...credit }, index) => ({
       ...credit,

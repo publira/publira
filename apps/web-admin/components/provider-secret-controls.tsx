@@ -4,12 +4,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 
-import {
-  ProviderCredentialHint,
-  ProviderCredentialModeButton,
-  ProviderCredentialSecretInput,
-  ProviderCredentialWhile,
-} from "./provider-credentials";
+import * as ProviderCredential from "./provider-credential";
 
 /**
  * A write-only secret a provider declares, inside its `ProviderCredential`: a
@@ -26,49 +21,49 @@ export const ProviderSecretControls = ({
   required: boolean;
 }) => (
   <>
-    <ProviderCredentialWhile mode="keep">
+    <ProviderCredential.While mode="keep">
       <div className="flex flex-wrap items-center gap-3">
-        <ProviderCredentialHint />
-        <ProviderCredentialModeButton mode="replace">
+        <ProviderCredential.Hint />
+        <ProviderCredential.ModeButton mode="replace">
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.settings.credentials.secret_change" />
           </Suspense>
-        </ProviderCredentialModeButton>
+        </ProviderCredential.ModeButton>
         {required ? null : (
-          <ProviderCredentialModeButton mode="clear">
+          <ProviderCredential.ModeButton mode="clear">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.settings.credentials.secret_remove" />
             </Suspense>
-          </ProviderCredentialModeButton>
+          </ProviderCredential.ModeButton>
         )}
       </div>
-    </ProviderCredentialWhile>
-    <ProviderCredentialWhile mode="replace">
+    </ProviderCredential.While>
+    <ProviderCredential.While mode="replace">
       <div className="flex flex-wrap items-center gap-3">
-        <ProviderCredentialSecretInput />
+        <ProviderCredential.SecretInput />
         {configured ? (
-          <ProviderCredentialModeButton mode="keep">
+          <ProviderCredential.ModeButton mode="keep">
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="admin.settings.credentials.secret_change_cancel" />
             </Suspense>
-          </ProviderCredentialModeButton>
+          </ProviderCredential.ModeButton>
         ) : null}
       </div>
-    </ProviderCredentialWhile>
-    <ProviderCredentialWhile mode="clear">
+    </ProviderCredential.While>
+    <ProviderCredential.While mode="clear">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="admin.settings.credentials.secret_removed" />
           </Suspense>
         </p>
-        <ProviderCredentialModeButton mode="keep">
+        <ProviderCredential.ModeButton mode="keep">
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="admin.settings.credentials.secret_remove_cancel" />
           </Suspense>
-        </ProviderCredentialModeButton>
+        </ProviderCredential.ModeButton>
       </div>
-    </ProviderCredentialWhile>
+    </ProviderCredential.While>
   </>
 );
 

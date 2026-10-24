@@ -13,11 +13,7 @@ import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -245,18 +241,18 @@ export const MemberList = async ({
         />
       )}
       {members.length > 0 || hasPageLinks ? (
-        <PaginationFooter>
-          <PaginationFooterDescription>
+        <PaginationFooter.Root>
+          <PaginationFooter.Description>
             {t("admin.members.pagination_description", {
               count: String(pageSize),
             })}
-          </PaginationFooterDescription>
-          <PaginationControls
+          </PaginationFooter.Description>
+          <PaginationFooter.Controls
             aria-label={t("admin.members.pagination_aria")}
             nextHref={nextHref}
             previousHref={previousHref}
           />
-        </PaginationFooter>
+        </PaginationFooter.Root>
       ) : null}
     </div>
   );

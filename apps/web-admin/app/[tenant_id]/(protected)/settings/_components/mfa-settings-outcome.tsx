@@ -64,7 +64,7 @@ const nextMfaSettingsChange = (
  * so the answer is dropped as the page is hidden; a layout Effect's cleanup
  * runs before the page is taken off the screen.
  */
-export const MfaSettingsOutcome = ({
+const MfaSettingsOutcome = ({
   children,
   hasSecondFactor,
   recoveryCodes,
@@ -102,7 +102,7 @@ export const MfaSettingsOutcome = ({
  * its form and leaves the last change in place, since the codes it shows
  * exist in plaintext nowhere else.
  */
-export const ReportMfaSettingsChange = () => {
+const MfaSettingsOutcomeReport = () => {
   const report = use(ReportMfaSettingsChangeContext);
   ActionForm.useSettled<ActionForm.Result & { recoveryCodes?: string[] }>(
     (state) => {
@@ -119,3 +119,5 @@ export const ReportMfaSettingsChange = () => {
 
   return null;
 };
+
+export { MfaSettingsOutcome as Root, MfaSettingsOutcomeReport as Report };

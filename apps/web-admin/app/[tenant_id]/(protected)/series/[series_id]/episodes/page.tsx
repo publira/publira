@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -11,24 +12,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageContext,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import {
@@ -72,18 +59,18 @@ type SeriesEpisodesPageProps =
 
 const SeriesEpisodesHeaderSkeleton = () => (
   <>
-    <AdminPageHeading>
-      <AdminPageContext>
+    <ConsolePage.Heading>
+      <ConsolePage.Context>
         <SkeletonLine className="h-4 w-40" />
-      </AdminPageContext>
-      <AdminPageTitle>
+      </ConsolePage.Context>
+      <ConsolePage.Title>
         <SkeletonLine className="h-7 w-48" />
-      </AdminPageTitle>
-      <AdminPageDescription>
+      </ConsolePage.Title>
+      <ConsolePage.Description>
         <SkeletonLine className="h-4 w-72" />
-      </AdminPageDescription>
-    </AdminPageHeading>
-    <AdminPageActions>
+      </ConsolePage.Description>
+    </ConsolePage.Heading>
+    <ConsolePage.Actions>
       <div className="flex flex-wrap gap-2">
         <SkeletonLine className="h-10 w-28" />
         <SkeletonLine className="h-10 w-28" />
@@ -91,7 +78,7 @@ const SeriesEpisodesHeaderSkeleton = () => (
         <SkeletonLine className="h-10 w-28" />
         <SkeletonLine className="h-10 w-28" />
       </div>
-    </AdminPageActions>
+    </ConsolePage.Actions>
   </>
 );
 
@@ -153,16 +140,16 @@ const SeriesEpisodesChrome = async ({
 
   return (
     <>
-      <AdminPageHeading>
-        <AdminPageContext>{`Series ${series_id}`}</AdminPageContext>
-        <AdminPageTitle>
+      <ConsolePage.Heading>
+        <ConsolePage.Context>{`Series ${series_id}`}</ConsolePage.Context>
+        <ConsolePage.Title>
           <Message message="admin.series.episodes.list_title" />
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Message message="admin.series.episodes.list_description" />
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <div className="flex flex-wrap gap-2">
           <Suspense fallback={null}>
             <TenantEditorOnly>
@@ -181,7 +168,7 @@ const SeriesEpisodesChrome = async ({
             <Message message="admin.series.episodes.back_to_series" />
           </LinkButton>
         </div>
-      </AdminPageActions>
+      </ConsolePage.Actions>
     </>
   );
 };
@@ -272,17 +259,17 @@ const SeriesEpisodesData = async ({
           ) : null}
         </CursorPageEmptyState>
         {hasPageLinks ? (
-          <PaginationFooter>
-            <PaginationFooterDescription>
+          <PaginationFooter.Root>
+            <PaginationFooter.Description>
               {t("admin.series.episodes.pagination_description", {
                 count: DEFAULT_PAGE_SIZE,
               })}
-            </PaginationFooterDescription>
-            <PaginationControls
+            </PaginationFooter.Description>
+            <PaginationFooter.Controls
               {...pageHrefs}
               aria-label={t("admin.series.episodes.pagination_aria")}
             />
-          </PaginationFooter>
+          </PaginationFooter.Root>
         ) : null}
       </>
     );
@@ -310,17 +297,17 @@ const SeriesEpisodesData = async ({
           timeZone={timeZone}
         />
       </div>
-      <PaginationFooter>
-        <PaginationFooterDescription>
+      <PaginationFooter.Root>
+        <PaginationFooter.Description>
           {t("admin.series.episodes.pagination_description", {
             count: DEFAULT_PAGE_SIZE,
           })}
-        </PaginationFooterDescription>
-        <PaginationControls
+        </PaginationFooter.Description>
+        <PaginationFooter.Controls
           {...pageHrefs}
           aria-label={t("admin.series.episodes.pagination_aria")}
         />
-      </PaginationFooter>
+      </PaginationFooter.Root>
     </>
   );
 };
@@ -330,13 +317,13 @@ const SeriesEpisodesPage = ({
   searchParams,
 }: SeriesEpisodesPageProps) => (
   <EpisodeSelectionProvider>
-    <AdminPage>
-      <AdminPageHeader>
+    <ConsolePage.Root>
+      <ConsolePage.Header>
         <Suspense fallback={<SeriesEpisodesHeaderSkeleton />}>
           <SeriesEpisodesChrome params={params} />
         </Suspense>
-      </AdminPageHeader>
-      <AdminPageContent>
+      </ConsolePage.Header>
+      <ConsolePage.Content>
         <FlashToast
           keyName="reordered"
           message="admin.series.episodes.reordered"
@@ -354,8 +341,8 @@ const SeriesEpisodesPage = ({
         <Suspense fallback={<SeriesEpisodesListSkeleton />}>
           <SeriesEpisodesData params={params} searchParams={searchParams} />
         </Suspense>
-      </AdminPageContent>
-    </AdminPage>
+      </ConsolePage.Content>
+    </ConsolePage.Root>
   </EpisodeSelectionProvider>
 );
 

@@ -5,18 +5,13 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { useCallback, useOptimistic, useState, useTransition } from "react";
 
 import { useClientMessages } from "#components/client-message";
-import {
-  SortableList,
-  SortableRows,
-  withItemMoved,
-} from "#components/sortable-list";
-import type { SortableRow } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 
 import { reorderCampaignBannersAction } from "../_lib/actions";
 
 interface CampaignBannerSortableListProps {
   /** One row per banner, composed on the server, in the tenant's order. */
-  rows: SortableRow[];
+  rows: Sortable.Row[];
   tenantId: string;
 }
 
@@ -46,7 +41,11 @@ export const CampaignBannerSortableList = ({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentBannerIds = optimisticBannerIds;
-      const nextBannerIds = withItemMoved(currentBannerIds, identity, event);
+      const nextBannerIds = Sortable.withItemMoved(
+        currentBannerIds,
+        identity,
+        event
+      );
       if (nextBannerIds === currentBannerIds) {
         return;
       }
@@ -76,17 +75,17 @@ export const CampaignBannerSortableList = ({
       {reorderErrorMessage ? (
         <FormMessage variant="destructive">{reorderErrorMessage}</FormMessage>
       ) : null}
-      <SortableList
+      <Sortable.Root
         aria-label={t("admin.campaign_banners.list_title")}
         className="grid gap-3"
         onDragEnd={handleDragEnd}
       >
-        <SortableRows
+        <Sortable.Rows
           disabled={isPending}
           order={optimisticBannerIds}
           rows={rows}
         />
-      </SortableList>
+      </Sortable.Root>
     </div>
   );
 };

@@ -27,7 +27,7 @@ const SetAddedPasskeyContext = createContext<Dispatch<string> | null>(null);
  * nothing half-named behind; naming is a form of its own, so the passkey the
  * add form stored is held here rather than in either form.
  */
-export const PasskeyAddition = ({
+const PasskeyAddition = ({
   add,
   name,
 }: {
@@ -48,9 +48,9 @@ export const PasskeyAddition = ({
 /**
  * Runs the registration ceremony for the signed-in account. Its answer carries
  * the recovery codes when the passkey was the account's first factor, which
- * `ReportMfaSettingsChange` among the children hands to the card.
+ * `MfaSettingsOutcome.Report` among the children hands to the card.
  */
-export const PasskeyAddForm = ({ children }: { children: ReactNode }) => {
+const PasskeyAdditionAddForm = ({ children }: { children: ReactNode }) => {
   const add = usePasskeyCeremony<PasskeyRegistrationState>(
     beginAccountPasskeyRegistrationAction,
     registerPasskey,
@@ -65,7 +65,7 @@ export const PasskeyAddForm = ({ children }: { children: ReactNode }) => {
 };
 
 /** Moves `PasskeyAddition` on to naming once the add form succeeds. */
-export const PasskeyAdded = () => {
+const PasskeyAdditionAdded = () => {
   const setAdded = use(SetAddedPasskeyContext);
   ActionForm.useSettled<NonNullable<PasskeyRegistrationState>>((state) => {
     if (state?.ok && state.passkeyId) {
@@ -77,12 +77,12 @@ export const PasskeyAdded = () => {
 };
 
 /** The passkey the add form stored, as the naming form submits it. */
-export const AddedPasskeyIdInput = () => (
+const PasskeyAdditionAddedIdInput = () => (
   <input name="passkey_id" type="hidden" value={use(AddedPasskeyContext)} />
 );
 
 /** Moves `PasskeyAddition` back to its add form once the name is saved. */
-export const PasskeyNamed = () => {
+const PasskeyAdditionNamed = () => {
   const setAdded = use(SetAddedPasskeyContext);
   ActionForm.useSettled((state) => {
     if (state?.ok) {
@@ -94,7 +94,7 @@ export const PasskeyNamed = () => {
 };
 
 /** Leaves the passkey unnamed and goes back to the add form. */
-export const SkipPasskeyNaming = ({ children }: { children: ReactNode }) => {
+const PasskeyAdditionSkipNaming = ({ children }: { children: ReactNode }) => {
   const setAdded = use(SetAddedPasskeyContext);
 
   return (
@@ -108,4 +108,13 @@ export const SkipPasskeyNaming = ({ children }: { children: ReactNode }) => {
       {children}
     </Button>
   );
+};
+
+export {
+  PasskeyAddition as Root,
+  PasskeyAdditionAdded as Added,
+  PasskeyAdditionAddedIdInput as AddedIdInput,
+  PasskeyAdditionAddForm as AddForm,
+  PasskeyAdditionNamed as Named,
+  PasskeyAdditionSkipNaming as SkipNaming,
 };

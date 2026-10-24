@@ -92,7 +92,7 @@ A password that is accepted but still owes a second factor earns a short-lived c
 | The console's MFA RPCs | `lib/admin-mfa.ts` |
 | The `verify` and `enroll` screens | `app/[tenant_id]/mfa/` |
 | The operator's own factor | `app/[tenant_id]/(protected)/settings/_components/mfa-settings-card.tsx` |
-| The enrollment QR code | `components/mfa-enrollment-secret.tsx`, drawn by `@publira/ui-components/qr-code` |
+| The enrollment QR code | `components/mfa-enrollment.tsx`, drawn by `@publira/ui-components/qr-code` |
 
 ### Distributed tracing
 

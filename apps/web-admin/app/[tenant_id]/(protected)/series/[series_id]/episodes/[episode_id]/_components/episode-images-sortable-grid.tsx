@@ -8,12 +8,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useTransition } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import {
-  SortableItem,
-  SortableItemHandle,
-  SortableList,
-  withItemMoved,
-} from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 import type { EpisodeImageItem } from "#lib/episode";
 import { useTenantId } from "#lib/use-tenant-id";
 
@@ -109,7 +104,7 @@ export const EpisodeImagesSortableGrid = ({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentItems = optimisticItems;
-      const movedItems = withItemMoved(currentItems, imageId, event);
+      const movedItems = Sortable.withItemMoved(currentItems, imageId, event);
       if (movedItems === currentItems) {
         return;
       }
@@ -128,13 +123,13 @@ export const EpisodeImagesSortableGrid = ({
   );
 
   return (
-    <SortableList
+    <Sortable.Root
       aria-label={t("admin.series.episodes.image_list_title")}
       className="grid grid-cols-2 gap-3 md:grid-cols-3"
       onDragEnd={handleDragEnd}
     >
       {optimisticItems.map((image, index) => (
-        <SortableItem
+        <Sortable.Item
           className="grid gap-2 border border-border bg-background p-2"
           disabled={isPending || !canEdit}
           id={image.id}
@@ -160,12 +155,12 @@ export const EpisodeImagesSortableGrid = ({
                 {image.displayOrder} / {image.width}x{image.height}
               </span>
               {canEdit ? (
-                <SortableItemHandle>
+                <Sortable.ItemHandle>
                   <ClientMessage
                     message="admin.series.episodes.image_reorder_action"
                     values={{ position: String(index + 1) }}
                   />
-                </SortableItemHandle>
+                </Sortable.ItemHandle>
               ) : null}
             </figcaption>
           </figure>
@@ -184,8 +179,8 @@ export const EpisodeImagesSortableGrid = ({
               />
             </div>
           ) : null}
-        </SortableItem>
+        </Sortable.Item>
       ))}
-    </SortableList>
+    </Sortable.Root>
   );
 };

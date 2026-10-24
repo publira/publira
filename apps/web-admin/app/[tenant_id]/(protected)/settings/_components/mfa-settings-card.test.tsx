@@ -143,11 +143,17 @@ vi.mock("#components/mfa-code-field", () => ({
   ),
 }));
 
-vi.mock("#components/mfa-enrollment-secret", async () => {
-  const { MfaEnrollmentSecretText } =
-    await import("#components/mfa-enrollment");
+// The tree's module also holds its Server Component parts, which read the
+// tenant through `next/root-params`, a module only the Next.js compiler can
+// provide. Nothing here renders them.
+vi.mock("#lib/tenant-id", () => ({
+  getTenantId: () => Promise.resolve("TENANT001"),
+}));
 
-  return { MfaEnrollmentSecret: MfaEnrollmentSecretText };
+vi.mock("#components/mfa-enrollment", async (importOriginal) => {
+  const MfaEnrollment = await importOriginal<Record<string, unknown>>();
+
+  return { ...MfaEnrollment, Secret: MfaEnrollment.SecretText };
 });
 
 const disabled: AdminMfaStatus = {

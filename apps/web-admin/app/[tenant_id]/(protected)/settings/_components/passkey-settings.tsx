@@ -18,15 +18,8 @@ import {
   deleteAccountPasskeyAction,
   renameAccountPasskeyAction,
 } from "../_lib/mfa-actions";
-import { ReportMfaSettingsChange } from "./mfa-settings-outcome";
-import {
-  AddedPasskeyIdInput,
-  PasskeyAddForm,
-  PasskeyAdded,
-  PasskeyAddition,
-  PasskeyNamed,
-  SkipPasskeyNaming,
-} from "./passkey-addition";
+import * as MfaSettingsOutcome from "./mfa-settings-outcome";
+import * as PasskeyAddition from "./passkey-addition";
 import { PasskeyRegenerateForm } from "./passkey-regeneration";
 
 const PasskeyNameField = ({
@@ -161,7 +154,7 @@ const PasskeyRemoveButton = ({
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="passkey_id" type="hidden" value={passkeyId} />
-      <ReportMfaSettingsChange />
+      <MfaSettingsOutcome.Report />
       <ActionForm.Fieldset className="grid">
         <ConfirmDialog.Root>
           <ConfirmDialog.Trigger
@@ -252,10 +245,10 @@ const PasskeyRow = ({
 );
 
 const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
-  <PasskeyAddForm>
+  <PasskeyAddition.AddForm>
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ReportMfaSettingsChange />
-    <PasskeyAdded />
+    <MfaSettingsOutcome.Report />
+    <PasskeyAddition.Added />
     <div className="flex justify-end">
       <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -268,7 +261,7 @@ const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
         </Suspense>
       </ActionForm.Submit>
     </div>
-  </PasskeyAddForm>
+  </PasskeyAddition.AddForm>
 );
 
 /**
@@ -282,9 +275,9 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
     showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <AddedPasskeyIdInput />
+    <PasskeyAddition.AddedIdInput />
     <SettledToast />
-    <PasskeyNamed />
+    <PasskeyAddition.Named />
     <p className="text-sm font-medium text-foreground">
       <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
         <Message message="admin.settings.mfa.passkey_name_title" />
@@ -292,11 +285,11 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
     </p>
     <PasskeyNameField />
     <div className="flex justify-end gap-2">
-      <SkipPasskeyNaming>
+      <PasskeyAddition.SkipNaming>
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="admin.settings.mfa.passkey_name_skip" />
         </Suspense>
-      </SkipPasskeyNaming>
+      </PasskeyAddition.SkipNaming>
       <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <ActionForm.Idle>
@@ -318,7 +311,7 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
 const PasskeyRegenerateStep = ({ tenantId }: { tenantId: string }) => (
   <PasskeyRegenerateForm>
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ReportMfaSettingsChange />
+    <MfaSettingsOutcome.Report />
     <div className="grid gap-1">
       <p className="text-sm font-medium text-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
@@ -396,7 +389,7 @@ export const PasskeySettings = ({
         </Suspense>
       </p>
     )}
-    <PasskeyAddition
+    <PasskeyAddition.Root
       add={<PasskeyAddStep tenantId={tenantId} />}
       name={<PasskeyNameStep tenantId={tenantId} />}
     />

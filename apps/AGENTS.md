@@ -33,8 +33,6 @@ import * as Dialog from "@publira/ui-components/dialog";
 - **Each part keeps its full name where it is declared** (`export const DialogTrigger = …`) and is renamed only where the module exports it (`export { DialogTrigger as Trigger }`), so React DevTools, error overlays, and stack traces name the component instead of showing `Root` and `Trigger` for every tree.
 - **A component that renders one element is a plain named export** — `Button`, `Input`, `Select`, the `Skeleton` family. A namespace holding only `Root` is ceremony.
 
-The per-app components of `web-admin` under `components/` and `app/**/_components/` still export flat `<Component><Part>` names until #4799 is done; a new compound component among them is written in the namespace form.
-
 ## Untrusted input: validate with zod at the boundary
 
 Treat every value that a caller can put into a request as untrusted, even when Next.js gives the surrounding object a TypeScript type. This includes:

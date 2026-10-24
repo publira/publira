@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
@@ -11,14 +12,6 @@ import * as Table from "@publira/ui-components/table";
 import * as Tabs from "@publira/ui-components/tabs";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import { formatPageDateTime, formatPagePath } from "../page-types";
@@ -27,16 +20,7 @@ import type {
   PageListItem,
   PageVersionListItem,
 } from "../page-types";
-import {
-  PageDiffFromSelect,
-  PageDiffToSelect,
-  PageDraft,
-  PageDraftPreview,
-  PageDraftTextarea,
-  PageSaveForm,
-  PageVersionDiff,
-  PageVersionLoadButton,
-} from "./page-draft-controls";
+import * as PageDraft from "./page-draft-controls";
 import { PagePublishForm } from "./page-publish-form";
 
 interface PageWorkspaceProps {
@@ -203,13 +187,13 @@ export const PageWorkspace = ({
   timeZone,
   unpublishAction,
 }: PageWorkspaceProps) => (
-  <PageDraft
+  <PageDraft.Root
     publishedVersionId={initialPage.publishedVersionId}
     versions={initialVersions}
   >
-    <AdminSections>
+    <ConsoleSection.Stack>
       {/* No section heading: the page heading already names this form. */}
-      <AdminSection>
+      <ConsoleSection.Root>
         <PublicationStatus
           locale={locale}
           page={initialPage}
@@ -218,7 +202,7 @@ export const PageWorkspace = ({
           unpublishAction={unpublishAction}
         />
 
-        <PageSaveForm action={saveAction} className="grid gap-4">
+        <PageDraft.SaveForm action={saveAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="page_id" type="hidden" value={initialPage.id} />
           <input
@@ -324,10 +308,10 @@ export const PageWorkspace = ({
                   </Tabs.List>
                   {/* The textarea is the form control, so it stays mounted behind the preview tab: an unmounted one submits nothing and loses the caret. */}
                   <Tabs.Panel keepMounted value="write">
-                    <PageDraftTextarea />
+                    <PageDraft.Textarea />
                   </Tabs.Panel>
                   <Tabs.Panel className="min-h-72" value="preview">
-                    <PageDraftPreview />
+                    <PageDraft.Preview />
                   </Tabs.Panel>
                 </Tabs.Root>
                 <Field.Description>
@@ -353,24 +337,24 @@ export const PageWorkspace = ({
               </ActionForm.Pending>
             </ActionForm.Submit>
           </div>
-        </PageSaveForm>
-      </AdminSection>
+        </PageDraft.SaveForm>
+      </ConsoleSection.Root>
 
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
                 <Message message="admin.pages.workspace.versions_title" />
               </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.pages.workspace.versions_description" />
               </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         {initialVersions.length === 0 ? (
           <FormMessage>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
@@ -425,13 +409,13 @@ export const PageWorkspace = ({
                   </Table.Cell>
                   <Table.Cell>
                     <div className="flex flex-wrap gap-2">
-                      <PageVersionLoadButton versionId={version.id}>
+                      <PageDraft.VersionLoadButton versionId={version.id}>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-24" />}
                         >
                           <Message message="admin.pages.workspace.load" />
                         </Suspense>
-                      </PageVersionLoadButton>
+                      </PageDraft.VersionLoadButton>
 
                       <PagePublishForm
                         asksReadersToAgree={asksReadersToAgree}
@@ -479,23 +463,23 @@ export const PageWorkspace = ({
             </Table.Body>
           </Table.Root>
         )}
-      </AdminSection>
+      </ConsoleSection.Root>
 
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-36" />}>
                 <Message message="admin.pages.workspace.diff_title" />
               </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.pages.workspace.diff_description" />
               </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         {initialVersions.length <= 1 ? (
           <FormMessage>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
@@ -512,7 +496,7 @@ export const PageWorkspace = ({
                   </Suspense>
                 </Field.Label>
                 <Field.Content>
-                  <PageDiffFromSelect />
+                  <PageDraft.DiffFromSelect />
                 </Field.Content>
               </Field.Root>
 
@@ -523,15 +507,15 @@ export const PageWorkspace = ({
                   </Suspense>
                 </Field.Label>
                 <Field.Content>
-                  <PageDiffToSelect />
+                  <PageDraft.DiffToSelect />
                 </Field.Content>
               </Field.Root>
             </div>
 
-            <PageVersionDiff />
+            <PageDraft.VersionDiff />
           </>
         )}
-      </AdminSection>
-    </AdminSections>
-  </PageDraft>
+      </ConsoleSection.Root>
+    </ConsoleSection.Stack>
+  </PageDraft.Root>
 );

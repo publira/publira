@@ -26,17 +26,15 @@ import {
 
 const notificationMenuLimit = 5;
 
-export { NotificationBellSkeleton } from "./notification-bell-menu";
-
 /**
  * The header's unread badge, with its accessible name.
  *
  * The unread count and the wording that reports it belong together: the name
  * is an `aria-label`, so it cannot stream as a node the way the rest of the
  * shell's copy does, and it has to be resolved wherever the count is. The
- * caller wraps this in a `<Suspense>` with {@link NotificationBellSkeleton}.
+ * caller wraps this in a `<Suspense>` with `NotificationBell.Skeleton`.
  */
-export const NotificationBell = async () => {
+const NotificationBell = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const [list, unread, t] = await Promise.all([
@@ -121,3 +119,23 @@ export const NotificationBell = async () => {
     </NotificationBellMenu>
   );
 };
+
+export { NotificationBell as Root };
+export {
+  NotificationBellContent as Content,
+  NotificationBellEmpty as Empty,
+  NotificationBellEmptyDescription as EmptyDescription,
+  NotificationBellEmptyTitle as EmptyTitle,
+  NotificationBellError as Error,
+  NotificationBellHeader as Header,
+  NotificationBellItem as Item,
+  NotificationBellItemDescription as ItemDescription,
+  NotificationBellItemState as ItemState,
+  NotificationBellItemTitle as ItemTitle,
+  NotificationBellList as List,
+  NotificationBellLoading as Loading,
+  NotificationBellMenu as Menu,
+  NotificationBellMore as More,
+  NotificationBellSkeleton as Skeleton,
+  NotificationBellTrigger as Trigger,
+} from "./notification-bell-menu";

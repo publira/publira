@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { StatusChip } from "@publira/ui-components/badge";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -7,21 +8,10 @@ import * as Table from "@publira/ui-components/table";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -69,21 +59,21 @@ export const ReaderComments = async ({
     !listErrorMessage && (comments.length > 0 || hasPageLinks);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.readers.comments_title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.readers.comments_description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
 
       {listErrorMessage ? (
         <SectionError.Root>
@@ -204,19 +194,19 @@ export const ReaderComments = async ({
       ) : null}
 
       {showPagination ? (
-        <PaginationFooter>
-          <PaginationFooterDescription>
+        <PaginationFooter.Root>
+          <PaginationFooter.Description>
             {t("admin.comments.pagination_description", {
               count: pageSize,
             })}
-          </PaginationFooterDescription>
-          <PaginationControls
+          </PaginationFooter.Description>
+          <PaginationFooter.Controls
             aria-label={t("admin.readers.comments_pagination_aria")}
             nextHref={nextHref}
             previousHref={previousHref}
           />
-        </PaginationFooter>
+        </PaginationFooter.Root>
       ) : null}
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

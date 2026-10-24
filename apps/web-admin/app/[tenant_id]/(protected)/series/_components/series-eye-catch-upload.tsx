@@ -25,7 +25,7 @@ const useSeriesEyeCatchPreviewUrl = (): string => {
  * picked for it. Its children are `SeriesEyeCatchPreviewTitle` and
  * `SeriesEyeCatchPreview`, framed above the file input.
  */
-export const SeriesEyeCatchUpload = ({ children }: { children: ReactNode }) => {
+const SeriesEyeCatchUpload = ({ children }: { children: ReactNode }) => {
   const [previewUrl, setPreviewUrl] = useState("");
 
   useEffect(
@@ -67,21 +67,15 @@ export const SeriesEyeCatchUpload = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const SeriesEyeCatchPreviewTitle = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <p className="mb-2 text-sm font-medium">{children}</p>;
+const SeriesEyeCatchPreviewTitle = ({ children }: { children: ReactNode }) => (
+  <p className="mb-2 text-sm font-medium">{children}</p>
+);
 
 /**
  * The picked file at the cover's aspect ratio. Its children are
  * `SeriesEyeCatchPreviewEmpty`, which stands in until a file is picked.
  */
-export const SeriesEyeCatchPreview = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const SeriesEyeCatchPreview = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
   const previewUrl = useSeriesEyeCatchPreviewUrl();
 
@@ -103,11 +97,7 @@ export const SeriesEyeCatchPreview = ({
 };
 
 /** Its children, shown in the preview only while no file is picked. */
-export const SeriesEyeCatchPreviewEmpty = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const SeriesEyeCatchPreviewEmpty = ({ children }: { children: ReactNode }) => {
   const previewUrl = useSeriesEyeCatchPreviewUrl();
 
   return previewUrl ? null : (
@@ -115,4 +105,11 @@ export const SeriesEyeCatchPreviewEmpty = ({
       {children}
     </div>
   );
+};
+
+export {
+  SeriesEyeCatchUpload as Root,
+  SeriesEyeCatchPreview as Preview,
+  SeriesEyeCatchPreviewEmpty as PreviewEmpty,
+  SeriesEyeCatchPreviewTitle as PreviewTitle,
 };

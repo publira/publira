@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -12,15 +13,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
@@ -212,21 +204,21 @@ const EditCampaignBannerPage = ({
   params,
   searchParams,
 }: EditCampaignBannerPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-64" />}>
             <EditCampaignBannerTitle searchParams={searchParams} />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <EditCampaignBannerDescription searchParams={searchParams} />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton
           render={<Link href="/campaign-banners" />}
           variant="outline"
@@ -235,9 +227,9 @@ const EditCampaignBannerPage = ({
             <Message message="admin.campaign_banners.back_to_list" />
           </Suspense>
         </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <FlashToast message="admin.campaign_banners.created" />
       <div className="grid gap-6">
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
@@ -263,8 +255,8 @@ const EditCampaignBannerPage = ({
           </Suspense>
         </SectionErrorBoundary>
       </div>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default EditCampaignBannerPage;

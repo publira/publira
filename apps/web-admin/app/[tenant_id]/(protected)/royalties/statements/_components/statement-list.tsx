@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -8,14 +9,9 @@ import { formatDateTime, formatPlainYearMonth } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminSection } from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -62,7 +58,7 @@ export const StatementList = async ({
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
 
   return (
-    <AdminSection>
+    <ConsoleSection.Root>
       {statements.length === 0 ? (
         <CursorPageEmptyState
           hasPageLinks={hasPageLinks}
@@ -191,22 +187,22 @@ export const StatementList = async ({
       )}
 
       {statements.length > 0 || hasPageLinks ? (
-        <PaginationFooter>
-          <PaginationFooterDescription>
+        <PaginationFooter.Root>
+          <PaginationFooter.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
               <Message
                 message="admin.royalties.statements.pagination_description"
                 values={{ count: String(pageSize) }}
               />
             </Suspense>
-          </PaginationFooterDescription>
-          <PaginationControls
+          </PaginationFooter.Description>
+          <PaginationFooter.Controls
             aria-label={t("admin.royalties.statements.pagination_aria")}
             nextHref={nextHref}
             previousHref={previousHref}
           />
-        </PaginationFooter>
+        </PaginationFooter.Root>
       ) : null}
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

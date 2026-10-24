@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -5,13 +6,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Switch } from "@publira/ui-components/switch";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import {
   MAX_WAIT_FREE_EXCLUDED_LATEST_COUNT,
@@ -47,21 +41,21 @@ export const SeriesWaitFreeForm = ({
   seriesPublicId,
   tenantId,
 }: SeriesWaitFreeFormProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.series.wait_free.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.series.wait_free.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_id" type="hidden" value={seriesId} />
@@ -186,5 +180,5 @@ export const SeriesWaitFreeForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </AdminSection>
+  </ConsoleSection.Root>
 );

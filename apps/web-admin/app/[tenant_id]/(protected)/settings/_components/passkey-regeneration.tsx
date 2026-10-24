@@ -17,7 +17,7 @@ import {
 /**
  * Replaces the recovery codes once one of the account's passkeys has
  * answered, for an account with no authenticator app to give a code. The new
- * batch comes back in the answer, which `ReportMfaSettingsChange` among the
+ * batch comes back in the answer, which `MfaSettingsOutcome.Report` among the
  * children hands to the card.
  */
 export const PasskeyRegenerateForm = ({

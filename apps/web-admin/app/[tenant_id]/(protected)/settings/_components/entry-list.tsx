@@ -36,7 +36,7 @@ const withRowChanged = (
   rows.map((row) => (row.id === id ? { ...row, ...change } : row));
 
 /** The entries a pasted text names, one a line, trimmed, blank lines dropped. */
-export const splitPastedEntries = (text: string): string[] =>
+const splitPastedEntries = (text: string): string[] =>
   text
     .split(/\r\n|\r|\n/u)
     .map((line) => line.trim())
@@ -81,7 +81,7 @@ const EntryListRowContext = createContext<EntryListRowValue | null>(null);
  * The row the calling slot sits in: its position for the accessible names the
  * caller writes, and its value for the message the caller words.
  */
-export const useEntryListRow = (): EntryListRowValue => {
+const useEntryListRow = (): EntryListRowValue => {
   const row = use(EntryListRowContext);
   if (!row) {
     throw new Error("useEntryListRow must be called inside <EntryListRows>.");
@@ -90,7 +90,7 @@ export const useEntryListRow = (): EntryListRowValue => {
 };
 
 /** Every field's value, in order, for a message about the list as a whole. */
-export const useEntryListValues = (): string[] =>
+const useEntryListValues = (): string[] =>
   useEntryListContext().rows.map((row) => row.value);
 
 /**
@@ -105,7 +105,7 @@ export const useEntryListValues = (): string[] =>
  * `EntryListField`, `EntryListInput`, and `EntryListRemove` for each row),
  * `EntryListAdd`, and `EntryListDescription`.
  */
-export const EntryList = ({
+const EntryList = ({
   children,
   initialEntries,
 }: {
@@ -176,7 +176,7 @@ export const EntryList = ({
   );
 };
 
-export const EntryListLegend = ({ children }: { children: ReactNode }) => (
+const EntryListLegend = ({ children }: { children: ReactNode }) => (
   <legend className="mb-2 text-sm font-medium text-foreground">
     {children}
   </legend>
@@ -205,7 +205,7 @@ const EntryListRow = ({
 };
 
 /** Renders its children once per row, each with that row's context. */
-export const EntryListRows = ({ children }: { children: ReactNode }) => {
+const EntryListRows = ({ children }: { children: ReactNode }) => {
   const { rows } = useEntryListContext();
 
   return rows.map((row, index) => (
@@ -216,12 +216,12 @@ export const EntryListRows = ({ children }: { children: ReactNode }) => {
 };
 
 /** The row's field: its input and the message about it. */
-export const EntryListField = (props: Omit<Field.RootProps, "className">) => (
+const EntryListField = (props: Omit<Field.RootProps, "className">) => (
   <Field.Root className="min-w-0 flex-1" {...props} />
 );
 
 /** The row's input. `name` and `aria-label` are the caller's. */
-export const EntryListInput = (
+const EntryListInput = (
   props: Omit<
     InputProps,
     "onBlur" | "onChange" | "onPaste" | "ref" | "value"
@@ -251,7 +251,7 @@ export const EntryListInput = (
 };
 
 /** The button that removes the row. Its accessible name is the caller's. */
-export const EntryListRemove = ({
+const EntryListRemove = ({
   "aria-label": ariaLabel,
 }: {
   "aria-label": string;
@@ -276,7 +276,7 @@ export const EntryListRemove = ({
 };
 
 /** The button that adds an empty row and focuses it. */
-export const EntryListAdd = ({ children }: { children: ReactNode }) => {
+const EntryListAdd = ({ children }: { children: ReactNode }) => {
   const { addRow } = useEntryListContext();
 
   return (
@@ -289,12 +289,27 @@ export const EntryListAdd = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const EntryListDescription = ({ children }: { children: ReactNode }) => (
+const EntryListDescription = ({ children }: { children: ReactNode }) => (
   <p className="text-xs text-muted-foreground">{children}</p>
 );
 
 /** A message about the list as a whole, shown while there is one. */
-export const EntryListMessage = ({ children }: { children?: string }) =>
+const EntryListMessage = ({ children }: { children?: string }) =>
   children === undefined ? null : (
     <FormMessage variant="destructive">{children}</FormMessage>
   );
+
+export {
+  EntryList as Root,
+  EntryListAdd as Add,
+  EntryListDescription as Description,
+  EntryListField as Field,
+  EntryListInput as Input,
+  EntryListLegend as Legend,
+  EntryListMessage as Message,
+  EntryListRemove as Remove,
+  EntryListRows as Rows,
+  splitPastedEntries,
+  useEntryListRow as useRow,
+  useEntryListValues as useValues,
+};

@@ -8,7 +8,7 @@ import { useClientMessages } from "#components/client-message";
 import type { TenantLegalPage } from "#lib/tenant-legal-pages-shared";
 
 /** A published page the tenant can nominate. */
-export interface LegalPageOption {
+interface LegalPageOption {
   pageId: string;
   slug: string;
   title: string;
@@ -33,7 +33,7 @@ const useLegalPageSelection = () => {
 };
 
 /** Holds the page one role is nominating, `""` for none. */
-export const LegalPagePicker = ({
+const LegalPagePicker = ({
   children,
   initialPageId,
 }: {
@@ -55,7 +55,7 @@ export const LegalPagePicker = ({
  * offered even when the list lacks it, so the saved value stays shown and
  * saving the other role does not drop it. `children` is the popup.
  */
-export const LegalPageCombobox = ({
+const LegalPageCombobox = ({
   children,
   name,
   nominated,
@@ -109,10 +109,17 @@ export const LegalPageCombobox = ({
 };
 
 /** Renders its children while `pageId` is the one picked. */
-export const LegalPageWhileSelected = ({
+const LegalPageWhileSelected = ({
   children,
   pageId,
 }: {
   children: ReactNode;
   pageId: string;
 }) => (useLegalPageSelection().pageId === pageId ? children : null);
+
+export {
+  LegalPagePicker as Root,
+  LegalPageCombobox as Combobox,
+  LegalPageWhileSelected as WhileSelected,
+};
+export type { LegalPageOption as Option };

@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -10,24 +11,11 @@ import type {
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import { updateTenantThemeSettingsAction } from "../_lib/actions";
 import { ThemePreview } from "./theme-preview";
-import {
-  ThemeColorInput,
-  ThemeFontFamilyInput,
-  ThemeSettingsSaved,
-  ThemeSettingsScope,
-} from "./theme-settings-fields";
+import * as ThemeSettings from "./theme-settings-fields";
 
 interface ThemeSettingsFormProps {
   initialTheme: TenantTheme;
@@ -48,7 +36,7 @@ const ThemeColorControl = ({
   name: string;
 }) => (
   <Field.Content>
-    <ThemeColorInput field={field} name={name} />
+    <ThemeSettings.ColorInput field={field} name={name} />
     {children}
     <ActionForm.FieldError name={field} />
   </Field.Content>
@@ -58,7 +46,7 @@ export const ThemeSettingsForm = ({
   initialTheme,
   tenantId,
 }: ThemeSettingsFormProps) => (
-  <ThemeSettingsScope initialTheme={initialTheme}>
+  <ThemeSettings.Root initialTheme={initialTheme}>
     <Tabs.Root defaultValue="edit">
       <Tabs.List>
         <Tabs.Tab value="edit">
@@ -74,34 +62,34 @@ export const ThemeSettingsForm = ({
       </Tabs.List>
 
       <Tabs.Panel value="edit">
-        <AdminSections>
+        <ConsoleSection.Stack>
           <ActionForm.Root
             action={updateTenantThemeSettingsAction}
             className="contents"
           >
             <input name="tenant_id" type="hidden" value={tenantId} />
-            <ThemeSettingsSaved />
+            <ThemeSettings.Saved />
 
             <ActionForm.Fieldset className="contents">
-              <AdminSection>
-                <AdminSectionHeader>
-                  <AdminSectionHeading>
-                    <AdminSectionTitle>
+              <ConsoleSection.Root>
+                <ConsoleSection.Header>
+                  <ConsoleSection.Heading>
+                    <ConsoleSection.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-40" />}
                       >
                         <Message message="admin.settings.theme.typefaces.title" />
                       </Suspense>
-                    </AdminSectionTitle>
-                    <AdminSectionDescription>
+                    </ConsoleSection.Title>
+                    <ConsoleSection.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-80" />}
                       >
                         <Message message="admin.settings.theme.typefaces.description" />
                       </Suspense>
-                    </AdminSectionDescription>
-                  </AdminSectionHeading>
-                </AdminSectionHeader>
+                    </ConsoleSection.Description>
+                  </ConsoleSection.Heading>
+                </ConsoleSection.Header>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <Field.Root>
                     <Field.Label>
@@ -112,7 +100,7 @@ export const ThemeSettingsForm = ({
                       </Suspense>
                     </Field.Label>
                     <Field.Content>
-                      <ThemeFontFamilyInput
+                      <ThemeSettings.FontFamilyInput
                         field="serifFontFamily"
                         name="serif_font_family"
                         placeholder={
@@ -138,7 +126,7 @@ export const ThemeSettingsForm = ({
                       </Suspense>
                     </Field.Label>
                     <Field.Content>
-                      <ThemeFontFamilyInput
+                      <ThemeSettings.FontFamilyInput
                         field="sansFontFamily"
                         name="sans_font_family"
                         placeholder={
@@ -156,27 +144,27 @@ export const ThemeSettingsForm = ({
                     </Field.Content>
                   </Field.Root>
                 </div>
-              </AdminSection>
+              </ConsoleSection.Root>
 
-              <AdminSection>
-                <AdminSectionHeader>
-                  <AdminSectionHeading>
-                    <AdminSectionTitle>
+              <ConsoleSection.Root>
+                <ConsoleSection.Header>
+                  <ConsoleSection.Heading>
+                    <ConsoleSection.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-40" />}
                       >
                         <Message message="admin.settings.theme.groups.brand.title" />
                       </Suspense>
-                    </AdminSectionTitle>
-                    <AdminSectionDescription>
+                    </ConsoleSection.Title>
+                    <ConsoleSection.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-80" />}
                       >
                         <Message message="admin.settings.theme.groups.brand.description" />
                       </Suspense>
-                    </AdminSectionDescription>
-                  </AdminSectionHeading>
-                </AdminSectionHeader>
+                    </ConsoleSection.Description>
+                  </ConsoleSection.Heading>
+                </ConsoleSection.Header>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <div className="grid gap-5 md:grid-cols-2">
                     <Field.Root>
@@ -311,27 +299,27 @@ export const ThemeSettingsForm = ({
                     </Field.Root>
                   </div>
                 </div>
-              </AdminSection>
+              </ConsoleSection.Root>
 
-              <AdminSection>
-                <AdminSectionHeader>
-                  <AdminSectionHeading>
-                    <AdminSectionTitle>
+              <ConsoleSection.Root>
+                <ConsoleSection.Header>
+                  <ConsoleSection.Heading>
+                    <ConsoleSection.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-40" />}
                       >
                         <Message message="admin.settings.theme.groups.surface.title" />
                       </Suspense>
-                    </AdminSectionTitle>
-                    <AdminSectionDescription>
+                    </ConsoleSection.Title>
+                    <ConsoleSection.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-80" />}
                       >
                         <Message message="admin.settings.theme.groups.surface.description" />
                       </Suspense>
-                    </AdminSectionDescription>
-                  </AdminSectionHeading>
-                </AdminSectionHeader>
+                    </ConsoleSection.Description>
+                  </ConsoleSection.Heading>
+                </ConsoleSection.Header>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <div className="grid gap-5 md:grid-cols-2">
                     <Field.Root>
@@ -548,27 +536,27 @@ export const ThemeSettingsForm = ({
                     </Field.Root>
                   </div>
                 </div>
-              </AdminSection>
+              </ConsoleSection.Root>
 
-              <AdminSection>
-                <AdminSectionHeader>
-                  <AdminSectionHeading>
-                    <AdminSectionTitle>
+              <ConsoleSection.Root>
+                <ConsoleSection.Header>
+                  <ConsoleSection.Heading>
+                    <ConsoleSection.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-40" />}
                       >
                         <Message message="admin.settings.theme.groups.ui.title" />
                       </Suspense>
-                    </AdminSectionTitle>
-                    <AdminSectionDescription>
+                    </ConsoleSection.Title>
+                    <ConsoleSection.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-80" />}
                       >
                         <Message message="admin.settings.theme.groups.ui.description" />
                       </Suspense>
-                    </AdminSectionDescription>
-                  </AdminSectionHeading>
-                </AdminSectionHeader>
+                    </ConsoleSection.Description>
+                  </ConsoleSection.Heading>
+                </ConsoleSection.Header>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <Field.Root>
                     <Field.Label required>
@@ -625,27 +613,27 @@ export const ThemeSettingsForm = ({
                     </ThemeColorControl>
                   </Field.Root>
                 </div>
-              </AdminSection>
+              </ConsoleSection.Root>
 
-              <AdminSection>
-                <AdminSectionHeader>
-                  <AdminSectionHeading>
-                    <AdminSectionTitle>
+              <ConsoleSection.Root>
+                <ConsoleSection.Header>
+                  <ConsoleSection.Heading>
+                    <ConsoleSection.Title>
                       <Suspense
                         fallback={<SkeletonLine className="h-5 w-40" />}
                       >
                         <Message message="admin.settings.theme.groups.status.title" />
                       </Suspense>
-                    </AdminSectionTitle>
-                    <AdminSectionDescription>
+                    </ConsoleSection.Title>
+                    <ConsoleSection.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-80" />}
                       >
                         <Message message="admin.settings.theme.groups.status.description" />
                       </Suspense>
-                    </AdminSectionDescription>
-                  </AdminSectionHeading>
-                </AdminSectionHeader>
+                    </ConsoleSection.Description>
+                  </ConsoleSection.Heading>
+                </ConsoleSection.Header>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <div className="grid gap-5 md:grid-cols-2">
                     <Field.Root>
@@ -821,7 +809,7 @@ export const ThemeSettingsForm = ({
                     </Field.Root>
                   </div>
                 </div>
-              </AdminSection>
+              </ConsoleSection.Root>
             </ActionForm.Fieldset>
 
             <div className="flex justify-end">
@@ -837,28 +825,28 @@ export const ThemeSettingsForm = ({
               </ActionForm.Submit>
             </div>
           </ActionForm.Root>
-        </AdminSections>
+        </ConsoleSection.Stack>
       </Tabs.Panel>
 
       <Tabs.Panel value="preview">
-        <AdminSection>
-          <AdminSectionHeader>
-            <AdminSectionHeading>
-              <AdminSectionTitle>
+        <ConsoleSection.Root>
+          <ConsoleSection.Header>
+            <ConsoleSection.Heading>
+              <ConsoleSection.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                   <Message message="admin.settings.theme.preview.title" />
                 </Suspense>
-              </AdminSectionTitle>
-              <AdminSectionDescription>
+              </ConsoleSection.Title>
+              <ConsoleSection.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                   <Message message="admin.settings.theme.preview.description" />
                 </Suspense>
-              </AdminSectionDescription>
-            </AdminSectionHeading>
-          </AdminSectionHeader>
+              </ConsoleSection.Description>
+            </ConsoleSection.Heading>
+          </ConsoleSection.Header>
           <ThemePreview />
-        </AdminSection>
+        </ConsoleSection.Root>
       </Tabs.Panel>
     </Tabs.Root>
-  </ThemeSettingsScope>
+  </ThemeSettings.Root>
 );

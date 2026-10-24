@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -12,21 +14,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-  AdminSections,
-} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -158,21 +145,21 @@ const CreatorAccountsSection = async ({
   }
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
               <Message message="admin.creators.accounts.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
               <Message message="admin.creators.accounts.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <CreatorAccounts
         accounts={result.accounts}
         creatorId={result.creator.id}
@@ -181,36 +168,36 @@ const CreatorAccountsSection = async ({
         tenantId={tenantId}
         timeZone={timeZone}
       />
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };
 
 const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.creators.edit_title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="admin.creators.edit_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/creators" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
             <Message message="admin.creators.back_to_list" />
           </Suspense>
         </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <FlashToast message="admin.creators.created" />
-      <AdminSections>
+      <ConsoleSection.Stack>
         <SectionErrorBoundary
           title={
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -235,9 +222,9 @@ const EditCreatorPage = ({ params }: EditCreatorPageProps) => (
             <CreatorAccountsSection params={params} />
           </Suspense>
         </SectionErrorBoundary>
-      </AdminSections>
-    </AdminPageContent>
-  </AdminPage>
+      </ConsoleSection.Stack>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default EditCreatorPage;

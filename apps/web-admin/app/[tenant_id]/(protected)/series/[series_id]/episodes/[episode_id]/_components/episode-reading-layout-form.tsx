@@ -1,16 +1,10 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { spreadStartPageOf } from "#lib/reading-layout";
 import type {
@@ -18,12 +12,8 @@ import type {
   ReadingLayout,
 } from "#lib/reading-layout";
 
-import {
-  EpisodeReadingDirectionSelect,
-  SpreadStartPageField,
-  SpreadStartSourceField,
-  SpreadStartSourceSelect,
-} from "./episode-reading-layout-controls";
+import { EpisodeReadingDirectionSelect } from "./episode-reading-direction-select";
+import * as SpreadStart from "./episode-reading-layout-controls";
 
 interface EpisodeReadingLayoutFormProps {
   action: (
@@ -79,21 +69,21 @@ export const EpisodeReadingLayoutForm = ({
   }
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.episodes.layout.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="admin.series.episodes.layout.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root action={action} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="series_public_id" type="hidden" value={seriesPublicId} />
@@ -115,7 +105,7 @@ export const EpisodeReadingLayoutForm = ({
             </Field.Content>
           </Field.Root>
 
-          <SpreadStartSourceField
+          <SpreadStart.Root
             initialValue={
               initialLayout.spreadStartIndex === undefined
                 ? "series"
@@ -129,7 +119,7 @@ export const EpisodeReadingLayoutForm = ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <SpreadStartSourceSelect
+                <SpreadStart.SourceSelect
                   hasNoPages={hasNoPages}
                   seriesSpreadStartPage={seriesSpreadStartPage}
                 />
@@ -144,7 +134,7 @@ export const EpisodeReadingLayoutForm = ({
                 ) : null}
               </Field.Content>
             </Field.Root>
-            <SpreadStartPageField>
+            <SpreadStart.PageField>
               <Field.Root>
                 <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -175,8 +165,8 @@ export const EpisodeReadingLayoutForm = ({
                   )}
                 </Field.Content>
               </Field.Root>
-            </SpreadStartPageField>
-          </SpreadStartSourceField>
+            </SpreadStart.PageField>
+          </SpreadStart.Root>
         </ActionForm.Fieldset>
 
         <div className="mt-2 flex justify-end gap-2">
@@ -194,6 +184,6 @@ export const EpisodeReadingLayoutForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

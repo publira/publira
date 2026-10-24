@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -10,16 +11,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageContext,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import {
   TenantEditorRoute,
@@ -179,41 +170,41 @@ const NewEpisodeFormSkeleton = () => (
 );
 
 const NewEpisodePage = ({ params }: Pick<NewEpisodePageProps, "params">) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantEditorRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageContext>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Context>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <NewEpisodeContext params={params} />
               </Suspense>
-            </AdminPageContext>
-            <AdminPageTitle>
+            </ConsolePage.Context>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
                 <Message message="admin.series.episodes.new_title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="admin.series.episodes.new_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-          <AdminPageActions>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+          <ConsolePage.Actions>
             <Suspense fallback={<SkeletonLine className="h-10 w-56" />}>
               <NewEpisodeActions params={params} />
             </Suspense>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
+          </ConsolePage.Actions>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <Suspense fallback={<NewEpisodeFormSkeleton />}>
             <NewEpisodeFormData params={params} />
           </Suspense>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantEditorRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default NewEpisodePage;

@@ -26,7 +26,7 @@ import {
   centreCropRect,
   framedPreviewStyle,
 } from "#components/image-crop/crop";
-import { ImageCropDialog } from "#components/image-crop/crop-dialog";
+import * as ImageCropDialog from "#components/image-crop/crop-dialog";
 import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 
@@ -64,7 +64,7 @@ const useEyeCatchAspectSlot = () => {
  * The file picked for one ratio and the part of it the editor framed. The
  * form around it is composed on the server.
  */
-export const EyeCatchAspectSlot = ({
+const EyeCatchAspectSlot = ({
   aspect,
   children,
   currentUrl,
@@ -164,7 +164,7 @@ export const EyeCatchAspectSlot = ({
  * The ratio's image, which picks a file for it when pressed; `children` stand
  * in for the image while the ratio has none.
  */
-export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
+const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
   const { aspect, crop, currentUrl, fileInputRef, localPreviewUrl, source } =
     useEyeCatchAspectSlot();
@@ -215,7 +215,7 @@ export const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
 };
 
 /** The file picked for the ratio, posted as `aspect_image`. */
-export const EyeCatchAspectFileInput = () => {
+const EyeCatchAspectFileInput = () => {
   const { fileInputRef, onImageFileChange } = useEyeCatchAspectSlot();
   const { pending } = useFormStatus();
 
@@ -233,7 +233,7 @@ export const EyeCatchAspectFileInput = () => {
 };
 
 /** Opens the frame again once a file is picked; `children` are its wording. */
-export const EyeCatchAspectAdjust = ({ children }: { children: ReactNode }) => {
+const EyeCatchAspectAdjust = ({ children }: { children: ReactNode }) => {
   const { localPreviewUrl, onFramingChange } = useEyeCatchAspectSlot();
 
   return localPreviewUrl ? (
@@ -249,7 +249,7 @@ export const EyeCatchAspectAdjust = ({ children }: { children: ReactNode }) => {
 };
 
 /** Uploads the picked file, closed until one is picked; `children` are its wording. */
-export const EyeCatchAspectUpload = ({ children }: { children: ReactNode }) => {
+const EyeCatchAspectUpload = ({ children }: { children: ReactNode }) => {
   const { localPreviewUrl } = useEyeCatchAspectSlot();
 
   return (
@@ -260,7 +260,7 @@ export const EyeCatchAspectUpload = ({ children }: { children: ReactNode }) => {
 };
 
 /** The heading of the ratio's frame, naming the ratio being framed. */
-export const EyeCatchAspectCropTitle = () => {
+const EyeCatchAspectCropTitle = () => {
   const t = useClientMessages();
   const { aspect } = useEyeCatchAspectSlot();
 
@@ -269,12 +269,8 @@ export const EyeCatchAspectCropTitle = () => {
   });
 };
 
-/** The frame of the picked file; `children` is the dialog's `ImageCropDialogTitle`. */
-export const EyeCatchAspectCropDialog = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+/** The frame of the picked file; `children` is the dialog's `ImageCropDialog.Title`. */
+const EyeCatchAspectCropDialog = ({ children }: { children: ReactNode }) => {
   const {
     aspect,
     crop,
@@ -287,7 +283,7 @@ export const EyeCatchAspectCropDialog = ({
   } = useEyeCatchAspectSlot();
 
   return localPreviewUrl ? (
-    <ImageCropDialog
+    <ImageCropDialog.Root
       aspect={aspect}
       crop={crop}
       imageUrl={localPreviewUrl}
@@ -298,6 +294,16 @@ export const EyeCatchAspectCropDialog = ({
       source={source}
     >
       {children}
-    </ImageCropDialog>
+    </ImageCropDialog.Root>
   ) : null;
+};
+
+export {
+  EyeCatchAspectSlot as Root,
+  EyeCatchAspectAdjust as Adjust,
+  EyeCatchAspectCropDialog as CropDialog,
+  EyeCatchAspectCropTitle as CropTitle,
+  EyeCatchAspectFileInput as FileInput,
+  EyeCatchAspectPicker as Picker,
+  EyeCatchAspectUpload as Upload,
 };

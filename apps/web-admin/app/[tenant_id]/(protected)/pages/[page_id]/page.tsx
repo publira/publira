@@ -1,5 +1,7 @@
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -15,16 +17,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSections,
-} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -89,10 +81,10 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "page_id");
 
 const PageWorkspaceSkeleton = () => (
-  <AdminSections>
+  <ConsoleSection.Stack>
     <Skeleton className="h-[520px]" />
     <Skeleton className="h-72" />
-  </AdminSections>
+  </ConsoleSection.Stack>
 );
 
 const PageLoadError = ({ message }: { message: string }) => (
@@ -179,7 +171,7 @@ const PageWorkspaceData = async ({
 
   if (shownLocale && !visibleLocales.includes(shownLocale)) {
     return (
-      <AdminSections>
+      <ConsoleSection.Stack>
         <TranslationTabs
           hrefFor={hrefFor}
           locales={locales}
@@ -192,7 +184,7 @@ const PageWorkspaceData = async ({
           tenantId={tenantId}
           translationLocale={shownLocale}
         />
-      </AdminSections>
+      </ConsoleSection.Stack>
     );
   }
 
@@ -226,7 +218,7 @@ const PageWorkspaceData = async ({
   const selectedLocale = pageResult.page.locale;
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       {selectedLocale ? (
         <TranslationTabs
           hrefFor={hrefFor}
@@ -258,34 +250,34 @@ const PageWorkspaceData = async ({
         timeZone={timeZone}
         unpublishAction={unpublishPageAction}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const EditPagePage = ({ params, searchParams }: EditPagePageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.pages.edit_title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="admin.pages.edit_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/pages" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
             <Message message="admin.pages.back_to_list" />
           </Suspense>
         </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <FlashToast message="admin.pages.created" />
       <FlashToast keyName="saved" message="admin.pages.saved" />
       <FlashToast keyName="published" message="admin.pages.published_success" />
@@ -313,8 +305,8 @@ const EditPagePage = ({ params, searchParams }: EditPagePageProps) => (
           </TenantEditorFieldset>
         </Suspense>
       </SectionErrorBoundary>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default EditPagePage;

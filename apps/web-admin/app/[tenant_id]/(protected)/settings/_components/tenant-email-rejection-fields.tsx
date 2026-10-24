@@ -15,33 +15,21 @@ import {
 } from "#lib/tenant-email-rejection-settings-shared";
 
 import type { TenantEmailRejectionActionState } from "../settings-types";
-import {
-  EntryList,
-  EntryListAdd,
-  EntryListDescription,
-  EntryListField,
-  EntryListInput,
-  EntryListLegend,
-  EntryListMessage,
-  EntryListRemove,
-  EntryListRows,
-  useEntryListRow,
-  useEntryListValues,
-} from "./entry-list";
+import * as EntryList from "./entry-list";
 
 type SettledState = NonNullable<TenantEmailRejectionActionState>;
 
 /** One address or domain, named once the operator has left its field. */
 const EmailRejectionEntry = () => {
   const t = useClientMessages();
-  const { position, touched, value } = useEntryListRow();
+  const { position, touched, value } = EntryList.useRow();
   const entry = value.trim();
   const invalid = touched && entry !== "" && !isEmailRejectionEntry(entry);
 
   return (
     <>
-      <EntryListField invalid={invalid}>
-        <EntryListInput
+      <EntryList.Field invalid={invalid}>
+        <EntryList.Input
           aria-label={t("admin.settings.email_rejection.entry_label", {
             position,
           })}
@@ -55,8 +43,8 @@ const EmailRejectionEntry = () => {
             />
           </FormMessage>
         ) : null}
-      </EntryListField>
-      <EntryListRemove
+      </EntryList.Field>
+      <EntryList.Remove
         aria-label={t("admin.settings.email_rejection.entry_remove", {
           position,
         })}
@@ -69,21 +57,21 @@ const EmailRejectionEntry = () => {
 const EmailRejectionEntriesMessage = () => {
   const t = useClientMessages();
   const state = ActionForm.useState<SettledState>();
-  const list = parseEmailRejectionEntries(useEntryListValues());
+  const list = parseEmailRejectionEntries(EntryList.useValues());
 
   if (!list.ok && list.reason === "too_many") {
     return (
-      <EntryListMessage>
+      <EntryList.Message>
         {t("admin.settings.email_rejection.validation.too_many", {
           max: MAX_EMAIL_REJECTION_ENTRIES,
         })}
-      </EntryListMessage>
+      </EntryList.Message>
     );
   }
   return (
-    <EntryListMessage>
+    <EntryList.Message>
       {state?.ok === false ? state.fieldErrors?.entries : undefined}
-    </EntryListMessage>
+    </EntryList.Message>
   );
 };
 
@@ -151,21 +139,21 @@ export const TenantEmailRejectionFields = ({
         </FormMessage>
       ) : null}
 
-      <EntryList initialEntries={entries} key={savedCount}>
-        <EntryListLegend>
+      <EntryList.Root initialEntries={entries} key={savedCount}>
+        <EntryList.Legend>
           <ClientMessage message="admin.settings.email_rejection.entries_label" />
-        </EntryListLegend>
-        <EntryListRows>
+        </EntryList.Legend>
+        <EntryList.Rows>
           <EmailRejectionEntry />
-        </EntryListRows>
-        <EntryListAdd>
+        </EntryList.Rows>
+        <EntryList.Add>
           <ClientMessage message="admin.settings.email_rejection.entries_add" />
-        </EntryListAdd>
-        <EntryListDescription>
+        </EntryList.Add>
+        <EntryList.Description>
           <ClientMessage message="admin.settings.email_rejection.entries_description" />
-        </EntryListDescription>
+        </EntryList.Description>
         <EmailRejectionEntriesMessage />
-      </EntryList>
+      </EntryList.Root>
     </>
   );
 };

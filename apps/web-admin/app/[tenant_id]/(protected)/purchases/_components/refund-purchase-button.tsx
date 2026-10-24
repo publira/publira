@@ -9,11 +9,7 @@ import { Message } from "#components/message";
 import { SettledToast } from "#components/settled-toast";
 
 import { refundPurchaseAction } from "../_lib/actions";
-import {
-  RefundConfirmButton,
-  RefundReason,
-  RefundReasonTextarea,
-} from "./refund-reason";
+import * as RefundReason from "./refund-reason";
 
 interface RefundPurchaseButtonProps {
   purchaseId: string;
@@ -46,7 +42,7 @@ export const RefundPurchaseButton = ({
       <input name="purchase_id" type="hidden" value={purchaseId} />
       <SettledToast />
       <ActionForm.Fieldset className="grid justify-start">
-        <RefundReason>
+        <RefundReason.Root>
           <Dialog.Root>
             <Dialog.Trigger
               render={<Button type="button" variant="destructive" />}
@@ -90,7 +86,7 @@ export const RefundPurchaseButton = ({
                       </Suspense>
                     </Field.Label>
                     <Field.Content>
-                      <RefundReasonTextarea formId={formId} />
+                      <RefundReason.Textarea formId={formId} />
                     </Field.Content>
                     <Field.Description>
                       <Suspense
@@ -111,19 +107,19 @@ export const RefundPurchaseButton = ({
                         <Message message="admin.common.cancel" />
                       </Suspense>
                     </Dialog.Close>
-                    <RefundConfirmButton formId={formId}>
+                    <RefundReason.ConfirmButton formId={formId}>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-12" />}
                       >
                         <Message message="admin.purchases.refund_confirm_action" />
                       </Suspense>
-                    </RefundConfirmButton>
+                    </RefundReason.ConfirmButton>
                   </Dialog.Footer>
                 </Dialog.Popup>
               </Dialog.Viewport>
             </Dialog.Portal>
           </Dialog.Root>
-        </RefundReason>
+        </RefundReason.Root>
       </ActionForm.Fieldset>
     </ActionForm.Root>
   );

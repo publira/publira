@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -15,30 +17,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSectionActions,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
   TenantAdminRoute,
@@ -93,16 +75,16 @@ const statementParamsSchema = z.object({
 });
 
 const StatementSkeleton = () => (
-  <AdminSections>
-    <AdminSection>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-48" />
       <Skeleton className="h-24" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
       <Table.Skeleton />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );
 
 const StatementContent = async ({
@@ -165,14 +147,14 @@ const StatementContent = async ({
   const closedAt = formatDateTime(statement.closedAt, { locale, timeZone });
 
   return (
-    <AdminSections>
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+    <ConsoleSection.Stack>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               {formatPlainYearMonth(statement.period, { locale })}
-            </AdminSectionTitle>
-            <AdminSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 {statement.closedByUserName ? (
                   <Message
@@ -193,9 +175,9 @@ const StatementContent = async ({
                   values={{ time_zone: statement.timeZone }}
                 />
               </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-          <AdminSectionActions>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+          <ConsoleSection.Actions>
             <LinkButton
               href={royaltyStatementCsvPath(statement.period)}
               variant="outline"
@@ -204,31 +186,31 @@ const StatementContent = async ({
                 <Message message="admin.royalties.export.button" />
               </Suspense>
             </LinkButton>
-          </AdminSectionActions>
-        </AdminSectionHeader>
+          </ConsoleSection.Actions>
+        </ConsoleSection.Header>
         <RoyaltyFigures
           currency={statement.currency}
           locale={locale}
           totals={statement.totals}
         />
-      </AdminSection>
+      </ConsoleSection.Root>
 
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                 <Message message="admin.royalties.lines.title" />
               </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.royalties.lines.description" />{" "}
                 <Message message="admin.royalties.statement.subtotal_note" />
               </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         {result.lines.length === 0 ? (
           <CursorPageEmptyState
             hasPageLinks={hasPageLinks}
@@ -255,20 +237,20 @@ const StatementContent = async ({
           />
         )}
         {result.lines.length > 0 || hasPageLinks ? (
-          <PaginationFooter>
-            <PaginationFooterDescription>
+          <PaginationFooter.Root>
+            <PaginationFooter.Description>
               {t("admin.royalties.statement.pagination_description", {
                 count: String(DEFAULT_PAGE_SIZE),
               })}
-            </PaginationFooterDescription>
-            <PaginationControls
+            </PaginationFooter.Description>
+            <PaginationFooter.Controls
               {...pageHrefs}
               aria-label={t("admin.royalties.statement.pagination_aria")}
             />
-          </PaginationFooter>
+          </PaginationFooter.Root>
         ) : null}
-      </AdminSection>
-    </AdminSections>
+      </ConsoleSection.Root>
+    </ConsoleSection.Stack>
   );
 };
 
@@ -276,23 +258,23 @@ const RoyaltyStatementPage = ({
   params,
   searchParams,
 }: RoyaltyStatementPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
                 <Message message="admin.royalties.statement.title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.royalties.statement.page_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-          <AdminPageActions>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+          <ConsolePage.Actions>
             <LinkButton
               render={<Link href="/royalties/statements" />}
               variant="outline"
@@ -301,9 +283,9 @@ const RoyaltyStatementPage = ({
                 <Message message="admin.royalties.statement.back_to_list" />
               </Suspense>
             </LinkButton>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
+          </ConsolePage.Actions>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <FlashToast keyName="closed" message="admin.royalties.close.done" />
           <SectionErrorBoundary
             title={
@@ -316,10 +298,10 @@ const RoyaltyStatementPage = ({
               <StatementContent params={params} searchParams={searchParams} />
             </Suspense>
           </SectionErrorBoundary>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default RoyaltyStatementPage;

@@ -1,18 +1,10 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
@@ -41,19 +33,19 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const ReaderIconSettingsSkeleton = () => (
-  <AdminSections>
-    <AdminSection>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
       <Skeleton className="h-24" />
       <Skeleton className="h-10" />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );
 
 const ReaderIconSettings = async () => {
@@ -77,7 +69,7 @@ const ReaderIconSettings = async () => {
   );
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       <ReaderIconPolicyForm
         canEdit={canEdit}
         initialPolicy={policyResult.ok ? policyResult.policy : undefined}
@@ -91,27 +83,27 @@ const ReaderIconSettings = async () => {
         presets={presetsResult.ok ? presetsResult.presets : []}
         tenantId={tenantId}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const ReaderIconSettingsPage = () => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.settings.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.reader_icons_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <div className="grid gap-6">
         <SettingsTabNav current="reader-icons" />
         <SectionErrorBoundary
@@ -126,8 +118,8 @@ const ReaderIconSettingsPage = () => (
           </Suspense>
         </SectionErrorBoundary>
       </div>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default ReaderIconSettingsPage;

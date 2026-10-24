@@ -1,17 +1,10 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 import type { TenantLocales } from "#lib/tenant-locales";
@@ -89,48 +82,48 @@ export const GenreManager = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       {canEdit ? (
-        <AdminSection>
-          <AdminSectionHeader>
-            <AdminSectionHeading>
-              <AdminSectionTitle>
+        <ConsoleSection.Root>
+          <ConsoleSection.Header>
+            <ConsoleSection.Heading>
+              <ConsoleSection.Title>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.genres.create_card_title" />
                 </Suspense>
-              </AdminSectionTitle>
-              <AdminSectionDescription>
+              </ConsoleSection.Title>
+              <ConsoleSection.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.genres.create_description" />
                 </Suspense>
-              </AdminSectionDescription>
-            </AdminSectionHeading>
-          </AdminSectionHeader>
+              </ConsoleSection.Description>
+            </ConsoleSection.Heading>
+          </ConsoleSection.Header>
           <GenreCreateForm
             namePlaceholder={t("admin.genres.form.name_placeholder")}
             tenantId={tenantId}
             tenantLocales={tenantLocales}
           />
-        </AdminSection>
+        </ConsoleSection.Root>
       ) : null}
 
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.genres.list_title" />
               </Suspense>
-            </AdminSectionTitle>
+            </ConsoleSection.Title>
             {canEdit ? (
-              <AdminSectionDescription>
+              <ConsoleSection.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.genres.list_description" />
                 </Suspense>
-              </AdminSectionDescription>
+              </ConsoleSection.Description>
             ) : null}
-          </AdminSectionHeading>
-        </AdminSectionHeader>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         <GenreListBody
           canEdit={canEdit}
           genres={genres}
@@ -138,7 +131,7 @@ export const GenreManager = async ({
           locale={locale}
           tenantId={tenantId}
         />
-      </AdminSection>
-    </AdminSections>
+      </ConsoleSection.Root>
+    </ConsoleSection.Stack>
   );
 };

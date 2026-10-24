@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import * as Field from "@publira/ui-components/field";
@@ -7,13 +8,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
 import type { EpisodeCampaignPriceItem } from "#lib/episode-campaign-price";
@@ -106,21 +100,21 @@ export const EpisodeCampaignPricesSection = ({
   tenantId,
   timeZone,
 }: EpisodeCampaignPricesSectionProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
             <Message message="admin.series.episodes.campaign_prices.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="admin.series.episodes.campaign_prices.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
 
     {campaignPrices.length === 0 ? (
       <p className="text-sm text-muted-foreground">
@@ -274,5 +268,5 @@ export const EpisodeCampaignPricesSection = ({
         </Suspense>
       </p>
     )}
-  </AdminSection>
+  </ConsoleSection.Root>
 );

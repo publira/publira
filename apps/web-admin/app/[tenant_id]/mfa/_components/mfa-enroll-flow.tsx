@@ -6,22 +6,14 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
-import {
-  MfaEnrollment,
-  MfaEnrollmentStarted,
-} from "#components/mfa-enrollment";
-import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
+import * as MfaEnrollment from "#components/mfa-enrollment";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
 
 import {
   confirmMfaEnrollmentAction,
   startMfaEnrollmentAction,
 } from "../_lib/actions";
-import {
-  MfaEnrollDoneLink,
-  MfaEnrollmentConfirmed,
-  MfaEnrollSteps,
-} from "./mfa-enroll-steps";
+import * as MfaEnrollSteps from "./mfa-enroll-steps";
 import { PasskeyEnrollForm } from "./passkey-forms";
 
 interface MfaEnrollFlowProps {
@@ -60,7 +52,7 @@ const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
         showSuccess={false}
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
-        <MfaEnrollmentStarted />
+        <MfaEnrollment.Started />
 
         <ActionForm.Submit className="justify-self-start">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -76,7 +68,7 @@ const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
 
       <PasskeyEnrollForm>
         <input name="tenant_id" type="hidden" value={tenantId} />
-        <MfaEnrollmentConfirmed />
+        <MfaEnrollSteps.Confirmed />
 
         <ActionForm.Submit className="justify-self-start" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -108,7 +100,7 @@ const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
 
 const MfaEnrollConfirm = ({ tenantId }: { tenantId: string }) => (
   <AuthScreen.Body>
-    <MfaEnrollmentSecret />
+    <MfaEnrollment.Secret />
 
     <ActionForm.Root
       action={confirmMfaEnrollmentAction}
@@ -116,7 +108,7 @@ const MfaEnrollConfirm = ({ tenantId }: { tenantId: string }) => (
       showSuccess={false}
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <MfaEnrollmentConfirmed />
+      <MfaEnrollSteps.Confirmed />
 
       <MfaCodeField accepts="authenticator" />
 
@@ -143,13 +135,13 @@ export const MfaEnrollFlow = ({
   nextPath,
   tenantId,
 }: MfaEnrollFlowProps) => (
-  <MfaEnrollSteps
+  <MfaEnrollSteps.Root
     finished={finished}
     nextPath={nextPath}
     done={
       <AuthScreen.Body>
         <MfaRecoveryCodes />
-        <MfaEnrollDoneLink
+        <MfaEnrollSteps.DoneLink
           nextPath={nextPath}
           signedIn={
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -165,7 +157,7 @@ export const MfaEnrollFlow = ({
       </AuthScreen.Body>
     }
     enroll={
-      <MfaEnrollment
+      <MfaEnrollment.Root
         confirm={<MfaEnrollConfirm tenantId={tenantId} />}
         start={<MfaEnrollStart tenantId={tenantId} />}
       />

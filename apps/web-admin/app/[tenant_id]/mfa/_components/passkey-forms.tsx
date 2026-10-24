@@ -40,7 +40,7 @@ export const PasskeyVerifyForm = ({ children }: { children: ReactNode }) => {
 
 /**
  * Enrolls a passkey in place of the authenticator app. Its success is the
- * same answer confirming an authenticator gives, so `MfaEnrollmentConfirmed`
+ * same answer confirming an authenticator gives, so `MfaEnrollSteps.Confirmed`
  * among the children moves the flow on to the recovery codes.
  */
 export const PasskeyEnrollForm = ({ children }: { children: ReactNode }) => {

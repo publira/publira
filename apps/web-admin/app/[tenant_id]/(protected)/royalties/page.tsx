@@ -1,4 +1,6 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -8,17 +10,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
@@ -69,16 +60,16 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const OpenMonthSkeleton = () => (
-  <AdminSections>
-    <AdminSection>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-48" />
       <Skeleton className="h-24" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
       <Table.Skeleton />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );
 
 const LoadError = ({ message }: { message: string }) => (
@@ -195,7 +186,7 @@ const OpenMonthContent = async ({
   await redirectToLoginIfSessionRejected(preview);
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       <PeriodPicker maxPeriod={currentPeriod} period={period} />
       <PreviewContent
         locale={locale}
@@ -205,28 +196,28 @@ const OpenMonthContent = async ({
         tenantId={tenantId}
         timeZone={timeZone}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const RoyaltiesPage = ({ searchParams }: RoyaltiesPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
                 <Message message="admin.royalties.title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.royalties.page_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-          <AdminPageActions>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+          <ConsolePage.Actions>
             <LinkButton
               render={<Link href="/royalties/statements" />}
               variant="outline"
@@ -243,9 +234,9 @@ const RoyaltiesPage = ({ searchParams }: RoyaltiesPageProps) => (
                 <Message message="admin.royalties.close_settings_link" />
               </Suspense>
             </LinkButton>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
+          </ConsolePage.Actions>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -257,10 +248,10 @@ const RoyaltiesPage = ({ searchParams }: RoyaltiesPageProps) => (
               <OpenMonthContent searchParams={searchParams} />
             </Suspense>
           </SectionErrorBoundary>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default RoyaltiesPage;
