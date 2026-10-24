@@ -25,8 +25,8 @@ export const uniqueCommentBody = (text: string): string =>
  * The control that opens the comments, which the page after the last page of
  * the episode carries and no other page does.
  *
- * `exact`: the viewport around the pages is a `role="button"` of its own, and
- * its accessible name is everything the page on screen holds.
+ * `exact`: Playwright matches an accessible name as a case-insensitive
+ * substring, and a control that only mentions the comments is not this one.
  */
 export const commentsTrigger = (page: Page) =>
   page.getByRole("button", { exact: true, name: "Comments" });

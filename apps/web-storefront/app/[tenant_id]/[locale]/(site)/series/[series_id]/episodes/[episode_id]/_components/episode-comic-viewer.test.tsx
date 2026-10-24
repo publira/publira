@@ -70,7 +70,8 @@ describe("EpisodeComicViewer", () => {
 
     expect(screen.getByText("ltr:1")).toBeDefined();
     expect(
-      screen.getByRole("button", { name: /Page 1/u }).dataset.readingDirection
+      screen.getByRole("region", { name: "Comic pages" }).dataset
+        .readingDirection
     ).toBe("ltr");
   });
 
@@ -93,11 +94,12 @@ describe("EpisodeComicViewer", () => {
 const wideViewerMarker = (container: HTMLElement) =>
   container.querySelector<HTMLElement>("[data-wide-viewer]");
 
-/** Press the viewer the way a keyboard does, which shows or hides its controls. */
-const pressViewer = () => {
-  fireEvent.keyDown(screen.getByRole("button", { name: /^Page \d/u }), {
-    key: "Enter",
-  });
+/**
+ * Press the viewer the way a keyboard does, which shows or hides its controls.
+ * `name` is the viewer's label in the catalog the test renders with.
+ */
+const pressViewer = (name = "Comic pages") => {
+  fireEvent.keyDown(screen.getByRole("region", { name }), { key: "Enter" });
 };
 
 describe("EpisodeComicViewer wide viewer", () => {
@@ -264,7 +266,7 @@ describe("EpisodeComicViewer progress slider", () => {
       />,
       "ja"
     );
-    pressViewer();
+    pressViewer("漫画のページ");
 
     // The library's own value text is English whatever the catalog, so a
     // Japanese one proves the slider took the storefront's formatter.
@@ -571,15 +573,20 @@ describe("EpisodeComicViewer expired page URLs", () => {
       .mockResolvedValueOnce({})
       .mockResolvedValue(freshUrls);
 
-    await renderWithClientMessages(
-      <EpisodeComicViewer
-        pages={expiredPages}
-        readingDirection="rtl"
-        renewPageUrls={renewPageUrls}
-        spreadStartIndex={1}
-        wideViewerEnabled={false}
-      />
-    );
+    // Awaited inside act: the catalog read with use() can leave React work
+    // queued in the synchronous act that render() opens, and the error state
+    // the refused page commits afterwards is then never rendered.
+    await act(async () => {
+      await renderWithClientMessages(
+        <EpisodeComicViewer
+          pages={expiredPages}
+          readingDirection="rtl"
+          renewPageUrls={renewPageUrls}
+          spreadStartIndex={1}
+          wideViewerEnabled={false}
+        />
+      );
+    });
 
     const [reload] = await screen.findAllByRole("button", { name: "Reload" });
     expect(fetchMock).not.toHaveBeenCalledWith(
