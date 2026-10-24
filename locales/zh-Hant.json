@@ -458,6 +458,8 @@
         "tenant_logo_deleted": "刪除了標誌",
         "tenant_icon_uploaded": "上傳了圖示",
         "tenant_icon_deleted": "刪除了圖示",
+        "tenant_sign_in_image_uploaded": "上傳了登入圖片",
+        "tenant_sign_in_image_deleted": "刪除了登入圖片",
         "tenant_email_settings_updated": "更新了郵件設定",
         "tenant_smtp_test_email_sent": "測試了SMTP連線",
         "tenant_inbound_email_settings_updated": "更新了收件設定",

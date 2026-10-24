@@ -186,11 +186,14 @@ SELECT
     fi.updated_at AS icon_image_updated_at,
     tt.logo_image_id,
     li.updated_at AS logo_image_updated_at,
+    tt.sign_in_image_id,
+    si.updated_at AS sign_in_image_updated_at,
     COALESCE(tt.updated_at, NOW()) AS updated_at
 FROM tenants t
 LEFT JOIN tenant_themes tt ON tt.tenant_id = t.id
 LEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id
 LEFT JOIN tenant_images li ON li.id = tt.logo_image_id
+LEFT JOIN tenant_images si ON si.id = tt.sign_in_image_id
 WHERE t.id = $1
 `
 
@@ -229,6 +232,8 @@ type GetTenantThemeByTenantIDRow struct {
 	IconImageUpdatedAt         sql.NullTime  `json:"icon_image_updated_at"`
 	LogoImageID                uuid.NullUUID `json:"logo_image_id"`
 	LogoImageUpdatedAt         sql.NullTime  `json:"logo_image_updated_at"`
+	SignInImageID              uuid.NullUUID `json:"sign_in_image_id"`
+	SignInImageUpdatedAt       sql.NullTime  `json:"sign_in_image_updated_at"`
 	UpdatedAt                  time.Time     `json:"updated_at"`
 }
 
@@ -270,6 +275,8 @@ func (q *Queries) GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (G
 		&i.IconImageUpdatedAt,
 		&i.LogoImageID,
 		&i.LogoImageUpdatedAt,
+		&i.SignInImageID,
+		&i.SignInImageUpdatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -299,8 +306,8 @@ type ListTenantImageVariantsByImageIDsRow struct {
 	Height        int32     `json:"height"`
 }
 
-// The theme carries the icon and the logo together, so both images' variants
-// are read in one statement rather than one query per slot.
+// The theme carries every branding image together, so their variants are read
+// in one statement rather than one query per slot.
 func (q *Queries) ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListTenantImageVariantsByImageIDs, pq.Array(imageIds))
 	if err != nil {
@@ -338,7 +345,7 @@ VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
 SET icon_image_id = EXCLUDED.icon_image_id,
     updated_at = NOW()
-RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id, serif_font_family, sans_font_family
+RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id, serif_font_family, sans_font_family, sign_in_image_id
 `
 
 type SetTenantThemeIconImageParams struct {
@@ -385,6 +392,7 @@ func (q *Queries) SetTenantThemeIconImage(ctx context.Context, arg SetTenantThem
 		&i.LogoImageID,
 		&i.SerifFontFamily,
 		&i.SansFontFamily,
+		&i.SignInImageID,
 	)
 	return i, err
 }
@@ -395,7 +403,7 @@ VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
 UPDATE
 SET logo_image_id = EXCLUDED.logo_image_id,
     updated_at = NOW()
-RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id, serif_font_family, sans_font_family
+RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id, serif_font_family, sans_font_family, sign_in_image_id
 `
 
 type SetTenantThemeLogoImageParams struct {
@@ -443,6 +451,66 @@ func (q *Queries) SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThem
 		&i.LogoImageID,
 		&i.SerifFontFamily,
 		&i.SansFontFamily,
+		&i.SignInImageID,
+	)
+	return i, err
+}
+
+const SetTenantThemeSignInImage = `-- name: SetTenantThemeSignInImage :one
+INSERT INTO tenant_themes (tenant_id, sign_in_image_id, updated_at)
+VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
+UPDATE
+SET sign_in_image_id = EXCLUDED.sign_in_image_id,
+    updated_at = NOW()
+RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id, serif_font_family, sans_font_family, sign_in_image_id
+`
+
+type SetTenantThemeSignInImageParams struct {
+	TenantID      uuid.UUID     `json:"tenant_id"`
+	SignInImageID uuid.NullUUID `json:"sign_in_image_id"`
+}
+
+// The theme row is created on demand, the same way the icon does it: a
+// tenant can upload a sign-in image before it has ever saved a color, and the
+// colors then keep their column defaults.
+func (q *Queries) SetTenantThemeSignInImage(ctx context.Context, arg SetTenantThemeSignInImageParams) (TenantTheme, error) {
+	row := q.db.QueryRowContext(ctx, SetTenantThemeSignInImage, arg.TenantID, arg.SignInImageID)
+	var i TenantTheme
+	err := row.Scan(
+		&i.TenantID,
+		&i.PrimaryColor,
+		&i.SecondaryColor,
+		&i.AccentColor,
+		&i.UpdatedAt,
+		&i.BackgroundColor,
+		&i.ForegroundColor,
+		&i.SurfaceColor,
+		&i.SurfaceForegroundColor,
+		&i.CardColor,
+		&i.CardForegroundColor,
+		&i.PopoverColor,
+		&i.PopoverForegroundColor,
+		&i.PrimaryForegroundColor,
+		&i.SecondaryForegroundColor,
+		&i.AccentForegroundColor,
+		&i.MutedColor,
+		&i.MutedForegroundColor,
+		&i.BorderColor,
+		&i.InputColor,
+		&i.RingColor,
+		&i.SuccessColor,
+		&i.SuccessForegroundColor,
+		&i.WarningColor,
+		&i.WarningForegroundColor,
+		&i.DestructiveColor,
+		&i.DestructiveForegroundColor,
+		&i.InfoColor,
+		&i.InfoForegroundColor,
+		&i.IconImageID,
+		&i.LogoImageID,
+		&i.SerifFontFamily,
+		&i.SansFontFamily,
+		&i.SignInImageID,
 	)
 	return i, err
 }
@@ -545,7 +613,7 @@ SET background_color = EXCLUDED.background_color,
     serif_font_family = EXCLUDED.serif_font_family,
     sans_font_family = EXCLUDED.sans_font_family,
     updated_at = NOW()
-RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id, serif_font_family, sans_font_family
+RETURNING tenant_id, primary_color, secondary_color, accent_color, updated_at, background_color, foreground_color, surface_color, surface_foreground_color, card_color, card_foreground_color, popover_color, popover_foreground_color, primary_foreground_color, secondary_foreground_color, accent_foreground_color, muted_color, muted_foreground_color, border_color, input_color, ring_color, success_color, success_foreground_color, warning_color, warning_foreground_color, destructive_color, destructive_foreground_color, info_color, info_foreground_color, icon_image_id, logo_image_id, serif_font_family, sans_font_family, sign_in_image_id
 `
 
 type UpsertTenantThemeParams struct {
@@ -649,6 +717,7 @@ func (q *Queries) UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemePa
 		&i.LogoImageID,
 		&i.SerifFontFamily,
 		&i.SansFontFamily,
+		&i.SignInImageID,
 	)
 	return i, err
 }

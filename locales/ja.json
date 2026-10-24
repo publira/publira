@@ -458,6 +458,8 @@
         "tenant_logo_deleted": "ロゴの削除",
         "tenant_icon_uploaded": "アイコンのアップロード",
         "tenant_icon_deleted": "アイコンの削除",
+        "tenant_sign_in_image_uploaded": "ログイン画像のアップロード",
+        "tenant_sign_in_image_deleted": "ログイン画像の削除",
         "tenant_email_settings_updated": "メール設定更新",
         "tenant_smtp_test_email_sent": "SMTP接続テスト",
         "tenant_inbound_email_settings_updated": "受信メール設定更新",

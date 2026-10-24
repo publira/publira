@@ -102,6 +102,8 @@ export const auditActions = [
   "tenant_logo_deleted",
   "tenant_icon_uploaded",
   "tenant_icon_deleted",
+  "tenant_sign_in_image_uploaded",
+  "tenant_sign_in_image_deleted",
   "tenant_email_settings_updated",
   "tenant_smtp_test_email_sent",
   "tenant_inbound_email_settings_updated",

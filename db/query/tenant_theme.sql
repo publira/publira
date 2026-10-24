@@ -34,11 +34,14 @@ SELECT
     fi.updated_at AS icon_image_updated_at,
     tt.logo_image_id,
     li.updated_at AS logo_image_updated_at,
+    tt.sign_in_image_id,
+    si.updated_at AS sign_in_image_updated_at,
     COALESCE(tt.updated_at, NOW()) AS updated_at
 FROM tenants t
 LEFT JOIN tenant_themes tt ON tt.tenant_id = t.id
 LEFT JOIN tenant_images fi ON fi.id = tt.icon_image_id
 LEFT JOIN tenant_images li ON li.id = tt.logo_image_id
+LEFT JOIN tenant_images si ON si.id = tt.sign_in_image_id
 WHERE t.id = $1;
 
 -- name: UpsertTenantTheme :one
@@ -162,6 +165,17 @@ SET logo_image_id = EXCLUDED.logo_image_id,
     updated_at = NOW()
 RETURNING *;
 
+-- name: SetTenantThemeSignInImage :one
+-- The theme row is created on demand, the same way the icon does it: a
+-- tenant can upload a sign-in image before it has ever saved a color, and the
+-- colors then keep their column defaults.
+INSERT INTO tenant_themes (tenant_id, sign_in_image_id, updated_at)
+VALUES ($1, $2, NOW()) ON CONFLICT (tenant_id) DO
+UPDATE
+SET sign_in_image_id = EXCLUDED.sign_in_image_id,
+    updated_at = NOW()
+RETURNING *;
+
 -- name: CreateTenantImage :one
 INSERT INTO tenant_images (
         id,
@@ -189,8 +203,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: ListTenantImageVariantsByImageIDs :many
--- The theme carries the icon and the logo together, so both images' variants
--- are read in one statement rather than one query per slot.
+-- The theme carries every branding image together, so their variants are read
+-- in one statement rather than one query per slot.
 SELECT tenant_image_id,
     variant_type,
     label,

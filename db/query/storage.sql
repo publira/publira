@@ -86,13 +86,16 @@ WHERE si.created_at < @created_before
     AND NOT EXISTS (SELECT 1 FROM series s WHERE s.eye_catch_image_id = si.id);
 
 -- name: DeleteUnreferencedTenantImages :execrows
--- A tenant image is reachable from either branding slot, and the theme holds
--- both, so one row can be the icon of one theme and nothing else anywhere.
+-- A tenant image is reachable from any of the branding slots, and the theme
+-- holds them all, so one row can be the icon of one theme and nothing else
+-- anywhere.
 DELETE FROM tenant_images ti
 WHERE ti.created_at < @created_before
     AND NOT EXISTS (
         SELECT 1 FROM tenant_themes t
-        WHERE t.icon_image_id = ti.id OR t.logo_image_id = ti.id
+        WHERE t.icon_image_id = ti.id
+            OR t.logo_image_id = ti.id
+            OR t.sign_in_image_id = ti.id
     );
 
 -- name: DeleteUnreferencedUserImages :execrows

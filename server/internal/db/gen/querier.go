@@ -520,8 +520,9 @@ type Querier interface {
 	DeleteUnreferencedGenreImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error)
-	// A tenant image is reachable from either branding slot, and the theme holds
-	// both, so one row can be the icon of one theme and nothing else anywhere.
+	// A tenant image is reachable from any of the branding slots, and the theme
+	// holds them all, so one row can be the icon of one theme and nothing else
+	// anywhere.
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	// A reader's upload elects the new icon and leaves the previous user_images
 	// row behind, and removing the icon leaves the one it cleared, both referenced
@@ -2564,8 +2565,8 @@ type Querier interface {
 	// payment settings of its own, and whose site therefore shows its prices in
 	// it. Read as publira_platform, which bypasses RLS.
 	ListTenantIDsInDefaultCurrency(ctx context.Context) ([]uuid.UUID, error)
-	// The theme carries the icon and the logo together, so both images' variants
-	// are read in one statement rather than one query per slot.
+	// The theme carries every branding image together, so their variants are read
+	// in one statement rather than one query per slot.
 	ListTenantImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListTenantImageVariantsByImageIDsRow, error)
 	ListTenantMembersAsc(ctx context.Context, arg ListTenantMembersAscParams) ([]ListTenantMembersAscRow, error)
 	// Platform ListTenantMembers lists the administrative and editorial users of
@@ -2865,11 +2866,11 @@ type Querier interface {
 	// does not have, for the reasons LockTenantForAnalyticsSettings gives.
 	LockTenantForSiteVerification(ctx context.Context, tenantID uuid.UUID) (uuid.UUID, error)
 	// Lock the tenant row so concurrent writes to the tenant theme serialize: the
-	// branding image uploads and deletes (icon, logo), and the theme saves, each
-	// of which reads the theme first to decide what it changes. That read must be
-	// a separate statement: READ COMMITTED freezes its snapshot at statement
-	// start, so waiting for the lock in the same statement would still see the
-	// pre-wait row.
+	// branding image uploads and deletes (icon, logo, sign-in image), and the
+	// theme saves, each of which reads the theme first to decide what it changes.
+	// That read must be a separate statement: READ COMMITTED freezes its snapshot
+	// at statement start, so waiting for the lock in the same statement would
+	// still see the pre-wait row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Serializes, for the rest of the transaction, the writes that decide which
 	// tenant a host name belongs to. The unique constraints keep two domains or two
@@ -3375,6 +3376,10 @@ type Querier interface {
 	// tenant can upload a logo before it has ever saved a color, and the colors
 	// then keep their column defaults.
 	SetTenantThemeLogoImage(ctx context.Context, arg SetTenantThemeLogoImageParams) (TenantTheme, error)
+	// The theme row is created on demand, the same way the icon does it: a
+	// tenant can upload a sign-in image before it has ever saved a color, and the
+	// colors then keep their column defaults.
+	SetTenantThemeSignInImage(ctx context.Context, arg SetTenantThemeSignInImageParams) (TenantTheme, error)
 	// Written once. The IS NULL guard is what makes that true of two requests that
 	// race as well as of two a reader sends in turn: the second matches no row and
 	// comes back as no rows, which the caller reports as a refusal rather than as

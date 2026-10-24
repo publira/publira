@@ -198,8 +198,9 @@ var campaignBannerImages = ownerimages.Owner[Querier]{
 	},
 }
 
-// tenantBrandingImagesIn holds the tenant's own icon or logo, which belong to
-// no row but the tenant and differ only in the directory they are filed in.
+// tenantBrandingImagesIn holds the tenant's own icon, logo, or sign-in image,
+// which belong to no row but the tenant and differ only in the directory they
+// are filed in.
 func tenantBrandingImagesIn(collection string) ownerimages.Owner[Querier] {
 	owner := tenantBrandingImages
 	owner.Collection = collection

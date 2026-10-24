@@ -102,6 +102,13 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 			},
 		},
 		{
+			name: "sign-in image deleted", action: "tenant_sign_in_image_deleted", targetType: "tenant_branding",
+			save: func() error {
+				_, err := themes.DeleteTenantSignInImage(ctx, &publiraadminv1.DeleteTenantSignInImageRequest{Tenant: tenant.tenantContext()})
+				return err
+			},
+		},
+		{
 			name: "time zone", action: "tenant_timezone_updated", targetType: "tenant_timezone",
 			save: func() error {
 				_, err := settings.UpdateTenantTimezone(ctx, &publiraadminv1.UpdateTenantTimezoneRequest{Tenant: tenant.tenantContext(), Timezone: "Europe/Berlin"})
@@ -196,9 +203,9 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 		},
 	}
 
-	// The logo and the icon start out empty, so deleting them changes nothing
-	// until they have been uploaded.
-	for _, step := range steps[1:3] {
+	// The logo, the icon, and the sign-in image start out empty, so deleting
+	// them changes nothing until they have been uploaded.
+	for _, step := range steps[1:4] {
 		if err := step.save(); err != nil {
 			t.Fatalf("%s before an upload: %v", step.name, err)
 		}
@@ -216,7 +223,12 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UploadTenantIcon: %v", err)
 	}
-	for _, action := range []string{"tenant_logo_uploaded", "tenant_icon_uploaded"} {
+	if _, err := themes.UploadTenantSignInImage(ctx, &publiraadminv1.UploadTenantSignInImageRequest{
+		Tenant: tenant.tenantContext(), ImageData: brandingSourcePNG(t, 600, 800), ImageContentType: "image/png",
+	}); err != nil {
+		t.Fatalf("UploadTenantSignInImage: %v", err)
+	}
+	for _, action := range []string{"tenant_logo_uploaded", "tenant_icon_uploaded", "tenant_sign_in_image_uploaded"} {
 		if got := tenantSettingAuditCount(t, env, tenant, action, "tenant_branding"); got != 1 {
 			t.Fatalf("%s: audit entries = %d, want 1", action, got)
 		}

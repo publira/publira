@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/theme.proto.
  */
 export const file_publira_admin_v1_theme: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL3RoZW1lLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIkgKFUdldFRlbmFudFRoZW1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiRgoWR2V0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieQoYVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIsCgV0aGVtZRgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiSQoZVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieAoXVXBsb2FkVGVuYW50SWNvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCWljb25fZGF0YRgCIAEoDBIZChFpY29uX2NvbnRlbnRfdHlwZRgDIAEoCSJIChhVcGxvYWRUZW5hbnRJY29uUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lIkoKF0RlbGV0ZVRlbmFudEljb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJIChhEZWxldGVUZW5hbnRJY29uUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lIngKF1VwbG9hZFRlbmFudExvZ29SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglsb2dvX2RhdGEYAiABKAwSGQoRbG9nb19jb250ZW50X3R5cGUYAyABKAkiSAoYVXBsb2FkVGVuYW50TG9nb1Jlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJKChdEZWxldGVUZW5hbnRMb2dvUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiSAoYRGVsZXRlVGVuYW50TG9nb1Jlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZTKfBQoSVGVuYW50VGhlbWVTZXJ2aWNlEmUKDkdldFRlbmFudFRoZW1lEicucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaGVtZVJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRoZW1lUmVzcG9uc2UiABJuChFVcHNlcnRUZW5hbnRUaGVtZRIqLnB1YmxpcmEuYWRtaW4udjEuVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5VcHNlcnRUZW5hbnRUaGVtZVJlc3BvbnNlIgASawoQVXBsb2FkVGVuYW50SWNvbhIpLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50SWNvblJlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZFRlbmFudEljb25SZXNwb25zZSIAEmsKEERlbGV0ZVRlbmFudEljb24SKS5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudEljb25SZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5EZWxldGVUZW5hbnRJY29uUmVzcG9uc2UiABJrChBVcGxvYWRUZW5hbnRMb2dvEikucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRMb2dvUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50TG9nb1Jlc3BvbnNlIgASawoQRGVsZXRlVGVuYW50TG9nbxIpLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50TG9nb1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudExvZ29SZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL3RoZW1lLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIkgKFUdldFRlbmFudFRoZW1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiRgoWR2V0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieQoYVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIsCgV0aGVtZRgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiSQoZVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieAoXVXBsb2FkVGVuYW50SWNvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCWljb25fZGF0YRgCIAEoDBIZChFpY29uX2NvbnRlbnRfdHlwZRgDIAEoCSJIChhVcGxvYWRUZW5hbnRJY29uUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lIkoKF0RlbGV0ZVRlbmFudEljb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJIChhEZWxldGVUZW5hbnRJY29uUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lIngKF1VwbG9hZFRlbmFudExvZ29SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglsb2dvX2RhdGEYAiABKAwSGQoRbG9nb19jb250ZW50X3R5cGUYAyABKAkiSAoYVXBsb2FkVGVuYW50TG9nb1Jlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJKChdEZWxldGVUZW5hbnRMb2dvUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiSAoYRGVsZXRlVGVuYW50TG9nb1Jlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSKBAQoeVXBsb2FkVGVuYW50U2lnbkluSW1hZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgppbWFnZV9kYXRhGAIgASgMEhoKEmltYWdlX2NvbnRlbnRfdHlwZRgDIAEoCSJPCh9VcGxvYWRUZW5hbnRTaWduSW5JbWFnZVJlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJRCh5EZWxldGVUZW5hbnRTaWduSW5JbWFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ik8KH0RlbGV0ZVRlbmFudFNpZ25JbkltYWdlUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lMqUHChJUZW5hbnRUaGVtZVNlcnZpY2USZQoOR2V0VGVuYW50VGhlbWUSJy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRoZW1lUmVxdWVzdBooLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGhlbWVSZXNwb25zZSIAEm4KEVVwc2VydFRlbmFudFRoZW1lEioucHVibGlyYS5hZG1pbi52MS5VcHNlcnRUZW5hbnRUaGVtZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLlVwc2VydFRlbmFudFRoZW1lUmVzcG9uc2UiABJrChBVcGxvYWRUZW5hbnRJY29uEikucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRJY29uUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50SWNvblJlc3BvbnNlIgASawoQRGVsZXRlVGVuYW50SWNvbhIpLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50SWNvblJlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudEljb25SZXNwb25zZSIAEmsKEFVwbG9hZFRlbmFudExvZ28SKS5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZFRlbmFudExvZ29SZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRMb2dvUmVzcG9uc2UiABJrChBEZWxldGVUZW5hbnRMb2dvEikucHVibGlyYS5hZG1pbi52MS5EZWxldGVUZW5hbnRMb2dvUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50TG9nb1Jlc3BvbnNlIgASgAEKF1VwbG9hZFRlbmFudFNpZ25JbkltYWdlEjAucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRTaWduSW5JbWFnZVJlcXVlc3QaMS5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZFRlbmFudFNpZ25JbkltYWdlUmVzcG9uc2UiABKAAQoXRGVsZXRlVGVuYW50U2lnbkluSW1hZ2USMC5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudFNpZ25JbkltYWdlUmVxdWVzdBoxLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50U2lnbkluSW1hZ2VSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantThemeRequest
@@ -250,6 +250,87 @@ export const DeleteTenantLogoResponseSchema: GenMessage<DeleteTenantLogoResponse
   messageDesc(file_publira_admin_v1_theme, 11);
 
 /**
+ * Uploading again replaces the stored sign-in image, so there is no separate
+ * replace RPC.
+ *
+ * @generated from message publira.admin.v1.UploadTenantSignInImageRequest
+ */
+export type UploadTenantSignInImageRequest = Message<"publira.admin.v1.UploadTenantSignInImageRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: bytes image_data = 2;
+   */
+  imageData: Uint8Array;
+
+  /**
+   * @generated from field: string image_content_type = 3;
+   */
+  imageContentType: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.UploadTenantSignInImageRequest.
+ * Use `create(UploadTenantSignInImageRequestSchema)` to create a new message.
+ */
+export const UploadTenantSignInImageRequestSchema: GenMessage<UploadTenantSignInImageRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 12);
+
+/**
+ * @generated from message publira.admin.v1.UploadTenantSignInImageResponse
+ */
+export type UploadTenantSignInImageResponse = Message<"publira.admin.v1.UploadTenantSignInImageResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantTheme theme = 1;
+   */
+  theme?: TenantTheme | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UploadTenantSignInImageResponse.
+ * Use `create(UploadTenantSignInImageResponseSchema)` to create a new message.
+ */
+export const UploadTenantSignInImageResponseSchema: GenMessage<UploadTenantSignInImageResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 13);
+
+/**
+ * @generated from message publira.admin.v1.DeleteTenantSignInImageRequest
+ */
+export type DeleteTenantSignInImageRequest = Message<"publira.admin.v1.DeleteTenantSignInImageRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteTenantSignInImageRequest.
+ * Use `create(DeleteTenantSignInImageRequestSchema)` to create a new message.
+ */
+export const DeleteTenantSignInImageRequestSchema: GenMessage<DeleteTenantSignInImageRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 14);
+
+/**
+ * @generated from message publira.admin.v1.DeleteTenantSignInImageResponse
+ */
+export type DeleteTenantSignInImageResponse = Message<"publira.admin.v1.DeleteTenantSignInImageResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantTheme theme = 1;
+   */
+  theme?: TenantTheme | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteTenantSignInImageResponse.
+ * Use `create(DeleteTenantSignInImageResponseSchema)` to create a new message.
+ */
+export const DeleteTenantSignInImageResponseSchema: GenMessage<DeleteTenantSignInImageResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 15);
+
+/**
  * @generated from service publira.admin.v1.TenantThemeService
  */
 export const TenantThemeService: GenService<{
@@ -312,6 +393,26 @@ export const TenantThemeService: GenService<{
     methodKind: "unary";
     input: typeof DeleteTenantLogoRequestSchema;
     output: typeof DeleteTenantLogoResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.TenantThemeService.UploadTenantSignInImage
+   */
+  uploadTenantSignInImage: {
+    methodKind: "unary";
+    input: typeof UploadTenantSignInImageRequestSchema;
+    output: typeof UploadTenantSignInImageResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.TenantThemeService.DeleteTenantSignInImage
+   */
+  deleteTenantSignInImage: {
+    methodKind: "unary";
+    input: typeof DeleteTenantSignInImageRequestSchema;
+    output: typeof DeleteTenantSignInImageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_theme, 0);
