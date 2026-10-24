@@ -93,6 +93,43 @@ type API struct {
 	idempotent map[string]map[string]Refund
 	sessions   []CheckoutSession
 	coupons    []Coupon
+	// prices and subscriptions are what each secret key's account holds, by
+	// id, and portals every billing portal session the fake opened.
+	prices        map[string]map[string]Price
+	subscriptions map[string]map[string]Subscription
+	portals       []BillingPortalSession
+}
+
+// Price is a Price on a fake account, in the shape Stripe answers it.
+type Price struct {
+	ID       string
+	Active   bool
+	Amount   int64
+	Currency string
+	// Type is recurring or one_time. Interval and IntervalCount are what a
+	// recurring Price bills every.
+	Type          string
+	Interval      string
+	IntervalCount int64
+}
+
+// Subscription is a subscription on a fake account, in the shape Stripe
+// answers it.
+type Subscription struct {
+	ID                string
+	CustomerID        string
+	PriceID           string
+	Status            string
+	CurrentPeriodEnd  int64
+	CancelAtPeriodEnd bool
+	Metadata          map[string]string
+}
+
+// BillingPortalSession is one request the fake received to open a billing
+// portal session.
+type BillingPortalSession struct {
+	SecretKey string
+	Form      url.Values
 }
 
 // CheckoutSession is one request the fake received to create a Checkout
@@ -133,12 +170,20 @@ type Refund struct {
 // NewAPI answers a fake that serves until t ends.
 func NewAPI(t testing.TB) *API {
 	t.Helper()
-	api := &API{intents: map[string]map[string]*paymentIntent{}, idempotent: map[string]map[string]Refund{}}
+	api := &API{
+		intents:       map[string]map[string]*paymentIntent{},
+		idempotent:    map[string]map[string]Refund{},
+		prices:        map[string]map[string]Price{},
+		subscriptions: map[string]map[string]Subscription{},
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/refunds", api.createRefund)
 	mux.HandleFunc("POST /v1/coupons", api.createCoupon)
 	mux.HandleFunc("POST /v1/checkout/sessions", api.createCheckoutSession)
 	mux.HandleFunc("GET /v1/payment_intents/{id}", api.getPaymentIntent)
+	mux.HandleFunc("GET /v1/prices/{id}", api.getPrice)
+	mux.HandleFunc("GET /v1/subscriptions/{id}", api.getSubscription)
+	mux.HandleFunc("POST /v1/billing_portal/sessions", api.createBillingPortalSession)
 	api.server = httptest.NewServer(mux)
 	t.Cleanup(api.server.Close)
 	return api
@@ -412,6 +457,122 @@ func (a *API) getPaymentIntent(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// SetPrice puts price on the account of secretKey, replacing one of the same
+// id.
+func (a *API) SetPrice(secretKey string, price Price) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.prices[secretKey] == nil {
+		a.prices[secretKey] = map[string]Price{}
+	}
+	a.prices[secretKey][price.ID] = price
+}
+
+// SetSubscription puts subscription on the account of secretKey, replacing
+// one of the same id, as Stripe changes a subscription in place.
+func (a *API) SetSubscription(secretKey string, subscription Subscription) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.subscriptions[secretKey] == nil {
+		a.subscriptions[secretKey] = map[string]Subscription{}
+	}
+	a.subscriptions[secretKey][subscription.ID] = subscription
+}
+
+// BillingPortalSessions answers every billing portal session the fake opened.
+func (a *API) BillingPortalSessions() []BillingPortalSession {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]BillingPortalSession(nil), a.portals...)
+}
+
+func (a *API) getPrice(w http.ResponseWriter, r *http.Request) {
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	id := r.PathValue("id")
+	a.mu.Lock()
+	price, ok := a.prices[secretKey][id]
+	a.mu.Unlock()
+	if !ok {
+		writeError(w, http.StatusNotFound, "resource_missing", "No such price: '"+id+"'")
+		return
+	}
+	answer := map[string]any{
+		"id":             price.ID,
+		"object":         "price",
+		"active":         price.Active,
+		"billing_scheme": "per_unit",
+		"currency":       strings.ToLower(price.Currency),
+		"type":           price.Type,
+		"unit_amount":    price.Amount,
+	}
+	if price.Type == "recurring" {
+		answer["recurring"] = map[string]any{
+			"interval":       price.Interval,
+			"interval_count": price.IntervalCount,
+			"usage_type":     "licensed",
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(answer)
+}
+
+func (a *API) getSubscription(w http.ResponseWriter, r *http.Request) {
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	id := r.PathValue("id")
+	a.mu.Lock()
+	subscription, ok := a.subscriptions[secretKey][id]
+	a.mu.Unlock()
+	if !ok {
+		writeError(w, http.StatusNotFound, "resource_missing", "No such subscription: '"+id+"'")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(SubscriptionObject(subscription))
+}
+
+// SubscriptionObject is subscription in the shape Stripe answers it and puts
+// in a customer.subscription event.
+func SubscriptionObject(subscription Subscription) map[string]any {
+	return map[string]any{
+		"id":                   subscription.ID,
+		"object":               "subscription",
+		"cancel_at_period_end": subscription.CancelAtPeriodEnd,
+		"customer":             subscription.CustomerID,
+		"metadata":             subscription.Metadata,
+		"status":               subscription.Status,
+		"items": map[string]any{
+			"object": "list",
+			"data": []any{map[string]any{
+				"id":                 "si_" + subscription.ID,
+				"object":             "subscription_item",
+				"current_period_end": subscription.CurrentPeriodEnd,
+				"price":              map[string]any{"id": subscription.PriceID, "object": "price"},
+				"quantity":           1,
+			}},
+		},
+	}
+}
+
+func (a *API) createBillingPortalSession(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		writeError(w, http.StatusBadRequest, "", err.Error())
+		return
+	}
+	a.mu.Lock()
+	a.portals = append(a.portals, BillingPortalSession{
+		SecretKey: strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "),
+		Form:      r.PostForm,
+	})
+	id := fmt.Sprintf("bps_fake%04d", len(a.portals))
+	a.mu.Unlock()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"id":     id,
+		"object": "billing_portal.session",
+		"url":    "https://billing.stripe.com/p/session/" + id,
+	})
+}
+
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeErrorOfType(w, status, "invalid_request_error", code, message)
 }
@@ -535,6 +696,66 @@ func (*Fixture) CheckoutExpired(t testing.TB, credentials paymentprovider.Creden
 		"currency":        strings.ToLower(checkout.Purchase.Currency),
 		"livemode":        !checkout.Test,
 		"metadata":        PurchaseMetadata(checkout.Purchase),
+	})
+}
+
+// SubscriptionMetadata is the metadata a subscription checkout, and the
+// subscription it starts, carry.
+func SubscriptionMetadata(tenantID, readerID, planID uuid.UUID) map[string]string {
+	return map[string]string{
+		stripe.MetadataTenantID: tenantID.String(),
+		stripe.MetadataUserID:   readerID.String(),
+		stripe.MetadataPlanID:   planID.String(),
+	}
+}
+
+// SubscriptionCheckoutCompleted answers Stripe's notification that the
+// subscription checkout which started subscription completed, and puts
+// subscription on the account of the credentials, as completing the checkout
+// does. It is not part of the contract, which no provider but Stripe sells a
+// subscription through.
+func (f *Fixture) SubscriptionCheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription) ([]byte, http.Header) {
+	t.Helper()
+	f.API.SetSubscription(credentials[stripe.FieldSecretKey], subscription)
+	return recorded(t, credentials, "checkout.session.completed.subscription.json", map[string]any{
+		"customer":     subscription.CustomerID,
+		"metadata":     subscription.Metadata,
+		"subscription": subscription.ID,
+	})
+}
+
+// SubscriptionUpdated answers Stripe's notification that subscription
+// changed, and puts it on the account of the credentials as it now stands.
+func (f *Fixture) SubscriptionUpdated(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription) ([]byte, http.Header) {
+	t.Helper()
+	f.API.SetSubscription(credentials[stripe.FieldSecretKey], subscription)
+	return recorded(t, credentials, "customer.subscription.updated.json", SubscriptionObject(subscription))
+}
+
+// SubscriptionDeleted answers Stripe's notification that subscription ended,
+// and puts it on the account of the credentials as canceled.
+func (f *Fixture) SubscriptionDeleted(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription) ([]byte, http.Header) {
+	t.Helper()
+	subscription.Status = string(stripego.SubscriptionStatusCanceled)
+	f.API.SetSubscription(credentials[stripe.FieldSecretKey], subscription)
+	return recorded(t, credentials, "customer.subscription.deleted.json", SubscriptionObject(subscription))
+}
+
+// InvoicePaymentFailed answers Stripe's notification that a renewal invoice
+// of subscription could not be paid, and puts subscription on the account of
+// the credentials as it now stands, past due as Stripe leaves it.
+func (f *Fixture) InvoicePaymentFailed(t testing.TB, credentials paymentprovider.Credentials, subscription Subscription) ([]byte, http.Header) {
+	t.Helper()
+	f.API.SetSubscription(credentials[stripe.FieldSecretKey], subscription)
+	return recorded(t, credentials, "invoice.payment_failed.json", map[string]any{
+		"customer": subscription.CustomerID,
+		"parent": map[string]any{
+			"type": "subscription_details",
+			"subscription_details": map[string]any{
+				"metadata":     subscription.Metadata,
+				"subscription": subscription.ID,
+			},
+		},
 	})
 }
 

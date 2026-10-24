@@ -1,0 +1,61 @@
+{
+  "id": "evt_1QhL3nLk4f8bA7xYd6Su9vW2",
+  "object": "event",
+  "api_version": "",
+  "created": 1769990400,
+  "data": {
+    "object": {
+      "id": "sub_1QgK2lLk4f8bA7xYw3Xy4Za5",
+      "object": "subscription",
+      "billing_cycle_anchor": 1767311940,
+      "cancel_at": null,
+      "cancel_at_period_end": false,
+      "canceled_at": null,
+      "collection_method": "charge_automatically",
+      "created": 1767311940,
+      "currency": "jpy",
+      "customer": "cus_RbC1dE2fG3hI4j",
+      "ended_at": null,
+      "items": {
+        "object": "list",
+        "data": [
+          {
+            "id": "si_RbC5dE6fG7hI8j",
+            "object": "subscription_item",
+            "current_period_end": 1772409540,
+            "current_period_start": 1769990340,
+            "price": {
+              "id": "price_1QfZ9aLk4f8bA7xYmonthly",
+              "object": "price",
+              "active": true,
+              "currency": "jpy",
+              "recurring": {
+                "interval": "month",
+                "interval_count": 1,
+                "usage_type": "licensed"
+              },
+              "type": "recurring",
+              "unit_amount": 980
+            },
+            "quantity": 1
+          }
+        ],
+        "has_more": false
+      },
+      "latest_invoice": "in_1QhL3mLk4f8bA7xYtU2vW3xY",
+      "livemode": false,
+      "metadata": {},
+      "status": "active"
+    },
+    "previous_attributes": {
+      "cancel_at_period_end": true
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_Qa1Bb2Cc3Dd4Ee",
+    "idempotency_key": null
+  },
+  "type": "customer.subscription.updated"
+}

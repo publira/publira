@@ -1,5 +1,5 @@
 // Package stripe is the Stripe Checkout payment provider: a hosted Checkout
-// Session per purchase, confirmed by its webhook.
+// Session per purchase or subscription, confirmed by its webhook.
 package stripe
 
 import (
@@ -287,9 +287,29 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, header
 	case stripego.EventTypeChargeDisputeClosed:
 		return disputeClosedEvent(&event)
 	case stripego.EventTypeCheckoutSessionCompleted, stripego.EventTypeCheckoutSessionAsyncPaymentSucceeded:
+		mode, err := sessionMode(&event)
+		if err != nil {
+			return nil, err
+		}
+		if mode == stripego.CheckoutSessionModeSubscription {
+			return p.subscriptionCheckoutEvent(ctx, credentials, &event)
+		}
 		return purchaseCompletedEvent(&event)
 	case stripego.EventTypeCheckoutSessionExpired:
+		// An abandoned subscription checkout leaves nothing to record: its
+		// idempotency key moves on by the hour rather than by the expiry.
+		mode, err := sessionMode(&event)
+		if err != nil {
+			return nil, err
+		}
+		if mode == stripego.CheckoutSessionModeSubscription {
+			return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+		}
 		return checkoutExpiredEvent(&event)
+	case stripego.EventTypeCustomerSubscriptionUpdated, stripego.EventTypeCustomerSubscriptionDeleted:
+		return p.subscriptionUpdatedEvent(ctx, credentials, &event)
+	case stripego.EventTypeInvoicePaymentFailed:
+		return p.invoicePaymentFailedEvent(ctx, credentials, &event)
 	default:
 		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}

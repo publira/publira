@@ -18,6 +18,7 @@ import { ContactService } from "../gen/publira/v1/contact_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
 import { NotificationService } from "../gen/publira/v1/notification_pb.js";
 import { PublicPagesService } from "../gen/publira/v1/page_pb.js";
+import { SubscriptionService } from "../gen/publira/v1/subscription_pb.js";
 import { TenantService } from "../gen/publira/v1/tenant_pb.js";
 import { createApiGrpcTransport } from "../grpc-session.js";
 import { createTenantHeaderInterceptor } from "../tenant-header.js";
@@ -45,6 +46,7 @@ export interface PublicApiClient {
   pages: Client<typeof PublicPagesService>;
   purchase: Client<typeof PurchaseService>;
   rating: Client<typeof RatingService>;
+  subscription: Client<typeof SubscriptionService>;
   tenant: Client<typeof TenantService>;
   waitFree: Client<typeof WaitFreeService>;
   domain: Client<typeof DomainService>;
@@ -95,6 +97,7 @@ export const createPublicApiClient = (
     pages: createClient(PublicPagesService, transportInstance),
     purchase: createClient(PurchaseService, transportInstance),
     rating: createClient(RatingService, transportInstance),
+    subscription: createClient(SubscriptionService, transportInstance),
     tenant: createClient(TenantService, transportInstance),
     waitFree: createClient(WaitFreeService, transportInstance),
   };

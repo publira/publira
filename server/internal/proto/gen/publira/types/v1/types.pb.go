@@ -723,6 +723,200 @@ func (AgeVerification) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
 }
 
+// What a subscription plan opens while it is paid
+// (subscription_plans.scope).
+type SubscriptionPlanScope int32
+
+const (
+	// Never answered by a read. A write naming it is rejected: a plan states
+	// one of the three.
+	SubscriptionPlanScope_SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED SubscriptionPlanScope = 0
+	// Every episode of the tenant. Such a plan names no labels and no series.
+	SubscriptionPlanScope_SUBSCRIPTION_PLAN_SCOPE_ALL SubscriptionPlanScope = 1
+	// Every episode of the series of the labels the plan names.
+	SubscriptionPlanScope_SUBSCRIPTION_PLAN_SCOPE_LABEL SubscriptionPlanScope = 2
+	// Every episode of the series the plan names.
+	SubscriptionPlanScope_SUBSCRIPTION_PLAN_SCOPE_SERIES SubscriptionPlanScope = 3
+)
+
+// Enum value maps for SubscriptionPlanScope.
+var (
+	SubscriptionPlanScope_name = map[int32]string{
+		0: "SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED",
+		1: "SUBSCRIPTION_PLAN_SCOPE_ALL",
+		2: "SUBSCRIPTION_PLAN_SCOPE_LABEL",
+		3: "SUBSCRIPTION_PLAN_SCOPE_SERIES",
+	}
+	SubscriptionPlanScope_value = map[string]int32{
+		"SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED": 0,
+		"SUBSCRIPTION_PLAN_SCOPE_ALL":         1,
+		"SUBSCRIPTION_PLAN_SCOPE_LABEL":       2,
+		"SUBSCRIPTION_PLAN_SCOPE_SERIES":      3,
+	}
+)
+
+func (x SubscriptionPlanScope) Enum() *SubscriptionPlanScope {
+	p := new(SubscriptionPlanScope)
+	*p = x
+	return p
+}
+
+func (x SubscriptionPlanScope) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SubscriptionPlanScope) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[12].Descriptor()
+}
+
+func (SubscriptionPlanScope) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[12]
+}
+
+func (x SubscriptionPlanScope) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SubscriptionPlanScope.Descriptor instead.
+func (SubscriptionPlanScope) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{12}
+}
+
+// The unit a subscription plan's recurring price is billed every so many of,
+// as its Stripe Price states it (subscription_plans.recurring_interval).
+type SubscriptionInterval int32
+
+const (
+	SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED SubscriptionInterval = 0
+	SubscriptionInterval_SUBSCRIPTION_INTERVAL_DAY         SubscriptionInterval = 1
+	SubscriptionInterval_SUBSCRIPTION_INTERVAL_WEEK        SubscriptionInterval = 2
+	SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH       SubscriptionInterval = 3
+	SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR        SubscriptionInterval = 4
+)
+
+// Enum value maps for SubscriptionInterval.
+var (
+	SubscriptionInterval_name = map[int32]string{
+		0: "SUBSCRIPTION_INTERVAL_UNSPECIFIED",
+		1: "SUBSCRIPTION_INTERVAL_DAY",
+		2: "SUBSCRIPTION_INTERVAL_WEEK",
+		3: "SUBSCRIPTION_INTERVAL_MONTH",
+		4: "SUBSCRIPTION_INTERVAL_YEAR",
+	}
+	SubscriptionInterval_value = map[string]int32{
+		"SUBSCRIPTION_INTERVAL_UNSPECIFIED": 0,
+		"SUBSCRIPTION_INTERVAL_DAY":         1,
+		"SUBSCRIPTION_INTERVAL_WEEK":        2,
+		"SUBSCRIPTION_INTERVAL_MONTH":       3,
+		"SUBSCRIPTION_INTERVAL_YEAR":        4,
+	}
+)
+
+func (x SubscriptionInterval) Enum() *SubscriptionInterval {
+	p := new(SubscriptionInterval)
+	*p = x
+	return p
+}
+
+func (x SubscriptionInterval) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SubscriptionInterval) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[13].Descriptor()
+}
+
+func (SubscriptionInterval) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[13]
+}
+
+func (x SubscriptionInterval) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SubscriptionInterval.Descriptor instead.
+func (SubscriptionInterval) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{13}
+}
+
+// A subscription's state, as Stripe last reported it (subscriptions.status).
+// Each value is Stripe's own status of the same name.
+type SubscriptionStatus int32
+
+const (
+	SubscriptionStatus_SUBSCRIPTION_STATUS_UNSPECIFIED SubscriptionStatus = 0
+	// The first payment has not gone through yet, such as one waiting on the
+	// reader's 3-D Secure.
+	SubscriptionStatus_SUBSCRIPTION_STATUS_INCOMPLETE SubscriptionStatus = 1
+	// The first payment never went through, and the subscription was dropped.
+	SubscriptionStatus_SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED SubscriptionStatus = 2
+	SubscriptionStatus_SUBSCRIPTION_STATUS_TRIALING           SubscriptionStatus = 3
+	// Paid up.
+	SubscriptionStatus_SUBSCRIPTION_STATUS_ACTIVE SubscriptionStatus = 4
+	// A renewal payment failed, and Stripe is retrying it.
+	SubscriptionStatus_SUBSCRIPTION_STATUS_PAST_DUE SubscriptionStatus = 5
+	// Ended: canceled at once, at the end of its period, or after its retries
+	// ran out.
+	SubscriptionStatus_SUBSCRIPTION_STATUS_CANCELED SubscriptionStatus = 6
+	// Stripe's retries ran out and the tenant's Stripe settings keep the
+	// subscription open, unpaid.
+	SubscriptionStatus_SUBSCRIPTION_STATUS_UNPAID SubscriptionStatus = 7
+	SubscriptionStatus_SUBSCRIPTION_STATUS_PAUSED SubscriptionStatus = 8
+)
+
+// Enum value maps for SubscriptionStatus.
+var (
+	SubscriptionStatus_name = map[int32]string{
+		0: "SUBSCRIPTION_STATUS_UNSPECIFIED",
+		1: "SUBSCRIPTION_STATUS_INCOMPLETE",
+		2: "SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED",
+		3: "SUBSCRIPTION_STATUS_TRIALING",
+		4: "SUBSCRIPTION_STATUS_ACTIVE",
+		5: "SUBSCRIPTION_STATUS_PAST_DUE",
+		6: "SUBSCRIPTION_STATUS_CANCELED",
+		7: "SUBSCRIPTION_STATUS_UNPAID",
+		8: "SUBSCRIPTION_STATUS_PAUSED",
+	}
+	SubscriptionStatus_value = map[string]int32{
+		"SUBSCRIPTION_STATUS_UNSPECIFIED":        0,
+		"SUBSCRIPTION_STATUS_INCOMPLETE":         1,
+		"SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED": 2,
+		"SUBSCRIPTION_STATUS_TRIALING":           3,
+		"SUBSCRIPTION_STATUS_ACTIVE":             4,
+		"SUBSCRIPTION_STATUS_PAST_DUE":           5,
+		"SUBSCRIPTION_STATUS_CANCELED":           6,
+		"SUBSCRIPTION_STATUS_UNPAID":             7,
+		"SUBSCRIPTION_STATUS_PAUSED":             8,
+	}
+)
+
+func (x SubscriptionStatus) Enum() *SubscriptionStatus {
+	p := new(SubscriptionStatus)
+	*p = x
+	return p
+}
+
+func (x SubscriptionStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SubscriptionStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[14].Descriptor()
+}
+
+func (SubscriptionStatus) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[14]
+}
+
+func (x SubscriptionStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SubscriptionStatus.Descriptor instead.
+func (SubscriptionStatus) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{14}
+}
+
 // TenantContext identifies a tenant for internal RPC wiring.
 // tenant_id is the primary key (UUID), not the public-facing short code.
 //
@@ -3723,7 +3917,28 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1cAGE_VERIFICATION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15AGE_VERIFICATION_NONE\x10\x01\x12\x18\n" +
 	"\x14AGE_VERIFICATION_R18\x10\x02\x12 \n" +
-	"\x1cAGE_VERIFICATION_R15_AND_R18\x10\x03BWZUgithub.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1b\x06proto3"
+	"\x1cAGE_VERIFICATION_R15_AND_R18\x10\x03*\xa8\x01\n" +
+	"\x15SubscriptionPlanScope\x12'\n" +
+	"#SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bSUBSCRIPTION_PLAN_SCOPE_ALL\x10\x01\x12!\n" +
+	"\x1dSUBSCRIPTION_PLAN_SCOPE_LABEL\x10\x02\x12\"\n" +
+	"\x1eSUBSCRIPTION_PLAN_SCOPE_SERIES\x10\x03*\xbd\x01\n" +
+	"\x14SubscriptionInterval\x12%\n" +
+	"!SUBSCRIPTION_INTERVAL_UNSPECIFIED\x10\x00\x12\x1d\n" +
+	"\x19SUBSCRIPTION_INTERVAL_DAY\x10\x01\x12\x1e\n" +
+	"\x1aSUBSCRIPTION_INTERVAL_WEEK\x10\x02\x12\x1f\n" +
+	"\x1bSUBSCRIPTION_INTERVAL_MONTH\x10\x03\x12\x1e\n" +
+	"\x1aSUBSCRIPTION_INTERVAL_YEAR\x10\x04*\xcf\x02\n" +
+	"\x12SubscriptionStatus\x12#\n" +
+	"\x1fSUBSCRIPTION_STATUS_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eSUBSCRIPTION_STATUS_INCOMPLETE\x10\x01\x12*\n" +
+	"&SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED\x10\x02\x12 \n" +
+	"\x1cSUBSCRIPTION_STATUS_TRIALING\x10\x03\x12\x1e\n" +
+	"\x1aSUBSCRIPTION_STATUS_ACTIVE\x10\x04\x12 \n" +
+	"\x1cSUBSCRIPTION_STATUS_PAST_DUE\x10\x05\x12 \n" +
+	"\x1cSUBSCRIPTION_STATUS_CANCELED\x10\x06\x12\x1e\n" +
+	"\x1aSUBSCRIPTION_STATUS_UNPAID\x10\a\x12\x1e\n" +
+	"\x1aSUBSCRIPTION_STATUS_PAUSED\x10\bBWZUgithub.com/publira/publira/server/internal/proto/gen/publira/types/v1;publirattypesv1b\x06proto3"
 
 var (
 	file_publira_types_v1_types_proto_rawDescOnce sync.Once
@@ -3737,7 +3952,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 15)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
@@ -3752,56 +3967,59 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(ReaderIconPolicy)(0),         // 9: publira.types.v1.ReaderIconPolicy
 	(GoogleTagServingMode)(0),     // 10: publira.types.v1.GoogleTagServingMode
 	(AgeVerification)(0),          // 11: publira.types.v1.AgeVerification
-	(*TenantContext)(nil),         // 12: publira.types.v1.TenantContext
-	(*User)(nil),                  // 13: publira.types.v1.User
-	(*UserIconVariant)(nil),       // 14: publira.types.v1.UserIconVariant
-	(*AccessToken)(nil),           // 15: publira.types.v1.AccessToken
-	(*CreatorRole)(nil),           // 16: publira.types.v1.CreatorRole
-	(*Creator)(nil),               // 17: publira.types.v1.Creator
-	(*Label)(nil),                 // 18: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 19: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 20: publira.types.v1.ImageCropRect
-	(*Genre)(nil),                 // 21: publira.types.v1.Genre
-	(*GenreTranslation)(nil),      // 22: publira.types.v1.GenreTranslation
-	(*Tag)(nil),                   // 23: publira.types.v1.Tag
-	(*Series)(nil),                // 24: publira.types.v1.Series
-	(*Episode)(nil),               // 25: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 26: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 27: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 28: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 29: publira.types.v1.Page
-	(*PageTranslation)(nil),       // 30: publira.types.v1.PageTranslation
-	(*PageVersion)(nil),           // 31: publira.types.v1.PageVersion
-	(*Volume)(nil),                // 32: publira.types.v1.Volume
-	(*SeriesBundle)(nil),          // 33: publira.types.v1.SeriesBundle
-	(*ReaderIconPreset)(nil),      // 34: publira.types.v1.ReaderIconPreset
-	(*RetentionPeriods)(nil),      // 35: publira.types.v1.RetentionPeriods
+	(SubscriptionPlanScope)(0),    // 12: publira.types.v1.SubscriptionPlanScope
+	(SubscriptionInterval)(0),     // 13: publira.types.v1.SubscriptionInterval
+	(SubscriptionStatus)(0),       // 14: publira.types.v1.SubscriptionStatus
+	(*TenantContext)(nil),         // 15: publira.types.v1.TenantContext
+	(*User)(nil),                  // 16: publira.types.v1.User
+	(*UserIconVariant)(nil),       // 17: publira.types.v1.UserIconVariant
+	(*AccessToken)(nil),           // 18: publira.types.v1.AccessToken
+	(*CreatorRole)(nil),           // 19: publira.types.v1.CreatorRole
+	(*Creator)(nil),               // 20: publira.types.v1.Creator
+	(*Label)(nil),                 // 21: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 22: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 23: publira.types.v1.ImageCropRect
+	(*Genre)(nil),                 // 24: publira.types.v1.Genre
+	(*GenreTranslation)(nil),      // 25: publira.types.v1.GenreTranslation
+	(*Tag)(nil),                   // 26: publira.types.v1.Tag
+	(*Series)(nil),                // 27: publira.types.v1.Series
+	(*Episode)(nil),               // 28: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 29: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 30: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 31: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 32: publira.types.v1.Page
+	(*PageTranslation)(nil),       // 33: publira.types.v1.PageTranslation
+	(*PageVersion)(nil),           // 34: publira.types.v1.PageVersion
+	(*Volume)(nil),                // 35: publira.types.v1.Volume
+	(*SeriesBundle)(nil),          // 36: publira.types.v1.SeriesBundle
+	(*ReaderIconPreset)(nil),      // 37: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 38: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	14, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
-	16, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
+	17, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
+	19, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
 	0,  // 2: publira.types.v1.Creator.source:type_name -> publira.types.v1.CreatorCreditSource
-	19, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	19, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	22, // 5: publira.types.v1.Genre.translations:type_name -> publira.types.v1.GenreTranslation
-	18, // 6: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	17, // 7: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	19, // 8: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	22, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	22, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	25, // 5: publira.types.v1.Genre.translations:type_name -> publira.types.v1.GenreTranslation
+	21, // 6: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	20, // 7: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	22, // 8: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	1,  // 9: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	2,  // 10: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	21, // 11: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	23, // 12: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	24, // 11: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	26, // 12: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
 	7,  // 13: publira.types.v1.Series.availability:type_name -> publira.types.v1.SurfaceAvailability
-	17, // 14: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	20, // 14: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
 	3,  // 15: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	7,  // 16: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
 	7,  // 17: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	19, // 18: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	27, // 19: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	27, // 20: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	27, // 21: publira.types.v1.TenantTheme.sign_in_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	19, // 22: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	14, // 23: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	22, // 18: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	30, // 19: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	30, // 20: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	30, // 21: publira.types.v1.TenantTheme.sign_in_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	22, // 22: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	17, // 23: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
 	24, // [24:24] is the sub-list for method output_type
 	24, // [24:24] is the sub-list for method input_type
 	24, // [24:24] is the sub-list for extension type_name
@@ -3819,7 +4037,7 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      12,
+			NumEnums:      15,
 			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   0,
