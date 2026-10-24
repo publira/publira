@@ -3,3 +3,34 @@
 @import "@publira/ui-components/styles.css";
 @import "@publira/layouts/styles.css";
 @import "@publira/comic-viewer-shell/styles.css";
+
+/**
+ * What the panel beside the sign-in and sign-up forms shows while the tenant
+ * has uploaded no image of its own: a field of the tenant's primary colour,
+ * ruled into the same squares the consoles' panel is, in the colour the tenant
+ * sets text on that primary in.
+ *
+ * Both colours come from `/theme.css`, so a tenant with no image still meets a
+ * reader in its own palette rather than in Publira's, and the pair it already
+ * chose to read against each other is what keeps the rules visible without
+ * any contrast decision being made here.
+ */
+@utility sign-in-panel-ground {
+  --sign-in-panel-rule: color-mix(
+    in oklab,
+    var(--color-primary-foreground) 16%,
+    transparent
+  );
+  background-color: var(--color-primary);
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--sign-in-panel-rule) 0 1px,
+      transparent 1px 1.5rem
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--sign-in-panel-rule) 0 1px,
+      transparent 1px 1.5rem
+    );
+}

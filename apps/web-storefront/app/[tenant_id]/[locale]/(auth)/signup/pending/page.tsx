@@ -16,6 +16,8 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { SignInPanel } from "../../_components/sign-in-panel";
+
 export const generateMetadata = async (): Promise<Metadata> => {
   const t = await getMessages();
 
@@ -111,6 +113,8 @@ const SignupPendingPage = () => (
         </p>
       </AuthScreen.Footer>
     </AuthScreen.Main>
+
+    <SignInPanel />
   </AuthScreen.Root>
 );
 

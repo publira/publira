@@ -434,6 +434,30 @@ describe("tenant", () => {
     expect(info?.logoImageVariants).toBeUndefined();
   });
 
+  it("Carry the image the tenant uploaded for the sign-in panel", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      theme: {
+        signInImageUpdatedAt: "2026-10-24T00:00:00.000Z",
+        signInImageVariants: [brandingVariant("/images/tenants/sign-in-1")],
+      },
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.signInImageVariants).toEqual([
+      brandingVariant("/images/tenants/sign-in-1"),
+    ]);
+  });
+
+  it("Carry no sign-in image while the tenant has uploaded none", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.signInImageVariants).toBeUndefined();
+  });
+
   it("Fallback to default time zone when field is empty", async () => {
     mockGetTenant.mockResolvedValueOnce({ ...tenantResponse, timezone: "  " });
 

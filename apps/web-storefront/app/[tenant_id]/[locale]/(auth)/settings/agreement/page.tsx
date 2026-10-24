@@ -30,6 +30,7 @@ import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
+import { SignInPanel } from "../../_components/sign-in-panel";
 import { agreeToLegalPagesAction } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -207,6 +208,8 @@ const LegalPageAgreementPage = ({
         </div>
       </AuthScreen.Footer>
     </AuthScreen.Main>
+
+    <SignInPanel />
   </AuthScreen.Root>
 );
 

@@ -15,6 +15,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { SignInPanel } from "../../_components/sign-in-panel";
 import { BirthDateField, ConsentField } from "../_components/sign-up-fields";
 import { continueSignUpAction } from "./_lib/actions";
 
@@ -108,6 +109,8 @@ const ContinueSignUpPage = () => (
         </p>
       </AuthScreen.Footer>
     </AuthScreen.Main>
+
+    <SignInPanel />
   </AuthScreen.Root>
 );
 

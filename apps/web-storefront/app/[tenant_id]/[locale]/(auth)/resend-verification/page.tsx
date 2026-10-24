@@ -10,6 +10,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { SignInPanel } from "../_components/sign-in-panel";
 import { ResendVerificationForm } from "./_components/resend-verification-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -51,6 +52,8 @@ const ResendVerificationPage = () => (
 
       <ResendVerificationForm />
     </AuthScreen.Main>
+
+    <SignInPanel />
   </AuthScreen.Root>
 );
 
