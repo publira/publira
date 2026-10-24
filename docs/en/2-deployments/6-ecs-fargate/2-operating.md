@@ -2,7 +2,7 @@
 title: Operating on ECS
 description: Add a tenant, keep the consoles' credentials off the tenants' domains, and upgrade an install that runs on Amazon ECS on Fargate.
 published: 2026-10-21
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 These are the changes made to an install once [Amazon ECS on Fargate](./index.md) and [CloudFront in front of ECS](./1-cloudfront.md) have brought it into service. Their commands use the shell variables and functions those pages defined. In a shell other than the one the install was built in, define again the ones a command names: the variables of [Before you start](./index.md#before-you-start), the `run_publiractl` function of [Apply the migrations and create the database roles](./index.md#4-apply-the-migrations-and-create-the-database-roles), `SERVER_SG` and `NAMESPACE` and the `registry` function of [Open the network paths](./index.md#3-open-the-network-paths), the `target_group` function of [Create the load balancer](./index.md#5-create-the-load-balancer), the `service` function of [Start the services](./index.md#6-start-the-services), and `LISTENER`, which `aws elbv2 describe-listeners --load-balancer-arn <the load balancer ARN> --query 'Listeners[0].ListenerArn' --output text` prints.
@@ -128,16 +128,4 @@ SERVICES="publira-server publira-worker web-storefront web-admin"
 
 5. **Check the install**, as [Check the install](../8-upgrading.md#5-check-the-install) describes.
 
-When the services keep running through the upgrade instead, step 4 replaces them in the order [Replace the processes](../8-upgrading.md#4-replace-the-processes) gives. Update `email-renderer` first if you run it. Then stop every task of the worker before its new revision starts one, since ECS would otherwise start the new task while the old one still runs:
-
-```bash
-WORKERS=$(aws ecs describe-services --cluster publira --services publira-worker \
-  --query 'services[0].desiredCount' --output text)
-aws ecs update-service --cluster publira --service publira-worker --desired-count 0 > /dev/null
-aws ecs wait services-stable --cluster publira --services publira-worker
-aws ecs register-task-definition --cli-input-json file://publira-worker.json > /dev/null
-aws ecs update-service --cluster publira --service publira-worker --task-definition publira-worker \
-  --desired-count "$WORKERS" > /dev/null
-```
-
-Then run the loop of step 4 with `SERVICES` naming the other services, which ECS replaces a few tasks at a time while the install keeps serving.
+When the services keep running through the upgrade instead, step 4 replaces them in the order [Replace the processes](../8-upgrading.md#4-replace-the-processes) gives. Update `email-renderer` first if you run it, and then run the loop of step 4 with `SERVICES` naming the other services, which ECS replaces a few tasks at a time while the install keeps serving.

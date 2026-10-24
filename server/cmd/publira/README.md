@@ -386,5 +386,6 @@ They are exported once `PUBLIRA_METRICS_ENABLED` is set; the exporter variables 
 
 1. Claim due `pending` rows with `FOR UPDATE SKIP LOCKED` and enqueue the River jobs in the same transaction
 2. The job runs the handler: `done` on success, or back to `pending` with exponential backoff on failure
-3. `dead` on reaching the maximum attempt count or on a permanent error
-4. After a process restart, unprocessed `pending` rows and stale `processing` rows are picked up again. A crash records no failure, so for the auth mail above the reclaim spends an attempt: a worker dying on every attempt eventually reaches `dead`, where the raw token is dropped from `payload`
+3. An event whose type the worker has no handler for goes back to `pending` without spending an attempt, due again a minute later, for a worker of a newer release to claim; one still unknown a day after it was written is `dead`
+4. `dead` on reaching the maximum attempt count or on a permanent error
+5. After a process restart, unprocessed `pending` rows and stale `processing` rows are picked up again. A crash records no failure, so for the auth mail above the reclaim spends an attempt: a worker dying on every attempt eventually reaches `dead`, where the raw token is dropped from `payload`

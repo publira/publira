@@ -2,7 +2,7 @@
 title: Releases
 description: What a version number tells you, what each kind of release may change, how 0.x differs, which releases run side by side, and which releases receive fixes.
 published: 2026-10-11
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 Publira is released as tags of the repository named `vMAJOR.MINOR.PATCH`, starting at `v0.1.0`. Each one is published with its release notes on the repository's [Releases](https://github.com/publira/publira/releases) page, and its images are pushed under the release's version, the tag without its `v`, and no other tag: `v0.1.0` is pulled as `ghcr.io/publira/<name>:0.1.0`. There is no `latest` and no `0.1`, so an install moves to a new release only when you change the version it runs. The release also carries the [Docker Compose](./3-docker-compose.md) install as `publira-deploy-<version>.tar.gz`: the Compose file, its `.env.example` naming the release's images, and the proxy's `Caddyfile`, as they are in the repository at the tag. It carries no signature, and neither do the images. This page says what the number of a release tells you before you upgrade to it, which releases run side by side, and which releases receive fixes.
@@ -38,7 +38,7 @@ Every release works with the release right before it, prereleases aside, whateve
 - The web apps and `publira server` of the two releases call each other, in either direction.
 - The processes of the earlier release keep working on the schema and the roles that the later release's `db migrate` and `db roles` leave. A release drops or renames a table, a column, or a grant only once the release before it no longer reads it.
 
-So an upgrade to the next release can keep the install serving, with its processes replaced one copy at a time, and what the new release adds works once every process runs it. The worker is the exception, and is replaced whole, as [Replace the processes](./8-upgrading.md#4-replace-the-processes) describes. The promise reaches one release: between releases further apart, stop the processes before you upgrade, or upgrade one release at a time.
+So an upgrade to the next release can keep the install serving, with its processes replaced one copy at a time, and what the new release adds works once every process runs it. The promise reaches one release: between releases further apart, stop the processes before you upgrade, or upgrade one release at a time.
 
 ## Patch releases
 

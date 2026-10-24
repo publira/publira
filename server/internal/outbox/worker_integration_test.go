@@ -80,7 +80,10 @@ func TestWorkerMarksDeadAfterMaxAttempts(t *testing.T) {
 	waitMetric(t, ctx, "dead", &w.Metrics().Dead, 1)
 }
 
-func TestWorkerUnknownEventTypeGoesDead(t *testing.T) {
+// A worker of the release before an upgrade meets the event types only the new
+// release writes. It leaves such an event pending for the new release's worker,
+// running beside it, rather than marking it dead, and charges it no attempt.
+func TestWorkerLeavesUnknownEventTypeForAWorkerThatHandlesIt(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -89,23 +92,99 @@ func TestWorkerUnknownEventTypeGoesDead(t *testing.T) {
 
 	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
 	queries := dbmodels.New(pg.DB)
-	event, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
-		ID:             uuid.Must(uuid.NewV7()),
-		TenantID:       uuid.NullUUID{UUID: tenant.ID, Valid: true},
-		EventType:      "not_a_real_event",
-		Payload:        json.RawMessage(`{"tenant_id":"` + tenant.ID.String() + `"}`),
-		IdempotencyKey: "test:unknown",
-		AvailableAt:    time.Now().UTC().Add(-time.Second),
-	})
+	event := insertUnknownTypeEvent(t, ctx, queries, tenant.ID, "test:unknown-handled")
+
+	older := startTestWorker(t, pg.DB, outbox.Config{UnknownTypeWait: 20 * time.Millisecond})
+	waitMetric(t, ctx, "claimed", &older.Metrics().Claimed, 2)
+	got, err := queries.GetOutboxEvent(ctx, event.ID)
 	if err != nil {
-		t.Fatalf("InsertOutboxEvent: %v", err)
+		t.Fatalf("GetOutboxEvent: %v", err)
+	}
+	if got.Status == outbox.StatusDead {
+		t.Fatalf("status = %q, want the event left for another worker", got.Status)
+	}
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0", got.Attempts)
+	}
+	if !strings.Contains(got.LastError.String, "left for a worker that handles it") {
+		t.Fatalf("last_error = %q, want the reason it is waiting", got.LastError.String)
 	}
 
-	startTestWorker(t, pg.DB, outbox.Config{})
+	var handled atomic.Int64
+	handlers := outbox.NewRegistry()
+	handlers.Register(unknownEventType, func(context.Context, dbmodels.OutboxEvent) error {
+		handled.Add(1)
+		return nil
+	})
+	newer := startTestWorker(t, pg.DB, outbox.Config{Handlers: handlers, UnknownTypeWait: 20 * time.Millisecond})
+
+	got = waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0", got.Attempts)
+	}
+	waitMetric(t, ctx, "done", &newer.Metrics().Done, 1)
+	if n := handled.Load(); n != 1 {
+		t.Fatalf("handler ran %d times, want 1", n)
+	}
+	if n := older.Metrics().Dead.Load(); n != 0 {
+		t.Fatalf("older worker dead metric = %d, want 0", n)
+	}
+}
+
+// A type no running release handles cannot wait forever: once the event has
+// waited out the window, the worker marks it dead as it marks any permanent
+// failure.
+func TestWorkerMarksUnknownEventTypeDeadAfterTheWindow(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	event := insertUnknownTypeEvent(t, ctx, queries, tenant.ID, "test:unknown-dead")
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE outbox_events
+		SET created_at = NOW() - interval '25 hours'
+		WHERE id = $1
+	`, event.ID); err != nil {
+		t.Fatalf("age event: %v", err)
+	}
+
+	w := startTestWorker(t, pg.DB, outbox.Config{})
 	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDead)
 	if got.Attempts != 1 {
 		t.Fatalf("attempts = %d, want 1 (permanent, no retries)", got.Attempts)
 	}
+	if want := `unknown outbox event type "` + unknownEventType + `"`; got.LastError.String != want {
+		t.Fatalf("last_error = %q, want %q", got.LastError.String, want)
+	}
+	waitMetric(t, ctx, "dead", &w.Metrics().Dead, 1)
+}
+
+const unknownEventType = "not_a_real_event"
+
+func insertUnknownTypeEvent(
+	t *testing.T,
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	key string,
+) dbmodels.OutboxEvent {
+	t.Helper()
+	event, err := queries.InsertOutboxEvent(ctx, dbmodels.InsertOutboxEventParams{
+		ID:             uuid.Must(uuid.NewV7()),
+		TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+		EventType:      unknownEventType,
+		Payload:        json.RawMessage(`{"tenant_id":"` + tenantID.String() + `"}`),
+		IdempotencyKey: key,
+		AvailableAt:    time.Now().UTC().Add(-time.Second),
+	})
+	if err != nil {
+		t.Fatalf("InsertOutboxEvent %s: %v", key, err)
+	}
+	return event
 }
 
 func TestWorkerPicksUpPendingAfterRestart(t *testing.T) {
