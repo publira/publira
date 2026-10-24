@@ -458,12 +458,18 @@ class ListSubscriptionPlansResponse extends $pb.GeneratedMessage {
 /// answers the URL of Stripe's checkout page. The subscription is recorded by
 /// Stripe's webhook alone, and its state follows the webhook from then on.
 ///
+/// A reader has at most one checkout they could pay. Asking again for the plan
+/// of the reader's checkout that is still open answers that checkout's URL;
+/// asking for another plan closes it before the new one is started, so a page
+/// still showing it can no longer be paid.
+///
 /// Signed-in readers only. A plan that is not published is not_found, and a
 /// tenant that takes no payments, or takes them through a provider that sells
 /// no subscriptions, is failed_precondition. A reader who already holds a
 /// subscription that is trialing, active, past due, unpaid, or paused is
-/// already_exists: one reader holds one subscription, and changing it is what
-/// CreateBillingPortalSession is for.
+/// already_exists, and so is one who has paid a checkout whose subscription
+/// Stripe has not reported yet: one reader holds one subscription, and changing
+/// it is what CreateBillingPortalSession is for.
 ///
 /// The reader returns to `/my` on the tenant's site with `subscription=success`
 /// in the query, or to `/plans` with `subscription=cancelled`.

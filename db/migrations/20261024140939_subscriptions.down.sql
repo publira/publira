@@ -10,6 +10,8 @@ BEGIN
     END IF;
 END $$;
 
+DROP TABLE subscription_checkouts;
+
 DROP TABLE subscriptions;
 
 DROP TABLE subscription_plan_targets;

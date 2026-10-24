@@ -13,6 +13,14 @@ import (
 // amount billed every period.
 var ErrPriceNotFound = errors.New("the payment provider holds no such recurring price")
 
+// ErrSubscriptionNotFound reports a subscription id the tenant's account holds
+// no subscription under.
+var ErrSubscriptionNotFound = errors.New("the payment provider holds no such subscription")
+
+// ErrCheckoutNotOpen reports a checkout that could not be expired because it
+// had already completed or expired.
+var ErrCheckoutNotOpen = errors.New("the checkout is no longer open")
+
 // Subscriptions is what a provider that sells subscription plans implements
 // beside [Provider]. A provider that does not is one a tenant cannot sell a
 // plan through.
@@ -20,9 +28,19 @@ type Subscriptions interface {
 	// DescribePrice answers the recurring price priceID names on the tenant's
 	// account, or [ErrPriceNotFound] when there is none.
 	DescribePrice(ctx context.Context, credentials Credentials, priceID string) (Price, error)
-	// StartSubscriptionCheckout answers the URL the reader is sent to in order
-	// to subscribe.
-	StartSubscriptionCheckout(ctx context.Context, credentials Credentials, req SubscriptionCheckoutRequest) (string, error)
+	// StartSubscriptionCheckout starts the checkout the reader is sent to in
+	// order to subscribe.
+	StartSubscriptionCheckout(ctx context.Context, credentials Credentials, req SubscriptionCheckoutRequest) (SubscriptionCheckout, error)
+	// GetSubscriptionCheckout answers a checkout StartSubscriptionCheckout
+	// started, as it stands now.
+	GetSubscriptionCheckout(ctx context.Context, credentials Credentials, checkoutID string) (SubscriptionCheckout, error)
+	// ExpireSubscriptionCheckout closes an open checkout, so the reader can no
+	// longer pay it. A checkout that has already completed or expired answers
+	// [ErrCheckoutNotOpen].
+	ExpireSubscriptionCheckout(ctx context.Context, credentials Credentials, checkoutID string) error
+	// RetrieveSubscription answers a subscription as the provider holds it now,
+	// or [ErrSubscriptionNotFound].
+	RetrieveSubscription(ctx context.Context, credentials Credentials, subscriptionID string) (Subscription, error)
 	// StartBillingPortal answers the URL of the provider's own page where the
 	// reader manages the subscriptions of one customer.
 	StartBillingPortal(ctx context.Context, credentials Credentials, req BillingPortalRequest) (string, error)
@@ -73,6 +91,30 @@ type SubscriptionCheckoutRequest struct {
 	IdempotencyKey string
 }
 
+// SubscriptionCheckoutStatus is where a subscription checkout stands.
+type SubscriptionCheckoutStatus string
+
+const (
+	// SubscriptionCheckoutOpen is a checkout the reader may still pay.
+	SubscriptionCheckoutOpen SubscriptionCheckoutStatus = "open"
+	// SubscriptionCheckoutComplete is one the reader paid, which started a
+	// subscription.
+	SubscriptionCheckoutComplete SubscriptionCheckoutStatus = "complete"
+	// SubscriptionCheckoutExpired is one that closed unpaid.
+	SubscriptionCheckoutExpired SubscriptionCheckoutStatus = "expired"
+)
+
+// SubscriptionCheckout is one checkout of a plan.
+type SubscriptionCheckout struct {
+	// ID is the provider's id of the checkout.
+	ID     string
+	Status SubscriptionCheckoutStatus
+	// URL is where the reader pays, set while the checkout is open.
+	URL string
+	// SubscriptionID is the subscription a completed checkout started.
+	SubscriptionID string
+}
+
 // BillingPortalRequest opens the provider's billing page for one customer.
 type BillingPortalRequest struct {
 	CustomerID string
@@ -106,7 +148,8 @@ func (s SubscriptionStatus) Known() bool {
 	return false
 }
 
-// Subscription is one subscription as the provider reports it now.
+// Subscription is one subscription a plan's checkout started, as the provider
+// reports it now.
 type Subscription struct {
 	// ID is the provider's id of the subscription.
 	ID string
@@ -127,13 +170,15 @@ type Subscription struct {
 	CancelAtPeriodEnd bool
 }
 
-// SubscriptionChanged reports a subscription as it stands now, whichever of
-// its changes the notification was about. Every notification about one
-// answers its whole state, so one that arrives late or twice records nothing
-// older than what an earlier one did.
+// SubscriptionChanged reports that a subscription a plan's checkout started
+// has changed, whichever change the notification was about. It names the
+// subscription rather than carrying it: the copy in a notification can be older
+// than one already recorded, since a provider orders neither its notifications
+// nor their retries, so the purchase flow reads the subscription with
+// [Subscriptions.RetrieveSubscription] while it holds the subscription's lock.
 type SubscriptionChanged struct {
-	ID           string
-	Subscription Subscription
+	ID             string
+	SubscriptionID string
 }
 
 func (e SubscriptionChanged) NotificationID() string { return e.ID }

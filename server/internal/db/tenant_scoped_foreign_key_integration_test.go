@@ -398,6 +398,18 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args: []any{mustUUID(t), first.tenantID, second.userID, first.subscriptionPlanID},
 		},
 		{
+			name:       "subscription_checkouts.plan_id",
+			constraint: "subscription_checkouts_tenant_plan_id_fkey",
+			statement:  `INSERT INTO subscription_checkouts (tenant_id, user_id, plan_id, stripe_checkout_session_id) VALUES ($1, $2, $3, 'cs_fk_plan')`,
+			args:       []any{first.tenantID, first.userID, second.subscriptionPlanID},
+		},
+		{
+			name:       "subscription_checkouts.user_id",
+			constraint: "subscription_checkouts_tenant_user_id_fkey",
+			statement:  `INSERT INTO subscription_checkouts (tenant_id, user_id, plan_id, stripe_checkout_session_id) VALUES ($1, $2, $3, 'cs_fk_user')`,
+			args:       []any{first.tenantID, second.userID, first.subscriptionPlanID},
+		},
+		{
 			name:       "access_tickets.created_by_user_id",
 			constraint: "access_tickets_tenant_created_by_user_id_fkey",
 			statement:  `UPDATE access_tickets SET created_by_user_id = $2 WHERE id = $1`,

@@ -107,8 +107,7 @@ func (s *apiServer) StartSubscriptionCheckout(
 		return nil, err
 	}
 
-	queries := s.queriesFor(ctx)
-	plan, err := queries.GetPublishedSubscriptionPlanByIDForTenant(ctx, dbmodels.GetPublishedSubscriptionPlanByIDForTenantParams{
+	plan, err := s.queriesFor(ctx).GetPublishedSubscriptionPlanByIDForTenant(ctx, dbmodels.GetPublishedSubscriptionPlanByIDForTenantParams{
 		TenantID: tenant.ID,
 		ID:       planID,
 	})
@@ -118,24 +117,46 @@ func (s *apiServer) StartSubscriptionCheckout(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get the subscription plan", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", planID.String())
 	}
+
+	// The reader's checkouts are serialized from here to the commit, provider
+	// calls included, so two requests cannot each find no open checkout and
+	// each start one: a reader who paid both would hold two subscriptions.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin the subscription checkout transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	queries := dbmodels.New(tx)
+	if err := queries.LockSubscriptionCheckoutsOfUser(ctx, dbmodels.LockSubscriptionCheckoutsOfUserParams{TenantID: tenant.ID, UserID: user.ID}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock the reader's subscription checkouts", err, "tenant_id", tenant.ID.String())
+	}
 	reader := uuid.NullUUID{UUID: user.ID, Valid: true}
 	holds, err := queries.UserHoldsLiveSubscription(ctx, dbmodels.UserHoldsLiveSubscriptionParams{TenantID: tenant.ID, UserID: reader})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to check the reader's subscriptions", err, "tenant_id", tenant.ID.String())
 	}
 	if holds {
-		return nil, connect.NewError(connect.CodeAlreadyExists, "the reader already holds a subscription")
+		return nil, readerHoldsSubscriptionError()
+	}
+	previous, err := queries.GetSubscriptionCheckoutForUser(ctx, dbmodels.GetSubscriptionCheckoutForUserParams{TenantID: tenant.ID, UserID: user.ID})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to read the reader's latest subscription checkout", err, "tenant_id", tenant.ID.String())
+	}
+	if err == nil {
+		reused, err := s.settlePreviousSubscriptionCheckout(ctx, queries, subscriptions, credentials, tenant.ID, plan.ID, previous)
+		if err != nil {
+			return nil, err
+		}
+		if reused != "" {
+			return &publirav1.StartSubscriptionCheckoutResponse{CheckoutUrl: reused}, nil
+		}
 	}
 	customerID, err := queries.GetLatestStripeCustomerIDForUser(ctx, dbmodels.GetLatestStripeCustomerIDForUserParams{TenantID: tenant.ID, UserID: reader})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's Stripe customer", err, "tenant_id", tenant.ID.String())
 	}
-	latestSubscriptionID, err := queries.GetLatestSubscriptionIDForUser(ctx, dbmodels.GetLatestSubscriptionIDForUserParams{TenantID: tenant.ID, UserID: reader})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, s.internalDBError(ctx, "failed to read the reader's latest subscription", err, "tenant_id", tenant.ID.String())
-	}
 
-	checkout := paymentprovider.SubscriptionCheckoutRequest{
+	request := paymentprovider.SubscriptionCheckoutRequest{
 		TenantID:   tenant.ID,
 		ReaderID:   user.ID,
 		PlanID:     plan.ID,
@@ -144,36 +165,99 @@ func (s *apiServer) StartSubscriptionCheckout(
 		SuccessURL: subscriptionReturnURL(origin, "my", "success"),
 		CancelURL:  subscriptionReturnURL(origin, "plans", "cancelled"),
 	}
-	checkout.IdempotencyKey, err = subscriptionCheckoutIdempotencyKey(checkout, latestSubscriptionID, time.Now())
+	request.IdempotencyKey, err = subscriptionCheckoutIdempotencyKey(request, previous.StripeCheckoutSessionID)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the subscription checkout idempotency key", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", plan.ID.String())
 	}
-	checkoutURL, err := subscriptions.StartSubscriptionCheckout(ctx, credentials, checkout)
+	checkout, err := subscriptions.StartSubscriptionCheckout(ctx, credentials, request)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to start a subscription checkout with the payment provider", "error", err, "tenant_id", tenant.ID, "subscription_plan_id", plan.ID.String())
 		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
 	}
-	return &publirav1.StartSubscriptionCheckoutResponse{CheckoutUrl: checkoutURL}, nil
+	if err := queries.RecordSubscriptionCheckout(ctx, dbmodels.RecordSubscriptionCheckoutParams{
+		TenantID:                tenant.ID,
+		UserID:                  user.ID,
+		PlanID:                  plan.ID,
+		StripeCheckoutSessionID: checkout.ID,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the subscription checkout", err, "tenant_id", tenant.ID.String(), "checkout_id", checkout.ID)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit the subscription checkout", err, "tenant_id", tenant.ID.String(), "checkout_id", checkout.ID)
+	}
+	return &publirav1.StartSubscriptionCheckoutResponse{CheckoutUrl: checkout.URL}, nil
+}
+
+func readerHoldsSubscriptionError() error {
+	return connect.NewError(connect.CodeAlreadyExists, "the reader already holds a subscription")
+}
+
+// settlePreviousSubscriptionCheckout deals with the reader's latest checkout
+// before another is started, so at most one checkout of a reader can ever be
+// paid. One still open on the same plan is reused, and its URL answered; one
+// open on another plan is expired. One the reader has paid whose subscription
+// is not recorded yet is a subscription on its way, which already_exists
+// refuses a second of. An expired one, and a paid one whose subscription is
+// recorded and has since ended, leave nothing to do.
+func (s *apiServer) settlePreviousSubscriptionCheckout(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	subscriptions paymentprovider.Subscriptions,
+	credentials paymentprovider.Credentials,
+	tenantID uuid.UUID,
+	planID uuid.UUID,
+	previous dbmodels.GetSubscriptionCheckoutForUserRow,
+) (string, error) {
+	checkout, err := subscriptions.GetSubscriptionCheckout(ctx, credentials, previous.StripeCheckoutSessionID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to read the reader's latest subscription checkout from the payment provider", "error", err, "tenant_id", tenantID, "checkout_id", previous.StripeCheckoutSessionID)
+		return "", connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+	}
+	if checkout.Status == paymentprovider.SubscriptionCheckoutOpen {
+		if previous.PlanID == planID && checkout.URL != "" {
+			return checkout.URL, nil
+		}
+		err := subscriptions.ExpireSubscriptionCheckout(ctx, credentials, checkout.ID)
+		switch {
+		case err == nil:
+			return "", nil
+		case errors.Is(err, paymentprovider.ErrCheckoutNotOpen):
+			// The reader finished paying it, or it expired, after it was read.
+			checkout, err = subscriptions.GetSubscriptionCheckout(ctx, credentials, checkout.ID)
+			if err != nil {
+				s.logger.ErrorContext(ctx, "failed to read the reader's latest subscription checkout from the payment provider", "error", err, "tenant_id", tenantID, "checkout_id", previous.StripeCheckoutSessionID)
+				return "", connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+			}
+		default:
+			s.logger.ErrorContext(ctx, "failed to expire the reader's latest subscription checkout", "error", err, "tenant_id", tenantID, "checkout_id", checkout.ID)
+			return "", connect.NewError(connect.CodeUnavailable, "failed to start checkout")
+		}
+	}
+	if checkout.Status != paymentprovider.SubscriptionCheckoutComplete {
+		return "", nil
+	}
+	recorded, err := queries.SubscriptionIsRecorded(ctx, dbmodels.SubscriptionIsRecordedParams{TenantID: tenantID, StripeSubscriptionID: checkout.SubscriptionID})
+	if err != nil {
+		return "", s.internalDBError(ctx, "failed to check whether a paid checkout's subscription is recorded", err, "tenant_id", tenantID.String(), "checkout_id", checkout.ID)
+	}
+	if !recorded {
+		return "", readerHoldsSubscriptionError()
+	}
+	return "", nil
 }
 
 // subscriptionCheckoutIdempotencyKey names one reader's checkout of one plan
 // by everything the request sends, so a retried request reuses the provider's
-// checkout, as checkoutIdempotencyKey does for an episode.
-//
-// It also names the reader's latest subscription, so a reader who subscribes
-// again after one has ended is sent to a new checkout rather than to the one
-// they completed, and the hour it is made in. A provider keeps answering a key
-// with its checkout for a day, long enough to outlive a checkout the reader
-// abandoned, and the hour moves the next attempt onto a new one without the
-// server having to record each abandoned checkout the way it records an
-// episode's.
-func subscriptionCheckoutIdempotencyKey(req paymentprovider.SubscriptionCheckoutRequest, latestSubscriptionID string, now time.Time) (string, error) {
+// checkout, as checkoutIdempotencyKey does for an episode. It also names the
+// checkout the reader started before this one, which every new checkout
+// replaces, so the next attempt after it is a new checkout rather than the one
+// the provider would answer the same request with for a day.
+func subscriptionCheckoutIdempotencyKey(req paymentprovider.SubscriptionCheckoutRequest, previousCheckoutID string) (string, error) {
 	req.IdempotencyKey = ""
 	encoded, err := json.Marshal(struct {
-		Request              paymentprovider.SubscriptionCheckoutRequest
-		LatestSubscriptionID string
-		Hour                 time.Time
-	}{req, latestSubscriptionID, now.UTC().Truncate(time.Hour)})
+		Request            paymentprovider.SubscriptionCheckoutRequest
+		PreviousCheckoutID string
+	}{req, previousCheckoutID})
 	if err != nil {
 		return "", fmt.Errorf("encode subscription checkout request: %w", err)
 	}
@@ -356,15 +440,47 @@ func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPl
 	}, nil
 }
 
-// recordSubscription writes a subscription as the provider reports it now.
+// recordSubscription writes the subscription a notification names as the
+// provider holds it now. The read and the write happen under the
+// subscription's lock, so of two deliveries that overlap, the one that writes
+// last is also the one that read last, and a state Stripe has moved past is
+// never written over the newer one.
 //
 // The plan it is recorded on is the one billed at the Price the provider
 // reports, else the one its checkout named. A subscription to neither — a
 // checkout started for a plan deleted before it completed — is logged and
 // acknowledged, since no delivery of the same notification would find one.
-func (s *apiServer) recordSubscription(ctx context.Context, tenantID uuid.UUID, event paymentprovider.SubscriptionChanged) error {
-	subscription := event.Subscription
-	queries := s.queriesFor(ctx)
+func (s *apiServer) recordSubscription(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
+	event paymentprovider.SubscriptionChanged,
+) error {
+	subscriptions, ok := provider.(paymentprovider.Subscriptions)
+	if !ok {
+		return s.internalError(ctx, "a payment provider that sells no subscriptions reported one", errors.New("provider does not implement paymentprovider.Subscriptions"), "tenant_id", tenantID.String(), "event_id", event.ID)
+	}
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin the subscription transaction", err, "event_id", event.ID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	queries := dbmodels.New(tx)
+	if err := queries.LockSubscriptionForTenant(ctx, dbmodels.LockSubscriptionForTenantParams{TenantID: tenantID, StripeSubscriptionID: event.SubscriptionID}); err != nil {
+		return s.internalDBError(ctx, "failed to lock a subscription", err, "event_id", event.ID, "subscription_id", event.SubscriptionID)
+	}
+	subscription, err := subscriptions.RetrieveSubscription(ctx, credentials, event.SubscriptionID)
+	if errors.Is(err, paymentprovider.ErrSubscriptionNotFound) {
+		s.logger.WarnContext(ctx, "a payment webhook names a subscription the provider does not hold", "tenant_id", tenantID, "event_id", event.ID, "subscription_id", event.SubscriptionID)
+		return connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook")
+	}
+	if err != nil {
+		return s.internalError(ctx, "failed to read a subscription from the payment provider", err, "tenant_id", tenantID.String(), "event_id", event.ID, "subscription_id", event.SubscriptionID)
+	}
+	if subscription.TenantID != tenantID {
+		return connect.NewError(connect.CodeInvalidArgument, "subscription tenant does not match webhook path")
+	}
 	planID, err := queries.GetSubscriptionPlanForSubscriptionForTenant(ctx, dbmodels.GetSubscriptionPlanForSubscriptionForTenantParams{
 		TenantID:      tenantID,
 		StripePriceID: subscription.PriceID,
@@ -400,6 +516,9 @@ func (s *apiServer) recordSubscription(ctx context.Context, tenantID uuid.UUID, 
 	})
 	if err != nil {
 		return s.internalDBError(ctx, "failed to record a subscription", err, "event_id", event.ID, "subscription_id", subscription.ID)
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit a subscription", err, "event_id", event.ID, "subscription_id", subscription.ID)
 	}
 	s.logger.InfoContext(ctx, "recorded a subscription",
 		"tenant_id", tenantID,

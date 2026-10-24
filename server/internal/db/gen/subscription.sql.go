@@ -37,30 +37,6 @@ func (q *Queries) GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetL
 	return stripe_customer_id, err
 }
 
-const GetLatestSubscriptionIDForUser = `-- name: GetLatestSubscriptionIDForUser :one
-SELECT stripe_subscription_id
-FROM subscriptions
-WHERE tenant_id = $1
-    AND user_id = $2
-ORDER BY created_at DESC,
-    id DESC
-LIMIT 1
-`
-
-type GetLatestSubscriptionIDForUserParams struct {
-	TenantID uuid.UUID     `json:"tenant_id"`
-	UserID   uuid.NullUUID `json:"user_id"`
-}
-
-// The reader's latest subscription, which a checkout's idempotency key names
-// so that subscribing again after one ends starts a new checkout.
-func (q *Queries) GetLatestSubscriptionIDForUser(ctx context.Context, arg GetLatestSubscriptionIDForUserParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, GetLatestSubscriptionIDForUser, arg.TenantID, arg.UserID)
-	var stripe_subscription_id string
-	err := row.Scan(&stripe_subscription_id)
-	return stripe_subscription_id, err
-}
-
 const GetMySubscription = `-- name: GetMySubscription :one
 SELECT s.id,
     s.plan_id,
@@ -105,6 +81,111 @@ func (q *Queries) GetMySubscription(ctx context.Context, arg GetMySubscriptionPa
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const GetSubscriptionCheckoutForUser = `-- name: GetSubscriptionCheckoutForUser :one
+SELECT plan_id,
+    stripe_checkout_session_id
+FROM subscription_checkouts
+WHERE tenant_id = $1
+    AND user_id = $2
+`
+
+type GetSubscriptionCheckoutForUserParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+type GetSubscriptionCheckoutForUserRow struct {
+	PlanID                  uuid.UUID `json:"plan_id"`
+	StripeCheckoutSessionID string    `json:"stripe_checkout_session_id"`
+}
+
+func (q *Queries) GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error) {
+	row := q.db.QueryRowContext(ctx, GetSubscriptionCheckoutForUser, arg.TenantID, arg.UserID)
+	var i GetSubscriptionCheckoutForUserRow
+	err := row.Scan(&i.PlanID, &i.StripeCheckoutSessionID)
+	return i, err
+}
+
+const LockSubscriptionCheckoutsOfUser = `-- name: LockSubscriptionCheckoutsOfUser :exec
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription-checkout:' || $1::uuid::text || ':' || $2::uuid::text,
+            0
+        )
+    )
+`
+
+type LockSubscriptionCheckoutsOfUserParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// Serializes one reader's subscription checkouts, so two requests cannot each
+// find no open checkout and each start one.
+func (q *Queries) LockSubscriptionCheckoutsOfUser(ctx context.Context, arg LockSubscriptionCheckoutsOfUserParams) error {
+	_, err := q.db.ExecContext(ctx, LockSubscriptionCheckoutsOfUser, arg.TenantID, arg.UserID)
+	return err
+}
+
+const LockSubscriptionForTenant = `-- name: LockSubscriptionForTenant :exec
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription:' || $1::uuid::text || ':' || $2::text,
+            0
+        )
+    )
+`
+
+type LockSubscriptionForTenantParams struct {
+	TenantID             uuid.UUID `json:"tenant_id"`
+	StripeSubscriptionID string    `json:"stripe_subscription_id"`
+}
+
+// Serializes the notifications about one subscription, so a read of it from
+// Stripe and the write of what was read are never split by another delivery
+// that read it later and wrote first.
+func (q *Queries) LockSubscriptionForTenant(ctx context.Context, arg LockSubscriptionForTenantParams) error {
+	_, err := q.db.ExecContext(ctx, LockSubscriptionForTenant, arg.TenantID, arg.StripeSubscriptionID)
+	return err
+}
+
+const RecordSubscriptionCheckout = `-- name: RecordSubscriptionCheckout :exec
+INSERT INTO subscription_checkouts (
+        tenant_id,
+        user_id,
+        plan_id,
+        stripe_checkout_session_id
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4
+    ) ON CONFLICT (tenant_id, user_id) DO
+UPDATE
+SET plan_id = EXCLUDED.plan_id,
+    stripe_checkout_session_id = EXCLUDED.stripe_checkout_session_id,
+    created_at = NOW()
+`
+
+type RecordSubscriptionCheckoutParams struct {
+	TenantID                uuid.UUID `json:"tenant_id"`
+	UserID                  uuid.UUID `json:"user_id"`
+	PlanID                  uuid.UUID `json:"plan_id"`
+	StripeCheckoutSessionID string    `json:"stripe_checkout_session_id"`
+}
+
+// Makes checkout the reader's latest, in place of the one before.
+func (q *Queries) RecordSubscriptionCheckout(ctx context.Context, arg RecordSubscriptionCheckoutParams) error {
+	_, err := q.db.ExecContext(ctx, RecordSubscriptionCheckout,
+		arg.TenantID,
+		arg.UserID,
+		arg.PlanID,
+		arg.StripeCheckoutSessionID,
+	)
+	return err
 }
 
 const RecordSubscriptionFromStripe = `-- name: RecordSubscriptionFromStripe :one
@@ -192,6 +273,27 @@ func (q *Queries) RecordSubscriptionFromStripe(ctx context.Context, arg RecordSu
 		&i.Status,
 	)
 	return i, err
+}
+
+const SubscriptionIsRecorded = `-- name: SubscriptionIsRecorded :one
+SELECT EXISTS (
+        SELECT 1
+        FROM subscriptions
+        WHERE tenant_id = $1
+            AND stripe_subscription_id = $2
+    ) AS recorded
+`
+
+type SubscriptionIsRecordedParams struct {
+	TenantID             uuid.UUID `json:"tenant_id"`
+	StripeSubscriptionID string    `json:"stripe_subscription_id"`
+}
+
+func (q *Queries) SubscriptionIsRecorded(ctx context.Context, arg SubscriptionIsRecordedParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, SubscriptionIsRecorded, arg.TenantID, arg.StripeSubscriptionID)
+	var recorded bool
+	err := row.Scan(&recorded)
+	return recorded, err
 }
 
 const UserHoldsLiveSubscription = `-- name: UserHoldsLiveSubscription :one
