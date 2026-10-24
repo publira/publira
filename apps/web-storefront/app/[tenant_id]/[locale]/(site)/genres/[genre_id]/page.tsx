@@ -13,11 +13,7 @@ import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { JsonLd } from "#components/json-ld";
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
@@ -25,7 +21,7 @@ import {
   SeriesFilterForm,
   SeriesFilterFormSkeleton,
 } from "#components/series-filter-form";
-import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import {
   listPublishedGenres,
   listPublishedSeries,
@@ -109,7 +105,7 @@ const GenreDetailSkeleton = () => (
       <SkeletonLine className="h-4 w-40" />
     </div>
     <SeriesFilterFormSkeleton />
-    <SeriesShelfSkeleton />
+    <SeriesShelf.Skeleton />
   </div>
 );
 
@@ -126,9 +122,11 @@ const GenreSeriesPaginationNav = async ({
   const t = await getMessages();
 
   return (
-    <ListPagination aria-label={t("storefront.genres.series_pagination_aria")}>
+    <ListPagination.Root
+      aria-label={t("storefront.genres.series_pagination_aria")}
+    >
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -143,9 +141,9 @@ const GenreSeriesPagination = ({
   previousToken: string;
   query: GenreDetailSearchParams;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <GenreSeriesPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={
           previousToken
             ? genreDetailHref(genreId, { ...query, token: previousToken })
@@ -155,8 +153,8 @@ const GenreSeriesPagination = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={
           nextToken
             ? genreDetailHref(genreId, { ...query, token: nextToken })
@@ -166,7 +164,7 @@ const GenreSeriesPagination = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </GenreSeriesPaginationNav>
   </Suspense>
 );
@@ -279,7 +277,7 @@ const GenreSeries = async ({
 
   return (
     <div className="grid gap-8">
-      <SeriesShelf locale={locale} series={series} />
+      <SeriesShelf.Root locale={locale} series={series} />
       <GenreSeriesPagination
         genreId={genreId}
         nextToken={nextToken}
@@ -410,7 +408,7 @@ const GenreDetailContent = async ({
         />
       </Suspense>
 
-      <Suspense fallback={<SeriesShelfSkeleton />}>
+      <Suspense fallback={<SeriesShelf.Skeleton />}>
         <GenreSeries
           genreId={genreId}
           locale={locale}

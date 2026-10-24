@@ -3,10 +3,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  ListPagination,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getLocale } from "#lib/locale";
@@ -64,22 +61,24 @@ export const NotificationList = async ({
     unreadCount > 0 || notifications.some((item) => !item.isRead);
 
   const pagination = (
-    <ListPagination aria-label={t("storefront.notifications.pagination_aria")}>
-      <ListPaginationStep
+    <ListPagination.Root
+      aria-label={t("storefront.notifications.pagination_aria")}
+    >
+      <ListPagination.Step
         href={previousToken ? notificationsListHref(previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={nextToken ? notificationsListHref(nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
-    </ListPagination>
+      </ListPagination.Step>
+    </ListPagination.Root>
   );
 
   // The rows this page pointed at are gone. The server hands back a token for

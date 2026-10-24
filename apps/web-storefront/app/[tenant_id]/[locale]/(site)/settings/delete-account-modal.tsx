@@ -9,11 +9,7 @@ import { LocaleField } from "#components/locale-field";
 import { startSocialSignInAction } from "#lib/social-sign-in-actions";
 import { useTenantId } from "#lib/use-tenant-id";
 
-import {
-  PasskeyConfirmation,
-  PasskeyConfirmationMessage,
-  PasskeyConfirmationSubmit,
-} from "./_components/passkey-confirmation";
+import * as PasskeyConfirmation from "./_components/passkey-confirmation";
 import { deleteAccountWithPasskeyAction } from "./_lib/actions";
 import { beginPasskeyConfirmationAction } from "./_lib/passkey-confirmation-actions";
 
@@ -148,17 +144,17 @@ export const DeleteAccountModal = ({
                     <LocaleField />
                     <input name="tenantId" type="hidden" value={tenantId} />
                     <input name="returnTo" type="hidden" value="/settings" />
-                    <PasskeyConfirmation
+                    <PasskeyConfirmation.Root
                       begin={beginPasskeyConfirmationAction}
                       confirm={deleteAccountWithPasskeyAction}
                     >
-                      <PasskeyConfirmationSubmit
+                      <PasskeyConfirmation.Submit
                         className={confirmButtonClassName}
                       >
                         <ClientMessage message="storefront.settings.delete_with_passkey" />
-                      </PasskeyConfirmationSubmit>
-                      <PasskeyConfirmationMessage />
-                    </PasskeyConfirmation>
+                      </PasskeyConfirmation.Submit>
+                      <PasskeyConfirmation.Message />
+                    </PasskeyConfirmation.Root>
                   </form>
                 ) : null}
                 {canConfirmWithApple ? (

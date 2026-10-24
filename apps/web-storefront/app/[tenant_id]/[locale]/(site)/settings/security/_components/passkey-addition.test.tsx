@@ -10,14 +10,7 @@ import type {
   PasskeyRegistrationStartState,
   PasskeyRegistrationState,
 } from "../_lib/passkey-state";
-import {
-  PasskeyAddForm,
-  PasskeyAdded,
-  PasskeyAddition,
-  PasskeyNameForm,
-  PasskeyNamed,
-  SkipPasskeyNaming,
-} from "./passkey-addition";
+import * as PasskeyAddition from "./passkey-addition";
 
 const {
   beginRegistration,
@@ -67,24 +60,24 @@ const CREDENTIAL = { id: "credential-id", response: {}, type: "public-key" };
 
 const renderAddition = () =>
   renderWithClientMessages(
-    <PasskeyAddition
+    <PasskeyAddition.Root
       add={
-        <PasskeyAddForm>
+        <PasskeyAddition.AddForm>
           <input name="tenantId" type="hidden" value="TENANT001" />
-          <PasskeyAdded />
+          <PasskeyAddition.Added />
           <ActionForm.Submit>Add a passkey</ActionForm.Submit>
-        </PasskeyAddForm>
+        </PasskeyAddition.AddForm>
       }
       name={
-        <PasskeyNameForm>
-          <PasskeyNamed />
+        <PasskeyAddition.NameForm>
+          <PasskeyAddition.Named />
           <label>
             Name this passkey
             <input name="name" />
           </label>
-          <SkipPasskeyNaming>Skip</SkipPasskeyNaming>
+          <PasskeyAddition.SkipNaming>Skip</PasskeyAddition.SkipNaming>
           <ActionForm.Submit>Save</ActionForm.Submit>
-        </PasskeyNameForm>
+        </PasskeyAddition.NameForm>
       }
     />
   );

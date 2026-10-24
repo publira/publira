@@ -20,20 +20,9 @@ import {
 import { getTenantDisplayTimeZone, getTenantSignInClients } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
-import {
-  PasskeyConfirmation,
-  PasskeyConfirmationMessage,
-  PasskeyConfirmationSubmit,
-} from "../_components/passkey-confirmation";
+import * as PasskeyConfirmation from "../_components/passkey-confirmation";
 import { beginPasskeyConfirmationAction } from "../_lib/passkey-confirmation-actions";
-import {
-  PasskeyAddForm,
-  PasskeyAdded,
-  PasskeyAddition,
-  PasskeyNameForm,
-  PasskeyNamed,
-  SkipPasskeyNaming,
-} from "./_components/passkey-addition";
+import * as PasskeyAddition from "./_components/passkey-addition";
 import {
   changePasswordAction,
   confirmEmailChangeWithProviderAction,
@@ -223,17 +212,17 @@ const PasswordlessEmailChangeForm = async ({
         </Suspense>
       </p>
 
-      <PasskeyConfirmation
+      <PasskeyConfirmation.Root
         begin={beginPasskeyConfirmationAction}
         confirm={requestEmailChangeWithPasskeyAction}
       >
         <div className="flex flex-wrap justify-end gap-2">
           {canConfirmWithPasskey ? (
-            <PasskeyConfirmationSubmit className={submitClassName}>
+            <PasskeyConfirmation.Submit className={submitClassName}>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="storefront.settings.email_change_with_passkey" />
               </Suspense>
-            </PasskeyConfirmationSubmit>
+            </PasskeyConfirmation.Submit>
           ) : null}
           {canConfirmWithApple ? (
             <button
@@ -260,8 +249,8 @@ const PasswordlessEmailChangeForm = async ({
             </button>
           ) : null}
         </div>
-        <PasskeyConfirmationMessage />
-      </PasskeyConfirmation>
+        <PasskeyConfirmation.Message />
+      </PasskeyConfirmation.Root>
     </form>
   );
 };
@@ -566,10 +555,10 @@ const LinkedAccountsSection = async () => {
 };
 
 const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
-  <PasskeyAddForm>
+  <PasskeyAddition.AddForm>
     <LocaleField />
     <input name="tenantId" type="hidden" value={tenantId} />
-    <PasskeyAdded />
+    <PasskeyAddition.Added />
     <div className="flex justify-end">
       <ActionForm.Submit variant="outline">
         <ActionForm.Idle>
@@ -584,7 +573,7 @@ const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
         </ActionForm.Pending>
       </ActionForm.Submit>
     </div>
-  </PasskeyAddForm>
+  </PasskeyAddition.AddForm>
 );
 
 /**
@@ -592,10 +581,10 @@ const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
  * is also where the addition is reported.
  */
 const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
-  <PasskeyNameForm>
+  <PasskeyAddition.NameForm>
     <LocaleField />
     <input name="tenantId" type="hidden" value={tenantId} />
-    <PasskeyNamed />
+    <PasskeyAddition.Named />
     <FormMessage variant="success">
       <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
         <Message message="storefront.settings.passkey_added" />
@@ -621,11 +610,11 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
       </p>
     </div>
     <div className="flex flex-wrap justify-end gap-2">
-      <SkipPasskeyNaming className={linkedAccountButtonClassName}>
+      <PasskeyAddition.SkipNaming className={linkedAccountButtonClassName}>
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="storefront.settings.passkey_name_skip" />
         </Suspense>
-      </SkipPasskeyNaming>
+      </PasskeyAddition.SkipNaming>
       <ActionForm.Submit>
         <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -639,7 +628,7 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
         </ActionForm.Pending>
       </ActionForm.Submit>
     </div>
-  </PasskeyNameForm>
+  </PasskeyAddition.NameForm>
 );
 
 /**
@@ -737,7 +726,7 @@ const PasskeysSection = async () => {
         </p>
       ) : null}
       <div className="mt-4">
-        <PasskeyAddition
+        <PasskeyAddition.Root
           add={<PasskeyAddStep tenantId={tenantId} />}
           name={<PasskeyNameStep tenantId={tenantId} />}
         />

@@ -3,12 +3,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  WeeklySchedule,
-  WeeklyScheduleDay,
-  WeeklyScheduleDayPanel,
-  WeeklyScheduleDays,
-} from "./weekly-schedule";
+import * as WeeklySchedule from "./weekly-schedule";
 
 const WEEKDAY_NAMES = [
   "Sun",
@@ -22,20 +17,20 @@ const WEEKDAY_NAMES = [
 
 const renderSchedule = (defaultWeekday: number) =>
   render(
-    <WeeklySchedule defaultWeekday={defaultWeekday}>
-      <WeeklyScheduleDays aria-label="Update weekdays">
+    <WeeklySchedule.Root defaultWeekday={defaultWeekday}>
+      <WeeklySchedule.Days aria-label="Update weekdays">
         {WEEKDAY_NAMES.map((name, weekday) => (
-          <WeeklyScheduleDay key={name} weekday={weekday}>
+          <WeeklySchedule.Day key={name} weekday={weekday}>
             {name}
-          </WeeklyScheduleDay>
+          </WeeklySchedule.Day>
         ))}
-      </WeeklyScheduleDays>
+      </WeeklySchedule.Days>
       {WEEKDAY_NAMES.map((name, weekday) => (
-        <WeeklyScheduleDayPanel key={name} weekday={weekday}>
+        <WeeklySchedule.DayPanel key={name} weekday={weekday}>
           {name} shelf
-        </WeeklyScheduleDayPanel>
+        </WeeklySchedule.DayPanel>
       ))}
-    </WeeklySchedule>
+    </WeeklySchedule.Root>
   );
 
 afterEach(cleanup);

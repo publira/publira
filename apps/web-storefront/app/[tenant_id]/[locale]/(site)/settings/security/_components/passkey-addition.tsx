@@ -40,7 +40,7 @@ const SetAddedPasskeyContext = createContext<Dispatch<string> | null>(null);
  * A browser without WebAuthn is offered neither, and the server cannot tell,
  * so both appear after hydration.
  */
-export const PasskeyAddition = ({
+const PasskeyAddition = ({
   add,
   name,
 }: {
@@ -93,7 +93,7 @@ const ceremonyFailureMessage = (
  * and stores the one it created. A refusal and a closed prompt both stay on
  * the form as its message.
  */
-export const PasskeyAddForm = ({ children }: { children: ReactNode }) => {
+const PasskeyAdditionAddForm = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
 
   const add = async (
@@ -123,7 +123,7 @@ export const PasskeyAddForm = ({ children }: { children: ReactNode }) => {
 };
 
 /** Moves `PasskeyAddition` on to naming once the add form succeeds. */
-export const PasskeyAdded = () => {
+const PasskeyAdditionAdded = () => {
   const setAdded = use(SetAddedPasskeyContext);
   ActionForm.useSettled<NonNullable<PasskeyRegistrationState>>((state) => {
     if (state?.ok) {
@@ -135,7 +135,7 @@ export const PasskeyAdded = () => {
 };
 
 /** Names the passkey the add form stored. */
-export const PasskeyNameForm = ({ children }: { children: ReactNode }) => (
+const PasskeyAdditionNameForm = ({ children }: { children: ReactNode }) => (
   <ActionForm.Root
     action={namePasskeyAction}
     className="grid gap-3"
@@ -147,7 +147,7 @@ export const PasskeyNameForm = ({ children }: { children: ReactNode }) => (
 );
 
 /** Moves `PasskeyAddition` back to its add form once the name is saved. */
-export const PasskeyNamed = () => {
+const PasskeyAdditionNamed = () => {
   const setAdded = use(SetAddedPasskeyContext);
   ActionForm.useSettled((state) => {
     if (state?.ok) {
@@ -159,7 +159,7 @@ export const PasskeyNamed = () => {
 };
 
 /** Leaves the passkey unnamed and goes back to the add form. */
-export const SkipPasskeyNaming = ({
+const PasskeyAdditionSkipNaming = ({
   children,
   className,
 }: {
@@ -179,4 +179,13 @@ export const SkipPasskeyNaming = ({
       {children}
     </button>
   );
+};
+
+export {
+  PasskeyAddition as Root,
+  PasskeyAdditionAdded as Added,
+  PasskeyAdditionAddForm as AddForm,
+  PasskeyAdditionNamed as Named,
+  PasskeyAdditionNameForm as NameForm,
+  PasskeyAdditionSkipNaming as SkipNaming,
 };

@@ -42,27 +42,27 @@ const useAgeRatingGateState = (): AgeRatingGateState => {
  * reader the tenant has verified is never asked to say it again.
  *
  * ```tsx
- * <AgeRatingGate provenAgeRating={…} rating={…}>
- *   <AgeRatingGateConfirmation>
- *     <AgeRatingGateHeading>
- *       <AgeRatingGateTitle>…</AgeRatingGateTitle>
- *       <AgeRatingGateDescription />
- *     </AgeRatingGateHeading>
- *     <AgeRatingGateActions>
- *       <AgeRatingGateConfirm />
- *       <AgeRatingGateBack href="/">…</AgeRatingGateBack>
- *     </AgeRatingGateActions>
- *   </AgeRatingGateConfirmation>
- *   <AgeRatingGateContent>…</AgeRatingGateContent>
- * </AgeRatingGate>
+ * <AgeRatingGate.Root provenAgeRating={…} rating={…}>
+ *   <AgeRatingGate.Confirmation>
+ *     <AgeRatingGate.Heading>
+ *       <AgeRatingGate.Title>…</AgeRatingGate.Title>
+ *       <AgeRatingGate.Description />
+ *     </AgeRatingGate.Heading>
+ *     <AgeRatingGate.Actions>
+ *       <AgeRatingGate.Confirm />
+ *       <AgeRatingGate.Back href="/">…</AgeRatingGate.Back>
+ *     </AgeRatingGate.Actions>
+ *   </AgeRatingGate.Confirmation>
+ *   <AgeRatingGate.Content>…</AgeRatingGate.Content>
+ * </AgeRatingGate.Root>
  * ```
  */
-export const AgeRatingGate = ({
+const AgeRatingGate = ({
   children,
   provenAgeRating,
   rating,
 }: {
-  /** `AgeRatingGateConfirmation` and `AgeRatingGateContent`. */
+  /** `AgeRatingGate.Confirmation` and `AgeRatingGate.Content`. */
   children: ReactNode;
   provenAgeRating?: RestrictedAgeRating;
   rating?: RestrictedAgeRating;
@@ -78,18 +78,14 @@ export const AgeRatingGate = ({
 };
 
 /** The gated body, rendered once the rating is satisfied. */
-export const AgeRatingGateContent = ({ children }: { children: ReactNode }) => {
+const AgeRatingGateContent = ({ children }: { children: ReactNode }) => {
   const { open } = useAgeRatingGateState();
 
   return open ? children : null;
 };
 
 /** The interstitial: why the page is closed, and the two ways out. */
-export const AgeRatingGateConfirmation = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const AgeRatingGateConfirmation = ({ children }: { children: ReactNode }) => {
   const { open } = useAgeRatingGateState();
 
   return open ? null : (
@@ -99,11 +95,11 @@ export const AgeRatingGateConfirmation = ({
   );
 };
 
-export const AgeRatingGateHeading = ({ children }: { children: ReactNode }) => (
+const AgeRatingGateHeading = ({ children }: { children: ReactNode }) => (
   <EmptyState.Heading>{children}</EmptyState.Heading>
 );
 
-export const AgeRatingGateTitle = ({ children }: { children: ReactNode }) => (
+const AgeRatingGateTitle = ({ children }: { children: ReactNode }) => (
   <EmptyState.Title>{children}</EmptyState.Title>
 );
 
@@ -111,11 +107,7 @@ export const AgeRatingGateTitle = ({ children }: { children: ReactNode }) => (
  * What confirming asserts, worded for the gate's rating. A gate standing in
  * front of something other than a series says it in `children`.
  */
-export const AgeRatingGateDescription = ({
-  children,
-}: {
-  children?: ReactNode;
-}) => {
+const AgeRatingGateDescription = ({ children }: { children?: ReactNode }) => {
   const { rating } = useAgeRatingGateState();
 
   return (
@@ -130,14 +122,14 @@ export const AgeRatingGateDescription = ({
   );
 };
 
-export const AgeRatingGateActions = ({ children }: { children: ReactNode }) => (
+const AgeRatingGateActions = ({ children }: { children: ReactNode }) => (
   <EmptyState.Actions>
     <div className="flex flex-wrap justify-center gap-3">{children}</div>
   </EmptyState.Actions>
 );
 
 /** Stores the reader's confirmation of the gate's rating, which opens it. */
-export const AgeRatingGateConfirm = () => {
+const AgeRatingGateConfirm = () => {
   const { rating } = useAgeRatingGateState();
   const tenantId = useTenantId();
 
@@ -159,7 +151,7 @@ export const AgeRatingGateConfirm = () => {
 };
 
 /** The way out for a reader who does not confirm. */
-export const AgeRatingGateBack = ({
+const AgeRatingGateBack = ({
   children,
   href,
 }: {
@@ -170,3 +162,15 @@ export const AgeRatingGateBack = ({
     {children}
   </LinkButton>
 );
+
+export {
+  AgeRatingGate as Root,
+  AgeRatingGateActions as Actions,
+  AgeRatingGateBack as Back,
+  AgeRatingGateConfirm as Confirm,
+  AgeRatingGateConfirmation as Confirmation,
+  AgeRatingGateContent as Content,
+  AgeRatingGateDescription as Description,
+  AgeRatingGateHeading as Heading,
+  AgeRatingGateTitle as Title,
+};

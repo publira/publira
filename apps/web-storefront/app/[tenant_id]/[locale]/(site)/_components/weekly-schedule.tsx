@@ -28,7 +28,7 @@ const DAY = cn(
  * page: a `?weekday=` in the URL would make the home page read its query, and
  * with it cost every other module on that page its prerendered shell.
  */
-export const WeeklySchedule = ({
+const WeeklySchedule = ({
   children,
   defaultWeekday,
 }: {
@@ -42,7 +42,7 @@ export const WeeklySchedule = ({
 );
 
 /** The row of days. `aria-label` says what the strip switches between. */
-export const WeeklyScheduleDays = ({
+const WeeklyScheduleDays = ({
   "aria-label": ariaLabel,
   children,
 }: {
@@ -57,7 +57,7 @@ export const WeeklyScheduleDays = ({
   </Tabs.List>
 );
 
-export const WeeklyScheduleDay = ({
+const WeeklyScheduleDay = ({
   children,
   weekday,
 }: {
@@ -69,10 +69,17 @@ export const WeeklyScheduleDay = ({
   </Tabs.Tab>
 );
 
-export const WeeklyScheduleDayPanel = ({
+const WeeklyScheduleDayPanel = ({
   children,
   weekday,
 }: {
   children: ReactNode;
   weekday: number;
 }) => <Tabs.Panel value={weekday}>{children}</Tabs.Panel>;
+
+export {
+  WeeklySchedule as Root,
+  WeeklyScheduleDay as Day,
+  WeeklyScheduleDayPanel as DayPanel,
+  WeeklyScheduleDays as Days,
+};

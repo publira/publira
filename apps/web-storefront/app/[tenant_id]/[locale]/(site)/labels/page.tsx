@@ -7,11 +7,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -83,9 +79,9 @@ const LabelsPaginationNav = async ({ children }: { children: ReactNode }) => {
   const t = await getMessages();
 
   return (
-    <ListPagination aria-label={t("storefront.labels.pagination_aria")}>
+    <ListPagination.Root aria-label={t("storefront.labels.pagination_aria")}>
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -97,20 +93,20 @@ const LabelsPagination = ({
   nextToken: string;
   previousToken: string;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <LabelsPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={previousToken ? labelsListHref(previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep href={nextToken ? labelsListHref(nextToken) : ""}>
+      </ListPagination.Step>
+      <ListPagination.Step href={nextToken ? labelsListHref(nextToken) : ""}>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </LabelsPaginationNav>
   </Suspense>
 );

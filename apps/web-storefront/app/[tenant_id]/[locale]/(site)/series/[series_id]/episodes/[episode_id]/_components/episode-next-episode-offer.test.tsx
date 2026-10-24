@@ -50,6 +50,7 @@ vi.mock("#components/follow-control", () => ({
       Follow
     </button>
   ),
+  FollowControlSkeleton: () => null,
 }));
 
 afterEach(cleanup);

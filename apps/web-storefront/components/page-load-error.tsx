@@ -4,13 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 import { ClientMessage } from "#components/client-message";
-import {
-  ErrorScreen,
-  ErrorScreenActions,
-  ErrorScreenDescription,
-  ErrorScreenRetry,
-  ErrorScreenTitle,
-} from "#components/error-screen";
+import * as ErrorScreen from "#components/error-screen";
 
 /**
  * Failure body for a route whose **whole** content is one read — the detail
@@ -36,14 +30,14 @@ export const PageLoadError = ({ description }: { description: string }) => {
   }, [router]);
 
   return (
-    <ErrorScreen retry={onRetry}>
-      <ErrorScreenTitle>
+    <ErrorScreen.Root retry={onRetry}>
+      <ErrorScreen.Title>
         <ClientMessage message="storefront.errors.page_title" />
-      </ErrorScreenTitle>
-      <ErrorScreenDescription>{description}</ErrorScreenDescription>
-      <ErrorScreenActions>
-        <ErrorScreenRetry />
-      </ErrorScreenActions>
-    </ErrorScreen>
+      </ErrorScreen.Title>
+      <ErrorScreen.Description>{description}</ErrorScreen.Description>
+      <ErrorScreen.Actions>
+        <ErrorScreen.Retry />
+      </ErrorScreen.Actions>
+    </ErrorScreen.Root>
   );
 };

@@ -12,15 +12,11 @@ import { Suspense } from "react";
 
 import { EyeCatchPicture } from "#components/eye-catch-picture";
 import { JsonLd } from "#components/json-ld";
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { PageLoadError } from "#components/page-load-error";
-import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import { getMessages } from "#lib/get-messages";
 import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getPublishedLabelDetail } from "#lib/labels";
@@ -109,7 +105,7 @@ const LabelDetailSkeleton = () => (
       <SkeletonLine className="h-8 w-1/2" />
       <SkeletonLine className="h-4 w-40" />
     </div>
-    <SeriesShelfSkeleton />
+    <SeriesShelf.Skeleton />
   </div>
 );
 
@@ -126,9 +122,11 @@ const LabelSeriesPaginationNav = async ({
   const t = await getMessages();
 
   return (
-    <ListPagination aria-label={t("storefront.labels.series_pagination_aria")}>
+    <ListPagination.Root
+      aria-label={t("storefront.labels.series_pagination_aria")}
+    >
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -141,22 +139,22 @@ const LabelSeriesPagination = ({
   nextToken: string;
   previousToken: string;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <LabelSeriesPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={previousToken ? labelDetailHref(labelId, previousToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={nextToken ? labelDetailHref(labelId, nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </LabelSeriesPaginationNav>
   </Suspense>
 );
@@ -219,7 +217,7 @@ const LabelRelatedSeries = async ({
 
   return (
     <div className="grid gap-8">
-      <SeriesShelf locale={locale} series={label.series} />
+      <SeriesShelf.Root locale={locale} series={label.series} />
       <LabelSeriesPagination
         labelId={label.id}
         nextToken={label.nextToken}
@@ -334,7 +332,7 @@ const LabelDetailContent = async ({
           </p>
         </div>
 
-        <Suspense fallback={<SeriesShelfSkeleton />}>
+        <Suspense fallback={<SeriesShelf.Skeleton />}>
           <LabelRelatedSeries label={label} token={token} />
         </Suspense>
       </section>

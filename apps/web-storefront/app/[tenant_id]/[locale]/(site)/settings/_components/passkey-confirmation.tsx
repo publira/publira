@@ -54,13 +54,13 @@ const usePasskeyConfirmation = (caller: string) => {
  * a password: `begin` asks the API for a challenge, the browser asks the
  * authenticator, and `confirm` sends the form's fields with the assertion as
  * `passkeyCredential`. `confirm` leaves the page when it succeeds, so only a
- * refusal comes back, and it is shown by `PasskeyConfirmationMessage`.
+ * refusal comes back, and it is shown by `PasskeyConfirmation.Message`.
  *
  * The form is submitted by hand rather than through its `action`, which React
  * would reset on every attempt: a closed prompt keeps the addresses the
  * reader typed, and the form's own validation still runs first.
  */
-export const PasskeyConfirmation = ({
+const PasskeyConfirmation = ({
   begin,
   children,
   confirm,
@@ -127,7 +127,7 @@ export const PasskeyConfirmation = ({
  * The button that confirms with a passkey. A browser without WebAuthn is not
  * offered it, and the server cannot tell, so it appears after hydration.
  */
-export const PasskeyConfirmationSubmit = ({
+const PasskeyConfirmationSubmit = ({
   children,
   className,
 }: {
@@ -160,10 +160,16 @@ export const PasskeyConfirmationSubmit = ({
 };
 
 /** Why the last confirmation with a passkey did not go through. */
-export const PasskeyConfirmationMessage = () => {
+const PasskeyConfirmationMessage = () => {
   const { failure } = usePasskeyConfirmation("PasskeyConfirmationMessage");
 
   return failure ? (
     <FormMessage variant="destructive">{failure}</FormMessage>
   ) : null;
+};
+
+export {
+  PasskeyConfirmation as Root,
+  PasskeyConfirmationMessage as Message,
+  PasskeyConfirmationSubmit as Submit,
 };

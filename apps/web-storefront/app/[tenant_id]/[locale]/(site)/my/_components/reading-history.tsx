@@ -6,10 +6,7 @@ import { Suspense } from "react";
 
 import { AgeRatedVisibility } from "#components/age-rated-visibility";
 import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
-import {
-  ListPagination,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { redirectToLogin } from "#lib/auth-session";
@@ -141,10 +138,10 @@ export const ReadingHistorySection = async ({
               </AgeRatedVisibility>
             ))}
           </ol>
-          <ListPagination
+          <ListPagination.Root
             aria-label={t("storefront.my.history_pagination_aria")}
           >
-            <ListPaginationStep
+            <ListPagination.Step
               href={
                 result.previousToken ? myPageHref(result.previousToken) : ""
               }
@@ -152,15 +149,15 @@ export const ReadingHistorySection = async ({
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="storefront.common.previous_page" />
               </Suspense>
-            </ListPaginationStep>
-            <ListPaginationStep
+            </ListPagination.Step>
+            <ListPagination.Step
               href={result.nextToken ? myPageHref(result.nextToken) : ""}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="storefront.common.next_page" />
               </Suspense>
-            </ListPaginationStep>
-          </ListPagination>
+            </ListPagination.Step>
+          </ListPagination.Root>
         </div>
       ) : null}
     </section>

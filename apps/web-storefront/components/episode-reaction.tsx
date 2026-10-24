@@ -48,21 +48,21 @@ import { useLocale } from "./locale-context";
  * resolved from the client catalog.
  *
  * ```tsx
- * <EpisodeReaction size="sm">
- *   <EpisodeReactionLogin href={loginHref} ratingCount={12}>
- *     <EpisodeReactionName>
- *       <EpisodeReactionNameIdle>
+ * <EpisodeReaction.Root size="sm">
+ *   <EpisodeReaction.Login href={loginHref} ratingCount={12}>
+ *     <EpisodeReaction.Name>
+ *       <EpisodeReaction.NameIdle>
  *         <Message message="storefront.episode.reaction.login_aria" />
- *       </EpisodeReactionNameIdle>
- *       <EpisodeReactionNameReaders message="storefront.episode.reaction.count_aria" />
- *     </EpisodeReactionName>
- *     <EpisodeReactionHeart />
- *     <EpisodeReactionCount />
- *   </EpisodeReactionLogin>
- * </EpisodeReaction>
+ *       </EpisodeReaction.NameIdle>
+ *       <EpisodeReaction.NameReaders message="storefront.episode.reaction.count_aria" />
+ *     </EpisodeReaction.Name>
+ *     <EpisodeReaction.Heart />
+ *     <EpisodeReaction.Count />
+ *   </EpisodeReaction.Login>
+ * </EpisodeReaction.Root>
  * ```
  */
-export type EpisodeReactionSize = "lg" | "sm";
+type EpisodeReactionSize = "lg" | "sm";
 
 interface EpisodeReactionFace {
   error: string | null;
@@ -106,7 +106,7 @@ const useEpisodeReactionNameId = (): string => {
   return id;
 };
 
-export const EpisodeReaction = ({
+const EpisodeReaction = ({
   children,
   size = "lg",
 }: {
@@ -124,7 +124,7 @@ export const EpisodeReaction = ({
  * `multiple` mode the fill is `score / 5`. Omitting `fillRatio` reads the
  * face Login or Form is showing.
  */
-export const EpisodeReactionHeart = ({ fillRatio }: { fillRatio?: number }) => {
+const EpisodeReactionHeart = ({ fillRatio }: { fillRatio?: number }) => {
   const size = use(EpisodeReactionSizeContext);
   const face = use(EpisodeReactionFaceContext);
   const ratio = fillRatio ?? face?.fillRatio ?? 0;
@@ -154,7 +154,7 @@ export const EpisodeReactionHeart = ({ fillRatio }: { fillRatio?: number }) => {
 };
 
 /** The public headcount, formatted in the reader's locale. */
-export const EpisodeReactionCount = () => {
+const EpisodeReactionCount = () => {
   const locale = useLocale();
   const { ratingCount } = useEpisodeReactionFace();
 
@@ -165,7 +165,7 @@ export const EpisodeReactionCount = () => {
   );
 };
 
-export const EpisodeReactionLogin = ({
+const EpisodeReactionLogin = ({
   children,
   href,
   ratingCount,
@@ -211,7 +211,7 @@ export const EpisodeReactionLogin = ({
  * The caller composes what the form posts besides `presses` — the locale, the
  * episode, and where a rejected session returns to — next to the submit slot.
  */
-export const EpisodeReactionForm = ({
+const EpisodeReactionForm = ({
   children,
   mode,
   ratingCount,
@@ -293,11 +293,7 @@ export const EpisodeReactionForm = ({
   );
 };
 
-export const EpisodeReactionSubmit = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const EpisodeReactionSubmit = ({ children }: { children: ReactNode }) => {
   const size = use(EpisodeReactionSizeContext);
   const nameId = useId();
 
@@ -321,7 +317,7 @@ export const EpisodeReactionSubmit = ({
  * from the score on the face; Readers is the trailing clause, so it leads
  * with a period to keep `{action}. {readers}` as the computed name.
  */
-export const EpisodeReactionName = ({ children }: { children: ReactNode }) => {
+const EpisodeReactionName = ({ children }: { children: ReactNode }) => {
   const id = useEpisodeReactionNameId();
 
   return (
@@ -331,11 +327,7 @@ export const EpisodeReactionName = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const EpisodeReactionNameIdle = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const EpisodeReactionNameIdle = ({ children }: { children: ReactNode }) => {
   const { score } = useEpisodeReactionFace();
   if (score > 0) {
     return null;
@@ -343,7 +335,7 @@ export const EpisodeReactionNameIdle = ({
   return children;
 };
 
-export const EpisodeReactionNameProgress = ({
+const EpisodeReactionNameProgress = ({
   message,
 }: {
   message: StorefrontClientMessageKey;
@@ -364,11 +356,7 @@ export const EpisodeReactionNameProgress = ({
   });
 };
 
-export const EpisodeReactionNameDone = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const EpisodeReactionNameDone = ({ children }: { children: ReactNode }) => {
   const { score } = useEpisodeReactionFace();
   if (score < MAX_EPISODE_REACTION_SCORE) {
     return null;
@@ -376,7 +364,7 @@ export const EpisodeReactionNameDone = ({
   return children;
 };
 
-export const EpisodeReactionNameReaders = ({
+const EpisodeReactionNameReaders = ({
   message,
 }: {
   message: StorefrontClientMessageKey;
@@ -389,7 +377,7 @@ export const EpisodeReactionNameReaders = ({
   return `. ${t(message, { count })}`;
 };
 
-export const EpisodeReactionError = () => {
+const EpisodeReactionError = () => {
   const { error } = useEpisodeReactionFace();
   if (!error) {
     return null;
@@ -397,8 +385,25 @@ export const EpisodeReactionError = () => {
   return <FormMessage variant="destructive">{error}</FormMessage>;
 };
 
-export const EpisodeReactionSkeleton = ({
+const EpisodeReactionSkeleton = ({
   size = "lg",
 }: {
   size?: EpisodeReactionSize;
 }) => <Skeleton className={skeletonClassNameForSize(size)} />;
+
+export {
+  EpisodeReaction as Root,
+  EpisodeReactionCount as Count,
+  EpisodeReactionError as Error,
+  EpisodeReactionForm as Form,
+  EpisodeReactionHeart as Heart,
+  EpisodeReactionLogin as Login,
+  EpisodeReactionName as Name,
+  EpisodeReactionNameDone as NameDone,
+  EpisodeReactionNameIdle as NameIdle,
+  EpisodeReactionNameProgress as NameProgress,
+  EpisodeReactionNameReaders as NameReaders,
+  EpisodeReactionSkeleton as Skeleton,
+  EpisodeReactionSubmit as Submit,
+};
+export type { EpisodeReactionSize as Size };

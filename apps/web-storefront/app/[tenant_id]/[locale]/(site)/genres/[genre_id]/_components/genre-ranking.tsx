@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { SeriesShelfCard } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import type { RankedSeriesPage } from "#lib/catalog";
 import { rankingHref } from "#lib/ranking-href";
 
@@ -80,7 +80,7 @@ export const GenreRanking = ({
         <ol className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
           {rankedSeries.map(({ rank, series }) => (
             <li key={series.publicId}>
-              <SeriesShelfCard item={series} locale={locale} rank={rank} />
+              <SeriesShelf.Card item={series} locale={locale} rank={rank} />
             </li>
           ))}
         </ol>

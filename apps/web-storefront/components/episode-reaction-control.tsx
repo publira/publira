@@ -8,21 +8,7 @@ import { getMyEpisodeRating } from "#lib/episode-rating";
 import { getLocale } from "#lib/locale";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
-import type { EpisodeReactionSize } from "./episode-reaction";
-import {
-  EpisodeReaction,
-  EpisodeReactionCount,
-  EpisodeReactionError,
-  EpisodeReactionForm,
-  EpisodeReactionHeart,
-  EpisodeReactionLogin,
-  EpisodeReactionName,
-  EpisodeReactionNameDone,
-  EpisodeReactionNameIdle,
-  EpisodeReactionNameProgress,
-  EpisodeReactionNameReaders,
-  EpisodeReactionSubmit,
-} from "./episode-reaction";
+import * as EpisodeReaction from "./episode-reaction";
 import { LocaleField } from "./locale-field";
 
 /**
@@ -48,7 +34,7 @@ export const EpisodeReactionControl = async ({
   ratingCount: number;
   returnTo: string;
   seriesPublicId: string;
-  size?: EpisodeReactionSize;
+  size?: EpisodeReaction.Size;
   tenantId: string;
 }) => {
   const locale = await getLocale();
@@ -80,29 +66,29 @@ export const EpisodeReactionControl = async ({
 
   if (!result.signedIn) {
     return (
-      <EpisodeReaction size={size}>
-        <EpisodeReactionLogin
+      <EpisodeReaction.Root size={size}>
+        <EpisodeReaction.Login
           href={buildLoginPath(locale, defaultLocale, returnTo)}
           ratingCount={ratingCount}
         >
-          <EpisodeReactionName>
+          <EpisodeReaction.Name>
             <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-              <EpisodeReactionNameIdle>
+              <EpisodeReaction.NameIdle>
                 <Message message="storefront.episode.reaction.login_aria" />
-              </EpisodeReactionNameIdle>
-              <EpisodeReactionNameReaders message="storefront.episode.reaction.count_aria" />
+              </EpisodeReaction.NameIdle>
+              <EpisodeReaction.NameReaders message="storefront.episode.reaction.count_aria" />
             </Suspense>
-          </EpisodeReactionName>
-          <EpisodeReactionHeart />
-          <EpisodeReactionCount />
-        </EpisodeReactionLogin>
-      </EpisodeReaction>
+          </EpisodeReaction.Name>
+          <EpisodeReaction.Heart />
+          <EpisodeReaction.Count />
+        </EpisodeReaction.Login>
+      </EpisodeReaction.Root>
     );
   }
 
   return (
-    <EpisodeReaction size={size}>
-      <EpisodeReactionForm
+    <EpisodeReaction.Root size={size}>
+      <EpisodeReaction.Form
         mode={result.mode}
         ratingCount={result.ratingCount}
         score={result.score}
@@ -112,24 +98,24 @@ export const EpisodeReactionControl = async ({
         <input name="returnTo" type="hidden" value={returnTo} />
         <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
         <input name="tenantId" type="hidden" value={tenantId} />
-        <EpisodeReactionSubmit>
-          <EpisodeReactionName>
+        <EpisodeReaction.Submit>
+          <EpisodeReaction.Name>
             <Suspense fallback={<SkeletonLine className="h-4 w-52" />}>
-              <EpisodeReactionNameIdle>
+              <EpisodeReaction.NameIdle>
                 <Message message="storefront.episode.reaction.press_aria" />
-              </EpisodeReactionNameIdle>
-              <EpisodeReactionNameProgress message="storefront.episode.reaction.press_progress_aria" />
-              <EpisodeReactionNameDone>
+              </EpisodeReaction.NameIdle>
+              <EpisodeReaction.NameProgress message="storefront.episode.reaction.press_progress_aria" />
+              <EpisodeReaction.NameDone>
                 <Message message="storefront.episode.reaction.max_aria" />
-              </EpisodeReactionNameDone>
-              <EpisodeReactionNameReaders message="storefront.episode.reaction.count_aria" />
+              </EpisodeReaction.NameDone>
+              <EpisodeReaction.NameReaders message="storefront.episode.reaction.count_aria" />
             </Suspense>
-          </EpisodeReactionName>
-          <EpisodeReactionHeart />
-          <EpisodeReactionCount />
-        </EpisodeReactionSubmit>
-        <EpisodeReactionError />
-      </EpisodeReactionForm>
-    </EpisodeReaction>
+          </EpisodeReaction.Name>
+          <EpisodeReaction.Heart />
+          <EpisodeReaction.Count />
+        </EpisodeReaction.Submit>
+        <EpisodeReaction.Error />
+      </EpisodeReaction.Form>
+    </EpisodeReaction.Root>
   );
 };

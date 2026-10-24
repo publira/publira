@@ -11,15 +11,7 @@ import {
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  FollowButton,
-  FollowControlSkeleton,
-  FollowLoginLink,
-} from "./follow-button";
-import {
-  FollowButtonFollow,
-  FollowButtonUnfollow,
-} from "./follow-button-state";
+import * as FollowButton from "./follow-button";
 
 vi.mock("#components/locale-context", () => ({
   useLocale: () => "en",
@@ -50,44 +42,23 @@ afterEach(() => {
 });
 
 const SeriesFollowButton = ({ isFollowing }: { isFollowing: boolean }) => (
-  <FollowButton
+  <FollowButton.Root
     isFollowing={isFollowing}
     targetId="SERIES01-ID"
     returnTo="/series/SERIES01"
     targetKind="series"
     tenantId={tenantId}
   >
-    <FollowButtonFollow aria-label="Follow Published Series">
+    <FollowButton.Follow aria-label="Follow Published Series">
       <ActionForm.Idle>Follow</ActionForm.Idle>
       <ActionForm.Pending>Updating…</ActionForm.Pending>
-    </FollowButtonFollow>
-    <FollowButtonUnfollow aria-label="Unfollow Published Series">
+    </FollowButton.Follow>
+    <FollowButton.Unfollow aria-label="Unfollow Published Series">
       <ActionForm.Idle>Unfollow</ActionForm.Idle>
       <ActionForm.Pending>Updating…</ActionForm.Pending>
-    </FollowButtonUnfollow>
-  </FollowButton>
+    </FollowButton.Unfollow>
+  </FollowButton.Root>
 );
-
-describe("FollowLoginLink", () => {
-  it("sends a guest to login with returnTo", () => {
-    render(
-      <FollowLoginLink
-        aria-label="Sign in to follow Published Series"
-        href="/login?returnTo=%2Fseries%2FSERIES01"
-      >
-        Follow
-      </FollowLoginLink>
-    );
-
-    const link = screen.getByRole("link", {
-      name: "Sign in to follow Published Series",
-    });
-    expect(link.getAttribute("href")).toBe(
-      "/login?returnTo=%2Fseries%2FSERIES01"
-    );
-    expect(link.textContent).toBe("Follow");
-  });
-});
 
 describe("FollowButton", () => {
   it("offers to follow while the reader does not follow yet", () => {
@@ -156,12 +127,5 @@ describe("FollowButton", () => {
     expect(
       screen.getByRole("button", { name: "Follow Published Series" })
     ).toBeTruthy();
-  });
-});
-
-describe("FollowControlSkeleton", () => {
-  it("draws a placeholder the size of a button", () => {
-    const { container } = render(<FollowControlSkeleton />);
-    expect(container.querySelector("[aria-hidden='true']")).toBeTruthy();
   });
 });

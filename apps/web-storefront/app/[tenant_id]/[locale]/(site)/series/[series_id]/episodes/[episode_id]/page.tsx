@@ -11,16 +11,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 
-import {
-  AgeRatingGateActions,
-  AgeRatingGateBack,
-  AgeRatingGateConfirm,
-  AgeRatingGateConfirmation,
-  AgeRatingGateContent,
-  AgeRatingGateDescription,
-  AgeRatingGateHeading,
-  AgeRatingGateTitle,
-} from "#components/age-rating-gate";
+import * as AgeRatingGate from "#components/age-rating-gate";
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { CreatorCredits } from "#components/creator-credits";
 import { EpisodePrice } from "#components/episode-price";
@@ -195,9 +186,9 @@ const EpisodeAgeRatingConfirmation = ({
 }: {
   series: EpisodeSeriesSummary;
 }) => (
-  <AgeRatingGateConfirmation>
-    <AgeRatingGateHeading>
-      <AgeRatingGateTitle>
+  <AgeRatingGate.Confirmation>
+    <AgeRatingGate.Heading>
+      <AgeRatingGate.Title>
         <Suspense fallback={<SkeletonLine className="mx-auto h-5 w-56" />}>
           {series.ageRating === "r18" ? (
             <Message
@@ -211,18 +202,18 @@ const EpisodeAgeRatingConfirmation = ({
             />
           )}
         </Suspense>
-      </AgeRatingGateTitle>
-      <AgeRatingGateDescription />
-    </AgeRatingGateHeading>
-    <AgeRatingGateActions>
-      <AgeRatingGateConfirm />
-      <AgeRatingGateBack href={`/series/${series.publicId}`}>
+      </AgeRatingGate.Title>
+      <AgeRatingGate.Description />
+    </AgeRatingGate.Heading>
+    <AgeRatingGate.Actions>
+      <AgeRatingGate.Confirm />
+      <AgeRatingGate.Back href={`/series/${series.publicId}`}>
         <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
           <Message message="storefront.episode.to_series_detail" />
         </Suspense>
-      </AgeRatingGateBack>
-    </AgeRatingGateActions>
-  </AgeRatingGateConfirmation>
+      </AgeRatingGate.Back>
+    </AgeRatingGate.Actions>
+  </AgeRatingGate.Confirmation>
 );
 
 /**
@@ -367,7 +358,7 @@ const EpisodeContent = async (
         timeZone={timeZone}
       >
         <EpisodeAgeRatingConfirmation series={series} />
-        <AgeRatingGateContent>
+        <AgeRatingGate.Content>
           <div>
             <ContentViewTracker id={episode.id} kind="episode" />
             {/* The reader opens the page: everything else is what the reader may
@@ -527,7 +518,7 @@ const EpisodeContent = async (
               />
             </EpisodeColumn>
           </div>
-        </AgeRatingGateContent>
+        </AgeRatingGate.Content>
       </EpisodeRatingGate>
     </>
   );

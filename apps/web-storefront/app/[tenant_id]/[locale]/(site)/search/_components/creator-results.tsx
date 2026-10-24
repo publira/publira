@@ -4,11 +4,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { searchPublishedCreators } from "#lib/creators";
@@ -51,11 +47,11 @@ const CreatorPaginationNav = async ({ children }: { children: ReactNode }) => {
   const t = await getMessages();
 
   return (
-    <ListPagination
+    <ListPagination.Root
       aria-label={t("storefront.search.creators_pagination_aria")}
     >
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -69,9 +65,9 @@ const CreatorPagination = ({
   previousToken: string;
   query: string;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <CreatorPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={
           previousToken ? searchPageHref(query, "creators", previousToken) : ""
         }
@@ -79,14 +75,14 @@ const CreatorPagination = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={nextToken ? searchPageHref(query, "creators", nextToken) : ""}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </CreatorPaginationNav>
   </Suspense>
 );

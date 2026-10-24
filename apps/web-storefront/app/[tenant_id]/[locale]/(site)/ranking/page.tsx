@@ -13,25 +13,11 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { AgeRatingBadge } from "#components/age-rating-badge";
-import {
-  AgeRatingGate,
-  AgeRatingGateActions,
-  AgeRatingGateBack,
-  AgeRatingGateConfirm,
-  AgeRatingGateConfirmation,
-  AgeRatingGateContent,
-  AgeRatingGateDescription,
-  AgeRatingGateHeading,
-  AgeRatingGateTitle,
-} from "#components/age-rating-gate";
+import * as AgeRatingGate from "#components/age-rating-gate";
 import { CHIP } from "#components/chip";
 import { CreatorCredits } from "#components/creator-credits";
 import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
-import {
-  ListPagination,
-  ListPaginationSkeleton,
-  ListPaginationStep,
-} from "#components/list-pagination";
+import * as ListPagination from "#components/list-pagination";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -385,9 +371,9 @@ const RankingPaginationNav = async ({ children }: { children: ReactNode }) => {
   const t = await getMessages();
 
   return (
-    <ListPagination aria-label={t("storefront.ranking.pagination_aria")}>
+    <ListPagination.Root aria-label={t("storefront.ranking.pagination_aria")}>
       {children}
-    </ListPagination>
+    </ListPagination.Root>
   );
 };
 
@@ -405,9 +391,9 @@ const RankingPagination = ({
   previousToken: string;
   rating: RankingAgeRatingName;
 }) => (
-  <Suspense fallback={<ListPaginationSkeleton />}>
+  <Suspense fallback={<ListPagination.Skeleton />}>
     <RankingPaginationNav>
-      <ListPaginationStep
+      <ListPagination.Step
         href={
           previousToken
             ? rankingHref({ genre, period, rating, token: previousToken })
@@ -417,8 +403,8 @@ const RankingPagination = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.previous_page" />
         </Suspense>
-      </ListPaginationStep>
-      <ListPaginationStep
+      </ListPagination.Step>
+      <ListPagination.Step
         href={
           nextToken
             ? rankingHref({ genre, period, rating, token: nextToken })
@@ -428,7 +414,7 @@ const RankingPagination = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
         </Suspense>
-      </ListPaginationStep>
+      </ListPagination.Step>
     </RankingPaginationNav>
   </Suspense>
 );
@@ -605,9 +591,9 @@ const RankingAgeRatingConfirmation = ({
   period: RankingPeriodName;
   rating: RankingAgeRatingName;
 }) => (
-  <AgeRatingGateConfirmation>
-    <AgeRatingGateHeading>
-      <AgeRatingGateTitle>
+  <AgeRatingGate.Confirmation>
+    <AgeRatingGate.Heading>
+      <AgeRatingGate.Title>
         <Suspense fallback={<SkeletonLine className="mx-auto h-5 w-56" />}>
           {rating === "r18" ? (
             <Message message="storefront.ranking.age_gate.r18_title" />
@@ -615,8 +601,8 @@ const RankingAgeRatingConfirmation = ({
             <Message message="storefront.ranking.age_gate.r15_title" />
           )}
         </Suspense>
-      </AgeRatingGateTitle>
-      <AgeRatingGateDescription>
+      </AgeRatingGate.Title>
+      <AgeRatingGate.Description>
         <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-72" />}>
           {rating === "r18" ? (
             <Message message="storefront.ranking.age_gate.r18_description" />
@@ -624,17 +610,17 @@ const RankingAgeRatingConfirmation = ({
             <Message message="storefront.ranking.age_gate.r15_description" />
           )}
         </Suspense>
-      </AgeRatingGateDescription>
-    </AgeRatingGateHeading>
-    <AgeRatingGateActions>
-      <AgeRatingGateConfirm />
-      <AgeRatingGateBack href={rankingHref({ period, rating: "all" })}>
+      </AgeRatingGate.Description>
+    </AgeRatingGate.Heading>
+    <AgeRatingGate.Actions>
+      <AgeRatingGate.Confirm />
+      <AgeRatingGate.Back href={rankingHref({ period, rating: "all" })}>
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
           <Message message="storefront.ranking.back_to_all_ages" />
         </Suspense>
-      </AgeRatingGateBack>
-    </AgeRatingGateActions>
-  </AgeRatingGateConfirmation>
+      </AgeRatingGate.Back>
+    </AgeRatingGate.Actions>
+  </AgeRatingGate.Confirmation>
 );
 
 /**
@@ -733,12 +719,12 @@ const RankingList = async ({
   }
 
   return (
-    <AgeRatingGate
+    <AgeRatingGate.Root
       provenAgeRating={await getReaderProvenAgeRating(tenantId)}
       rating={rating}
     >
       <RankingAgeRatingConfirmation period={period} rating={rating} />
-      <AgeRatingGateContent>
+      <AgeRatingGate.Content>
         <RankingChart
           genre=""
           locale={locale}
@@ -747,8 +733,8 @@ const RankingList = async ({
           result={result}
           tenantId={tenantId}
         />
-      </AgeRatingGateContent>
-    </AgeRatingGate>
+      </AgeRatingGate.Content>
+    </AgeRatingGate.Root>
   );
 };
 

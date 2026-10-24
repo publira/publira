@@ -15,8 +15,8 @@ const ErrorScreenStateContext = createContext<ErrorScreenState | null>(null);
 
 interface ErrorScreenProps {
   /**
-   * `ErrorScreenTitle`, `ErrorScreenDescription`, `ErrorScreenActions` holding
-   * an `ErrorScreenRetry`, and an `ErrorScreenDigest`.
+   * `ErrorScreen.Title`, `ErrorScreen.Description`, `ErrorScreen.Actions` holding
+   * an `ErrorScreen.Retry`, and an `ErrorScreen.Digest`.
    */
   children: ReactNode;
   /**
@@ -42,17 +42,17 @@ interface ErrorScreenProps {
  * slots resolve them from the catalog.
  *
  * ```tsx
- * <ErrorScreen digest={error.digest} retry={retry}>
- *   <ErrorScreenTitle>…</ErrorScreenTitle>
- *   <ErrorScreenDescription>…</ErrorScreenDescription>
- *   <ErrorScreenActions>
- *     <ErrorScreenRetry />
- *   </ErrorScreenActions>
- *   <ErrorScreenDigest />
- * </ErrorScreen>
+ * <ErrorScreen.Root digest={error.digest} retry={retry}>
+ *   <ErrorScreen.Title>…</ErrorScreen.Title>
+ *   <ErrorScreen.Description>…</ErrorScreen.Description>
+ *   <ErrorScreen.Actions>
+ *     <ErrorScreen.Retry />
+ *   </ErrorScreen.Actions>
+ *   <ErrorScreen.Digest />
+ * </ErrorScreen.Root>
  * ```
  */
-export const ErrorScreen = ({ children, digest, retry }: ErrorScreenProps) => {
+const ErrorScreen = ({ children, digest, retry }: ErrorScreenProps) => {
   const state = useMemo(() => ({ digest, retry }), [digest, retry]);
 
   return (
@@ -74,17 +74,15 @@ const useErrorScreenState = (): ErrorScreenState => {
   return state;
 };
 
-export const ErrorScreenTitle = ({ children }: { children: ReactNode }) => (
+const ErrorScreenTitle = ({ children }: { children: ReactNode }) => (
   <h1 className="font-serif text-3xl leading-tight">{children}</h1>
 );
 
-export const ErrorScreenDescription = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <p className="text-foreground">{children}</p>;
+const ErrorScreenDescription = ({ children }: { children: ReactNode }) => (
+  <p className="text-foreground">{children}</p>
+);
 
-export const ErrorScreenActions = ({ children }: { children: ReactNode }) => (
+const ErrorScreenActions = ({ children }: { children: ReactNode }) => (
   <div className="mt-2 flex flex-wrap items-center gap-3">{children}</div>
 );
 
@@ -94,7 +92,7 @@ export const ErrorScreenActions = ({ children }: { children: ReactNode }) => (
  * `retry()` rather than `reset()`, because only `retry()` re-fetches the
  * boundary's children, which is what a reader means by Try again.
  */
-export const ErrorScreenRetry = () => {
+const ErrorScreenRetry = () => {
   const { retry } = useErrorScreenState();
 
   return (
@@ -105,7 +103,7 @@ export const ErrorScreenRetry = () => {
 };
 
 /** The digest behind its prefix, or nothing when the error carries none. */
-export const ErrorScreenDigest = () => {
+const ErrorScreenDigest = () => {
   const { digest } = useErrorScreenState();
 
   if (!digest) {
@@ -118,4 +116,13 @@ export const ErrorScreenDigest = () => {
       <code className="font-mono">{digest}</code>
     </p>
   );
+};
+
+export {
+  ErrorScreen as Root,
+  ErrorScreenActions as Actions,
+  ErrorScreenDescription as Description,
+  ErrorScreenDigest as Digest,
+  ErrorScreenRetry as Retry,
+  ErrorScreenTitle as Title,
 };

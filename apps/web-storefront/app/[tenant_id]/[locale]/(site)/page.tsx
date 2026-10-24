@@ -21,7 +21,7 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { RelativeTime } from "#components/relative-time";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
-import { SeriesShelf, SeriesShelfSkeleton } from "#components/series-shelf";
+import * as SeriesShelf from "#components/series-shelf";
 import { listPublishedGenres } from "#lib/catalog";
 import type { SeriesListItem } from "#lib/catalog";
 import {
@@ -48,12 +48,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { CampaignBannersSection } from "./_components/campaign-banners";
-import {
-  WeeklySchedule,
-  WeeklyScheduleDay,
-  WeeklyScheduleDayPanel,
-  WeeklyScheduleDays,
-} from "./_components/weekly-schedule";
+import * as WeeklySchedule from "./_components/weekly-schedule";
 
 type EpisodeLinkSource = CatalogTopEpisodeItem & {
   episodePublicId?: string;
@@ -404,22 +399,22 @@ const WeeklyScheduleSection = async () => {
         </h2>
       </div>
       <div className="mt-4">
-        <WeeklySchedule defaultWeekday={openWeekday}>
-          <WeeklyScheduleDays
+        <WeeklySchedule.Root defaultWeekday={openWeekday}>
+          <WeeklySchedule.Days
             aria-label={t("storefront.top.schedule_days_aria")}
           >
             {days.map((day) => (
-              <WeeklyScheduleDay key={day.weekday} weekday={day.weekday}>
+              <WeeklySchedule.Day key={day.weekday} weekday={day.weekday}>
                 {/* A weekday is calendar data, so it comes from `Intl` in the
                     reader's language rather than from the catalog. */}
                 {formatWeekdayName(day.weekday, { locale, style: "short" })}
-              </WeeklyScheduleDay>
+              </WeeklySchedule.Day>
             ))}
-          </WeeklyScheduleDays>
+          </WeeklySchedule.Days>
           {days.map((day) => (
-            <WeeklyScheduleDayPanel key={day.weekday} weekday={day.weekday}>
+            <WeeklySchedule.DayPanel key={day.weekday} weekday={day.weekday}>
               {day.series.length > 0 ? (
-                <SeriesShelf
+                <SeriesShelf.Root
                   hideUntilConfirmed
                   locale={locale}
                   series={day.series}
@@ -433,9 +428,9 @@ const WeeklyScheduleSection = async () => {
                   </EmptyState.Description>
                 </EmptyState.Root>
               )}
-            </WeeklyScheduleDayPanel>
+            </WeeklySchedule.DayPanel>
           ))}
-        </WeeklySchedule>
+        </WeeklySchedule.Root>
       </div>
     </section>
   );
@@ -779,7 +774,9 @@ const FreeSeriesSection = async () => {
     );
   }
 
-  return <SeriesShelf hideUntilConfirmed locale={locale} series={freeSeries} />;
+  return (
+    <SeriesShelf.Root hideUntilConfirmed locale={locale} series={freeSeries} />
+  );
 };
 
 const NewEpisodesSection = async () => {
@@ -1240,7 +1237,7 @@ const Page = () => (
             </Suspense>
           }
         >
-          <Suspense fallback={<SeriesShelfSkeleton />}>
+          <Suspense fallback={<SeriesShelf.Skeleton />}>
             <FreeSeriesSection />
           </Suspense>
         </SectionErrorBoundary>

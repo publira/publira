@@ -12,17 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { writeConfirmedAgeRating } from "#lib/age-rating-confirmation";
 
-import {
-  AgeRatingGate,
-  AgeRatingGateActions,
-  AgeRatingGateBack,
-  AgeRatingGateConfirm,
-  AgeRatingGateConfirmation,
-  AgeRatingGateContent,
-  AgeRatingGateDescription,
-  AgeRatingGateHeading,
-  AgeRatingGateTitle,
-} from "./age-rating-gate";
+import * as AgeRatingGate from "./age-rating-gate";
 
 vi.mock("#lib/use-tenant-id", () => ({
   useTenantId: () => "tenant-1",
@@ -58,21 +48,21 @@ const title = "“Night Side” is age-rated";
 
 const renderGate = (rating?: "r15" | "r18", proven?: "r15" | "r18") =>
   render(
-    <AgeRatingGate provenAgeRating={proven} rating={rating}>
-      <AgeRatingGateConfirmation>
-        <AgeRatingGateHeading>
-          <AgeRatingGateTitle>{title}</AgeRatingGateTitle>
-          <AgeRatingGateDescription />
-        </AgeRatingGateHeading>
-        <AgeRatingGateActions>
-          <AgeRatingGateConfirm />
-          <AgeRatingGateBack href="/">Back to home</AgeRatingGateBack>
-        </AgeRatingGateActions>
-      </AgeRatingGateConfirmation>
-      <AgeRatingGateContent>
+    <AgeRatingGate.Root provenAgeRating={proven} rating={rating}>
+      <AgeRatingGate.Confirmation>
+        <AgeRatingGate.Heading>
+          <AgeRatingGate.Title>{title}</AgeRatingGate.Title>
+          <AgeRatingGate.Description />
+        </AgeRatingGate.Heading>
+        <AgeRatingGate.Actions>
+          <AgeRatingGate.Confirm />
+          <AgeRatingGate.Back href="/">Back to home</AgeRatingGate.Back>
+        </AgeRatingGate.Actions>
+      </AgeRatingGate.Confirmation>
+      <AgeRatingGate.Content>
         <p>Series body</p>
-      </AgeRatingGateContent>
-    </AgeRatingGate>
+      </AgeRatingGate.Content>
+    </AgeRatingGate.Root>
   );
 
 describe("AgeRatingGate", () => {

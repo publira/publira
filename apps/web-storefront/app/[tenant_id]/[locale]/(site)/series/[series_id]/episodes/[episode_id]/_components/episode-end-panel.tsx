@@ -5,8 +5,10 @@ import type { ReactNode } from "react";
 
 import { EpisodePrice } from "#components/episode-price";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
-import { FollowControlSkeleton } from "#components/follow-button";
-import { FollowControl } from "#components/follow-control";
+import {
+  FollowControlSkeleton,
+  FollowControl,
+} from "#components/follow-control";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import {

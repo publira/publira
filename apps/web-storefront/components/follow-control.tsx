@@ -1,7 +1,10 @@
 import * as ActionForm from "@publira/ui-components/action-form";
+import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import Link from "next/link";
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/auth-shared";
@@ -11,11 +14,33 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantDefaultLocale } from "#lib/tenant";
 
-import { FollowButton, FollowLoginLink } from "./follow-button";
-import {
-  FollowButtonFollow,
-  FollowButtonUnfollow,
-} from "./follow-button-state";
+import * as FollowButton from "./follow-button";
+
+export const FollowControlSkeleton = () => <Skeleton className="h-10 w-28" />;
+
+/**
+ * The follow control a signed-out reader gets. `aria-label` names what signing
+ * in would follow.
+ */
+export const FollowLoginLink = ({
+  "aria-label": ariaLabel,
+  children,
+  href,
+}: {
+  "aria-label": string;
+  children: ReactNode;
+  href: string;
+}) => (
+  <LinkButton
+    aria-label={ariaLabel}
+    className="shrink-0"
+    render={<Link href={href} />}
+    size="lg"
+    variant="outline"
+  >
+    {children}
+  </LinkButton>
+);
 
 /**
  * Member-specific follow island. The surrounding series/creator body stays on
@@ -72,14 +97,14 @@ export const FollowControl = async ({
   }
 
   return (
-    <FollowButton
+    <FollowButton.Root
       isFollowing={result.isFollowing}
       returnTo={returnTo}
       targetId={targetId}
       targetKind={targetKind}
       tenantId={tenantId}
     >
-      <FollowButtonFollow
+      <FollowButton.Follow
         aria-label={t("storefront.follow.follow_aria", { name: targetName })}
       >
         <ActionForm.Idle>
@@ -92,8 +117,8 @@ export const FollowControl = async ({
             <Message message="storefront.follow.pending" />
           </Suspense>
         </ActionForm.Pending>
-      </FollowButtonFollow>
-      <FollowButtonUnfollow
+      </FollowButton.Follow>
+      <FollowButton.Unfollow
         aria-label={t("storefront.follow.unfollow_aria", { name: targetName })}
       >
         <ActionForm.Idle>
@@ -106,7 +131,7 @@ export const FollowControl = async ({
             <Message message="storefront.follow.pending" />
           </Suspense>
         </ActionForm.Pending>
-      </FollowButtonUnfollow>
-    </FollowButton>
+      </FollowButton.Unfollow>
+    </FollowButton.Root>
   );
 };

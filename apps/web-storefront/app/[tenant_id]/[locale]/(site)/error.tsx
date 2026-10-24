@@ -3,14 +3,7 @@
 import { LinkButton } from "@publira/ui-components/button";
 
 import { ClientMessage } from "#components/client-message";
-import {
-  ErrorScreen,
-  ErrorScreenActions,
-  ErrorScreenDescription,
-  ErrorScreenDigest,
-  ErrorScreenRetry,
-  ErrorScreenTitle,
-} from "#components/error-screen";
+import * as ErrorScreen from "#components/error-screen";
 import { LocaleLink } from "#components/locale-link";
 
 /**
@@ -51,21 +44,21 @@ const SiteError = ({
   error: Error & { digest?: string };
   retry: () => void;
 }) => (
-  <ErrorScreen digest={error.digest} retry={retry}>
-    <ErrorScreenTitle>
+  <ErrorScreen.Root digest={error.digest} retry={retry}>
+    <ErrorScreen.Title>
       <ClientMessage message="storefront.errors.page_title" />
-    </ErrorScreenTitle>
-    <ErrorScreenDescription>
+    </ErrorScreen.Title>
+    <ErrorScreen.Description>
       <ClientMessage message="storefront.errors.page_description" />
-    </ErrorScreenDescription>
-    <ErrorScreenActions>
-      <ErrorScreenRetry />
+    </ErrorScreen.Description>
+    <ErrorScreen.Actions>
+      <ErrorScreen.Retry />
       <LinkButton render={<LocaleLink href="/" />} variant="outline">
         <ClientMessage message="storefront.common.back_to_top" />
       </LinkButton>
-    </ErrorScreenActions>
-    <ErrorScreenDigest />
-  </ErrorScreen>
+    </ErrorScreen.Actions>
+    <ErrorScreen.Digest />
+  </ErrorScreen.Root>
 );
 
 export default SiteError;

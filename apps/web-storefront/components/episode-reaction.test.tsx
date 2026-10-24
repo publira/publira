@@ -6,20 +6,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  EpisodeReaction,
-  EpisodeReactionCount,
-  EpisodeReactionForm,
-  EpisodeReactionHeart,
-  EpisodeReactionLogin,
-  EpisodeReactionName,
-  EpisodeReactionNameDone,
-  EpisodeReactionNameIdle,
-  EpisodeReactionNameProgress,
-  EpisodeReactionNameReaders,
-  EpisodeReactionSkeleton,
-  EpisodeReactionSubmit,
-} from "./episode-reaction";
+import * as EpisodeReaction from "./episode-reaction";
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
@@ -56,18 +43,18 @@ const GuestReaction = ({
   href: string;
   ratingCount: number;
 }) => (
-  <EpisodeReaction>
-    <EpisodeReactionLogin href={href} ratingCount={ratingCount}>
-      <EpisodeReactionName>
-        <EpisodeReactionNameIdle>
+  <EpisodeReaction.Root>
+    <EpisodeReaction.Login href={href} ratingCount={ratingCount}>
+      <EpisodeReaction.Name>
+        <EpisodeReaction.NameIdle>
           Sign in to react to this episode
-        </EpisodeReactionNameIdle>
-        <EpisodeReactionNameReaders message="storefront.episode.reaction.count_aria" />
-      </EpisodeReactionName>
-      <EpisodeReactionHeart />
-      <EpisodeReactionCount />
-    </EpisodeReactionLogin>
-  </EpisodeReaction>
+        </EpisodeReaction.NameIdle>
+        <EpisodeReaction.NameReaders message="storefront.episode.reaction.count_aria" />
+      </EpisodeReaction.Name>
+      <EpisodeReaction.Heart />
+      <EpisodeReaction.Count />
+    </EpisodeReaction.Login>
+  </EpisodeReaction.Root>
 );
 
 const SignedInReaction = ({
@@ -79,24 +66,24 @@ const SignedInReaction = ({
   ratingCount: number;
   score: number;
 }) => (
-  <EpisodeReaction>
-    <EpisodeReactionForm mode={mode} ratingCount={ratingCount} score={score}>
-      <EpisodeReactionSubmit>
-        <EpisodeReactionName>
-          <EpisodeReactionNameIdle>
+  <EpisodeReaction.Root>
+    <EpisodeReaction.Form mode={mode} ratingCount={ratingCount} score={score}>
+      <EpisodeReaction.Submit>
+        <EpisodeReaction.Name>
+          <EpisodeReaction.NameIdle>
             React to this episode
-          </EpisodeReactionNameIdle>
-          <EpisodeReactionNameProgress message="storefront.episode.reaction.press_progress_aria" />
-          <EpisodeReactionNameDone>
+          </EpisodeReaction.NameIdle>
+          <EpisodeReaction.NameProgress message="storefront.episode.reaction.press_progress_aria" />
+          <EpisodeReaction.NameDone>
             You have reacted to this episode
-          </EpisodeReactionNameDone>
-          <EpisodeReactionNameReaders message="storefront.episode.reaction.count_aria" />
-        </EpisodeReactionName>
-        <EpisodeReactionHeart />
-        <EpisodeReactionCount />
-      </EpisodeReactionSubmit>
-    </EpisodeReactionForm>
-  </EpisodeReaction>
+          </EpisodeReaction.NameDone>
+          <EpisodeReaction.NameReaders message="storefront.episode.reaction.count_aria" />
+        </EpisodeReaction.Name>
+        <EpisodeReaction.Heart />
+        <EpisodeReaction.Count />
+      </EpisodeReaction.Submit>
+    </EpisodeReaction.Form>
+  </EpisodeReaction.Root>
 );
 
 afterEach(() => {
@@ -104,7 +91,7 @@ afterEach(() => {
   rateEpisodeAction.mockClear();
 });
 
-describe("EpisodeReactionLogin", () => {
+describe("EpisodeReaction.Login", () => {
   it("sends a guest to login with returnTo, showing the public headcount", () => {
     render(
       <GuestReaction
@@ -123,14 +110,14 @@ describe("EpisodeReactionLogin", () => {
   });
 });
 
-describe("EpisodeReactionHeart", () => {
+describe("EpisodeReaction.Heart", () => {
   it("draws an empty heart until a fill is given", () => {
-    const { container } = render(<EpisodeReactionHeart />);
+    const { container } = render(<EpisodeReaction.Heart />);
     expect(container.querySelectorAll("svg")).toHaveLength(1);
   });
 
   it("fills the heart by the given ratio", () => {
-    const { container } = render(<EpisodeReactionHeart fillRatio={0.4} />);
+    const { container } = render(<EpisodeReaction.Heart fillRatio={0.4} />);
     expect(container.querySelectorAll("svg")).toHaveLength(2);
     expect(container.querySelector("[style]")?.getAttribute("style")).toContain(
       "inset(60%"
@@ -138,14 +125,14 @@ describe("EpisodeReactionHeart", () => {
   });
 });
 
-describe("EpisodeReactionSkeleton", () => {
+describe("EpisodeReaction.Skeleton", () => {
   it("renders a placeholder the size of the control", () => {
-    const { container } = render(<EpisodeReactionSkeleton />);
+    const { container } = render(<EpisodeReaction.Skeleton />);
     expect(container.querySelector("[aria-hidden='true']")).toBeTruthy();
   });
 });
 
-describe("EpisodeReactionForm", () => {
+describe("EpisodeReaction.Form", () => {
   it("names a first press in single mode, then fills the control and counts the reader once", async () => {
     render(<SignedInReaction mode="single" ratingCount={3} score={0} />);
 

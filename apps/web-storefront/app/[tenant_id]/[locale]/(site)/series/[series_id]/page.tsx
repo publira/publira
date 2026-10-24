@@ -19,24 +19,16 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { AgeRatingBadge } from "#components/age-rating-badge";
-import {
-  AgeRatingGate,
-  AgeRatingGateActions,
-  AgeRatingGateBack,
-  AgeRatingGateConfirm,
-  AgeRatingGateConfirmation,
-  AgeRatingGateContent,
-  AgeRatingGateDescription,
-  AgeRatingGateHeading,
-  AgeRatingGateTitle,
-} from "#components/age-rating-gate";
+import * as AgeRatingGate from "#components/age-rating-gate";
 import { CHIP, TAG_CHIP } from "#components/chip";
 import { ContentViewTracker } from "#components/content-view-tracker";
 import { CreatorCredits } from "#components/creator-credits";
 import { EpisodePrice } from "#components/episode-price";
 import { EyeCatchFrame } from "#components/eye-catch-frame";
-import { FollowControlSkeleton } from "#components/follow-button";
-import { FollowControl } from "#components/follow-control";
+import {
+  FollowControlSkeleton,
+  FollowControl,
+} from "#components/follow-control";
 import { JsonLd } from "#components/json-ld";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -261,9 +253,9 @@ const SeriesShareControl = async ({
 
 /** The rating interstitial, whose way out leads back to the home page. */
 const SeriesAgeRatingConfirmation = ({ series }: { series: SeriesDetail }) => (
-  <AgeRatingGateConfirmation>
-    <AgeRatingGateHeading>
-      <AgeRatingGateTitle>
+  <AgeRatingGate.Confirmation>
+    <AgeRatingGate.Heading>
+      <AgeRatingGate.Title>
         <Suspense fallback={<SkeletonLine className="mx-auto h-5 w-56" />}>
           {series.ageRating === "r18" ? (
             <Message
@@ -277,18 +269,18 @@ const SeriesAgeRatingConfirmation = ({ series }: { series: SeriesDetail }) => (
             />
           )}
         </Suspense>
-      </AgeRatingGateTitle>
-      <AgeRatingGateDescription />
-    </AgeRatingGateHeading>
-    <AgeRatingGateActions>
-      <AgeRatingGateConfirm />
-      <AgeRatingGateBack href="/">
+      </AgeRatingGate.Title>
+      <AgeRatingGate.Description />
+    </AgeRatingGate.Heading>
+    <AgeRatingGate.Actions>
+      <AgeRatingGate.Confirm />
+      <AgeRatingGate.Back href="/">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.common.back_to_top" />
         </Suspense>
-      </AgeRatingGateBack>
-    </AgeRatingGateActions>
-  </AgeRatingGateConfirmation>
+      </AgeRatingGate.Back>
+    </AgeRatingGate.Actions>
+  </AgeRatingGate.Confirmation>
 );
 
 /**
@@ -367,12 +359,12 @@ const SeriesDetailContent = async (
           }
         />
       </Suspense>
-      <AgeRatingGate
+      <AgeRatingGate.Root
         provenAgeRating={provenAgeRating}
         rating={series.ageRating}
       >
         <SeriesAgeRatingConfirmation series={series} />
-        <AgeRatingGateContent>
+        <AgeRatingGate.Content>
           <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
             <ContentViewTracker id={series.id} kind="series" />
             <SeriesFallbackNotice
@@ -808,8 +800,8 @@ const SeriesDetailContent = async (
               </LocaleLink>
             </p>
           </div>
-        </AgeRatingGateContent>
-      </AgeRatingGate>
+        </AgeRatingGate.Content>
+      </AgeRatingGate.Root>
     </>
   );
 };

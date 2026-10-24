@@ -1,14 +1,7 @@
 "use client";
 
 import { ClientMessage } from "#components/client-message";
-import {
-  ErrorScreen,
-  ErrorScreenActions,
-  ErrorScreenDescription,
-  ErrorScreenDigest,
-  ErrorScreenRetry,
-  ErrorScreenTitle,
-} from "#components/error-screen";
+import * as ErrorScreen from "#components/error-screen";
 
 /**
  * Error boundary for the locale segment itself. It catches what the `(site)` /
@@ -49,18 +42,18 @@ const TenantError = ({
   // The failing layout is what would normally supply the landmark, so this
   // boundary owns the `<main>` element itself.
   <main>
-    <ErrorScreen digest={error.digest} retry={retry}>
-      <ErrorScreenTitle>
+    <ErrorScreen.Root digest={error.digest} retry={retry}>
+      <ErrorScreen.Title>
         <ClientMessage message="storefront.errors.site_title" />
-      </ErrorScreenTitle>
-      <ErrorScreenDescription>
+      </ErrorScreen.Title>
+      <ErrorScreen.Description>
         <ClientMessage message="storefront.errors.site_description" />
-      </ErrorScreenDescription>
-      <ErrorScreenActions>
-        <ErrorScreenRetry />
-      </ErrorScreenActions>
-      <ErrorScreenDigest />
-    </ErrorScreen>
+      </ErrorScreen.Description>
+      <ErrorScreen.Actions>
+        <ErrorScreen.Retry />
+      </ErrorScreen.Actions>
+      <ErrorScreen.Digest />
+    </ErrorScreen.Root>
   </main>
 );
 
