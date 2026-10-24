@@ -5,18 +5,13 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { useCallback, useOptimistic, useState, useTransition } from "react";
 
 import { useClientMessages } from "#components/client-message";
-import {
-  SortableList,
-  SortableRows,
-  withItemMoved,
-} from "#components/sortable-list";
-import type { SortableRow } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 
 import { reorderGenresAction } from "../_lib/actions";
 
 interface GenreSortableListProps {
   /** One row per genre, composed on the server, in the tenant's order. */
-  rows: SortableRow[];
+  rows: Sortable.Row[];
   tenantId: string;
 }
 
@@ -47,7 +42,11 @@ export const GenreSortableList = ({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentGenreIds = optimisticGenreIds;
-      const nextGenreIds = withItemMoved(currentGenreIds, identity, event);
+      const nextGenreIds = Sortable.withItemMoved(
+        currentGenreIds,
+        identity,
+        event
+      );
       if (nextGenreIds === currentGenreIds) {
         return;
       }
@@ -74,17 +73,17 @@ export const GenreSortableList = ({
       {reorderErrorMessage ? (
         <FormMessage variant="destructive">{reorderErrorMessage}</FormMessage>
       ) : null}
-      <SortableList
+      <Sortable.Root
         aria-label={t("admin.genres.list_title")}
         className="grid gap-3"
         onDragEnd={handleDragEnd}
       >
-        <SortableRows
+        <Sortable.Rows
           disabled={isPending}
           order={optimisticGenreIds}
           rows={rows}
         />
-      </SortableList>
+      </Sortable.Root>
     </div>
   );
 };

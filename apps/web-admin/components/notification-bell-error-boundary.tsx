@@ -3,41 +3,34 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { Message } from "./message";
+import * as NotificationBell from "./notification-bell";
 import { NotificationBellErrorCatch } from "./notification-bell-error-catch";
-import {
-  NotificationBellContent,
-  NotificationBellError,
-  NotificationBellHeader,
-  NotificationBellMenu,
-  NotificationBellMore,
-  NotificationBellTrigger,
-} from "./notification-bell-menu";
 
 const NotificationBellErrorFallback = () => (
-  <NotificationBellMenu>
-    <NotificationBellTrigger unreadCount={0}>
+  <NotificationBell.Menu>
+    <NotificationBell.Trigger unreadCount={0}>
       <Suspense fallback={null}>
         <Message message="admin.shell.notifications_none" />
       </Suspense>
-    </NotificationBellTrigger>
-    <NotificationBellContent>
-      <NotificationBellHeader unreadCount={0}>
+    </NotificationBell.Trigger>
+    <NotificationBell.Content>
+      <NotificationBell.Header unreadCount={0}>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="admin.notifications.title" />
         </Suspense>
-      </NotificationBellHeader>
-      <NotificationBellError>
+      </NotificationBell.Header>
+      <NotificationBell.Error>
         <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
           <Message message="admin.notifications.list_failed" />
         </Suspense>
-      </NotificationBellError>
-      <NotificationBellMore href="/notifications">
+      </NotificationBell.Error>
+      <NotificationBell.More href="/notifications">
         <Suspense fallback={<Skeleton className="h-4 w-16" />}>
           <Message message="admin.notifications.menu_more" />
         </Suspense>
-      </NotificationBellMore>
-    </NotificationBellContent>
-  </NotificationBellMenu>
+      </NotificationBell.More>
+    </NotificationBell.Content>
+  </NotificationBell.Menu>
 );
 
 /**

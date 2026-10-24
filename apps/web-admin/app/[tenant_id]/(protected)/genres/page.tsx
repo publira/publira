@@ -1,19 +1,11 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { isSignedInTenantEditor } from "#lib/auth-session";
 import { listGenres } from "#lib/genre";
@@ -36,16 +28,16 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const GenreManagerSkeleton = () => (
-  <AdminSections>
-    <AdminSection>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-10 sm:max-w-sm" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
       <Table.Skeleton />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );
 
 const GenreManagerData = async () => {
@@ -70,27 +62,27 @@ const GenreManagerData = async () => {
 };
 
 const GenrePage = () => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
             <Message message="admin.genres.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="admin.genres.page_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <Suspense fallback={<GenreManagerSkeleton />}>
         <GenreManagerData />
       </Suspense>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default GenrePage;

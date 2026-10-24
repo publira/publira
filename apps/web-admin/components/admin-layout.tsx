@@ -21,10 +21,7 @@ import { getTenantThemeLogo } from "../lib/theme-settings";
 import { AdminBrandLogo } from "./admin-brand-logo";
 import { AdminNavigation } from "./admin-navigation";
 import { AdminLocaleSwitcher } from "./locale-switcher";
-import {
-  NotificationBell,
-  NotificationBellSkeleton,
-} from "./notification-bell";
+import * as NotificationBell from "./notification-bell";
 import { NotificationBellErrorBoundary } from "./notification-bell-error-boundary";
 
 export interface AdminLayoutCurrentUser {
@@ -216,8 +213,8 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => (
             <AdminLocaleSwitcher />
           </Suspense>
           <NotificationBellErrorBoundary>
-            <Suspense fallback={<NotificationBellSkeleton />}>
-              <NotificationBell />
+            <Suspense fallback={<NotificationBell.Skeleton />}>
+              <NotificationBell.Root />
             </Suspense>
           </NotificationBellErrorBoundary>
           <Suspense fallback={<ConsoleHeader.UserSkeleton />}>

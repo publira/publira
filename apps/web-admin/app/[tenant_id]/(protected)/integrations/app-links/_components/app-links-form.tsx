@@ -1,27 +1,16 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { MAX_ANDROID_CERT_FINGERPRINTS } from "#lib/tenant-mobile-app-association";
 import type { TenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 
-import {
-  AppLinksPlatform,
-  AppLinksPlatformFields,
-  AppLinksPlatformLegend,
-  AppLinksPlatformToggle,
-  RetainedInput,
-  RetainedTextarea,
-} from "./app-links-controls";
+import * as AppLinksPlatform from "./app-links-controls";
+import { RetainedInput, RetainedTextarea } from "./retained-fields";
 
 interface AppLinksFormProps {
   action: (
@@ -47,16 +36,16 @@ export const AppLinksForm = ({
   const locked = !canEdit || Boolean(loadErrorMessage);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionDescription>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.app_links.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
 
       {loadErrorMessage ? (
         <FormMessage className="sm:max-w-3xl" variant="destructive">
@@ -69,22 +58,22 @@ export const AppLinksForm = ({
 
         <ActionForm.Fieldset className="grid gap-5">
           {/* Keyed by what is stored, so a save the API normalized reseeds it. */}
-          <AppLinksPlatform
+          <AppLinksPlatform.Root
             disabled={locked}
             initialEnabled={android !== undefined}
             key={`android:${JSON.stringify(android ?? null)}`}
           >
-            <AppLinksPlatformLegend>
+            <AppLinksPlatform.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.settings.app_links.android_legend" />
               </Suspense>
-            </AppLinksPlatformLegend>
-            <AppLinksPlatformToggle name="android_enabled">
+            </AppLinksPlatform.Legend>
+            <AppLinksPlatform.Toggle name="android_enabled">
               <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
                 <Message message="admin.settings.app_links.android_enabled" />
               </Suspense>
-            </AppLinksPlatformToggle>
-            <AppLinksPlatformFields>
+            </AppLinksPlatform.Toggle>
+            <AppLinksPlatform.Fields>
               <Field.Root>
                 <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -139,25 +128,25 @@ export const AppLinksForm = ({
                   </Suspense>
                 </Field.Description>
               </Field.Root>
-            </AppLinksPlatformFields>
-          </AppLinksPlatform>
+            </AppLinksPlatform.Fields>
+          </AppLinksPlatform.Root>
 
-          <AppLinksPlatform
+          <AppLinksPlatform.Root
             disabled={locked}
             initialEnabled={ios !== undefined}
             key={`ios:${JSON.stringify(ios ?? null)}`}
           >
-            <AppLinksPlatformLegend>
+            <AppLinksPlatform.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="admin.settings.app_links.ios_legend" />
               </Suspense>
-            </AppLinksPlatformLegend>
-            <AppLinksPlatformToggle name="ios_enabled">
+            </AppLinksPlatform.Legend>
+            <AppLinksPlatform.Toggle name="ios_enabled">
               <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
                 <Message message="admin.settings.app_links.ios_enabled" />
               </Suspense>
-            </AppLinksPlatformToggle>
-            <AppLinksPlatformFields>
+            </AppLinksPlatform.Toggle>
+            <AppLinksPlatform.Fields>
               <Field.Root>
                 <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -208,8 +197,8 @@ export const AppLinksForm = ({
                   </Suspense>
                 </Field.Description>
               </Field.Root>
-            </AppLinksPlatformFields>
-          </AppLinksPlatform>
+            </AppLinksPlatform.Fields>
+          </AppLinksPlatform.Root>
         </ActionForm.Fieldset>
 
         {canEdit ? null : (
@@ -235,6 +224,6 @@ export const AppLinksForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

@@ -28,7 +28,7 @@ const usePolicyOverride = () => {
  * One setting a tenant either follows the platform on or answers for itself,
  * holding which of the two is ticked for the slots inside it.
  */
-export const PolicyOverrideGroup = ({
+const PolicyOverrideGroup = ({
   children,
   initialUseDefault,
 }: {
@@ -47,18 +47,14 @@ export const PolicyOverrideGroup = ({
   );
 };
 
-export const PolicyOverrideLegend = ({ children }: { children: ReactNode }) => (
+const PolicyOverrideLegend = ({ children }: { children: ReactNode }) => (
   <legend className="px-1 text-sm font-medium text-foreground">
     {children}
   </legend>
 );
 
 /** The box that hands the setting back to the platform; `children` is its label. */
-export const PolicyOverrideUseDefault = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const PolicyOverrideUseDefault = ({ children }: { children: ReactNode }) => {
   const { setUseDefault, useDefault } = usePolicyOverride();
 
   return (
@@ -70,18 +66,16 @@ export const PolicyOverrideUseDefault = ({
 };
 
 /** The platform value the group falls back to, and is bounded by. */
-export const PolicyOverridePlatformValue = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <p className="text-xs text-muted-foreground">{children}</p>;
+const PolicyOverridePlatformValue = ({ children }: { children: ReactNode }) => (
+  <p className="text-xs text-muted-foreground">{children}</p>
+);
 
 /**
  * The controls holding the group's own values. Ticked, they are disabled — and
  * a disabled control submits nothing, which is how the save clears the tenant's
  * own value.
  */
-export const PolicyOverrideValues = ({ children }: { children: ReactNode }) => {
+const PolicyOverrideValues = ({ children }: { children: ReactNode }) => {
   const { useDefault } = usePolicyOverride();
 
   return (
@@ -92,8 +86,15 @@ export const PolicyOverrideValues = ({ children }: { children: ReactNode }) => {
 };
 
 /** What the group means, where the labels alone do not say it. */
-export const PolicyOverrideDescription = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <p className="text-xs text-muted-foreground">{children}</p>;
+const PolicyOverrideDescription = ({ children }: { children: ReactNode }) => (
+  <p className="text-xs text-muted-foreground">{children}</p>
+);
+
+export {
+  PolicyOverrideGroup as Root,
+  PolicyOverrideDescription as Description,
+  PolicyOverrideLegend as Legend,
+  PolicyOverridePlatformValue as PlatformValue,
+  PolicyOverrideUseDefault as UseDefault,
+  PolicyOverrideValues as Values,
+};

@@ -8,22 +8,14 @@ import { Suspense } from "react";
 
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
-import { SubmitGate, SubmitGateSubmit } from "#components/submit-gate";
+import * as SubmitGate from "#components/submit-gate";
 import { getMessages } from "#lib/get-messages";
 
 import type {
   IssueAccessTicketActionState,
   TicketSeriesOption,
 } from "../ticket-types";
-import {
-  TicketEpisodeCombobox,
-  TicketEpisodeInput,
-  TicketEpisodeLoadError,
-  TicketReaderPicker,
-  TicketSeriesCombobox,
-  TicketSeriesWhile,
-  TicketTarget,
-} from "./ticket-target-controls";
+import * as TicketTarget from "./ticket-target-controls";
 
 interface TicketFormProps {
   action: (
@@ -61,9 +53,9 @@ export const TicketForm = async ({
     <ActionForm.Root action={action} className="grid gap-5" showSuccess={false}>
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <SubmitGate initialSubmittable={false}>
+      <SubmitGate.Root initialSubmittable={false}>
         <ActionForm.Fieldset className="grid gap-5">
-          <TicketTarget seriesItems={seriesItems} tenantId={tenantId}>
+          <TicketTarget.Root seriesItems={seriesItems} tenantId={tenantId}>
             <Field.Root>
               <Field.Label required>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -71,7 +63,7 @@ export const TicketForm = async ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <TicketReaderPicker />
+                <TicketTarget.ReaderPicker />
                 <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.access_tickets.form.user_description" />
@@ -92,7 +84,7 @@ export const TicketForm = async ({
                     {seriesErrorMessage}
                   </FormMessage>
                 ) : null}
-                <TicketSeriesCombobox>
+                <TicketTarget.SeriesCombobox>
                   <Combobox.Input
                     placeholder={t(
                       "admin.access_tickets.form.series_placeholder"
@@ -108,7 +100,7 @@ export const TicketForm = async ({
                     </Combobox.Empty>
                     <Combobox.Items />
                   </Combobox.Popup>
-                </TicketSeriesCombobox>
+                </TicketTarget.SeriesCombobox>
                 <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     {series.length === 0 && !seriesErrorMessage ? (
@@ -128,8 +120,8 @@ export const TicketForm = async ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <TicketEpisodeCombobox>
-                  <TicketEpisodeInput />
+                <TicketTarget.EpisodeCombobox>
+                  <TicketTarget.EpisodeInput />
                   <Combobox.Popup>
                     <Combobox.Empty>
                       <Suspense
@@ -140,27 +132,27 @@ export const TicketForm = async ({
                     </Combobox.Empty>
                     <Combobox.Items />
                   </Combobox.Popup>
-                </TicketEpisodeCombobox>
-                <TicketEpisodeLoadError>
+                </TicketTarget.EpisodeCombobox>
+                <TicketTarget.EpisodeLoadError>
                   <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                     <Message message="admin.common.retry" />
                   </Suspense>
-                </TicketEpisodeLoadError>
+                </TicketTarget.EpisodeLoadError>
                 <Field.Description>
-                  <TicketSeriesWhile chosen={false}>
+                  <TicketTarget.SeriesWhile chosen={false}>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.access_tickets.form.episode_needs_series" />
                     </Suspense>
-                  </TicketSeriesWhile>
-                  <TicketSeriesWhile chosen>
+                  </TicketTarget.SeriesWhile>
+                  <TicketTarget.SeriesWhile chosen>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.access_tickets.form.episode_description" />
                     </Suspense>
-                  </TicketSeriesWhile>
+                  </TicketTarget.SeriesWhile>
                 </Field.Description>
               </Field.Content>
             </Field.Root>
-          </TicketTarget>
+          </TicketTarget.Root>
 
           <Field.Root>
             <Field.Label>
@@ -199,7 +191,7 @@ export const TicketForm = async ({
         </ActionForm.Fieldset>
 
         <div className="flex justify-end">
-          <SubmitGateSubmit>
+          <SubmitGate.Submit>
             <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.access_tickets.form.submit" />
@@ -210,9 +202,9 @@ export const TicketForm = async ({
                 <Message message="admin.access_tickets.form.submitting" />
               </Suspense>
             </ActionForm.Pending>
-          </SubmitGateSubmit>
+          </SubmitGate.Submit>
         </div>
-      </SubmitGate>
+      </SubmitGate.Root>
     </ActionForm.Root>
   );
 };

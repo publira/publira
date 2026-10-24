@@ -1,18 +1,10 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getAdminCurrentUser, isTenantAdminRole } from "#lib/admin-auth";
@@ -63,19 +55,19 @@ const unreadableRetentionPeriods: TenantRetentionPeriods = {
 };
 
 const PolicyFormsSkeleton = () => (
-  <AdminSections>
-    <AdminSection>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-32" />
       <Skeleton className="h-32" />
       <Skeleton className="h-32" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-32" />
       <Skeleton className="h-32" />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );
 
 const PolicyForms = async () => {
@@ -100,7 +92,7 @@ const PolicyForms = async () => {
   );
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       <TenantCommunityLimitsForm
         canEdit={canEdit}
         loadErrorMessage={
@@ -130,27 +122,27 @@ const PolicyForms = async () => {
         revision={retentionResult.ok ? retentionResult.revision : "0"}
         tenantId={tenantId}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const PolicySettingsPage = () => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.settings.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.policy_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <div className="grid gap-6">
         <SettingsTabNav current="policy" />
         <SectionErrorBoundary
@@ -165,8 +157,8 @@ const PolicySettingsPage = () => (
           </Suspense>
         </SectionErrorBoundary>
       </div>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default PolicySettingsPage;

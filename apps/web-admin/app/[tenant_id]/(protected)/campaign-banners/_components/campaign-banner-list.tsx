@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { SortableItem, SortableItemHandle } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 import { campaignBannerStatus } from "#lib/campaign-banner-schedule";
 import { getMessages } from "#lib/get-messages";
 
@@ -153,12 +153,12 @@ const CampaignBannerRow = ({
   tenantId: string;
   timeZone: string;
 }) => (
-  <SortableItem
+  <Sortable.Item
     className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
     id={banner.id}
     label={banner.altText || banner.linkUrl}
   >
-    <SortableItemHandle>
+    <Sortable.ItemHandle>
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         {banner.altText ? (
           <Message
@@ -172,7 +172,7 @@ const CampaignBannerRow = ({
           />
         )}
       </Suspense>
-    </SortableItemHandle>
+    </Sortable.ItemHandle>
     <CampaignBannerSummary
       banner={banner}
       locale={locale}
@@ -196,7 +196,7 @@ const CampaignBannerRow = ({
         tenantId={tenantId}
       />
     </div>
-  </SortableItem>
+  </Sortable.Item>
 );
 
 /** A banner as a tenant auditor sees it: described, and opened to be viewed. */

@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Combobox from "@publira/ui-components/combobox";
 import * as Field from "@publira/ui-components/field";
@@ -5,23 +6,11 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type { TenantLegalPages } from "#lib/tenant-legal-pages-shared";
 
 import { updateTenantLegalPagesAction } from "../_lib/actions";
-import {
-  LegalPageCombobox,
-  LegalPagePicker,
-  LegalPageWhileSelected,
-} from "./tenant-legal-page-picker";
-import type { LegalPageOption } from "./tenant-legal-page-picker";
+import * as LegalPage from "./tenant-legal-page-picker";
 
 interface TenantLegalPagesFormProps {
   canEdit: boolean;
@@ -29,7 +18,7 @@ interface TenantLegalPagesFormProps {
   initialPages?: TenantLegalPages;
   loadErrorMessage?: string;
   /** Every published page of the tenant. */
-  publishedPages: LegalPageOption[];
+  publishedPages: LegalPage.Option[];
   pagesErrorMessage?: string;
   tenantId: string;
 }
@@ -50,21 +39,21 @@ export const TenantLegalPagesForm = ({
     !canEdit || Boolean(loadErrorMessage) || Boolean(pagesErrorMessage);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message message="admin.settings.legal_pages.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.legal_pages.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantLegalPagesAction}
         className="grid gap-4 sm:max-w-lg"
@@ -79,8 +68,8 @@ export const TenantLegalPagesForm = ({
               </Suspense>
             </Field.Label>
             <Field.Content>
-              <LegalPagePicker initialPageId={termsPage?.pageId ?? ""}>
-                <LegalPageCombobox
+              <LegalPage.Root initialPageId={termsPage?.pageId ?? ""}>
+                <LegalPage.Combobox
                   name="terms_page_id"
                   nominated={termsPage}
                   publishedPages={publishedPages}
@@ -95,9 +84,9 @@ export const TenantLegalPagesForm = ({
                     </Combobox.Empty>
                     <Combobox.Items />
                   </Combobox.Popup>
-                </LegalPageCombobox>
+                </LegalPage.Combobox>
                 {termsPage && !termsPage.published ? (
-                  <LegalPageWhileSelected pageId={termsPage.pageId}>
+                  <LegalPage.WhileSelected pageId={termsPage.pageId}>
                     <FormMessage variant="destructive">
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-72" />}
@@ -108,9 +97,9 @@ export const TenantLegalPagesForm = ({
                         />
                       </Suspense>
                     </FormMessage>
-                  </LegalPageWhileSelected>
+                  </LegalPage.WhileSelected>
                 ) : null}
-              </LegalPagePicker>
+              </LegalPage.Root>
               <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.legal_pages.terms_description" />
@@ -126,8 +115,8 @@ export const TenantLegalPagesForm = ({
               </Suspense>
             </Field.Label>
             <Field.Content>
-              <LegalPagePicker initialPageId={privacyPage?.pageId ?? ""}>
-                <LegalPageCombobox
+              <LegalPage.Root initialPageId={privacyPage?.pageId ?? ""}>
+                <LegalPage.Combobox
                   name="privacy_page_id"
                   nominated={privacyPage}
                   publishedPages={publishedPages}
@@ -142,9 +131,9 @@ export const TenantLegalPagesForm = ({
                     </Combobox.Empty>
                     <Combobox.Items />
                   </Combobox.Popup>
-                </LegalPageCombobox>
+                </LegalPage.Combobox>
                 {privacyPage && !privacyPage.published ? (
-                  <LegalPageWhileSelected pageId={privacyPage.pageId}>
+                  <LegalPage.WhileSelected pageId={privacyPage.pageId}>
                     <FormMessage variant="destructive">
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-72" />}
@@ -155,9 +144,9 @@ export const TenantLegalPagesForm = ({
                         />
                       </Suspense>
                     </FormMessage>
-                  </LegalPageWhileSelected>
+                  </LegalPage.WhileSelected>
                 ) : null}
-              </LegalPagePicker>
+              </LegalPage.Root>
               <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.legal_pages.privacy_description" />
@@ -203,6 +192,6 @@ export const TenantLegalPagesForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

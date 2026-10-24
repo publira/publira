@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as Identifier from "@publira/ui-components/identifier";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -7,13 +8,6 @@ import * as Table from "@publira/ui-components/table";
 import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 import type { TenantStoreProduct } from "#lib/store-payment-settings";
@@ -50,21 +44,21 @@ export const StoreProductList = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="admin.settings.store_products.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.store_products.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       {products.length === 0 ? (
         <EmptyState.Root>
           <EmptyState.Heading>
@@ -129,6 +123,6 @@ export const StoreProductList = async ({
           </Table.Body>
         </Table.Root>
       )}
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

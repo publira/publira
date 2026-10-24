@@ -1,23 +1,11 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPageContent,
-  AdminPage,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
@@ -128,60 +116,60 @@ const MemberInviteFormData = async () => {
 };
 
 const MembersPage = ({ searchParams }: MembersPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
                 <Message message="admin.members.title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.members.page_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-        </AdminPageHeader>
-        <AdminPageContent>
-          <AdminSections>
-            <AdminSection>
-              <AdminSectionHeader>
-                <AdminSectionHeading>
-                  <AdminSectionTitle>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
+          <ConsoleSection.Stack>
+            <ConsoleSection.Root>
+              <ConsoleSection.Header>
+                <ConsoleSection.Heading>
+                  <ConsoleSection.Title>
                     <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
                       <Message message="admin.members.invite_title" />
                     </Suspense>
-                  </AdminSectionTitle>
-                  <AdminSectionDescription>
+                  </ConsoleSection.Title>
+                  <ConsoleSection.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                       <Message message="admin.members.invite_description" />
                     </Suspense>
-                  </AdminSectionDescription>
-                </AdminSectionHeading>
-              </AdminSectionHeader>
+                  </ConsoleSection.Description>
+                </ConsoleSection.Heading>
+              </ConsoleSection.Header>
               <Suspense fallback={<Skeleton className="h-24" />}>
                 <MemberInviteFormData />
               </Suspense>
-            </AdminSection>
+            </ConsoleSection.Root>
 
-            <AdminSection>
-              <AdminSectionHeader>
-                <AdminSectionHeading>
-                  <AdminSectionTitle>
+            <ConsoleSection.Root>
+              <ConsoleSection.Header>
+                <ConsoleSection.Heading>
+                  <ConsoleSection.Title>
                     <Suspense fallback={<SkeletonLine className="h-6 w-28" />}>
                       <Message message="admin.members.list_title" />
                     </Suspense>
-                  </AdminSectionTitle>
-                  <AdminSectionDescription>
+                  </ConsoleSection.Title>
+                  <ConsoleSection.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                       <Message message="admin.members.list_description" />
                     </Suspense>
-                  </AdminSectionDescription>
-                </AdminSectionHeading>
-              </AdminSectionHeader>
+                  </ConsoleSection.Description>
+                </ConsoleSection.Heading>
+              </ConsoleSection.Header>
               <SectionErrorBoundary
                 title={
                   <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
@@ -193,23 +181,23 @@ const MembersPage = ({ searchParams }: MembersPageProps) => (
                   <MemberListData searchParams={searchParams} />
                 </Suspense>
               </SectionErrorBoundary>
-            </AdminSection>
+            </ConsoleSection.Root>
 
-            <AdminSection>
-              <AdminSectionHeader>
-                <AdminSectionHeading>
-                  <AdminSectionTitle>
+            <ConsoleSection.Root>
+              <ConsoleSection.Header>
+                <ConsoleSection.Heading>
+                  <ConsoleSection.Title>
                     <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
                       <Message message="admin.members.invitations_title" />
                     </Suspense>
-                  </AdminSectionTitle>
-                  <AdminSectionDescription>
+                  </ConsoleSection.Title>
+                  <ConsoleSection.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                       <Message message="admin.members.invitations_description" />
                     </Suspense>
-                  </AdminSectionDescription>
-                </AdminSectionHeading>
-              </AdminSectionHeader>
+                  </ConsoleSection.Description>
+                </ConsoleSection.Heading>
+              </ConsoleSection.Header>
               <SectionErrorBoundary
                 title={
                   <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
@@ -221,12 +209,12 @@ const MembersPage = ({ searchParams }: MembersPageProps) => (
                   <InvitationListData searchParams={searchParams} />
                 </Suspense>
               </SectionErrorBoundary>
-            </AdminSection>
-          </AdminSections>
-        </AdminPageContent>
+            </ConsoleSection.Root>
+          </ConsoleSection.Stack>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default MembersPage;

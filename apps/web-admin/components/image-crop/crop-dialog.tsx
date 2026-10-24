@@ -33,7 +33,7 @@ interface ImageCropDialogProps {
  * choosing rather than a step to remember afterwards, and the field's own
  * button opens it again for a second pass.
  */
-export const ImageCropDialog = ({
+const ImageCropDialog = ({
   aspect,
   children,
   crop,
@@ -86,6 +86,8 @@ export const ImageCropDialog = ({
  * What is being framed, in the words of the screen that opened the dialog. The
  * dialog covers that screen, so the image it is showing has to be named again.
  */
-export const ImageCropDialogTitle = ({ children }: { children: ReactNode }) => (
+const ImageCropDialogTitle = ({ children }: { children: ReactNode }) => (
   <Dialog.Title className="text-lg font-semibold">{children}</Dialog.Title>
 );
+
+export { ImageCropDialog as Root, ImageCropDialogTitle as Title };

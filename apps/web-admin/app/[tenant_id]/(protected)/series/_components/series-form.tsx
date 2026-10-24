@@ -11,7 +11,7 @@ import { Suspense } from "react";
 
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
-import { SubmitGate, SubmitGateSubmit } from "#components/submit-gate";
+import * as SubmitGate from "#components/submit-gate";
 import { MAX_INT32 } from "#lib/int32";
 import type { PurchaseAvailabilityOverride } from "#lib/purchase-availability";
 import {
@@ -36,34 +36,18 @@ import { SeriesAvailabilitySelect } from "./series-availability-field";
 import {
   SeriesAgeRatingSelect,
   SeriesGenreCombobox,
-  SeriesScheduleEmpty,
-  SeriesScheduleField,
-  SeriesScheduleLegend,
-  SeriesScheduleWeekdays,
   SeriesStatusSelect,
   SeriesTagInput,
 } from "./series-classification-fields";
 import type { GenreOption } from "./series-classification-fields";
 import { SeriesCommentModeSelect } from "./series-comment-mode-field";
-import {
-  SeriesCreatorCreditsEditor,
-  SeriesCreatorCreditsField,
-  SeriesCreatorCreditsLegend,
-} from "./series-creator-credits-field";
-import type {
-  CreatorOption,
-  CreatorRoleOption,
-} from "./series-creator-credits-field";
-import {
-  SeriesEyeCatchPreview,
-  SeriesEyeCatchPreviewEmpty,
-  SeriesEyeCatchPreviewTitle,
-  SeriesEyeCatchUpload,
-} from "./series-eye-catch-upload";
+import * as SeriesCreatorCredits from "./series-creator-credits-field";
+import * as SeriesEyeCatch from "./series-eye-catch-upload";
 import { SeriesLabelCombobox } from "./series-label-field";
 import type { LabelOption } from "./series-label-field";
 import { SeriesPurchaseAvailabilitySelect } from "./series-purchase-availability-field";
 import { SeriesReadingDirectionSelect } from "./series-reading-layout-fields";
+import * as SeriesSchedule from "./series-schedule-field";
 
 interface SeriesFormProps {
   mode: "create" | "update";
@@ -77,9 +61,9 @@ interface SeriesFormProps {
     prevState: SeriesActionState,
     formData: FormData
   ) => Promise<SeriesActionState>;
-  creators: CreatorOption[];
+  creators: SeriesCreatorCredits.CreatorOption[];
   /** The tenant's roles, in the priority order the credit list is shown in. */
-  creatorRoles: CreatorRoleOption[];
+  creatorRoles: SeriesCreatorCredits.CreatorRoleOption[];
   labels: LabelOption[];
   genres: GenreOption[];
   tagSuggestions: string[];
@@ -301,7 +285,7 @@ export const SeriesForm = ({
 
       {/* The stored shares already passed the server's cap, so the form opens
           submittable. */}
-      <SubmitGate initialSubmittable>
+      <SubmitGate.Root initialSubmittable>
         <ActionForm.Fieldset className="grid gap-4">
           <Field.Root>
             <Field.Label required>
@@ -416,12 +400,12 @@ export const SeriesForm = ({
             </Field.Content>
           </Field.Root>
 
-          <SeriesCreatorCreditsField>
-            <SeriesCreatorCreditsLegend>
+          <SeriesCreatorCredits.Root>
+            <SeriesCreatorCredits.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.form.creators" />
               </Suspense>
-            </SeriesCreatorCreditsLegend>
+            </SeriesCreatorCredits.Legend>
             {creatorsErrorMessage ? (
               <FormMessage variant="destructive">
                 {creatorsErrorMessage}
@@ -432,7 +416,7 @@ export const SeriesForm = ({
                 {creatorRolesErrorMessage}
               </FormMessage>
             ) : null}
-            <SeriesCreatorCreditsEditor
+            <SeriesCreatorCredits.Editor
               creatorRoles={creatorRoles}
               creators={creators}
               initialCredits={values.creatorCredits}
@@ -452,7 +436,7 @@ export const SeriesForm = ({
                 <Message message="admin.series.form.creators_template_note" />
               </Suspense>
             </p>
-          </SeriesCreatorCreditsField>
+          </SeriesCreatorCredits.Root>
 
           <LabelField
             canCreateLabel={canCreateLabel}
@@ -535,26 +519,26 @@ export const SeriesForm = ({
             </Field.Content>
           </Field.Root>
 
-          <SeriesScheduleField initialValue={values.scheduleWeekdays}>
-            <SeriesScheduleLegend>
+          <SeriesSchedule.Root initialValue={values.scheduleWeekdays}>
+            <SeriesSchedule.Legend>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.series.form.schedule" />
               </Suspense>
-            </SeriesScheduleLegend>
-            <SeriesScheduleWeekdays />
+            </SeriesSchedule.Legend>
+            <SeriesSchedule.Weekdays />
             <p className="text-xs text-muted-foreground">
               <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
                 <Message message="admin.series.form.schedule_description" />
               </Suspense>
             </p>
-            <SeriesScheduleEmpty>
+            <SeriesSchedule.Empty>
               <p className="text-xs text-muted-foreground">
                 <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>
                   <Message message="admin.series.form.schedule_empty" />
                 </Suspense>
               </p>
-            </SeriesScheduleEmpty>
-          </SeriesScheduleField>
+            </SeriesSchedule.Empty>
+          </SeriesSchedule.Root>
 
           <Field.Root>
             <Field.Label>
@@ -727,22 +711,22 @@ export const SeriesForm = ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <SeriesEyeCatchUpload>
-                  <SeriesEyeCatchPreviewTitle>
+                <SeriesEyeCatch.Root>
+                  <SeriesEyeCatch.PreviewTitle>
                     <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                       <Message message="admin.series.form.eye_catch_preview" />
                     </Suspense>
-                  </SeriesEyeCatchPreviewTitle>
-                  <SeriesEyeCatchPreview>
-                    <SeriesEyeCatchPreviewEmpty>
+                  </SeriesEyeCatch.PreviewTitle>
+                  <SeriesEyeCatch.Preview>
+                    <SeriesEyeCatch.PreviewEmpty>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <Message message="admin.series.form.eye_catch_preview_empty" />
                       </Suspense>
-                    </SeriesEyeCatchPreviewEmpty>
-                  </SeriesEyeCatchPreview>
-                </SeriesEyeCatchUpload>
+                    </SeriesEyeCatch.PreviewEmpty>
+                  </SeriesEyeCatch.Preview>
+                </SeriesEyeCatch.Root>
                 <input name="clear_eye_catch_image" type="hidden" value="0" />
                 <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
@@ -755,7 +739,7 @@ export const SeriesForm = ({
         </ActionForm.Fieldset>
 
         <div className="flex justify-end">
-          <SubmitGateSubmit>
+          <SubmitGate.Submit>
             <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 {mode === "update" ? (
@@ -770,9 +754,9 @@ export const SeriesForm = ({
                 <Message message="admin.series.form.submitting" />
               </Suspense>
             </ActionForm.Pending>
-          </SubmitGateSubmit>
+          </SubmitGate.Submit>
         </div>
-      </SubmitGate>
+      </SubmitGate.Root>
     </ActionForm.Root>
   );
 };

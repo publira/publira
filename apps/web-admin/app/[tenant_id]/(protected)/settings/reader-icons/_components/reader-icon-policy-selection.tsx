@@ -30,7 +30,7 @@ const isTenantReaderIconPolicy = (
 
 /**
  * Holds the policy the card has selected, and which icons saving it may
- * clear. The radio group below sets it, and {@link ReaderIconPolicyWhenClearing}
+ * clear. The radio group below sets it, and {@link ReaderIconPolicySelectionWhenClearing}
  * picks the submit control from it, so a save that may take icons down asks
  * first and one that cannot does not.
  *
@@ -38,7 +38,7 @@ const isTenantReaderIconPolicy = (
  * policy is selected. The caller keys this by the saved policy, which drops
  * the choice once a save is read back.
  */
-export const ReaderIconPolicySelection = ({
+const ReaderIconPolicySelection = ({
   children,
   saved,
 }: {
@@ -61,7 +61,7 @@ export const ReaderIconPolicySelection = ({
 };
 
 /** The card's radio group, reporting each choice to the selection above it. */
-export const ReaderIconPolicyRadioGroup = (
+const ReaderIconPolicySelectionRadioGroup = (
   props: Omit<RadioGroupProps, "defaultValue" | "onValueChange" | "value">
 ) => {
   const selected = use(SelectedPolicyContext);
@@ -83,10 +83,16 @@ export const ReaderIconPolicyRadioGroup = (
 };
 
 /** Renders its children only while saving would clear `clearance`. */
-export const ReaderIconPolicyWhenClearing = ({
+const ReaderIconPolicySelectionWhenClearing = ({
   children,
   clearance,
 }: {
   children: ReactNode;
   clearance: ReaderIconPolicyClearance;
 }) => (use(ClearanceContext) === clearance ? children : null);
+
+export {
+  ReaderIconPolicySelection as Root,
+  ReaderIconPolicySelectionRadioGroup as RadioGroup,
+  ReaderIconPolicySelectionWhenClearing as WhenClearing,
+};

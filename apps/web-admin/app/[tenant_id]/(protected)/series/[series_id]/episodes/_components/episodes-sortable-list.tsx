@@ -11,12 +11,7 @@ import { useCallback, useOptimistic, useTransition } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import {
-  SortableItem,
-  SortableItemHandle,
-  SortableList,
-  withItemMoved,
-} from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 import type { EpisodeItem } from "#lib/episode";
 import { DEFAULT_SURFACE_AVAILABILITY } from "#lib/surface-availability";
 import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
@@ -131,7 +126,7 @@ export const EpisodesSortableList = ({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentItems = optimisticItems;
-      const movedItems = withItemMoved(currentItems, episodeId, event);
+      const movedItems = Sortable.withItemMoved(currentItems, episodeId, event);
       if (movedItems === currentItems) {
         return;
       }
@@ -176,13 +171,13 @@ export const EpisodesSortableList = ({
           </label>
         </div>
       ) : null}
-      <SortableList
+      <Sortable.Root
         aria-label={t("admin.series.episodes.list_title")}
         className="grid gap-3"
         onDragEnd={handleDragEnd}
       >
         {optimisticItems.map((episode, index) => (
-          <SortableItem
+          <Sortable.Item
             className="flex items-center justify-between gap-3 border border-border bg-background px-4 py-3"
             disabled={isPending || !canEdit}
             id={episode.id}
@@ -201,12 +196,12 @@ export const EpisodesSortableList = ({
                     toggle(episode.id, checked);
                   }}
                 />
-                <SortableItemHandle>
+                <Sortable.ItemHandle>
                   <ClientMessage
                     message="admin.series.episodes.reorder_action"
                     values={{ title: episode.title }}
                   />
-                </SortableItemHandle>
+                </Sortable.ItemHandle>
               </>
             ) : null}
 
@@ -258,9 +253,9 @@ export const EpisodesSortableList = ({
                 )}
               </LinkButton>
             </div>
-          </SortableItem>
+          </Sortable.Item>
         ))}
-      </SortableList>
+      </Sortable.Root>
     </div>
   );
 };

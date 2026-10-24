@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -6,13 +7,6 @@ import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type { TenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 
@@ -37,21 +31,21 @@ export const TenantPurchaseSettingsForm = ({
   const fieldsDisabled = !canEdit || initialSettings === undefined;
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message message="admin.settings.purchase.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.purchase.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantPurchaseSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
@@ -190,6 +184,6 @@ export const TenantPurchaseSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

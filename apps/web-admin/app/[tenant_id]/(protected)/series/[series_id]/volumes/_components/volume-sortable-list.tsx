@@ -5,18 +5,13 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { useCallback, useOptimistic, useState, useTransition } from "react";
 
 import { useClientMessages } from "#components/client-message";
-import {
-  SortableList,
-  SortableRows,
-  withItemMoved,
-} from "#components/sortable-list";
-import type { SortableRow } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 
 import { reorderVolumesAction } from "../_lib/actions";
 
 interface VolumeSortableListProps {
   /** One row per volume, composed on the server, in the series' order. */
-  rows: SortableRow[];
+  rows: Sortable.Row[];
   seriesId: string;
   tenantId: string;
 }
@@ -48,7 +43,11 @@ export const VolumeSortableList = ({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentVolumeIds = optimisticVolumeIds;
-      const nextVolumeIds = withItemMoved(currentVolumeIds, identity, event);
+      const nextVolumeIds = Sortable.withItemMoved(
+        currentVolumeIds,
+        identity,
+        event
+      );
       if (nextVolumeIds === currentVolumeIds) {
         return;
       }
@@ -74,17 +73,17 @@ export const VolumeSortableList = ({
       {reorderErrorMessage ? (
         <FormMessage variant="destructive">{reorderErrorMessage}</FormMessage>
       ) : null}
-      <SortableList
+      <Sortable.Root
         aria-label={t("admin.series.volumes.list_title")}
         className="grid gap-3"
         onDragEnd={handleDragEnd}
       >
-        <SortableRows
+        <Sortable.Rows
           disabled={isPending}
           order={optimisticVolumeIds}
           rows={rows}
         />
-      </SortableList>
+      </Sortable.Root>
     </div>
   );
 };

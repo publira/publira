@@ -1,15 +1,9 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 /**
@@ -55,9 +49,9 @@ import { Message } from "#components/message";
  * a separate path, not a later fix for this status behaviour.
  */
 const NotFound = () => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
         {/* The one heading this screen leads with is set in the serif face:
             a 404 is a statement, not one of the console's workbench pages. */}
         <h1 className="font-serif text-2xl font-semibold text-foreground">
@@ -65,21 +59,21 @@ const NotFound = () => (
             <Message message="admin.not_found.title" />
           </Suspense>
         </h1>
-        <AdminPageDescription>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="admin.not_found.description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <LinkButton render={<Link href="/" />} variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
             <Message message="admin.common.back_to_dashboard" />
           </Suspense>
         </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-  </AdminPage>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+  </ConsolePage.Root>
 );
 
 export default NotFound;

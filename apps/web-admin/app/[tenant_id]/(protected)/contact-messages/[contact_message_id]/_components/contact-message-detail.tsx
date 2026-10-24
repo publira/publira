@@ -1,17 +1,11 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { StatusChip } from "@publira/ui-components/badge";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionActions,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import { ContactMessageAssignee } from "../../_components/contact-message-assignee";
@@ -42,16 +36,16 @@ export const ContactMessageDetail = ({
   const { status } = contactMessage;
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.contact_messages.detail_section_title" />
             </Suspense>
-          </AdminSectionTitle>
-        </AdminSectionHeading>
-        <AdminSectionActions>
+          </ConsoleSection.Title>
+        </ConsoleSection.Heading>
+        <ConsoleSection.Actions>
           {status === "handled" ? (
             <ReopenMessageButton
               contactMessageId={contactMessage.id}
@@ -65,8 +59,8 @@ export const ContactMessageDetail = ({
               tenantId={tenantId}
             />
           )}
-        </AdminSectionActions>
-      </AdminSectionHeader>
+        </ConsoleSection.Actions>
+      </ConsoleSection.Header>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
         <dt className={labelClassName}>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -178,6 +172,6 @@ export const ContactMessageDetail = ({
           {contactMessage.body}
         </dd>
       </dl>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

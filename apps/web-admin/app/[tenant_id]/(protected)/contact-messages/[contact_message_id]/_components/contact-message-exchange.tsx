@@ -1,15 +1,9 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import type {
@@ -73,21 +67,21 @@ export const ContactMessageExchange = ({
   tenantId,
   timeZone,
 }: ContactMessageExchangeProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
             <Message message="admin.contact_messages.exchange.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.contact_messages.exchange.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
 
     {contactMessage.entries.length === 0 ? (
       <p className="text-sm text-muted-foreground">
@@ -130,5 +124,5 @@ export const ContactMessageExchange = ({
       replyRoute={replyRoute}
       tenantId={tenantId}
     />
-  </AdminSection>
+  </ConsoleSection.Root>
 );

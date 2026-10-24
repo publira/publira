@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -7,13 +8,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionActions,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type { TenantFcmSettings } from "#lib/fcm-settings";
 
@@ -42,21 +36,21 @@ export const FcmCredentialsForm = ({
   tenantId,
   timeZone,
 }: FcmCredentialsFormProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionDescription>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.mobile_push.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
       {!loadErrorMessage && settings.configured ? (
-        <AdminSectionActions>
+        <ConsoleSection.Actions>
           <FcmCredentialsDeleteButton tenantId={tenantId} />
-        </AdminSectionActions>
+        </ConsoleSection.Actions>
       ) : null}
-    </AdminSectionHeader>
+    </ConsoleSection.Header>
 
     {loadErrorMessage ? (
       <FormMessage className="sm:max-w-3xl" variant="destructive">
@@ -176,5 +170,5 @@ export const FcmCredentialsForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </AdminSection>
+  </ConsoleSection.Root>
 );

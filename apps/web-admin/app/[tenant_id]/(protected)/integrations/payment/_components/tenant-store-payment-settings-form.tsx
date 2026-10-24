@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
@@ -8,24 +9,9 @@ import { RadioGroup } from "@publira/ui-components/radio-group";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
-import {
-  CredentialsEnabled,
-  CredentialsEnabledCheckbox,
-  CredentialsEnabledLabel,
-  SecretKey,
-  SecretKeyFile,
-  SecretKeyModeButton,
-  SecretKeyText,
-  SecretKeyWhile,
-} from "#components/credential-controls";
+import * as CredentialsEnabled from "#components/credentials-enabled";
 import { Message } from "#components/message";
+import * as SecretKey from "#components/secret-key";
 import { storeStatus } from "#lib/store-payment-settings-shared";
 import type {
   StoreStatus,
@@ -148,21 +134,21 @@ export const TenantStorePaymentSettingsForm = ({
       settings.appPurchaseRoute === "store");
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
               <Message message="admin.settings.store_payment.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.store_payment.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantStorePaymentSettingsAction}
         className="grid gap-8 sm:max-w-3xl"
@@ -240,7 +226,7 @@ export const TenantStorePaymentSettingsForm = ({
               </Field.Content>
             </Field.Root>
 
-            <CredentialsEnabled initialEnabled={settings.appStore.enabled}>
+            <CredentialsEnabled.Root initialEnabled={settings.appStore.enabled}>
               <fieldset className="grid gap-5">
                 <legend className="mb-3 text-base font-semibold text-foreground">
                   <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
@@ -254,17 +240,17 @@ export const TenantStorePaymentSettingsForm = ({
                     ready: settings.appStore.ready,
                   })}
                 />
-                <CredentialsEnabledCheckbox name="app_store_enabled">
+                <CredentialsEnabled.Checkbox name="app_store_enabled">
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="admin.settings.store_payment.app_store.enabled" />
                   </Suspense>
-                </CredentialsEnabledCheckbox>
+                </CredentialsEnabled.Checkbox>
                 <Field.Root>
-                  <CredentialsEnabledLabel>
+                  <CredentialsEnabled.Label>
                     <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                       <Message message="admin.settings.store_payment.app_store.issuer_id" />
                     </Suspense>
-                  </CredentialsEnabledLabel>
+                  </CredentialsEnabled.Label>
                   <Field.Content>
                     <Input
                       autoComplete="off"
@@ -285,11 +271,11 @@ export const TenantStorePaymentSettingsForm = ({
                   </Field.Content>
                 </Field.Root>
                 <Field.Root>
-                  <CredentialsEnabledLabel>
+                  <CredentialsEnabled.Label>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                       <Message message="admin.settings.store_payment.app_store.key_id" />
                     </Suspense>
-                  </CredentialsEnabledLabel>
+                  </CredentialsEnabled.Label>
                   <Field.Content>
                     <Input
                       autoComplete="off"
@@ -302,12 +288,12 @@ export const TenantStorePaymentSettingsForm = ({
                     <ActionForm.FieldError name="keyId" />
                   </Field.Content>
                 </Field.Root>
-                <SecretKey
+                <SecretKey.Root
                   accept=".p8"
                   configured={settings.appStore.privateKeyConfigured}
                   name="private_key"
                 >
-                  <SecretKeyWhile mode="keep">
+                  <SecretKey.While mode="keep">
                     <Field.Root>
                       <Field.Label>
                         <Suspense
@@ -324,20 +310,20 @@ export const TenantStorePaymentSettingsForm = ({
                             type="text"
                             value={settings.appStore.privateKeyHint}
                           />
-                          <SecretKeyModeButton mode="replace">
+                          <SecretKey.ModeButton mode="replace">
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_change" />
                             </Suspense>
-                          </SecretKeyModeButton>
-                          <SecretKeyModeButton mode="clear">
+                          </SecretKey.ModeButton>
+                          <SecretKey.ModeButton mode="clear">
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear" />
                             </Suspense>
-                          </SecretKeyModeButton>
+                          </SecretKey.ModeButton>
                         </div>
                         <ActionForm.FieldError name="privateKey" />
                         <Field.Description>
@@ -349,18 +335,18 @@ export const TenantStorePaymentSettingsForm = ({
                         </Field.Description>
                       </Field.Content>
                     </Field.Root>
-                  </SecretKeyWhile>
-                  <SecretKeyWhile mode="replace">
+                  </SecretKey.While>
+                  <SecretKey.While mode="replace">
                     <Field.Root>
-                      <CredentialsEnabledLabel>
+                      <CredentialsEnabled.Label>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.store_payment.app_store.private_key" />
                         </Suspense>
-                      </CredentialsEnabledLabel>
+                      </CredentialsEnabled.Label>
                       <Field.Content>
-                        <SecretKeyFile />
+                        <SecretKey.File />
                         <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
@@ -379,23 +365,23 @@ export const TenantStorePaymentSettingsForm = ({
                         </Suspense>
                       </Field.Label>
                       <Field.Content>
-                        <SecretKeyText />
+                        <SecretKey.Text />
                         <ActionForm.FieldError name="privateKey" />
                         {settings.appStore.privateKeyConfigured ? (
                           <div>
-                            <SecretKeyModeButton mode="keep">
+                            <SecretKey.ModeButton mode="keep">
                               <Suspense
                                 fallback={<SkeletonLine className="h-4 w-24" />}
                               >
                                 <Message message="admin.settings.store_payment.key_change_cancel" />
                               </Suspense>
-                            </SecretKeyModeButton>
+                            </SecretKey.ModeButton>
                           </div>
                         ) : null}
                       </Field.Content>
                     </Field.Root>
-                  </SecretKeyWhile>
-                  <SecretKeyWhile mode="clear">
+                  </SecretKey.While>
+                  <SecretKey.While mode="clear">
                     <Field.Root>
                       <Field.Label>
                         <Suspense
@@ -413,19 +399,19 @@ export const TenantStorePaymentSettingsForm = ({
                               <Message message="admin.settings.store_payment.key_cleared" />
                             </Suspense>
                           </p>
-                          <SecretKeyModeButton mode="keep">
+                          <SecretKey.ModeButton mode="keep">
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-24" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear_cancel" />
                             </Suspense>
-                          </SecretKeyModeButton>
+                          </SecretKey.ModeButton>
                         </div>
                         <ActionForm.FieldError name="privateKey" />
                       </Field.Content>
                     </Field.Root>
-                  </SecretKeyWhile>
-                </SecretKey>
+                  </SecretKey.While>
+                </SecretKey.Root>
                 <Field.Root>
                   <Field.Label>
                     <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -465,9 +451,11 @@ export const TenantStorePaymentSettingsForm = ({
                   </Field.Root>
                 ) : null}
               </fieldset>
-            </CredentialsEnabled>
+            </CredentialsEnabled.Root>
 
-            <CredentialsEnabled initialEnabled={settings.googlePlay.enabled}>
+            <CredentialsEnabled.Root
+              initialEnabled={settings.googlePlay.enabled}
+            >
               <fieldset className="grid gap-5">
                 <legend className="mb-3 text-base font-semibold text-foreground">
                   <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
@@ -482,17 +470,17 @@ export const TenantStorePaymentSettingsForm = ({
                     ready: settings.googlePlay.ready,
                   })}
                 />
-                <CredentialsEnabledCheckbox name="google_play_enabled">
+                <CredentialsEnabled.Checkbox name="google_play_enabled">
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="admin.settings.store_payment.google_play.enabled" />
                   </Suspense>
-                </CredentialsEnabledCheckbox>
-                <SecretKey
+                </CredentialsEnabled.Checkbox>
+                <SecretKey.Root
                   accept=".json,application/json"
                   configured={settings.googlePlay.serviceAccountKeyConfigured}
                   name="service_account_key"
                 >
-                  <SecretKeyWhile mode="keep">
+                  <SecretKey.While mode="keep">
                     <Field.Root>
                       <Field.Label>
                         <Suspense
@@ -509,20 +497,20 @@ export const TenantStorePaymentSettingsForm = ({
                             type="text"
                             value={settings.googlePlay.serviceAccountKeyHint}
                           />
-                          <SecretKeyModeButton mode="replace">
+                          <SecretKey.ModeButton mode="replace">
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_change" />
                             </Suspense>
-                          </SecretKeyModeButton>
-                          <SecretKeyModeButton mode="clear">
+                          </SecretKey.ModeButton>
+                          <SecretKey.ModeButton mode="clear">
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-16" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear" />
                             </Suspense>
-                          </SecretKeyModeButton>
+                          </SecretKey.ModeButton>
                         </div>
                         <ActionForm.FieldError name="serviceAccountKey" />
                         <Field.Description>
@@ -534,18 +522,18 @@ export const TenantStorePaymentSettingsForm = ({
                         </Field.Description>
                       </Field.Content>
                     </Field.Root>
-                  </SecretKeyWhile>
-                  <SecretKeyWhile mode="replace">
+                  </SecretKey.While>
+                  <SecretKey.While mode="replace">
                     <Field.Root>
-                      <CredentialsEnabledLabel>
+                      <CredentialsEnabled.Label>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-40" />}
                         >
                           <Message message="admin.settings.store_payment.google_play.service_account_key" />
                         </Suspense>
-                      </CredentialsEnabledLabel>
+                      </CredentialsEnabled.Label>
                       <Field.Content>
-                        <SecretKeyFile />
+                        <SecretKey.File />
                         <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
@@ -564,23 +552,23 @@ export const TenantStorePaymentSettingsForm = ({
                         </Suspense>
                       </Field.Label>
                       <Field.Content>
-                        <SecretKeyText />
+                        <SecretKey.Text />
                         <ActionForm.FieldError name="serviceAccountKey" />
                         {settings.googlePlay.serviceAccountKeyConfigured ? (
                           <div>
-                            <SecretKeyModeButton mode="keep">
+                            <SecretKey.ModeButton mode="keep">
                               <Suspense
                                 fallback={<SkeletonLine className="h-4 w-24" />}
                               >
                                 <Message message="admin.settings.store_payment.key_change_cancel" />
                               </Suspense>
-                            </SecretKeyModeButton>
+                            </SecretKey.ModeButton>
                           </div>
                         ) : null}
                       </Field.Content>
                     </Field.Root>
-                  </SecretKeyWhile>
-                  <SecretKeyWhile mode="clear">
+                  </SecretKey.While>
+                  <SecretKey.While mode="clear">
                     <Field.Root>
                       <Field.Label>
                         <Suspense
@@ -598,19 +586,19 @@ export const TenantStorePaymentSettingsForm = ({
                               <Message message="admin.settings.store_payment.key_cleared" />
                             </Suspense>
                           </p>
-                          <SecretKeyModeButton mode="keep">
+                          <SecretKey.ModeButton mode="keep">
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-24" />}
                             >
                               <Message message="admin.settings.store_payment.key_clear_cancel" />
                             </Suspense>
-                          </SecretKeyModeButton>
+                          </SecretKey.ModeButton>
                         </div>
                         <ActionForm.FieldError name="serviceAccountKey" />
                       </Field.Content>
                     </Field.Root>
-                  </SecretKeyWhile>
-                </SecretKey>
+                  </SecretKey.While>
+                </SecretKey.Root>
                 {settings.googlePlay.serviceAccountEmail ? (
                   <Field.Root>
                     <Field.Label>
@@ -652,7 +640,7 @@ export const TenantStorePaymentSettingsForm = ({
                   </Field.Content>
                 </Field.Root>
               </fieldset>
-            </CredentialsEnabled>
+            </CredentialsEnabled.Root>
           </ActionForm.Fieldset>
         )}
 
@@ -681,6 +669,6 @@ export const TenantStorePaymentSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

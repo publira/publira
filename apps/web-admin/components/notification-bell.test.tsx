@@ -8,7 +8,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { NotificationBell } from "./notification-bell";
+import * as NotificationBell from "./notification-bell";
 
 const countUnreadNotifications = vi.fn();
 const listNotifications = vi.fn();
@@ -89,7 +89,7 @@ const renderBell = async ({
     ok: true,
     previousToken: "",
   });
-  render(await NotificationBell());
+  render(await NotificationBell.Root());
 };
 
 afterEach(() => {
@@ -168,7 +168,7 @@ describe("NotificationBell", () => {
       previousToken: "",
       requiresSignIn: false,
     });
-    render(await NotificationBell());
+    render(await NotificationBell.Root());
 
     fireEvent.click(
       screen.getByRole("button", { name: "Notifications, none unread" })

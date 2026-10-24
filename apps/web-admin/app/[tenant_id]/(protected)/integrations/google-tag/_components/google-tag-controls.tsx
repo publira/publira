@@ -1,13 +1,10 @@
 "use client";
-
-import * as Identifier from "@publira/ui-components/identifier";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import type { RadioGroupProps } from "@publira/ui-components/radio-group";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-import { useClientMessages } from "#components/client-message";
 import { isGoogleTagServingMode } from "#lib/tenant-analytics-settings-shared";
 import type { GoogleTagServingMode } from "#lib/tenant-analytics-settings-shared";
 
@@ -36,7 +33,7 @@ const useGoogleTagMode = () => {
  * survives switching back and forth while its field comes and goes with the
  * mode.
  */
-export const GoogleTagModeScope = ({
+const GoogleTagModeScope = ({
   children,
   initialServerContainerUrl,
   initialServingMode,
@@ -68,7 +65,7 @@ export const GoogleTagModeScope = ({
 };
 
 /** The mode picker; `items` carry the rendered wording of each mode. */
-export const GoogleTagModeRadioGroup = ({
+const GoogleTagModeRadioGroup = ({
   items,
 }: {
   items: RadioGroupProps["items"];
@@ -89,7 +86,7 @@ export const GoogleTagModeRadioGroup = ({
 };
 
 /** Renders its children only while `mode` is the one chosen. */
-export const GoogleTagModeWhile = ({
+const GoogleTagModeWhile = ({
   children,
   mode,
 }: {
@@ -101,7 +98,7 @@ export const GoogleTagModeWhile = ({
  * The server container URL. It is posted only while it is rendered, so a mode
  * without this field saves the URL cleared.
  */
-export const ServerContainerUrlInput = () => {
+const GoogleTagModeServerContainerUrlInput = () => {
   const { serverContainerUrl, setServerContainerUrl } = useGoogleTagMode();
 
   return (
@@ -119,14 +116,9 @@ export const ServerContainerUrlInput = () => {
   );
 };
 
-/** Copies the gateway path, named for a screen reader. */
-export const GatewayPathCopy = ({ value }: { value: string }) => {
-  const t = useClientMessages();
-
-  return (
-    <Identifier.Copy
-      aria-label={t("admin.settings.google_tag.gateway_path_copy")}
-      value={value}
-    />
-  );
+export {
+  GoogleTagModeScope as Root,
+  GoogleTagModeRadioGroup as RadioGroup,
+  GoogleTagModeServerContainerUrlInput as ServerContainerUrlInput,
+  GoogleTagModeWhile as While,
 };

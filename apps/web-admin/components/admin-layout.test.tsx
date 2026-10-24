@@ -83,8 +83,8 @@ vi.mock("../lib/theme-settings", () => ({
 }));
 
 vi.mock("./notification-bell", () => ({
-  NotificationBell: () => null,
-  NotificationBellSkeleton: () => null,
+  Root: () => null,
+  Skeleton: () => null,
 }));
 
 vi.mock("./pending-comment-badge", () => ({

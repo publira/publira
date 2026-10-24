@@ -3,11 +3,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ErrorScreen,
-  ErrorScreenDigest,
-  ErrorScreenRetry,
-} from "./error-screen";
+import * as ErrorScreen from "./error-screen";
 
 afterEach(() => {
   cleanup();
@@ -16,9 +12,9 @@ afterEach(() => {
 describe("ErrorScreen", () => {
   it("shows the digest behind the caller's prefix", () => {
     render(
-      <ErrorScreen digest="2870412426" retry={vi.fn()}>
-        <ErrorScreenDigest>Error ID:</ErrorScreenDigest>
-      </ErrorScreen>
+      <ErrorScreen.Root digest="2870412426" retry={vi.fn()}>
+        <ErrorScreen.Digest>Error ID:</ErrorScreen.Digest>
+      </ErrorScreen.Root>
     );
 
     expect(screen.getByText("2870412426")).toBeDefined();
@@ -27,9 +23,9 @@ describe("ErrorScreen", () => {
 
   it("leaves the digest line out when the error carries none", () => {
     render(
-      <ErrorScreen digest={undefined} retry={vi.fn()}>
-        <ErrorScreenDigest>Error ID:</ErrorScreenDigest>
-      </ErrorScreen>
+      <ErrorScreen.Root digest={undefined} retry={vi.fn()}>
+        <ErrorScreen.Digest>Error ID:</ErrorScreen.Digest>
+      </ErrorScreen.Root>
     );
 
     expect(screen.queryByText(/Error ID:/u)).toBeNull();
@@ -38,9 +34,9 @@ describe("ErrorScreen", () => {
   it("re-renders the boundary from the retry control", () => {
     const retry = vi.fn();
     render(
-      <ErrorScreen digest={undefined} retry={retry}>
-        <ErrorScreenRetry>Retry</ErrorScreenRetry>
-      </ErrorScreen>
+      <ErrorScreen.Root digest={undefined} retry={retry}>
+        <ErrorScreen.Retry>Retry</ErrorScreen.Retry>
+      </ErrorScreen.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));

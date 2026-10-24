@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { SortableItem, SortableItemHandle } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 import { getMessages } from "#lib/get-messages";
 
 import type { GenreListItem } from "../genre-types";
@@ -79,21 +79,21 @@ const GenreRow = ({
   genre: GenreListItem;
   tenantId: string;
 }) => (
-  <SortableItem
+  <Sortable.Item
     className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
     id={genre.id}
     label={genre.name}
   >
     {/* The height of the name field beside it, so the grip is level with the
         row's first line rather than above it. */}
-    <SortableItemHandle className="h-10">
+    <Sortable.ItemHandle className="h-10">
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <Message
           message="admin.genres.reorder_action"
           values={{ name: genre.name }}
         />
       </Suspense>
-    </SortableItemHandle>
+    </Sortable.ItemHandle>
     <div className="flex flex-1 items-start gap-3">
       <GenreThumbnail genre={genre} />
       <GenreRenameForm genre={genre} tenantId={tenantId} />
@@ -110,7 +110,7 @@ const GenreRow = ({
       </LinkButton>
       <GenreDeleteButton id={genre.id} name={genre.name} tenantId={tenantId} />
     </div>
-  </SortableItem>
+  </Sortable.Item>
 );
 
 /** A genre as a tenant auditor sees it: named, and opened to be viewed. */

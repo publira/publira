@@ -12,13 +12,8 @@ import type { ReactNode } from "react";
 import { useAdminLocale } from "#components/admin-locale-context";
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import { CreditShareInput, CreditShareSummary } from "#components/credit-share";
-import {
-  SortableItem,
-  SortableItemHandle,
-  SortableList,
-  withItemMoved,
-} from "#components/sortable-list";
-import { useSetSubmittable } from "#components/submit-gate";
+import * as Sortable from "#components/sortable-list";
+import * as SubmitGate from "#components/submit-gate";
 import {
   isCreditShareTotalSavable,
   shareBpsToPercentText,
@@ -171,7 +166,7 @@ const CreatorCreditRow = ({
     });
 
   return (
-    <SortableItem
+    <Sortable.Item
       accept={roleId}
       className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3"
       id={id}
@@ -179,12 +174,12 @@ const CreatorCreditRow = ({
       label={label}
       type={roleId}
     >
-      <SortableItemHandle>
+      <Sortable.ItemHandle>
         <ClientMessage
           message="admin.series.form.creators_reorder"
           values={{ position: String(position) }}
         />
-      </SortableItemHandle>
+      </Sortable.ItemHandle>
       <Field.Root className="min-w-40 flex-1">
         <Field.Label className="sr-only">
           <ClientMessage
@@ -255,7 +250,7 @@ const CreatorCreditRow = ({
           />
         </span>
       </Button>
-    </SortableItem>
+    </Sortable.Item>
   );
 };
 
@@ -272,17 +267,11 @@ const CreatorCreditRow = ({
  * A `fieldset` rather than a `Field`, because the group holds several controls
  * and a single `<label>` would have nothing to point at.
  */
-export const SeriesCreatorCreditsField = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <fieldset className="grid gap-2">{children}</fieldset>;
+const SeriesCreatorCreditsField = ({ children }: { children: ReactNode }) => (
+  <fieldset className="grid gap-2">{children}</fieldset>
+);
 
-export const SeriesCreatorCreditsLegend = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
+const SeriesCreatorCreditsLegend = ({ children }: { children: ReactNode }) => (
   <legend className="text-sm font-medium text-foreground">{children}</legend>
 );
 
@@ -299,7 +288,7 @@ interface SeriesCreatorCreditsEditorProps {
 }
 
 /** The credit rows, the controls that add and arrange them, and what they post. */
-export const SeriesCreatorCreditsEditor = ({
+const SeriesCreatorCreditsEditor = ({
   creatorRoles,
   creators,
   initialCredits,
@@ -307,7 +296,7 @@ export const SeriesCreatorCreditsEditor = ({
   const locale = useAdminLocale();
   // The save button belongs to the form around this field, which is told
   // whether the shares as typed can be saved whenever that changes.
-  const setSavable = useSetSubmittable();
+  const setSavable = SubmitGate.useSetSubmittable();
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' credits.
   const [rows, setRows] = useState(() =>
@@ -392,7 +381,9 @@ export const SeriesCreatorCreditsEditor = ({
    * editor just dragged into place.
    */
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setRows((currentRows) => withItemMoved(currentRows, rowKey, event));
+    setRows((currentRows) =>
+      Sortable.withItemMoved(currentRows, rowKey, event)
+    );
   }, []);
 
   const handleRemove = (key: string) => {
@@ -442,7 +433,7 @@ export const SeriesCreatorCreditsEditor = ({
           <ClientMessage message="admin.series.form.creators_none" />
         </p>
       ) : (
-        <SortableList className="grid gap-2" onDragEnd={handleDragEnd}>
+        <Sortable.Root className="grid gap-2" onDragEnd={handleDragEnd}>
           {resolvedRows.map((row, index) => (
             <CreatorCreditRow
               creatorItems={creatorItems}
@@ -466,7 +457,7 @@ export const SeriesCreatorCreditsEditor = ({
               shareText={row.shareText}
             />
           ))}
-        </SortableList>
+        </Sortable.Root>
       )}
       {resolvedRows.length > 0 ? (
         <CreditShareSummary total={shareTotal} />
@@ -508,4 +499,10 @@ export const SeriesCreatorCreditsEditor = ({
       />
     </>
   );
+};
+
+export {
+  SeriesCreatorCreditsField as Root,
+  SeriesCreatorCreditsEditor as Editor,
+  SeriesCreatorCreditsLegend as Legend,
 };

@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
@@ -9,22 +10,10 @@ import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionActions,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { CommentCreatorMark } from "#components/comment-creator-mark";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -446,29 +435,29 @@ export const CommentReportQueue = async ({
     !listErrorMessage && (reports.length > 0 || hasPageLinks);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message message="admin.comments.reports.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
               <Message message="admin.comments.reports.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-        <AdminSectionActions>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+        <ConsoleSection.Actions>
           {/* An `aria-label` cannot be a node, so it is resolved as a string. */}
           <CommentReportStatusFilter
             aria-label={t("admin.comments.reports.filter_aria")}
             status={status}
             statusOptions={statusOptions}
           />
-        </AdminSectionActions>
-      </AdminSectionHeader>
+        </ConsoleSection.Actions>
+      </ConsoleSection.Header>
 
       <CommentReportListBody
         canModerate={canModerate}
@@ -483,22 +472,22 @@ export const CommentReportQueue = async ({
       />
 
       {showPagination ? (
-        <PaginationFooter>
-          <PaginationFooterDescription>
+        <PaginationFooter.Root>
+          <PaginationFooter.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message
                 message="admin.comments.reports.pagination_description"
                 values={{ count: pageSize }}
               />
             </Suspense>
-          </PaginationFooterDescription>
-          <PaginationControls
+          </PaginationFooter.Description>
+          <PaginationFooter.Controls
             aria-label={t("admin.comments.reports.pagination_aria")}
             nextHref={nextHref}
             previousHref={previousHref}
           />
-        </PaginationFooter>
+        </PaginationFooter.Root>
       ) : null}
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

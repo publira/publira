@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
@@ -6,15 +7,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import { isSignedInTenantEditor } from "#lib/auth-session";
@@ -84,38 +76,38 @@ const SeriesManagerData = async ({
 };
 
 const SeriesPage = ({ searchParams }: SeriesPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
             <Message message="admin.series.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="admin.series.page_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
       <Suspense fallback={null}>
         <TenantEditorOnly>
-          <AdminPageActions>
+          <ConsolePage.Actions>
             <LinkButton render={<Link href="/series/new" />} variant="outline">
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.new_action" />
               </Suspense>
             </LinkButton>
-          </AdminPageActions>
+          </ConsolePage.Actions>
         </TenantEditorOnly>
       </Suspense>
-    </AdminPageHeader>
-    <AdminPageContent>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <Suspense fallback={<Table.Skeleton />}>
         <SeriesManagerData searchParams={searchParams} />
       </Suspense>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default SeriesPage;

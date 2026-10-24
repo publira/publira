@@ -4,23 +4,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  NotificationBellContent,
-  NotificationBellEmpty,
-  NotificationBellEmptyDescription,
-  NotificationBellEmptyTitle,
-  NotificationBellError,
-  NotificationBellHeader,
-  NotificationBellItem,
-  NotificationBellItemDescription,
-  NotificationBellItemState,
-  NotificationBellItemTitle,
-  NotificationBellList,
-  NotificationBellLoading,
-  NotificationBellMenu,
-  NotificationBellMore,
-  NotificationBellTrigger,
-} from "./notification-bell-menu";
+import * as NotificationBell from "./notification-bell";
+
+// The tree's module also holds its Server Component parts, which read the
+// tenant through `next/root-params`, a module only the Next.js compiler can
+// provide. Nothing here renders them.
+vi.mock("#lib/tenant-id", () => ({
+  getTenantId: () => Promise.resolve("TENANT001"),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
@@ -40,57 +31,57 @@ const renderBell = ({
   unreadCount?: number;
 } = {}) =>
   render(
-    <NotificationBellMenu>
-      <NotificationBellTrigger unreadCount={unreadCount}>
+    <NotificationBell.Menu>
+      <NotificationBell.Trigger unreadCount={unreadCount}>
         {unreadCount > 0
           ? `Notifications, ${unreadCount} unread`
           : "Notifications, none unread"}
-      </NotificationBellTrigger>
-      <NotificationBellContent>
-        <NotificationBellHeader unreadCount={unreadCount}>
+      </NotificationBell.Trigger>
+      <NotificationBell.Content>
+        <NotificationBell.Header unreadCount={unreadCount}>
           Notifications
-        </NotificationBellHeader>
+        </NotificationBell.Header>
         {state === "empty" ? (
-          <NotificationBellEmpty>
-            <NotificationBellEmptyTitle>
+          <NotificationBell.Empty>
+            <NotificationBell.EmptyTitle>
               You have no notifications yet.
-            </NotificationBellEmptyTitle>
-            <NotificationBellEmptyDescription>
+            </NotificationBell.EmptyTitle>
+            <NotificationBell.EmptyDescription>
               Your notifications appear here.
-            </NotificationBellEmptyDescription>
-          </NotificationBellEmpty>
+            </NotificationBell.EmptyDescription>
+          </NotificationBell.Empty>
         ) : null}
         {state === "loading" ? (
-          <NotificationBellLoading>
+          <NotificationBell.Loading>
             Loading notifications.
-          </NotificationBellLoading>
+          </NotificationBell.Loading>
         ) : null}
         {state === "error" ? (
-          <NotificationBellError>
+          <NotificationBell.Error>
             Could not display notifications.
-          </NotificationBellError>
+          </NotificationBell.Error>
         ) : null}
         {state === "notification" ? (
-          <NotificationBellList>
-            <NotificationBellItem href="/series/SR01" isRead={false}>
-              <NotificationBellItemState>Unread</NotificationBellItemState>
-              <NotificationBellItemTitle>
+          <NotificationBell.List>
+            <NotificationBell.Item href="/series/SR01" isRead={false}>
+              <NotificationBell.ItemState>Unread</NotificationBell.ItemState>
+              <NotificationBell.ItemTitle>
                 An episode could not be published
-              </NotificationBellItemTitle>
-              <NotificationBellItemDescription>
+              </NotificationBell.ItemTitle>
+              <NotificationBell.ItemDescription>
                 Check the publication settings.
-              </NotificationBellItemDescription>
-            </NotificationBellItem>
-          </NotificationBellList>
+              </NotificationBell.ItemDescription>
+            </NotificationBell.Item>
+          </NotificationBell.List>
         ) : null}
-        <NotificationBellMore href="/notifications">
+        <NotificationBell.More href="/notifications">
           View all
-        </NotificationBellMore>
-      </NotificationBellContent>
-    </NotificationBellMenu>
+        </NotificationBell.More>
+      </NotificationBell.Content>
+    </NotificationBell.Menu>
   );
 
-describe("NotificationBellMenu", () => {
+describe("NotificationBell.Menu", () => {
   it("goes from a notification row to its content and closes the menu after the choice", () => {
     renderBell({ state: "notification" });
     fireEvent.click(

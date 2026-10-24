@@ -28,7 +28,7 @@ const PageControl = ({
  * The links to the pages around the current one. `aria-label` names the list
  * they page through, since a screen can carry more than one pager.
  */
-export const PaginationControls = ({
+const PaginationFooterControls = ({
   "aria-label": ariaLabel,
   nextHref,
   previousHref,
@@ -59,21 +59,25 @@ export const PaginationControls = ({
  * way back into the list.
  *
  * ```tsx
- * <PaginationFooter>
- *   <PaginationFooterDescription>…</PaginationFooterDescription>
- *   <PaginationControls aria-label={…} nextHref={…} previousHref={…} />
- * </PaginationFooter>
+ * <PaginationFooter.Root>
+ *   <PaginationFooter.Description>…</PaginationFooter.Description>
+ *   <PaginationFooter.Controls aria-label={…} nextHref={…} previousHref={…} />
+ * </PaginationFooter.Root>
  * ```
  */
-export const PaginationFooter = ({ children }: { children: ReactNode }) => (
+const PaginationFooter = ({ children }: { children: ReactNode }) => (
   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     {children}
   </div>
 );
 
 /** What one page holds. */
-export const PaginationFooterDescription = ({
-  children,
-}: {
-  children: ReactNode;
-}) => <p className="text-sm text-muted-foreground">{children}</p>;
+const PaginationFooterDescription = ({ children }: { children: ReactNode }) => (
+  <p className="text-sm text-muted-foreground">{children}</p>
+);
+
+export {
+  PaginationFooter as Root,
+  PaginationFooterControls as Controls,
+  PaginationFooterDescription as Description,
+};

@@ -45,7 +45,7 @@ const usePageDraft = () => {
  * The body being edited and the two versions being compared. Loading a version
  * writes both, so they sit together above the form and the version list.
  */
-export const PageDraft = ({
+const PageDraft = ({
   children,
   publishedVersionId,
   versions,
@@ -117,7 +117,7 @@ export const PageDraft = ({
 };
 
 /** The save form, which tells the version list that a save is in flight. */
-export const PageSaveForm = ({
+const PageDraftSaveForm = ({
   action,
   children,
   className,
@@ -145,7 +145,7 @@ export const PageSaveForm = ({
 };
 
 /** The body as Markdown, posted as `content_markdown`. */
-export const PageDraftTextarea = () => {
+const PageDraftTextarea = () => {
   const { content, onContentChange } = usePageDraft();
 
   return (
@@ -159,7 +159,7 @@ export const PageDraftTextarea = () => {
 };
 
 /** The body as it would be published, unsaved edits included. */
-export const PageDraftPreview = () => {
+const PageDraftPreview = () => {
   const { content } = usePageDraft();
 
   return <MarkdownPreview content={content} />;
@@ -169,7 +169,7 @@ export const PageDraftPreview = () => {
  * Puts a version's body in the editor; `children` are its wording. Closed while
  * a save is in flight, which has already taken the body the editor held.
  */
-export const PageVersionLoadButton = ({
+const PageDraftVersionLoadButton = ({
   children,
   versionId,
 }: {
@@ -215,7 +215,7 @@ const useVersionItems = () => {
 };
 
 /** The version a comparison starts from. */
-export const PageDiffFromSelect = () => {
+const PageDraftDiffFromSelect = () => {
   const { onSelectedVersionChange, selectedVersionId } = usePageDraft();
   const items = useVersionItems();
 
@@ -229,7 +229,7 @@ export const PageDiffFromSelect = () => {
 };
 
 /** The version a comparison is made against, never the one it starts from. */
-export const PageDiffToSelect = () => {
+const PageDraftDiffToSelect = () => {
   const { compareVersionId, onCompareVersionChange, selectedVersionId } =
     usePageDraft();
   const items = useVersionItems();
@@ -267,7 +267,7 @@ const getDiffLineDisplay = (line: {
 };
 
 /** What changed between the two versions chosen, line by line. */
-export const PageVersionDiff = () => {
+const PageDraftVersionDiff = () => {
   const { compareVersionId, selectedVersionId, versions } = usePageDraft();
   const selectedVersion =
     versions.find((version) => version.id === selectedVersionId) ?? versions[0];
@@ -343,4 +343,15 @@ export const PageVersionDiff = () => {
       </div>
     </>
   );
+};
+
+export {
+  PageDraft as Root,
+  PageDraftDiffFromSelect as DiffFromSelect,
+  PageDraftDiffToSelect as DiffToSelect,
+  PageDraftPreview as Preview,
+  PageDraftSaveForm as SaveForm,
+  PageDraftTextarea as Textarea,
+  PageDraftVersionDiff as VersionDiff,
+  PageDraftVersionLoadButton as VersionLoadButton,
 };

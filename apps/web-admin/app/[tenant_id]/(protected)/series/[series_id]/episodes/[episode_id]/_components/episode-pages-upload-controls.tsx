@@ -65,11 +65,7 @@ const toFileNames = (files: FileList | null) =>
  * (`lib/episode-pages-upload.ts`), and refreshes the screen once the pages
  * are in.
  */
-export const EpisodePagesUploadForm = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const EpisodePagesUploadForm = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
   const upload = usePageUploadAction({
     failed: t("admin.series.episodes.upload_failed"),
@@ -90,7 +86,7 @@ export const EpisodePagesUploadForm = ({
  * Whether the pages arrive as images, a ZIP, or an ePub, and the files picked
  * for it. The mode travels with the form so the Action knows what it is given.
  */
-export const EpisodePagesUpload = ({ children }: { children: ReactNode }) => {
+const EpisodePagesUpload = ({ children }: { children: ReactNode }) => {
   const [mode, setMode] = useState<EpisodePagesUploadMode>("pages");
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,7 +126,7 @@ export const EpisodePagesUpload = ({ children }: { children: ReactNode }) => {
 };
 
 /** Switches the upload to `mode`; `children` are the control's wording. */
-export const EpisodePagesModeButton = ({
+const EpisodePagesModeButton = ({
   children,
   mode,
 }: {
@@ -151,7 +147,7 @@ export const EpisodePagesModeButton = ({
 };
 
 /** Renders its children while the upload is in `mode`. */
-export const EpisodePagesWhile = ({
+const EpisodePagesWhile = ({
   children,
   mode,
 }: {
@@ -163,7 +159,7 @@ export const EpisodePagesWhile = ({
  * The file input, and the area around it a file can be dropped on; `children`
  * say what to drop.
  */
-export const EpisodePagesDropZone = ({ children }: { children: ReactNode }) => {
+const EpisodePagesDropZone = ({ children }: { children: ReactNode }) => {
   const { inputRef, mode, setSelectedFileNames } = useEpisodePagesUpload();
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInput = FILE_INPUT[mode];
@@ -230,7 +226,7 @@ export const EpisodePagesDropZone = ({ children }: { children: ReactNode }) => {
 };
 
 /** The names of the files picked, as a check before they are uploaded. */
-export const EpisodePagesSelectedFiles = () => {
+const EpisodePagesSelectedFiles = () => {
   const { selectedFileNames } = useEpisodePagesUpload();
 
   return selectedFileNames.length > 0 ? (
@@ -240,4 +236,13 @@ export const EpisodePagesSelectedFiles = () => {
       ))}
     </div>
   ) : null;
+};
+
+export {
+  EpisodePagesUpload as Root,
+  EpisodePagesDropZone as DropZone,
+  EpisodePagesModeButton as ModeButton,
+  EpisodePagesSelectedFiles as SelectedFiles,
+  EpisodePagesUploadForm as UploadForm,
+  EpisodePagesWhile as While,
 };

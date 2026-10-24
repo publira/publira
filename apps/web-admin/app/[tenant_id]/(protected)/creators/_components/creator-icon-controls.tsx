@@ -14,7 +14,7 @@ import {
   centreCropRect,
   framedPreviewStyle,
 } from "#components/image-crop/crop";
-import { ImageCropDialog } from "#components/image-crop/crop-dialog";
+import * as ImageCropDialog from "#components/image-crop/crop-dialog";
 import type { CropRect } from "#lib/crop-rect";
 import { CROP_RECT_FIELD, formatCropRect } from "#lib/crop-rect";
 
@@ -58,7 +58,7 @@ const useCreatorIcon = () => {
  * keys it by when the saved icon last changed, so a save that replaced or
  * removed the icon starts it afresh.
  */
-export const CreatorIcon = ({
+const CreatorIcon = ({
   children,
   iconImageUrl,
 }: {
@@ -148,7 +148,7 @@ export const CreatorIcon = ({
 };
 
 /** The picked file as it will be cut, or else the saved icon unless it is being removed. */
-export const CreatorIconPreview = () => {
+const CreatorIconPreview = () => {
   const t = useClientMessages();
   const { clearIconImage, crop, iconImageUrl, localPreviewUrl, source } =
     useCreatorIcon();
@@ -184,7 +184,7 @@ export const CreatorIconPreview = () => {
 };
 
 /** The file a new icon is cut from, posted as `icon_image`. */
-export const CreatorIconFileInput = () => {
+const CreatorIconFileInput = () => {
   const { onImageFileChange } = useCreatorIcon();
 
   return (
@@ -198,7 +198,7 @@ export const CreatorIconFileInput = () => {
 };
 
 /** Opens the frame again once a file is picked; `children` are its wording. */
-export const CreatorIconAdjust = ({ children }: { children: ReactNode }) => {
+const CreatorIconAdjust = ({ children }: { children: ReactNode }) => {
   const { localPreviewUrl, onFramingChange } = useCreatorIcon();
 
   return localPreviewUrl ? (
@@ -218,7 +218,7 @@ export const CreatorIconAdjust = ({ children }: { children: ReactNode }) => {
  * Removes the saved icon on the next save; `children` are its wording. It is a
  * `Field` of its own so the icon field's label does not name it.
  */
-export const CreatorIconClear = ({ children }: { children: ReactNode }) => {
+const CreatorIconClear = ({ children }: { children: ReactNode }) => {
   const { clearIconImage, onClearIconImageChange } = useCreatorIcon();
 
   return (
@@ -232,12 +232,8 @@ export const CreatorIconClear = ({ children }: { children: ReactNode }) => {
   );
 };
 
-/** The frame of the picked file; `children` is the dialog's `ImageCropDialogTitle`. */
-export const CreatorIconCropDialog = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+/** The frame of the picked file; `children` is the dialog's `ImageCropDialog.Title`. */
+const CreatorIconCropDialog = ({ children }: { children: ReactNode }) => {
   const {
     crop,
     isFraming,
@@ -249,7 +245,7 @@ export const CreatorIconCropDialog = ({
   } = useCreatorIcon();
 
   return localPreviewUrl ? (
-    <ImageCropDialog
+    <ImageCropDialog.Root
       aspect={ICON_ASPECT}
       crop={crop}
       imageUrl={localPreviewUrl}
@@ -260,6 +256,15 @@ export const CreatorIconCropDialog = ({
       source={source}
     >
       {children}
-    </ImageCropDialog>
+    </ImageCropDialog.Root>
   ) : null;
+};
+
+export {
+  CreatorIcon as Root,
+  CreatorIconAdjust as Adjust,
+  CreatorIconClear as Clear,
+  CreatorIconCropDialog as CropDialog,
+  CreatorIconFileInput as FileInput,
+  CreatorIconPreview as Preview,
 };

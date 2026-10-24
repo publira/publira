@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -7,13 +8,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { TranslationTabs } from "#components/translation-tabs";
 import { getMessages } from "#lib/get-messages";
@@ -154,21 +148,21 @@ export const SiteSettingsForm = ({
   tabs: { locales, settings, shownLocale, translatedLocales },
   tenantId,
 }: SiteSettingsFormProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
             <Message message="admin.settings.site.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.site.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     {shownLocale ? (
       <TranslationTabs
         hrefFor={(code) => translationEditPath("/settings", code)}
@@ -186,5 +180,5 @@ export const SiteSettingsForm = ({
       tenantId={tenantId}
       translationLocale={shownLocale}
     />
-  </AdminSection>
+  </ConsoleSection.Root>
 );

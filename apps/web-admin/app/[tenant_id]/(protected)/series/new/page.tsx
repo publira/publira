@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -5,14 +6,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import {
   TenantEditorRoute,
@@ -129,33 +122,33 @@ const NewSeriesFormData = async () => {
 };
 
 const NewSeriesPage = () => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantEditorRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
                 <Message message="admin.series.new_title" />
               </Suspense>
-            </AdminPageTitle>
-          </AdminPageHeading>
-          <AdminPageActions>
+            </ConsolePage.Title>
+          </ConsolePage.Heading>
+          <ConsolePage.Actions>
             <LinkButton render={<Link href="/series" />} variant="outline">
               <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
                 <Message message="admin.series.back_to_list" />
               </Suspense>
             </LinkButton>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
+          </ConsolePage.Actions>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <Suspense fallback={<NewSeriesFormSkeleton />}>
             <NewSeriesFormData />
           </Suspense>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantEditorRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default NewSeriesPage;

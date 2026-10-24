@@ -14,11 +14,7 @@ import { getMessages } from "#lib/get-messages";
 import type { TenantLocales } from "#lib/tenant-locales";
 
 import type { CreateAnnouncementActionState } from "../announcement-types";
-import {
-  AnnouncementPinned,
-  AnnouncementPinnedCheckbox,
-  AnnouncementPinnedWhile,
-} from "./announcement-pinned-controls";
+import * as AnnouncementPinned from "./announcement-pinned-controls";
 import { AnnouncementTranslationTabs } from "./announcement-translation-tabs";
 
 interface AnnouncementFormProps {
@@ -207,7 +203,7 @@ export const AnnouncementForm = async ({
           </Field.Content>
         </Field.Root>
 
-        <AnnouncementPinned>
+        <AnnouncementPinned.Root>
           <Field.Root>
             <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -215,7 +211,7 @@ export const AnnouncementForm = async ({
               </Suspense>
             </Field.Label>
             <Field.Content>
-              <AnnouncementPinnedCheckbox />
+              <AnnouncementPinned.Checkbox />
               <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.announcements.form.pinned_description" />
@@ -224,7 +220,7 @@ export const AnnouncementForm = async ({
             </Field.Content>
           </Field.Root>
 
-          <AnnouncementPinnedWhile>
+          <AnnouncementPinned.While>
             <Field.Root>
               <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -247,8 +243,8 @@ export const AnnouncementForm = async ({
                 </Field.Description>
               </Field.Content>
             </Field.Root>
-          </AnnouncementPinnedWhile>
-        </AnnouncementPinned>
+          </AnnouncementPinned.While>
+        </AnnouncementPinned.Root>
       </ActionForm.Fieldset>
 
       <div className="flex justify-end">

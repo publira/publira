@@ -1,4 +1,5 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
 import * as Identifier from "@publira/ui-components/identifier";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -10,14 +11,6 @@ import {
 } from "@publira/utils";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionActions,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { ReaderIcon } from "#components/reader-icon";
 import { getMessagesFor } from "#lib/messages";
@@ -59,23 +52,23 @@ export const ReaderAccount = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.readers.account_title" />
             </Suspense>
-          </AdminSectionTitle>
+          </ConsoleSection.Title>
           {ownAccount ? (
-            <AdminSectionDescription>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.readers.own_account" />
               </Suspense>
-            </AdminSectionDescription>
+            </ConsoleSection.Description>
           ) : null}
-        </AdminSectionHeading>
-        <AdminSectionActions>
+        </ConsoleSection.Heading>
+        <ConsoleSection.Actions>
           {reader.status === "suspended" ? (
             <UnsuspendReaderButton
               publicId={reader.publicId}
@@ -99,8 +92,8 @@ export const ReaderAccount = async ({
               tenantId={tenantId}
             />
           )}
-        </AdminSectionActions>
-      </AdminSectionHeader>
+        </ConsoleSection.Actions>
+      </ConsoleSection.Header>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
         <dt className={labelClassName}>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -246,6 +239,6 @@ export const ReaderAccount = async ({
           />
         </dd>
       </dl>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

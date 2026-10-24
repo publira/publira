@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -6,13 +7,6 @@ import { Switch } from "@publira/ui-components/switch";
 import { Textarea } from "@publira/ui-components/textarea";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type { TenantSignUpSettings } from "#lib/tenant-sign-up-settings";
 import { MAX_SIGN_UP_CLOSED_MESSAGE_LENGTH } from "#lib/tenant-sign-up-settings-shared";
@@ -38,21 +32,21 @@ export const TenantSignUpSettingsForm = ({
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
               <Message message="admin.settings.sign_up.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.sign_up.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateTenantSignUpSettingsAction}
         className="grid gap-4 sm:max-w-lg"
@@ -145,6 +139,6 @@ export const TenantSignUpSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

@@ -1,6 +1,8 @@
 import { toViewerPages } from "@publira/comic-viewer-shell";
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { LinkButton } from "@publira/ui-components/button";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -17,21 +19,6 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageContext,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
@@ -1010,50 +997,50 @@ const EditEpisodeTabContent = async ({
 
       {/* Outside the editors' fieldset: turning the pages changes nothing, so
           every member of staff who can open the episode can read it. */}
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.series.episodes.preview.title" />
               </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
                 <Message message="admin.series.episodes.preview.description" />
               </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         <Suspense fallback={<Skeleton className="h-[min(70svh,40rem)]" />}>
           <EpisodePreviewSection params={params} />
         </Suspense>
-      </AdminSection>
+      </ConsoleSection.Root>
     </>
   );
 };
 
 const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageContext>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Context>
           <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
             <EditEpisodeContextLine params={params} />
           </Suspense>
-        </AdminPageContext>
-        <AdminPageTitle>
+        </ConsolePage.Context>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <EditEpisodeTitle searchParams={searchParams} />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <EditEpisodeDescription searchParams={searchParams} />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
         <Suspense
           fallback={
             <div className="flex gap-2">
@@ -1064,9 +1051,9 @@ const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
         >
           <EditEpisodeActions params={params} />
         </Suspense>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <AdminPageContent>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <FlashToast message="admin.series.episodes.created" />
       <FlashToast
         keyName="title_updated"
@@ -1123,8 +1110,8 @@ const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
       <Suspense fallback={<EditEpisodeSectionsSkeleton />}>
         <EditEpisodeTabContent params={params} searchParams={searchParams} />
       </Suspense>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default EditEpisodePage;

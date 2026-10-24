@@ -1,18 +1,11 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSections,
-} from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -56,14 +49,14 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const ReadersSkeleton = () => (
-  <AdminSections>
+  <ConsoleSection.Stack>
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Skeleton className="h-16 md:col-span-2" />
       <Skeleton className="h-16" />
       <Skeleton className="h-16" />
     </div>
     <Table.Skeleton />
-  </AdminSections>
+  </ConsoleSection.Stack>
 );
 
 /**
@@ -93,7 +86,7 @@ const ReadersContent = async ({
   await redirectToLoginIfSessionRejected(result);
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       <ReaderFilterForm filters={filters} locale={locale} />
       <ReaderManager
         filtered={Boolean(filters.query || filters.status)}
@@ -113,29 +106,29 @@ const ReadersContent = async ({
         readers={result.readers}
         timeZone={timeZone}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const ReadersPage = ({ searchParams }: ReadersPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
                 <Message message="admin.readers.title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.readers.page_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-        </AdminPageHeader>
-        <AdminPageContent>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <FlashToast keyName="deleted" message="admin.readers.deleted" />
           <SectionErrorBoundary
             title={
@@ -148,10 +141,10 @@ const ReadersPage = ({ searchParams }: ReadersPageProps) => (
               <ReadersContent searchParams={searchParams} />
             </Suspense>
           </SectionErrorBoundary>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default ReadersPage;

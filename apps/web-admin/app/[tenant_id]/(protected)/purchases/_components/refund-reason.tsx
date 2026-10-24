@@ -36,7 +36,7 @@ const useRefundReason = (caller: string): RefundReasonContextValue => {
  * dialog closing: a refund the API refused can be asked again without typing
  * it a second time.
  */
-export const RefundReason = ({ children }: { children: ReactNode }) => {
+const RefundReason = ({ children }: { children: ReactNode }) => {
   const [reason, setReason] = useState("");
   const value = useMemo(() => ({ reason, setReason }), [reason]);
 
@@ -44,7 +44,7 @@ export const RefundReason = ({ children }: { children: ReactNode }) => {
 };
 
 /** The reason field, which joins the refund form through `form=`. */
-export const RefundReasonTextarea = ({ formId }: { formId: string }) => {
+const RefundReasonTextarea = ({ formId }: { formId: string }) => {
   const { reason, setReason } = useRefundReason("RefundReasonTextarea");
   const t = useClientMessages();
 
@@ -66,14 +66,14 @@ export const RefundReasonTextarea = ({ formId }: { formId: string }) => {
  * the API refuses a refund without one, and the audit log entry is the only
  * record of why the money went back.
  */
-export const RefundConfirmButton = ({
+const RefundReasonConfirmButton = ({
   children,
   formId,
 }: {
   children: ReactNode;
   formId: string;
 }) => {
-  const { reason } = useRefundReason("RefundConfirmButton");
+  const { reason } = useRefundReason("RefundReasonConfirmButton");
 
   return (
     <Dialog.Close
@@ -85,4 +85,10 @@ export const RefundConfirmButton = ({
       {children}
     </Dialog.Close>
   );
+};
+
+export {
+  RefundReason as Root,
+  RefundReasonConfirmButton as ConfirmButton,
+  RefundReasonTextarea as Textarea,
 };

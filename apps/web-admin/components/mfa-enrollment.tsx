@@ -1,84 +1,67 @@
-"use client";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { Suspense } from "react";
 
-import * as ActionForm from "@publira/ui-components/action-form";
-import { QrCode } from "@publira/ui-components/qr-code";
-import type { QrCodePath } from "@publira/ui-components/qr-code";
-import { createContext, use, useState } from "react";
-import type { Dispatch, ReactNode } from "react";
+import { Message } from "#components/message";
+import { getMessages } from "#lib/get-messages";
 
-import type { MfaEnrollmentStartState } from "#lib/mfa-action-state";
+import {
+  MfaEnrollmentQrCode,
+  MfaEnrollmentSecretText,
+} from "./mfa-enrollment-state";
 
-interface StartedMfaEnrollment {
-  qr: QrCodePath;
-  secret: string;
-}
+/** The QR code's name is an attribute rather than a node, so it waits for the catalog alone. */
+const LabelledMfaEnrollmentQrCode = async () => {
+  const t = await getMessages();
 
-const MfaEnrollmentContext = createContext<StartedMfaEnrollment | null>(null);
-
-const StartMfaEnrollmentContext =
-  createContext<Dispatch<StartedMfaEnrollment> | null>(null);
-
-/**
- * The two steps of an enrollment: `start` until its form has minted a secret,
- * then `confirm`. The confirm step is a form of its own, so the secret the
- * start step returned is held here rather than in either form.
- */
-export const MfaEnrollment = ({
-  confirm,
-  start,
-}: {
-  confirm: ReactNode;
-  start: ReactNode;
-}) => {
-  const [enrollment, setEnrollment] = useState<StartedMfaEnrollment | null>(
-    null
-  );
-
-  return (
-    <StartMfaEnrollmentContext value={setEnrollment}>
-      <MfaEnrollmentContext value={enrollment}>
-        {enrollment ? confirm : start}
-      </MfaEnrollmentContext>
-    </StartMfaEnrollmentContext>
-  );
-};
-
-/** Moves `MfaEnrollment` on to its confirm step once the start form succeeds. */
-export const MfaEnrollmentStarted = () => {
-  const start = use(StartMfaEnrollmentContext);
-  ActionForm.useSettled<NonNullable<MfaEnrollmentStartState>>((state) => {
-    if (state?.ok) {
-      start?.({ qr: state.qr, secret: state.secret });
-    }
-  });
-
-  return null;
-};
-
-/** The started enrollment's secret as a code to scan. */
-export const MfaEnrollmentQrCode = ({ label }: { label: string }) => {
-  const enrollment = use(MfaEnrollmentContext);
-
-  return enrollment ? (
-    <QrCode
-      aria-label={label}
-      path={enrollment.qr.path}
-      size={enrollment.qr.size}
-    />
-  ) : null;
+  return <MfaEnrollmentQrCode label={t("admin.auth.mfa.enroll_qr_label")} />;
 };
 
 /**
- * The started enrollment's secret as text. It is typed into an authenticator
- * by hand when the QR code cannot be scanned, so it is set in the monospace
- * face that keeps its ambiguous characters apart.
+ * What an authenticator app needs to add the account: the code to scan, and
+ * the same secret in the form that can be typed in when a camera is not an
+ * option. Both come from the surrounding `MfaEnrollment`.
  */
-export const MfaEnrollmentSecretText = () => {
-  const enrollment = use(MfaEnrollmentContext);
+const MfaEnrollmentSecret = () => (
+  <div className="grid gap-4">
+    <div className="grid gap-1">
+      <p className="text-sm font-medium text-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+          <Message message="admin.auth.mfa.enroll_scan_title" />
+        </Suspense>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+          <Message message="admin.auth.mfa.enroll_scan_description" />
+        </Suspense>
+      </p>
+    </div>
 
-  return (
-    <code className="block font-mono text-sm tracking-wider break-all text-foreground">
-      {enrollment?.secret}
-    </code>
-  );
-};
+    <div className="flex justify-center">
+      <Suspense fallback={<Skeleton className="size-44" />}>
+        <LabelledMfaEnrollmentQrCode />
+      </Suspense>
+    </div>
+
+    <div className="grid gap-1">
+      <p className="text-sm font-medium text-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="admin.auth.mfa.enroll_secret_label" />
+        </Suspense>
+      </p>
+      <MfaEnrollmentSecretText />
+      <p className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+          <Message message="admin.auth.mfa.enroll_secret_help" />
+        </Suspense>
+      </p>
+    </div>
+  </div>
+);
+
+export { MfaEnrollmentSecret as Secret };
+export {
+  MfaEnrollment as Root,
+  MfaEnrollmentQrCode as QrCode,
+  MfaEnrollmentSecretText as SecretText,
+  MfaEnrollmentStarted as Started,
+} from "./mfa-enrollment-state";

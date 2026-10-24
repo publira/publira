@@ -1,18 +1,11 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
@@ -57,12 +50,12 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 const ContactMessagesSkeleton = () => (
-  <AdminSections>
+  <ConsoleSection.Stack>
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Skeleton className="h-16" />
     </div>
     <Table.Skeleton />
-  </AdminSections>
+  </ConsoleSection.Stack>
 );
 
 /**
@@ -93,7 +86,7 @@ const ContactMessagesContent = async ({
   await redirectToLoginIfSessionRejected(result);
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       <ContactMessageFilterForm filters={filters} locale={locale} />
       <ContactMessageManager
         filtered={Boolean(filters.status)}
@@ -113,29 +106,29 @@ const ContactMessagesContent = async ({
         }
         timeZone={timeZone}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const ContactMessagesPage = ({ searchParams }: ContactMessagesPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
                 <Message message="admin.contact_messages.title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.contact_messages.page_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-        </AdminPageHeader>
-        <AdminPageContent>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -147,10 +140,10 @@ const ContactMessagesPage = ({ searchParams }: ContactMessagesPageProps) => (
               <ContactMessagesContent searchParams={searchParams} />
             </Suspense>
           </SectionErrorBoundary>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default ContactMessagesPage;

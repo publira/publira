@@ -1,0 +1,172 @@
+"use client";
+
+import * as ActionForm from "@publira/ui-components/action-form";
+import { Button } from "@publira/ui-components/button";
+import { Input } from "@publira/ui-components/input";
+import { createContext, use, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+
+import {
+  SECRET_UPDATE_MODE_CLEAR,
+  SECRET_UPDATE_MODE_REPLACE,
+  SECRET_UPDATE_MODE_UNCHANGED,
+} from "#lib/email-settings-shared";
+
+import type { TenantEmailSettingsFormState } from "../email-types";
+
+type SavedSettingsState = NonNullable<TenantEmailSettingsFormState>;
+
+interface SmtpPasswordContextValue {
+  hasStoredPassword: boolean;
+  isEditing: boolean;
+  setHasEntry: (hasEntry: boolean) => void;
+  setIsEditing: (isEditing: boolean) => void;
+}
+
+const SmtpPasswordContext = createContext<SmtpPasswordContextValue | null>(
+  null
+);
+
+const useSmtpPassword = () => {
+  const context = use(SmtpPasswordContext);
+  if (!context) {
+    throw new Error("SmtpPassword slots must be rendered inside SmtpPassword.");
+  }
+  return context;
+};
+
+/**
+ * The SMTP password, which never reaches the browser once stored: it is shown
+ * masked until the operator asks to change it, and a save that stores one puts
+ * it back behind that mask. An open box left empty stores no password, for a
+ * relay that takes no credentials.
+ */
+const SmtpPassword = ({
+  children,
+  hasStoredPassword: initialHasStoredPassword,
+}: {
+  children: ReactNode;
+  hasStoredPassword: boolean;
+}) => {
+  const state = ActionForm.useState<SavedSettingsState>();
+  const hasStoredPassword = state?.ok
+    ? state.settings.hasPassword
+    : initialHasStoredPassword;
+  const [isEditing, setIsEditing] = useState(!initialHasStoredPassword);
+  const [hasEntry, setHasEntry] = useState(false);
+  // Opening or closing the box remounts it empty, so what it held goes too.
+  const context = useMemo(
+    () => ({
+      hasStoredPassword,
+      isEditing,
+      setHasEntry,
+      setIsEditing: (editing: boolean) => {
+        setIsEditing(editing);
+        setHasEntry(false);
+      },
+    }),
+    [hasStoredPassword, isEditing]
+  );
+
+  ActionForm.useSettled<SavedSettingsState>((settled) => {
+    if (settled?.ok) {
+      setIsEditing(!settled.settings.hasPassword);
+      setHasEntry(false);
+    }
+  });
+
+  let mode = SECRET_UPDATE_MODE_UNCHANGED;
+  if (isEditing) {
+    mode = hasEntry ? SECRET_UPDATE_MODE_REPLACE : SECRET_UPDATE_MODE_CLEAR;
+  }
+
+  return (
+    <SmtpPasswordContext value={context}>
+      {children}
+      <input name="password_update_mode" type="hidden" value={String(mode)} />
+    </SmtpPasswordContext>
+  );
+};
+
+/**
+ * The masked stored password and the control that opens it for editing, whose
+ * wording is `children`. Renders nothing while a password is being entered.
+ */
+const SmtpPasswordStored = ({ children }: { children: ReactNode }) => {
+  const { hasStoredPassword, isEditing, setIsEditing } = useSmtpPassword();
+
+  if (!hasStoredPassword || isEditing) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Input defaultValue="****" disabled readOnly type="password" />
+      <Button
+        onClick={() => {
+          setIsEditing(true);
+        }}
+        type="button"
+        variant="outline"
+      >
+        {children}
+      </Button>
+    </div>
+  );
+};
+
+/**
+ * The box for a new password, and, when one is stored, the control that keeps
+ * it instead, whose wording is `children`. Renders nothing while the stored one
+ * is kept.
+ */
+const SmtpPasswordEditor = ({ children }: { children: ReactNode }) => {
+  const { hasStoredPassword, isEditing, setHasEntry, setIsEditing } =
+    useSmtpPassword();
+
+  if (hasStoredPassword && !isEditing) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Input
+        autoComplete="new-password"
+        name="password"
+        onChange={(event) => {
+          setHasEntry(event.currentTarget.value !== "");
+        }}
+        type="password"
+      />
+      {hasStoredPassword ? (
+        <Button
+          onClick={() => {
+            setIsEditing(false);
+          }}
+          type="button"
+          variant="outline"
+        >
+          {children}
+        </Button>
+      ) : null}
+    </div>
+  );
+};
+
+/**
+ * `children`, only while the stored password is open for change: what saving
+ * that box empty does to it. With nothing stored, an empty box has nothing to
+ * remove.
+ */
+const SmtpPasswordReplacing = ({ children }: { children: ReactNode }) => {
+  const { hasStoredPassword, isEditing } = useSmtpPassword();
+
+  return hasStoredPassword && isEditing ? children : null;
+};
+
+export {
+  SmtpPassword as Root,
+  SmtpPasswordEditor as Editor,
+  SmtpPasswordReplacing as Replacing,
+  SmtpPasswordStored as Stored,
+};

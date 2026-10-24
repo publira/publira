@@ -24,7 +24,7 @@ import type { AdminClientMessageAccessor } from "#lib/messages";
  * moved nothing — which is what a cancelled drag and a drop back in place both
  * are, and what lets a caller skip the write.
  */
-export const withItemMoved = <T,>(
+const withItemMoved = <T,>(
   items: T[],
   itemId: (item: T) => string,
   event: DragEndEvent
@@ -148,7 +148,7 @@ interface SortableListProps {
  * Every reorderable list in the console is built from these three components,
  * so an operator meets the same control on each of them.
  */
-export const SortableList = ({
+const SortableList = ({
   children,
   className,
   onDragEnd,
@@ -191,7 +191,7 @@ const SortableRowSlot = ({
 };
 
 /** One row a Server Component composed: a {@link SortableItem} left without an `index`. */
-export interface SortableRow {
+interface SortableRow {
   content: ReactNode;
   id: string;
 }
@@ -209,11 +209,7 @@ interface SortableRowsProps {
  * whose rows hold forms of their own renders them on the server and keeps only
  * the order it moves them into here, as the optimistic state of its reorder.
  */
-export const SortableRows = ({
-  disabled = false,
-  order,
-  rows,
-}: SortableRowsProps) => {
+const SortableRows = ({ disabled = false, order, rows }: SortableRowsProps) => {
   const contentById = new Map(rows.map((row) => [row.id, row.content]));
 
   return order.map((id, index) => (
@@ -224,7 +220,7 @@ export const SortableRows = ({
 };
 
 /** The 0-based position of the row {@link SortableRows} put this inside. */
-export const useSortableRowIndex = (): number => {
+const useSortableRowIndex = (): number => {
   const row = useContext(SortableRowContext);
   if (row === null) {
     throw new Error("SortableRows is required.");
@@ -258,7 +254,7 @@ interface SortableItemProps {
  * One row, dragged by the {@link SortableItemHandle} inside it rather than by
  * itself, so the controls it holds still take a pointer.
  */
-export const SortableItem = ({
+const SortableItem = ({
   accept,
   children,
   className,
@@ -312,7 +308,7 @@ export const SortableItem = ({
  * coarse it is never smaller than 44px either way, so a finger can pick a row
  * up by it.
  */
-export const SortableItemHandle = ({
+const SortableItemHandle = ({
   children,
   className,
 }: {
@@ -342,3 +338,13 @@ export const SortableItemHandle = ({
     </button>
   );
 };
+
+export {
+  SortableList as Root,
+  SortableItem as Item,
+  SortableItemHandle as ItemHandle,
+  SortableRows as Rows,
+  useSortableRowIndex as useRowIndex,
+  withItemMoved,
+};
+export type { SortableRow as Row };

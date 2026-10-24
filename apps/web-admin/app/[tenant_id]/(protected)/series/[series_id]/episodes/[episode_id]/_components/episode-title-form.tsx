@@ -1,5 +1,6 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -7,13 +8,6 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 interface EpisodeTitleFormProps {
@@ -76,24 +70,24 @@ export const EpisodeTitleForm = ({
   translated = true,
   translationLocale,
 }: EpisodeTitleFormProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.series.episodes.rename.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
             <EpisodeTitleDescription
               translated={translated}
               translationLocale={translationLocale}
             />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     {children}
     <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
@@ -156,5 +150,5 @@ export const EpisodeTitleForm = ({
         )}
       </div>
     </ActionForm.Root>
-  </AdminSection>
+  </ConsoleSection.Root>
 );

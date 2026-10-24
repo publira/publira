@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
 import { useAdminLocale } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import { ReaderPicker } from "#components/reader-picker";
-import { useSetSubmittable } from "#components/submit-gate";
+import * as SubmitGate from "#components/submit-gate";
 
 import { listEpisodeOptionsAction } from "../_lib/actions";
 import type { TicketEpisodeOption } from "../ticket-types";
@@ -52,7 +52,7 @@ const useTicketTarget = () => {
  * loaded for the series picked, and the form can be submitted once a reader
  * and an episode are chosen.
  */
-export const TicketTarget = ({
+const TicketTarget = ({
   children,
   seriesItems,
   tenantId,
@@ -63,7 +63,7 @@ export const TicketTarget = ({
 }) => {
   const locale = useAdminLocale();
   const t = useClientMessages();
-  const setSubmittable = useSetSubmittable();
+  const setSubmittable = SubmitGate.useSetSubmittable();
   const [isEpisodePending, startEpisodeTransition] = useTransition();
   const [readerId, setReaderId] = useState("");
   const [seriesId, setSeriesId] = useState("");
@@ -165,14 +165,14 @@ export const TicketTarget = ({
 };
 
 /** The reader the ticket is for, posted as `user_id`. */
-export const TicketReaderPicker = () => {
+const TicketTargetReaderPicker = () => {
   const { onReaderChange } = useTicketTarget();
 
   return <ReaderPicker name="user_id" onValueChange={onReaderChange} />;
 };
 
 /** The series whose episodes are offered; `children` are the picker's parts. */
-export const TicketSeriesCombobox = ({ children }: { children: ReactNode }) => {
+const TicketTargetSeriesCombobox = ({ children }: { children: ReactNode }) => {
   const { onSeriesChange, seriesId, seriesItems } = useTicketTarget();
 
   return (
@@ -190,11 +190,7 @@ export const TicketSeriesCombobox = ({ children }: { children: ReactNode }) => {
  * The episode the ticket grants, posted as `episode_id`; `children` are the
  * picker's parts. It opens once a series is picked and its episodes are in.
  */
-export const TicketEpisodeCombobox = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
+const TicketTargetEpisodeCombobox = ({ children }: { children: ReactNode }) => {
   const {
     episodeId,
     episodeItems,
@@ -219,7 +215,7 @@ export const TicketEpisodeCombobox = ({
 };
 
 /** The episode picker's text box, which says so while the choices load. */
-export const TicketEpisodeInput = () => {
+const TicketTargetEpisodeInput = () => {
   const t = useClientMessages();
   const { isEpisodePending } = useTicketTarget();
 
@@ -235,7 +231,7 @@ export const TicketEpisodeInput = () => {
 };
 
 /** Why the episodes could not be loaded, and the retry; `children` are its wording. */
-export const TicketEpisodeLoadError = ({
+const TicketTargetEpisodeLoadError = ({
   children,
 }: {
   children: ReactNode;
@@ -253,10 +249,20 @@ export const TicketEpisodeLoadError = ({
 };
 
 /** Renders its children while a series is picked, or while none is when `chosen` is false. */
-export const TicketSeriesWhile = ({
+const TicketTargetSeriesWhile = ({
   children,
   chosen,
 }: {
   children: ReactNode;
   chosen: boolean;
 }) => ((useTicketTarget().seriesId !== "") === chosen ? children : null);
+
+export {
+  TicketTarget as Root,
+  TicketTargetEpisodeCombobox as EpisodeCombobox,
+  TicketTargetEpisodeInput as EpisodeInput,
+  TicketTargetEpisodeLoadError as EpisodeLoadError,
+  TicketTargetReaderPicker as ReaderPicker,
+  TicketTargetSeriesCombobox as SeriesCombobox,
+  TicketTargetSeriesWhile as SeriesWhile,
+};

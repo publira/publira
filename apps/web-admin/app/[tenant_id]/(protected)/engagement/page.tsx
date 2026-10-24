@@ -1,4 +1,6 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as FigureLine from "@publira/ui-components/figure-line";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -9,27 +11,9 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
-import {
-  PaginationControls,
-  PaginationFooter,
-  PaginationFooterDescription,
-} from "#components/pagination-controls";
+import * as PaginationFooter from "#components/pagination-controls";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import {
@@ -91,7 +75,7 @@ const ReadThroughRateCell = async ({
   );
 
 const EngagementSkeleton = () => (
-  <AdminSections>
+  <ConsoleSection.Stack>
     <FigureLine.Root>
       {(["skeleton-1", "skeleton-2", "skeleton-3"] as const).map((key) => (
         <FigureLine.Figure key={key}>
@@ -129,7 +113,7 @@ const EngagementSkeleton = () => (
         <Table.LoadingRow colSpan={5} rows={6} />
       </Table.Body>
     </Table.Root>
-  </AdminSections>
+  </ConsoleSection.Stack>
 );
 
 const EngagementContent = async ({
@@ -171,8 +155,8 @@ const EngagementContent = async ({
   );
 
   return (
-    <AdminSections>
-      <AdminSection>
+    <ConsoleSection.Stack>
+      <ConsoleSection.Root>
         <p className="max-w-3xl text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
             <Message
@@ -218,23 +202,23 @@ const EngagementContent = async ({
             <Message message="admin.engagement.definition" />
           </Suspense>
         </p>
-      </AdminSection>
+      </ConsoleSection.Root>
 
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.engagement.list_title" />
               </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.engagement.list_description" />
               </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         {result.episodes.length === 0 ? (
           <CursorPageEmptyState
             hasPageLinks={hasPageLinks}
@@ -305,40 +289,40 @@ const EngagementContent = async ({
         )}
 
         {result.episodes.length > 0 || hasPageLinks ? (
-          <PaginationFooter>
-            <PaginationFooterDescription>
+          <PaginationFooter.Root>
+            <PaginationFooter.Description>
               {t("admin.engagement.pagination_description", {
                 count: DEFAULT_PAGE_SIZE,
               })}
-            </PaginationFooterDescription>
-            <PaginationControls
+            </PaginationFooter.Description>
+            <PaginationFooter.Controls
               {...pageHrefs}
               aria-label={t("admin.engagement.pagination_aria")}
             />
-          </PaginationFooter>
+          </PaginationFooter.Root>
         ) : null}
-      </AdminSection>
-    </AdminSections>
+      </ConsoleSection.Root>
+    </ConsoleSection.Stack>
   );
 };
 
 const EngagementPage = ({ searchParams }: EngagementPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
             <Message message="admin.engagement.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
             <Message message="admin.engagement.page_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -350,8 +334,8 @@ const EngagementPage = ({ searchParams }: EngagementPageProps) => (
           <EngagementContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default EngagementPage;

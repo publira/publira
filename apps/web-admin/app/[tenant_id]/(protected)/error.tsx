@@ -1,21 +1,11 @@
 "use client";
 
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import Link from "next/link";
 
-import {
-  AdminPageActions,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { ClientMessage } from "#components/client-message";
-import {
-  ErrorScreen,
-  ErrorScreenDigest,
-  ErrorScreenRetry,
-} from "#components/error-screen";
+import * as ErrorScreen from "#components/error-screen";
 
 /**
  * Error boundary for the console pages. It wraps the pages and nested layouts
@@ -60,29 +50,29 @@ const ConsoleError = ({
   error: Error & { digest?: string };
   retry: () => void;
 }) => (
-  <ErrorScreen digest={error.digest} retry={retry}>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ErrorScreen.Root digest={error.digest} retry={retry}>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <ClientMessage message="admin.errors.console_title" />
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <ClientMessage message="admin.errors.console_description" />
-        </AdminPageDescription>
-      </AdminPageHeading>
-      <AdminPageActions>
-        <ErrorScreenRetry>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+      <ConsolePage.Actions>
+        <ErrorScreen.Retry>
           <ClientMessage message="admin.common.retry" />
-        </ErrorScreenRetry>
+        </ErrorScreen.Retry>
         <LinkButton render={<Link href="/" />} variant="outline">
           <ClientMessage message="admin.common.back_to_dashboard" />
         </LinkButton>
-      </AdminPageActions>
-    </AdminPageHeader>
-    <ErrorScreenDigest>
+      </ConsolePage.Actions>
+    </ConsolePage.Header>
+    <ErrorScreen.Digest>
       <ClientMessage message="admin.common.error_id" />
-    </ErrorScreenDigest>
-  </ErrorScreen>
+    </ErrorScreen.Digest>
+  </ErrorScreen.Root>
 );
 
 export default ConsoleError;

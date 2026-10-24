@@ -1,22 +1,12 @@
 import type { Locale } from "@publira/i18n";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { MfaCodeField } from "#components/mfa-code-field";
-import {
-  MfaEnrollment,
-  MfaEnrollmentStarted,
-} from "#components/mfa-enrollment";
-import { MfaEnrollmentSecret } from "#components/mfa-enrollment-secret";
+import * as MfaEnrollment from "#components/mfa-enrollment";
 import { MfaRecoveryCodes } from "#components/mfa-recovery-codes";
 import type { AdminMfaStatus } from "#lib/admin-mfa";
 
@@ -26,10 +16,7 @@ import {
   regenerateAccountMfaRecoveryCodesAction,
   startAccountMfaEnrollmentAction,
 } from "../_lib/mfa-actions";
-import {
-  MfaSettingsOutcome,
-  ReportMfaSettingsChange,
-} from "./mfa-settings-outcome";
+import * as MfaSettingsOutcome from "./mfa-settings-outcome";
 import { PasskeySettings } from "./passkey-settings";
 
 interface MfaSettingsCardProps {
@@ -47,7 +34,7 @@ const MfaStartForm = ({ tenantId }: { tenantId: string }) => (
     showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <MfaEnrollmentStarted />
+    <MfaEnrollment.Started />
     <div className="flex justify-end">
       <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -70,8 +57,8 @@ const MfaConfirmForm = ({ tenantId }: { tenantId: string }) => (
     showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ReportMfaSettingsChange />
-    <MfaEnrollmentSecret />
+    <MfaSettingsOutcome.Report />
+    <MfaEnrollment.Secret />
     <MfaCodeField accepts="authenticator" />
     <div className="flex justify-end">
       <ActionForm.Submit>
@@ -95,7 +82,7 @@ const MfaRegenerateForm = ({ tenantId }: { tenantId: string }) => (
     showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ReportMfaSettingsChange />
+    <MfaSettingsOutcome.Report />
     <div className="grid gap-1">
       <p className="text-sm font-medium text-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
@@ -141,7 +128,7 @@ const MfaDisableForm = ({
     showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ReportMfaSettingsChange />
+    <MfaSettingsOutcome.Report />
     <div className="grid gap-1">
       <p className="text-sm font-medium text-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
@@ -228,24 +215,24 @@ export const MfaSettingsCard = ({
   tenantId,
   timeZone,
 }: MfaSettingsCardProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
             <Message message="admin.settings.mfa.title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.mfa.description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <MfaStatusSummary status={status} />
 
-    <MfaSettingsOutcome
+    <MfaSettingsOutcome.Root
       hasSecondFactor={status.enabled || status.passkeys.length > 0}
       recoveryCodes={<MfaRecoveryCodes />}
     >
@@ -264,7 +251,7 @@ export const MfaSettingsCard = ({
             />
           </>
         ) : (
-          <MfaEnrollment
+          <MfaEnrollment.Root
             confirm={<MfaConfirmForm tenantId={tenantId} />}
             start={<MfaStartForm tenantId={tenantId} />}
           />
@@ -277,6 +264,6 @@ export const MfaSettingsCard = ({
         tenantId={tenantId}
         timeZone={timeZone}
       />
-    </MfaSettingsOutcome>
-  </AdminSection>
+    </MfaSettingsOutcome.Root>
+  </ConsoleSection.Root>
 );

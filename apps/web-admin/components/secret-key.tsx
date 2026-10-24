@@ -1,80 +1,10 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import { Checkbox } from "@publira/ui-components/checkbox";
-import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-
-interface CredentialsEnabledContextValue {
-  enabled: boolean;
-  setEnabled: (enabled: boolean) => void;
-}
-
-const CredentialsEnabledContext =
-  createContext<CredentialsEnabledContextValue | null>(null);
-
-const useCredentialsEnabled = () => {
-  const context = use(CredentialsEnabledContext);
-  if (!context) {
-    throw new Error(
-      "CredentialsEnabled slots must be rendered inside CredentialsEnabled."
-    );
-  }
-  return context;
-};
-
-/**
- * Whether one outside service is switched on, which marks its credentials
- * required. Seeded once per mount; the form keys it by the saved settings.
- */
-export const CredentialsEnabled = ({
-  children,
-  initialEnabled,
-}: {
-  children: ReactNode;
-  initialEnabled: boolean;
-}) => {
-  const [enabled, setEnabled] = useState(initialEnabled);
-  const context = useMemo(() => ({ enabled, setEnabled }), [enabled]);
-
-  return (
-    <CredentialsEnabledContext value={context}>
-      {children}
-    </CredentialsEnabledContext>
-  );
-};
-
-/** The service's switch, posted as `name`, with `children` beside it. */
-export const CredentialsEnabledCheckbox = ({
-  children,
-  name,
-}: {
-  children: ReactNode;
-  name: string;
-}) => {
-  const { enabled, setEnabled } = useCredentialsEnabled();
-
-  return (
-    <label className="inline-flex items-center gap-2 text-sm text-foreground">
-      <Checkbox checked={enabled} name={name} onCheckedChange={setEnabled} />
-      {children}
-    </label>
-  );
-};
-
-/** A credential's label, marked required while its service is switched on. */
-export const CredentialsEnabledLabel = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
-  const { enabled } = useCredentialsEnabled();
-
-  return <Field.Label required={enabled}>{children}</Field.Label>;
-};
 
 type SecretKeyMode = "clear" | "keep" | "replace";
 
@@ -100,7 +30,7 @@ const useSecretKey = () => {
  * entered is a file or pasted text. The mode travels with the form so the
  * Action can tell "left as it is" from "removed".
  */
-export const SecretKey = ({
+const SecretKey = ({
   accept,
   children,
   configured,
@@ -133,7 +63,7 @@ export const SecretKey = ({
 };
 
 /** Renders its children while the key is in `mode`. */
-export const SecretKeyWhile = ({
+const SecretKeyWhile = ({
   children,
   mode,
 }: {
@@ -142,7 +72,7 @@ export const SecretKeyWhile = ({
 }) => (useSecretKey().mode === mode ? children : null);
 
 /** Switches the key to `mode`; `children` is the control's wording. */
-export const SecretKeyModeButton = ({
+const SecretKeyModeButton = ({
   children,
   mode,
 }: {
@@ -165,14 +95,14 @@ export const SecretKeyModeButton = ({
 };
 
 /** The new key as a file, posted as `<name>_file`. */
-export const SecretKeyFile = () => {
+const SecretKeyFile = () => {
   const { accept, name } = useSecretKey();
 
   return <Input accept={accept} name={`${name}_file`} type="file" />;
 };
 
 /** The new key as pasted text, posted as `name`. */
-export const SecretKeyText = () => {
+const SecretKeyText = () => {
   const { name } = useSecretKey();
 
   return (
@@ -184,4 +114,12 @@ export const SecretKeyText = () => {
       spellCheck={false}
     />
   );
+};
+
+export {
+  SecretKey as Root,
+  SecretKeyFile as File,
+  SecretKeyModeButton as ModeButton,
+  SecretKeyText as Text,
+  SecretKeyWhile as While,
 };

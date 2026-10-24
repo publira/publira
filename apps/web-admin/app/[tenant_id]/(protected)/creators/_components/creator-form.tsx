@@ -5,19 +5,12 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import { Suspense } from "react";
 
-import { ImageCropDialogTitle } from "#components/image-crop/crop-dialog";
+import * as ImageCropDialog from "#components/image-crop/crop-dialog";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
 import type { CreatorActionState, CreatorListItem } from "../creator-types";
-import {
-  CreatorIcon,
-  CreatorIconAdjust,
-  CreatorIconClear,
-  CreatorIconCropDialog,
-  CreatorIconFileInput,
-  CreatorIconPreview,
-} from "./creator-icon-controls";
+import * as CreatorIcon from "./creator-icon-controls";
 
 interface CreatorFormProps {
   mode: "create" | "update";
@@ -90,7 +83,7 @@ export const CreatorForm = async ({
           deletion checkbox all belong to that save and none of them mean
           anything afterwards.
         */}
-        <CreatorIcon
+        <CreatorIcon.Root
           iconImageUrl={iconImageUrl}
           key={initialCreator?.iconImageUpdatedAt ?? ""}
         >
@@ -101,19 +94,19 @@ export const CreatorForm = async ({
               </Suspense>
             </Field.Label>
             <Field.Content>
-              <CreatorIconPreview />
-              <CreatorIconFileInput />
-              <CreatorIconAdjust>
+              <CreatorIcon.Preview />
+              <CreatorIcon.FileInput />
+              <CreatorIcon.Adjust>
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message message="admin.image_crop.adjust" />
                 </Suspense>
-              </CreatorIconAdjust>
+              </CreatorIcon.Adjust>
               {isUpdate && iconImageUrl ? (
-                <CreatorIconClear>
+                <CreatorIcon.Clear>
                   <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                     <Message message="admin.creators.form.clear_icon" />
                   </Suspense>
-                </CreatorIconClear>
+                </CreatorIcon.Clear>
               ) : null}
               <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
@@ -122,15 +115,15 @@ export const CreatorForm = async ({
               </Field.Description>
             </Field.Content>
 
-            <CreatorIconCropDialog>
-              <ImageCropDialogTitle>
+            <CreatorIcon.CropDialog>
+              <ImageCropDialog.Title>
                 <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
                   <Message message="admin.creators.form.icon_crop_title" />
                 </Suspense>
-              </ImageCropDialogTitle>
-            </CreatorIconCropDialog>
+              </ImageCropDialog.Title>
+            </CreatorIcon.CropDialog>
           </Field.Root>
-        </CreatorIcon>
+        </CreatorIcon.Root>
       </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">

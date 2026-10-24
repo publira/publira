@@ -1,5 +1,7 @@
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -9,16 +11,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSection,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { isTenantAdminRole } from "#lib/admin-auth";
@@ -107,59 +99,59 @@ const readSiteSettingsTabs = async ({
 };
 
 const SettingsFormsSkeleton = () => (
-  <AdminSections>
-    <AdminSection>
+  <ConsoleSection.Stack>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-10" />
       <Skeleton className="h-24" />
       <Skeleton className="h-10" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
       <Skeleton className="h-10" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
       <Skeleton className="h-10" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
       <Skeleton className="h-12" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-48" />
       <Skeleton className="h-10" />
       <Skeleton className="h-10" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-48" />
       <Skeleton className="h-10" />
       <Skeleton className="h-40" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-32" />
       <Skeleton className="h-10" />
       <Skeleton className="h-24" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-40" />
       <Skeleton className="h-10" />
-    </AdminSection>
-    <AdminSection>
+    </ConsoleSection.Root>
+    <ConsoleSection.Root>
       <SkeletonLine className="h-5 w-48" />
       <Skeleton className="h-10" />
       <Skeleton className="h-10" />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );
 
 /**
@@ -262,7 +254,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
   const canEdit = isTenantAdminRole(currentUser.role);
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       {settingsResult.ok ? (
         <SiteSettingsForm
           canEdit={canEdit}
@@ -379,27 +371,27 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
         tenantId={tenantId}
         {...siteVerificationFormState(siteVerificationResult)}
       />
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const SettingsPage = ({ searchParams }: SettingsPageProps) => (
-  <AdminPage>
-    <AdminPageHeader>
-      <AdminPageHeading>
-        <AdminPageTitle>
+  <ConsolePage.Root>
+    <ConsolePage.Header>
+      <ConsolePage.Heading>
+        <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-24" />}>
             <Message message="admin.settings.title" />
           </Suspense>
-        </AdminPageTitle>
-        <AdminPageDescription>
+        </ConsolePage.Title>
+        <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.settings.basic_description" />
           </Suspense>
-        </AdminPageDescription>
-      </AdminPageHeading>
-    </AdminPageHeader>
-    <AdminPageContent>
+        </ConsolePage.Description>
+      </ConsolePage.Heading>
+    </ConsolePage.Header>
+    <ConsolePage.Content>
       <div className="grid gap-6">
         <SettingsTabNav current="basic" />
         <SectionErrorBoundary
@@ -414,8 +406,8 @@ const SettingsPage = ({ searchParams }: SettingsPageProps) => (
           </Suspense>
         </SectionErrorBoundary>
       </div>
-    </AdminPageContent>
-  </AdminPage>
+    </ConsolePage.Content>
+  </ConsolePage.Root>
 );
 
 export default SettingsPage;

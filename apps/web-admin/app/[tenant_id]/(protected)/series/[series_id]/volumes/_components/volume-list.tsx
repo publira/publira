@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { SortableItem, SortableItemHandle } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 import { getMessages } from "#lib/get-messages";
 import { formatTenantAmount } from "#lib/price";
 import type { VolumeItem } from "#lib/volume";
@@ -124,19 +124,19 @@ const VolumeRow = ({
   seriesPublicId: string;
   volume: VolumeItem;
 }) => (
-  <SortableItem
+  <Sortable.Item
     className="flex items-start gap-3 border border-border bg-background px-4 py-3 sm:gap-4"
     id={volume.id}
     label={volume.title}
   >
-    <SortableItemHandle>
+    <Sortable.ItemHandle>
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <Message
           message="admin.series.volumes.reorder_action"
           values={{ title: volume.title }}
         />
       </Suspense>
-    </SortableItemHandle>
+    </Sortable.ItemHandle>
     <VolumeSummary currency={currency} locale={locale} volume={volume} />
     <LinkButton
       render={<Link href={volumePath(seriesPublicId, volume)} />}
@@ -147,7 +147,7 @@ const VolumeRow = ({
         <Message message="admin.series.volumes.edit_action" />
       </Suspense>
     </LinkButton>
-  </SortableItem>
+  </Sortable.Item>
 );
 
 /** A volume as a tenant auditor sees it: described, and opened to be viewed. */

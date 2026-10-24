@@ -36,7 +36,7 @@ const useRoyaltyCloseMode = () => {
  * Holds the mode and the day the form saves, so the day survives switching
  * back and forth while the day field comes and goes with the mode.
  */
-export const RoyaltyCloseModeScope = ({
+const RoyaltyCloseModeScope = ({
   children,
   initialPolicy,
 }: {
@@ -63,7 +63,7 @@ export const RoyaltyCloseModeScope = ({
 };
 
 /** The mode picker; `items` carry the rendered wording of each mode. */
-export const RoyaltyCloseModeRadioGroup = ({
+const RoyaltyCloseModeRadioGroup = ({
   items,
 }: {
   items: RadioGroupProps["items"];
@@ -84,13 +84,13 @@ export const RoyaltyCloseModeRadioGroup = ({
 };
 
 /** Renders the day field only while months are closed automatically. */
-export const RoyaltyAutoCloseDayField = ({
+const RoyaltyCloseModeAutoCloseDayField = ({
   children,
 }: {
   children: ReactNode;
 }) => (useRoyaltyCloseMode().closeMode === "automatic" ? children : null);
 
-export const RoyaltyAutoCloseDaySelect = () => {
+const RoyaltyCloseModeAutoCloseDaySelect = () => {
   const t = useClientMessages();
   const { autoCloseDay, setAutoCloseDay } = useRoyaltyCloseMode();
 
@@ -114,4 +114,11 @@ export const RoyaltyAutoCloseDaySelect = () => {
       <input name="auto_close_day" type="hidden" value={autoCloseDay ?? ""} />
     </>
   );
+};
+
+export {
+  RoyaltyCloseModeScope as Root,
+  RoyaltyCloseModeAutoCloseDayField as AutoCloseDayField,
+  RoyaltyCloseModeAutoCloseDaySelect as AutoCloseDaySelect,
+  RoyaltyCloseModeRadioGroup as RadioGroup,
 };

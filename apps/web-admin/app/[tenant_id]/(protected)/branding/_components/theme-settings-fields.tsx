@@ -48,7 +48,7 @@ const applyThemePreview = (theme: TenantTheme) => {
  * The palette the form holds, shared by its fields and the preview tab. Seeded
  * once per mount; a save replaces it with the palette the server stored.
  */
-export const ThemeSettingsScope = ({
+const ThemeSettingsScope = ({
   children,
   initialTheme,
 }: {
@@ -68,7 +68,7 @@ export const ThemeSettingsScope = ({
 };
 
 /** Adopts the palette a save stored, normalization included, so the fields show what a reload would. */
-export const ThemeSettingsSaved = () => {
+const ThemeSettingsSaved = () => {
   const { setTheme } = useThemeSettings();
   ActionForm.useSettled<NonNullable<ThemeSettingsActionState>>((state) => {
     if (state?.ok) {
@@ -94,7 +94,7 @@ const useThemeField = (field: ThemeKey) => {
 };
 
 /** A color of the palette, typed as `#RRGGBB` or picked from the swatch. */
-export const ThemeColorInput = ({
+const ThemeSettingsColorInput = ({
   field,
   name,
 }: {
@@ -137,7 +137,7 @@ export const ThemeColorInput = ({
 };
 
 /** A CSS font stack of the palette; the placeholder is the stack an empty value falls back to. */
-export const ThemeFontFamilyInput = ({
+const ThemeSettingsFontFamilyInput = ({
   field,
   name,
   placeholder,
@@ -158,4 +158,11 @@ export const ThemeFontFamilyInput = ({
       value={value}
     />
   );
+};
+
+export {
+  ThemeSettingsScope as Root,
+  ThemeSettingsColorInput as ColorInput,
+  ThemeSettingsFontFamilyInput as FontFamilyInput,
+  ThemeSettingsSaved as Saved,
 };

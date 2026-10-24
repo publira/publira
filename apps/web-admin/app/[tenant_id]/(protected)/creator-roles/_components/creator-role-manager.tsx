@@ -1,3 +1,4 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as Field from "@publira/ui-components/field";
@@ -5,14 +6,6 @@ import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSections,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 
 import { createCreatorRoleAction } from "../_lib/actions";
@@ -96,23 +89,23 @@ export const CreatorRoleManager = ({
   listErrorMessage,
   tenantId,
 }: CreatorRoleManagerProps) => (
-  <AdminSections>
+  <ConsoleSection.Stack>
     {canEdit ? (
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-6 w-28" />}>
                 <Message message="admin.creator_roles.create_card_title" />
               </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
+            </ConsoleSection.Title>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
                 <Message message="admin.creator_roles.create_description" />
               </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+        </ConsoleSection.Header>
         <ActionForm.Root
           action={createCreatorRoleAction}
           className="grid gap-4"
@@ -142,32 +135,32 @@ export const CreatorRoleManager = ({
             </ActionForm.Submit>
           </div>
         </ActionForm.Root>
-      </AdminSection>
+      </ConsoleSection.Root>
     ) : null}
 
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle id={CREATOR_ROLE_LIST_TITLE_ID}>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title id={CREATOR_ROLE_LIST_TITLE_ID}>
             <Suspense fallback={<SkeletonLine className="h-6 w-32" />}>
               <Message message="admin.creator_roles.list_title" />
             </Suspense>
-          </AdminSectionTitle>
+          </ConsoleSection.Title>
           {canEdit ? (
-            <AdminSectionDescription>
+            <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.creator_roles.list_description" />
               </Suspense>
-            </AdminSectionDescription>
+            </ConsoleSection.Description>
           ) : null}
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <CreatorRoleListBody
         canEdit={canEdit}
         creatorRoles={creatorRoles}
         listErrorMessage={listErrorMessage}
         tenantId={tenantId}
       />
-    </AdminSection>
-  </AdminSections>
+    </ConsoleSection.Root>
+  </ConsoleSection.Stack>
 );

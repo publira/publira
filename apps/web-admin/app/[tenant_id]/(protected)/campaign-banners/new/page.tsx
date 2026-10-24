@@ -1,3 +1,4 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
@@ -5,15 +6,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageActions,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import {
   TenantEditorRoute,
@@ -68,23 +60,23 @@ const NewCampaignBannerFormData = async () => {
 };
 
 const NewCampaignBannerPage = () => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantEditorRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
                 <Message message="admin.campaign_banners.new_title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="admin.campaign_banners.new_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-          <AdminPageActions>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+          <ConsolePage.Actions>
             <LinkButton
               render={<Link href="/campaign-banners" />}
               variant="outline"
@@ -93,16 +85,16 @@ const NewCampaignBannerPage = () => (
                 <Message message="admin.campaign_banners.back_to_list" />
               </Suspense>
             </LinkButton>
-          </AdminPageActions>
-        </AdminPageHeader>
-        <AdminPageContent>
+          </ConsolePage.Actions>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <Suspense fallback={<NewCampaignBannerFormSkeleton />}>
             <NewCampaignBannerFormData />
           </Suspense>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantEditorRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default NewCampaignBannerPage;

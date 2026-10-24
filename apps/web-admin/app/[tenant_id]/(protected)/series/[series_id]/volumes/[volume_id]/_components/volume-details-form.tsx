@@ -1,14 +1,8 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type { VolumeItem } from "#lib/volume";
 
@@ -29,21 +23,21 @@ export const VolumeDetailsForm = ({
   tenantId,
   volume,
 }: VolumeDetailsFormProps) => (
-  <AdminSection>
-    <AdminSectionHeader>
-      <AdminSectionHeading>
-        <AdminSectionTitle>
+  <ConsoleSection.Root>
+    <ConsoleSection.Header>
+      <ConsoleSection.Heading>
+        <ConsoleSection.Title>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="admin.series.volumes.form.details_title" />
           </Suspense>
-        </AdminSectionTitle>
-        <AdminSectionDescription>
+        </ConsoleSection.Title>
+        <ConsoleSection.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.series.volumes.form.details_description" />
           </Suspense>
-        </AdminSectionDescription>
-      </AdminSectionHeading>
-    </AdminSectionHeader>
+        </ConsoleSection.Description>
+      </ConsoleSection.Heading>
+    </ConsoleSection.Header>
     <ActionForm.Root action={updateVolumeAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_id" type="hidden" value={seriesId} />
@@ -74,5 +68,5 @@ export const VolumeDetailsForm = ({
         </ActionForm.Submit>
       </div>
     </ActionForm.Root>
-  </AdminSection>
+  </ConsoleSection.Root>
 );

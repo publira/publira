@@ -1,26 +1,15 @@
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
-import {
-  AdminSection,
-  AdminSectionDescription,
-  AdminSectionHeader,
-  AdminSectionHeading,
-  AdminSectionTitle,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import type { RoyaltyClosePolicy } from "#lib/royalty-period";
 
 import { updateRoyaltyCloseSettingsAction } from "../_lib/actions";
-import {
-  RoyaltyAutoCloseDayField,
-  RoyaltyAutoCloseDaySelect,
-  RoyaltyCloseModeRadioGroup,
-  RoyaltyCloseModeScope,
-} from "./royalty-close-mode-fields";
+import * as RoyaltyCloseMode from "./royalty-close-mode-fields";
 
 interface RoyaltyCloseSettingsFormProps {
   canEdit: boolean;
@@ -41,21 +30,21 @@ export const RoyaltyCloseSettingsForm = ({
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
 
   return (
-    <AdminSection>
-      <AdminSectionHeader>
-        <AdminSectionHeading>
-          <AdminSectionTitle>
+    <ConsoleSection.Root>
+      <ConsoleSection.Header>
+        <ConsoleSection.Heading>
+          <ConsoleSection.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
               <Message message="admin.settings.royalties.title" />
             </Suspense>
-          </AdminSectionTitle>
-          <AdminSectionDescription>
+          </ConsoleSection.Title>
+          <ConsoleSection.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               <Message message="admin.settings.royalties.description" />
             </Suspense>
-          </AdminSectionDescription>
-        </AdminSectionHeading>
-      </AdminSectionHeader>
+          </ConsoleSection.Description>
+        </ConsoleSection.Heading>
+      </ConsoleSection.Header>
       <ActionForm.Root
         action={updateRoyaltyCloseSettingsAction}
         className="grid gap-4 sm:max-w-lg"
@@ -63,7 +52,7 @@ export const RoyaltyCloseSettingsForm = ({
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
-          <RoyaltyCloseModeScope initialPolicy={initialPolicy}>
+          <RoyaltyCloseMode.Root initialPolicy={initialPolicy}>
             <Field.Root>
               <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -71,7 +60,7 @@ export const RoyaltyCloseSettingsForm = ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <RoyaltyCloseModeRadioGroup
+                <RoyaltyCloseMode.RadioGroup
                   items={[
                     {
                       description: (
@@ -113,7 +102,7 @@ export const RoyaltyCloseSettingsForm = ({
               </Field.Content>
             </Field.Root>
 
-            <RoyaltyAutoCloseDayField>
+            <RoyaltyCloseMode.AutoCloseDayField>
               <Field.Root>
                 <Field.Label required>
                   <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -121,7 +110,7 @@ export const RoyaltyCloseSettingsForm = ({
                   </Suspense>
                 </Field.Label>
                 <Field.Content>
-                  <RoyaltyAutoCloseDaySelect />
+                  <RoyaltyCloseMode.AutoCloseDaySelect />
                   <ActionForm.FieldError name="autoCloseDay" />
                   <Field.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
@@ -130,8 +119,8 @@ export const RoyaltyCloseSettingsForm = ({
                   </Field.Description>
                 </Field.Content>
               </Field.Root>
-            </RoyaltyAutoCloseDayField>
-          </RoyaltyCloseModeScope>
+            </RoyaltyCloseMode.AutoCloseDayField>
+          </RoyaltyCloseMode.Root>
         </ActionForm.Fieldset>
 
         {canEdit ? null : (
@@ -159,6 +148,6 @@ export const RoyaltyCloseSettingsForm = ({
           </ActionForm.Submit>
         </div>
       </ActionForm.Root>
-    </AdminSection>
+    </ConsoleSection.Root>
   );
 };

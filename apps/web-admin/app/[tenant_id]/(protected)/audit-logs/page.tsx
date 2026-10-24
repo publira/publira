@@ -1,3 +1,5 @@
+import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -8,15 +10,6 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  AdminPage,
-  AdminPageContent,
-  AdminPageDescription,
-  AdminPageHeader,
-  AdminPageHeading,
-  AdminPageTitle,
-  AdminSections,
-} from "#components/admin-page";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import {
@@ -68,7 +61,7 @@ export const generateStaticParams = () =>
 const allowedActionValues: ReadonlySet<string> = new Set(auditActions);
 
 const AuditLogsSkeleton = () => (
-  <AdminSections>
+  <ConsoleSection.Stack>
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
       <Skeleton className="h-16" />
       <Skeleton className="h-16" />
@@ -98,7 +91,7 @@ const AuditLogsSkeleton = () => (
         <Table.LoadingRow colSpan={4} rows={6} />
       </Table.Body>
     </Table.Root>
-  </AdminSections>
+  </ConsoleSection.Stack>
 );
 
 const AuditLogsContent = async ({
@@ -159,7 +152,7 @@ const AuditLogsContent = async ({
     : [];
 
   return (
-    <AdminSections>
+    <ConsoleSection.Stack>
       <section className="grid gap-3">
         <p className="max-w-3xl text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
@@ -337,29 +330,29 @@ const AuditLogsContent = async ({
           </SectionError.Root>
         )}
       </div>
-    </AdminSections>
+    </ConsoleSection.Stack>
   );
 };
 
 const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
-  <AdminPage>
+  <ConsolePage.Root>
     <Suspense fallback={<TenantRoleRouteSkeleton />}>
       <TenantAdminRoute>
-        <AdminPageHeader>
-          <AdminPageHeading>
-            <AdminPageTitle>
+        <ConsolePage.Header>
+          <ConsolePage.Heading>
+            <ConsolePage.Title>
               <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
                 <Message message="admin.audit.title" />
               </Suspense>
-            </AdminPageTitle>
-            <AdminPageDescription>
+            </ConsolePage.Title>
+            <ConsolePage.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
                 <Message message="admin.audit.page_description" />
               </Suspense>
-            </AdminPageDescription>
-          </AdminPageHeading>
-        </AdminPageHeader>
-        <AdminPageContent>
+            </ConsolePage.Description>
+          </ConsolePage.Heading>
+        </ConsolePage.Header>
+        <ConsolePage.Content>
           <SectionErrorBoundary
             title={
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
@@ -371,10 +364,10 @@ const AuditLogsPage = ({ searchParams }: AuditLogsPageProps) => (
               <AuditLogsContent searchParams={searchParams} />
             </Suspense>
           </SectionErrorBoundary>
-        </AdminPageContent>
+        </ConsolePage.Content>
       </TenantAdminRoute>
     </Suspense>
-  </AdminPage>
+  </ConsolePage.Root>
 );
 
 export default AuditLogsPage;

@@ -5,20 +5,14 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { useCallback, useOptimistic, useState, useTransition } from "react";
 
 import { ClientMessage } from "#components/client-message";
-import {
-  SortableList,
-  SortableRows,
-  useSortableRowIndex,
-  withItemMoved,
-} from "#components/sortable-list";
-import type { SortableRow } from "#components/sortable-list";
+import * as Sortable from "#components/sortable-list";
 
 import { reorderCreatorRolesAction } from "../_lib/actions";
 import { CREATOR_ROLE_LIST_TITLE_ID } from "../creator-role-types";
 
 interface CreatorRoleSortableListProps {
   /** One row per role, composed on the server, in priority order. */
-  rows: SortableRow[];
+  rows: Sortable.Row[];
   tenantId: string;
 }
 
@@ -48,7 +42,7 @@ export const CreatorRoleSortableList = ({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentCreatorRoleIds = optimisticCreatorRoleIds;
-      const nextCreatorRoleIds = withItemMoved(
+      const nextCreatorRoleIds = Sortable.withItemMoved(
         currentCreatorRoleIds,
         identity,
         event
@@ -82,17 +76,17 @@ export const CreatorRoleSortableList = ({
       {reorderErrorMessage ? (
         <FormMessage variant="destructive">{reorderErrorMessage}</FormMessage>
       ) : null}
-      <SortableList
+      <Sortable.Root
         aria-labelledby={CREATOR_ROLE_LIST_TITLE_ID}
         className="grid gap-3"
         onDragEnd={handleDragEnd}
       >
-        <SortableRows
+        <Sortable.Rows
           disabled={isPending}
           order={optimisticCreatorRoleIds}
           rows={rows}
         />
-      </SortableList>
+      </Sortable.Root>
     </div>
   );
 };
@@ -102,7 +96,7 @@ export const CreatorRoleSortableList = ({
  * a drop before the server has taken the new order.
  */
 export const CreatorRolePriority = () => {
-  const position = useSortableRowIndex() + 1;
+  const position = Sortable.useRowIndex() + 1;
 
   return (
     <ClientMessage
