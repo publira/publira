@@ -47,7 +47,7 @@ import {
  * in one takes its own throws, so only a failure outside every such boundary
  * replaces the whole console page.
  *
- * No `<main>` here: `ConsoleLayoutMain` already provides one.
+ * No `<main>` here: `ConsoleLayout.Main` already provides one.
  *
  * Each string sits behind its own `<Suspense>` because
  * `<ErrorBoundaryMessage>` suspends while it loads the catalog, and an error

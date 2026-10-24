@@ -1,11 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -39,16 +32,16 @@ const SignupPageHeader = async () => {
         pageTitle={t("storefront.auth.signup.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
 };
 
 const SignupFormSkeleton = () => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <div className="grid gap-2">
       <SkeletonLine className="h-4 w-20" />
       <Skeleton className="h-10 w-full" />
@@ -62,23 +55,23 @@ const SignupFormSkeleton = () => (
       <Skeleton className="h-10 w-full" />
     </div>
     <Skeleton className="h-9 w-24" />
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 const SignupPage = () => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <SignupPageHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
       <Suspense fallback={<SignupFormSkeleton />}>
         <SignupContent />
       </Suspense>
-    </AuthScreenMain>
-  </AuthScreen>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default SignupPage;

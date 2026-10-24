@@ -4,17 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  SiteLayoutUserMenu,
-  SiteLayoutUserMenuAccount,
-  SiteLayoutUserMenuAnnouncementsLink,
-  SiteLayoutUserMenuContent,
-  SiteLayoutUserMenuLogout,
-  SiteLayoutUserMenuLogoutButton,
-  SiteLayoutUserMenuMyPageLink,
-  SiteLayoutUserMenuSeparator,
-  SiteLayoutUserMenuTrigger,
-} from "./site-layout-user-menu";
+import * as SiteLayout from ".";
 
 vi.mock("next/link", () => ({
   default: ({
@@ -29,30 +19,30 @@ vi.mock("next/link", () => ({
 
 const renderMenu = (logoutAction = () => {}) =>
   render(
-    <SiteLayoutUserMenu>
-      <SiteLayoutUserMenuTrigger aria-label="Account menu" />
-      <SiteLayoutUserMenuContent>
-        <SiteLayoutUserMenuAccount>Reader One</SiteLayoutUserMenuAccount>
-        <SiteLayoutUserMenuSeparator />
-        <SiteLayoutUserMenuMyPageLink href="/en/my">
+    <SiteLayout.UserMenu>
+      <SiteLayout.UserMenuTrigger aria-label="Account menu" />
+      <SiteLayout.UserMenuContent>
+        <SiteLayout.UserMenuAccount>Reader One</SiteLayout.UserMenuAccount>
+        <SiteLayout.UserMenuSeparator />
+        <SiteLayout.UserMenuMyPageLink href="/en/my">
           My Page
-        </SiteLayoutUserMenuMyPageLink>
-        <SiteLayoutUserMenuAnnouncementsLink href="/en/announcements">
+        </SiteLayout.UserMenuMyPageLink>
+        <SiteLayout.UserMenuAnnouncementsLink href="/en/announcements">
           Announcements
-        </SiteLayoutUserMenuAnnouncementsLink>
-        <SiteLayoutUserMenuSeparator />
-        <SiteLayoutUserMenuLogout action={logoutAction}>
-          <SiteLayoutUserMenuLogoutButton>
+        </SiteLayout.UserMenuAnnouncementsLink>
+        <SiteLayout.UserMenuSeparator />
+        <SiteLayout.UserMenuLogout action={logoutAction}>
+          <SiteLayout.UserMenuLogoutButton>
             Sign out
-          </SiteLayoutUserMenuLogoutButton>
-        </SiteLayoutUserMenuLogout>
-      </SiteLayoutUserMenuContent>
-    </SiteLayoutUserMenu>
+          </SiteLayout.UserMenuLogoutButton>
+        </SiteLayout.UserMenuLogout>
+      </SiteLayout.UserMenuContent>
+    </SiteLayout.UserMenu>
   );
 
 afterEach(cleanup);
 
-describe("SiteLayoutUserMenu slots", () => {
+describe("SiteLayout.UserMenu slots", () => {
   it("opening it shows the my-page, announcements, and sign-out links", () => {
     renderMenu();
     fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
@@ -99,11 +89,11 @@ describe("SiteLayoutUserMenu slots", () => {
 
   it("the trigger shows the account's own icon in place of the glyph", () => {
     render(
-      <SiteLayoutUserMenu>
-        <SiteLayoutUserMenuTrigger aria-label="Account menu">
+      <SiteLayout.UserMenu>
+        <SiteLayout.UserMenuTrigger aria-label="Account menu">
           <span data-account-icon="reader-one" />
-        </SiteLayoutUserMenuTrigger>
-      </SiteLayoutUserMenu>
+        </SiteLayout.UserMenuTrigger>
+      </SiteLayout.UserMenu>
     );
 
     const trigger = screen.getByRole("button", { name: "Account menu" });

@@ -4,23 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SiteLayout, SiteLayoutHeader } from "./site-layout";
-import {
-  SiteLayoutMobileNavigation,
-  SiteLayoutMobileNavigationActions,
-  SiteLayoutMobileNavigationCloseButton,
-  SiteLayoutMobileNavigationDisclosure,
-  SiteLayoutMobileNavigationDisclosurePanel,
-  SiteLayoutMobileNavigationDisclosureTrigger,
-  SiteLayoutMobileNavigationHeader,
-  SiteLayoutMobileNavigationLink,
-  SiteLayoutMobileNavigationLinks,
-  SiteLayoutMobileNavigationOpenButton,
-  SiteLayoutMobileNavigationPrimaryAction,
-  SiteLayoutMobileNavigationSearch,
-  SiteLayoutMobileNavigationSecondaryAction,
-  SiteLayoutMobileNavigationTitle,
-} from "./site-layout-client";
+import * as SiteLayout from ".";
 
 vi.mock("next/link", () => ({
   default: ({
@@ -37,56 +21,56 @@ afterEach(cleanup);
 
 const renderHeader = () =>
   render(
-    <SiteLayout>
-      <SiteLayoutHeader>
-        <SiteLayoutMobileNavigation>
-          <SiteLayoutMobileNavigationHeader>
-            <SiteLayoutMobileNavigationTitle>
+    <SiteLayout.Root>
+      <SiteLayout.Header>
+        <SiteLayout.MobileNavigation>
+          <SiteLayout.MobileNavigationHeader>
+            <SiteLayout.MobileNavigationTitle>
               Menu
-            </SiteLayoutMobileNavigationTitle>
-            <SiteLayoutMobileNavigationCloseButton aria-label="Close navigation" />
-          </SiteLayoutMobileNavigationHeader>
-          <SiteLayoutMobileNavigationSearch>
+            </SiteLayout.MobileNavigationTitle>
+            <SiteLayout.MobileNavigationCloseButton aria-label="Close navigation" />
+          </SiteLayout.MobileNavigationHeader>
+          <SiteLayout.MobileNavigationSearch>
             <form action="/search">
               <label htmlFor="q">Search works</label>
               <input id="q" name="q" type="search" />
               <button type="submit">Search</button>
             </form>
-          </SiteLayoutMobileNavigationSearch>
-          <SiteLayoutMobileNavigationLinks>
-            <SiteLayoutMobileNavigationLink href="/series">
+          </SiteLayout.MobileNavigationSearch>
+          <SiteLayout.MobileNavigationLinks>
+            <SiteLayout.MobileNavigationLink href="/series">
               Series
-            </SiteLayoutMobileNavigationLink>
-          </SiteLayoutMobileNavigationLinks>
-          <SiteLayoutMobileNavigationDisclosure>
-            <SiteLayoutMobileNavigationDisclosureTrigger>
+            </SiteLayout.MobileNavigationLink>
+          </SiteLayout.MobileNavigationLinks>
+          <SiteLayout.MobileNavigationDisclosure>
+            <SiteLayout.MobileNavigationDisclosureTrigger>
               Language
-            </SiteLayoutMobileNavigationDisclosureTrigger>
-            <SiteLayoutMobileNavigationDisclosurePanel>
-              <SiteLayoutMobileNavigationLink
+            </SiteLayout.MobileNavigationDisclosureTrigger>
+            <SiteLayout.MobileNavigationDisclosurePanel>
+              <SiteLayout.MobileNavigationLink
                 current
                 href="/en/series"
                 lang="en"
               >
                 English
-              </SiteLayoutMobileNavigationLink>
-              <SiteLayoutMobileNavigationLink href="/ja/series" lang="ja">
+              </SiteLayout.MobileNavigationLink>
+              <SiteLayout.MobileNavigationLink href="/ja/series" lang="ja">
                 Japanese
-              </SiteLayoutMobileNavigationLink>
-            </SiteLayoutMobileNavigationDisclosurePanel>
-          </SiteLayoutMobileNavigationDisclosure>
-          <SiteLayoutMobileNavigationActions>
-            <SiteLayoutMobileNavigationSecondaryAction href="/login">
+              </SiteLayout.MobileNavigationLink>
+            </SiteLayout.MobileNavigationDisclosurePanel>
+          </SiteLayout.MobileNavigationDisclosure>
+          <SiteLayout.MobileNavigationActions>
+            <SiteLayout.MobileNavigationSecondaryAction href="/login">
               Sign in
-            </SiteLayoutMobileNavigationSecondaryAction>
-            <SiteLayoutMobileNavigationPrimaryAction href="/signup">
+            </SiteLayout.MobileNavigationSecondaryAction>
+            <SiteLayout.MobileNavigationPrimaryAction href="/signup">
               Get started
-            </SiteLayoutMobileNavigationPrimaryAction>
-          </SiteLayoutMobileNavigationActions>
-        </SiteLayoutMobileNavigation>
-        <SiteLayoutMobileNavigationOpenButton aria-label="Open navigation" />
-      </SiteLayoutHeader>
-    </SiteLayout>
+            </SiteLayout.MobileNavigationPrimaryAction>
+          </SiteLayout.MobileNavigationActions>
+        </SiteLayout.MobileNavigation>
+        <SiteLayout.MobileNavigationOpenButton aria-label="Open navigation" />
+      </SiteLayout.Header>
+    </SiteLayout.Root>
   );
 
 const openNavigation = () => {

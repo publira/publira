@@ -1,16 +1,18 @@
 export {
-  ConsolePage as PlatformPage,
-  ConsolePageActions as PlatformPageActions,
-  ConsolePageContent as PlatformPageContent,
-  ConsolePageDescription as PlatformPageDescription,
-  ConsolePageHeader as PlatformPageHeader,
-  ConsolePageHeading as PlatformPageHeading,
-  ConsolePageTitle as PlatformPageTitle,
-  ConsoleSection as PlatformSection,
-  ConsoleSectionActions as PlatformSectionActions,
-  ConsoleSectionDescription as PlatformSectionDescription,
-  ConsoleSectionHeader as PlatformSectionHeader,
-  ConsoleSectionHeading as PlatformSectionHeading,
-  ConsoleSections as PlatformSections,
-  ConsoleSectionTitle as PlatformSectionTitle,
-} from "@publira/layouts/admin";
+  Actions as PlatformPageActions,
+  Content as PlatformPageContent,
+  Description as PlatformPageDescription,
+  Header as PlatformPageHeader,
+  Heading as PlatformPageHeading,
+  Root as PlatformPage,
+  Title as PlatformPageTitle,
+} from "@publira/layouts/admin/console-page";
+export {
+  Actions as PlatformSectionActions,
+  Description as PlatformSectionDescription,
+  Header as PlatformSectionHeader,
+  Heading as PlatformSectionHeading,
+  Root as PlatformSection,
+  Stack as PlatformSections,
+  Title as PlatformSectionTitle,
+} from "@publira/layouts/admin/console-section";

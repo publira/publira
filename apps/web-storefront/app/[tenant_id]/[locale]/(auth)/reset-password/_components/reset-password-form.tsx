@@ -1,4 +1,4 @@
-import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -14,7 +14,7 @@ import { requestPasswordResetAction } from "../_lib/actions";
 
 export const ResetPasswordForm = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <ActionForm.Root
         action={requestPasswordResetAction}
         className="grid gap-4"
@@ -51,9 +51,9 @@ export const ResetPasswordForm = () => (
           </ActionForm.Pending>
         </ActionForm.Submit>
       </ActionForm.Root>
-    </AuthScreenBody>
+    </AuthScreen.Body>
 
-    <AuthScreenFooter>
+    <AuthScreen.Footer>
       <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
           <LocaleLink
@@ -64,6 +64,6 @@ export const ResetPasswordForm = () => (
           </LocaleLink>
         </Suspense>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );

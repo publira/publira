@@ -1,13 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenTagline,
-  AuthScreenText,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { Metadata } from "next";
@@ -45,12 +36,12 @@ const VerificationOutcome = ({
   link: ReactNode;
 }) => (
   <>
-    <AuthScreenBody>
-      <AuthScreenText>{children}</AuthScreenText>
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    <AuthScreen.Body>
+      <AuthScreen.Text>{children}</AuthScreen.Text>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <p>{link}</p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -135,13 +126,13 @@ const VerificationResult = async ({ token }: { token: string }) => {
 
 const VerificationFallback = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <SkeletonLine className="h-4 w-full" />
       <SkeletonLine className="h-4 w-3/4" />
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <SkeletonLine className="h-4 w-28" />
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -160,9 +151,9 @@ const VerifyHeader = async () => {
         pageTitle={t("storefront.auth.verify.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
@@ -184,19 +175,19 @@ const VerifyPage = ({
   params: Promise<{ tenant_id: string }>;
   searchParams: Promise<{ token?: string | string[] }>;
 }) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <VerifyHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
       <Suspense fallback={<VerificationFallback />}>
         <VerificationContent searchParams={searchParams} />
       </Suspense>
-    </AuthScreenMain>
-  </AuthScreen>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default VerifyPage;

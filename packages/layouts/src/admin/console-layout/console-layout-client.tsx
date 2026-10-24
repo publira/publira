@@ -15,7 +15,7 @@ import {
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { isCurrentPath, toConsolePathname } from "../navigation";
+import { isCurrentPath, toConsolePathname } from "../../navigation";
 
 interface ConsoleMobileNavigationContextValue {
   close: () => void;

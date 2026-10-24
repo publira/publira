@@ -23,7 +23,7 @@ import { LocaleLink } from "#components/locale-link";
  * `SectionErrorBoundary` each section is wrapped in. A failure that
  * takes the whole route down is what reaches here.
  *
- * No `<main>` here: `SiteLayoutMain` already provides one.
+ * No `<main>` here: `SiteLayout.Main` already provides one.
  *
  * The root layout places `<StorefrontMessagesProvider>` above this boundary, so
  * the copy is there on the first render and needs no `<Suspense>`.

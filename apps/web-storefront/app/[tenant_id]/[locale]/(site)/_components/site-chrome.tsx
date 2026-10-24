@@ -1,46 +1,5 @@
 import { UserIcon } from "@publira/icons";
-import {
-  SiteLayout,
-  SiteLayoutActions,
-  SiteLayoutBrand,
-  SiteLayoutBrandSkeleton,
-  SiteLayoutFooter,
-  SiteLayoutFooterContent,
-  SiteLayoutFooterCopyright,
-  SiteLayoutFooterLink,
-  SiteLayoutFooterLinks,
-  SiteLayoutFooterNote,
-  SiteLayoutHeader,
-  SiteLayoutHeaderActions,
-  SiteLayoutHeaderActionsSkeleton,
-  SiteLayoutHeaderSearch,
-  SiteLayoutHeaderWideControls,
-  SiteLayoutMain,
-  SiteLayoutMobileNavigation,
-  SiteLayoutMobileNavigationActions,
-  SiteLayoutMobileNavigationCloseButton,
-  SiteLayoutMobileNavigationHeader,
-  SiteLayoutMobileNavigationLink,
-  SiteLayoutMobileNavigationLinks,
-  SiteLayoutMobileNavigationOpenButton,
-  SiteLayoutMobileNavigationPrimaryAction,
-  SiteLayoutMobileNavigationSearch,
-  SiteLayoutMobileNavigationSecondaryAction,
-  SiteLayoutMobileNavigationTitle,
-  SiteLayoutNav,
-  SiteLayoutNavLink,
-  SiteLayoutNavSkeleton,
-  SiteLayoutPrimaryAction,
-  SiteLayoutSecondaryAction,
-  SiteLayoutUserMenu,
-  SiteLayoutUserMenuAccount,
-  SiteLayoutUserMenuAnnouncementsLink,
-  SiteLayoutUserMenuContent,
-  SiteLayoutUserMenuLogoutButton,
-  SiteLayoutUserMenuMyPageLink,
-  SiteLayoutUserMenuSeparator,
-  SiteLayoutUserMenuTrigger,
-} from "@publira/layouts";
+import * as SiteLayout from "@publira/layouts/site-layout";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
@@ -220,10 +179,10 @@ const AccountMenuName = async () => {
 
   return (
     <>
-      <SiteLayoutUserMenuAccount>
+      <SiteLayout.UserMenuAccount>
         {me.name.trim() || me.publicId}
-      </SiteLayoutUserMenuAccount>
-      <SiteLayoutUserMenuSeparator />
+      </SiteLayout.UserMenuAccount>
+      <SiteLayout.UserMenuSeparator />
     </>
   );
 };
@@ -237,7 +196,7 @@ const AccountMenuTrigger = async () => {
   const [t, me] = await Promise.all([getMessages(), getMyAccount(tenantId)]);
 
   return (
-    <SiteLayoutUserMenuTrigger aria-label={t("storefront.nav.account_menu")}>
+    <SiteLayout.UserMenuTrigger aria-label={t("storefront.nav.account_menu")}>
       {/* The trigger's label names it, so the image itself says nothing. */}
       <AccountIcon
         alt=""
@@ -246,7 +205,7 @@ const AccountMenuTrigger = async () => {
         icon={me?.icon ?? null}
         size={44}
       />
-    </SiteLayoutUserMenuTrigger>
+    </SiteLayout.UserMenuTrigger>
   );
 };
 
@@ -267,22 +226,22 @@ const HeaderActions = async () => {
   // the menu button. The bell and the account menu are single icons and stay.
   if (!hasSession) {
     return (
-      <SiteLayoutHeaderWideControls>
-        <SiteLayoutSecondaryAction
+      <SiteLayout.HeaderWideControls>
+        <SiteLayout.SecondaryAction
           href={withLocalePrefix(locale, defaultLocale, "/login")}
         >
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="storefront.nav.login" />
           </Suspense>
-        </SiteLayoutSecondaryAction>
-        <SiteLayoutPrimaryAction
+        </SiteLayout.SecondaryAction>
+        <SiteLayout.PrimaryAction
           href={withLocalePrefix(locale, defaultLocale, "/signup")}
         >
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.nav.signup" />
           </Suspense>
-        </SiteLayoutPrimaryAction>
-      </SiteLayoutHeaderWideControls>
+        </SiteLayout.PrimaryAction>
+      </SiteLayout.HeaderWideControls>
     );
   }
 
@@ -293,8 +252,8 @@ const HeaderActions = async () => {
           <StorefrontNotificationBell moreHref={moreHref} />
         </Suspense>
       </NotificationBellErrorBoundary>
-      <SiteLayoutActions>
-        <SiteLayoutUserMenu>
+      <SiteLayout.Actions>
+        <SiteLayout.UserMenu>
           <Suspense
             fallback={
               <Skeleton className="size-9 rounded-control pointer-coarse:size-11" />
@@ -302,41 +261,41 @@ const HeaderActions = async () => {
           >
             <AccountMenuTrigger />
           </Suspense>
-          <SiteLayoutUserMenuContent>
+          <SiteLayout.UserMenuContent>
             <Suspense
               fallback={<SkeletonLine className="mx-3 my-2 h-4 w-24" />}
             >
               <AccountMenuName />
             </Suspense>
-            <SiteLayoutUserMenuMyPageLink
+            <SiteLayout.UserMenuMyPageLink
               href={withLocalePrefix(locale, defaultLocale, "/my")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="storefront.nav.my_page" />
               </Suspense>
-            </SiteLayoutUserMenuMyPageLink>
-            <SiteLayoutUserMenuAnnouncementsLink
+            </SiteLayout.UserMenuMyPageLink>
+            <SiteLayout.UserMenuAnnouncementsLink
               href={withLocalePrefix(locale, defaultLocale, "/announcements")}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="storefront.nav.announcements" />
               </Suspense>
-            </SiteLayoutUserMenuAnnouncementsLink>
-            <SiteLayoutUserMenuSeparator />
+            </SiteLayout.UserMenuAnnouncementsLink>
+            <SiteLayout.UserMenuSeparator />
             <SignOutForm
               locale={locale}
               signOut={logoutAction.bind(null, tenantId, locale)}
               tenantId={tenantId}
             >
-              <SiteLayoutUserMenuLogoutButton>
+              <SiteLayout.UserMenuLogoutButton>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="storefront.nav.logout" />
                 </Suspense>
-              </SiteLayoutUserMenuLogoutButton>
+              </SiteLayout.UserMenuLogoutButton>
             </SignOutForm>
-          </SiteLayoutUserMenuContent>
-        </SiteLayoutUserMenu>
-      </SiteLayoutActions>
+          </SiteLayout.UserMenuContent>
+        </SiteLayout.UserMenu>
+      </SiteLayout.Actions>
     </div>
   );
 };
@@ -354,21 +313,21 @@ const TenantFooterLinks = async () => {
   ]);
 
   return (
-    <SiteLayoutFooterLinks aria-label={t("storefront.nav.footer_links")}>
+    <SiteLayout.FooterLinks aria-label={t("storefront.nav.footer_links")}>
       {links.map((link) => (
-        <SiteLayoutFooterLink
+        <SiteLayout.FooterLink
           href={withLocalePrefix(locale, defaultLocale, link.href)}
           key={link.href}
         >
           {link.label}
-        </SiteLayoutFooterLink>
+        </SiteLayout.FooterLink>
       ))}
-      <SiteLayoutFooterLink
+      <SiteLayout.FooterLink
         href={withLocalePrefix(locale, defaultLocale, "/contact")}
       >
         {t("storefront.nav.contact")}
-      </SiteLayoutFooterLink>
-    </SiteLayoutFooterLinks>
+      </SiteLayout.FooterLink>
+    </SiteLayout.FooterLinks>
   );
 };
 
@@ -380,7 +339,7 @@ const TenantFooterLinks = async () => {
  *
  * Whether the prefix is there at all depends on the tenant's stored default, so
  * the row is resolved rather than static and stands behind
- * `<SiteLayoutNavSkeleton>`. Each label keeps a boundary of its own inside it:
+ * `<SiteLayout.NavSkeleton>`. Each label keeps a boundary of its own inside it:
  * the catalog is a separate wait, and one label is not worth holding the rest.
  */
 const SiteNav = async () => {
@@ -390,22 +349,22 @@ const SiteNav = async () => {
   ]);
 
   return (
-    <SiteLayoutNav>
-      <SiteLayoutNavLink
+    <SiteLayout.Nav>
+      <SiteLayout.NavLink
         href={withLocalePrefix(locale, defaultLocale, "/labels")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="storefront.nav.labels" />
         </Suspense>
-      </SiteLayoutNavLink>
-      <SiteLayoutNavLink
+      </SiteLayout.NavLink>
+      <SiteLayout.NavLink
         href={withLocalePrefix(locale, defaultLocale, "/genres")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
           <Message message="storefront.nav.genres" />
         </Suspense>
-      </SiteLayoutNavLink>
-    </SiteLayoutNav>
+      </SiteLayout.NavLink>
+    </SiteLayout.Nav>
   );
 };
 
@@ -435,7 +394,7 @@ const MobileNavigationCloseButton = async () => {
   const t = await getMessages();
 
   return (
-    <SiteLayoutMobileNavigationCloseButton
+    <SiteLayout.MobileNavigationCloseButton
       aria-label={t("storefront.nav.navigation_close")}
     />
   );
@@ -446,7 +405,7 @@ const MobileNavigationOpenButton = async () => {
   const t = await getMessages();
 
   return (
-    <SiteLayoutMobileNavigationOpenButton
+    <SiteLayout.MobileNavigationOpenButton
       aria-label={t("storefront.nav.navigation_open")}
     />
   );
@@ -469,22 +428,22 @@ const MobileNavigationAccountActions = async () => {
   }
 
   return (
-    <SiteLayoutMobileNavigationActions>
-      <SiteLayoutMobileNavigationSecondaryAction
+    <SiteLayout.MobileNavigationActions>
+      <SiteLayout.MobileNavigationSecondaryAction
         href={withLocalePrefix(locale, defaultLocale, "/login")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="storefront.nav.login" />
         </Suspense>
-      </SiteLayoutMobileNavigationSecondaryAction>
-      <SiteLayoutMobileNavigationPrimaryAction
+      </SiteLayout.MobileNavigationSecondaryAction>
+      <SiteLayout.MobileNavigationPrimaryAction
         href={withLocalePrefix(locale, defaultLocale, "/signup")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.nav.signup" />
         </Suspense>
-      </SiteLayoutMobileNavigationPrimaryAction>
-    </SiteLayoutMobileNavigationActions>
+      </SiteLayout.MobileNavigationPrimaryAction>
+    </SiteLayout.MobileNavigationActions>
   );
 };
 
@@ -500,22 +459,22 @@ const MobileNavigationLinks = async () => {
   ]);
 
   return (
-    <SiteLayoutMobileNavigationLinks>
-      <SiteLayoutMobileNavigationLink
+    <SiteLayout.MobileNavigationLinks>
+      <SiteLayout.MobileNavigationLink
         href={withLocalePrefix(locale, defaultLocale, "/labels")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="storefront.nav.labels" />
         </Suspense>
-      </SiteLayoutMobileNavigationLink>
-      <SiteLayoutMobileNavigationLink
+      </SiteLayout.MobileNavigationLink>
+      <SiteLayout.MobileNavigationLink
         href={withLocalePrefix(locale, defaultLocale, "/genres")}
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
           <Message message="storefront.nav.genres" />
         </Suspense>
-      </SiteLayoutMobileNavigationLink>
-    </SiteLayoutMobileNavigationLinks>
+      </SiteLayout.MobileNavigationLink>
+    </SiteLayout.MobileNavigationLinks>
   );
 };
 
@@ -534,13 +493,13 @@ const MobileNavigationLinks = async () => {
  */
 const SiteMobileNavigation = () => (
   <>
-    <SiteLayoutMobileNavigation>
-      <SiteLayoutMobileNavigationHeader>
-        <SiteLayoutMobileNavigationTitle>
+    <SiteLayout.MobileNavigation>
+      <SiteLayout.MobileNavigationHeader>
+        <SiteLayout.MobileNavigationTitle>
           <Suspense fallback={<SkeletonLine className="h-5 w-16" />}>
             <Message message="storefront.nav.menu" />
           </Suspense>
-        </SiteLayoutMobileNavigationTitle>
+        </SiteLayout.MobileNavigationTitle>
         <Suspense
           fallback={
             <Skeleton className="size-9 rounded-control pointer-coarse:size-11" />
@@ -548,12 +507,12 @@ const SiteMobileNavigation = () => (
         >
           <MobileNavigationCloseButton />
         </Suspense>
-      </SiteLayoutMobileNavigationHeader>
-      <SiteLayoutMobileNavigationSearch>
+      </SiteLayout.MobileNavigationHeader>
+      <SiteLayout.MobileNavigationSearch>
         <Suspense fallback={<CatalogSearchFormSkeleton />}>
           <CatalogSearchForm id="catalog-search-menu" />
         </Suspense>
-      </SiteLayoutMobileNavigationSearch>
+      </SiteLayout.MobileNavigationSearch>
       <Suspense fallback={<MobileNavigationLinksSkeleton />}>
         <MobileNavigationLinks />
       </Suspense>
@@ -563,7 +522,7 @@ const SiteMobileNavigation = () => (
       <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
         <MobileNavigationAccountActions />
       </Suspense>
-    </SiteLayoutMobileNavigation>
+    </SiteLayout.MobileNavigation>
     <Suspense fallback={<MobileNavigationOpenButtonSkeleton />}>
       <MobileNavigationOpenButton />
     </Suspense>
@@ -598,7 +557,7 @@ const TenantFooterNote = async () => {
   const { siteDescription } = await getTenantSiteCopy(tenantId, locale);
 
   return siteDescription ? (
-    <SiteLayoutFooterNote>{siteDescription}</SiteLayoutFooterNote>
+    <SiteLayout.FooterNote>{siteDescription}</SiteLayout.FooterNote>
   ) : null;
 };
 
@@ -607,7 +566,7 @@ const TenantFooterCopyright = async () => {
   const { copyrightText } = await getTenantSiteCopy(tenantId, locale);
 
   return copyrightText ? (
-    <SiteLayoutFooterCopyright>{copyrightText}</SiteLayoutFooterCopyright>
+    <SiteLayout.FooterCopyright>{copyrightText}</SiteLayout.FooterCopyright>
   ) : null;
 };
 
@@ -623,9 +582,9 @@ const TenantBrandLink = async () => {
   ]);
 
   return (
-    <SiteLayoutBrand href={withLocalePrefix(locale, defaultLocale, "/")}>
+    <SiteLayout.Brand href={withLocalePrefix(locale, defaultLocale, "/")}>
       <TenantBrand />
-    </SiteLayoutBrand>
+    </SiteLayout.Brand>
   );
 };
 
@@ -642,7 +601,7 @@ const TenantBrandLink = async () => {
  * section already has.
  */
 export const SiteChrome = ({ children }: { children: ReactNode }) => (
-  <SiteLayout>
+  <SiteLayout.Root>
     {/* Draws nothing; it only sends a reader who owes an agreement to give it. */}
     <Suspense fallback={null}>
       <LegalPageAgreementGate />
@@ -659,55 +618,55 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
       Over a wide episode viewer the header leaves the flow and lies across its
       top, sliding away while the viewer marks its controls hidden.
     */}
-    <SiteLayoutHeader className="transition-[translate,visibility] duration-state ease-state group-has-data-wide-viewer/document:absolute group-has-data-wide-viewer/document:inset-x-0 group-has-data-wide-viewer/document:top-0 group-has-data-wide-viewer/document:z-30 group-has-data-[wide-viewer=retracted]/document:invisible group-has-data-[wide-viewer=retracted]/document:-translate-y-full">
-      <Suspense fallback={<SiteLayoutBrandSkeleton />}>
+    <SiteLayout.Header className="transition-[translate,visibility] duration-state ease-state group-has-data-wide-viewer/document:absolute group-has-data-wide-viewer/document:inset-x-0 group-has-data-wide-viewer/document:top-0 group-has-data-wide-viewer/document:z-30 group-has-data-[wide-viewer=retracted]/document:invisible group-has-data-[wide-viewer=retracted]/document:-translate-y-full">
+      <Suspense fallback={<SiteLayout.BrandSkeleton />}>
         <TenantBrandLink />
       </Suspense>
-      <Suspense fallback={<SiteLayoutNavSkeleton />}>
+      <Suspense fallback={<SiteLayout.NavSkeleton />}>
         <SiteNav />
       </Suspense>
-      <SiteLayoutHeaderSearch>
+      <SiteLayout.HeaderSearch>
         <Suspense fallback={<CatalogSearchFormSkeleton />}>
           <CatalogSearchForm id="catalog-search-header" />
         </Suspense>
-      </SiteLayoutHeaderSearch>
-      <SiteLayoutHeaderWideControls>
+      </SiteLayout.HeaderSearch>
+      <SiteLayout.HeaderWideControls>
         <Suspense fallback={<LocaleSwitcherSkeleton />}>
           <LocaleSwitcher />
         </Suspense>
-      </SiteLayoutHeaderWideControls>
-      <SiteLayoutHeaderActions>
-        <Suspense fallback={<SiteLayoutHeaderActionsSkeleton />}>
+      </SiteLayout.HeaderWideControls>
+      <SiteLayout.HeaderActions>
+        <Suspense fallback={<SiteLayout.HeaderActionsSkeleton />}>
           <HeaderActions />
         </Suspense>
-      </SiteLayoutHeaderActions>
+      </SiteLayout.HeaderActions>
       <SiteMobileNavigation />
-    </SiteLayoutHeader>
-    <SiteLayoutMain>{children}</SiteLayoutMain>
-    <SiteLayoutFooter>
+    </SiteLayout.Header>
+    <SiteLayout.Main>{children}</SiteLayout.Main>
+    <SiteLayout.Footer>
       <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
         <TenantFooterLinks />
       </Suspense>
-      <SiteLayoutFooterContent>
+      <SiteLayout.FooterContent>
         <Suspense
           fallback={
-            <SiteLayoutFooterNote>
+            <SiteLayout.FooterNote>
               <SkeletonLine className="h-4 w-56" />
-            </SiteLayoutFooterNote>
+            </SiteLayout.FooterNote>
           }
         >
           <TenantFooterNote />
         </Suspense>
         <Suspense
           fallback={
-            <SiteLayoutFooterCopyright>
+            <SiteLayout.FooterCopyright>
               <SkeletonLine className="h-4 w-48" />
-            </SiteLayoutFooterCopyright>
+            </SiteLayout.FooterCopyright>
           }
         >
           <TenantFooterCopyright />
         </Suspense>
-      </SiteLayoutFooterContent>
-    </SiteLayoutFooter>
-  </SiteLayout>
+      </SiteLayout.FooterContent>
+    </SiteLayout.Footer>
+  </SiteLayout.Root>
 );

@@ -1,13 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -33,11 +24,11 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const MfaPageFallback = () => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <SkeletonLine className="h-4 w-full" />
     <Skeleton className="h-16 w-full" />
     <Skeleton className="h-9 w-32" />
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 /**
@@ -77,16 +68,16 @@ const MfaPageContent = async () => {
 };
 
 const MfaPage = () => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>Publira</AuthScreenTitle>
-        <AuthScreenTagline>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>Publira</AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.auth.mfa.title" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       {/* The passkey forms word what the browser refused on the client. */}
       <AdminLocaleProvider>
@@ -94,12 +85,12 @@ const MfaPage = () => (
           <MfaPageContent />
         </Suspense>
       </AdminLocaleProvider>
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default MfaPage;

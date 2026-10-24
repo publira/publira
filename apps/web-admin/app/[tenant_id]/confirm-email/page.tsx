@@ -1,14 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -101,23 +91,23 @@ const ConfirmEmailHelp = ({ outcome }: { outcome: ConfirmEmailOutcome }) => {
 };
 
 const ConfirmationBody = ({ outcome }: { outcome: ConfirmEmailOutcome }) => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <FormMessage variant={isGoodOutcome(outcome) ? "success" : "destructive"}>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <ConfirmEmailHeadline outcome={outcome} />
       </Suspense>
     </FormMessage>
-    <AuthScreenNote>
+    <AuthScreen.Note>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <ConfirmEmailHelp outcome={outcome} />
       </Suspense>
-    </AuthScreenNote>
+    </AuthScreen.Note>
     <LinkButton className="justify-self-start" render={<Link href="/login" />}>
       <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
         <Message message="admin.auth.confirm_email.to_login" />
       </Suspense>
     </LinkButton>
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 const ConfirmationResult = async ({ token }: { token: string }) => {
@@ -148,11 +138,11 @@ const ConfirmationResult = async ({ token }: { token: string }) => {
 };
 
 const ConfirmEmailFallback = () => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <Skeleton className="h-5 w-full" />
     <Skeleton className="h-5 w-full" />
     <Skeleton className="h-9 w-32" />
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 const ConfirmEmailPageContent = async ({
@@ -164,30 +154,30 @@ const ConfirmEmailPageContent = async ({
 };
 
 const ConfirmEmailPage = ({ params, searchParams }: ConfirmEmailPageProps) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.auth.confirm_email.title" />
           </Suspense>
-        </AuthScreenTitle>
-        <AuthScreenTagline>
+        </AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
             <Message message="admin.auth.confirm_email.processing" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       <Suspense fallback={<ConfirmEmailFallback />}>
         <ConfirmEmailPageContent params={params} searchParams={searchParams} />
       </Suspense>
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default ConfirmEmailPage;

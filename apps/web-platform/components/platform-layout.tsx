@@ -1,33 +1,7 @@
-import {
-  ConsoleHeader,
-  ConsoleHeaderActions,
-  ConsoleHeaderContext,
-  ConsoleHeaderLabel,
-  ConsoleHeaderUser,
-  ConsoleHeaderUserSkeleton,
-  ConsoleHeaderText,
-  ConsoleLayout,
-  ConsoleLayoutContent,
-  ConsoleLayoutMain,
-  ConsoleMobileNavigation,
-  ConsoleMobileNavigationCloseButton,
-  ConsoleMobileNavigationOpenButton,
-  ConsoleSidebar,
-  ConsoleSidebarBrand,
-  ConsoleSidebarBrandName,
-  ConsoleSidebarContext,
-  ConsoleUserMenuAccountLink,
-  ConsoleUserMenuContent,
-  ConsoleUserMenuIdentity,
-  ConsoleUserMenuInitial,
-  ConsoleUserMenuLogout,
-  ConsoleUserMenuLogoutButton,
-  ConsoleUserMenuName,
-  ConsoleUserMenuPublicId,
-  ConsoleUserMenuRole,
-  ConsoleUserMenuSeparator,
-  ConsoleUserMenuTrigger,
-} from "@publira/layouts/admin";
+import * as ConsoleHeader from "@publira/layouts/admin/console-header";
+import * as ConsoleLayout from "@publira/layouts/admin/console-layout";
+import * as ConsoleSidebar from "@publira/layouts/admin/console-sidebar";
+import * as ConsoleUserMenu from "@publira/layouts/admin/console-user-menu";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -82,39 +56,41 @@ export const PlatformUser = async () => {
   const t = await getMessagesFor(locale);
 
   return (
-    <ConsoleHeaderUser>
-      <ConsoleUserMenuTrigger
+    <ConsoleUserMenu.Root>
+      <ConsoleUserMenu.Trigger
         aria-label={t("platform.shell.account_menu", {
           name: result.operator.name,
         })}
       >
-        <ConsoleUserMenuInitial>{result.operator.name}</ConsoleUserMenuInitial>
-      </ConsoleUserMenuTrigger>
-      <ConsoleUserMenuContent>
-        <ConsoleUserMenuIdentity>
-          <ConsoleUserMenuName>{result.operator.name}</ConsoleUserMenuName>
-          <ConsoleUserMenuPublicId>
+        <ConsoleUserMenu.Initial>
+          {result.operator.name}
+        </ConsoleUserMenu.Initial>
+      </ConsoleUserMenu.Trigger>
+      <ConsoleUserMenu.Content>
+        <ConsoleUserMenu.Identity>
+          <ConsoleUserMenu.Name>{result.operator.name}</ConsoleUserMenu.Name>
+          <ConsoleUserMenu.PublicId>
             {result.operator.publicId}
-          </ConsoleUserMenuPublicId>
-          <ConsoleUserMenuRole>
+          </ConsoleUserMenu.PublicId>
+          <ConsoleUserMenu.Role>
             {await getOperatorRoleLabel(result.operator.role, locale)}
-          </ConsoleUserMenuRole>
-        </ConsoleUserMenuIdentity>
-        <ConsoleUserMenuSeparator />
-        <ConsoleUserMenuAccountLink href="/account">
+          </ConsoleUserMenu.Role>
+        </ConsoleUserMenu.Identity>
+        <ConsoleUserMenu.Separator />
+        <ConsoleUserMenu.AccountLink href="/account">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.shell.account_settings" />
           </Suspense>
-        </ConsoleUserMenuAccountLink>
-        <ConsoleUserMenuLogout action={logoutAction}>
-          <ConsoleUserMenuLogoutButton>
+        </ConsoleUserMenu.AccountLink>
+        <ConsoleUserMenu.Logout action={logoutAction}>
+          <ConsoleUserMenu.LogoutButton>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.shell.logout" />
             </Suspense>
-          </ConsoleUserMenuLogoutButton>
-        </ConsoleUserMenuLogout>
-      </ConsoleUserMenuContent>
-    </ConsoleHeaderUser>
+          </ConsoleUserMenu.LogoutButton>
+        </ConsoleUserMenu.Logout>
+      </ConsoleUserMenu.Content>
+    </ConsoleUserMenu.Root>
   );
 };
 
@@ -215,12 +191,12 @@ const PlatformMobileNavigation = async () => {
 
   return (
     <>
-      <ConsoleMobileNavigation>
-        <ConsoleMobileNavigationCloseButton
+      <ConsoleLayout.MobileNavigation>
+        <ConsoleLayout.MobileNavigationCloseButton
           aria-label={t("platform.shell.navigation_close")}
         />
-      </ConsoleMobileNavigation>
-      <ConsoleMobileNavigationOpenButton
+      </ConsoleLayout.MobileNavigation>
+      <ConsoleLayout.MobileNavigationOpenButton
         aria-label={t("platform.shell.navigation_open")}
       />
     </>
@@ -228,34 +204,34 @@ const PlatformMobileNavigation = async () => {
 };
 
 export const PlatformLayout = ({ children }: { children: ReactNode }) => (
-  <ConsoleLayout>
+  <ConsoleLayout.Root>
     <Suspense fallback={null}>
       <PlatformMobileNavigation />
     </Suspense>
-    <ConsoleSidebar>
-      <ConsoleSidebarBrand>
-        <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
-      </ConsoleSidebarBrand>
-      <ConsoleSidebarContext>
+    <ConsoleSidebar.Root>
+      <ConsoleSidebar.Brand>
+        <ConsoleSidebar.BrandName>Publira</ConsoleSidebar.BrandName>
+      </ConsoleSidebar.Brand>
+      <ConsoleSidebar.Context>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="platform.shell.name" />
         </Suspense>
-      </ConsoleSidebarContext>
+      </ConsoleSidebar.Context>
       <PlatformNavigation />
-    </ConsoleSidebar>
+    </ConsoleSidebar.Root>
 
-    <ConsoleLayoutContent>
-      <ConsoleHeader>
-        <ConsoleHeaderContext>
-          <ConsoleHeaderText>
-            <ConsoleHeaderLabel>
+    <ConsoleLayout.Content>
+      <ConsoleHeader.Root>
+        <ConsoleHeader.Context>
+          <ConsoleHeader.Text>
+            <ConsoleHeader.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="platform.shell.context" />
               </Suspense>
-            </ConsoleHeaderLabel>
-          </ConsoleHeaderText>
-        </ConsoleHeaderContext>
-        <ConsoleHeaderActions>
+            </ConsoleHeader.Label>
+          </ConsoleHeader.Text>
+        </ConsoleHeader.Context>
+        <ConsoleHeader.Actions>
           <Suspense
             fallback={
               <SkeletonLine className="size-9 rounded-control pointer-coarse:size-11" />
@@ -268,12 +244,12 @@ export const PlatformLayout = ({ children }: { children: ReactNode }) => (
               <PlatformNotificationBell />
             </Suspense>
           </NotificationBellErrorBoundary>
-          <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
+          <Suspense fallback={<ConsoleHeader.UserSkeleton />}>
             <PlatformUser />
           </Suspense>
-        </ConsoleHeaderActions>
-      </ConsoleHeader>
-      <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
-    </ConsoleLayoutContent>
-  </ConsoleLayout>
+        </ConsoleHeader.Actions>
+      </ConsoleHeader.Root>
+      <ConsoleLayout.Main>{children}</ConsoleLayout.Main>
+    </ConsoleLayout.Content>
+  </ConsoleLayout.Root>
 );

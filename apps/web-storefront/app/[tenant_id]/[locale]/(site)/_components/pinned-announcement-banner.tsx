@@ -1,12 +1,5 @@
 import { CloseIcon } from "@publira/icons";
-import {
-  SiteLayoutBanner,
-  SiteLayoutBannerActions,
-  SiteLayoutBannerContent,
-  SiteLayoutBannerDescription,
-  SiteLayoutBannerLink,
-  SiteLayoutBannerTitle,
-} from "@publira/layouts";
+import * as SiteLayout from "@publira/layouts/site-layout";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -63,30 +56,30 @@ export const PinnedAnnouncementBanner = async () => {
     `/announcements/${announcement.id}`;
 
   return (
-    <SiteLayoutBanner>
-      <SiteLayoutBannerContent>
-        <SiteLayoutBannerTitle>
+    <SiteLayout.Banner>
+      <SiteLayout.BannerContent>
+        <SiteLayout.BannerTitle>
           <span lang={announcement.locale}>{announcement.title}</span>
-        </SiteLayoutBannerTitle>
-        <SiteLayoutBannerDescription>
+        </SiteLayout.BannerTitle>
+        <SiteLayout.BannerDescription>
           <span lang={announcement.locale}>{announcement.body}</span>
-        </SiteLayoutBannerDescription>
-        <SiteLayoutBannerLink
+        </SiteLayout.BannerDescription>
+        <SiteLayout.BannerLink
           href={withLocalePrefix(locale, defaultLocale, destination)}
         >
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="storefront.announcements.banner_link" />
           </Suspense>
-        </SiteLayoutBannerLink>
-      </SiteLayoutBannerContent>
-      <SiteLayoutBannerActions>
+        </SiteLayout.BannerLink>
+      </SiteLayout.BannerContent>
+      <SiteLayout.BannerActions>
         <form action={dismissAnnouncementBannerAction}>
           <input name="announcementId" type="hidden" value={announcement.id} />
           <Suspense fallback={<SkeletonLine className="h-8 w-8" />}>
             <DismissBannerButton />
           </Suspense>
         </form>
-      </SiteLayoutBannerActions>
-    </SiteLayoutBanner>
+      </SiteLayout.BannerActions>
+    </SiteLayout.Banner>
   );
 };

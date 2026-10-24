@@ -1,4 +1,4 @@
-import { AuthScreenBody } from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 
 import { SignUpClosedNotice } from "#components/sign-up-closed-notice";
 import { getTenantSignUp } from "#lib/tenant";
@@ -18,9 +18,9 @@ export const SignupContent = async () => {
 
   return (
     <>
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <SignUpClosedNotice message={signUp.message} />
-      </AuthScreenBody>
+      </AuthScreen.Body>
       <SignupFooter />
     </>
   );

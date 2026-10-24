@@ -4,26 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  SiteLayout,
-  SiteLayoutBrand,
-  SiteLayoutFooter,
-  SiteLayoutFooterContent,
-  SiteLayoutFooterCopyright,
-  SiteLayoutFooterLink,
-  SiteLayoutFooterLinks,
-  SiteLayoutFooterNote,
-  SiteLayoutHeader,
-  SiteLayoutMain,
-  SiteLayoutNav,
-  SiteLayoutNavLink,
-  SiteLayoutNavSkeleton,
-} from "./site-layout";
-import {
-  SiteLayoutActions,
-  SiteLayoutPrimaryAction,
-  SiteLayoutSecondaryAction,
-} from "./site-layout-actions";
+import * as SiteLayout from ".";
 
 vi.mock("next/link", () => ({
   default: ({
@@ -41,15 +22,15 @@ afterEach(cleanup);
 describe("SiteLayout slots", () => {
   it("composes the brand, the navigation, and the body from child slots", () => {
     render(
-      <SiteLayout>
-        <SiteLayoutHeader>
-          <SiteLayoutBrand href="/">Aoto Press</SiteLayoutBrand>
-          <SiteLayoutNav>
-            <SiteLayoutNavLink href="/series">Series</SiteLayoutNavLink>
-          </SiteLayoutNav>
-        </SiteLayoutHeader>
-        <SiteLayoutMain>Body</SiteLayoutMain>
-      </SiteLayout>
+      <SiteLayout.Root>
+        <SiteLayout.Header>
+          <SiteLayout.Brand href="/">Aoto Press</SiteLayout.Brand>
+          <SiteLayout.Nav>
+            <SiteLayout.NavLink href="/series">Series</SiteLayout.NavLink>
+          </SiteLayout.Nav>
+        </SiteLayout.Header>
+        <SiteLayout.Main>Body</SiteLayout.Main>
+      </SiteLayout.Root>
     );
 
     expect(
@@ -63,9 +44,9 @@ describe("SiteLayout slots", () => {
 
   it("adds the caller's classes to the header band without dropping its own", () => {
     render(
-      <SiteLayoutHeader className="absolute top-0">
-        <SiteLayoutBrand href="/">Aoto Press</SiteLayoutBrand>
-      </SiteLayoutHeader>
+      <SiteLayout.Header className="absolute top-0">
+        <SiteLayout.Brand href="/">Aoto Press</SiteLayout.Brand>
+      </SiteLayout.Header>
     );
 
     const header = screen.getByRole("banner");
@@ -75,17 +56,17 @@ describe("SiteLayout slots", () => {
 
   it("renders each footer area from its own child slot", () => {
     render(
-      <SiteLayoutFooter>
-        <SiteLayoutFooterLinks aria-label="Footer links">
-          <SiteLayoutFooterLink href="/terms">
+      <SiteLayout.Footer>
+        <SiteLayout.FooterLinks aria-label="Footer links">
+          <SiteLayout.FooterLink href="/terms">
             Terms of service
-          </SiteLayoutFooterLink>
-        </SiteLayoutFooterLinks>
-        <SiteLayoutFooterContent>
-          <SiteLayoutFooterNote>Notice</SiteLayoutFooterNote>
-          <SiteLayoutFooterCopyright>© Publira</SiteLayoutFooterCopyright>
-        </SiteLayoutFooterContent>
-      </SiteLayoutFooter>
+          </SiteLayout.FooterLink>
+        </SiteLayout.FooterLinks>
+        <SiteLayout.FooterContent>
+          <SiteLayout.FooterNote>Notice</SiteLayout.FooterNote>
+          <SiteLayout.FooterCopyright>© Publira</SiteLayout.FooterCopyright>
+        </SiteLayout.FooterContent>
+      </SiteLayout.Footer>
     );
 
     expect(
@@ -97,14 +78,14 @@ describe("SiteLayout slots", () => {
 
   it("renders the header actions from separate child slots", () => {
     render(
-      <SiteLayoutActions>
-        <SiteLayoutSecondaryAction href="/login">
+      <SiteLayout.Actions>
+        <SiteLayout.SecondaryAction href="/login">
           Sign in
-        </SiteLayoutSecondaryAction>
-        <SiteLayoutPrimaryAction href="/signup">
+        </SiteLayout.SecondaryAction>
+        <SiteLayout.PrimaryAction href="/signup">
           Get started
-        </SiteLayoutPrimaryAction>
-      </SiteLayoutActions>
+        </SiteLayout.PrimaryAction>
+      </SiteLayout.Actions>
     );
 
     expect(
@@ -116,9 +97,9 @@ describe("SiteLayout slots", () => {
   });
 });
 
-describe("SiteLayoutNavSkeleton", () => {
+describe("SiteLayout.NavSkeleton", () => {
   it("stands in for the navigation without naming a link", () => {
-    render(<SiteLayoutNavSkeleton />);
+    render(<SiteLayout.NavSkeleton />);
 
     // The whole point of the stand-in: an href the caller cannot name yet is
     // not rendered as a link a reader could follow.

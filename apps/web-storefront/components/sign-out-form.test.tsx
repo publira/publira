@@ -27,8 +27,8 @@ vi.mock("#lib/push-actions", () => ({
   unregisterBrowserPushAction: mockUnregisterAction,
 }));
 
-vi.mock("@publira/layouts", () => ({
-  SiteLayoutUserMenuLogout: ({
+vi.mock("@publira/layouts/site-layout", () => ({
+  UserMenuLogout: ({
     action,
     children,
   }: {

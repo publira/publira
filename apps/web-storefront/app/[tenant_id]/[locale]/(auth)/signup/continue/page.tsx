@@ -1,13 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -47,9 +38,9 @@ const ContinueSignUpHeader = async () => {
         pageTitle={t("storefront.auth.social.continue.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
@@ -60,20 +51,20 @@ const ContinueSignUpHeader = async () => {
  * requires before the account is created.
  */
 const ContinueSignUpPage = () => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <ContinueSignUpHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
-      <AuthScreenBody>
-        <AuthScreenNote>
+      <AuthScreen.Body>
+        <AuthScreen.Note>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="storefront.auth.social.continue.description" />
           </Suspense>
-        </AuthScreenNote>
+        </AuthScreen.Note>
 
         <ActionForm.Root action={continueSignUpAction} className="grid gap-4">
           <LocaleField />
@@ -100,9 +91,9 @@ const ContinueSignUpPage = () => (
             </ActionForm.Pending>
           </ActionForm.Submit>
         </ActionForm.Root>
-      </AuthScreenBody>
+      </AuthScreen.Body>
 
-      <AuthScreenFooter>
+      <AuthScreen.Footer>
         <p>
           <Suspense
             fallback={<SkeletonLine className="inline-block h-4 w-24" />}
@@ -115,9 +106,9 @@ const ContinueSignUpPage = () => (
             </LocaleLink>
           </Suspense>
         </p>
-      </AuthScreenFooter>
-    </AuthScreenMain>
-  </AuthScreen>
+      </AuthScreen.Footer>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default ContinueSignUpPage;

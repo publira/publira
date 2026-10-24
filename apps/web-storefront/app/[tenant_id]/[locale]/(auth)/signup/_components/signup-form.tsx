@@ -1,4 +1,4 @@
-import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -35,7 +35,7 @@ const NameInput = async () => {
 
 /** The way to the sign-in screen, for a reader who already has an account. */
 export const SignupFooter = () => (
-  <AuthScreenFooter>
+  <AuthScreen.Footer>
     <p className="text-muted-foreground">
       <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
         <Message message="storefront.auth.signup.have_account" />
@@ -49,12 +49,12 @@ export const SignupFooter = () => (
         </LocaleLink>
       </Suspense>
     </p>
-  </AuthScreenFooter>
+  </AuthScreen.Footer>
 );
 
 export const SignupForm = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <ActionForm.Root action={signupAction} className="grid gap-4">
         <LocaleField />
         <TenantIdField />
@@ -157,7 +157,7 @@ export const SignupForm = () => (
       <Suspense fallback={null}>
         <SocialSignInButtons returnTo="/" />
       </Suspense>
-    </AuthScreenBody>
+    </AuthScreen.Body>
 
     <SignupFooter />
   </>

@@ -1,15 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -45,10 +34,10 @@ interface ForgotPasswordPageProps {
 }
 
 const ForgotPasswordFallback = () => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <Skeleton className="h-16 w-full" />
     <Skeleton className="h-9 w-48" />
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 const ForgotPasswordPageContent = async ({
@@ -60,17 +49,17 @@ const ForgotPasswordPageContent = async ({
     parseForgotPasswordSearchParams(await searchParams);
 
   return requested ? (
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <FormMessage variant="success">
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="admin.auth.forgot_password.requested_sent" />
         </Suspense>
       </FormMessage>
-      <AuthScreenNote>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="admin.auth.forgot_password.requested_help" />
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
       <div className="flex flex-wrap gap-3">
         <LinkButton render={<Link href="/login" />}>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -83,10 +72,10 @@ const ForgotPasswordPageContent = async ({
           </Suspense>
         </LinkButton>
       </div>
-    </AuthScreenBody>
+    </AuthScreen.Body>
   ) : (
     <>
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <form action={requestPasswordResetAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
 
@@ -118,9 +107,9 @@ const ForgotPasswordPageContent = async ({
             </Suspense>
           </Button>
         </form>
-      </AuthScreenBody>
+      </AuthScreen.Body>
 
-      <AuthScreenFooter>
+      <AuthScreen.Footer>
         <p>
           <Link
             className="text-primary underline underline-offset-4"
@@ -131,7 +120,7 @@ const ForgotPasswordPageContent = async ({
             </Suspense>
           </Link>
         </p>
-      </AuthScreenFooter>
+      </AuthScreen.Footer>
     </>
   );
 };
@@ -140,20 +129,20 @@ const ForgotPasswordPage = ({
   params,
   searchParams,
 }: ForgotPasswordPageProps) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
             <Message message="admin.auth.forgot_password.title" />
           </Suspense>
-        </AuthScreenTitle>
-        <AuthScreenTagline>
+        </AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="admin.auth.forgot_password.description" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       <Suspense fallback={<ForgotPasswordFallback />}>
         <ForgotPasswordPageContent
@@ -161,12 +150,12 @@ const ForgotPasswordPage = ({
           searchParams={searchParams}
         />
       </Suspense>
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default ForgotPasswordPage;

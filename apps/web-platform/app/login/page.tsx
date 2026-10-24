@@ -1,12 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -73,16 +65,16 @@ const LoginFlash = async ({
 };
 
 const LoginPage = ({ searchParams }: PageProps<"/login">) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>Publira</AuthScreenTitle>
-        <AuthScreenTagline>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>Publira</AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
             <Message message="platform.auth.login.eyebrow" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       <LoginForm
         flash={
@@ -96,12 +88,12 @@ const LoginPage = ({ searchParams }: PageProps<"/login">) => (
           </Suspense>
         }
       />
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default LoginPage;

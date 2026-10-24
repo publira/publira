@@ -14,16 +14,7 @@ import {
   ShieldUserIcon,
   UsersIcon,
 } from "@publira/icons";
-import {
-  ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemHeading,
-  ConsoleSidebarNavigationItemIcon,
-  ConsoleSidebarNavigationItemLabel,
-  ConsoleSidebarNavigationItems,
-  ConsoleSidebarNavigationSection,
-  ConsoleSidebarNavigationTitle,
-} from "@publira/layouts/admin";
+import * as ConsoleSidebar from "@publira/layouts/admin/console-sidebar";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -55,223 +46,223 @@ const hrefs = [
 ];
 
 export const PlatformNavigation = () => (
-  <ConsoleSidebarNavigation hrefs={hrefs}>
-    <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationItems>
-        <ConsoleSidebarNavigationItem href="/">
-          <ConsoleSidebarNavigationItemIcon>
+  <ConsoleSidebar.Navigation hrefs={hrefs}>
+    <ConsoleSidebar.NavigationSection>
+      <ConsoleSidebar.NavigationItems>
+        <ConsoleSidebar.NavigationItem href="/">
+          <ConsoleSidebar.NavigationItemIcon>
             <DashboardIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="platform.nav.dashboard_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-      </ConsoleSidebarNavigationItems>
-    </ConsoleSidebarNavigationSection>
-    <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationTitle>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+      </ConsoleSidebar.NavigationItems>
+    </ConsoleSidebar.NavigationSection>
+    <ConsoleSidebar.NavigationSection>
+      <ConsoleSidebar.NavigationTitle>
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
           <Message message="platform.nav.tenants_section" />
         </Suspense>
-      </ConsoleSidebarNavigationTitle>
-      <ConsoleSidebarNavigationItems>
-        <ConsoleSidebarNavigationItem href="/tenants">
-          <ConsoleSidebarNavigationItemIcon>
+      </ConsoleSidebar.NavigationTitle>
+      <ConsoleSidebar.NavigationItems>
+        <ConsoleSidebar.NavigationItem href="/tenants">
+          <ConsoleSidebar.NavigationItemIcon>
             <BuildingIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.nav.tenants_list_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/tenants/new">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/tenants/new">
+          <ConsoleSidebar.NavigationItemIcon>
             <PlusIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.nav.tenants_create_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-      </ConsoleSidebarNavigationItems>
-    </ConsoleSidebarNavigationSection>
-    <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationTitle>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+      </ConsoleSidebar.NavigationItems>
+    </ConsoleSidebar.NavigationSection>
+    <ConsoleSidebar.NavigationSection>
+      <ConsoleSidebar.NavigationTitle>
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
           <Message message="platform.nav.platform" />
         </Suspense>
-      </ConsoleSidebarNavigationTitle>
-      <ConsoleSidebarNavigationItems>
-        <ConsoleSidebarNavigationItem href="/general">
-          <ConsoleSidebarNavigationItemIcon>
+      </ConsoleSidebar.NavigationTitle>
+      <ConsoleSidebar.NavigationItems>
+        <ConsoleSidebar.NavigationItem href="/general">
+          <ConsoleSidebar.NavigationItemIcon>
             <SettingsIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.nav.general_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-      </ConsoleSidebarNavigationItems>
-    </ConsoleSidebarNavigationSection>
-    <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationTitle>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+      </ConsoleSidebar.NavigationItems>
+    </ConsoleSidebar.NavigationSection>
+    <ConsoleSidebar.NavigationSection>
+      <ConsoleSidebar.NavigationTitle>
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
           <Message message="platform.nav.services" />
         </Suspense>
-      </ConsoleSidebarNavigationTitle>
-      <ConsoleSidebarNavigationItems>
-        <ConsoleSidebarNavigationItem href="/services/email">
-          <ConsoleSidebarNavigationItemIcon>
+      </ConsoleSidebar.NavigationTitle>
+      <ConsoleSidebar.NavigationItems>
+        <ConsoleSidebar.NavigationItem href="/services/email">
+          <ConsoleSidebar.NavigationItemIcon>
             <MailIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="platform.nav.email_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/services/storage">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/services/storage">
+          <ConsoleSidebar.NavigationItemIcon>
             <ImageIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.nav.storage_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/services/search">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/services/search">
+          <ConsoleSidebar.NavigationItemIcon>
             <SearchIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
                 <Message message="platform.nav.search_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/services/webpush">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/services/webpush">
+          <ConsoleSidebar.NavigationItemIcon>
             <BellIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.nav.webpush_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-      </ConsoleSidebarNavigationItems>
-    </ConsoleSidebarNavigationSection>
-    <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationTitle>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+      </ConsoleSidebar.NavigationItems>
+    </ConsoleSidebar.NavigationSection>
+    <ConsoleSidebar.NavigationSection>
+      <ConsoleSidebar.NavigationTitle>
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
           <Message message="platform.nav.policies" />
         </Suspense>
-      </ConsoleSidebarNavigationTitle>
-      <ConsoleSidebarNavigationItems>
-        <ConsoleSidebarNavigationItem href="/policies/security">
-          <ConsoleSidebarNavigationItemIcon>
+      </ConsoleSidebar.NavigationTitle>
+      <ConsoleSidebar.NavigationItems>
+        <ConsoleSidebar.NavigationItem href="/policies/security">
+          <ConsoleSidebar.NavigationItemIcon>
             <LockIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.nav.security_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/policies/community">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/policies/community">
+          <ConsoleSidebar.NavigationItemIcon>
             <CommentIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.nav.community_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/policies/retention">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/policies/retention">
+          <ConsoleSidebar.NavigationItemIcon>
             <ArchiveIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.nav.retention_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-      </ConsoleSidebarNavigationItems>
-    </ConsoleSidebarNavigationSection>
-    <ConsoleSidebarNavigationSection>
-      <ConsoleSidebarNavigationTitle>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+      </ConsoleSidebar.NavigationItems>
+    </ConsoleSidebar.NavigationSection>
+    <ConsoleSidebar.NavigationSection>
+      <ConsoleSidebar.NavigationTitle>
         <Suspense fallback={<SkeletonLine className="h-3 w-20" />}>
           <Message message="platform.nav.governance" />
         </Suspense>
-      </ConsoleSidebarNavigationTitle>
-      <ConsoleSidebarNavigationItems>
-        <ConsoleSidebarNavigationItem href="/operators">
-          <ConsoleSidebarNavigationItemIcon>
+      </ConsoleSidebar.NavigationTitle>
+      <ConsoleSidebar.NavigationItems>
+        <ConsoleSidebar.NavigationItem href="/operators">
+          <ConsoleSidebar.NavigationItemIcon>
             <ShieldUserIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="platform.nav.operators_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/users">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/users">
+          <ConsoleSidebar.NavigationItemIcon>
             <UsersIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="platform.nav.users_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-        <ConsoleSidebarNavigationItem href="/audit-logs">
-          <ConsoleSidebarNavigationItemIcon>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/audit-logs">
+          <ConsoleSidebar.NavigationItemIcon>
             <ScrollTextIcon className="size-4" />
-          </ConsoleSidebarNavigationItemIcon>
-          <ConsoleSidebarNavigationItemHeading>
-            <ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="platform.nav.audit_label" />
               </Suspense>
-            </ConsoleSidebarNavigationItemLabel>
-          </ConsoleSidebarNavigationItemHeading>
-        </ConsoleSidebarNavigationItem>
-      </ConsoleSidebarNavigationItems>
-    </ConsoleSidebarNavigationSection>
-  </ConsoleSidebarNavigation>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+      </ConsoleSidebar.NavigationItems>
+    </ConsoleSidebar.NavigationSection>
+  </ConsoleSidebar.Navigation>
 );

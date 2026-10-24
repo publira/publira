@@ -5,8 +5,11 @@ import type { ReadingDirection, ViewerPage } from "@publira/comic-viewer";
 import { useMemo } from "react";
 import type { ReactNode } from "react";
 
-import { acceptNegotiatedImages, createImageFetchPlugin } from "./viewer-fetch";
-import type { RenewPageUrl } from "./viewer-fetch";
+import {
+  acceptNegotiatedImages,
+  createImageFetchPlugin,
+} from "../viewer-fetch";
+import type { RenewPageUrl } from "../viewer-fetch";
 
 const VIEWER_PLUGINS = [acceptNegotiatedImages];
 

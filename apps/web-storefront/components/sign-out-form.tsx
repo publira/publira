@@ -1,7 +1,7 @@
 "use client";
 
 import type { Locale } from "@publira/i18n";
-import { SiteLayoutUserMenuLogout } from "@publira/layouts";
+import * as SiteLayout from "@publira/layouts/site-layout";
 import type { ReactNode } from "react";
 
 import {
@@ -63,12 +63,12 @@ export const SignOutForm = ({
   signOut: (formData: FormData) => Promise<void>;
   tenantId: string;
 }) => (
-  <SiteLayoutUserMenuLogout
+  <SiteLayout.UserMenuLogout
     action={async (formData) => {
       await dropBrowserPushSubscription(locale, tenantId);
       await signOut(formData);
     }}
   >
     {children}
-  </SiteLayoutUserMenuLogout>
+  </SiteLayout.UserMenuLogout>
 );

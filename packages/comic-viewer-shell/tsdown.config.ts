@@ -3,7 +3,7 @@ import { defineConfig } from "tsdown";
 
 export default defineConfig({
   dts: true,
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/viewer/index.ts"],
   format: "esm",
   plugins: [requireClientDirectives()],
   // One output file per source module: a module merged into a shared chunk

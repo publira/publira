@@ -1,8 +1,4 @@
-import {
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenNote,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -31,15 +27,15 @@ export const MfaVerifyForm = ({ finished, nextPath }: MfaVerifyFormProps) => (
     finished={finished}
     nextPath={nextPath}
     spent={
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <h2 className="font-medium text-foreground">
           <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
             <Message message="platform.auth.mfa.recovery_used_title" />
           </Suspense>
         </h2>
-        <AuthScreenNote>
+        <AuthScreen.Note>
           <MfaRemainingRecoveryCodes />
-        </AuthScreenNote>
+        </AuthScreen.Note>
         <LinkButton
           className="justify-self-start"
           render={<Link href={nextPath} />}
@@ -48,16 +44,16 @@ export const MfaVerifyForm = ({ finished, nextPath }: MfaVerifyFormProps) => (
             <Message message="platform.auth.mfa.continue_to_console" />
           </Suspense>
         </LinkButton>
-      </AuthScreenBody>
+      </AuthScreen.Body>
     }
     verify={
       <>
-        <AuthScreenBody>
-          <AuthScreenNote>
+        <AuthScreen.Body>
+          <AuthScreen.Note>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               <Message message="platform.auth.mfa.verify_description" />
             </Suspense>
-          </AuthScreenNote>
+          </AuthScreen.Note>
 
           <ActionForm.Root
             action={verifyMfaAction}
@@ -79,9 +75,9 @@ export const MfaVerifyForm = ({ finished, nextPath }: MfaVerifyFormProps) => (
               </Suspense>
             </ActionForm.Submit>
           </ActionForm.Root>
-        </AuthScreenBody>
+        </AuthScreen.Body>
 
-        <AuthScreenFooter>
+        <AuthScreen.Footer>
           <p>
             <Link
               className="text-primary underline underline-offset-4"
@@ -92,7 +88,7 @@ export const MfaVerifyForm = ({ finished, nextPath }: MfaVerifyFormProps) => (
               </Suspense>
             </Link>
           </p>
-        </AuthScreenFooter>
+        </AuthScreen.Footer>
       </>
     }
   />

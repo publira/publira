@@ -24,23 +24,21 @@ vi.mock("next/link", () => ({
 // The disclosure and its rows are slots of the navigation drawer, whose own
 // behaviour `packages/layouts` covers; here they stand in as the elements they
 // render, the panel always open.
-vi.mock("@publira/layouts", () => ({
-  SiteLayoutMobileNavigationDisclosure: ({
+vi.mock("@publira/layouts/site-layout", () => ({
+  MobileNavigationDisclosure: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  MobileNavigationDisclosurePanel: ({
     children,
   }: {
     children: React.ReactNode;
   }) => <div>{children}</div>,
-  SiteLayoutMobileNavigationDisclosurePanel: ({
-    children,
-  }: {
-    children: React.ReactNode;
-  }) => <div>{children}</div>,
-  SiteLayoutMobileNavigationDisclosureTrigger: ({
+  MobileNavigationDisclosureTrigger: ({
     children,
   }: {
     children: React.ReactNode;
   }) => <button type="button">{children}</button>,
-  SiteLayoutMobileNavigationLink: ({
+  MobileNavigationLink: ({
     children,
     current,
     ...props

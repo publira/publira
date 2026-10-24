@@ -1,14 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenTagline,
-  AuthScreenText,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -46,9 +36,9 @@ const SignupPendingHeader = async () => {
         pageTitle={t("storefront.auth.signup_pending.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
@@ -63,38 +53,38 @@ const SignupPendingRecipient = async () => {
   }
 
   return (
-    <AuthScreenNote>
+    <AuthScreen.Note>
       <Message message="storefront.auth.fields.sent_to" values={{ email }} />
-    </AuthScreenNote>
+    </AuthScreen.Note>
   );
 };
 
 const SignupPendingPage = () => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <SignupPendingHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
-      <AuthScreenBody>
-        <AuthScreenText>
+      <AuthScreen.Body>
+        <AuthScreen.Text>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="storefront.auth.signup_pending.sent" />
           </Suspense>
-        </AuthScreenText>
+        </AuthScreen.Text>
         <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
           <SignupPendingRecipient />
         </Suspense>
-        <AuthScreenNote>
+        <AuthScreen.Note>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="storefront.auth.fields.check_spam" />
           </Suspense>
-        </AuthScreenNote>
-      </AuthScreenBody>
+        </AuthScreen.Note>
+      </AuthScreen.Body>
 
-      <AuthScreenFooter>
+      <AuthScreen.Footer>
         <p>
           <Suspense
             fallback={<SkeletonLine className="inline-block h-4 w-40" />}
@@ -119,9 +109,9 @@ const SignupPendingPage = () => (
             </LocaleLink>
           </Suspense>
         </p>
-      </AuthScreenFooter>
-    </AuthScreenMain>
-  </AuthScreen>
+      </AuthScreen.Footer>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default SignupPendingPage;

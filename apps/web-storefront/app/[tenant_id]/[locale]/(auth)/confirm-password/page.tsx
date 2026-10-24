@@ -1,13 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenTagline,
-  AuthScreenText,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Button } from "@publira/ui-components/button";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -43,7 +34,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  */
 const ConfirmPasswordFormSkeleton = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <div className="grid gap-2">
         <SkeletonLine className="h-4 w-32" />
         <Skeleton className="h-10 w-full" />
@@ -53,24 +44,24 @@ const ConfirmPasswordFormSkeleton = () => (
         <Skeleton className="h-10 w-full" />
       </div>
       <Skeleton className="h-9 w-40" />
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <SkeletonLine className="h-4 w-40" />
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
 /** A link that carried no token, and the screen that can issue a fresh one. */
 const ConfirmPasswordInvalidLink = () => (
   <>
-    <AuthScreenBody>
-      <AuthScreenText>
+    <AuthScreen.Body>
+      <AuthScreen.Text>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="storefront.auth.confirm_password.invalid" />
         </Suspense>
-      </AuthScreenText>
-    </AuthScreenBody>
-    <AuthScreenFooter>
+      </AuthScreen.Text>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-40" />}>
           <LocaleLink
@@ -81,7 +72,7 @@ const ConfirmPasswordInvalidLink = () => (
           </LocaleLink>
         </Suspense>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -98,7 +89,7 @@ const ConfirmPasswordForm = ({
   errorMessage?: string;
 }) => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <form action={confirmPasswordAction} className="grid gap-4">
         <LocaleField />
         <TenantIdField />
@@ -160,9 +151,9 @@ const ConfirmPasswordForm = ({
           </Suspense>
         </Button>
       </form>
-    </AuthScreenBody>
+    </AuthScreen.Body>
 
-    <AuthScreenFooter>
+    <AuthScreen.Footer>
       <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
           <LocaleLink
@@ -173,7 +164,7 @@ const ConfirmPasswordForm = ({
           </LocaleLink>
         </Suspense>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -208,9 +199,9 @@ const ConfirmPasswordHeader = async () => {
         pageTitle={t("storefront.auth.confirm_password.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
@@ -219,19 +210,19 @@ const ConfirmPasswordHeader = async () => {
 const ConfirmPasswordPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/confirm-password">) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <ConfirmPasswordHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
       <Suspense fallback={<ConfirmPasswordFormSkeleton />}>
         <ConfirmPasswordFormContent searchParams={searchParams} />
       </Suspense>
-    </AuthScreenMain>
-  </AuthScreen>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default ConfirmPasswordPage;

@@ -18,7 +18,7 @@ import { Message } from "#components/message";
  * asked for a page that is not there needs somewhere to go next, not a second
  * choice to make.
  *
- * No `<main>` here: `SiteLayoutMain` already provides one.
+ * No `<main>` here: `SiteLayout.Main` already provides one.
  *
  * Known limitation, pre-existing and not introduced by this file: because the
  * root layout sits under a top-level dynamic segment, Next.js answers a

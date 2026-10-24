@@ -1,14 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -54,17 +44,17 @@ const FailureReason = ({ status }: { status: "expired" | "invalid" }) =>
   );
 
 const FailureState = ({ status }: { status: "expired" | "invalid" }) => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <FormMessage variant="destructive">
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <FailureReason status={status} />
       </Suspense>
     </FormMessage>
-    <AuthScreenNote>
+    <AuthScreen.Note>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <Message message="admin.auth.confirm_password.failure_help" />
       </Suspense>
-    </AuthScreenNote>
+    </AuthScreen.Note>
     <div className="flex flex-wrap gap-3">
       <LinkButton render={<Link href="/forgot-password" />}>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -77,16 +67,16 @@ const FailureState = ({ status }: { status: "expired" | "invalid" }) => (
         </Suspense>
       </LinkButton>
     </div>
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 const ConfirmPasswordFallback = () => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <Skeleton className="h-5 w-full" />
     <Skeleton className="h-16 w-full" />
     <Skeleton className="h-16 w-full" />
     <Skeleton className="h-9 w-40" />
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 const ConfirmPasswordPageContent = async ({
@@ -108,12 +98,12 @@ const ConfirmPasswordPageContent = async ({
   return failureStatus ? (
     <FailureState status={failureStatus} />
   ) : (
-    <AuthScreenBody>
-      <AuthScreenNote>
+    <AuthScreen.Body>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="admin.auth.confirm_password.description" />
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
 
       <form action={confirmPasswordAction} className="grid gap-4">
         <input name="tenant_id" type="hidden" value={tenantId} />
@@ -175,7 +165,7 @@ const ConfirmPasswordPageContent = async ({
           </Suspense>
         </Button>
       </form>
-    </AuthScreenBody>
+    </AuthScreen.Body>
   );
 };
 
@@ -183,20 +173,20 @@ const ConfirmPasswordPage = ({
   params,
   searchParams,
 }: ConfirmPasswordPageProps) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.auth.confirm_password.title" />
           </Suspense>
-        </AuthScreenTitle>
-        <AuthScreenTagline>
+        </AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="admin.auth.confirm_password.eyebrow" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       <Suspense fallback={<ConfirmPasswordFallback />}>
         <ConfirmPasswordPageContent
@@ -204,12 +194,12 @@ const ConfirmPasswordPage = ({
           searchParams={searchParams}
         />
       </Suspense>
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default ConfirmPasswordPage;

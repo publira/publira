@@ -35,7 +35,7 @@ import {
  * own throws, so only a failure outside every such boundary — or one in a page
  * that has no suspended section to degrade — replaces the whole console page.
  *
- * No `<main>` here: `ConsoleLayoutMain` already provides one.
+ * No `<main>` here: `ConsoleLayout.Main` already provides one.
  *
  * Reach, as measured against `next dev` by throwing from a page body: a direct
  * hit renders this screen with the sidebar and header intact, after hydration,

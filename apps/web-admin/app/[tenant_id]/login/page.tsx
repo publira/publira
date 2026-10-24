@@ -1,14 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Button } from "@publira/ui-components/button";
 import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -49,14 +39,14 @@ interface LoginPageProps {
 
 const LoginPageFallback = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-9 w-32" />
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <SkeletonLine className="h-4 w-36" />
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -79,7 +69,7 @@ const LoginPageContent = async ({
 
   return (
     <>
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <form action={loginAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
           <input name="next" type="hidden" value={nextPath} />
@@ -159,9 +149,9 @@ const LoginPageContent = async ({
             </Suspense>
           </Button>
         </form>
-      </AuthScreenBody>
+      </AuthScreen.Body>
 
-      <AuthScreenFooter>
+      <AuthScreen.Footer>
         <p>
           <Link
             className="text-primary underline underline-offset-4"
@@ -172,32 +162,32 @@ const LoginPageContent = async ({
             </Suspense>
           </Link>
         </p>
-      </AuthScreenFooter>
+      </AuthScreen.Footer>
     </>
   );
 };
 
 const LoginPage = (props: LoginPageProps) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>Publira</AuthScreenTitle>
-        <AuthScreenTagline>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>Publira</AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.auth.login.eyebrow" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       <Suspense fallback={<LoginPageFallback />}>
         <LoginPageContent {...props} />
       </Suspense>
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default LoginPage;

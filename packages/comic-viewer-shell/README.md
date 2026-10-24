@@ -6,15 +6,22 @@ Like `@publira/ui-components` and `@publira/layouts`, it holds no copy: every st
 
 ## What it provides
 
-All of it from the package root.
+The parts are the `Viewer` namespace of `@publira/comic-viewer-shell/viewer`, imported whole as `import * as Viewer from "@publira/comic-viewer-shell/viewer"` in the form `@publira/ui-components` uses. The package root holds the helpers, as plain named exports.
 
-- The root: `ViewerRoot`, which takes the pages, the resolved reading direction and spread start, and the page to open on, and fetches every page through a plugin that sends the `Accept` header image-server resizes by and decrypts a page delivered encrypted
-- The rail: `ViewerRail`, holding the page template, and `useBoxHeight`, the measured height of the box the viewer fills, which the rail takes as `boxHeight` so that a box taller than it is wide shows one page at a time
-- The page template: `ViewerPage`, with `ViewerPageLoading` and `ViewerPageError` (`ViewerPageErrorMessage`, `ViewerPageRetryButton`) inside it
-- An episode with no pages: `ViewerEmpty`
-- The toolbar: `ViewerToolbar`, `ViewerProgress` with `ViewerProgressSlider` and `ViewerPageStatus`, and `ViewerToolbarActions` for the app's own controls
-- The page-turn buttons: `ViewerPageNavigation`, `ViewerPreviousPageButton`, `ViewerNextPageButton`, and the chevrons they draw, `ViewerBackwardIcon` and `ViewerForwardIcon`, for a control an app puts in their place
+From `@publira/comic-viewer-shell/viewer`:
+
+- The root: `Viewer.Root`, which takes the pages, the resolved reading direction and spread start, and the page to open on, and fetches every page through a plugin that sends the `Accept` header image-server resizes by and decrypts a page delivered encrypted
+- The rail: `Viewer.Rail`, holding the page template, which takes as `boxHeight` the height `useBoxHeight` measures, so that a box taller than it is wide shows one page at a time
+- The page template: `Viewer.Page`, with `Viewer.PageLoading` and `Viewer.PageError` (`Viewer.PageErrorMessage`, `Viewer.PageRetryButton`) inside it
+- An episode with no pages: `Viewer.Empty`
+- The toolbar: `Viewer.Toolbar`, `Viewer.Progress` with `Viewer.ProgressSlider` and `Viewer.PageStatus`, and `Viewer.ToolbarActions` for the app's own controls
+- The page-turn buttons: `Viewer.PageNavigation`, `Viewer.PreviousPageButton`, `Viewer.NextPageButton`, and the chevrons they draw, `Viewer.BackwardIcon` and `Viewer.ForwardIcon`, for a control an app puts in their place
+
+From the package root:
+
+- `useBoxHeight(box)`: the measured height of the box the viewer fills, for `Viewer.Rail`'s `boxHeight`
 - `describeVisiblePages(value)`: what a `PageStatusValue` has on screen — no page, the end page, one page, or a spread — for the formatter each app words from its own catalog
+- `renewFromPageUrls(readPageUrls)`: a `renewPageUrl` for `Viewer.Root` that answers every page refused at once from one read of all the pages' URLs, keyed by image id
 - `toViewerPages(title, images, formatPageTitle)`: an episode's body images as the viewer's pages
 
 ## Colours
@@ -29,9 +36,9 @@ The shell paints with three variables the app sets on an ancestor of the viewer:
 
 ```tsx
 <div className="size-full [--viewer-ink:var(--color-background)] [--viewer-mat:var(--color-foreground)] [--viewer-rule:var(--color-muted-foreground)]">
-  <ViewerRoot pages={pages} readingDirection="rtl" spreadStartIndex={1}>
+  <Viewer.Root pages={pages} readingDirection="rtl" spreadStartIndex={1}>
     …
-  </ViewerRoot>
+  </Viewer.Root>
 </div>
 ```
 
@@ -44,36 +51,28 @@ The shell paints with three variables the app sets on an ancestor of the viewer:
 ```tsx
 "use client";
 
-import type { ViewerPage as ViewerPageItem } from "@publira/comic-viewer";
-import {
-  useBoxHeight,
-  ViewerNextPageButton,
-  ViewerPage,
-  ViewerPageLoading,
-  ViewerPageNavigation,
-  ViewerPreviousPageButton,
-  ViewerRail,
-  ViewerRoot,
-} from "@publira/comic-viewer-shell";
+import type { ViewerPage } from "@publira/comic-viewer";
+import { useBoxHeight } from "@publira/comic-viewer-shell";
+import * as Viewer from "@publira/comic-viewer-shell/viewer";
 import { useState } from "react";
 
-export const Reader = ({ pages }: { pages: ViewerPageItem[] }) => {
+export const Reader = ({ pages }: { pages: ViewerPage[] }) => {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const boxHeight = useBoxHeight(box);
 
   return (
     <div className="h-[78svh]" ref={setBox}>
-      <ViewerRoot pages={pages} readingDirection="rtl" spreadStartIndex={1}>
-        <ViewerRail boxHeight={boxHeight}>
-          <ViewerPage>
-            <ViewerPageLoading>Loading…</ViewerPageLoading>
-          </ViewerPage>
-        </ViewerRail>
-        <ViewerPageNavigation aria-label="Page navigation">
-          <ViewerPreviousPageButton aria-label="Previous page" />
-          <ViewerNextPageButton aria-label="Next page" />
-        </ViewerPageNavigation>
-      </ViewerRoot>
+      <Viewer.Root pages={pages} readingDirection="rtl" spreadStartIndex={1}>
+        <Viewer.Rail boxHeight={boxHeight}>
+          <Viewer.Page>
+            <Viewer.PageLoading>Loading…</Viewer.PageLoading>
+          </Viewer.Page>
+        </Viewer.Rail>
+        <Viewer.PageNavigation aria-label="Page navigation">
+          <Viewer.PreviousPageButton aria-label="Previous page" />
+          <Viewer.NextPageButton aria-label="Next page" />
+        </Viewer.PageNavigation>
+      </Viewer.Root>
     </div>
   );
 };
