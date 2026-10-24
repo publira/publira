@@ -10,6 +10,20 @@
       matchUpdateTypes: ["major"],
       enabled: false,
     },
+    {
+      // packages/tracing declares these only to satisfy @vercel/otel's peer
+      // dependencies, which stay below opentelemetry-js 3.x. @vercel/otel
+      // bundles its own 2.x copies, so a 3.x declaration runs nothing new while
+      // leaving the peers unmet and typing the options it accepts against the
+      // wrong classes. Lifted by #4821.
+      matchPackageNames: [
+        "@opentelemetry/resources",
+        "@opentelemetry/sdk-logs",
+        "@opentelemetry/sdk-metrics",
+      ],
+      matchUpdateTypes: ["major"],
+      enabled: false,
+    },
   ],
   // `customManagers` is a mergeable array, so these append to the org preset's
   // managers rather than replacing them. Each entry carries the `depName` of the
