@@ -33,19 +33,19 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("../../../access-tickets/_lib/actions", () => ({
+vi.mock("#lib/access-ticket-actions", () => ({
   issueAccessTicketInPlaceAction: vi.fn(),
 }));
 
 // The revoke button and the issue form carry Server Actions, so all that is
 // checked here is which ticket each one is for.
-vi.mock("../../../access-tickets/_components/revoke-ticket-button", () => ({
+vi.mock("#components/revoke-access-ticket-button", () => ({
   RevokeTicketButton: ({ ticketId }: { ticketId: string }) => (
     <button type="button">{`Revoke ${ticketId}`}</button>
   ),
 }));
 
-vi.mock("../../../access-tickets/_components/ticket-form", () => ({
+vi.mock("#components/access-ticket-form", () => ({
   TicketForm: ({ readerId }: { readerId?: string }) => (
     <form aria-label={`Issue to ${readerId}`} />
   ),

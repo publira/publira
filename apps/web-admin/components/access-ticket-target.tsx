@@ -18,9 +18,8 @@ import { useAdminLocale } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import { ReaderPicker } from "#components/reader-picker";
 import * as SubmitGate from "#components/submit-gate";
-
-import { listEpisodeOptionsAction } from "../_lib/actions";
-import type { TicketEpisodeOption } from "../ticket-types";
+import { listEpisodeOptionsAction } from "#lib/access-ticket-actions";
+import type { TicketEpisodeOption } from "#lib/access-ticket-shared";
 
 interface TicketTargetContextValue {
   episodeId: string;

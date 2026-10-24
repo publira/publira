@@ -10,13 +10,13 @@ import type { ReactNode } from "react";
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
 import * as SubmitGate from "#components/submit-gate";
-import { getMessages } from "#lib/get-messages";
-
 import type {
   IssueAccessTicketActionState,
   TicketSeriesOption,
-} from "../ticket-types";
-import * as TicketTarget from "./ticket-target-controls";
+} from "#lib/access-ticket-shared";
+import { getMessages } from "#lib/get-messages";
+
+import * as TicketTarget from "./access-ticket-target";
 
 interface TicketFormProps {
   action: (
@@ -40,9 +40,10 @@ interface TicketFormProps {
 }
 
 /**
- * Awaits the catalog for its placeholders and the series choices, which are
- * attributes and option labels rather than nodes. An issued ticket redirects
- * from the Action to the list.
+ * The form that issues an access ticket, on the ticket screen and on a
+ * reader's page. It awaits the catalog for its placeholders and the series
+ * choices, which are attributes and option labels rather than nodes. What
+ * follows an issued ticket is the `action`'s to decide.
  */
 export const TicketForm = async ({
   action,

@@ -28,7 +28,7 @@ import type {
   IssueAccessTicketActionState,
   ListTicketEpisodeOptionsResult,
   RevokeAccessTicketActionState,
-} from "../ticket-types";
+} from "./access-ticket-shared";
 
 const issueTicketSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);

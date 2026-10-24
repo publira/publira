@@ -15,11 +15,11 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import { listEpisodeOptionsAction } from "#lib/access-ticket-actions";
+import type { IssueAccessTicketActionState } from "#lib/access-ticket-shared";
 import { listReaderOptionsAction } from "#lib/reader-options-action";
 
-import { listEpisodeOptionsAction } from "../_lib/actions";
-import type { IssueAccessTicketActionState } from "../ticket-types";
-import { TicketForm } from "./ticket-form";
+import { TicketForm } from "./access-ticket-form";
 
 vi.mock("#components/client-message", () => ({
   ClientMessage: ({
@@ -55,7 +55,7 @@ vi.mock("#lib/reader-options-action", () => ({
   listReaderOptionsAction: vi.fn(),
 }));
 
-vi.mock("../_lib/actions", () => ({
+vi.mock("#lib/access-ticket-actions", () => ({
   listEpisodeOptionsAction: vi.fn(),
 }));
 

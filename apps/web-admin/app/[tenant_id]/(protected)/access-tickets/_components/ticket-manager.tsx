@@ -6,20 +6,19 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
 import { Suspense } from "react";
 
-import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
-import { Message } from "#components/message";
-import * as PaginationFooter from "#components/pagination-controls";
-import type { CursorPageHrefs } from "#lib/cursor-page";
-import { hasCursorPageLinks } from "#lib/cursor-page";
-import { getMessagesFor } from "#lib/messages";
-
-import type { AccessTicketItem } from "../ticket-types";
-import { RevokeTicketButton } from "./revoke-ticket-button";
 import {
   formatTicketDateTime,
   TicketStatusLabel,
   ticketStatusTone,
-} from "./ticket-status";
+} from "#components/access-ticket-status";
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { Message } from "#components/message";
+import * as PaginationFooter from "#components/pagination-controls";
+import { RevokeTicketButton } from "#components/revoke-access-ticket-button";
+import type { AccessTicketItem } from "#lib/access-ticket-shared";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
 
 type TicketManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;

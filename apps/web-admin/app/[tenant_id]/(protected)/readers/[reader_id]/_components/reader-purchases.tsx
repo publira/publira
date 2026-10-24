@@ -12,20 +12,16 @@ import { Suspense } from "react";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import * as PaginationFooter from "#components/pagination-controls";
+import {
+  PurchasePaidThrough,
+  PurchaseStatusChip,
+} from "#components/purchase-status";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
-
-import {
-  PurchasePaidThrough,
-  PurchaseStatusChip,
-} from "../../../purchases/_components/purchase-status";
-import {
-  purchasedItemHref,
-  purchasedItemLabel,
-} from "../../../purchases/_lib/purchased-item";
+import { purchasedItemHref, purchasedItemLabel } from "#lib/purchased-item";
 
 type ReaderPurchasesProps = CursorPageHrefs & {
   listErrorMessage?: string;

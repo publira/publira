@@ -9,23 +9,23 @@ import * as Table from "@publira/ui-components/table";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
-import { Message } from "#components/message";
-import * as PaginationFooter from "#components/pagination-controls";
-import type { AccessTicketItem } from "#lib/access-ticket";
-import type { CursorPageHrefs } from "#lib/cursor-page";
-import { hasCursorPageLinks } from "#lib/cursor-page";
-import { getMessagesFor } from "#lib/messages";
-
-import { RevokeTicketButton } from "../../../access-tickets/_components/revoke-ticket-button";
-import { TicketForm } from "../../../access-tickets/_components/ticket-form";
+import { TicketForm } from "#components/access-ticket-form";
 import {
   formatTicketDateTime,
   TicketStatusLabel,
   ticketStatusTone,
-} from "../../../access-tickets/_components/ticket-status";
-import { issueAccessTicketInPlaceAction } from "../../../access-tickets/_lib/actions";
-import type { TicketSeriesOption } from "../../../access-tickets/ticket-types";
+} from "#components/access-ticket-status";
+import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
+import { Message } from "#components/message";
+import * as PaginationFooter from "#components/pagination-controls";
+import { RevokeTicketButton } from "#components/revoke-access-ticket-button";
+import type { AccessTicketItem } from "#lib/access-ticket";
+import { issueAccessTicketInPlaceAction } from "#lib/access-ticket-actions";
+import type { TicketSeriesOption } from "#lib/access-ticket-shared";
+import type { CursorPageHrefs } from "#lib/cursor-page";
+import { hasCursorPageLinks } from "#lib/cursor-page";
+import { getMessagesFor } from "#lib/messages";
+
 import * as IssueTicketDialog from "./issue-ticket-dialog";
 
 type ReaderTicketsProps = CursorPageHrefs & {

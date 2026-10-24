@@ -72,7 +72,7 @@ const ticket = (status: string) => ({
 // Evaluating the Actions' module graph for the first time takes far longer than
 // any test's own work, so it is paid here rather than inside one test's timeout.
 beforeAll(async () => {
-  await import("./actions");
+  await import("./access-ticket-actions");
 });
 
 describe("issueAccessTicketAction", () => {
@@ -91,7 +91,7 @@ describe("issueAccessTicketAction", () => {
       ticket: ticket("active"),
     });
 
-    const { issueAccessTicketAction } = await import("./actions");
+    const { issueAccessTicketAction } = await import("./access-ticket-actions");
     await issueAccessTicketAction(null, issueFormData());
 
     expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
@@ -105,7 +105,7 @@ describe("issueAccessTicketAction", () => {
       ticket: ticket("active"),
     });
 
-    const { issueAccessTicketAction } = await import("./actions");
+    const { issueAccessTicketAction } = await import("./access-ticket-actions");
     const result = await issueAccessTicketAction(null, issueFormData());
 
     expect(result).toEqual({
@@ -125,7 +125,7 @@ describe("issueAccessTicketAction", () => {
       ticket: ticket("expired"),
     });
 
-    const { issueAccessTicketAction } = await import("./actions");
+    const { issueAccessTicketAction } = await import("./access-ticket-actions");
     const result = await issueAccessTicketAction(null, issueFormData());
 
     expect(result).toEqual({
@@ -151,7 +151,8 @@ describe("issueAccessTicketInPlaceAction", () => {
       ticket: ticket("active"),
     });
 
-    const { issueAccessTicketInPlaceAction } = await import("./actions");
+    const { issueAccessTicketInPlaceAction } =
+      await import("./access-ticket-actions");
     const result = await issueAccessTicketInPlaceAction(null, issueFormData());
 
     expect(result).toEqual({
@@ -169,7 +170,8 @@ describe("issueAccessTicketInPlaceAction", () => {
       ticket: ticket("active"),
     });
 
-    const { issueAccessTicketInPlaceAction } = await import("./actions");
+    const { issueAccessTicketInPlaceAction } =
+      await import("./access-ticket-actions");
     const result = await issueAccessTicketInPlaceAction(null, issueFormData());
 
     expect(result).toMatchObject({ ok: false });

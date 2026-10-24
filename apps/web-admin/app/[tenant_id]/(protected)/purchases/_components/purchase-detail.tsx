@@ -7,14 +7,17 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import {
+  PurchasePaidThrough,
+  PurchaseStatusChip,
+} from "#components/purchase-status";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
 import { getPurchase } from "#lib/purchase";
+import { purchasedItemHref, purchasedItemLabel } from "#lib/purchased-item";
 
-import { purchasedItemHref, purchasedItemLabel } from "../_lib/purchased-item";
-import { PurchasePaidThrough, PurchaseStatusChip } from "./purchase-status";
 import { RefundPurchaseButton } from "./refund-purchase-button";
 
 interface PurchaseDetailProps {
