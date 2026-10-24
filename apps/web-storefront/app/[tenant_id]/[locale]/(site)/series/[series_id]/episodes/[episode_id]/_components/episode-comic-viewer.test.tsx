@@ -443,6 +443,26 @@ describe("EpisodeComicViewer progress slider", () => {
   });
 });
 
+describe("EpisodeComicViewer arrow keys", () => {
+  it("turns the page from an arrow key pressed while focus is outside the pages", async () => {
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={pages}
+        readingDirection="rtl"
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      >
+        <CurrentIndexProbe />
+      </EpisodeComicViewer>
+    );
+
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+
+    expect(await screen.findByText("current:1")).toBeDefined();
+  });
+});
+
 describe("EpisodeComicViewer neighbouring episodes", () => {
   it("hands the control that has run out of pages over to the episode before", async () => {
     await renderWithClientMessages(

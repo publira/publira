@@ -5,6 +5,7 @@ import type {
   PageStatusValue,
   ReadingDirection,
   ViewerPage as ViewerPageItem,
+  ViewportGestures,
 } from "@publira/comic-viewer";
 import {
   describeVisiblePages,
@@ -31,6 +32,14 @@ import { useWebStorage, writeWebStorage } from "#lib/web-storage";
 const stopClick = (event: MouseEvent) => {
   event.stopPropagation();
 };
+
+/**
+ * The episode page holds one reader, so the arrow keys turn its pages wherever
+ * focus is rather than only once the reader has clicked the pages — the same
+ * reach the key that opens the neighbouring episode has. A key pressed in a
+ * form field or on a control is still left to it.
+ */
+const VIEWER_GESTURES: ViewportGestures = { keyboard: { scope: "global" } };
 
 /**
  * Names the visible pages for both `PageStatus` and the slider's
@@ -395,6 +404,7 @@ export const EpisodeComicViewer = ({
         <Viewer.Rail
           aria-label={t("storefront.episode.viewer.pages")}
           boxHeight={boxHeight}
+          gestures={VIEWER_GESTURES}
         >
           <Viewer.Page>
             <Viewer.PageLoading>
