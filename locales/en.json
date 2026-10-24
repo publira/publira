@@ -4416,6 +4416,7 @@
         "press_aria": "React to this episode",
         "press_progress_aria": "React to this episode, {$score} of {$max}",
         "reader_credited": "You cannot react to an episode you are credited on as its author.",
+        "reader_is_staff": "You cannot react to episodes while you hold a staff role, so your reading does not count toward the ratings readers see.",
         "status_error": "Could not show your reaction",
         "status_failed": "Could not load your reaction. Please try again later."
       },

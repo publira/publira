@@ -4416,6 +4416,7 @@
         "press_aria": "回應此章節",
         "press_progress_aria": "回應此章節，{$score} / {$max}",
         "reader_credited": "您無法回應自己作為作者的章節。",
+        "reader_is_staff": "您擁有工作人員角色期間無法回應章節，工作人員的閱讀不計入讀者看到的評價。",
         "status_error": "無法顯示你的回應",
         "status_failed": "無法載入你的回應。請稍後再試。"
       },

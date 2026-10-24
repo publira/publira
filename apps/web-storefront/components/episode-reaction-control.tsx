@@ -64,6 +64,18 @@ export const EpisodeReactionControl = async ({
     return null;
   }
 
+  // Staff are refused too, and told why: unlike an author, who knows the
+  // episode is theirs, a member of staff reads it as any reader would.
+  if (result.readerIsStaff) {
+    return (
+      <p className="max-w-sm text-center text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+          <Message message="storefront.episode.reaction.reader_is_staff" />
+        </Suspense>
+      </p>
+    );
+  }
+
   if (!result.signedIn) {
     return (
       <EpisodeReaction.Root size={size}>
