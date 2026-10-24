@@ -20,7 +20,7 @@
 FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS base
 
 # renovate: datasource=npm depName=pnpm versioning=semver
-ARG PNPM_VERSION=12.14.0
+ARG PNPM_VERSION=12.15.0
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates \
