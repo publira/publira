@@ -723,10 +723,11 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 
 -- The console's purchase list is (purchased_at, id) DESC. A forward page reads
 -- ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
--- both over idx_purchases_tenant_purchased_at_id, and the handler puts the
--- ascending rows back into display order. id is a UUIDv7, so the order stays
--- unique when purchased_at ties. These read the keys alone, and
--- ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
+-- both over idx_purchases_tenant_purchased_at_id, or over
+-- idx_purchases_tenant_user_purchased_at for one reader's purchases, and the
+-- handler puts the ascending rows back into display order. id is a UUIDv7, so
+-- the order stays unique when purchased_at ties. These read the keys alone,
+-- and ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
 -- proto/README.md.
 -- name: ListPurchaseIDsForTenantDesc :many
 SELECT p.id,
@@ -760,6 +761,10 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('episode_id')::uuid IS NULL
         OR p.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('reader_id')::uuid IS NULL
+        OR p.user_id = sqlc.narg('reader_id')::uuid
     )
     AND (
         sqlc.narg('reader_email')::text IS NULL
@@ -826,6 +831,10 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('episode_id')::uuid IS NULL
         OR p.episode_id = sqlc.narg('episode_id')::uuid
+    )
+    AND (
+        sqlc.narg('reader_id')::uuid IS NULL
+        OR p.user_id = sqlc.narg('reader_id')::uuid
     )
     AND (
         sqlc.narg('reader_email')::text IS NULL

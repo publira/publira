@@ -89,6 +89,9 @@ type purchaseSeed struct {
 	store     string
 	// revocationReason revokes it; "refund" records it refunded in full too.
 	revocationReason string
+	// expiresAt ends its reading period; zero is a period that does not run
+	// out.
+	expiresAt time.Time
 }
 
 func (f *purchaseFixture) seedPurchase(t *testing.T, seed purchaseSeed) uuid.UUID {
@@ -96,6 +99,7 @@ func (f *purchaseFixture) seedPurchase(t *testing.T, seed purchaseSeed) uuid.UUI
 
 	id := uuid.Must(uuid.NewV7())
 	var provider, checkoutID, paymentID, store, transactionID, reason sql.NullString
+	expiresAt := sql.NullTime{Time: seed.expiresAt, Valid: !seed.expiresAt.IsZero()}
 	if seed.paymentID != "" {
 		provider = sql.NullString{String: stripe.ID, Valid: true}
 		checkoutID = sql.NullString{String: "cs_" + seed.paymentID, Valid: true}
@@ -113,17 +117,17 @@ func (f *purchaseFixture) seedPurchase(t *testing.T, seed purchaseSeed) uuid.UUI
 		INSERT INTO purchases (
 			id, tenant_id, user_id, episode_id, price_at_purchase, purchased_at, currency,
 			provider, provider_checkout_id, provider_payment_id, store, store_transaction_id,
-			revoked_at, revocation_reason, refunded_amount, refunded_at
+			revoked_at, revocation_reason, refunded_amount, refunded_at, expires_at
 		)
 		VALUES (
 			$1, $2, $3, $4, $5::integer, $6, 'JPY',
 			$7, $8, $9, $10, $11,
 			CASE WHEN $12::text IS NOT NULL THEN NOW() END, $12::text,
 			CASE WHEN $12::text = 'refund' THEN $5::integer END,
-			CASE WHEN $12::text = 'refund' THEN NOW() END
+			CASE WHEN $12::text = 'refund' THEN NOW() END, $13
 		)
 	`, id, f.admin.Tenant.ID, seed.reader.ID, seed.episode.ID, seed.episode.Price, seed.purchasedAt,
-		provider, checkoutID, paymentID, store, transactionID, reason); err != nil {
+		provider, checkoutID, paymentID, store, transactionID, reason, expiresAt); err != nil {
 		t.Fatalf("insert a purchase of %s: %v", seed.episode.PublicID, err)
 	}
 	return id
@@ -288,6 +292,90 @@ func TestDBListPurchasesFiltersAndPages(t *testing.T) {
 		}
 		if grant := byID[fourth.String()]; grant.Provider != "" || grant.Store != "" || grant.Refundable {
 			t.Fatalf("purchase without a payment = %+v, want neither a provider nor a store, and unrefundable", grant)
+		}
+	})
+}
+
+func (f *purchaseFixture) listReader(t *testing.T, req *publiraadminv1.ListReaderPurchasesRequest) *publiraadminv1.ListReaderPurchasesResponse {
+	t.Helper()
+
+	req.Tenant = f.admin.tenantContext()
+	res, err := f.client().ListReaderPurchases(f.ctx(), req)
+	if err != nil {
+		t.Fatalf("ListReaderPurchases: %v", err)
+	}
+	return res
+}
+
+// One reader's purchases list newest first with the episode named, refunded
+// and expired ones marked, across pages, and only for a reader of the tenant.
+func TestDBListReaderPurchases(t *testing.T) {
+	f := newPurchaseFixture(t)
+	day := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	expired := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: day, paymentID: "pi_expired", expiresAt: day.Add(72 * time.Hour)})
+	f.seedPurchase(t, purchaseSeed{reader: f.bob, episode: f.episodeC, purchasedAt: day.Add(24 * time.Hour), paymentID: "pi_bob"})
+	refunded := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeC, purchasedAt: day.Add(48 * time.Hour), paymentID: "pi_refunded", revocationReason: purchaseRevocationRefund})
+	open := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeB, purchasedAt: day.Add(72 * time.Hour), store: "app_store"})
+	aliceID := f.alice.ID.String()
+
+	t.Run("newest first, the episode named and the state marked", func(t *testing.T) {
+		purchases := f.listReader(t, &publiraadminv1.ListReaderPurchasesRequest{ReaderId: aliceID}).Purchases
+		assertPurchaseIDs(t, "purchases by Alice", purchases, open, refunded, expired)
+		if got := purchases[0]; got.EpisodePublicId != f.episodeB.PublicID || got.EpisodeTitle != f.episodeB.Title || got.RefundedAt != "" || got.RevokedAt != "" || got.ExpiresAt != "" {
+			t.Fatalf("open purchase = %+v, want episode B1, neither refunded, revoked, nor expiring", got)
+		}
+		if got := purchases[1]; got.EpisodeTitle != f.episodeC.Title || got.RefundedAt == "" || got.RefundedAmount != 500 || got.RevokedAt == "" || got.RevocationReason != publiraadminv1.PurchaseRevocationReason_PURCHASE_REVOCATION_REASON_REFUND {
+			t.Fatalf("refunded purchase = %+v, want episode A2 refunded in full and revoked for the refund", got)
+		}
+		if got := purchases[2]; got.EpisodeTitle != f.episodeA.Title || got.ExpiresAt != day.Add(72*time.Hour).Format(time.RFC3339) || got.RevokedAt != "" {
+			t.Fatalf("expired purchase = %+v, want episode A1 whose period ended, not revoked", got)
+		}
+	})
+
+	t.Run("pages keep to the reader in both directions", func(t *testing.T) {
+		page1 := f.listReader(t, &publiraadminv1.ListReaderPurchasesRequest{ReaderId: aliceID, Limit: 2})
+		assertPurchaseIDs(t, "page 1", page1.Purchases, open, refunded)
+		if page1.PreviousToken != "" || page1.NextToken == "" {
+			t.Fatalf("page 1 tokens = (%q, %q), want only a next one", page1.PreviousToken, page1.NextToken)
+		}
+		page2 := f.listReader(t, &publiraadminv1.ListReaderPurchasesRequest{ReaderId: aliceID, Limit: 2, Token: page1.NextToken})
+		assertPurchaseIDs(t, "page 2", page2.Purchases, expired)
+		if page2.PreviousToken == "" || page2.NextToken != "" {
+			t.Fatalf("page 2 tokens = (%q, %q), want only a previous one", page2.PreviousToken, page2.NextToken)
+		}
+		back := f.listReader(t, &publiraadminv1.ListReaderPurchasesRequest{ReaderId: aliceID, Limit: 2, Token: page2.PreviousToken})
+		assertPurchaseIDs(t, "back to page 1", back.Purchases, open, refunded)
+
+		_, err := f.client().ListReaderPurchases(f.ctx(), &publiraadminv1.ListReaderPurchasesRequest{
+			Tenant:   f.admin.tenantContext(),
+			ReaderId: f.bob.ID.String(),
+			Limit:    2,
+			Token:    page1.NextToken,
+		})
+		assertConnectCode(t, "a token used for another reader", err, connect.CodeInvalidArgument)
+	})
+
+	t.Run("a reader with none lists nothing", func(t *testing.T) {
+		carol := f.env.PG.SeedEndUser(t, f.admin.Tenant.ID, "READERCAROL", "carol@example.com", "Carol")
+		res := f.listReader(t, &publiraadminv1.ListReaderPurchasesRequest{ReaderId: carol.ID.String()})
+		if len(res.Purchases) != 0 || res.PreviousToken != "" || res.NextToken != "" {
+			t.Fatalf("purchases by Carol = %v (%q, %q), want none and no tokens", purchaseIDs(res.Purchases), res.PreviousToken, res.NextToken)
+		}
+	})
+
+	t.Run("a reader of another tenant is not found", func(t *testing.T) {
+		other := f.env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBADMIN01", "admin@tenant-b.example.com")
+		stranger := f.env.PG.SeedEndUser(t, other.Tenant.ID, "READERDAVE1", "dave@example.com", "Dave")
+		_, err := f.client().ListReaderPurchases(f.ctx(), &publiraadminv1.ListReaderPurchasesRequest{Tenant: f.admin.tenantContext(), ReaderId: stranger.ID.String()})
+		assertConnectCode(t, "a reader of another tenant", err, connect.CodeNotFound)
+		_, err = f.client().ListReaderPurchases(testutil.WithBearer(context.Background(), other.token()), &publiraadminv1.ListReaderPurchasesRequest{Tenant: other.tenantContext(), ReaderId: aliceID})
+		assertConnectCode(t, "Alice from another tenant", err, connect.CodeNotFound)
+	})
+
+	t.Run("an empty reader_id or one that is not a UUID", func(t *testing.T) {
+		for _, readerID := range []string{"", f.alice.PublicID} {
+			_, err := f.client().ListReaderPurchases(f.ctx(), &publiraadminv1.ListReaderPurchasesRequest{Tenant: f.admin.tenantContext(), ReaderId: readerID})
+			assertConnectCode(t, "reader_id "+readerID, err, connect.CodeInvalidArgument)
 		}
 	})
 }

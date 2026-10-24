@@ -114,6 +114,7 @@ type purchasePageFilter struct {
 	tenantID      uuid.UUID
 	seriesID      uuid.NullUUID
 	episodeID     uuid.NullUUID
+	readerID      uuid.NullUUID
 	readerEmail   sql.NullString
 	purchasedFrom sql.NullTime
 	purchasedTo   sql.NullTime
@@ -143,6 +144,7 @@ func (s *adminServer) purchasePage(
 			TenantID:          filter.tenantID,
 			SeriesID:          filter.seriesID,
 			EpisodeID:         filter.episodeID,
+			ReaderID:          filter.readerID,
 			ReaderEmail:       filter.readerEmail,
 			PurchasedFrom:     filter.purchasedFrom,
 			PurchasedTo:       filter.purchasedTo,
@@ -165,6 +167,7 @@ func (s *adminServer) purchasePage(
 		TenantID:          filter.tenantID,
 		SeriesID:          filter.seriesID,
 		EpisodeID:         filter.episodeID,
+		ReaderID:          filter.readerID,
 		ReaderEmail:       filter.readerEmail,
 		PurchasedFrom:     filter.purchasedFrom,
 		PurchasedTo:       filter.purchasedTo,
@@ -300,10 +303,90 @@ func (s *adminServer) ListPurchases(
 		filter.episodeID = uuid.NullUUID{UUID: episode.ID, Valid: true}
 	}
 
+	page, err := s.listPurchasePage(ctx, filter, listKey, cursor, keys, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.ListPurchasesResponse{
+		Purchases:     page.purchases,
+		PreviousToken: page.previousToken,
+		NextToken:     page.nextToken,
+	}, nil
+}
+
+// ListReaderPurchases lists one reader's purchases. It is an RPC of its own
+// rather than a filter on ListPurchases because a server that predates it
+// answers unimplemented, where one that predates a filter would ignore it and
+// answer every purchase of the tenant as the reader's.
+func (s *adminServer) ListReaderPurchases(
+	ctx context.Context,
+	req *publiraadminv1.ListReaderPurchasesRequest,
+) (*publiraadminv1.ListReaderPurchasesResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.requireTenantAdmin(ctx); err != nil {
+		return nil, err
+	}
+	readerID, err := readerIDArg(req.ReaderId)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := pagination.NormalizeLimit(req.Limit, defaultPurchaseListLimit, maxPurchaseListLimit)
+	cursor, err := pagination.Decode(req.Token)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
+	}
+	listKey := pagination.NewListKey("reader_purchased_at_desc").Value("reader_id", readerID.String())
+	var keys pagination.TimeUUIDKeys
+	if !cursor.IsZero() {
+		keys, err = listKey.DecodeTimeUUID(cursor)
+		if err != nil {
+			return nil, rpcerrors.NewPageTokenError(err)
+		}
+	}
+	if _, err := s.tenantReaderByID(ctx, tenant.ID, readerID); err != nil {
+		return nil, err
+	}
+
+	page, err := s.listPurchasePage(ctx, purchasePageFilter{
+		tenantID: tenant.ID,
+		readerID: uuid.NullUUID{UUID: readerID, Valid: true},
+	}, listKey, cursor, keys, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.ListReaderPurchasesResponse{
+		Purchases:     page.purchases,
+		PreviousToken: page.previousToken,
+		NextToken:     page.nextToken,
+	}, nil
+}
+
+// purchaseListPage is one page of purchases with the tokens around it, as
+// both list RPCs answer it.
+type purchaseListPage struct {
+	purchases     []*publiraadminv1.AdminPurchase
+	previousToken string
+	nextToken     string
+}
+
+// listPurchasePage reads the page of the filtered purchases the cursor names
+// and the tokens to the pages around it, under listKey.
+func (s *adminServer) listPurchasePage(
+	ctx context.Context,
+	filter purchasePageFilter,
+	listKey pagination.ListKey,
+	cursor pagination.Cursor,
+	keys pagination.TimeUUIDKeys,
+	limit int32,
+) (purchaseListPage, error) {
 	// One row past the page: its presence is what says another page exists.
 	page, err := s.purchasePage(ctx, filter, keys, cursor.Direction, limit+1)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list purchases", err, "tenant_id", tenant.ID.String())
+		return purchaseListPage{}, s.internalDBError(ctx, "failed to list purchases", err, "tenant_id", filter.tenantID.String())
 	}
 	page, hasMore := pagination.Page(page, limit, cursor.Direction)
 
@@ -311,37 +394,37 @@ func (s *adminServer) ListPurchases(
 	for _, key := range page {
 		ids = append(ids, key.id)
 	}
-	rows, err := s.loadPurchases(ctx, tenant.ID, ids)
+	rows, err := s.loadPurchases(ctx, filter.tenantID, ids)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to load listed purchases", err, "tenant_id", tenant.ID.String())
+		return purchaseListPage{}, s.internalDBError(ctx, "failed to load listed purchases", err, "tenant_id", filter.tenantID.String())
 	}
-	payments, err := s.paymentStore(ctx).GetPublic(ctx, tenant.ID)
+	payments, err := s.paymentStore(ctx).GetPublic(ctx, filter.tenantID)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get payment settings for list purchases", err, "tenant_id", tenant.ID.String())
+		return purchaseListPage{}, s.internalDBError(ctx, "failed to get payment settings for list purchases", err, "tenant_id", filter.tenantID.String())
 	}
 	purchases := make([]*publiraadminv1.AdminPurchase, 0, len(rows))
 	for _, row := range rows {
 		purchases = append(purchases, mapPurchase(row, payments))
 	}
 
-	res := &publiraadminv1.ListPurchasesResponse{Purchases: purchases}
+	res := purchaseListPage{purchases: purchases}
 	switch {
 	case len(page) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			res.PreviousToken = listKey.EncodeTimeUUID(pagination.Backward, page[0].purchasedAt, page[0].id)
+			res.previousToken = listKey.EncodeTimeUUID(pagination.Backward, page[0].purchasedAt, page[0].id)
 		}
 		if hasNext {
 			last := page[len(page)-1]
-			res.NextToken = listKey.EncodeTimeUUID(pagination.Forward, last.purchasedAt, last.id)
+			res.nextToken = listKey.EncodeTimeUUID(pagination.Forward, last.purchasedAt, last.id)
 		}
 	// An empty page means the boundary row went away after the token was
 	// issued. Hand back a token to where the client came from, once: a recovery
 	// token that comes back empty leaves both tokens empty.
 	case cursor.Direction == pagination.Forward && !keys.Inclusive:
-		res.PreviousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
+		res.previousToken = listKey.EncodeTimeUUIDRecovery(pagination.Backward, keys.Time, keys.ID)
 	case cursor.Direction == pagination.Backward && !keys.Inclusive:
-		res.NextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
+		res.nextToken = listKey.EncodeTimeUUIDRecovery(pagination.Forward, keys.Time, keys.ID)
 	}
 	return res, nil
 }

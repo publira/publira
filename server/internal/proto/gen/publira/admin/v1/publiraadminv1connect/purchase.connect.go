@@ -27,6 +27,9 @@ const (
 	// AdminPurchaseServiceListPurchasesProcedure is the procedure name of the AdminPurchaseService's
 	// ListPurchases RPC.
 	AdminPurchaseServiceListPurchasesProcedure = "/publira.admin.v1.AdminPurchaseService/ListPurchases"
+	// AdminPurchaseServiceListReaderPurchasesProcedure is the procedure name of the
+	// AdminPurchaseService's ListReaderPurchases RPC.
+	AdminPurchaseServiceListReaderPurchasesProcedure = "/publira.admin.v1.AdminPurchaseService/ListReaderPurchases"
 	// AdminPurchaseServiceGetPurchaseProcedure is the procedure name of the AdminPurchaseService's
 	// GetPurchase RPC.
 	AdminPurchaseServiceGetPurchaseProcedure = "/publira.admin.v1.AdminPurchaseService/GetPurchase"
@@ -41,6 +44,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_purchase_proto.Services().ByName("AdminPurchaseService").Methods().ByName("ListPurchases"),
 			Procedure:  AdminPurchaseServiceListPurchasesProcedure,
+		}
+	})
+	adminPurchaseServiceListReaderPurchasesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_purchase_proto.Services().ByName("AdminPurchaseService").Methods().ByName("ListReaderPurchases"),
+			Procedure:  AdminPurchaseServiceListReaderPurchasesProcedure,
 		}
 	})
 	adminPurchaseServiceGetPurchaseSpec = sync.OnceValue(func() connect.Spec {
@@ -63,6 +73,13 @@ var (
 type AdminPurchaseServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListPurchases(context.Context, *v1.ListPurchasesRequest) (*v1.ListPurchasesResponse, error)
+	// Lists one reader's purchases, as ListPurchases lists the tenant's.
+	// not_found for a reader of another tenant, as GetReader answers it, and
+	// invalid_argument with a field violation on reader_id for an empty one or
+	// one that is not a UUID.
+	//
+	// Minimum role: tenant_admin.
+	ListReaderPurchases(context.Context, *v1.ListReaderPurchasesRequest) (*v1.ListReaderPurchasesResponse, error)
 	// Minimum role: tenant_admin.
 	GetPurchase(context.Context, *v1.GetPurchaseRequest) (*v1.GetPurchaseResponse, error)
 	// Asks the provider the reader paid through to refund whatever of the
@@ -98,6 +115,13 @@ func NewAdminPurchaseServiceClient(client *connect.Client) AdminPurchaseServiceC
 type AdminPurchaseServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListPurchases(context.Context, *v1.ListPurchasesRequest) (*v1.ListPurchasesResponse, error)
+	// Lists one reader's purchases, as ListPurchases lists the tenant's.
+	// not_found for a reader of another tenant, as GetReader answers it, and
+	// invalid_argument with a field violation on reader_id for an empty one or
+	// one that is not a UUID.
+	//
+	// Minimum role: tenant_admin.
+	ListReaderPurchases(context.Context, *v1.ListReaderPurchasesRequest) (*v1.ListReaderPurchasesResponse, error)
 	// Minimum role: tenant_admin.
 	GetPurchase(context.Context, *v1.GetPurchaseRequest) (*v1.GetPurchaseResponse, error)
 	// Asks the provider the reader paid through to refund whatever of the
@@ -128,6 +152,7 @@ func RegisterAdminPurchaseServiceHandler(server *connect.Server, svc AdminPurcha
 	adapter := adminPurchaseServiceHandler{svc: svc}
 	server.Register(
 		connect.Method{Spec: adminPurchaseServiceListPurchasesSpec(), Handler: adapter.listPurchases},
+		connect.Method{Spec: adminPurchaseServiceListReaderPurchasesSpec(), Handler: adapter.listReaderPurchases},
 		connect.Method{Spec: adminPurchaseServiceGetPurchaseSpec(), Handler: adapter.getPurchase},
 		connect.Method{Spec: adminPurchaseServiceRefundPurchaseSpec(), Handler: adapter.refundPurchase},
 	)
@@ -138,6 +163,10 @@ type UnimplementedAdminPurchaseServiceHandler struct{}
 
 func (UnimplementedAdminPurchaseServiceHandler) ListPurchases(context.Context, *v1.ListPurchasesRequest) (*v1.ListPurchasesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPurchaseService.ListPurchases is not implemented")
+}
+
+func (UnimplementedAdminPurchaseServiceHandler) ListReaderPurchases(context.Context, *v1.ListReaderPurchasesRequest) (*v1.ListReaderPurchasesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPurchaseService.ListReaderPurchases is not implemented")
 }
 
 func (UnimplementedAdminPurchaseServiceHandler) GetPurchase(context.Context, *v1.GetPurchaseRequest) (*v1.GetPurchaseResponse, error) {
@@ -155,6 +184,14 @@ type adminPurchaseServiceClient struct {
 func (c *adminPurchaseServiceClient) ListPurchases(ctx context.Context, req *v1.ListPurchasesRequest) (*v1.ListPurchasesResponse, error) {
 	var res v1.ListPurchasesResponse
 	if err := c.client.CallUnary(ctx, adminPurchaseServiceListPurchasesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPurchaseServiceClient) ListReaderPurchases(ctx context.Context, req *v1.ListReaderPurchasesRequest) (*v1.ListReaderPurchasesResponse, error) {
+	var res v1.ListReaderPurchasesResponse
+	if err := c.client.CallUnary(ctx, adminPurchaseServiceListReaderPurchasesSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -184,6 +221,18 @@ func (h adminPurchaseServiceHandler) listPurchases(ctx context.Context, _ connec
 		return err
 	}
 	res, err := h.svc.ListPurchases(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPurchaseServiceHandler) listReaderPurchases(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListReaderPurchasesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListReaderPurchases(ctx, &req)
 	if err != nil {
 		return err
 	}
