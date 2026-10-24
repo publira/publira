@@ -3470,6 +3470,11 @@ final class AppMessages {
     return _format('mobile.viewer.reaction.reader_credited');
   }
 
+  /// `mobile.viewer.reaction.reader_is_staff`
+  String get viewerReactionReaderIsStaff {
+    return _format('mobile.viewer.reaction.reader_is_staff');
+  }
+
   /// `mobile.viewer.reaction.score`
   String viewerReactionScore({required String score}) {
     return _format('mobile.viewer.reaction.score', {'score': score});
@@ -4260,6 +4265,8 @@ const _jaSources = <String, String>{
   'mobile.viewer.reaction.press': 'リアクションする',
   'mobile.viewer.reaction.reader_credited':
       '著者としてクレジットされているエピソードにはリアクションできません。',
+  'mobile.viewer.reaction.reader_is_staff':
+      'スタッフの役割を持つ間はエピソードにリアクションできません。スタッフの閲覧は読者に表示される評価に含まれません。',
   'mobile.viewer.reaction.score': 'リアクションする ({\$score}/5)',
   'mobile.viewer.reaction.sign_in': 'リアクションするにはサインイン',
   'mobile.viewer.reaction.submitting': 'リアクション中…',
@@ -5147,6 +5154,8 @@ const _enSources = <String, String>{
   'mobile.viewer.reaction.press': 'React',
   'mobile.viewer.reaction.reader_credited':
       'You cannot react to an episode you are credited on as its author.',
+  'mobile.viewer.reaction.reader_is_staff':
+      'You cannot react to episodes while you hold a staff role, so your reading does not count toward the ratings readers see.',
   'mobile.viewer.reaction.score': 'React ({\$score}/5)',
   'mobile.viewer.reaction.sign_in': 'Sign in to react',
   'mobile.viewer.reaction.submitting': 'Reacting…',
@@ -5907,6 +5916,8 @@ const _koSources = <String, String>{
   'mobile.viewer.reaction.failed': '반응을 기록하지 못했습니다. 다시 시도해 주세요.',
   'mobile.viewer.reaction.press': '반응하기',
   'mobile.viewer.reaction.reader_credited': '작가로 등록된 에피소드에는 반응할 수 없습니다.',
+  'mobile.viewer.reaction.reader_is_staff':
+      '스태프 역할이 있는 동안에는 에피소드에 반응할 수 없습니다. 스태프의 열람은 독자에게 표시되는 평가에 포함되지 않습니다.',
   'mobile.viewer.reaction.score': '반응하기 ({\$score}/5)',
   'mobile.viewer.reaction.sign_in': '반응하려면 로그인',
   'mobile.viewer.reaction.submitting': '반응하는 중…',
@@ -6597,6 +6608,8 @@ const _zhHansSources = <String, String>{
   'mobile.viewer.reaction.failed': '无法记录反馈。请重试。',
   'mobile.viewer.reaction.press': '反馈',
   'mobile.viewer.reaction.reader_credited': '您无法对自己作为作者的章节进行反馈。',
+  'mobile.viewer.reaction.reader_is_staff':
+      '您拥有工作人员角色期间无法对章节进行反馈，工作人员的阅读不计入读者看到的评价。',
   'mobile.viewer.reaction.score': '反馈 ({\$score}/5)',
   'mobile.viewer.reaction.sign_in': '登录后反馈',
   'mobile.viewer.reaction.submitting': '正在反馈…',
@@ -7286,6 +7299,8 @@ const _zhHantSources = <String, String>{
   'mobile.viewer.reaction.failed': '無法記錄回應。請再試一次。',
   'mobile.viewer.reaction.press': '回應',
   'mobile.viewer.reaction.reader_credited': '您無法回應自己作為作者的章節。',
+  'mobile.viewer.reaction.reader_is_staff':
+      '您擁有工作人員角色期間無法回應章節，工作人員的閱讀不計入讀者看到的評價。',
   'mobile.viewer.reaction.score': '回應 ({\$score}/5)',
   'mobile.viewer.reaction.sign_in': '登入後即可回應',
   'mobile.viewer.reaction.submitting': '正在回應…',

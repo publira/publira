@@ -20,6 +20,10 @@ import 'package:publira/typography/autospaced_text.dart';
 /// author is not offered a press that would end in that refusal: the control
 /// renders nothing once their state says so. It holds the space below it for
 /// the same reason, so a withheld control leaves no gap where it would be.
+///
+/// A reader holding a staff role in the tenant is refused the same way, but is
+/// told why in place of the control: an author knows the episode is theirs,
+/// while a member of staff reads it as any reader would.
 class EpisodeReactionControl extends StatefulWidget {
   const EpisodeReactionControl({super.key, required this.episode});
 
@@ -138,18 +142,33 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
     if (signedIn && reaction != null && reaction.readerCredited) {
       return const SizedBox.shrink();
     }
+    if (signedIn && reaction != null && reaction.readerIsStaff) {
+      return Padding(
+        key: const ValueKey('episode-reaction-reader-is-staff'),
+        padding: const EdgeInsets.only(bottom: 24),
+        child: AutospacedText(
+          messages.viewerReactionReaderIsStaff,
+          textAlign: TextAlign.center,
+          // Set like the author's note on the same end panel.
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+        ),
+      );
+    }
     final ratingCount = reaction?.ratingCount ?? widget.episode.ratingCount;
     final atMaximum =
         reaction != null &&
         reaction.score > 0 &&
         (!reaction.allowsMultiplePresses || reaction.score >= 5);
-    // A press refused because the reader is credited on the episode — linked
-    // after the control was drawn — is refused again on every press, and says
-    // so rather than asking for another try.
+    // A press refused because the reader is credited on the episode, or holds
+    // a staff role — linked or granted after the control was drawn — is
+    // refused again on every press, and says so rather than asking for
+    // another try.
     final error = _error;
-    final refusedAsCredited =
-        error is CatalogFailure &&
-        error.reasons.contains(readerCreditedOnEpisodeReason);
+    final reasons = error is CatalogFailure ? error.reasons : const <String>[];
+    final refusedAsCredited = reasons.contains(readerCreditedOnEpisodeReason);
+    final refusedAsStaff = reasons.contains(readerIsTenantStaffReason);
 
     return Column(
       key: const ValueKey('episode-reaction'),
@@ -165,7 +184,12 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
         else
           FilledButton.icon(
             key: const ValueKey('episode-reaction-press'),
-            onPressed: _loading || _submitting || atMaximum || refusedAsCredited
+            onPressed:
+                _loading ||
+                    _submitting ||
+                    atMaximum ||
+                    refusedAsCredited ||
+                    refusedAsStaff
                 ? null
                 : _react,
             icon: Icon(
@@ -196,6 +220,8 @@ class _EpisodeReactionControlState extends State<EpisodeReactionControl> {
             key: const ValueKey('episode-reaction-error'),
             refusedAsCredited
                 ? messages.viewerReactionReaderCredited
+                : refusedAsStaff
+                ? messages.viewerReactionReaderIsStaff
                 : messages.viewerReactionFailed,
             textAlign: TextAlign.center,
             style: TextStyle(color: Theme.of(context).colorScheme.error),

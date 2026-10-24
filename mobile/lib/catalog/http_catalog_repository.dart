@@ -954,6 +954,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ratingCount: body.ratingCount.toInt(),
         mode: body.mode,
         readerCredited: body.readerCredited,
+        readerIsStaff: body.readerIsStaff,
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -985,9 +986,10 @@ class HttpCatalogRepository implements CatalogRepository {
         score: body.score,
         ratingCount: body.ratingCount.toInt(),
         mode: body.mode,
-        // RateEpisode never carries it: a credited reader is refused before
-        // there is a response to read.
+        // RateEpisode never carries either: a credited reader and a member
+        // of staff are refused before there is a response to read.
         readerCredited: false,
+        readerIsStaff: false,
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -1567,6 +1569,7 @@ class HttpCatalogRepository implements CatalogRepository {
     required int ratingCount,
     required pb.EpisodeRatingMode mode,
     required bool readerCredited,
+    required bool readerIsStaff,
   }) {
     return EpisodeReaction(
       score: score < 0 ? 0 : (score > 5 ? 5 : score),
@@ -1574,6 +1577,7 @@ class HttpCatalogRepository implements CatalogRepository {
       allowsMultiplePresses:
           mode == pb.EpisodeRatingMode.EPISODE_RATING_MODE_MULTIPLE,
       readerCredited: readerCredited,
+      readerIsStaff: readerIsStaff,
     );
   }
 

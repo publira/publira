@@ -19,6 +19,10 @@ const tenantSuspendedReason = 'TENANT_SUSPENDED';
 /// purchase with when the reader is credited on the episode.
 const readerCreditedOnEpisodeReason = 'READER_CREDITED_ON_EPISODE';
 
+/// The ErrorInfo reason the API refuses a rating with, under
+/// `permission_denied`, when the reader holds a staff role in the tenant.
+const readerIsTenantStaffReason = 'READER_IS_TENANT_STAFF';
+
 /// The ErrorInfo reason the API refuses to delete an account with when it is
 /// the tenant's last active tenant admin.
 const lastTenantAdminReason = 'LAST_TENANT_ADMIN';
