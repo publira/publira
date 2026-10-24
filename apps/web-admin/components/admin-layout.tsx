@@ -1,33 +1,7 @@
-import {
-  ConsoleHeader,
-  ConsoleHeaderActions,
-  ConsoleHeaderContext,
-  ConsoleHeaderLabel,
-  ConsoleHeaderUser,
-  ConsoleHeaderUserSkeleton,
-  ConsoleHeaderText,
-  ConsoleLayout,
-  ConsoleLayoutContent,
-  ConsoleLayoutMain,
-  ConsoleMobileNavigation,
-  ConsoleMobileNavigationCloseButton,
-  ConsoleMobileNavigationOpenButton,
-  ConsoleSidebar,
-  ConsoleSidebarBrand,
-  ConsoleSidebarBrandName,
-  ConsoleSidebarContext,
-  ConsoleUserMenuAccountLink,
-  ConsoleUserMenuContent,
-  ConsoleUserMenuIdentity,
-  ConsoleUserMenuInitial,
-  ConsoleUserMenuLogout,
-  ConsoleUserMenuLogoutButton,
-  ConsoleUserMenuName,
-  ConsoleUserMenuPublicId,
-  ConsoleUserMenuRole,
-  ConsoleUserMenuSeparator,
-  ConsoleUserMenuTrigger,
-} from "@publira/layouts/admin";
+import * as ConsoleHeader from "@publira/layouts/admin/console-header";
+import * as ConsoleLayout from "@publira/layouts/admin/console-layout";
+import * as ConsoleSidebar from "@publira/layouts/admin/console-sidebar";
+import * as ConsoleUserMenu from "@publira/layouts/admin/console-user-menu";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -92,37 +66,37 @@ export const AdminUser = async () => {
   const t = await getMessagesFor(locale);
 
   return (
-    <ConsoleHeaderUser>
-      <ConsoleUserMenuTrigger
+    <ConsoleUserMenu.Root>
+      <ConsoleUserMenu.Trigger
         aria-label={t("admin.shell.account_menu", {
           name: user.name,
         })}
       >
-        <ConsoleUserMenuInitial>{user.name}</ConsoleUserMenuInitial>
-      </ConsoleUserMenuTrigger>
-      <ConsoleUserMenuContent>
-        <ConsoleUserMenuIdentity>
-          <ConsoleUserMenuName>{user.name}</ConsoleUserMenuName>
-          <ConsoleUserMenuPublicId>{user.publicId}</ConsoleUserMenuPublicId>
-          <ConsoleUserMenuRole>
+        <ConsoleUserMenu.Initial>{user.name}</ConsoleUserMenu.Initial>
+      </ConsoleUserMenu.Trigger>
+      <ConsoleUserMenu.Content>
+        <ConsoleUserMenu.Identity>
+          <ConsoleUserMenu.Name>{user.name}</ConsoleUserMenu.Name>
+          <ConsoleUserMenu.PublicId>{user.publicId}</ConsoleUserMenu.PublicId>
+          <ConsoleUserMenu.Role>
             {await getTenantRoleLabel(user.role, locale)}
-          </ConsoleUserMenuRole>
-        </ConsoleUserMenuIdentity>
-        <ConsoleUserMenuSeparator />
-        <ConsoleUserMenuAccountLink href="/settings/account">
+          </ConsoleUserMenu.Role>
+        </ConsoleUserMenu.Identity>
+        <ConsoleUserMenu.Separator />
+        <ConsoleUserMenu.AccountLink href="/settings/account">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="admin.shell.account_settings" />
           </Suspense>
-        </ConsoleUserMenuAccountLink>
-        <ConsoleUserMenuLogout action={logoutAction.bind(null, tenantId)}>
-          <ConsoleUserMenuLogoutButton>
+        </ConsoleUserMenu.AccountLink>
+        <ConsoleUserMenu.Logout action={logoutAction.bind(null, tenantId)}>
+          <ConsoleUserMenu.LogoutButton>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.shell.logout" />
             </Suspense>
-          </ConsoleUserMenuLogoutButton>
-        </ConsoleUserMenuLogout>
-      </ConsoleUserMenuContent>
-    </ConsoleHeaderUser>
+          </ConsoleUserMenu.LogoutButton>
+        </ConsoleUserMenu.Logout>
+      </ConsoleUserMenu.Content>
+    </ConsoleUserMenu.Root>
   );
 };
 
@@ -132,12 +106,12 @@ const AdminMobileNavigation = async () => {
 
   return (
     <>
-      <ConsoleMobileNavigation>
-        <ConsoleMobileNavigationCloseButton
+      <ConsoleLayout.MobileNavigation>
+        <ConsoleLayout.MobileNavigationCloseButton
           aria-label={t("admin.shell.navigation_close")}
         />
-      </ConsoleMobileNavigation>
-      <ConsoleMobileNavigationOpenButton
+      </ConsoleLayout.MobileNavigation>
+      <ConsoleLayout.MobileNavigationOpenButton
         aria-label={t("admin.shell.navigation_open")}
       />
     </>
@@ -164,7 +138,7 @@ export const AdminSidebarBrandMark = async () => {
       />
     </Suspense>
   ) : (
-    <ConsoleSidebarBrandName>{tenantName}</ConsoleSidebarBrandName>
+    <ConsoleSidebar.BrandName>{tenantName}</ConsoleSidebar.BrandName>
   );
 };
 
@@ -176,7 +150,7 @@ export const AdminSidebarContext = async () => {
   ]);
 
   return logoVariant ? (
-    <ConsoleSidebarContext>{tenantName}</ConsoleSidebarContext>
+    <ConsoleSidebar.Context>{tenantName}</ConsoleSidebar.Context>
   ) : null;
 };
 
@@ -203,37 +177,37 @@ export const AdminHeaderTenantName = async () => await getConsoleTenantName();
  * its logo, or needs the session waits behind a boundary of its own.
  */
 export const AdminLayout = ({ children }: { children: ReactNode }) => (
-  <ConsoleLayout>
+  <ConsoleLayout.Root>
     <Suspense fallback={null}>
       <AdminMobileNavigation />
     </Suspense>
-    <ConsoleSidebar>
-      <ConsoleSidebarBrand>
+    <ConsoleSidebar.Root>
+      <ConsoleSidebar.Brand>
         <Suspense fallback={<SkeletonLine className="h-7 w-32" />}>
           <AdminSidebarBrandMark />
         </Suspense>
-      </ConsoleSidebarBrand>
+      </ConsoleSidebar.Brand>
       <Suspense fallback={null}>
         <AdminSidebarContext />
       </Suspense>
       <AdminNavigation />
-    </ConsoleSidebar>
+    </ConsoleSidebar.Root>
 
-    <ConsoleLayoutContent>
-      <ConsoleHeader>
-        <ConsoleHeaderContext>
+    <ConsoleLayout.Content>
+      <ConsoleHeader.Root>
+        <ConsoleHeader.Context>
           <Suspense fallback={null}>
             <AdminHeaderBrand />
           </Suspense>
-          <ConsoleHeaderText>
-            <ConsoleHeaderLabel>
+          <ConsoleHeader.Text>
+            <ConsoleHeader.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <AdminHeaderTenantName />
               </Suspense>
-            </ConsoleHeaderLabel>
-          </ConsoleHeaderText>
-        </ConsoleHeaderContext>
-        <ConsoleHeaderActions>
+            </ConsoleHeader.Label>
+          </ConsoleHeader.Text>
+        </ConsoleHeader.Context>
+        <ConsoleHeader.Actions>
           <Suspense
             fallback={
               <Skeleton className="size-9 rounded-control pointer-coarse:size-11" />
@@ -246,12 +220,12 @@ export const AdminLayout = ({ children }: { children: ReactNode }) => (
               <NotificationBell />
             </Suspense>
           </NotificationBellErrorBoundary>
-          <Suspense fallback={<ConsoleHeaderUserSkeleton />}>
+          <Suspense fallback={<ConsoleHeader.UserSkeleton />}>
             <AdminUser />
           </Suspense>
-        </ConsoleHeaderActions>
-      </ConsoleHeader>
-      <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
-    </ConsoleLayoutContent>
-  </ConsoleLayout>
+        </ConsoleHeader.Actions>
+      </ConsoleHeader.Root>
+      <ConsoleLayout.Main>{children}</ConsoleLayout.Main>
+    </ConsoleLayout.Content>
+  </ConsoleLayout.Root>
 );

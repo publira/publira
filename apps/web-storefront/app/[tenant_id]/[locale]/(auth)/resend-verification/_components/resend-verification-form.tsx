@@ -1,8 +1,4 @@
-import {
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenNote,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -18,12 +14,12 @@ import { requestEmailVerificationAction } from "../_lib/actions";
 
 export const ResendVerificationForm = () => (
   <>
-    <AuthScreenBody>
-      <AuthScreenNote>
+    <AuthScreen.Body>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="storefront.auth.resend_verification.description" />
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
 
       <ActionForm.Root
         action={requestEmailVerificationAction}
@@ -61,9 +57,9 @@ export const ResendVerificationForm = () => (
           </ActionForm.Pending>
         </ActionForm.Submit>
       </ActionForm.Root>
-    </AuthScreenBody>
+    </AuthScreen.Body>
 
-    <AuthScreenFooter>
+    <AuthScreen.Footer>
       <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-32" />}>
           <LocaleLink
@@ -74,6 +70,6 @@ export const ResendVerificationForm = () => (
           </LocaleLink>
         </Suspense>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );

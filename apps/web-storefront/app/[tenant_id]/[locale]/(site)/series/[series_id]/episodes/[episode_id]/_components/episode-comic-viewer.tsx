@@ -10,24 +10,8 @@ import {
   describeVisiblePages,
   renewFromPageUrls,
   useBoxHeight,
-  ViewerBackwardIcon,
-  ViewerForwardIcon,
-  ViewerNextPageButton,
-  ViewerPage,
-  ViewerPageError,
-  ViewerPageErrorMessage,
-  ViewerPageLoading,
-  ViewerPageNavigation,
-  ViewerPageRetryButton,
-  ViewerPageStatus,
-  ViewerPreviousPageButton,
-  ViewerProgress,
-  ViewerProgressSlider,
-  ViewerRail,
-  ViewerRoot,
-  ViewerToolbar,
-  ViewerToolbarActions,
 } from "@publira/comic-viewer-shell";
+import * as Viewer from "@publira/comic-viewer-shell/viewer";
 import {
   FoldHorizontalIcon,
   MaximizeIcon,
@@ -213,16 +197,16 @@ const EpisodeViewerToolbar = ({
   const formatPageStatus = buildPageStatusFormatter(t);
 
   return (
-    <ViewerToolbar>
-      <ViewerProgress aria-label={t("storefront.episode.viewer.progress")}>
-        <ViewerProgressSlider format={formatPageStatus} />
-        <ViewerPageStatus format={formatPageStatus} />
-      </ViewerProgress>
-      <ViewerToolbarActions>
+    <Viewer.Toolbar>
+      <Viewer.Progress aria-label={t("storefront.episode.viewer.progress")}>
+        <Viewer.ProgressSlider format={formatPageStatus} />
+        <Viewer.PageStatus format={formatPageStatus} />
+      </Viewer.Progress>
+      <Viewer.ToolbarActions>
         <WideViewerButton isWide={isWide} onToggle={onToggleWide} />
         <FullscreenButton onToggle={onToggleFullscreen} />
-      </ViewerToolbarActions>
-    </ViewerToolbar>
+      </Viewer.ToolbarActions>
+    </Viewer.Toolbar>
   );
 };
 
@@ -251,7 +235,7 @@ const EpisodeViewerPageNavigation = ({
   );
 
   return (
-    <ViewerPageNavigation
+    <Viewer.PageNavigation
       aria-label={t("storefront.episode.viewer.navigation")}
     >
       {previousEpisodeHref !== undefined && currentIndex <= minIndex ? (
@@ -259,11 +243,11 @@ const EpisodeViewerPageNavigation = ({
           className={cn(episodeLinkClassName, "start-3")}
           href={previousEpisodeHref}
         >
-          <ViewerBackwardIcon />
+          <Viewer.BackwardIcon />
           <ClientMessage message="storefront.episode.navigation.previous" />
         </LocaleLink>
       ) : (
-        <ViewerPreviousPageButton
+        <Viewer.PreviousPageButton
           aria-label={t("storefront.common.previous_page")}
         />
       )}
@@ -273,12 +257,12 @@ const EpisodeViewerPageNavigation = ({
           href={nextEpisodeHref}
         >
           <ClientMessage message="storefront.episode.navigation.next" />
-          <ViewerForwardIcon />
+          <Viewer.ForwardIcon />
         </LocaleLink>
       ) : (
-        <ViewerNextPageButton aria-label={t("storefront.common.next_page")} />
+        <Viewer.NextPageButton aria-label={t("storefront.common.next_page")} />
       )}
-    </ViewerPageNavigation>
+    </Viewer.PageNavigation>
   );
 };
 
@@ -401,28 +385,28 @@ export const EpisodeComicViewer = ({
       className="size-full bg-foreground [--viewer-ink:var(--color-background)] [--viewer-mat:var(--color-foreground)] [--viewer-rule:var(--color-muted-foreground)]"
       ref={setShell}
     >
-      <ViewerRoot
+      <Viewer.Root
         initialPageIndex={initialPageIndex}
         pages={pages}
         readingDirection={readingDirection}
         renewPageUrl={renewPageUrl}
         spreadStartIndex={spreadStartIndex}
       >
-        <ViewerRail boxHeight={boxHeight}>
-          <ViewerPage>
-            <ViewerPageLoading>
+        <Viewer.Rail boxHeight={boxHeight}>
+          <Viewer.Page>
+            <Viewer.PageLoading>
               <ClientMessage message="storefront.episode.viewer.loading" />
-            </ViewerPageLoading>
-            <ViewerPageError>
-              <ViewerPageErrorMessage>
+            </Viewer.PageLoading>
+            <Viewer.PageError>
+              <Viewer.PageErrorMessage>
                 <ClientMessage message="storefront.episode.viewer.page_error" />
-              </ViewerPageErrorMessage>
-              <ViewerPageRetryButton>
+              </Viewer.PageErrorMessage>
+              <Viewer.PageRetryButton>
                 <ClientMessage message="storefront.episode.viewer.reload" />
-              </ViewerPageRetryButton>
-            </ViewerPageError>
-          </ViewerPage>
-        </ViewerRail>
+              </Viewer.PageRetryButton>
+            </Viewer.PageError>
+          </Viewer.Page>
+        </Viewer.Rail>
         {endPage === undefined ? null : (
           /* A click here reads and scrolls rather than turns: the reader
                leaves this page with the page-turn controls, not by tapping its
@@ -459,7 +443,7 @@ export const EpisodeComicViewer = ({
         />
         {isWide ? <WideViewerMarker /> : null}
         {children}
-      </ViewerRoot>
+      </Viewer.Root>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { AuthScreenBody, AuthScreenFooter } from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -20,7 +20,7 @@ export const LoginForm = ({
   nextField: ReactNode;
 }) => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <ActionForm.Root action={loginAction} className="grid gap-4">
         {nextField}
 
@@ -71,9 +71,9 @@ export const LoginForm = ({
           </Suspense>
         </ActionForm.Submit>
       </ActionForm.Root>
-    </AuthScreenBody>
+    </AuthScreen.Body>
 
-    <AuthScreenFooter>
+    <AuthScreen.Footer>
       <p>
         <Link
           className="text-primary underline underline-offset-4"
@@ -84,6 +84,6 @@ export const LoginForm = ({
           </Suspense>
         </Link>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );

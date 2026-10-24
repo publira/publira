@@ -7,25 +7,41 @@
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "default": "./dist/index.mjs"
+    "./admin/console-header": {
+      "types": "./dist/admin/console-header/index.d.mts",
+      "default": "./dist/admin/console-header/index.mjs"
     },
-    "./site-layout": {
-      "types": "./dist/site-layout.d.mts",
-      "default": "./dist/site-layout.mjs"
+    "./admin/console-layout": {
+      "types": "./dist/admin/console-layout/index.d.mts",
+      "default": "./dist/admin/console-layout/index.mjs"
+    },
+    "./admin/console-page": {
+      "types": "./dist/admin/console-page/index.d.mts",
+      "default": "./dist/admin/console-page/index.mjs"
+    },
+    "./admin/console-section": {
+      "types": "./dist/admin/console-section/index.d.mts",
+      "default": "./dist/admin/console-section/index.mjs"
+    },
+    "./admin/console-sidebar": {
+      "types": "./dist/admin/console-sidebar/index.d.mts",
+      "default": "./dist/admin/console-sidebar/index.mjs"
+    },
+    "./admin/console-user-menu": {
+      "types": "./dist/admin/console-user-menu/index.d.mts",
+      "default": "./dist/admin/console-user-menu/index.mjs"
     },
     "./auth-screen": {
-      "types": "./dist/auth-screen.d.mts",
-      "default": "./dist/auth-screen.mjs"
-    },
-    "./admin": {
-      "types": "./dist/admin/index.d.mts",
-      "default": "./dist/admin/index.mjs"
+      "types": "./dist/auth-screen/index.d.mts",
+      "default": "./dist/auth-screen/index.mjs"
     },
     "./navigation": {
       "types": "./dist/navigation.d.mts",
       "default": "./dist/navigation.mjs"
+    },
+    "./site-layout": {
+      "types": "./dist/site-layout/index.d.mts",
+      "default": "./dist/site-layout/index.mjs"
     },
     "./styles.css": "./styles.css"
   },

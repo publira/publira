@@ -14,16 +14,16 @@ import type { ReactNode } from "react";
  * page heading names it, and the table goes directly under it.
  *
  * ```tsx
- * <ConsoleSection>
- *   <ConsoleSectionHeader>
- *     <ConsoleSectionHeading>
- *       <ConsoleSectionTitle>Time zone</ConsoleSectionTitle>
- *       <ConsoleSectionDescription>…</ConsoleSectionDescription>
- *     </ConsoleSectionHeading>
- *     <ConsoleSectionActions>{actions}</ConsoleSectionActions>
- *   </ConsoleSectionHeader>
+ * <ConsoleSection.Root>
+ *   <ConsoleSection.Header>
+ *     <ConsoleSection.Heading>
+ *       <ConsoleSection.Title>Time zone</ConsoleSection.Title>
+ *       <ConsoleSection.Description>…</ConsoleSection.Description>
+ *     </ConsoleSection.Heading>
+ *     <ConsoleSection.Actions>{actions}</ConsoleSection.Actions>
+ *   </ConsoleSection.Header>
  *   {form}
- * </ConsoleSection>
+ * </ConsoleSection.Root>
  * ```
  */
 export const ConsoleSection = ({
@@ -81,7 +81,7 @@ export const ConsoleSectionActions = ({
  * The gap is wider than the one inside a section, because it is the only thing
  * telling one section from the next.
  */
-export const ConsoleSections = ({
+export const ConsoleSectionStack = ({
   children,
   className,
 }: {

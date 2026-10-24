@@ -1,13 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -65,9 +56,9 @@ const AgreementHeader = async () => {
         pageTitle={t("storefront.auth.agreement.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
@@ -171,27 +162,27 @@ const AgreementSignOut = async () => {
 const LegalPageAgreementPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/settings/agreement">) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <AgreementHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
-      <AuthScreenBody>
-        <AuthScreenNote>
+      <AuthScreen.Body>
+        <AuthScreen.Note>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="storefront.auth.agreement.description" />
           </Suspense>
-        </AuthScreenNote>
+        </AuthScreen.Note>
 
         <Suspense fallback={<AgreementFormSkeleton />}>
           <AgreementForm searchParams={searchParams} />
         </Suspense>
-      </AuthScreenBody>
+      </AuthScreen.Body>
 
-      <AuthScreenFooter>
+      <AuthScreen.Footer>
         <p className="text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
             <Message message="storefront.auth.agreement.decline" />
@@ -214,9 +205,9 @@ const LegalPageAgreementPage = ({
             </LocaleLink>
           </Suspense>
         </div>
-      </AuthScreenFooter>
-    </AuthScreenMain>
-  </AuthScreen>
+      </AuthScreen.Footer>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default LegalPageAgreementPage;

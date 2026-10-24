@@ -9,29 +9,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { describeVisiblePages } from "./page-status";
-import { ViewerEmpty } from "./viewer-empty";
-import {
-  ViewerPage,
-  ViewerPageError,
-  ViewerPageErrorMessage,
-  ViewerPageLoading,
-  ViewerPageRetryButton,
-} from "./viewer-page";
-import {
-  ViewerNextPageButton,
-  ViewerPageNavigation,
-  ViewerPreviousPageButton,
-} from "./viewer-page-navigation";
-import { ViewerRail } from "./viewer-rail";
-import { ViewerRoot } from "./viewer-root";
-import {
-  ViewerPageStatus,
-  ViewerProgress,
-  ViewerProgressSlider,
-  ViewerToolbar,
-  ViewerToolbarActions,
-} from "./viewer-toolbar";
+import * as Viewer from ".";
+import { describeVisiblePages } from "../page-status";
 
 afterEach(() => {
   cleanup();
@@ -81,38 +60,38 @@ const Shell = ({
   readingDirection?: "ltr" | "rtl";
   spreadStartIndex?: number;
 }) => (
-  <ViewerRoot
+  <Viewer.Root
     pages={shellPages}
     readingDirection={readingDirection}
     spreadStartIndex={spreadStartIndex}
   >
-    <ViewerRail boxHeight={0}>
-      <ViewerPage>
-        <ViewerPageLoading>Loading…</ViewerPageLoading>
-        <ViewerPageError>
-          <ViewerPageErrorMessage>
+    <Viewer.Rail boxHeight={0}>
+      <Viewer.Page>
+        <Viewer.PageLoading>Loading…</Viewer.PageLoading>
+        <Viewer.PageError>
+          <Viewer.PageErrorMessage>
             This page could not be loaded.
-          </ViewerPageErrorMessage>
-          <ViewerPageRetryButton>Reload</ViewerPageRetryButton>
-        </ViewerPageError>
-      </ViewerPage>
-    </ViewerRail>
-    <ViewerEmpty>This episode has no pages.</ViewerEmpty>
-    <ViewerToolbar>
-      <ViewerProgress aria-label="Reading progress">
-        <ViewerProgressSlider format={formatPageStatus} />
-        <ViewerPageStatus format={formatPageStatus} />
-      </ViewerProgress>
+          </Viewer.PageErrorMessage>
+          <Viewer.PageRetryButton>Reload</Viewer.PageRetryButton>
+        </Viewer.PageError>
+      </Viewer.Page>
+    </Viewer.Rail>
+    <Viewer.Empty>This episode has no pages.</Viewer.Empty>
+    <Viewer.Toolbar>
+      <Viewer.Progress aria-label="Reading progress">
+        <Viewer.ProgressSlider format={formatPageStatus} />
+        <Viewer.PageStatus format={formatPageStatus} />
+      </Viewer.Progress>
       {actions === undefined ? null : (
-        <ViewerToolbarActions>{actions}</ViewerToolbarActions>
+        <Viewer.ToolbarActions>{actions}</Viewer.ToolbarActions>
       )}
-    </ViewerToolbar>
-    <ViewerPageNavigation aria-label="Page navigation">
-      <ViewerPreviousPageButton aria-label="Previous page" />
-      <ViewerNextPageButton aria-label="Next page" />
-    </ViewerPageNavigation>
+    </Viewer.Toolbar>
+    <Viewer.PageNavigation aria-label="Page navigation">
+      <Viewer.PreviousPageButton aria-label="Previous page" />
+      <Viewer.NextPageButton aria-label="Next page" />
+    </Viewer.PageNavigation>
     {children}
-  </ViewerRoot>
+  </Viewer.Root>
 );
 
 const LayoutProbe = () => {
@@ -140,7 +119,7 @@ const pressViewer = () => {
   });
 };
 
-describe("ViewerRoot", () => {
+describe("Viewer.Root", () => {
   it("opens in the reading direction and spread start it is given", () => {
     render(
       <Shell readingDirection="ltr" spreadStartIndex={0}>
@@ -170,7 +149,7 @@ describe("ViewerRoot", () => {
   });
 });
 
-describe("ViewerRail", () => {
+describe("Viewer.Rail", () => {
   it("animates the track only while a turn is under way, and zooms the current slot alone", () => {
     const { container } = render(<Shell />);
 
@@ -193,7 +172,7 @@ describe("ViewerRail", () => {
   });
 });
 
-describe("ViewerPage", () => {
+describe("Viewer.Page", () => {
   it("says a page is loading while it has nothing on screen", () => {
     vi.stubGlobal("fetch", pendingFetch());
 
@@ -229,7 +208,7 @@ describe("ViewerPage", () => {
   });
 });
 
-describe("ViewerEmpty", () => {
+describe("Viewer.Empty", () => {
   it("says the episode has no pages instead of leaving the mat bare", () => {
     render(<Shell pages={[]} />);
 
@@ -243,7 +222,7 @@ describe("ViewerEmpty", () => {
   });
 });
 
-describe("ViewerToolbar", () => {
+describe("Viewer.Toolbar", () => {
   it("announces the pages under the thumb in the words the page status shows", () => {
     render(<Shell />);
     pressViewer();
@@ -271,7 +250,7 @@ describe("ViewerToolbar", () => {
   });
 });
 
-describe("ViewerPageNavigation", () => {
+describe("Viewer.PageNavigation", () => {
   it.each([
     {
       backward: "chevron-right",

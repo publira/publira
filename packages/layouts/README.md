@@ -4,39 +4,40 @@ The package that provides the layout components reused across several web apps.
 
 ## What it provides
 
-Every subpath is its own build entry, so an app imports the family it needs without pulling the others into the same module graph.
+Every subpath is its own build entry, so an app imports the family it needs without pulling the others into the same module graph. Each subpath but `navigation` holds one component tree, exported as a namespace in the form `@publira/ui-components` uses: the caller writes `import * as SiteLayout from "@publira/layouts/site-layout"` and then `<SiteLayout.Root>`, `<SiteLayout.Header>`. A tree rendered inside another — the storefront's drawer and user menu, the console sidebar's navigation — is reached through the outer namespace under the longer part name (`SiteLayout.MobileNavigationLink`, `ConsoleSidebar.NavigationItem`).
 
-### `@publira/layouts` — the site layout
+### `@publira/layouts/site-layout` — the site layout
 
-The storefront's frame, as compound components. The root also re-exports `isCurrentPath`.
+The storefront's frame, as the `SiteLayout` namespace.
 
-- The frame: `SiteLayout`, `SiteLayoutHeader`, `SiteLayoutMain`, `SiteLayoutFooter`
-- The header: `SiteLayoutBrand`, `SiteLayoutNav` / `SiteLayoutNavLink`, `SiteLayoutHeaderSearch`, `SiteLayoutHeaderWideControls`, `SiteLayoutHeaderActions`, and the actions a signed-out reader sees — `SiteLayoutActions` / `SiteLayoutPrimaryAction` / `SiteLayoutSecondaryAction`
-- The user menu: `SiteLayoutUserMenu` and its parts — `SiteLayoutUserMenuTrigger`, `SiteLayoutUserMenuContent`, `SiteLayoutUserMenuAccount`, `SiteLayoutUserMenuMyPageLink`, `SiteLayoutUserMenuAnnouncementsLink`, `SiteLayoutUserMenuSeparator`, `SiteLayoutUserMenuLogout` / `SiteLayoutUserMenuLogoutButton`
-- The banner above the header, for the one announcement a reader has to see first: `SiteLayoutBanner`, `SiteLayoutBannerContent`, `SiteLayoutBannerTitle`, `SiteLayoutBannerDescription`, `SiteLayoutBannerLink`, `SiteLayoutBannerActions`
-- The phone header's drawer: `SiteLayoutMobileNavigation` and its parts — `SiteLayoutMobileNavigationOpenButton`, `SiteLayoutMobileNavigationCloseButton`, `SiteLayoutMobileNavigationHeader`, `SiteLayoutMobileNavigationTitle`, `SiteLayoutMobileNavigationLinks` / `SiteLayoutMobileNavigationLink`, `SiteLayoutMobileNavigationSearch`, `SiteLayoutMobileNavigationDisclosure` / `SiteLayoutMobileNavigationDisclosureTrigger` / `SiteLayoutMobileNavigationDisclosurePanel`, `SiteLayoutMobileNavigationActions` / `SiteLayoutMobileNavigationPrimaryAction` / `SiteLayoutMobileNavigationSecondaryAction`
-- The footer: `SiteLayoutFooterContent`, `SiteLayoutFooterNote`, `SiteLayoutFooterLinks` / `SiteLayoutFooterLink`, `SiteLayoutFooterCopyright`
-- The skeletons a `<Suspense>` shows while a part streams in: `SiteLayoutBrandSkeleton`, `SiteLayoutNavSkeleton`, `SiteLayoutHeaderActionsSkeleton`, `SiteLayoutFooterSkeleton`
+- The frame: `Root`, `Header`, `Main`, `Footer`
+- The header: `Brand`, `Nav` / `NavLink`, `HeaderSearch`, `HeaderWideControls`, `HeaderActions`, and the actions a signed-out reader sees — `Actions` / `PrimaryAction` / `SecondaryAction`
+- The user menu: `UserMenu` and its parts — `UserMenuTrigger`, `UserMenuContent`, `UserMenuAccount`, `UserMenuMyPageLink`, `UserMenuAnnouncementsLink`, `UserMenuSeparator`, `UserMenuLogout` / `UserMenuLogoutButton`
+- The banner above the header, for the one announcement a reader has to see first: `Banner`, `BannerContent`, `BannerTitle`, `BannerDescription`, `BannerLink`, `BannerActions`
+- The phone header's drawer: `MobileNavigation` and its parts — `MobileNavigationOpenButton`, `MobileNavigationCloseButton`, `MobileNavigationHeader`, `MobileNavigationTitle`, `MobileNavigationLinks` / `MobileNavigationLink`, `MobileNavigationSearch`, `MobileNavigationDisclosure` / `MobileNavigationDisclosureTrigger` / `MobileNavigationDisclosurePanel`, `MobileNavigationActions` / `MobileNavigationPrimaryAction` / `MobileNavigationSecondaryAction`
+- The footer: `FooterContent`, `FooterNote`, `FooterLinks` / `FooterLink`, `FooterCopyright`
+- The skeletons a `<Suspense>` shows while a part streams in: `BrandSkeleton`, `NavSkeleton`, `HeaderActionsSkeleton`, `FooterSkeleton`
 
-`@publira/layouts/site-layout` is the frame, header, banner, footer, and skeletons alone, without the drawer, the user menu, and the signed-out actions.
+### `@publira/layouts/admin/*` — the console layout
 
-### `@publira/layouts/admin` — the console layout
+The shell `web-admin` and `web-platform` share: a sidebar, a 48px header, and the page and section frames inside it, one namespace per subpath.
 
-The shell `web-admin` and `web-platform` share: a sidebar, a 48px header, and the page and section frames inside it. It also re-exports `isCurrentPath`.
-
-- The shell: `ConsoleLayout`, `ConsoleLayoutContent`, `ConsoleLayoutMain`, and the drawer the phone opens the sidebar in — `ConsoleMobileNavigation` / `ConsoleMobileNavigationOpenButton` / `ConsoleMobileNavigationCloseButton`
-- The sidebar: `ConsoleSidebar`, `ConsoleSidebarBrand` / `ConsoleSidebarBrandName`, `ConsoleSidebarContext`, and its navigation — `ConsoleSidebarNavigation`, `ConsoleSidebarNavigationSection` / `ConsoleSidebarNavigationTitle`, `ConsoleSidebarNavigationItems` / `ConsoleSidebarNavigationItem` / `ConsoleSidebarNavigationItemIcon` / `ConsoleSidebarNavigationItemHeading` / `ConsoleSidebarNavigationItemLabel`
-- The header: `ConsoleHeader`, `ConsoleHeaderContext` / `ConsoleHeaderText` / `ConsoleHeaderLabel`, `ConsoleHeaderActions`, `ConsoleHeaderUser`
-- The user menu: `ConsoleUserMenu` and its parts — `ConsoleUserMenuTrigger` / `ConsoleUserMenuInitial`, `ConsoleUserMenuContent`, `ConsoleUserMenuIdentity` / `ConsoleUserMenuName` / `ConsoleUserMenuPublicId` / `ConsoleUserMenuRole`, `ConsoleUserMenuSeparator`, `ConsoleUserMenuAccountLink`, `ConsoleUserMenuLogout` / `ConsoleUserMenuLogoutButton`
-- A page: `ConsolePage`, `ConsolePageHeader` / `ConsolePageHeading` / `ConsolePageTitle` / `ConsolePageDescription` / `ConsolePageContext`, `ConsolePageActions`, `ConsolePageContent`
-- A section of a page: `ConsoleSections`, `ConsoleSection`, `ConsoleSectionHeader` / `ConsoleSectionHeading` / `ConsoleSectionTitle` / `ConsoleSectionDescription`, `ConsoleSectionActions`
-- The skeletons: `ConsoleHeaderSkeleton`, `ConsoleHeaderUserSkeleton`
+| Subpath | Namespace | Parts |
+| --- | --- | --- |
+| `admin/console-layout` | `ConsoleLayout` | The shell: `Root`, `Content`, `Main`, and the drawer the phone opens the sidebar in — `MobileNavigation` / `MobileNavigationOpenButton` / `MobileNavigationCloseButton` |
+| `admin/console-sidebar` | `ConsoleSidebar` | `Root`, `Brand` / `BrandName`, `Context`, and its navigation — `Navigation`, `NavigationSection` / `NavigationTitle`, `NavigationItems` / `NavigationItem` / `NavigationItemIcon` / `NavigationItemHeading` / `NavigationItemLabel` |
+| `admin/console-header` | `ConsoleHeader` | `Root`, `Context` / `Text` / `Label`, `Actions`, and the skeletons `Skeleton` and `UserSkeleton` |
+| `admin/console-user-menu` | `ConsoleUserMenu` | The account menu in the header's actions: `Root`, `Trigger` / `Initial`, `Content`, `Identity` / `Name` / `PublicId` / `Role`, `Separator`, `AccountLink`, `Logout` / `LogoutButton` |
+| `admin/console-page` | `ConsolePage` | A page: `Root`, `Header` / `Heading` / `Title` / `Description` / `Context`, `Actions`, `Content` |
+| `admin/console-section` | `ConsoleSection` | A section of a page: `Stack`, the column several sections sit in, then `Root`, `Header` / `Heading` / `Title` / `Description`, `Actions` |
 
 ### `@publira/layouts/auth-screen` — the authentication screens
 
-`AuthScreen` and its parts — `AuthScreenMain`, `AuthScreenPanel`, `AuthScreenPattern`, `AuthScreenHeader`, `AuthScreenTitle`, `AuthScreenTagline`, `AuthScreenBody`, `AuthScreenText`, `AuthScreenNote`, `AuthScreenFooter`. The split the sign-in, sign-up, password, verification, and invitation screens of all three apps are laid out in: the form in `AuthScreenMain`, and from `lg` up a second half in `AuthScreenPanel`, which `AuthScreenPattern` fills with fixed geometry.
+The `AuthScreen` namespace: `Root`, `Main`, `Panel`, `Pattern`, `Header`, `Title`, `Tagline`, `Body`, `Text`, `Note`, `Footer`. The split the sign-in, sign-up, password, verification, and invitation screens of all three apps are laid out in: the form in `AuthScreen.Main`, and from `lg` up a second half in `AuthScreen.Panel`, which `AuthScreen.Pattern` fills with fixed geometry.
 
 ### `@publira/layouts/navigation`
+
+The helpers, as plain named exports:
 
 - `isCurrentPath(pathname, href, allHrefs?)`: whether a navigation link is the current one — `href` is the pathname or a prefix of it, unless another of `allHrefs` is a longer prefix, in which case that more specific item owns the active state
 - `toConsolePathname(pathname)`: the path a console's navigation hrefs are written against, from a value read out of `usePathname()`. It drops the `[tenant_id]` segment `web-admin`'s proxy rewrites in front of every path, so the item that renders as current is the same before and after hydration
@@ -64,29 +65,23 @@ Touch is a separate axis from width, because a phone, a tablet, and a touch lapt
 ```
 
 ```tsx
-import {
-  SiteLayout,
-  SiteLayoutBrand,
-  SiteLayoutFooter,
-  SiteLayoutFooterContent,
-  SiteLayoutFooterNote,
-  SiteLayoutHeader,
-  SiteLayoutMain,
-} from "@publira/layouts";
+import * as SiteLayout from "@publira/layouts/site-layout";
 
 export default function Page() {
   return (
-    <SiteLayout>
-      <SiteLayoutHeader>
-        <SiteLayoutBrand href="/">Publira</SiteLayoutBrand>
-      </SiteLayoutHeader>
-      <SiteLayoutMain>content</SiteLayoutMain>
-      <SiteLayoutFooter>
-        <SiteLayoutFooterContent>
-          <SiteLayoutFooterNote>Crafted for calm reading.</SiteLayoutFooterNote>
-        </SiteLayoutFooterContent>
-      </SiteLayoutFooter>
-    </SiteLayout>
+    <SiteLayout.Root>
+      <SiteLayout.Header>
+        <SiteLayout.Brand href="/">Publira</SiteLayout.Brand>
+      </SiteLayout.Header>
+      <SiteLayout.Main>content</SiteLayout.Main>
+      <SiteLayout.Footer>
+        <SiteLayout.FooterContent>
+          <SiteLayout.FooterNote>
+            Crafted for calm reading.
+          </SiteLayout.FooterNote>
+        </SiteLayout.FooterContent>
+      </SiteLayout.Footer>
+    </SiteLayout.Root>
   );
 }
 ```
@@ -94,44 +89,33 @@ export default function Page() {
 The console layout is composed the same way. `web-platform`'s `components/platform-layout.tsx` and `web-admin`'s `components/admin-layout.tsx` fill the slots from their own catalogs and sessions:
 
 ```tsx
-import {
-  ConsoleHeader,
-  ConsoleHeaderActions,
-  ConsoleHeaderContext,
-  ConsoleHeaderLabel,
-  ConsoleHeaderText,
-  ConsoleLayout,
-  ConsoleLayoutContent,
-  ConsoleLayoutMain,
-  ConsoleSidebar,
-  ConsoleSidebarBrand,
-  ConsoleSidebarBrandName,
-  ConsoleSidebarContext,
-} from "@publira/layouts/admin";
+import * as ConsoleHeader from "@publira/layouts/admin/console-header";
+import * as ConsoleLayout from "@publira/layouts/admin/console-layout";
+import * as ConsoleSidebar from "@publira/layouts/admin/console-sidebar";
 
 export const PlatformLayout = ({ children }: { children: ReactNode }) => (
-  <ConsoleLayout>
-    <ConsoleSidebar>
-      <ConsoleSidebarBrand>
-        <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
-      </ConsoleSidebarBrand>
-      <ConsoleSidebarContext>Platform Console</ConsoleSidebarContext>
+  <ConsoleLayout.Root>
+    <ConsoleSidebar.Root>
+      <ConsoleSidebar.Brand>
+        <ConsoleSidebar.BrandName>Publira</ConsoleSidebar.BrandName>
+      </ConsoleSidebar.Brand>
+      <ConsoleSidebar.Context>Platform Console</ConsoleSidebar.Context>
       <PlatformNavigation />
-    </ConsoleSidebar>
-    <ConsoleLayoutContent>
-      <ConsoleHeader>
-        <ConsoleHeaderContext>
-          <ConsoleHeaderText>
-            <ConsoleHeaderLabel>Cross-tenant operations</ConsoleHeaderLabel>
-          </ConsoleHeaderText>
-        </ConsoleHeaderContext>
-        <ConsoleHeaderActions>
+    </ConsoleSidebar.Root>
+    <ConsoleLayout.Content>
+      <ConsoleHeader.Root>
+        <ConsoleHeader.Context>
+          <ConsoleHeader.Text>
+            <ConsoleHeader.Label>Cross-tenant operations</ConsoleHeader.Label>
+          </ConsoleHeader.Text>
+        </ConsoleHeader.Context>
+        <ConsoleHeader.Actions>
           <PlatformUser />
-        </ConsoleHeaderActions>
-      </ConsoleHeader>
-      <ConsoleLayoutMain>{children}</ConsoleLayoutMain>
-    </ConsoleLayoutContent>
-  </ConsoleLayout>
+        </ConsoleHeader.Actions>
+      </ConsoleHeader.Root>
+      <ConsoleLayout.Main>{children}</ConsoleLayout.Main>
+    </ConsoleLayout.Content>
+  </ConsoleLayout.Root>
 );
 ```
 

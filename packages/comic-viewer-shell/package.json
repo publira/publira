@@ -11,6 +11,10 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./viewer": {
+      "types": "./dist/viewer/index.d.mts",
+      "default": "./dist/viewer/index.mjs"
+    },
     "./styles.css": "./styles.css"
   },
   "scripts": {

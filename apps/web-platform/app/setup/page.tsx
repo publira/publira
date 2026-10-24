@@ -1,14 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -49,11 +39,11 @@ const SetupContent = async () => {
 
   return (
     <>
-      <AuthScreenNote>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <SetupMessage message="platform.auth.setup.description" />
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
 
       <Suspense fallback={<Skeleton className="h-10 w-full" />}>
         <SetupForm />
@@ -74,28 +64,28 @@ const SetupContentSkeleton = () => (
 );
 
 const SetupPage = () => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>Publira</AuthScreenTitle>
-        <AuthScreenTagline>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>Publira</AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <SetupMessage message="platform.auth.setup.title" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <Suspense fallback={<SetupContentSkeleton />}>
           <SetupContent />
         </Suspense>
-      </AuthScreenBody>
-    </AuthScreenMain>
+      </AuthScreen.Body>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default SetupPage;

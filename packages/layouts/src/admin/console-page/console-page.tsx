@@ -13,17 +13,17 @@ import type { ReactNode } from "react";
  * chrome stays in the static shell.
  *
  * ```tsx
- * <ConsolePage>
- *   <ConsolePageHeader>
- *     <ConsolePageHeading>
- *       <ConsolePageContext>Series SR01</ConsolePageContext>
- *       <ConsolePageTitle>Title</ConsolePageTitle>
- *       <ConsolePageDescription>Description</ConsolePageDescription>
- *     </ConsolePageHeading>
- *     <ConsolePageActions>{actions}</ConsolePageActions>
- *   </ConsolePageHeader>
- *   <ConsolePageContent>{children}</ConsolePageContent>
- * </ConsolePage>
+ * <ConsolePage.Root>
+ *   <ConsolePage.Header>
+ *     <ConsolePage.Heading>
+ *       <ConsolePage.Context>Series SR01</ConsolePage.Context>
+ *       <ConsolePage.Title>Title</ConsolePage.Title>
+ *       <ConsolePage.Description>Description</ConsolePage.Description>
+ *     </ConsolePage.Heading>
+ *     <ConsolePage.Actions>{actions}</ConsolePage.Actions>
+ *   </ConsolePage.Header>
+ *   <ConsolePage.Content>{children}</ConsolePage.Content>
+ * </ConsolePage.Root>
  * ```
  */
 export const ConsolePage = ({ children }: { children: ReactNode }) => (

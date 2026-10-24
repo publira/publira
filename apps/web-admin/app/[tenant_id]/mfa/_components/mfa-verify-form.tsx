@@ -1,8 +1,4 @@
-import {
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenNote,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -41,11 +37,11 @@ const MfaPasskeyVerify = ({
   tenantId: string;
 }) => (
   <>
-    <AuthScreenNote>
+    <AuthScreen.Note>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <Message message="admin.auth.mfa.passkey_verify_description" />
       </Suspense>
-    </AuthScreenNote>
+    </AuthScreen.Note>
 
     <PasskeyVerifyForm>
       <input name="tenant_id" type="hidden" value={tenantId} />
@@ -89,7 +85,7 @@ const MfaCodeVerify = ({
 
   return (
     <>
-      <AuthScreenNote>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           {recoveryOnly ? (
             <Message message="admin.auth.mfa.verify_recovery_description" />
@@ -97,7 +93,7 @@ const MfaCodeVerify = ({
             <Message message="admin.auth.mfa.verify_description" />
           )}
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
 
       <ActionForm.Root
         action={verifyMfaAction}
@@ -144,15 +140,15 @@ export const MfaVerifyForm = ({
     finished={finished}
     nextPath={nextPath}
     spent={
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <h2 className="font-medium text-foreground">
           <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
             <Message message="admin.auth.mfa.recovery_used_title" />
           </Suspense>
         </h2>
-        <AuthScreenNote>
+        <AuthScreen.Note>
           <MfaRemainingRecoveryCodes />
-        </AuthScreenNote>
+        </AuthScreen.Note>
         <LinkButton
           className="justify-self-start"
           render={<Link href={nextPath} />}
@@ -161,11 +157,11 @@ export const MfaVerifyForm = ({
             <Message message="admin.auth.mfa.continue_to_console" />
           </Suspense>
         </LinkButton>
-      </AuthScreenBody>
+      </AuthScreen.Body>
     }
     verify={
       <>
-        <AuthScreenBody>
+        <AuthScreen.Body>
           <MfaVerifyMethods
             code={<MfaCodeVerify methods={methods} tenantId={tenantId} />}
             passkey={
@@ -177,9 +173,9 @@ export const MfaVerifyForm = ({
               ) : null
             }
           />
-        </AuthScreenBody>
+        </AuthScreen.Body>
 
-        <AuthScreenFooter>
+        <AuthScreen.Footer>
           <p>
             <Link
               className="text-primary underline underline-offset-4"
@@ -190,7 +186,7 @@ export const MfaVerifyForm = ({
               </Suspense>
             </Link>
           </p>
-        </AuthScreenFooter>
+        </AuthScreen.Footer>
       </>
     }
   />

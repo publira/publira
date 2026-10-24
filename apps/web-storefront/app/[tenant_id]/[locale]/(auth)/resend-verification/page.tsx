@@ -1,10 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -38,26 +32,26 @@ const ResendVerificationHeader = async () => {
         pageTitle={t("storefront.auth.resend_verification.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
 };
 
 const ResendVerificationPage = () => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <ResendVerificationHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
       <ResendVerificationForm />
-    </AuthScreenMain>
-  </AuthScreen>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default ResendVerificationPage;

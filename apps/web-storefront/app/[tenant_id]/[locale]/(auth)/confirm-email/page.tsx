@@ -1,13 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenTagline,
-  AuthScreenText,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { Metadata } from "next";
@@ -107,20 +98,20 @@ const ConfirmEmailLink = ({ outcome }: { outcome: ConfirmEmailOutcome }) =>
 
 const ConfirmationOutcome = ({ outcome }: { outcome: ConfirmEmailOutcome }) => (
   <>
-    <AuthScreenBody>
-      <AuthScreenText>
+    <AuthScreen.Body>
+      <AuthScreen.Text>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <ConfirmEmailSentence outcome={outcome} />
         </Suspense>
-      </AuthScreenText>
-    </AuthScreenBody>
-    <AuthScreenFooter>
+      </AuthScreen.Text>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-40" />}>
           <ConfirmEmailLink outcome={outcome} />
         </Suspense>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -137,13 +128,13 @@ const ConfirmationResult = async ({ token }: { token: string }) => {
 
 const ConfirmationFallback = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <SkeletonLine className="h-4 w-full" />
       <SkeletonLine className="h-4 w-3/4" />
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <SkeletonLine className="h-4 w-28" />
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -162,9 +153,9 @@ const ConfirmEmailHeader = async () => {
         pageTitle={t("storefront.auth.confirm_email.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
@@ -186,19 +177,19 @@ const ConfirmEmailPage = ({
   params: Promise<{ tenant_id: string }>;
   searchParams: Promise<{ token?: string | string[] }>;
 }) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <ConfirmEmailHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
       <Suspense fallback={<ConfirmationFallback />}>
         <ConfirmationContent searchParams={searchParams} />
       </Suspense>
-    </AuthScreenMain>
-  </AuthScreen>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default ConfirmEmailPage;

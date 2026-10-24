@@ -7,12 +7,9 @@ import type { ReactNode } from "react";
 const itemClassName =
   "flex w-full cursor-default items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-foreground outline-hidden select-none data-highlighted:bg-muted data-highlighted:text-foreground pointer-coarse:py-3";
 
-export const ConsoleHeaderUser = ({ children }: { children: ReactNode }) => (
+export const ConsoleUserMenu = ({ children }: { children: ReactNode }) => (
   <Menu.Root>{children}</Menu.Root>
 );
-
-/** Alias for the composed account menu. */
-export const ConsoleUserMenu = ConsoleHeaderUser;
 
 export const ConsoleUserMenuTrigger = ({
   "aria-label": ariaLabel,

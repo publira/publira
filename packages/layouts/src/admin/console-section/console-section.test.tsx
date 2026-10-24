@@ -3,36 +3,28 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  ConsoleSection,
-  ConsoleSectionActions,
-  ConsoleSectionDescription,
-  ConsoleSectionHeader,
-  ConsoleSectionHeading,
-  ConsoleSections,
-  ConsoleSectionTitle,
-} from "./console-section";
+import * as ConsoleSection from ".";
 
 afterEach(cleanup);
 
 const renderSection = () =>
   render(
-    <ConsoleSections>
-      <ConsoleSection>
-        <ConsoleSectionHeader>
-          <ConsoleSectionHeading>
-            <ConsoleSectionTitle>Time zone</ConsoleSectionTitle>
-            <ConsoleSectionDescription>
+    <ConsoleSection.Stack>
+      <ConsoleSection.Root>
+        <ConsoleSection.Header>
+          <ConsoleSection.Heading>
+            <ConsoleSection.Title>Time zone</ConsoleSection.Title>
+            <ConsoleSection.Description>
               The zone dates are shown in.
-            </ConsoleSectionDescription>
-          </ConsoleSectionHeading>
-          <ConsoleSectionActions>
+            </ConsoleSection.Description>
+          </ConsoleSection.Heading>
+          <ConsoleSection.Actions>
             <button type="button">Save</button>
-          </ConsoleSectionActions>
-        </ConsoleSectionHeader>
+          </ConsoleSection.Actions>
+        </ConsoleSection.Header>
         <p>the form</p>
-      </ConsoleSection>
-    </ConsoleSections>
+      </ConsoleSection.Root>
+    </ConsoleSection.Stack>
   );
 
 describe("ConsoleSection", () => {
@@ -58,7 +50,9 @@ describe("ConsoleSection", () => {
   });
 
   it("gives the title an id so another element can point at it", () => {
-    render(<ConsoleSectionTitle id="creator-roles">Roles</ConsoleSectionTitle>);
+    render(
+      <ConsoleSection.Title id="creator-roles">Roles</ConsoleSection.Title>
+    );
 
     expect(screen.getByRole("heading", { name: "Roles" }).id).toBe(
       "creator-roles"

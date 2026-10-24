@@ -12,29 +12,9 @@ import {
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ConsoleHeader,
-  ConsoleHeaderActions,
-  ConsoleHeaderContext,
-  ConsoleHeaderLabel,
-  ConsoleHeaderText,
-  ConsoleLayout,
-  ConsoleMobileNavigation,
-  ConsoleMobileNavigationCloseButton,
-  ConsoleMobileNavigationOpenButton,
-  ConsoleSidebar,
-  ConsoleSidebarBrand,
-  ConsoleSidebarBrandName,
-  ConsoleSidebarContext,
-  ConsoleSidebarNavigation,
-  ConsoleSidebarNavigationItem,
-  ConsoleSidebarNavigationItemHeading,
-  ConsoleSidebarNavigationItemIcon,
-  ConsoleSidebarNavigationItemLabel,
-  ConsoleSidebarNavigationItems,
-  ConsoleSidebarNavigationSection,
-  ConsoleSidebarNavigationTitle,
-} from "./console-layout";
+import * as ConsoleLayout from ".";
+import * as ConsoleHeader from "../console-header";
+import * as ConsoleSidebar from "../console-sidebar";
 
 vi.mock("next/link", () => ({
   default: ({
@@ -63,44 +43,46 @@ const hrefs = ["/", "/tenants", "/tenants/new"];
 
 const renderNavigation = () =>
   render(
-    <ConsoleSidebar>
-      <ConsoleSidebarBrand>
-        <ConsoleSidebarBrandName>Publira</ConsoleSidebarBrandName>
-      </ConsoleSidebarBrand>
-      <ConsoleSidebarContext>Platform Console</ConsoleSidebarContext>
-      <ConsoleSidebarNavigation hrefs={hrefs}>
-        <ConsoleSidebarNavigationSection>
-          <ConsoleSidebarNavigationTitle>Tenants</ConsoleSidebarNavigationTitle>
-          <ConsoleSidebarNavigationItems>
+    <ConsoleSidebar.Root>
+      <ConsoleSidebar.Brand>
+        <ConsoleSidebar.BrandName>Publira</ConsoleSidebar.BrandName>
+      </ConsoleSidebar.Brand>
+      <ConsoleSidebar.Context>Platform Console</ConsoleSidebar.Context>
+      <ConsoleSidebar.Navigation hrefs={hrefs}>
+        <ConsoleSidebar.NavigationSection>
+          <ConsoleSidebar.NavigationTitle>
+            Tenants
+          </ConsoleSidebar.NavigationTitle>
+          <ConsoleSidebar.NavigationItems>
             {hrefs.map((href) => (
-              <ConsoleSidebarNavigationItem href={href} key={href}>
-                <ConsoleSidebarNavigationItemIcon>
+              <ConsoleSidebar.NavigationItem href={href} key={href}>
+                <ConsoleSidebar.NavigationItemIcon>
                   <DashboardIcon className="size-4" />
-                </ConsoleSidebarNavigationItemIcon>
-                <ConsoleSidebarNavigationItemHeading>
-                  <ConsoleSidebarNavigationItemLabel>
+                </ConsoleSidebar.NavigationItemIcon>
+                <ConsoleSidebar.NavigationItemHeading>
+                  <ConsoleSidebar.NavigationItemLabel>
                     {href}
-                  </ConsoleSidebarNavigationItemLabel>
-                </ConsoleSidebarNavigationItemHeading>
-              </ConsoleSidebarNavigationItem>
+                  </ConsoleSidebar.NavigationItemLabel>
+                </ConsoleSidebar.NavigationItemHeading>
+              </ConsoleSidebar.NavigationItem>
             ))}
-          </ConsoleSidebarNavigationItems>
-        </ConsoleSidebarNavigationSection>
-      </ConsoleSidebarNavigation>
-    </ConsoleSidebar>
+          </ConsoleSidebar.NavigationItems>
+        </ConsoleSidebar.NavigationSection>
+      </ConsoleSidebar.Navigation>
+    </ConsoleSidebar.Root>
   );
 
 describe("Console layout slots", () => {
   it("renders the header context and actions from child slots", () => {
     render(
-      <ConsoleHeader>
-        <ConsoleHeaderContext>
-          <ConsoleHeaderText>
-            <ConsoleHeaderLabel>Example Publishing</ConsoleHeaderLabel>
-          </ConsoleHeaderText>
-        </ConsoleHeaderContext>
-        <ConsoleHeaderActions>Notifications</ConsoleHeaderActions>
-      </ConsoleHeader>
+      <ConsoleHeader.Root>
+        <ConsoleHeader.Context>
+          <ConsoleHeader.Text>
+            <ConsoleHeader.Label>Example Publishing</ConsoleHeader.Label>
+          </ConsoleHeader.Text>
+        </ConsoleHeader.Context>
+        <ConsoleHeader.Actions>Notifications</ConsoleHeader.Actions>
+      </ConsoleHeader.Root>
     );
 
     expect(screen.getByText("Example Publishing")).toBeTruthy();
@@ -119,13 +101,13 @@ describe("Console layout slots", () => {
 
   it("uses navigation aria labels supplied by the caller", () => {
     render(
-      <ConsoleLayout>
-        <ConsoleMobileNavigation>
-          <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
-        </ConsoleMobileNavigation>
-        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
+      <ConsoleLayout.Root>
+        <ConsoleLayout.MobileNavigation>
+          <ConsoleLayout.MobileNavigationCloseButton aria-label="Close navigation" />
+        </ConsoleLayout.MobileNavigation>
+        <ConsoleLayout.MobileNavigationOpenButton aria-label="Open navigation" />
         <div />
-      </ConsoleLayout>
+      </ConsoleLayout.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
@@ -137,13 +119,13 @@ describe("Console layout slots", () => {
 
   it("wraps the popup in a viewport so swipe and scroll locking stay enabled", () => {
     render(
-      <ConsoleLayout>
-        <ConsoleMobileNavigation>
-          <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
-        </ConsoleMobileNavigation>
-        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
+      <ConsoleLayout.Root>
+        <ConsoleLayout.MobileNavigation>
+          <ConsoleLayout.MobileNavigationCloseButton aria-label="Close navigation" />
+        </ConsoleLayout.MobileNavigation>
+        <ConsoleLayout.MobileNavigationOpenButton aria-label="Open navigation" />
         <div />
-      </ConsoleLayout>
+      </ConsoleLayout.Root>
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
@@ -156,27 +138,27 @@ describe("Console layout slots", () => {
 
   it("shows the sidebar's navigation in the open drawer and closes it on the entry followed", async () => {
     render(
-      <ConsoleLayout>
-        <ConsoleMobileNavigation>
-          <ConsoleMobileNavigationCloseButton aria-label="Close navigation" />
-        </ConsoleMobileNavigation>
-        <ConsoleMobileNavigationOpenButton aria-label="Open navigation" />
-        <ConsoleSidebar>
-          <ConsoleSidebarNavigation hrefs={hrefs}>
-            <ConsoleSidebarNavigationSection>
-              <ConsoleSidebarNavigationItems>
-                <ConsoleSidebarNavigationItem href="/tenants">
-                  <ConsoleSidebarNavigationItemHeading>
-                    <ConsoleSidebarNavigationItemLabel>
+      <ConsoleLayout.Root>
+        <ConsoleLayout.MobileNavigation>
+          <ConsoleLayout.MobileNavigationCloseButton aria-label="Close navigation" />
+        </ConsoleLayout.MobileNavigation>
+        <ConsoleLayout.MobileNavigationOpenButton aria-label="Open navigation" />
+        <ConsoleSidebar.Root>
+          <ConsoleSidebar.Navigation hrefs={hrefs}>
+            <ConsoleSidebar.NavigationSection>
+              <ConsoleSidebar.NavigationItems>
+                <ConsoleSidebar.NavigationItem href="/tenants">
+                  <ConsoleSidebar.NavigationItemHeading>
+                    <ConsoleSidebar.NavigationItemLabel>
                       Tenants
-                    </ConsoleSidebarNavigationItemLabel>
-                  </ConsoleSidebarNavigationItemHeading>
-                </ConsoleSidebarNavigationItem>
-              </ConsoleSidebarNavigationItems>
-            </ConsoleSidebarNavigationSection>
-          </ConsoleSidebarNavigation>
-        </ConsoleSidebar>
-      </ConsoleLayout>
+                    </ConsoleSidebar.NavigationItemLabel>
+                  </ConsoleSidebar.NavigationItemHeading>
+                </ConsoleSidebar.NavigationItem>
+              </ConsoleSidebar.NavigationItems>
+            </ConsoleSidebar.NavigationSection>
+          </ConsoleSidebar.Navigation>
+        </ConsoleSidebar.Root>
+      </ConsoleLayout.Root>
     );
 
     expect(screen.getAllByRole("link", { name: "Tenants" })).toHaveLength(1);

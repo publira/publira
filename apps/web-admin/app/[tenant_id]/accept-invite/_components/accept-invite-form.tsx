@@ -1,4 +1,4 @@
-import { AuthScreenNote } from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import * as Field from "@publira/ui-components/field";
 import * as PasswordInput from "@publira/ui-components/password-input";
@@ -28,11 +28,11 @@ export const AcceptInviteForm = ({
     <input name="email" type="hidden" value={email} />
 
     {accountExists ? (
-      <AuthScreenNote>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="admin.auth.accept_invite.account_exists" />
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
     ) : (
       <ActionForm.Fieldset className="grid gap-4">
         <Suspense fallback={<Skeleton className="h-11 w-full" />}>

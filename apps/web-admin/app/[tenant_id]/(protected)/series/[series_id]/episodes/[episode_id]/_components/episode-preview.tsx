@@ -5,22 +5,8 @@ import {
   describeVisiblePages,
   renewFromPageUrls,
   useBoxHeight,
-  ViewerEmpty,
-  ViewerNextPageButton,
-  ViewerPage as ViewerPageTemplate,
-  ViewerPageError,
-  ViewerPageErrorMessage,
-  ViewerPageLoading,
-  ViewerPageNavigation,
-  ViewerPageRetryButton,
-  ViewerPageStatus,
-  ViewerPreviousPageButton,
-  ViewerProgress,
-  ViewerProgressSlider,
-  ViewerRail,
-  ViewerRoot,
-  ViewerToolbar,
 } from "@publira/comic-viewer-shell";
+import * as Viewer from "@publira/comic-viewer-shell/viewer";
 import { useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -101,49 +87,49 @@ export const EpisodePreview = ({
       className="h-[min(70svh,40rem)] w-full overflow-hidden rounded-surface bg-muted [--viewer-ink:var(--color-foreground)] [--viewer-mat:var(--color-muted)] [--viewer-rule:var(--color-border)]"
       ref={setBox}
     >
-      <ViewerRoot
+      <Viewer.Root
         pages={pages}
         readingDirection={layout.readingDirection}
         renewPageUrl={renewPageUrl}
         spreadStartIndex={layout.spreadStartIndex}
       >
-        <ViewerRail boxHeight={boxHeight}>
-          <ViewerPageTemplate>
-            <ViewerPageLoading>
+        <Viewer.Rail boxHeight={boxHeight}>
+          <Viewer.Page>
+            <Viewer.PageLoading>
               <ClientMessage message="admin.series.episodes.preview.loading" />
-            </ViewerPageLoading>
-            <ViewerPageError>
-              <ViewerPageErrorMessage>
+            </Viewer.PageLoading>
+            <Viewer.PageError>
+              <Viewer.PageErrorMessage>
                 <ClientMessage message="admin.series.episodes.preview.page_error" />
-              </ViewerPageErrorMessage>
-              <ViewerPageRetryButton>
+              </Viewer.PageErrorMessage>
+              <Viewer.PageRetryButton>
                 <ClientMessage message="admin.series.episodes.preview.reload" />
-              </ViewerPageRetryButton>
-            </ViewerPageError>
-          </ViewerPageTemplate>
-        </ViewerRail>
-        <ViewerEmpty>
+              </Viewer.PageRetryButton>
+            </Viewer.PageError>
+          </Viewer.Page>
+        </Viewer.Rail>
+        <Viewer.Empty>
           <ClientMessage message="admin.series.episodes.preview.empty" />
-        </ViewerEmpty>
-        <ViewerToolbar>
-          <ViewerProgress
+        </Viewer.Empty>
+        <Viewer.Toolbar>
+          <Viewer.Progress
             aria-label={t("admin.series.episodes.preview.progress")}
           >
-            <ViewerProgressSlider format={formatPageStatus} />
-            <ViewerPageStatus format={formatPageStatus} />
-          </ViewerProgress>
-        </ViewerToolbar>
-        <ViewerPageNavigation
+            <Viewer.ProgressSlider format={formatPageStatus} />
+            <Viewer.PageStatus format={formatPageStatus} />
+          </Viewer.Progress>
+        </Viewer.Toolbar>
+        <Viewer.PageNavigation
           aria-label={t("admin.series.episodes.preview.navigation")}
         >
-          <ViewerPreviousPageButton
+          <Viewer.PreviousPageButton
             aria-label={t("admin.series.episodes.preview.previous_page")}
           />
-          <ViewerNextPageButton
+          <Viewer.NextPageButton
             aria-label={t("admin.series.episodes.preview.next_page")}
           />
-        </ViewerPageNavigation>
-      </ViewerRoot>
+        </Viewer.PageNavigation>
+      </Viewer.Root>
     </div>
   );
 };

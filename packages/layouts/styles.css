@@ -69,7 +69,7 @@
 }
 
 /**
- * The paper a console sign-in screen fills `AuthScreenPanel` with, ruled into
+ * The paper a console sign-in screen fills `AuthScreen.Panel` with, ruled into
  * squares a line of type wide.
  *
  * Every stop is hard, so each line is a hairline and the square between them is

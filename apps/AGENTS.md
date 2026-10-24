@@ -29,10 +29,11 @@ import * as Dialog from "@publira/ui-components/dialog";
 
 - **The props types, hooks, and helpers of the tree go in the same namespace**: `Field.LabelProps`, `ActionForm.useSettled`, `Toast.useManager`. A module that needs only the types, such as a Server Action, imports it as `import type * as ActionForm`.
 - **One module, one tree.** `import * as` takes a whole module, so two trees never share one: `ConfirmDialog` lives in `confirm-dialog` beside `dialog`, and `MultiCombobox` in `multi-combobox` beside `combobox`.
+- **A tree named after the one it renders inside is part of that one's namespace, under the longer part name**: `SiteLayout.MobileNavigation` and `SiteLayout.MobileNavigationLink`, `ConsoleSidebar.Navigation` and `ConsoleSidebar.NavigationItem`, the way Base UI writes `Menu.SubmenuRoot` and `Menu.SubmenuTrigger`. A second-level namespace (`SiteLayout.MobileNavigation.Link`) would put a part two lookups from its import and give the inner tree a `Root` of its own beside the outer one's. A tree with a name of its own is its own namespace wherever it is rendered: `ConsoleUserMenu` sits inside `ConsoleHeader.Actions` and is still `ConsoleUserMenu.Root`.
 - **Each part keeps its full name where it is declared** (`export const DialogTrigger = …`) and is renamed only where the module exports it (`export { DialogTrigger as Trigger }`), so React DevTools, error overlays, and stack traces name the component instead of showing `Root` and `Trigger` for every tree.
 - **A component that renders one element is a plain named export** — `Button`, `Input`, `Select`, the `Skeleton` family. A namespace holding only `Root` is ceremony.
 
-`@publira/layouts`, `@publira/comic-viewer-shell`, and the per-app components under `components/` and `app/**/_components/` still export flat `<Component><Part>` names until #4799 is done; a new compound component in any of them is written in the namespace form.
+The per-app components under `components/` and `app/**/_components/` still export flat `<Component><Part>` names until #4799 is done; a new compound component among them is written in the namespace form.
 
 ## Untrusted input: validate with zod at the boundary
 

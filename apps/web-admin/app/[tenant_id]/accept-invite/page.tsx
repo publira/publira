@@ -1,15 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
@@ -49,10 +38,10 @@ interface AcceptInvitePageProps {
  */
 const AcceptInviteDeadEnd = ({ children }: { children: ReactNode }) => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <FormMessage variant="destructive">{children}</FormMessage>
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <p>
         <Link
           className="text-primary underline underline-offset-4"
@@ -63,7 +52,7 @@ const AcceptInviteDeadEnd = ({ children }: { children: ReactNode }) => (
           </Suspense>
         </Link>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -114,15 +103,15 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
   }
 
   return (
-    <AuthScreenBody>
-      <AuthScreenNote>
+    <AuthScreen.Body>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
           <Message
             message="admin.auth.accept_invite.email_invited"
             values={{ email: invitation.email, role: invitation.role }}
           />
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
 
       <AcceptInviteForm
         accountExists={invitation.accountExists}
@@ -130,7 +119,7 @@ const AcceptInviteFormContent = async ({ token }: { token: string }) => {
         tenantId={tenantId}
         token={token}
       />
-    </AuthScreenBody>
+    </AuthScreen.Body>
   );
 };
 
@@ -153,36 +142,36 @@ const AcceptInvitePageContent = async ({
 };
 
 const AcceptInviteFallback = () => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <Skeleton className="h-40 w-full" />
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 const AcceptInvitePage = ({ searchParams }: AcceptInvitePageProps) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
             <Message message="admin.auth.accept_invite.title" />
           </Suspense>
-        </AuthScreenTitle>
-        <AuthScreenTagline>
+        </AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="admin.auth.accept_invite.description" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       <Suspense fallback={<AcceptInviteFallback />}>
         <AcceptInvitePageContent searchParams={searchParams} />
       </Suspense>
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default AcceptInvitePage;

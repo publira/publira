@@ -1,15 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenText,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import type { Metadata } from "next";
@@ -91,32 +80,32 @@ const ConfirmEmailLink = ({ outcome }: { outcome: ConfirmEmailOutcome }) =>
 
 const ConfirmationBody = ({ outcome }: { outcome: ConfirmEmailOutcome }) => (
   <>
-    <AuthScreenBody>
-      <AuthScreenText>
+    <AuthScreen.Body>
+      <AuthScreen.Text>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <ConfirmEmailSentence outcome={outcome} />
         </Suspense>
-      </AuthScreenText>
-    </AuthScreenBody>
-    <AuthScreenFooter>
+      </AuthScreen.Text>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-28" />}>
           <ConfirmEmailLink outcome={outcome} />
         </Suspense>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
 const ConfirmationSkeleton = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <Skeleton className="h-5 w-full" />
       <Skeleton className="h-5 w-2/3" />
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <Skeleton className="h-5 w-28" />
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -158,26 +147,26 @@ const ConfirmEmailPage = ({
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>Publira</AuthScreenTitle>
-        <AuthScreenTagline>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>Publira</AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
             <Message message="platform.auth.confirm_email.title" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
       <Suspense fallback={<ConfirmationSkeleton />}>
         <ConfirmationResult searchParams={searchParams} />
       </Suspense>
-    </AuthScreenMain>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default ConfirmEmailPage;

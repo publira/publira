@@ -3,12 +3,7 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
-import {
-  SiteLayoutMobileNavigationDisclosure,
-  SiteLayoutMobileNavigationDisclosurePanel,
-  SiteLayoutMobileNavigationDisclosureTrigger,
-  SiteLayoutMobileNavigationLink,
-} from "@publira/layouts";
+import * as SiteLayout from "@publira/layouts/site-layout";
 import * as Popover from "@publira/ui-components/popover";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
@@ -140,7 +135,7 @@ const LocaleSwitcherLinks = ({
   const barePathname = toBarePathname(pathname);
 
   return locales.map((locale) => (
-    <SiteLayoutMobileNavigationLink
+    <SiteLayout.MobileNavigationLink
       current={locale === currentLocale}
       href={withLocalePrefix(locale, defaultLocale, barePathname)}
       hrefLang={locale}
@@ -148,7 +143,7 @@ const LocaleSwitcherLinks = ({
       lang={locale}
     >
       {getLocaleLabel(locale)}
-    </SiteLayoutMobileNavigationLink>
+    </SiteLayout.MobileNavigationLink>
   ));
 };
 
@@ -170,7 +165,7 @@ export const LocaleSwitcherDisclosureSkeleton = () => (
  * The drawer the phone header opens is already a panel, so the popover the
  * band uses would be a second one inside it. The options collapse into the
  * drawer instead, behind the one row
- * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
+ * `SiteLayout.MobileNavigationDisclosureTrigger` draws, and each closes the
  * drawer on the way to the other language. The row goes with the options: a
  * tenant that offers one locale gets neither, as the band gets no button.
  */
@@ -183,13 +178,13 @@ export const LocaleSwitcherDisclosure = () => {
   }
 
   return (
-    <SiteLayoutMobileNavigationDisclosure>
-      <SiteLayoutMobileNavigationDisclosureTrigger>
+    <SiteLayout.MobileNavigationDisclosure>
+      <SiteLayout.MobileNavigationDisclosureTrigger>
         <ClientMessage message="storefront.nav.locale_switcher" />
-      </SiteLayoutMobileNavigationDisclosureTrigger>
-      <SiteLayoutMobileNavigationDisclosurePanel>
+      </SiteLayout.MobileNavigationDisclosureTrigger>
+      <SiteLayout.MobileNavigationDisclosurePanel>
         <LocaleSwitcherLinks currentLocale={currentLocale} locales={locales} />
-      </SiteLayoutMobileNavigationDisclosurePanel>
-    </SiteLayoutMobileNavigationDisclosure>
+      </SiteLayout.MobileNavigationDisclosurePanel>
+    </SiteLayout.MobileNavigationDisclosure>
   );
 };

@@ -22,7 +22,7 @@ import {
  * header. URLs that match no route at all are handled by
  * `app/global-not-found.tsx`, not this boundary.
  *
- * No `<main>` here: `ConsoleLayoutMain` already provides one.
+ * No `<main>` here: `ConsoleLayout.Main` already provides one.
  *
  * ## Why 404 and not 401 / 403
  *

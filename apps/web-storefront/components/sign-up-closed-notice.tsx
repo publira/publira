@@ -1,4 +1,4 @@
-import { AuthScreenText } from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -19,13 +19,13 @@ export const SignUpClosedNotice = ({ message }: { message?: string }) => (
       </Suspense>
     </h2>
     <div className="whitespace-pre-line">
-      <AuthScreenText>
+      <AuthScreen.Text>
         {message ?? (
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="storefront.auth.sign_up_closed.default_message" />
           </Suspense>
         )}
-      </AuthScreenText>
+      </AuthScreen.Text>
     </div>
   </section>
 );

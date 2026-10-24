@@ -1,8 +1,4 @@
-import {
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenNote,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
@@ -40,17 +36,17 @@ interface MfaEnrollFlowProps {
  */
 const MfaEnrollStart = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <h2 className="font-medium text-foreground">
         <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
           <Message message="platform.auth.mfa.enroll_required_title" />
         </Suspense>
       </h2>
-      <AuthScreenNote>
+      <AuthScreen.Note>
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
           <Message message="platform.auth.mfa.enroll_required_description" />
         </Suspense>
-      </AuthScreenNote>
+      </AuthScreen.Note>
 
       <ActionForm.Root
         action={startMfaEnrollmentAction}
@@ -70,9 +66,9 @@ const MfaEnrollStart = () => (
           </Suspense>
         </ActionForm.Submit>
       </ActionForm.Root>
-    </AuthScreenBody>
+    </AuthScreen.Body>
 
-    <AuthScreenFooter>
+    <AuthScreen.Footer>
       <p>
         <Link
           className="text-primary underline underline-offset-4"
@@ -83,12 +79,12 @@ const MfaEnrollStart = () => (
           </Suspense>
         </Link>
       </p>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
 const MfaEnrollConfirm = () => (
-  <AuthScreenBody>
+  <AuthScreen.Body>
     <MfaEnrollmentSecret />
 
     <ActionForm.Root
@@ -111,7 +107,7 @@ const MfaEnrollConfirm = () => (
         </Suspense>
       </ActionForm.Submit>
     </ActionForm.Root>
-  </AuthScreenBody>
+  </AuthScreen.Body>
 );
 
 /**
@@ -123,7 +119,7 @@ export const MfaEnrollFlow = ({ finished, nextPath }: MfaEnrollFlowProps) => (
     finished={finished}
     nextPath={nextPath}
     done={
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <MfaRecoveryCodes />
         <MfaEnrollDoneLink
           nextPath={nextPath}
@@ -138,7 +134,7 @@ export const MfaEnrollFlow = ({ finished, nextPath }: MfaEnrollFlowProps) => (
             </Suspense>
           }
         />
-      </AuthScreenBody>
+      </AuthScreen.Body>
     }
     enroll={
       <MfaEnrollment

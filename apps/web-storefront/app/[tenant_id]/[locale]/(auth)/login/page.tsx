@@ -1,12 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenFooter,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import * as Field from "@publira/ui-components/field";
@@ -49,7 +41,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  */
 const LoginFormSkeleton = () => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       <div className="grid gap-2">
         <SkeletonLine className="h-4 w-28" />
         <Skeleton className="h-10 w-full" />
@@ -59,11 +51,11 @@ const LoginFormSkeleton = () => (
         <Skeleton className="h-10 w-full" />
       </div>
       <Skeleton className="h-9 w-32" />
-    </AuthScreenBody>
-    <AuthScreenFooter>
+    </AuthScreen.Body>
+    <AuthScreen.Footer>
       <SkeletonLine className="h-4 w-40" />
       <SkeletonLine className="h-4 w-56" />
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -87,7 +79,7 @@ const LoginForm = ({
   signUpClosed?: boolean;
 }) => (
   <>
-    <AuthScreenBody>
+    <AuthScreen.Body>
       {signUpClosed ? (
         <Suspense fallback={<Skeleton className="h-16 w-full" />}>
           <RefusedSignUpNotice />
@@ -187,9 +179,9 @@ const LoginForm = ({
           </PasskeySignIn>
         </SocialSignInButtons>
       </Suspense>
-    </AuthScreenBody>
+    </AuthScreen.Body>
 
-    <AuthScreenFooter>
+    <AuthScreen.Footer>
       <p>
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-40" />}>
           <LocaleLink
@@ -203,7 +195,7 @@ const LoginForm = ({
       <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
         <SignUpPrompt refused={signUpClosed === true} />
       </Suspense>
-    </AuthScreenFooter>
+    </AuthScreen.Footer>
   </>
 );
 
@@ -246,9 +238,9 @@ const LoginHeader = async () => {
         pageTitle={t("storefront.auth.login.title")}
         siteLabel={siteLabel}
       />
-      <AuthScreenTitle>{siteLabel}</AuthScreenTitle>
+      <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
-        <AuthScreenTagline>{siteTagline}</AuthScreenTagline>
+        <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
       ) : null}
     </>
   );
@@ -257,19 +249,19 @@ const LoginHeader = async () => {
 const LoginPage = ({
   searchParams,
 }: PageProps<"/[tenant_id]/[locale]/login">) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
         <Suspense fallback={<Skeleton className="h-8 w-40" />}>
           <LoginHeader />
         </Suspense>
-      </AuthScreenHeader>
+      </AuthScreen.Header>
 
       <Suspense fallback={<LoginFormSkeleton />}>
         <LoginFormContent searchParams={searchParams} />
       </Suspense>
-    </AuthScreenMain>
-  </AuthScreen>
+    </AuthScreen.Main>
+  </AuthScreen.Root>
 );
 
 export default LoginPage;

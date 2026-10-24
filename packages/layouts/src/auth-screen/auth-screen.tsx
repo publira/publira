@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
  * screens.
  *
  * Two halves from `lg` up: the form in one, whatever the app puts in
- * `AuthScreenPanel` in the other. A screen that supplies no panel is the
+ * `AuthScreen.Panel` in the other. A screen that supplies no panel is the
  * single centred column this was before it had halves, because the form
  * column takes whatever width the panel leaves.
  *
@@ -18,19 +18,19 @@ import type { ReactNode } from "react";
  * below it stays in the static shell.
  *
  * ```tsx
- * <AuthScreen>
- *   <AuthScreenMain>
- *     <AuthScreenHeader>
- *       <AuthScreenTitle>Seed Publishing</AuthScreenTitle>
- *       <AuthScreenTagline>Stories, one episode at a time</AuthScreenTagline>
- *     </AuthScreenHeader>
- *     <AuthScreenBody>{form}</AuthScreenBody>
- *     <AuthScreenFooter>{links}</AuthScreenFooter>
- *   </AuthScreenMain>
- *   <AuthScreenPanel>
- *     <AuthScreenPattern />
- *   </AuthScreenPanel>
- * </AuthScreen>
+ * <AuthScreen.Root>
+ *   <AuthScreen.Main>
+ *     <AuthScreen.Header>
+ *       <AuthScreen.Title>Seed Publishing</AuthScreen.Title>
+ *       <AuthScreen.Tagline>Stories, one episode at a time</AuthScreen.Tagline>
+ *     </AuthScreen.Header>
+ *     <AuthScreen.Body>{form}</AuthScreen.Body>
+ *     <AuthScreen.Footer>{links}</AuthScreen.Footer>
+ *   </AuthScreen.Main>
+ *   <AuthScreen.Panel>
+ *     <AuthScreen.Pattern />
+ *   </AuthScreen.Panel>
+ * </AuthScreen.Root>
  * ```
  */
 export const AuthScreen = ({ children }: { children: ReactNode }) => (

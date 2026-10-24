@@ -1,14 +1,4 @@
-import {
-  AuthScreen,
-  AuthScreenBody,
-  AuthScreenHeader,
-  AuthScreenMain,
-  AuthScreenNote,
-  AuthScreenPanel,
-  AuthScreenPattern,
-  AuthScreenTagline,
-  AuthScreenTitle,
-} from "@publira/layouts/auth-screen";
+import * as AuthScreen from "@publira/layouts/auth-screen";
 import { LinkButton } from "@publira/ui-components/button";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -48,14 +38,14 @@ const SentTo = async ({
   }
 
   return (
-    <AuthScreenNote>
+    <AuthScreen.Note>
       <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
         <Message
           message="platform.auth.reset_password_requested.sent_to"
           values={{ email }}
         />
       </Suspense>
-    </AuthScreenNote>
+    </AuthScreen.Note>
   );
 };
 
@@ -64,18 +54,18 @@ const ResetPasswordRequestedPage = ({
 }: {
   searchParams: Promise<{ email?: string | string[] }>;
 }) => (
-  <AuthScreen>
-    <AuthScreenMain>
-      <AuthScreenHeader>
-        <AuthScreenTitle>Publira</AuthScreenTitle>
-        <AuthScreenTagline>
+  <AuthScreen.Root>
+    <AuthScreen.Main>
+      <AuthScreen.Header>
+        <AuthScreen.Title>Publira</AuthScreen.Title>
+        <AuthScreen.Tagline>
           <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
             <Message message="platform.auth.reset_password_requested.title" />
           </Suspense>
-        </AuthScreenTagline>
-      </AuthScreenHeader>
+        </AuthScreen.Tagline>
+      </AuthScreen.Header>
 
-      <AuthScreenBody>
+      <AuthScreen.Body>
         <FormMessage variant="success">
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="platform.auth.reset_password_requested.sent" />
@@ -86,11 +76,11 @@ const ResetPasswordRequestedPage = ({
           <SentTo searchParams={searchParams} />
         </Suspense>
 
-        <AuthScreenNote>
+        <AuthScreen.Note>
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <Message message="platform.auth.reset_password_requested.check_spam" />
           </Suspense>
-        </AuthScreenNote>
+        </AuthScreen.Note>
 
         <div className="flex flex-wrap gap-3">
           <LinkButton render={<Link href="/login" />}>
@@ -107,13 +97,13 @@ const ResetPasswordRequestedPage = ({
             </Suspense>
           </LinkButton>
         </div>
-      </AuthScreenBody>
-    </AuthScreenMain>
+      </AuthScreen.Body>
+    </AuthScreen.Main>
 
-    <AuthScreenPanel>
-      <AuthScreenPattern />
-    </AuthScreenPanel>
-  </AuthScreen>
+    <AuthScreen.Panel>
+      <AuthScreen.Pattern />
+    </AuthScreen.Panel>
+  </AuthScreen.Root>
 );
 
 export default ResetPasswordRequestedPage;
