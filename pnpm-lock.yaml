@@ -183,8 +183,8 @@ catalogs:
       specifier: 1.43.0
       version: 1.43.0
     '@publira/comic-viewer':
-      specifier: 0.11.0
-      version: 0.11.0
+      specifier: 0.12.0
+      version: 0.12.0
     '@publira/next-cache-handlers':
       specifier: 1.1.0
       version: 1.1.0
@@ -403,7 +403,7 @@ importers:
         version: link:../../packages/brand
       '@publira/comic-viewer':
         specifier: 'catalog:'
-        version: 0.11.0(react@19.3.1)
+        version: 0.12.0(react@19.3.1)
       '@publira/comic-viewer-shell':
         specifier: workspace:*
         version: link:../../packages/comic-viewer-shell
@@ -597,7 +597,7 @@ importers:
         version: link:../../packages/brand
       '@publira/comic-viewer':
         specifier: 'catalog:'
-        version: 0.11.0(react@19.3.1)
+        version: 0.12.0(react@19.3.1)
       '@publira/comic-viewer-shell':
         specifier: workspace:*
         version: link:../../packages/comic-viewer-shell
@@ -772,7 +772,7 @@ importers:
     dependencies:
       '@publira/comic-viewer':
         specifier: 'catalog:'
-        version: 0.11.0(react@19.3.1)
+        version: 0.12.0(react@19.3.1)
       '@publira/icons':
         specifier: workspace:*
         version: link:../icons
@@ -2318,8 +2318,8 @@ packages:
   '@preact/signals-core@1.14.4':
     resolution: {integrity: sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA==}
 
-  '@publira/comic-viewer@0.11.0':
-    resolution: {integrity: sha512-iTdySTGmrI6ynpa+6NQJuZm9Tr8skUVhVe/jNxyOA6ggVCpHHn8nT4BUbwyy1P2FbJhZqRIEPhMVSjyxoTCykQ==}
+  '@publira/comic-viewer@0.12.0':
+    resolution: {integrity: sha512-w38B7U+RwLOmXOr242U7s95FNLtdlGzV3ZbUT+hbyLazOegoeeT1NKPQlR0penG+9tPp+KMwPa1axI9n3F4Z4g==}
     peerDependencies:
       react: '>=19'
 
@@ -6437,7 +6437,7 @@ snapshots:
 
   '@preact/signals-core@1.14.4': {}
 
-  '@publira/comic-viewer@0.11.0(react@19.3.1)':
+  '@publira/comic-viewer@0.12.0(react@19.3.1)':
     dependencies:
       react: 19.3.1
 
