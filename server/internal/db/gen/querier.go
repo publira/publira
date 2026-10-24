@@ -1125,6 +1125,8 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as sign-up
 	// open with no message of its own.
 	GetTenantSignUpSettings(ctx context.Context, tenantID uuid.UUID) (TenantSignUpSetting, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as no code.
+	GetTenantSiteVerification(ctx context.Context, tenantID uuid.UUID) (TenantSiteVerification, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	// The account of the tenant that holds the inbox an address reaches, whether
 	// or not it holds it under the same tag. A tenant may already hold several
@@ -2857,6 +2859,11 @@ type Querier interface {
 	// UPDATE, so it does not hold back the foreign key checks every write naming
 	// the tenant makes.
 	LockTenantForReaderIconSettings(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	// Serializes the saves of one tenant's codes, so a save compared against the
+	// row as unchanged cannot answer a value a concurrent save replaced. The lock
+	// is on the tenant rather than its row, which a tenant that has saved nothing
+	// does not have, for the reasons LockTenantForAnalyticsSettings gives.
+	LockTenantForSiteVerification(ctx context.Context, tenantID uuid.UUID) (uuid.UUID, error)
 	// Lock the tenant row so concurrent writes to the tenant theme serialize: the
 	// branding image uploads and deletes (icon, logo), and the theme saves, each
 	// of which reads the theme first to decide what it changes. That read must be
@@ -3665,6 +3672,7 @@ type Querier interface {
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	// The message arrives trimmed and within the column's length.
 	UpsertTenantSignUpSettings(ctx context.Context, arg UpsertTenantSignUpSettingsParams) (TenantSignUpSetting, error)
+	UpsertTenantSiteVerification(ctx context.Context, arg UpsertTenantSiteVerificationParams) (TenantSiteVerification, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there.
 	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)

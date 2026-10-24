@@ -477,6 +477,11 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_sign_up_settings_updated" />
       );
     }
+    case "tenant_site_verification_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_site_verification_updated" />
+      );
+    }
     default: {
       return null;
     }
@@ -748,6 +753,9 @@ const settingTargetName = (targetType: string) => {
     }
     case "tenant_site_copy": {
       return <Message message="admin.audit.targets.tenant_site_copy" />;
+    }
+    case "tenant_site_verification": {
+      return <Message message="admin.audit.targets.tenant_site_verification" />;
     }
     case "tenant_timezone": {
       return <Message message="admin.audit.targets.tenant_timezone" />;

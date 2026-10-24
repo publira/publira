@@ -329,6 +329,7 @@
         "tenant_sign_in_settings": "登入方式",
         "tenant_sign_up_settings": "讀者註冊",
         "tenant_site_copy": "公開網站呈現",
+        "tenant_site_verification": "搜尋引擎擁有權驗證",
         "tenant_timezone": "時區",
         "user": "使用者",
         "volume": "卷"
@@ -472,6 +473,7 @@
         "tenant_analytics_settings_updated": "更新了Google代碼",
         "tenant_crawler_settings_updated": "更新了爬蟲排除規則",
         "tenant_sign_up_settings_updated": "更新了讀者註冊設定",
+        "tenant_site_verification_updated": "更新了搜尋引擎擁有權驗證",
         "admin_mfa_enrolled": "設定了兩步驟驗證",
         "admin_mfa_verified": "登入時的兩步驟驗證",
         "admin_mfa_recovery_code_used": "使用復原碼登入",

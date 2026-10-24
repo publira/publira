@@ -472,6 +472,33 @@ final $typed_data.Uint8List tenantGoogleTagDescriptor = $convert.base64Decode(
     'VSC3NlcnZpbmdNb2RlEjAKFHNlcnZlcl9jb250YWluZXJfdXJsGAQgASgJUhJzZXJ2ZXJDb250'
     'YWluZXJVcmwSIQoMZ2F0ZXdheV9wYXRoGAUgASgJUgtnYXRld2F5UGF0aA==');
 
+@$core.Deprecated('Use tenantSiteVerificationDescriptor instead')
+const TenantSiteVerification$json = {
+  '1': 'TenantSiteVerification',
+  '2': [
+    {
+      '1': 'google_site_verification',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'googleSiteVerification'
+    },
+    {
+      '1': 'bing_site_verification',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'bingSiteVerification'
+    },
+  ],
+};
+
+/// Descriptor for `TenantSiteVerification`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tenantSiteVerificationDescriptor = $convert.base64Decode(
+    'ChZUZW5hbnRTaXRlVmVyaWZpY2F0aW9uEjgKGGdvb2dsZV9zaXRlX3ZlcmlmaWNhdGlvbhgBIA'
+    'EoCVIWZ29vZ2xlU2l0ZVZlcmlmaWNhdGlvbhI0ChZiaW5nX3NpdGVfdmVyaWZpY2F0aW9uGAIg'
+    'ASgJUhRiaW5nU2l0ZVZlcmlmaWNhdGlvbg==');
+
 @$core.Deprecated('Use getTenantAnalyticsSettingsResponseDescriptor instead')
 const GetTenantAnalyticsSettingsResponse$json = {
   '1': 'GetTenantAnalyticsSettingsResponse',
@@ -484,6 +511,14 @@ const GetTenantAnalyticsSettingsResponse$json = {
       '6': '.publira.v1.TenantGoogleTag',
       '10': 'googleTag'
     },
+    {
+      '1': 'site_verification',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.TenantSiteVerification',
+      '10': 'siteVerification'
+    },
   ],
 };
 
@@ -491,7 +526,9 @@ const GetTenantAnalyticsSettingsResponse$json = {
 final $typed_data.Uint8List getTenantAnalyticsSettingsResponseDescriptor =
     $convert.base64Decode(
         'CiJHZXRUZW5hbnRBbmFseXRpY3NTZXR0aW5nc1Jlc3BvbnNlEjoKCmdvb2dsZV90YWcYASABKA'
-        'syGy5wdWJsaXJhLnYxLlRlbmFudEdvb2dsZVRhZ1IJZ29vZ2xlVGFn');
+        'syGy5wdWJsaXJhLnYxLlRlbmFudEdvb2dsZVRhZ1IJZ29vZ2xlVGFnEk8KEXNpdGVfdmVyaWZp'
+        'Y2F0aW9uGAIgASgLMiIucHVibGlyYS52MS5UZW5hbnRTaXRlVmVyaWZpY2F0aW9uUhBzaXRlVm'
+        'VyaWZpY2F0aW9u');
 
 @$core.Deprecated('Use getTenantCrawlerSettingsRequestDescriptor instead')
 const GetTenantCrawlerSettingsRequest$json = {
@@ -602,6 +639,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.GetTenantAnalyticsSettingsResponse':
       GetTenantAnalyticsSettingsResponse$json,
   '.publira.v1.TenantGoogleTag': TenantGoogleTag$json,
+  '.publira.v1.TenantSiteVerification': TenantSiteVerification$json,
   '.publira.v1.GetTenantCrawlerSettingsRequest':
       GetTenantCrawlerSettingsRequest$json,
   '.publira.v1.GetTenantCrawlerSettingsResponse':

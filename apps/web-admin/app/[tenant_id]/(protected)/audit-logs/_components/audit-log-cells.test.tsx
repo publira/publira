@@ -196,6 +196,29 @@ describe("AuditLogActionCell", () => {
   );
 
   it.each(getLocales())(
+    "names a change to the search engine verification codes in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_site_verification_updated",
+        "tenant_site_verification",
+        "TENANT001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_site_verification_updated",
+        locale
+      );
+      const targetName = sharedMessage(
+        "admin.audit.targets.tenant_site_verification",
+        locale
+      );
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
+  it.each(getLocales())(
     "names a change to the refused email addresses in %s",
     async (locale) => {
       const cell = await renderActionCell(

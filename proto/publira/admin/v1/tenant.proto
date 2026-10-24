@@ -537,6 +537,38 @@ message UpdateTenantAnalyticsSettingsResponse {
   TenantAnalyticsSettings settings = 1;
 }
 
+// The codes the tenant's storefront proves it owns the site with, each written
+// into every page as a <meta> tag's content value. Each is the bare code, never
+// the whole element: 1 to 128 letters, digits, hyphens, and underscores. Empty
+// where the tenant has none.
+message TenantSiteVerification {
+  // Google Search Console's google-site-verification code.
+  string google_site_verification = 1;
+  // Bing Webmaster Tools' msvalidate.01 code.
+  string bing_site_verification = 2;
+}
+
+message GetTenantSiteVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantSiteVerificationResponse {
+  TenantSiteVerification site_verification = 1;
+}
+
+message UpdateTenantSiteVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both codes are written, and an empty one is cleared. Each is trimmed, and
+  // one holding anything but letters, digits, hyphens, and underscores, or
+  // longer than 128 characters, is invalid_argument naming the field: a whole
+  // <meta> element is refused rather than taken apart.
+  TenantSiteVerification site_verification = 2;
+}
+
+message UpdateTenantSiteVerificationResponse {
+  TenantSiteVerification site_verification = 1;
+}
+
 // What a crawler the tenant may exclude fetches pages for.
 enum CrawlerPurpose {
   CRAWLER_PURPOSE_UNSPECIFIED = 0;
@@ -701,6 +733,10 @@ service TenantSettingsService {
   rpc GetTenantAnalyticsSettings(GetTenantAnalyticsSettingsRequest) returns (GetTenantAnalyticsSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantAnalyticsSettings(UpdateTenantAnalyticsSettingsRequest) returns (UpdateTenantAnalyticsSettingsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc GetTenantSiteVerification(GetTenantSiteVerificationRequest) returns (GetTenantSiteVerificationResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantSiteVerification(UpdateTenantSiteVerificationRequest) returns (UpdateTenantSiteVerificationResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetTenantCrawlerSettings(GetTenantCrawlerSettingsRequest) returns (GetTenantCrawlerSettingsResponse) {}
   // Minimum role: tenant_admin.
