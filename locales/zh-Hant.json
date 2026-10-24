@@ -2955,6 +2955,22 @@
         "upload_failed": "無法上傳標誌。請稍後再試。",
         "delete_failed": "無法刪除標誌。請稍後再試。"
       },
+      "sign_in_image": {
+        "title": "登入頁面圖片",
+        "description": "在寬螢幕上，公開網站的登入與註冊頁面顯示在表單旁邊的圖片。未設定時，該區域會以主題顏色填滿。",
+        "current": "目前的登入頁面圖片",
+        "unset": "尚未設定登入頁面圖片。",
+        "file": "登入頁面圖片檔案",
+        "file_description": "請選擇不超過10MB的JPEG、PNG或WebP圖片。長邊超過2560px的圖片會被縮小，縮小後短邊仍須至少512px。圖片會維持原有長寬比，由網站裁切以符合表單旁邊的區域。",
+        "delete_title": "要刪除登入頁面圖片嗎？",
+        "delete_description": "登入與註冊頁面表單旁邊的區域將改用主題顏色。",
+        "submit": "儲存登入頁面圖片",
+        "saved": "登入頁面圖片已儲存。",
+        "deleted": "登入頁面圖片已刪除。",
+        "rejected": "無法讀取該圖片。請選擇短邊至少512px的JPEG、PNG或WebP圖片。",
+        "upload_failed": "無法上傳登入頁面圖片。請稍後再試。",
+        "delete_failed": "無法刪除登入頁面圖片。請稍後再試。"
+      },
       "email": {
         "title": "寄件",
         "description": "未設定或未啟用時，郵件會由平台自己的寄件人寄出。",
@@ -3690,7 +3706,7 @@
     },
     "branding": {
       "title": "品牌",
-      "page_description": "管理該租戶的主題顏色、標誌與圖示。",
+      "page_description": "管理該租戶的主題顏色、標誌、圖示與登入頁面圖片。",
       "section_error": "無法顯示品牌設定"
     },
     "integrations": {

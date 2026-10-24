@@ -27,6 +27,14 @@ export const mentionsLogoRejection = (error: unknown): boolean =>
   rpcErrorHasFieldViolation(error, "logo_data");
 
 /**
+ * Whether an `invalid_argument` rejection is about the uploaded sign-in image.
+ * Its RPC is the only one the branding screen calls that carries the image in
+ * `image_data`, so the field alone tells it apart.
+ */
+export const mentionsSignInImageRejection = (error: unknown): boolean =>
+  rpcErrorHasFieldViolation(error, "image_data");
+
+/**
  * Whether an `invalid_argument` rejection is about the image sent for a single
  * aspect ratio. Those RPCs carry the image in `image_data`, so the whole
  * eye-catch fields above never name it, and the minimum the image missed is

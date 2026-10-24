@@ -21,15 +21,18 @@ import { getMessagesFor } from "#lib/messages";
 import {
   deleteTenantIcon,
   deleteTenantLogo,
+  deleteTenantSignInImage,
   tenantThemeCacheTag,
   updateTenantThemeSettings,
   uploadTenantIcon,
   uploadTenantLogo,
+  uploadTenantSignInImage,
 } from "#lib/theme-settings";
 
 import type {
   TenantIconActionState,
   TenantLogoActionState,
+  TenantSignInImageActionState,
   ThemeSettingsActionState,
   ThemeSettingsFieldErrors,
 } from "../branding-types";
@@ -174,10 +177,11 @@ const themeContrastPairLabels = (
 };
 
 /**
- * The icon and the logo accept the same file. They differ in how the server
- * normalizes what it is given — a square crop for the icon, the source aspect
- * ratio kept for the logo — not in what it takes, so the two are one schema
- * rather than two that have to be kept identical by hand.
+ * The icon, the logo, and the sign-in image accept the same file. They differ
+ * in how the server normalizes what it is given — a square crop for the icon,
+ * the source aspect ratio kept for the logo and the sign-in image, each within
+ * its own dimensions — not in what it takes, so the three are one schema rather
+ * than three that have to be kept identical by hand.
  *
  * The Go server re-checks all of this and stays the authority. Checking size and
  * type here keeps a rejected file from being read into memory and shipped over
@@ -229,6 +233,22 @@ const tenantLogoSchema = async (locale: Locale) => {
     z.object({
       intent: z.literal("upload"),
       logo: await brandingImageFileSchema(locale),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+    }),
+    z.object({
+      intent: z.literal("delete"),
+      tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+    }),
+  ]);
+};
+/** Upload and delete share one Action, told apart by `intent`. */
+const tenantSignInImageSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.discriminatedUnion("intent", [
+    z.object({
+      image: await brandingImageFileSchema(locale),
+      intent: z.literal("upload"),
       tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     }),
     z.object({
@@ -499,6 +519,70 @@ export const updateTenantLogoAction = async (
     message: isDelete
       ? t("admin.settings.logo.deleted")
       : t("admin.settings.logo.saved"),
+    ok: true,
+  };
+};
+
+export const updateTenantSignInImageAction = async (
+  _prevState: TenantSignInImageActionState,
+  formData: FormData
+): Promise<TenantSignInImageActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantSignInImageSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      image: { kind: "file", name: "sign_in_image" },
+      intent: { kind: "value", name: "intent" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    // One control, so the field message is the form message.
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const input = parsed.data;
+  const isDelete = input.intent === "delete";
+
+  // The file is read into memory inside the callback, so an unauthorized caller
+  // never gets a 10MB upload buffered on its behalf.
+  const result = await withAdminSessionReauth(async () => {
+    if (input.intent === "delete") {
+      return deleteTenantSignInImage(input.tenantId, locale);
+    }
+
+    return uploadTenantSignInImage(
+      {
+        imageContentType: input.image.type,
+        imageData: new Uint8Array(await input.image.arrayBuffer()),
+        tenantId: input.tenantId,
+      },
+      locale
+    );
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // Refresh the public site's tenant read and this screen's own private cache.
+  updateTag(`tenant:${input.tenantId}:site`);
+  updateTag(tenantThemeCacheTag(input.tenantId));
+
+  return {
+    message: isDelete
+      ? t("admin.settings.sign_in_image.deleted")
+      : t("admin.settings.sign_in_image.saved"),
     ok: true,
   };
 };

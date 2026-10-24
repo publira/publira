@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -6,20 +10,24 @@ const {
   mockCacheTag,
   mockDeleteTenantIconApi,
   mockDeleteTenantLogoApi,
+  mockDeleteTenantSignInImageApi,
   mockGetSessionId,
   mockGetTenantThemeApi,
   mockUploadTenantIconApi,
   mockUploadTenantLogoApi,
+  mockUploadTenantSignInImageApi,
   mockUpsertTenantThemeApi,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockDeleteTenantIconApi: vi.fn(),
   mockDeleteTenantLogoApi: vi.fn(),
+  mockDeleteTenantSignInImageApi: vi.fn(),
   mockGetSessionId: vi.fn(),
   mockGetTenantThemeApi: vi.fn(),
   mockUploadTenantIconApi: vi.fn(),
   mockUploadTenantLogoApi: vi.fn(),
+  mockUploadTenantSignInImageApi: vi.fn(),
   mockUpsertTenantThemeApi: vi.fn(),
 }));
 
@@ -37,9 +45,11 @@ vi.mock("@publira/api-client/admin/client", () => ({
     theme: {
       deleteTenantIcon: mockDeleteTenantIconApi,
       deleteTenantLogo: mockDeleteTenantLogoApi,
+      deleteTenantSignInImage: mockDeleteTenantSignInImageApi,
       getTenantTheme: mockGetTenantThemeApi,
       uploadTenantIcon: mockUploadTenantIconApi,
       uploadTenantLogo: mockUploadTenantLogoApi,
+      uploadTenantSignInImage: mockUploadTenantSignInImageApi,
       upsertTenantTheme: mockUpsertTenantThemeApi,
     },
   }),
@@ -137,6 +147,7 @@ describe("theme-settings", () => {
       icon: null,
       logo: null,
       ok: true,
+      signInImage: null,
       theme: fullTheme,
     });
 
@@ -250,6 +261,7 @@ describe("theme-settings", () => {
       icon: null,
       logo: null,
       ok: true,
+      signInImage: null,
       theme: updatedTheme,
     });
   });
@@ -272,6 +284,7 @@ describe("theme-settings", () => {
       icon: storedImage("/images/tenants/icon-1", "icon"),
       logo: null,
       ok: true,
+      signInImage: null,
       theme: fullTheme,
     });
   });
@@ -297,6 +310,7 @@ describe("theme-settings", () => {
       icon: null,
       logo: null,
       ok: true,
+      signInImage: null,
       theme: fullTheme,
     });
   });
@@ -394,6 +408,7 @@ describe("theme-settings", () => {
       icon: null,
       logo: storedImage("/images/tenants/logo-1", "logo"),
       ok: true,
+      signInImage: null,
       theme: fullTheme,
     });
   });
@@ -506,5 +521,111 @@ describe("theme-settings", () => {
     if (!result.ok) {
       expect(result.message).not.toContain("logo image must be at least");
     }
+  });
+
+  it("returns the variants of the sign-in image as well when one is set", async () => {
+    const stored = storedImageResponse("/images/tenants/sign-in-1", "sign_in");
+    mockGetTenantThemeApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        signInImageUpdatedAt: stored.updatedAt,
+        signInImageVariants: stored.variants,
+      },
+    });
+
+    const { getTenantThemeSettings } = await import("./theme-settings");
+
+    const result = await getTenantThemeSettings("TENANT001", "en");
+
+    expect(result).toEqual({
+      icon: null,
+      logo: null,
+      ok: true,
+      signInImage: storedImage("/images/tenants/sign-in-1", "sign_in"),
+      theme: fullTheme,
+    });
+  });
+
+  it("returns the variants after saving once the sign-in image is uploaded", async () => {
+    const stored = storedImageResponse("/images/tenants/sign-in-2", "sign_in");
+    mockUploadTenantSignInImageApi.mockResolvedValueOnce({
+      theme: {
+        ...fullTheme,
+        signInImageUpdatedAt: stored.updatedAt,
+        signInImageVariants: stored.variants,
+      },
+    });
+
+    const { uploadTenantSignInImage } = await import("./theme-settings");
+
+    const imageData = new Uint8Array([1, 2, 3]);
+    const result = await uploadTenantSignInImage(
+      {
+        imageContentType: "image/jpeg",
+        imageData,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      signInImage: storedImage("/images/tenants/sign-in-2", "sign_in"),
+    });
+    expect(mockUploadTenantSignInImageApi).toHaveBeenCalledWith(
+      {
+        imageContentType: "image/jpeg",
+        imageData,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("returns no variants once the sign-in image is removed", async () => {
+    mockDeleteTenantSignInImageApi.mockResolvedValueOnce({ theme: fullTheme });
+
+    const { deleteTenantSignInImage } = await import("./theme-settings");
+
+    const result = await deleteTenantSignInImage("TENANT001", "en");
+
+    expect(result).toEqual({ ok: true, signInImage: null });
+    expect(mockDeleteTenantSignInImageApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("words a rejected sign-in image with the size the screen asks for", async () => {
+    mockUploadTenantSignInImageApi.mockRejectedValueOnce(
+      new ConnectError(
+        "sign-in image must be at least 512x512 after scaling to 2560px on its longest edge, got 600x300",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "image_data" }] },
+          },
+        ]
+      )
+    );
+
+    const { uploadTenantSignInImage } = await import("./theme-settings");
+
+    const result = await uploadTenantSignInImage(
+      {
+        imageContentType: "image/png",
+        imageData: new Uint8Array([1]),
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "The image could not be read. Choose a JPEG, PNG, or WebP whose shorter side is at least 512px.",
+      ok: false,
+    });
   });
 });

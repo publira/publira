@@ -20,6 +20,7 @@ import { settleCachedRead } from "./cached-read";
 import {
   mentionsIconRejection,
   mentionsLogoRejection,
+  mentionsSignInImageRejection,
   mentionsStorageNotConfigured,
 } from "./image-rejection";
 import { getMessagesFor } from "./messages";
@@ -37,6 +38,7 @@ export type TenantThemeSettingsResult =
       theme: TenantTheme;
       icon: TenantBrandingImage | null;
       logo: TenantBrandingImage | null;
+      signInImage: TenantBrandingImage | null;
     }
   | {
       ok: false;
@@ -57,6 +59,10 @@ export type TenantLogoResult =
   | { ok: true; logo: TenantBrandingImage | null }
   | { ok: false; message: string };
 
+export type TenantSignInImageResult =
+  | { ok: true; signInImage: TenantBrandingImage | null }
+  | { ok: false; message: string };
+
 export interface UploadTenantIconInput {
   tenantId: string;
   iconContentType: string;
@@ -67,6 +73,12 @@ export interface UploadTenantLogoInput {
   tenantId: string;
   logoContentType: string;
   logoData: Uint8Array;
+}
+
+export interface UploadTenantSignInImageInput {
+  tenantId: string;
+  imageContentType: string;
+  imageData: Uint8Array;
 }
 
 /**
@@ -145,6 +157,27 @@ const parseLogoErrorMessage = async (
   });
 };
 
+/** The sign-in image rejections are worded here for the same reason. */
+const parseSignInImageErrorMessage = async (
+  error: unknown,
+  fallback: string,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, fallback, {
+    locale,
+    overrides: {
+      "invalid-argument": mentionsSignInImageRejection(error)
+        ? t("admin.settings.sign_in_image.rejected")
+        : undefined,
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : undefined,
+    },
+  });
+};
+
 const toTenantTheme = (theme?: Partial<TenantTheme> | null): TenantTheme =>
   resolveTenantThemeColors(theme);
 
@@ -186,6 +219,10 @@ const getTenantThemeSettingsForSession = async (
         response.theme?.logoImageVariants
       ),
       ok: true,
+      signInImage: toTenantBrandingImage(
+        response.theme?.signInImageUpdatedAt,
+        response.theme?.signInImageVariants
+      ),
       theme: toTenantTheme(response.theme),
     };
   } catch (error) {
@@ -294,6 +331,10 @@ export const updateTenantThemeSettings = async (
         response.theme?.logoImageVariants
       ),
       ok: true,
+      signInImage: toTenantBrandingImage(
+        response.theme?.signInImageUpdatedAt,
+        response.theme?.signInImageVariants
+      ),
       theme: toTenantTheme(response.theme),
     };
   } catch (error) {
@@ -471,6 +512,90 @@ export const deleteTenantLogo = async (
       message: await parseLogoErrorMessage(
         error,
         t("admin.settings.logo.delete_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const uploadTenantSignInImage = async (
+  input: UploadTenantSignInImageInput,
+  locale: Locale
+): Promise<TenantSignInImageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  const normalizedTenantId = input.tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response = await apiClient.theme.uploadTenantSignInImage(
+      {
+        imageContentType: input.imageContentType,
+        imageData: input.imageData,
+        tenant: { tenantId: normalizedTenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ok: true,
+      signInImage: toTenantBrandingImage(
+        response.theme?.signInImageUpdatedAt,
+        response.theme?.signInImageVariants
+      ),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await parseSignInImageErrorMessage(
+        error,
+        t("admin.settings.sign_in_image.upload_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const deleteTenantSignInImage = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantSignInImageResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response = await apiClient.theme.deleteTenantSignInImage(
+      { tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      ok: true,
+      signInImage: toTenantBrandingImage(
+        response.theme?.signInImageUpdatedAt,
+        response.theme?.signInImageVariants
+      ),
+    };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await parseSignInImageErrorMessage(
+        error,
+        t("admin.settings.sign_in_image.delete_failed"),
         locale
       ),
       ok: false,

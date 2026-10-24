@@ -24,6 +24,7 @@ const {
   mockUploadSeriesEyeCatchAspectImage,
   mockUploadTenantIcon,
   mockUploadTenantLogo,
+  mockUploadTenantSignInImage,
 } = vi.hoisted(() => ({
   mockCreateCreator: vi.fn(),
   mockCreateLabel: vi.fn(),
@@ -39,6 +40,7 @@ const {
   mockUploadSeriesEyeCatchAspectImage: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
   mockUploadTenantLogo: vi.fn(),
+  mockUploadTenantSignInImage: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -77,6 +79,7 @@ vi.mock("./api", () => ({
     theme: {
       uploadTenantIcon: mockUploadTenantIcon,
       uploadTenantLogo: mockUploadTenantLogo,
+      uploadTenantSignInImage: mockUploadTenantSignInImage,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -361,6 +364,22 @@ const surfaces: UploadSurface[] = [
         {
           logoContentType: "image/png",
           logoData: image,
+          tenantId: "TENANT001",
+        },
+        locale
+      );
+    },
+  },
+  {
+    fallback: "Could not upload the sign-in image. Please try again later.",
+    name: "theme sign-in image",
+    rpc: mockUploadTenantSignInImage,
+    upload: async (locale) => {
+      const { uploadTenantSignInImage } = await import("./theme-settings");
+      return uploadTenantSignInImage(
+        {
+          imageContentType: "image/png",
+          imageData: image,
           tenantId: "TENANT001",
         },
         locale
