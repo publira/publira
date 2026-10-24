@@ -73,6 +73,11 @@ export type EpisodeRatingStatusResult =
        * from, so the control is not offered.
        */
       readerCredited: boolean;
+      /**
+       * The reader holds a staff role in the tenant, which the API refuses a
+       * rating from as well, so a notice takes the control's place.
+       */
+      readerIsStaff: boolean;
       score: number;
       signedIn: boolean;
     }
@@ -97,6 +102,7 @@ const readMyEpisodeRating = async (
       ok: true,
       ratingCount: 0,
       readerCredited: false,
+      readerIsStaff: false,
       score: 0,
       signedIn: false,
       unexpected: false,
@@ -120,6 +126,7 @@ const readMyEpisodeRating = async (
       ok: true,
       ratingCount: toRatingCount(response.ratingCount),
       readerCredited: response.readerCredited ?? false,
+      readerIsStaff: response.readerIsStaff ?? false,
       score: toScore(response.score),
       signedIn: true,
       unexpected: false,
@@ -132,6 +139,7 @@ const readMyEpisodeRating = async (
         ok: true,
         ratingCount: 0,
         readerCredited: false,
+        readerIsStaff: false,
         score: 0,
         signedIn: false,
         unexpected: false,
@@ -182,6 +190,24 @@ export const getMyEpisodeRating = async (
   return result;
 };
 
+/**
+ * The copy for a refusal the API gives by who the reader is. A staff role
+ * granted after the page loaded reaches the reader here rather than as the
+ * notice the control shows in its place.
+ */
+const refusalMessage = (
+  error: unknown,
+  t: Awaited<ReturnType<typeof getMessagesFor>>
+): string | undefined => {
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerCreditedOnEpisode)) {
+    return t("storefront.episode.reaction.reader_credited");
+  }
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIsTenantStaff)) {
+    return t("storefront.episode.reaction.reader_is_staff");
+  }
+  return undefined;
+};
+
 export const rateEpisode = async (input: {
   episodeId: string;
   locale: Locale;
@@ -226,14 +252,7 @@ export const rateEpisode = async (input: {
     return {
       message: rpcErrorMessage(error, t("storefront.episode.reaction.failed"), {
         locale: input.locale,
-        overrides: {
-          forbidden: rpcErrorHasReason(
-            error,
-            RPC_ERROR_REASON.readerCreditedOnEpisode
-          )
-            ? t("storefront.episode.reaction.reader_credited")
-            : undefined,
-        },
+        overrides: { forbidden: refusalMessage(error, t) },
       }),
       ok: false,
     };

@@ -70,6 +70,8 @@ const signedInRating = {
   mode: "single",
   ok: true,
   ratingCount: 4,
+  readerCredited: false,
+  readerIsStaff: false,
   score: 0,
   signedIn: true,
 } as const;
@@ -80,10 +82,7 @@ describe("EpisodeReactionControl", () => {
   });
 
   it("offers the reaction to a reader who is not the episode's author", async () => {
-    mockGetMyEpisodeRating.mockResolvedValueOnce({
-      ...signedInRating,
-      readerCredited: false,
-    });
+    mockGetMyEpisodeRating.mockResolvedValueOnce(signedInRating);
 
     await renderControl();
 
@@ -101,6 +100,35 @@ describe("EpisodeReactionControl", () => {
     const { container } = await renderControl();
 
     expect(screen.queryByRole("button")).toBeNull();
+    expect(container.textContent).toBe("");
+  });
+
+  it("tells a member of staff why there is no reaction in its place", async () => {
+    mockGetMyEpisodeRating.mockResolvedValueOnce({
+      ...signedInRating,
+      readerIsStaff: true,
+    });
+
+    await renderControl();
+
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(
+      screen.getByText(
+        "You cannot react to episodes while you hold a staff role, so your reading does not count toward the ratings readers see."
+      )
+    ).toBeTruthy();
+  });
+
+  it("withholds the reaction from staff credited on the episode without the notice", async () => {
+    mockGetMyEpisodeRating.mockResolvedValueOnce({
+      ...signedInRating,
+      readerCredited: true,
+      readerIsStaff: true,
+    });
+
+    const { container } = await renderControl();
+
     expect(container.textContent).toBe("");
   });
 });

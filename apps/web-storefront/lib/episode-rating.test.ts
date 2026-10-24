@@ -35,12 +35,9 @@ vi.mock("./api-client", () => ({
   resolveAccessToken: mockResolveAccessToken,
 }));
 
-const creditedRefusal = (message: string) =>
+const refusal = (message: string, reason: string) =>
   new ConnectError(message, Code.PermissionDenied, undefined, [
-    {
-      desc: ErrorInfoSchema,
-      value: { domain: "publira", reason: "READER_CREDITED_ON_EPISODE" },
-    },
+    { desc: ErrorInfoSchema, value: { domain: "publira", reason } },
   ]);
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -122,6 +119,7 @@ describe("getMyEpisodeRating", () => {
       ok: true,
       ratingCount: 0,
       readerCredited: false,
+      readerIsStaff: false,
       score: 0,
       signedIn: false,
     });
@@ -133,6 +131,7 @@ describe("getMyEpisodeRating", () => {
       mode: EpisodeRatingMode.MULTIPLE,
       ratingCount: 12,
       readerCredited: false,
+      readerIsStaff: false,
       score: 3,
     });
 
@@ -151,6 +150,7 @@ describe("getMyEpisodeRating", () => {
       ok: true,
       ratingCount: 12,
       readerCredited: false,
+      readerIsStaff: false,
       score: 3,
       signedIn: true,
     });
@@ -171,6 +171,28 @@ describe("getMyEpisodeRating", () => {
       ok: true,
       ratingCount: 3,
       readerCredited: true,
+      readerIsStaff: false,
+      score: 0,
+      signedIn: true,
+    });
+  });
+
+  it("reports a reader who holds a staff role so the control gives way to a notice", async () => {
+    mockGetMyEpisodeRating.mockResolvedValueOnce({
+      mode: EpisodeRatingMode.SINGLE,
+      ratingCount: 3,
+      readerIsStaff: true,
+      score: 0,
+    });
+
+    const result = await getMyEpisodeRating(tenantId, episodeId, "en");
+
+    expect(result).toEqual({
+      mode: "single",
+      ok: true,
+      ratingCount: 3,
+      readerCredited: false,
+      readerIsStaff: true,
       score: 0,
       signedIn: true,
     });
@@ -188,6 +210,7 @@ describe("getMyEpisodeRating", () => {
       ok: true,
       ratingCount: 0,
       readerCredited: false,
+      readerIsStaff: false,
       score: 0,
       signedIn: false,
     });
@@ -247,7 +270,10 @@ describe("rateEpisode", () => {
 
   it("says why a press on the reader's own episode was refused", async () => {
     mockRateEpisode.mockRejectedValueOnce(
-      creditedRefusal("the reader is credited on this episode")
+      refusal(
+        "the reader is credited on this episode",
+        "READER_CREDITED_ON_EPISODE"
+      )
     );
 
     await expect(
@@ -260,6 +286,25 @@ describe("rateEpisode", () => {
     ).resolves.toEqual({
       message:
         "You cannot react to an episode you are credited on as its author.",
+      ok: false,
+    });
+  });
+
+  it("says why a press from a member of the tenant's staff was refused", async () => {
+    mockRateEpisode.mockRejectedValueOnce(
+      refusal("the reader holds a staff role", "READER_IS_TENANT_STAFF")
+    );
+
+    await expect(
+      rateEpisode({
+        episodeId,
+        locale: "en",
+        presses: 1,
+        tenantId,
+      })
+    ).resolves.toEqual({
+      message:
+        "You cannot react to episodes while you hold a staff role, so your reading does not count toward the ratings readers see.",
       ok: false,
     });
   });
