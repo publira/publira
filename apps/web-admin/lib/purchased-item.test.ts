@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { getMessagesFor } from "#lib/messages";
-import type { PurchaseItem, PurchasedItem } from "#lib/purchase";
-
+import { getMessagesFor } from "./messages";
+import type { PurchaseItem, PurchasedItem } from "./purchase";
 import { purchasedItemHref, purchasedItemLabel } from "./purchased-item";
 
 const purchase = (item: PurchasedItem): PurchaseItem => ({

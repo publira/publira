@@ -1,5 +1,5 @@
-import type { AdminMessageAccessor } from "#lib/messages";
-import type { PurchaseItem } from "#lib/purchase";
+import type { AdminMessageAccessor } from "./messages";
+import type { PurchaseItem } from "./purchase";
 
 /**
  * What the list and the drawer call what a purchase bought: the episode's or

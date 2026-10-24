@@ -2,6 +2,7 @@
 title: Reader accounts
 description: Find a reader's account, correct their date of birth, remove their icon, and suspend or delete the account.
 published: 2026-10-21
+updated: 2026-10-24
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.
@@ -20,11 +21,17 @@ Each row starts with the icon the reader chose for their account, or a plain out
 
 ## The reader page
 
-**Account** shows the reader's **Icon**, their name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, and their **Birth date**. **Comments** lists everything they have written, newest first, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](./2-comments.md).
+**Account** shows the reader's **Icon**, their name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, and their **Birth date**.
+
+Below it, three sections list what the reader has, newest first, twenty to a page:
+
+| Section | What it lists |
+| --- | --- |
+| **Purchases** | Everything they bought, with the episode, volume, or rest of a series it was for, the amount, what they paid through, and whether it still opens what it bought. The title opens what was bought, and **View** opens the purchase on **Purchases**, where it can be refunded |
+| **Access tickets** | The tickets the staff issued to them, with the episode and the ticket's status. **Revoke** and **Issue a ticket** work as on [Access tickets](./4-access-tickets.md), without leaving the page |
+| **Comments** | Everything they have written, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](./2-comments.md) |
 
 ![A reader's page: the Account section with Suspend and Delete, the reader's icon, their name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, and Birth date with Change.](./accounts-reader.png)
-
-The public ID is what **Access tickets** filters by, so copy it from here when you look for a reader's tickets.
 
 ## Correcting a date of birth
 

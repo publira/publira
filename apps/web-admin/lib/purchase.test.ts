@@ -8,6 +8,7 @@ const {
   mockGetAccessToken,
   mockGetPurchase,
   mockListPurchases,
+  mockListReaderPurchases,
   mockRefundPurchase,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
@@ -15,6 +16,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockGetPurchase: vi.fn(),
   mockListPurchases: vi.fn(),
+  mockListReaderPurchases: vi.fn(),
   mockRefundPurchase: vi.fn(),
 }));
 
@@ -27,6 +29,7 @@ vi.mock("./api", () => ({
     purchases: {
       getPurchase: mockGetPurchase,
       listPurchases: mockListPurchases,
+      listReaderPurchases: mockListReaderPurchases,
       refundPurchase: mockRefundPurchase,
     },
   },
@@ -199,6 +202,64 @@ describe("listPurchases", () => {
     const result = await listPurchases("TENANT001", "en");
 
     expect(mockListPurchases).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+  });
+});
+
+describe("listReaderPurchases", () => {
+  const READER_ID = "018f0e6a-5000-7000-8000-000000000003";
+
+  it("names the reader by their primary key, carries the list's tag, and maps the rows", async () => {
+    mockListReaderPurchases.mockResolvedValue({
+      nextToken: "",
+      previousToken: "previous-page",
+      purchases: [purchase()],
+    });
+
+    const { listReaderPurchases } = await import("./purchase");
+    const result = await listReaderPurchases("TENANT001", "en", READER_ID, {
+      token: "current-page",
+    });
+
+    expect(mockListReaderPurchases).toHaveBeenCalledWith(
+      {
+        limit: 20,
+        readerId: READER_ID,
+        tenant: { tenantId: "TENANT001" },
+        token: "current-page",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockCacheTag).toHaveBeenCalledWith("purchases-TENANT001");
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
+    expect(result).toMatchObject({
+      nextToken: "",
+      ok: true,
+      previousToken: "previous-page",
+      purchases: [{ id: PURCHASE_ID, price: 500 }],
+    });
+  });
+
+  it("reports a failure the API classifies as a message instead of throwing", async () => {
+    mockListReaderPurchases.mockRejectedValue(
+      new ConnectError("down", Code.Unavailable)
+    );
+
+    const { listReaderPurchases } = await import("./purchase");
+    const result = await listReaderPurchases("TENANT001", "en", READER_ID);
+
+    expect(result.ok).toBe(false);
+    expect(result.purchases).toEqual([]);
+    expect(result.message).toBeTruthy();
+  });
+
+  it("asks for a sign-in when there is no session, without calling the API", async () => {
+    mockGetAccessToken.mockResolvedValue("");
+
+    const { listReaderPurchases } = await import("./purchase");
+    const result = await listReaderPurchases("TENANT001", "en", READER_ID);
+
+    expect(mockListReaderPurchases).not.toHaveBeenCalled();
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
   });
 });

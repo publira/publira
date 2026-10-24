@@ -6,20 +6,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { TicketForm } from "#components/access-ticket-form";
 import { Message } from "#components/message";
 import {
   TenantAdminRoute,
   TenantRoleRouteSkeleton,
 } from "#components/tenant-role-gate";
+import { issueAccessTicketAction } from "#lib/access-ticket-actions";
 import { isSignedInTenantAdmin } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listAllSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
-
-import { TicketForm } from "../_components/ticket-form";
-import { issueAccessTicketAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();

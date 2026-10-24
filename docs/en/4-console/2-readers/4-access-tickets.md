@@ -2,6 +2,7 @@
 title: Access tickets
 description: Open a paid episode to one reader without payment with an access ticket, and revoke it.
 published: 2026-10-21
+updated: 2026-10-24
 ---
 
 An access ticket opens one episode to one reader without payment, on the site and in the app, until it expires or is revoked. Use one where the reader should read without buying: a reviewer or a member of the press, a prize, or a reader whose purchase went wrong and who should not have to wait for a refund and a new purchase. Only a Tenant admin sees **Access tickets**.
@@ -19,6 +20,8 @@ A ticket is not a sale. It earns no Author a royalty, and the episode does not a
 
 ![The Issue a ticket form: Reader, Series, Episode, Expiry, Note, and Issue the ticket.](./access-tickets-issue-form.png)
 
+To issue a ticket to a reader whose page you have open, choose **Issue a ticket** under **Access tickets** on [their page](./1-accounts.md#the-reader-page). The same form opens over the page without **Reader**, and the ticket appears in the page's list once it is issued.
+
 A reader and an episode have one ticket from the staff at a time:
 
 - If they already have an active one, nothing new is issued, and the existing ticket keeps its expiry and note. The console says so and names that ticket. To change a ticket's expiry or note, revoke it from the list and issue a new one.
@@ -26,7 +29,7 @@ A reader and an episode have one ticket from the staff at a time:
 
 ## Revoking a ticket
 
-**Revoke**, on an active ticket in the list, closes the episode to the reader at once. It cannot be undone: issue a new ticket to give them access again. A revoked ticket stays in the list as **Revoked**, with when it was revoked.
+**Revoke**, on an active ticket in the list or on the reader's page, closes the episode to the reader at once. It cannot be undone: issue a new ticket to give them access again. A revoked ticket stays in the list as **Revoked**, with when it was revoked.
 
 ## Reading the list
 
