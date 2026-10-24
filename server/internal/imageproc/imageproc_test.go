@@ -663,6 +663,94 @@ func TestBuildLogo_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
 	}
 }
 
+// --- TestBuildSignInImage ---
+
+func TestBuildSignInImage_KeepsJPEGAndAspectRatio(t *testing.T) {
+	raw := makeJPEG(t, 900, 1200)
+	variant, err := imageproc.BuildSignInImage(raw, "image/jpeg")
+	if err != nil {
+		t.Fatalf("BuildSignInImage: %v", err)
+	}
+	if variant.VariantType != imageproc.TenantVariantTypeSignIn {
+		t.Fatalf("variant_type = %q, want %q", variant.VariantType, imageproc.TenantVariantTypeSignIn)
+	}
+	if variant.Width != 900 || variant.Height != 1200 {
+		t.Fatalf("size = %dx%d, want 900x1200", variant.Width, variant.Height)
+	}
+	if variant.ContentType != "image/jpeg" || variant.Extension != ".jpg" {
+		t.Fatalf("format = %q %q, want image/jpeg .jpg", variant.ContentType, variant.Extension)
+	}
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(variant.Data))
+	if err != nil {
+		t.Fatalf("DecodeConfig: %v", err)
+	}
+	if format != "jpeg" || cfg.Width != 900 || cfg.Height != 1200 {
+		t.Fatalf("encoded = %s %dx%d, want jpeg 900x1200", format, cfg.Width, cfg.Height)
+	}
+}
+
+func TestBuildSignInImage_StoresAnythingButJPEGAsPNG(t *testing.T) {
+	raw := makePNG(t, 600, 800)
+	variant, err := imageproc.BuildSignInImage(raw, "image/png")
+	if err != nil {
+		t.Fatalf("BuildSignInImage: %v", err)
+	}
+	if variant.ContentType != "image/png" || variant.Extension != ".png" {
+		t.Fatalf("format = %q %q, want image/png .png", variant.ContentType, variant.Extension)
+	}
+}
+
+func TestBuildSignInImage_ScalesLongestEdgeDownKeepingAspectRatio(t *testing.T) {
+	raw := makeJPEG(t, 3000, 5120)
+	variant, err := imageproc.BuildSignInImage(raw, "image/jpeg")
+	if err != nil {
+		t.Fatalf("BuildSignInImage: %v", err)
+	}
+	if variant.Height != imageproc.SignInImageMaxDimension {
+		t.Fatalf("height = %d, want %d", variant.Height, imageproc.SignInImageMaxDimension)
+	}
+	if variant.Width != 1500 {
+		t.Fatalf("width = %d, want 1500", variant.Width)
+	}
+}
+
+func TestBuildSignInImage_RejectsShortEdgeBelowMinimum(t *testing.T) {
+	raw := makePNG(t, 1200, 400)
+	if _, err := imageproc.BuildSignInImage(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose short edge is below the minimum")
+	}
+}
+
+func TestBuildSignInImage_RejectsShortEdgeThatFallsBelowMinimumAfterScaling(t *testing.T) {
+	// Both edges clear 512 px on upload, but bringing the longest edge within
+	// 2560 px leaves the short edge at 256 px.
+	raw := makePNG(t, 6000, 600)
+	if _, err := imageproc.BuildSignInImage(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose short edge falls below the minimum after scaling")
+	}
+}
+
+func TestBuildSignInImage_RejectsNonImageContentType(t *testing.T) {
+	raw := makePNG(t, 600, 800)
+	if _, err := imageproc.BuildSignInImage(raw, "application/pdf"); err == nil {
+		t.Fatal("want error for a non-image content type")
+	}
+}
+
+func TestBuildSignInImage_RejectsEmptyData(t *testing.T) {
+	if _, err := imageproc.BuildSignInImage(nil, "image/png"); err == nil {
+		t.Fatal("want error for empty data")
+	}
+}
+
+func TestBuildSignInImage_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
+	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
+
+	if _, err := imageproc.BuildSignInImage(raw, "image/png"); err == nil {
+		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
+	}
+}
+
 // --- TestBuildUserIcon ---
 
 func TestBuildUserIcon_CropsNonSquareJPEGToSquareJPEG(t *testing.T) {

@@ -2357,9 +2357,10 @@ func (x *EpisodeImage) GetHeight() int32 {
 }
 
 // A stored tenant branding image, in the shape the eye-catch images already
-// use. `variant_type` names what the image is for — `logo` or `icon` — the
-// way the eye-catch variants name their aspect ratio; it is not a size. Sizes
-// are the image server's job: it resizes on request from the stored master.
+// use. `variant_type` names what the image is for — `logo`, `icon`, or
+// `sign_in` — the way the eye-catch variants name their aspect ratio; it is not
+// a size. Sizes are the image server's job: it resizes on request from the
+// stored master.
 type TenantImageVariant struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
@@ -2492,8 +2493,13 @@ type TenantTheme struct {
 	SerifFontFamily string `protobuf:"bytes,34,opt,name=serif_font_family,json=serifFontFamily,proto3" json:"serif_font_family,omitempty"`
 	// A CSS font-family list for interface text. Empty uses the brief's default stack.
 	SansFontFamily string `protobuf:"bytes,35,opt,name=sans_font_family,json=sansFontFamily,proto3" json:"sans_font_family,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The image beside the storefront's sign-in and sign-up forms, uploaded for
+	// that panel alone. The variant list is empty when the tenant has not set
+	// one.
+	SignInImageUpdatedAt string                `protobuf:"bytes,36,opt,name=sign_in_image_updated_at,json=signInImageUpdatedAt,proto3" json:"sign_in_image_updated_at,omitempty"`
+	SignInImageVariants  []*TenantImageVariant `protobuf:"bytes,37,rep,name=sign_in_image_variants,json=signInImageVariants,proto3" json:"sign_in_image_variants,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *TenantTheme) Reset() {
@@ -2755,6 +2761,20 @@ func (x *TenantTheme) GetSansFontFamily() string {
 		return x.SansFontFamily
 	}
 	return ""
+}
+
+func (x *TenantTheme) GetSignInImageUpdatedAt() string {
+	if x != nil {
+		return x.SignInImageUpdatedAt
+	}
+	return ""
+}
+
+func (x *TenantTheme) GetSignInImageVariants() []*TenantImageVariant {
+	if x != nil {
+		return x.SignInImageVariants
+	}
+	return nil
 }
 
 // A page as seen through one of its translations, which supplies the title and
@@ -3546,7 +3566,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x05 \x01(\x05R\x06height\x12&\n" +
 	"\x0ffile_size_bytes\x18\x06 \x01(\x03R\rfileSizeBytes\x12!\n" +
-	"\fvariant_type\x18\a \x01(\tR\vvariantType\"\xd7\f\n" +
+	"\fvariant_type\x18\a \x01(\tR\vvariantType\"\xea\r\n" +
 	"\vTenantTheme\x12#\n" +
 	"\rprimary_color\x18\x01 \x01(\tR\fprimaryColor\x12'\n" +
 	"\x0fsecondary_color\x18\x02 \x01(\tR\x0esecondaryColor\x12!\n" +
@@ -3586,7 +3606,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x15logo_image_updated_at\x18  \x01(\tR\x12logoImageUpdatedAt\x12T\n" +
 	"\x13logo_image_variants\x18! \x03(\v2$.publira.types.v1.TenantImageVariantR\x11logoImageVariants\x12*\n" +
 	"\x11serif_font_family\x18\" \x01(\tR\x0fserifFontFamily\x12(\n" +
-	"\x10sans_font_family\x18# \x01(\tR\x0esansFontFamilyJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xf4\x01\n" +
+	"\x10sans_font_family\x18# \x01(\tR\x0esansFontFamily\x126\n" +
+	"\x18sign_in_image_updated_at\x18$ \x01(\tR\x14signInImageUpdatedAt\x12Y\n" +
+	"\x16sign_in_image_variants\x18% \x03(\v2$.publira.types.v1.TenantImageVariantR\x13signInImageVariantsJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xf4\x01\n" +
 	"\x04Page\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
@@ -3777,13 +3799,14 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	19, // 18: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	27, // 19: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
 	27, // 20: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	19, // 21: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	14, // 22: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	27, // 21: publira.types.v1.TenantTheme.sign_in_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	19, // 22: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	14, // 23: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }

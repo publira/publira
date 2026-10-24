@@ -403,6 +403,7 @@ func TenantThemeFromGetRow(
 	row dbmodels.GetTenantThemeByTenantIDRow,
 	iconVariants []*publirattypesv1.TenantImageVariant,
 	logoVariants []*publirattypesv1.TenantImageVariant,
+	signInVariants []*publirattypesv1.TenantImageVariant,
 ) *publirattypesv1.TenantTheme {
 	theme := &publirattypesv1.TenantTheme{
 		PrimaryColor:               row.PrimaryColor,
@@ -447,12 +448,18 @@ func TenantThemeFromGetRow(
 	if len(logoVariants) > 0 {
 		theme.LogoImageVariants = logoVariants
 	}
+	if row.SignInImageUpdatedAt.Valid {
+		theme.SignInImageUpdatedAt = row.SignInImageUpdatedAt.Time.UTC().Format(time.RFC3339)
+	}
+	if len(signInVariants) > 0 {
+		theme.SignInImageVariants = signInVariants
+	}
 	return theme
 }
 
-// TenantImageVariantsByImageID groups the variants of both branding images by
-// the image they belong to, so one read of tenant_image_variants serves the
-// icon and the logo.
+// TenantImageVariantsByImageID groups the variants of the branding images by
+// the image they belong to, so one read of tenant_image_variants serves every
+// slot of the theme.
 func TenantImageVariantsByImageID(
 	rows []dbmodels.ListTenantImageVariantsByImageIDsRow,
 ) map[uuid.UUID][]*publirattypesv1.TenantImageVariant {

@@ -458,6 +458,8 @@
         "tenant_logo_deleted": "로고 삭제",
         "tenant_icon_uploaded": "아이콘 업로드",
         "tenant_icon_deleted": "아이콘 삭제",
+        "tenant_sign_in_image_uploaded": "로그인 이미지 업로드",
+        "tenant_sign_in_image_deleted": "로그인 이미지 삭제",
         "tenant_email_settings_updated": "메일 설정 변경",
         "tenant_smtp_test_email_sent": "SMTP 연결 테스트",
         "tenant_inbound_email_settings_updated": "수신 메일 설정 변경",

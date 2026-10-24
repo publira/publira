@@ -60,7 +60,9 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	liveBanner := env.SeedCampaignBanner(t, tenant.ID, testutil.CampaignBannerSeed{PublicID: "BANNER000001"})
 	liveBannerImage := liveBanner.ObjectKey
 	liveTenantIcon := "tenants/TENANT001/icons/live-icon.webp"
-	seedTenantImage(t, env.DB, tenant.ID, liveTenantIcon, true)
+	seedTenantImage(t, env.DB, tenant.ID, "icon", liveTenantIcon, true)
+	liveTenantSignInImage := "tenants/TENANT001/sign-in-images/live-original.jpg"
+	seedTenantImage(t, env.DB, tenant.ID, "sign_in", liveTenantSignInImage, true)
 	liveEpisodePage := "tenants/TENANT001/episodes/EPISODE00001/live-original.webp"
 	seedEpisodeImage(t, env.DB, tenant.ID, episode.ID, liveEpisodePage)
 	liveEpisodeEyeCatch := "tenants/TENANT001/episode-eye-catches/EPISODE00001/live-portrait.webp"
@@ -77,6 +79,12 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	deletedPreset := "tenants/TENANT001/reader-icon-presets/deleted-original.png"
 	deletedPresetID := seedReaderIconPreset(t, env.DB, tenant.ID, deletedPreset)
 	exec(t, env.DB, `DELETE FROM reader_icon_presets WHERE id = $1`, deletedPresetID)
+
+	// The sign-in image staff removed: the delete dropped its tenant_images
+	// row and the variant with it, so nothing names its object any more.
+	removedTenantSignInImage := "tenants/TENANT001/sign-in-images/removed-original.jpg"
+	removedTenantSignInImageID := seedTenantImage(t, env.DB, tenant.ID, "sign_in", removedTenantSignInImage, false)
+	exec(t, env.DB, `DELETE FROM tenant_images WHERE id = $1`, removedTenantSignInImageID)
 
 	// The image a replacement superseded: its row survived the swap, and
 	// nothing has pointed at it since.
@@ -111,7 +119,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon,
 		liveEpisodePage, liveEpisodeEyeCatch, liveReaderIcon, supersededCreatorIcon, clearedGenreEyeCatch,
 		removedEpisodeEyeCatch, supersededReaderIcon, removedReaderIcon, abandonedObject, unpickedPreset, deletedPreset,
-		liveBannerImage, replacedBannerImage,
+		liveBannerImage, replacedBannerImage, liveTenantSignInImage, removedTenantSignInImage,
 	}
 	for _, key := range stored {
 		if _, err := store.Upload(ctx, storage.UploadRequest{
@@ -155,8 +163,8 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	if result.RowCount != 6 {
 		t.Fatalf("row count = %d, want the superseded creator image, the cleared genre image, the removed episode eye-catch, the replaced banner image, and the replaced and the removed reader icon", result.RowCount)
 	}
-	if result.DeletedCount != 8 {
-		t.Fatalf("deleted count = %d, want the superseded, the cleared, the removed eye-catch's, the replaced banner's, the replaced, the removed icon's, the deleted preset's, and the abandoned object", result.DeletedCount)
+	if result.DeletedCount != 9 {
+		t.Fatalf("deleted count = %d, want the superseded, the cleared, the removed eye-catch's, the replaced banner's, the replaced, the removed icon's, the deleted preset's, the removed sign-in image's, and the abandoned object", result.DeletedCount)
 	}
 	if result.ScannedCount != int64(len(stored)) {
 		t.Fatalf("scanned count = %d, want %d", result.ScannedCount, len(stored))
@@ -164,7 +172,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 
 	want := slices.Sorted(slices.Values([]string{
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon, liveEpisodePage,
-		liveEpisodeEyeCatch, liveReaderIcon, unpickedPreset, liveBannerImage,
+		liveEpisodeEyeCatch, liveReaderIcon, unpickedPreset, liveBannerImage, liveTenantSignInImage,
 	}))
 	if got := listKeys(t, ctx, store); !slices.Equal(got, want) {
 		t.Fatalf("stored keys = %v, want %v", got, want)
@@ -364,9 +372,10 @@ func seedCampaignBannerImage(t *testing.T, db *sql.DB, tenantID, bannerID uuid.U
 	return imageID
 }
 
-// seedTenantImage stores one branding image and its single variant, pointing
-// the tenant theme's icon slot at it when inUse.
-func seedTenantImage(t *testing.T, db *sql.DB, tenantID uuid.UUID, objectKey string, inUse bool) uuid.UUID {
+// seedTenantImage stores one branding image and its single variant of
+// variantType, pointing the tenant theme's slot of the same name at it when
+// inUse.
+func seedTenantImage(t *testing.T, db *sql.DB, tenantID uuid.UUID, variantType, objectKey string, inUse bool) uuid.UUID {
 	t.Helper()
 
 	imageID := uuid.Must(uuid.NewV7())
@@ -379,13 +388,15 @@ func seedTenantImage(t *testing.T, db *sql.DB, tenantID uuid.UUID, objectKey str
 			id, tenant_id, tenant_image_id, label, variant_type, storage_provider,
 			object_key, content_type, file_size_bytes, width, height
 		)
-		VALUES ($1, $2, $3, 'icon-192', 'icon', 's3', $4, 'image/webp', 1024, 192, 192)
-	`, uuid.Must(uuid.NewV7()), tenantID, imageID, objectKey)
+		VALUES ($1, $2, $3, 'original', $4, 's3', $5, 'image/webp', 1024, 192, 192)
+	`, uuid.Must(uuid.NewV7()), tenantID, imageID, variantType, objectKey)
 	if inUse {
+		// variantType is one of this file's own literals, never test input.
+		column := variantType + "_image_id"
 		exec(t, db, `
-			INSERT INTO tenant_themes (tenant_id, icon_image_id)
+			INSERT INTO tenant_themes (tenant_id, `+column+`)
 			VALUES ($1, $2)
-			ON CONFLICT (tenant_id) DO UPDATE SET icon_image_id = EXCLUDED.icon_image_id
+			ON CONFLICT (tenant_id) DO UPDATE SET `+column+` = EXCLUDED.`+column+`
 		`, tenantID, imageID)
 	}
 	return imageID

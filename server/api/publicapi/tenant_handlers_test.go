@@ -63,12 +63,14 @@ func tenantThemeSelectColumns() []string {
 		"icon_image_updated_at",
 		"logo_image_id",
 		"logo_image_updated_at",
+		"sign_in_image_id",
+		"sign_in_image_updated_at",
 		"updated_at",
 	}
 }
 
 func tenantThemeSelectRow(tenantID uuid.UUID, primaryColor string, now time.Time) []driver.Value {
-	return tenantThemeSelectRowWithBrandingImages(tenantID, primaryColor, now, uuid.NullUUID{}, uuid.NullUUID{})
+	return tenantThemeSelectRowWithBrandingImages(tenantID, primaryColor, now, uuid.NullUUID{}, uuid.NullUUID{}, uuid.NullUUID{})
 }
 
 func tenantThemeSelectRowWithBrandingImages(
@@ -77,6 +79,7 @@ func tenantThemeSelectRowWithBrandingImages(
 	now time.Time,
 	iconImageID uuid.NullUUID,
 	logoImageID uuid.NullUUID,
+	signInImageID uuid.NullUUID,
 ) []driver.Value {
 	iconUpdatedAt := sql.NullTime{}
 	if iconImageID.Valid {
@@ -85,6 +88,10 @@ func tenantThemeSelectRowWithBrandingImages(
 	logoUpdatedAt := sql.NullTime{}
 	if logoImageID.Valid {
 		logoUpdatedAt = sql.NullTime{Time: now, Valid: true}
+	}
+	signInUpdatedAt := sql.NullTime{}
+	if signInImageID.Valid {
+		signInUpdatedAt = sql.NullTime{Time: now, Valid: true}
 	}
 	return []driver.Value{
 		tenantID,
@@ -121,6 +128,8 @@ func tenantThemeSelectRowWithBrandingImages(
 		iconUpdatedAt,
 		logoImageID,
 		logoUpdatedAt,
+		signInImageID,
+		signInUpdatedAt,
 		now,
 	}
 }
@@ -257,6 +266,9 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	if resp.Theme.BackgroundColor != "#f5f5f2" {
 		t.Fatalf("theme.background_color = %q, want #f5f5f2", resp.Theme.BackgroundColor)
 	}
+	if len(resp.Theme.SignInImageVariants) != 0 || resp.Theme.SignInImageUpdatedAt != "" {
+		t.Fatalf("theme sign-in image = %d variants updated at %q, want none", len(resp.Theme.SignInImageVariants), resp.Theme.SignInImageUpdatedAt)
+	}
 	if resp.Timezone != "UTC" {
 		t.Fatalf("timezone = %q, want UTC", resp.Timezone)
 	}
@@ -269,9 +281,6 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
-// The theme carries the icon and the logo as variants, so a tenant with both
-// set exercises the one-statement variant read and the split by image id that a
-// tenant without either never reaches.
 // The copy is read in the reader's locale, and what the database picks for it
 // is answered as it is: a tenant that wrote its copy only in ja answers that
 // copy to a reader in en.
@@ -347,12 +356,16 @@ func TestGetTenantFailsWhenTheSiteCopyCannotBeRead(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// The theme carries the icon, the logo, and the sign-in image as variants, so a
+// tenant with all three set exercises the one-statement variant read and the
+// split by image id that a tenant without any never reaches.
 func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
 	iconImageID := uuid.Must(uuid.NewV7())
 	logoImageID := uuid.Must(uuid.NewV7())
+	signInImageID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Second)
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 
@@ -371,15 +384,17 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 				now,
 				uuid.NullUUID{UUID: iconImageID, Valid: true},
 				uuid.NullUUID{UUID: logoImageID, Valid: true},
+				uuid.NullUUID{UUID: signInImageID, Valid: true},
 			)...))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantImageVariantsByImageIDs)).
-		WithArgs(pq.Array([]uuid.UUID{iconImageID, logoImageID})).
+		WithArgs(pq.Array([]uuid.UUID{iconImageID, logoImageID, signInImageID})).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"tenant_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height",
 		}).
 			AddRow(iconImageID, "icon", "original", "image/png", int64(2048), int32(512), int32(512)).
-			AddRow(logoImageID, "logo", "original", "image/png", int64(4096), int32(1024), int32(256)))
+			AddRow(logoImageID, "logo", "original", "image/png", int64(4096), int32(1024), int32(256)).
+			AddRow(signInImageID, "sign_in", "original", "image/jpeg", int64(8192), int32(1920), int32(2560)))
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
 
@@ -423,6 +438,20 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 	}
 	if logo.VariantType != "logo" || logo.Width != 1024 || logo.Height != 256 {
 		t.Fatalf("logo variant = %+v, want logo 1024x256", logo)
+	}
+	if theme.SignInImageUpdatedAt != wantUpdatedAt {
+		t.Fatalf("sign_in_image_updated_at = %q, want %q", theme.SignInImageUpdatedAt, wantUpdatedAt)
+	}
+	if len(theme.SignInImageVariants) != 1 {
+		t.Fatalf("sign_in_image_variants = %d, want 1", len(theme.SignInImageVariants))
+	}
+	signIn := theme.SignInImageVariants[0]
+	wantSignInURL := "/images/tenants/" + signInImageID.String() + "/sign_in"
+	if signIn.Url != wantSignInURL {
+		t.Fatalf("sign-in image url = %q, want %q", signIn.Url, wantSignInURL)
+	}
+	if signIn.VariantType != "sign_in" || signIn.ContentType != "image/jpeg" || signIn.Width != 1920 || signIn.Height != 2560 {
+		t.Fatalf("sign-in image variant = %+v, want a sign_in image/jpeg 1920x2560", signIn)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -488,6 +517,7 @@ func TestGetTenantFailsWhenTheBrandingCannotBeRead(t *testing.T) {
 							"#112233",
 							now,
 							uuid.NullUUID{UUID: iconImageID, Valid: true},
+							uuid.NullUUID{},
 							uuid.NullUUID{},
 						)...))
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantImageVariantsByImageIDs)).

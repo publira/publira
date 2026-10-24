@@ -2220,9 +2220,10 @@ class EpisodeImage extends $pb.GeneratedMessage {
 }
 
 /// A stored tenant branding image, in the shape the eye-catch images already
-/// use. `variant_type` names what the image is for — `logo` or `icon` — the
-/// way the eye-catch variants name their aspect ratio; it is not a size. Sizes
-/// are the image server's job: it resizes on request from the stored master.
+/// use. `variant_type` names what the image is for — `logo`, `icon`, or
+/// `sign_in` — the way the eye-catch variants name their aspect ratio; it is not
+/// a size. Sizes are the image server's job: it resizes on request from the
+/// stored master.
 class TenantImageVariant extends $pb.GeneratedMessage {
   factory TenantImageVariant({
     $core.String? label,
@@ -2388,6 +2389,8 @@ class TenantTheme extends $pb.GeneratedMessage {
     $core.Iterable<TenantImageVariant>? logoImageVariants,
     $core.String? serifFontFamily,
     $core.String? sansFontFamily,
+    $core.String? signInImageUpdatedAt,
+    $core.Iterable<TenantImageVariant>? signInImageVariants,
   }) {
     final result = TenantTheme._();
     if (primaryColor != null) result.primaryColor = primaryColor;
@@ -2438,6 +2441,10 @@ class TenantTheme extends $pb.GeneratedMessage {
       result.logoImageVariants.addAll(logoImageVariants);
     if (serifFontFamily != null) result.serifFontFamily = serifFontFamily;
     if (sansFontFamily != null) result.sansFontFamily = sansFontFamily;
+    if (signInImageUpdatedAt != null)
+      result.signInImageUpdatedAt = signInImageUpdatedAt;
+    if (signInImageVariants != null)
+      result.signInImageVariants.addAll(signInImageVariants);
     return result;
   }
 
@@ -2490,6 +2497,9 @@ class TenantTheme extends $pb.GeneratedMessage {
         subBuilder: TenantImageVariant.$_createMessage)
     ..aOS(34, _omitFieldNames ? '' : 'serifFontFamily')
     ..aOS(35, _omitFieldNames ? '' : 'sansFontFamily')
+    ..aOS(36, _omitFieldNames ? '' : 'signInImageUpdatedAt')
+    ..pPM<TenantImageVariant>(37, _omitFieldNames ? '' : 'signInImageVariants',
+        subBuilder: TenantImageVariant.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2803,6 +2813,21 @@ class TenantTheme extends $pb.GeneratedMessage {
   $core.bool hasSansFontFamily() => $_has(32);
   @$pb.TagNumber(35)
   void clearSansFontFamily() => $_clearField(35);
+
+  /// The image beside the storefront's sign-in and sign-up forms, uploaded for
+  /// that panel alone. The variant list is empty when the tenant has not set
+  /// one.
+  @$pb.TagNumber(36)
+  $core.String get signInImageUpdatedAt => $_getSZ(33);
+  @$pb.TagNumber(36)
+  set signInImageUpdatedAt($core.String value) => $_setString(33, value);
+  @$pb.TagNumber(36)
+  $core.bool hasSignInImageUpdatedAt() => $_has(33);
+  @$pb.TagNumber(36)
+  void clearSignInImageUpdatedAt() => $_clearField(36);
+
+  @$pb.TagNumber(37)
+  $pb.PbList<TenantImageVariant> get signInImageVariants => $_getList(34);
 }
 
 /// A page as seen through one of its translations, which supplies the title and

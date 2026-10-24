@@ -109,11 +109,11 @@ func (s *apiServer) GetTenant(
 	themeRow, err := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
 	switch {
 	case err == nil:
-		iconVariants, logoVariants, err := tenantBrandingImageVariants(ctx, queries, themeRow)
+		iconVariants, logoVariants, signInVariants, err := tenantBrandingImageVariants(ctx, queries, themeRow)
 		if err != nil {
 			return nil, s.internalError(ctx, "failed to read the tenant branding image variants", err, "tenant_id", tenant.ID.String())
 		}
-		theme = protomapper.TenantThemeFromGetRow(themeRow, iconVariants, logoVariants)
+		theme = protomapper.TenantThemeFromGetRow(themeRow, iconVariants, logoVariants, signInVariants)
 	case !errors.Is(err, sql.ErrNoRows):
 		return nil, s.internalError(ctx, "failed to read the tenant theme", err, "tenant_id", tenant.ID.String())
 	}
@@ -270,30 +270,30 @@ func (s *apiServer) storeAcceptsPayments(ctx context.Context, tenantID uuid.UUID
 	return false
 }
 
-// tenantBrandingImageVariants reads the variants of the theme's icon and logo.
+// tenantBrandingImageVariants reads the variants of the theme's icon, logo,
+// and sign-in image.
 func tenantBrandingImageVariants(
 	ctx context.Context,
 	queries Querier,
 	row dbmodels.GetTenantThemeByTenantIDRow,
-) (iconVariants, logoVariants []*publirattypesv1.TenantImageVariant, err error) {
-	imageIDs := make([]uuid.UUID, 0, 2)
-	if row.IconImageID.Valid {
-		imageIDs = append(imageIDs, row.IconImageID.UUID)
-	}
-	if row.LogoImageID.Valid {
-		imageIDs = append(imageIDs, row.LogoImageID.UUID)
+) (iconVariants, logoVariants, signInVariants []*publirattypesv1.TenantImageVariant, err error) {
+	imageIDs := make([]uuid.UUID, 0, 3)
+	for _, imageID := range []uuid.NullUUID{row.IconImageID, row.LogoImageID, row.SignInImageID} {
+		if imageID.Valid {
+			imageIDs = append(imageIDs, imageID.UUID)
+		}
 	}
 	if len(imageIDs) == 0 {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	variantRows, err := queries.ListTenantImageVariantsByImageIDs(ctx, imageIDs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	byImageID := protomapper.TenantImageVariantsByImageID(variantRows)
 
-	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID], nil
+	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID], byImageID[row.SignInImageID.UUID], nil
 }
 
 // publishedWebPushPublicKey answers the key GetTenant publishes. A failed read

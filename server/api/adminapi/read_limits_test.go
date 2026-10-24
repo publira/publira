@@ -134,6 +134,9 @@ func TestReadLimitsAdmitTheLargestDocumentedUpload(t *testing.T) {
 		publiraadminv1connect.TenantThemeServiceUploadTenantLogoProcedure: &publiraadminv1.UploadTenantLogoRequest{
 			Tenant: tenant, LogoData: image(imageproc.LogoMaxBytes),
 		},
+		publiraadminv1connect.TenantThemeServiceUploadTenantSignInImageProcedure: &publiraadminv1.UploadTenantSignInImageRequest{
+			Tenant: tenant, ImageData: image(imageproc.SignInImageMaxBytes),
+		},
 	}
 	encodings := map[string]func(*testing.T, http.Handler, string, proto.Message) connect.Code{
 		"binary": testutil.RequestCode,

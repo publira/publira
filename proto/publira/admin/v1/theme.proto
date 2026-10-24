@@ -63,6 +63,26 @@ message DeleteTenantLogoResponse {
   publira.types.v1.TenantTheme theme = 1;
 }
 
+// Uploading again replaces the stored sign-in image, so there is no separate
+// replace RPC.
+message UploadTenantSignInImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bytes image_data = 2;
+  string image_content_type = 3;
+}
+
+message UploadTenantSignInImageResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
+message DeleteTenantSignInImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message DeleteTenantSignInImageResponse {
+  publira.types.v1.TenantTheme theme = 1;
+}
+
 service TenantThemeService {
   // Minimum role: tenant_auditor.
   rpc GetTenantTheme(GetTenantThemeRequest) returns (GetTenantThemeResponse) {}
@@ -76,4 +96,8 @@ service TenantThemeService {
   rpc UploadTenantLogo(UploadTenantLogoRequest) returns (UploadTenantLogoResponse) {}
   // Minimum role: tenant_admin.
   rpc DeleteTenantLogo(DeleteTenantLogoRequest) returns (DeleteTenantLogoResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UploadTenantSignInImage(UploadTenantSignInImageRequest) returns (UploadTenantSignInImageResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteTenantSignInImage(DeleteTenantSignInImageRequest) returns (DeleteTenantSignInImageResponse) {}
 }

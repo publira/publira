@@ -567,13 +567,15 @@ func BuildEyeCatchVariants(raw []byte, contentType string) ([]Variant, error) {
 	return variants, nil
 }
 
-// TenantVariantTypeLogo and TenantVariantTypeIcon name what a tenant branding
-// image is for. They sit where a series variant_type does (portrait / square /
-// …) and say nothing about size: image-server downscales the stored image to
-// the requested size when it is asked for.
+// TenantVariantTypeLogo, TenantVariantTypeIcon, and TenantVariantTypeSignIn
+// name what a tenant branding image is for. They sit where a series
+// variant_type does (portrait / square / …) and say nothing about size:
+// image-server downscales the stored image to the requested size when it is
+// asked for.
 const (
-	TenantVariantTypeLogo = "logo"
-	TenantVariantTypeIcon = "icon"
+	TenantVariantTypeLogo   = "logo"
+	TenantVariantTypeIcon   = "icon"
+	TenantVariantTypeSignIn = "sign_in"
 )
 
 // IconMaxBytes, IconMinDimension, and IconMaxDimension constrain a tenant icon
@@ -831,6 +833,90 @@ func BuildLogo(raw []byte, contentType string) (Variant, error) {
 		Label:       "original",
 		ContentType: "image/png",
 		Extension:   ".png",
+		Width:       width,
+		Height:      height,
+		Data:        encoded,
+	}, nil
+}
+
+// SignInImageMaxBytes, SignInImageMinDimension, and SignInImageMaxDimension
+// constrain the image beside the storefront's sign-in and sign-up forms.
+//
+// The panel it fills is half of a screen at least 1024 px wide, so its shortest
+// edge is held to 512 px, below which even a 1x screen draws it enlarged. The
+// longest edge is brought within 2560 px, which covers the panel on a 2x
+// screen; image-server scales it down further for each size a page asks for.
+// The aspect ratio is kept: the panel's own proportions change with the
+// window, so the storefront decides the crop, not the upload.
+const (
+	SignInImageMaxBytes     = 10 << 20
+	SignInImageMinDimension = 512
+	SignInImageMaxDimension = 2560
+)
+
+// BuildSignInImage derives the single sign-in image variant from an upload.
+//
+// Input validation:
+//   - within SignInImageMaxBytes, image/* content_type
+//   - pixel count within MaxPixels
+//   - at least SignInImageMinDimension on the shortest edge, measured after
+//     the longest edge is scaled down as well
+//
+// A JPEG upload stays JPEG and anything else is stored as PNG, so artwork with
+// transparency keeps it and a photograph is not stored losslessly.
+func BuildSignInImage(raw []byte, contentType string) (Variant, error) {
+	if len(raw) == 0 {
+		return Variant{}, errors.New("image data is required")
+	}
+	if len(raw) > SignInImageMaxBytes {
+		return Variant{}, fmt.Errorf("image size exceeds %d bytes", SignInImageMaxBytes)
+	}
+
+	ct := strings.TrimSpace(contentType)
+	if ct == "" {
+		ct = http.DetectContentType(raw)
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return Variant{}, errors.New("content_type must be image/*")
+	}
+
+	// The declared dimensions are checked before decoding: the byte cap alone
+	// leaves a small PNG or WebP free to claim a huge canvas and exhaust
+	// memory while it is being decoded.
+	cfg, sourceFormat, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return Variant{}, errors.New("image has invalid dimensions")
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
+	}
+	width, height := fitWithinLongestEdge(cfg.Width, cfg.Height, SignInImageMaxDimension)
+	if width < SignInImageMinDimension || height < SignInImageMinDimension {
+		return Variant{}, fmt.Errorf("sign-in image must be at least %dx%d after scaling to %dpx on its longest edge, got %dx%d", SignInImageMinDimension, SignInImageMinDimension, SignInImageMaxDimension, width, height)
+	}
+
+	src, _, err := image.Decode(bytes.NewReader(raw))
+	if err != nil {
+		return Variant{}, errors.New("image is not decodable")
+	}
+
+	outContentType, outExt := "image/png", ".png"
+	if sourceFormatContentType(sourceFormat) == "image/jpeg" {
+		outContentType, outExt = "image/jpeg", ".jpg"
+	}
+	encoded, err := encode(src, width, height, outContentType)
+	if err != nil {
+		return Variant{}, fmt.Errorf("encode sign-in image: %w", err)
+	}
+
+	return Variant{
+		VariantType: TenantVariantTypeSignIn,
+		Label:       "original",
+		ContentType: outContentType,
+		Extension:   outExt,
 		Width:       width,
 		Height:      height,
 		Data:        encoded,

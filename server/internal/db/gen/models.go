@@ -1509,6 +1509,7 @@ type TenantTheme struct {
 	LogoImageID                uuid.NullUUID `json:"logo_image_id"`
 	SerifFontFamily            string        `json:"serif_font_family"`
 	SansFontFamily             string        `json:"sans_font_family"`
+	SignInImageID              uuid.NullUUID `json:"sign_in_image_id"`
 }
 
 type TenantUserRole struct {

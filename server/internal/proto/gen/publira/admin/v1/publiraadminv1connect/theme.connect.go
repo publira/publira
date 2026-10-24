@@ -42,6 +42,12 @@ const (
 	// TenantThemeServiceDeleteTenantLogoProcedure is the procedure name of the TenantThemeService's
 	// DeleteTenantLogo RPC.
 	TenantThemeServiceDeleteTenantLogoProcedure = "/publira.admin.v1.TenantThemeService/DeleteTenantLogo"
+	// TenantThemeServiceUploadTenantSignInImageProcedure is the procedure name of the
+	// TenantThemeService's UploadTenantSignInImage RPC.
+	TenantThemeServiceUploadTenantSignInImageProcedure = "/publira.admin.v1.TenantThemeService/UploadTenantSignInImage"
+	// TenantThemeServiceDeleteTenantSignInImageProcedure is the procedure name of the
+	// TenantThemeService's DeleteTenantSignInImage RPC.
+	TenantThemeServiceDeleteTenantSignInImageProcedure = "/publira.admin.v1.TenantThemeService/DeleteTenantSignInImage"
 )
 
 var (
@@ -87,6 +93,20 @@ var (
 			Procedure:  TenantThemeServiceDeleteTenantLogoProcedure,
 		}
 	})
+	tenantThemeServiceUploadTenantSignInImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_theme_proto.Services().ByName("TenantThemeService").Methods().ByName("UploadTenantSignInImage"),
+			Procedure:  TenantThemeServiceUploadTenantSignInImageProcedure,
+		}
+	})
+	tenantThemeServiceDeleteTenantSignInImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_theme_proto.Services().ByName("TenantThemeService").Methods().ByName("DeleteTenantSignInImage"),
+			Procedure:  TenantThemeServiceDeleteTenantSignInImageProcedure,
+		}
+	})
 )
 
 // TenantThemeServiceClient is a client for the publira.admin.v1.TenantThemeService service.
@@ -103,6 +123,10 @@ type TenantThemeServiceClient interface {
 	UploadTenantLogo(context.Context, *v1.UploadTenantLogoRequest) (*v1.UploadTenantLogoResponse, error)
 	// Minimum role: tenant_admin.
 	DeleteTenantLogo(context.Context, *v1.DeleteTenantLogoRequest) (*v1.DeleteTenantLogoResponse, error)
+	// Minimum role: tenant_admin.
+	UploadTenantSignInImage(context.Context, *v1.UploadTenantSignInImageRequest) (*v1.UploadTenantSignInImageResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteTenantSignInImage(context.Context, *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error)
 }
 
 // NewTenantThemeServiceClient constructs a client for the publira.admin.v1.TenantThemeService
@@ -126,6 +150,10 @@ type TenantThemeServiceHandler interface {
 	UploadTenantLogo(context.Context, *v1.UploadTenantLogoRequest) (*v1.UploadTenantLogoResponse, error)
 	// Minimum role: tenant_admin.
 	DeleteTenantLogo(context.Context, *v1.DeleteTenantLogoRequest) (*v1.DeleteTenantLogoResponse, error)
+	// Minimum role: tenant_admin.
+	UploadTenantSignInImage(context.Context, *v1.UploadTenantSignInImageRequest) (*v1.UploadTenantSignInImageResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteTenantSignInImage(context.Context, *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error)
 }
 
 // RegisterTenantThemeServiceHandler registers svc as the publira.admin.v1.TenantThemeService
@@ -139,6 +167,8 @@ func RegisterTenantThemeServiceHandler(server *connect.Server, svc TenantThemeSe
 		connect.Method{Spec: tenantThemeServiceDeleteTenantIconSpec(), Handler: adapter.deleteTenantIcon},
 		connect.Method{Spec: tenantThemeServiceUploadTenantLogoSpec(), Handler: adapter.uploadTenantLogo},
 		connect.Method{Spec: tenantThemeServiceDeleteTenantLogoSpec(), Handler: adapter.deleteTenantLogo},
+		connect.Method{Spec: tenantThemeServiceUploadTenantSignInImageSpec(), Handler: adapter.uploadTenantSignInImage},
+		connect.Method{Spec: tenantThemeServiceDeleteTenantSignInImageSpec(), Handler: adapter.deleteTenantSignInImage},
 	)
 }
 
@@ -167,6 +197,14 @@ func (UnimplementedTenantThemeServiceHandler) UploadTenantLogo(context.Context, 
 
 func (UnimplementedTenantThemeServiceHandler) DeleteTenantLogo(context.Context, *v1.DeleteTenantLogoRequest) (*v1.DeleteTenantLogoResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantThemeService.DeleteTenantLogo is not implemented")
+}
+
+func (UnimplementedTenantThemeServiceHandler) UploadTenantSignInImage(context.Context, *v1.UploadTenantSignInImageRequest) (*v1.UploadTenantSignInImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantThemeService.UploadTenantSignInImage is not implemented")
+}
+
+func (UnimplementedTenantThemeServiceHandler) DeleteTenantSignInImage(context.Context, *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantThemeService.DeleteTenantSignInImage is not implemented")
 }
 
 type tenantThemeServiceClient struct {
@@ -216,6 +254,22 @@ func (c *tenantThemeServiceClient) UploadTenantLogo(ctx context.Context, req *v1
 func (c *tenantThemeServiceClient) DeleteTenantLogo(ctx context.Context, req *v1.DeleteTenantLogoRequest) (*v1.DeleteTenantLogoResponse, error) {
 	var res v1.DeleteTenantLogoResponse
 	if err := c.client.CallUnary(ctx, tenantThemeServiceDeleteTenantLogoSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantThemeServiceClient) UploadTenantSignInImage(ctx context.Context, req *v1.UploadTenantSignInImageRequest) (*v1.UploadTenantSignInImageResponse, error) {
+	var res v1.UploadTenantSignInImageResponse
+	if err := c.client.CallUnary(ctx, tenantThemeServiceUploadTenantSignInImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantThemeServiceClient) DeleteTenantSignInImage(ctx context.Context, req *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error) {
+	var res v1.DeleteTenantSignInImageResponse
+	if err := c.client.CallUnary(ctx, tenantThemeServiceDeleteTenantSignInImageSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -289,6 +343,30 @@ func (h tenantThemeServiceHandler) deleteTenantLogo(ctx context.Context, _ conne
 		return err
 	}
 	res, err := h.svc.DeleteTenantLogo(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantThemeServiceHandler) uploadTenantSignInImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadTenantSignInImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadTenantSignInImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantThemeServiceHandler) deleteTenantSignInImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteTenantSignInImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteTenantSignInImage(ctx, &req)
 	if err != nil {
 		return err
 	}

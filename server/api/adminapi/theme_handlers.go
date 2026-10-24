@@ -260,7 +260,7 @@ func (s *adminServer) GetTenantTheme(
 	return &publiraadminv1.GetTenantThemeResponse{Theme: theme}, nil
 }
 
-// tenantTheme reads the theme with the variants of both branding images. Every
+// tenantTheme reads the theme with the variants of its branding images. Every
 // theme RPC answers through it, including the writes, so a saved color and a
 // replaced image come back in the same shape a plain read returns.
 func (s *adminServer) tenantTheme(ctx context.Context, tenantID uuid.UUID) (*publirattypesv1.TenantTheme, error) {
@@ -269,15 +269,14 @@ func (s *adminServer) tenantTheme(ctx context.Context, tenantID uuid.UUID) (*pub
 		return nil, s.internalDBError(ctx, "failed to get tenant theme", err, "tenant_id", tenantID.String())
 	}
 
-	imageIDs := make([]uuid.UUID, 0, 2)
-	if row.IconImageID.Valid {
-		imageIDs = append(imageIDs, row.IconImageID.UUID)
-	}
-	if row.LogoImageID.Valid {
-		imageIDs = append(imageIDs, row.LogoImageID.UUID)
+	imageIDs := make([]uuid.UUID, 0, 3)
+	for _, imageID := range []uuid.NullUUID{row.IconImageID, row.LogoImageID, row.SignInImageID} {
+		if imageID.Valid {
+			imageIDs = append(imageIDs, imageID.UUID)
+		}
 	}
 	if len(imageIDs) == 0 {
-		return protomapper.TenantThemeFromGetRow(row, nil, nil), nil
+		return protomapper.TenantThemeFromGetRow(row, nil, nil, nil), nil
 	}
 
 	variantRows, err := s.queriesFor(ctx).ListTenantImageVariantsByImageIDs(ctx, imageIDs)
@@ -290,6 +289,7 @@ func (s *adminServer) tenantTheme(ctx context.Context, tenantID uuid.UUID) (*pub
 		row,
 		byImageID[row.IconImageID.UUID],
 		byImageID[row.LogoImageID.UUID],
+		byImageID[row.SignInImageID.UUID],
 	), nil
 }
 
@@ -301,8 +301,8 @@ func themeRevalidateTags(tenantID string) []string {
 }
 
 // themeBrandingRevalidateTags includes site chrome as well as the stylesheet:
-// an icon or logo update changes both the theme response and metadata/header
-// that read getTenantSiteInfo.
+// a branding image update changes both the theme response and the metadata,
+// header, and sign-in panel that read getTenantSiteInfo.
 func themeBrandingRevalidateTags(tenantID string) []string {
 	normalizedTenantID := strings.TrimSpace(tenantID)
 	return []string{
@@ -402,12 +402,12 @@ func tenantThemeParamsFromRow(row dbmodels.GetTenantThemeByTenantIDRow) dbmodels
 }
 
 // tenantBrandingImage is the part of a branding image write that differs
-// between the icon and the logo: where its objects live, which theme column
-// holds the image in use, and which query points the theme at a new one.
-// Everything else — the lock, the store, the swap, and the delete of the image
-// left behind — is the same for both.
+// between the icon, the logo, and the sign-in image: where its objects live,
+// which theme column holds the image in use, and which query points the theme
+// at a new one. Everything else — the lock, the store, the swap, and the delete
+// of the image left behind — is the same for all of them.
 type tenantBrandingImage struct {
-	// name goes into the log messages, so a failed write says which of the two
+	// name goes into the log messages, so a failed write says which of the
 	// images it was.
 	name   string
 	images ownerimages.Owner[Querier]
@@ -447,6 +447,22 @@ var tenantLogoImage = tenantBrandingImage{
 		return q.SetTenantThemeLogoImage(ctx, dbmodels.SetTenantThemeLogoImageParams{
 			TenantID:    tenantID,
 			LogoImageID: imageID,
+		})
+	},
+}
+
+var tenantSignInImage = tenantBrandingImage{
+	name:           "sign-in image",
+	images:         tenantBrandingImagesIn("sign-in-images"),
+	uploadedAction: "tenant_sign_in_image_uploaded",
+	deletedAction:  "tenant_sign_in_image_deleted",
+	currentImageID: func(row dbmodels.GetTenantThemeByTenantIDRow) uuid.NullUUID {
+		return row.SignInImageID
+	},
+	setImageID: func(ctx context.Context, q Querier, tenantID uuid.UUID, imageID uuid.NullUUID) (dbmodels.TenantTheme, error) {
+		return q.SetTenantThemeSignInImage(ctx, dbmodels.SetTenantThemeSignInImageParams{
+			TenantID:      tenantID,
+			SignInImageID: imageID,
 		})
 	},
 }
@@ -630,4 +646,51 @@ func (s *adminServer) DeleteTenantLogo(
 	}
 
 	return &publiraadminv1.DeleteTenantLogoResponse{Theme: theme}, nil
+}
+
+func (s *adminServer) UploadTenantSignInImage(
+	ctx context.Context,
+	req *publiraadminv1.UploadTenantSignInImageRequest,
+) (*publiraadminv1.UploadTenantSignInImageResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	variant, err := imageproc.BuildSignInImage(req.ImageData, req.ImageContentType)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "image_data")
+	}
+
+	theme, err := s.applyTenantBrandingImage(ctx, tenant, session, tenantSignInImage, &variant)
+	if err != nil {
+		return nil, err
+	}
+
+	return &publiraadminv1.UploadTenantSignInImageResponse{Theme: theme}, nil
+}
+
+func (s *adminServer) DeleteTenantSignInImage(
+	ctx context.Context,
+	req *publiraadminv1.DeleteTenantSignInImageRequest,
+) (*publiraadminv1.DeleteTenantSignInImageResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	session, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	theme, err := s.applyTenantBrandingImage(ctx, tenant, session, tenantSignInImage, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &publiraadminv1.DeleteTenantSignInImageResponse{Theme: theme}, nil
 }

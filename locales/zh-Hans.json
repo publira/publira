@@ -458,6 +458,8 @@
         "tenant_logo_deleted": "删除了标志",
         "tenant_icon_uploaded": "上传了图标",
         "tenant_icon_deleted": "删除了图标",
+        "tenant_sign_in_image_uploaded": "上传了登录图片",
+        "tenant_sign_in_image_deleted": "删除了登录图片",
         "tenant_email_settings_updated": "更新了邮件设置",
         "tenant_smtp_test_email_sent": "测试了SMTP连接",
         "tenant_inbound_email_settings_updated": "更新了收件设置",

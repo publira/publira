@@ -411,9 +411,10 @@ message EpisodeImage {
 }
 
 // A stored tenant branding image, in the shape the eye-catch images already
-// use. `variant_type` names what the image is for — `logo` or `icon` — the
-// way the eye-catch variants name their aspect ratio; it is not a size. Sizes
-// are the image server's job: it resizes on request from the stored master.
+// use. `variant_type` names what the image is for — `logo`, `icon`, or
+// `sign_in` — the way the eye-catch variants name their aspect ratio; it is not
+// a size. Sizes are the image server's job: it resizes on request from the
+// stored master.
 message TenantImageVariant {
   string label = 1;
   string url = 2;
@@ -470,6 +471,11 @@ message TenantTheme {
   string serif_font_family = 34;
   // A CSS font-family list for interface text. Empty uses the brief's default stack.
   string sans_font_family = 35;
+  // The image beside the storefront's sign-in and sign-up forms, uploaded for
+  // that panel alone. The variant list is empty when the tenant has not set
+  // one.
+  string sign_in_image_updated_at = 36;
+  repeated TenantImageVariant sign_in_image_variants = 37;
 }
 
 // A page as seen through one of its translations, which supplies the title and

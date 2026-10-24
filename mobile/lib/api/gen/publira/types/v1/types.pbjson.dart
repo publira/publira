@@ -954,6 +954,21 @@ const TenantTheme$json = {
       '10': 'serifFontFamily'
     },
     {'1': 'sans_font_family', '3': 35, '4': 1, '5': 9, '10': 'sansFontFamily'},
+    {
+      '1': 'sign_in_image_updated_at',
+      '3': 36,
+      '4': 1,
+      '5': 9,
+      '10': 'signInImageUpdatedAt'
+    },
+    {
+      '1': 'sign_in_image_variants',
+      '3': 37,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.TenantImageVariant',
+      '10': 'signInImageVariants'
+    },
   ],
   '9': [
     {'1': 4, '2': 5},
@@ -992,8 +1007,10 @@ final $typed_data.Uint8List tenantThemeDescriptor = $convert.base64Decode(
     'RlZF9hdBggIAEoCVISbG9nb0ltYWdlVXBkYXRlZEF0ElQKE2xvZ29faW1hZ2VfdmFyaWFudHMY'
     'ISADKAsyJC5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudEltYWdlVmFyaWFudFIRbG9nb0ltYWdlVm'
     'FyaWFudHMSKgoRc2VyaWZfZm9udF9mYW1pbHkYIiABKAlSD3NlcmlmRm9udEZhbWlseRIoChBz'
-    'YW5zX2ZvbnRfZmFtaWx5GCMgASgJUg5zYW5zRm9udEZhbWlseUoECAQQBUoECB0QHlIIbG9nb1'
-    '91cmxSCGljb25fdXJs');
+    'YW5zX2ZvbnRfZmFtaWx5GCMgASgJUg5zYW5zRm9udEZhbWlseRI2ChhzaWduX2luX2ltYWdlX3'
+    'VwZGF0ZWRfYXQYJCABKAlSFHNpZ25JbkltYWdlVXBkYXRlZEF0ElkKFnNpZ25faW5faW1hZ2Vf'
+    'dmFyaWFudHMYJSADKAsyJC5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudEltYWdlVmFyaWFudFITc2'
+    'lnbkluSW1hZ2VWYXJpYW50c0oECAQQBUoECB0QHlIIbG9nb191cmxSCGljb25fdXJs');
 
 @$core.Deprecated('Use pageDescriptor instead')
 const Page$json = {

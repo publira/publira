@@ -5,6 +5,7 @@ import (
 	"context"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"strings"
 	"sync"
@@ -295,5 +296,115 @@ func TestDBTenantLogoAndIconAreIndependent(t *testing.T) {
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 1 {
 		t.Fatalf("tenant_images rows after the logo delete = %d, want 1", got)
+	}
+}
+
+func brandingSourceJPEG(t *testing.T, width, height int) []byte {
+	t.Helper()
+
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := range height {
+		for x := range width {
+			img.Set(x, y, color.RGBA{R: uint8(x % 255), G: uint8(y % 255), B: 0x40, A: 0xff})
+		}
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, nil); err != nil {
+		t.Fatalf("jpeg.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// The sign-in image is a third slot on the same tenant_images, so its writes
+// leave the logo alone, and its variant is stored at the upload's own
+// proportions and format.
+func TestDBTenantSignInImageUploadReplaceAndDelete(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	themes := env.themeClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	logoUploaded, err := themes.UploadTenantLogo(ctx, &publiraadminv1.UploadTenantLogoRequest{
+		Tenant:          tenant.tenantContext(),
+		LogoData:        brandingSourcePNG(t, 320, 80),
+		LogoContentType: "image/png",
+	})
+	if err != nil {
+		t.Fatalf("UploadTenantLogo: %v", err)
+	}
+	logoURL := brandingImageURL(logoUploaded.Theme.LogoImageVariants)
+
+	unset, err := themes.GetTenantTheme(ctx, &publiraadminv1.GetTenantThemeRequest{Tenant: tenant.tenantContext()})
+	if err != nil {
+		t.Fatalf("GetTenantTheme: %v", err)
+	}
+	if len(unset.Theme.SignInImageVariants) != 0 || unset.Theme.SignInImageUpdatedAt != "" {
+		t.Fatalf("sign-in image before an upload = %d variants updated at %q, want none", len(unset.Theme.SignInImageVariants), unset.Theme.SignInImageUpdatedAt)
+	}
+
+	uploaded, err := themes.UploadTenantSignInImage(ctx, &publiraadminv1.UploadTenantSignInImageRequest{
+		Tenant:           tenant.tenantContext(),
+		ImageData:        brandingSourceJPEG(t, 600, 800),
+		ImageContentType: "image/jpeg",
+	})
+	if err != nil {
+		t.Fatalf("UploadTenantSignInImage: %v", err)
+	}
+	firstURL := brandingImageURL(uploaded.Theme.SignInImageVariants)
+	if !strings.HasPrefix(firstURL, "/images/tenants/") || !strings.HasSuffix(firstURL, "/sign_in") {
+		t.Fatalf("sign-in image variant url = %q, want a /images/tenants/{id}/sign_in URL", firstURL)
+	}
+	if uploaded.Theme.SignInImageUpdatedAt == "" {
+		t.Fatal("sign_in_image_updated_at is empty, want the stored image's timestamp")
+	}
+	if brandingImageURL(uploaded.Theme.LogoImageVariants) != logoURL {
+		t.Fatalf("logo variant url changed on a sign-in image upload: %q, want %q", brandingImageURL(uploaded.Theme.LogoImageVariants), logoURL)
+	}
+	if got := env.countRows(t,
+		"SELECT count(*) FROM tenant_image_variants WHERE tenant_id = $1 AND variant_type = 'sign_in' AND width = 600 AND height = 800 AND content_type = 'image/jpeg'",
+		tenant.Tenant.ID); got != 1 {
+		t.Fatalf("sign_in variants stored as a 600x800 JPEG = %d, want 1", got)
+	}
+
+	fetched, err := themes.GetTenantTheme(ctx, &publiraadminv1.GetTenantThemeRequest{Tenant: tenant.tenantContext()})
+	if err != nil {
+		t.Fatalf("GetTenantTheme: %v", err)
+	}
+	if brandingImageURL(fetched.Theme.SignInImageVariants) != firstURL {
+		t.Fatalf("reloaded sign-in image variant url = %q, want %q", brandingImageURL(fetched.Theme.SignInImageVariants), firstURL)
+	}
+
+	replaced, err := themes.UploadTenantSignInImage(ctx, &publiraadminv1.UploadTenantSignInImageRequest{
+		Tenant:           tenant.tenantContext(),
+		ImageData:        brandingSourcePNG(t, 800, 600),
+		ImageContentType: "image/png",
+	})
+	if err != nil {
+		t.Fatalf("UploadTenantSignInImage (replace): %v", err)
+	}
+	if brandingImageURL(replaced.Theme.SignInImageVariants) == firstURL {
+		t.Fatalf("sign-in image variant url did not change on replace: %q", brandingImageURL(replaced.Theme.SignInImageVariants))
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 2 {
+		t.Fatalf("tenant_images rows after replace = %d, want the logo and the sign-in image", got)
+	}
+
+	deleted, err := themes.DeleteTenantSignInImage(ctx, &publiraadminv1.DeleteTenantSignInImageRequest{
+		Tenant: tenant.tenantContext(),
+	})
+	if err != nil {
+		t.Fatalf("DeleteTenantSignInImage: %v", err)
+	}
+	if len(deleted.Theme.SignInImageVariants) != 0 || deleted.Theme.SignInImageUpdatedAt != "" {
+		t.Fatalf("sign-in image after delete = %d variants updated at %q, want none", len(deleted.Theme.SignInImageVariants), deleted.Theme.SignInImageUpdatedAt)
+	}
+	if brandingImageURL(deleted.Theme.LogoImageVariants) != logoURL {
+		t.Fatalf("logo variant url after a sign-in image delete = %q, want %q", brandingImageURL(deleted.Theme.LogoImageVariants), logoURL)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM tenant_images WHERE tenant_id = $1", tenant.Tenant.ID); got != 1 {
+		t.Fatalf("tenant_images rows after the sign-in image delete = %d, want 1", got)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM tenant_image_variants WHERE tenant_id = $1 AND variant_type = 'sign_in'", tenant.Tenant.ID); got != 0 {
+		t.Fatalf("sign_in variants after delete = %d, want 0", got)
 	}
 }
