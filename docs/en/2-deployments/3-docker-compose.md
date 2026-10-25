@@ -2,7 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file every release publishes, from downloading it to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-22
+updated: 2026-10-25
 ---
 
 Every release publishes a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
@@ -178,7 +178,9 @@ When it asks for the tenant site domain, give the domain you listed in `PUBLIRA_
 
 The summary at the end names the tenant site and the tenant console, and prints the administrator's password when `setup` generated one. That is the only place it appears, so keep it before you close the terminal.
 
-If the run stops halfway, because the SMTP server refused the test message or you pressed Ctrl+C, run the same command again: it keeps every step that finished and asks only for the rest. Run on a finished install, it changes nothing.
+If the run stops halfway, because a connection test failed or you pressed Ctrl+C, run the same command again: it keeps every step that finished and asks only for the rest. Run on a finished install, it changes nothing.
+
+A refused test message is the exception. `setup` saves the SMTP settings before it sends the test, so the next run keeps them and sends no test. Correct a wrong setting first with `docker compose run --rm publiractl smtp set`, which replaces every saved setting with the flags it is given, as [Changing it](../3-operations/6-email.md#changing-it) describes; leave the settings as they are when they were right and the SMTP server was only unreachable. Send the test with `docker compose run --rm publiractl smtp test --to operator@example.com`, and once it is sent, run `docker compose run --rm setup` again to finish the steps after SMTP.
 
 ### 2. Start the install
 

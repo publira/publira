@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net"
 	"regexp"
 	"slices"
 	"strconv"
@@ -370,6 +371,56 @@ func TestSetupResumesAnInterruptedRun(t *testing.T) {
 	}
 	if !auth.VerifyPassword("owner-password", passwordHash) {
 		t.Fatal("the administrator does not sign in with the password typed")
+	}
+}
+
+// The SMTP settings are saved before the test message, so a run stopped by a
+// refused one is not finished by running it again alone: the next run keeps the
+// settings and sends nothing. The recovery the refusal names, smtp set and smtp
+// test before setup again, ends with a test message sent and the install set up.
+func TestSetupNamesTheRecoveryForARefusedTestMessage(t *testing.T) {
+	env := startSetupEnv(t)
+	closed, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	unreachable := strconv.Itoa(closed.Addr().(*net.TCPAddr).Port)
+	if err := closed.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	everyFlag := append(env.everyFlag(t), "--non-interactive", "--generate-admin-password")
+
+	var stderr bytes.Buffer
+	code, _ := runSetup(t, pipedConsole("", &stderr), append(withoutFlags(everyFlag, "--port"), "--port", unreachable)...)
+	want := "; correct them with publiractl smtp set if one is wrong, send the test again with publiractl smtp test, and then run setup again to finish\n"
+	if code != 1 || !strings.Contains(stderr.String(), "publiractl: the SMTP settings were saved, but the test message was not sent") || !strings.HasSuffix(stderr.String(), want) {
+		t.Fatalf("first run: exit code = %d, stderr = \n%s\nwant the refusal ending %q", code, stderr.String(), want)
+	}
+	if got := countPlatformRows(t, env.pg, `SELECT count(*) FROM tenants`); got != 0 {
+		t.Fatalf("tenants after the refused test = %d, want 0", got)
+	}
+
+	mustSMTPCommand(t, testSecretValue+"\n", smtpSetArgs(env.smtp, "--password-stdin")...)
+	mustSMTPCommand(t, "", "test", "--to", "operator@example.com")
+	if got := len(env.smtp.Messages()); got != 1 {
+		t.Fatalf("test messages after smtp test = %d, want 1", got)
+	}
+
+	stderr.Reset()
+	code, stdout := runSetup(t, pipedConsole("", &stderr), withoutFlags(everyFlag, "--host", "--port", "--encryption", "--username", "--from-address", "--smtp-password-file")...)
+	if code != 0 {
+		t.Fatalf("second run: exit code = %d\n%s", code, stderr.String())
+	}
+	for _, want := range []string{
+		"SMTP                 kept     " + env.smtp.Host + ":" + strconv.Itoa(int(env.smtp.Port)) + "\n",
+		"First administrator  created  owner@comics.example.com\n",
+	} {
+		if !summaryHas(stdout, want) {
+			t.Fatalf("summary = \n%s\nwant a line %q", stdout, want)
+		}
+	}
+	if got := len(env.smtp.Messages()); got != 1 {
+		t.Fatalf("test messages after the second run = %d, want still 1", got)
 	}
 }
 
