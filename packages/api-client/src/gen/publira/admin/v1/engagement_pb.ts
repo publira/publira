@@ -2,8 +2,8 @@
 // @generated from file publira/admin/v1/engagement.proto (package publira.admin.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/engagement.proto.
  */
 export const file_publira_admin_v1_engagement: GenFile = /*@__PURE__*/
-  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAkylwEKFkFkbWluRW5nYWdlbWVudFNlcnZpY2USfQoWTGlzdEVwaXNvZGVSZWFkVGhyb3VnaBIvLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAki3AEKD1JldmVudWVTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEhUKDWVwaXNvZGVfdGl0bGUYBSABKAkSFgoOcHVyY2hhc2VfY291bnQYBiABKAMSFAoMZ3Jvc3NfYW1vdW50GAcgASgDEhcKD3JlZnVuZGVkX2Ftb3VudBgIIAEoAxISCgpuZXRfYW1vdW50GAkgASgDIm8KElJldmVudWVTdGF0c1RvdGFscxIWCg5wdXJjaGFzZV9jb3VudBgBIAEoAxIUCgxncm9zc19hbW91bnQYAiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAMgASgDEhIKCm5ldF9hbW91bnQYBCABKAMiwQEKFkdldFJldmVudWVTdGF0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSMgoIZ3JvdXBfYnkYBCABKA4yIC5wdWJsaXJhLmFkbWluLnYxLlJldmVudWVHcm91cEJ5Eg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJIvcBChdHZXRSZXZlbnVlU3RhdHNSZXNwb25zZRIvCgRyb3dzGAEgAygLMiEucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSEAoIY3VycmVuY3kYBSABKAkSNAoGdG90YWxzGAYgASgLMiQucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNUb3RhbHMSFgoOcHJldmlvdXNfdG9rZW4YByABKAkSEgoKbmV4dF90b2tlbhgIIAEoCSqHAQoOUmV2ZW51ZUdyb3VwQnkSIAocUkVWRU5VRV9HUk9VUF9CWV9VTlNQRUNJRklFRBAAEhgKFFJFVkVOVUVfR1JPVVBfQllfREFZEAESGwoXUkVWRU5VRV9HUk9VUF9CWV9TRVJJRVMQAhIcChhSRVZFTlVFX0dST1VQX0JZX0VQSVNPREUQAzKBAgoWQWRtaW5FbmdhZ2VtZW50U2VydmljZRJ9ChZMaXN0RXBpc29kZVJlYWRUaHJvdWdoEi8ucHVibGlyYS5hZG1pbi52MS5MaXN0RXBpc29kZVJlYWRUaHJvdWdoUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlIgASaAoPR2V0UmV2ZW51ZVN0YXRzEigucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * One episode's read-through over the reported period.
@@ -172,6 +172,302 @@ export const ListEpisodeReadThroughResponseSchema: GenMessage<ListEpisodeReadThr
   messageDesc(file_publira_admin_v1_engagement, 2);
 
 /**
+ * What sold in one row of a revenue report, in the minor unit of the
+ * response's currency.
+ *
+ * A sale is counted on the day it was made, and what went back on it is taken
+ * off that day too, however long after it went back: a refund, and a dispute
+ * of the payment the tenant lost, which takes all of it back. A day already
+ * reported can therefore fall afterwards. A dispute still open takes nothing
+ * back until it is lost.
+ *
+ * A purchase of a volume or of the rest of a series sold every episode in it,
+ * so it is a sale of each of those episodes at the part of its price that
+ * episode accounts for, the part a royalty statement credits, and a sale of
+ * the series they belong to at all of it. What went back on such a purchase
+ * is divided over its episodes in the same proportion, each part rounded
+ * down, so the episode rows' refunded_amount can fall short of the totals by
+ * less than one minor unit per episode.
+ *
+ * @generated from message publira.admin.v1.RevenueStatsRow
+ */
+export type RevenueStatsRow = Message<"publira.admin.v1.RevenueStatsRow"> & {
+  /**
+   * The tenant day (YYYY-MM-DD) of a REVENUE_GROUP_BY_DAY row. Empty
+   * otherwise.
+   *
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * The series of a REVENUE_GROUP_BY_SERIES or REVENUE_GROUP_BY_EPISODE row,
+   * under its title in the tenant's default locale. Empty for a day.
+   *
+   * @generated from field: string series_public_id = 2;
+   */
+  seriesPublicId: string;
+
+  /**
+   * @generated from field: string series_title = 3;
+   */
+  seriesTitle: string;
+
+  /**
+   * The episode of a REVENUE_GROUP_BY_EPISODE row. Empty otherwise.
+   *
+   * @generated from field: string episode_public_id = 4;
+   */
+  episodePublicId: string;
+
+  /**
+   * @generated from field: string episode_title = 5;
+   */
+  episodeTitle: string;
+
+  /**
+   * Purchases made, refunded ones included.
+   *
+   * @generated from field: int64 purchase_count = 6;
+   */
+  purchaseCount: bigint;
+
+  /**
+   * What those purchases were paid.
+   *
+   * @generated from field: int64 gross_amount = 7;
+   */
+  grossAmount: bigint;
+
+  /**
+   * What went back to the readers of them.
+   *
+   * @generated from field: int64 refunded_amount = 8;
+   */
+  refundedAmount: bigint;
+
+  /**
+   * gross_amount less refunded_amount: what the tenant kept.
+   *
+   * @generated from field: int64 net_amount = 9;
+   */
+  netAmount: bigint;
+};
+
+/**
+ * Describes the message publira.admin.v1.RevenueStatsRow.
+ * Use `create(RevenueStatsRowSchema)` to create a new message.
+ */
+export const RevenueStatsRowSchema: GenMessage<RevenueStatsRow> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 3);
+
+/**
+ * The same four figures over the whole period, each purchase counted once
+ * whatever its episodes.
+ *
+ * @generated from message publira.admin.v1.RevenueStatsTotals
+ */
+export type RevenueStatsTotals = Message<"publira.admin.v1.RevenueStatsTotals"> & {
+  /**
+   * @generated from field: int64 purchase_count = 1;
+   */
+  purchaseCount: bigint;
+
+  /**
+   * @generated from field: int64 gross_amount = 2;
+   */
+  grossAmount: bigint;
+
+  /**
+   * @generated from field: int64 refunded_amount = 3;
+   */
+  refundedAmount: bigint;
+
+  /**
+   * @generated from field: int64 net_amount = 4;
+   */
+  netAmount: bigint;
+};
+
+/**
+ * Describes the message publira.admin.v1.RevenueStatsTotals.
+ * Use `create(RevenueStatsTotalsSchema)` to create a new message.
+ */
+export const RevenueStatsTotalsSchema: GenMessage<RevenueStatsTotals> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 4);
+
+/**
+ * @generated from message publira.admin.v1.GetRevenueStatsRequest
+ */
+export type GetRevenueStatsRequest = Message<"publira.admin.v1.GetRevenueStatsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+   * zone: the first no later than the last, and covering at most 366 days.
+   * Both are required.
+   *
+   * @generated from field: string start_date = 2;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 3;
+   */
+  endDate: string;
+
+  /**
+   * REVENUE_GROUP_BY_UNSPECIFIED is refused.
+   *
+   * @generated from field: publira.admin.v1.RevenueGroupBy group_by = 4;
+   */
+  groupBy: RevenueGroupBy;
+
+  /**
+   * Cursor pagination of a REVENUE_GROUP_BY_SERIES or
+   * REVENUE_GROUP_BY_EPISODE report. Field shape and token rules:
+   * proto/README.md. A REVENUE_GROUP_BY_DAY report holds one row per day of a
+   * period no longer than 366 days, answers all of them at once, and ignores
+   * both fields.
+   *
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 5;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page. A token
+   * is bound to the grouping and the period it was issued for.
+   *
+   * @generated from field: string token = 6;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetRevenueStatsRequest.
+ * Use `create(GetRevenueStatsRequestSchema)` to create a new message.
+ */
+export const GetRevenueStatsRequestSchema: GenMessage<GetRevenueStatsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 5);
+
+/**
+ * @generated from message publira.admin.v1.GetRevenueStatsResponse
+ */
+export type GetRevenueStatsResponse = Message<"publira.admin.v1.GetRevenueStatsResponse"> & {
+  /**
+   * A day report in date order. A series or an episode report ordered by
+   * net_amount, highest first.
+   *
+   * @generated from field: repeated publira.admin.v1.RevenueStatsRow rows = 1;
+   */
+  rows: RevenueStatsRow[];
+
+  /**
+   * The period the request asked for, echoed back.
+   *
+   * @generated from field: string start_date = 2;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 3;
+   */
+  endDate: string;
+
+  /**
+   * The IANA time zone the dates are the tenant's days in. It is the tenant's
+   * resolved zone: the counting and the wording come from the same read.
+   *
+   * @generated from field: string time_zone = 4;
+   */
+  timeZone: string;
+
+  /**
+   * The ISO 4217 code every amount is in: the currency the tenant sells in.
+   * A purchase paid in another, from before the tenant changed it, is in no
+   * row and no total, since its price cannot be added to theirs.
+   *
+   * @generated from field: string currency = 5;
+   */
+  currency: string;
+
+  /**
+   * The figures over the whole period. They stay the same on every page.
+   *
+   * @generated from field: publira.admin.v1.RevenueStatsTotals totals = 6;
+   */
+  totals?: RevenueStatsTotals | undefined;
+
+  /**
+   * Token for the previous page. Empty on the first page, and always for a
+   * day report.
+   *
+   * @generated from field: string previous_token = 7;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page, and always for a day
+   * report.
+   *
+   * @generated from field: string next_token = 8;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetRevenueStatsResponse.
+ * Use `create(GetRevenueStatsResponseSchema)` to create a new message.
+ */
+export const GetRevenueStatsResponseSchema: GenMessage<GetRevenueStatsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 6);
+
+/**
+ * How GetRevenueStatsRequest cuts its period into rows.
+ *
+ * @generated from enum publira.admin.v1.RevenueGroupBy
+ */
+export enum RevenueGroupBy {
+  /**
+   * @generated from enum value: REVENUE_GROUP_BY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * One row per day of the period, the tenant's own days, a day without a
+   * sale included.
+   *
+   * @generated from enum value: REVENUE_GROUP_BY_DAY = 1;
+   */
+  DAY = 1,
+
+  /**
+   * One row per series that sold in the period.
+   *
+   * @generated from enum value: REVENUE_GROUP_BY_SERIES = 2;
+   */
+  SERIES = 2,
+
+  /**
+   * One row per episode that sold in the period.
+   *
+   * @generated from enum value: REVENUE_GROUP_BY_EPISODE = 3;
+   */
+  EPISODE = 3,
+}
+
+/**
+ * Describes the enum publira.admin.v1.RevenueGroupBy.
+ */
+export const RevenueGroupBySchema: GenEnum<RevenueGroupBy> = /*@__PURE__*/
+  enumDesc(file_publira_admin_v1_engagement, 0);
+
+/**
  * @generated from service publira.admin.v1.AdminEngagementService
  */
 export const AdminEngagementService: GenService<{
@@ -184,6 +480,20 @@ export const AdminEngagementService: GenService<{
     methodKind: "unary";
     input: typeof ListEpisodeReadThroughRequestSchema;
     output: typeof ListEpisodeReadThroughResponseSchema;
+  },
+  /**
+   * What sold over a period of the tenant's days, by day, by series, or by
+   * episode, net of what went back to the readers, in the tenant's currency.
+   * It reads purchases themselves, so a sale made a moment ago is in it.
+   *
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminEngagementService.GetRevenueStats
+   */
+  getRevenueStats: {
+    methodKind: "unary";
+    input: typeof GetRevenueStatsRequestSchema;
+    output: typeof GetRevenueStatsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_engagement, 0);

@@ -1,0 +1,12 @@
+-- INDEX: idx_purchases_tenant_purchased_at_id_amounts
+-- idx_purchases_tenant_purchased_at_id, with every column the console's
+-- revenue statistics read of a purchase carried beside the key: what it cost,
+-- what went back, whether it was a test, and the currency it was paid in. A
+-- range of a tenant's days is then totalled, and cut into days, from the index
+-- alone, rather than by visiting every purchase the range holds in the table.
+-- The order, and the episode_id the daily content stats read, are those of the
+-- index it takes over from, which the next migration drops.
+--
+-- CONCURRENTLY, so building it does not block the purchases a storefront keeps
+-- writing, which is also why this statement is the whole file.
+CREATE INDEX CONCURRENTLY idx_purchases_tenant_purchased_at_id_amounts ON purchases USING btree (tenant_id, purchased_at DESC, id DESC) INCLUDE (episode_id, currency, is_test, price_at_purchase, refunded_amount, dispute_lost_at);

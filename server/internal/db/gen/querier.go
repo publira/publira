@@ -1002,6 +1002,24 @@ type Querier interface {
 	GetReportableEpisodeCommentForTenant(ctx context.Context, arg GetReportableEpisodeCommentForTenantParams) (GetReportableEpisodeCommentForTenantRow, error)
 	// Where one episode may be bought, resolved through its series and the tenant.
 	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
+	// The console's revenue statistics: what a tenant's purchases earned over a
+	// period of its own days, net of what went back to the readers.
+	//
+	// Every query counts the same purchases: those made within the period, which
+	// runs from the tenant's midnight of start_date to its midnight after
+	// end_date in time_zone, paid in currency, the tenant's, and not made in a
+	// store's sandbox or a payment provider's test mode, which paid the tenant
+	// nothing. A purchase in another currency cannot be added to theirs. What went
+	// back on a purchase is purchase_returned_amount, taken off the day the
+	// purchase was made, so a refund leaves the sale counted and its money not.
+	//
+	// The range of the period is read from idx_purchases_tenant_purchased_at_id_amounts,
+	// which carries every column GetRevenueTotals and ListRevenueByDay read, so
+	// those two answer from the index alone. The series and episode reports join
+	// each purchase to its parts in purchase_episode_parts, and narrow the parts
+	// to the period too, which is what keeps them from reading the parts of every
+	// purchase the tenant ever made.
+	GetRevenueTotals(ctx context.Context, arg GetRevenueTotalsParams) (GetRevenueTotalsRow, error)
 	// Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
 	// sale counted once however many episodes and creators it is credited to.
 	GetRoyaltyAdjustmentTotalForPeriod(ctx context.Context, arg GetRoyaltyAdjustmentTotalForPeriodParams) (int64, error)
@@ -1821,6 +1839,14 @@ type Querier interface {
 	// (complete_count, entity_id) is unique because entity_id alone is, so the
 	// keyset scan can neither skip nor repeat episodes that tie on completions.
 	ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error)
+	// ListEpisodeRevenueDesc walked the other way, to build a previous page. The
+	// order it describes is the same one.
+	ListEpisodeRevenueAsc(ctx context.Context, arg ListEpisodeRevenueAscParams) ([]ListEpisodeRevenueAscRow, error)
+	// Each episode that sold in the period, highest net first. A purchase is a
+	// sale of each episode it paid for at the part of its price that episode
+	// accounts for, and what went back on it is divided the way a royalty
+	// statement divides a refund.
+	ListEpisodeRevenueDesc(ctx context.Context, arg ListEpisodeRevenueDescParams) ([]ListEpisodeRevenueDescRow, error)
 	// Oldest first, the order episode_translation_for falls back through.
 	ListEpisodeTranslationsForTenant(ctx context.Context, arg ListEpisodeTranslationsForTenantParams) ([]EpisodeTranslation, error)
 	// Reordering has to see every episode under the series, so this stays a list
@@ -2316,7 +2342,7 @@ type Querier interface {
 	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
 	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
 	// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
-	// both over idx_purchases_tenant_purchased_at_id, or over
+	// both over idx_purchases_tenant_purchased_at_id_amounts, or over
 	// idx_purchases_tenant_user_purchased_at for one reader's purchases, and the
 	// handler puts the ascending rows back into display order. id is a UUIDv7, so
 	// the order stays unique when purchased_at ties. These read the keys alone,
@@ -2471,6 +2497,10 @@ type Querier interface {
 	// ListRelatedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRelatedSeriesIDsReversedParams) ([]ListRelatedSeriesIDsReversedRow, error)
+	// Every day of the period in order, a day nothing sold on included, so a
+	// chart of it has no gap to fill. The days are generated as timestamps without
+	// a zone, so the session's own zone cannot move one onto the day before.
+	ListRevenueByDay(ctx context.Context, arg ListRevenueByDayParams) ([]ListRevenueByDayRow, error)
 	// Computes the adjustment lines of one tenant month: for each line of a
 	// statement of an earlier month, the refunds and lost disputes recorded on its
 	// sales since they were counted, at the share that line applied and under the names it was
@@ -2562,6 +2592,15 @@ type Querier interface {
 	// episode's own checkout. A guest passes a NULL user_id, which holds nothing
 	// and is credited on nothing.
 	ListSeriesRemainderEpisodes(ctx context.Context, arg ListSeriesRemainderEpisodesParams) ([]ListSeriesRemainderEpisodesRow, error)
+	// ListSeriesRevenueDesc walked the other way, to build a previous page. The
+	// order it describes is the same one.
+	ListSeriesRevenueAsc(ctx context.Context, arg ListSeriesRevenueAscParams) ([]ListSeriesRevenueAscRow, error)
+	// Each series that sold in the period, highest net first. A purchase is a sale
+	// of the series its episodes belong to at what its parts there add up to, and
+	// what went back on it is divided by the same proportion, so a purchase of a
+	// volume or of the rest of a series, whose episodes are all of one series,
+	// gives the series exactly what it gave the totals.
+	ListSeriesRevenueDesc(ctx context.Context, arg ListSeriesRevenueDescParams) ([]ListSeriesRevenueDescRow, error)
 	// Tags have no order of their own, so they read back by name: the same series
 	// shows the same list every time, and two series sharing tags show them in the
 	// same places.

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -124,4 +125,24 @@ func (k ListKey) DecodeTimeUUID(cursor Cursor) (TimeUUIDKeys, error) {
 		return TimeUUIDKeys{}, err
 	}
 	return DecodeTimeUUID(inner)
+}
+
+// EncodeCountUUID builds a token for an (int64, uuid.UUID) boundary of this list.
+func (k ListKey) EncodeCountUUID(direction Direction, count int64, id uuid.UUID) string {
+	return k.Encode(direction, strconv.FormatInt(count, 10), id.String())
+}
+
+// EncodeCountUUIDRecovery builds a token of this list that includes its
+// boundary row once.
+func (k ListKey) EncodeCountUUIDRecovery(direction Direction, count int64, id uuid.UUID) string {
+	return k.Encode(direction, strconv.FormatInt(count, 10), id.String(), inclusiveKey)
+}
+
+// DecodeCountUUID parses an (int64, uuid.UUID) cursor issued for this list.
+func (k ListKey) DecodeCountUUID(cursor Cursor) (CountUUIDKeys, error) {
+	inner, err := k.Decode(cursor)
+	if err != nil {
+		return CountUUIDKeys{}, err
+	}
+	return DecodeCountUUID(inner)
 }
