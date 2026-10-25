@@ -42,6 +42,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			nil,
 			nil,
 			now,
+			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
@@ -109,6 +110,7 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 			int32(500),
 			now.Add(-time.Hour),
 			now.Add(-2*time.Hour),
+			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
@@ -172,6 +174,7 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 			nil,
 			nil,
 			now.Add(-2*time.Hour),
+			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
@@ -232,6 +235,7 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 			int32(200),
 			nil,
 			now.Add(-2*time.Hour),
+			int32(0),
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
@@ -479,7 +483,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "series_id", "series_public_id", "series_title", "series_title_locale",
+		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "series_id", "series_public_id", "series_title", "series_title_locale",
 	})
 }
 
@@ -494,6 +498,7 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		nil,
 		nil,
 		purchasedAt,
+		int32(0),
 		uuid.Must(uuid.NewV7()),
 		"EPISODE"+id.String(),
 		"Episode title",

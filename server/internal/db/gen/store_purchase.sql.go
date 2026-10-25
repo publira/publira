@@ -182,14 +182,19 @@ SELECT p.id,
     p.expires_at,
     p.revoked_at,
     p.purchased_at,
+    -- The coins a purchase paid with coins spent, 0 on every other purchase.
+    COALESCE(ct.coins, 0)::integer AS coins_spent,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
     et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
+    LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id AND ct.purchase_id = p.id
     JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
@@ -214,10 +219,13 @@ type GetMyPurchaseRow struct {
 	ExpiresAt          sql.NullTime `json:"expires_at"`
 	RevokedAt          sql.NullTime `json:"revoked_at"`
 	PurchasedAt        time.Time    `json:"purchased_at"`
+	CoinsSpent         int32        `json:"coins_spent"`
+	EpisodeID          uuid.UUID    `json:"episode_id"`
 	EpisodePublicID    string       `json:"episode_public_id"`
 	EpisodeTitle       string       `json:"episode_title"`
 	EpisodeTitleLocale string       `json:"episode_title_locale"`
 	EpisodeOrderIndex  int32        `json:"episode_order_index"`
+	SeriesID           uuid.UUID    `json:"series_id"`
 	SeriesPublicID     string       `json:"series_public_id"`
 	SeriesTitle        string       `json:"series_title"`
 	SeriesTitleLocale  string       `json:"series_title_locale"`
@@ -240,10 +248,13 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.PurchasedAt,
+		&i.CoinsSpent,
+		&i.EpisodeID,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
 		&i.EpisodeTitleLocale,
 		&i.EpisodeOrderIndex,
+		&i.SeriesID,
 		&i.SeriesPublicID,
 		&i.SeriesTitle,
 		&i.SeriesTitleLocale,

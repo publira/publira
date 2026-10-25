@@ -3197,6 +3197,8 @@ const MyPurchase$json = {
       '6': '.publira.types.v1.SeriesBundle',
       '10': 'seriesBundle'
     },
+    {'1': 'coins_spent', '3': 15, '4': 1, '5': 5, '10': 'coinsSpent'},
+    {'1': 'coin_name', '3': 16, '4': 1, '5': 9, '10': 'coinName'},
   ],
 };
 
@@ -3212,7 +3214,8 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'ABKAlSCXJldm9rZWRBdBIyCgRraW5kGAwgASgOMh4ucHVibGlyYS50eXBlcy52MS5QdXJjaGFz'
     'ZUtpbmRSBGtpbmQSMAoGdm9sdW1lGA0gASgLMhgucHVibGlyYS50eXBlcy52MS5Wb2x1bWVSBn'
     'ZvbHVtZRJDCg1zZXJpZXNfYnVuZGxlGA4gASgLMh4ucHVibGlyYS50eXBlcy52MS5TZXJpZXNC'
-    'dW5kbGVSDHNlcmllc0J1bmRsZQ==');
+    'dW5kbGVSDHNlcmllc0J1bmRsZRIfCgtjb2luc19zcGVudBgPIAEoBVIKY29pbnNTcGVudBIbCg'
+    'ljb2luX25hbWUYECABKAlSCGNvaW5OYW1l');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {

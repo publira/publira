@@ -130,6 +130,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.purchased_at,
+    -- The coins a purchase paid with coins spent, 0 on every other purchase.
+    COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     -- Empty on a purchase of a volume or a bundle, which joins no
@@ -154,6 +156,8 @@ SELECT p.id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
+    LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
+    AND ct.purchase_id = p.id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE
@@ -212,6 +216,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.purchased_at,
+    -- The coins a purchase paid with coins spent, 0 on every other purchase.
+    COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     -- Empty on a purchase of a volume or a bundle, which joins no
@@ -236,6 +242,8 @@ SELECT p.id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
+    LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
+    AND ct.purchase_id = p.id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE

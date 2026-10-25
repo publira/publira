@@ -92,14 +92,19 @@ SELECT p.id,
     p.expires_at,
     p.revoked_at,
     p.purchased_at,
+    -- The coins a purchase paid with coins spent, 0 on every other purchase.
+    COALESCE(ct.coins, 0)::integer AS coins_spent,
+    e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
     et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
+    s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
+    LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id AND ct.purchase_id = p.id
     JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id

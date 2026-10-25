@@ -127,6 +127,38 @@ type CampaignBannerImageVariant struct {
 	CreatedAt             time.Time `json:"created_at"`
 }
 
+type CoinGrant struct {
+	ID             uuid.UUID     `json:"id"`
+	TenantID       uuid.UUID     `json:"tenant_id"`
+	UserID         uuid.NullUUID `json:"user_id"`
+	Source         string        `json:"source"`
+	PurchaseID     uuid.NullUUID `json:"purchase_id"`
+	Coins          int32         `json:"coins"`
+	RemainingCoins int32         `json:"remaining_coins"`
+	ExpiresAt      time.Time     `json:"expires_at"`
+	GrantedAt      time.Time     `json:"granted_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+}
+
+type CoinSpendAllocation struct {
+	TenantID      uuid.UUID `json:"tenant_id"`
+	TransactionID uuid.UUID `json:"transaction_id"`
+	GrantID       uuid.UUID `json:"grant_id"`
+	Coins         int32     `json:"coins"`
+}
+
+type CoinTransaction struct {
+	ID             uuid.UUID      `json:"id"`
+	TenantID       uuid.UUID      `json:"tenant_id"`
+	UserID         uuid.NullUUID  `json:"user_id"`
+	Kind           string         `json:"kind"`
+	Coins          int32          `json:"coins"`
+	GrantID        uuid.NullUUID  `json:"grant_id"`
+	PurchaseID     uuid.NullUUID  `json:"purchase_id"`
+	IdempotencyKey sql.NullString `json:"idempotency_key"`
+	CreatedAt      time.Time      `json:"created_at"`
+}
+
 type ContactMessage struct {
 	ID           uuid.UUID      `json:"id"`
 	TenantID     uuid.UUID      `json:"tenant_id"`
@@ -781,6 +813,8 @@ type PlatformPolicyConfig struct {
 	SubscriptionCheckoutLimitPerMinute    int32     `json:"subscription_checkout_limit_per_minute"`
 	SubscriptionCheckoutLimitPerDay       int32     `json:"subscription_checkout_limit_per_day"`
 	TenantCoinsAllowed                    bool      `json:"tenant_coins_allowed"`
+	CoinPaymentLimitPerMinute             int32     `json:"coin_payment_limit_per_minute"`
+	CoinPaymentLimitPerDay                int32     `json:"coin_payment_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {

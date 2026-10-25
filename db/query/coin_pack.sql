@@ -75,3 +75,13 @@ SET retired_at = NOW(),
     updated_at = NOW()
 WHERE tenant_id = $1
     AND id = $2;
+
+-- name: ListCoinPacksOnSale :many
+-- The packs a reader can buy now, in the order the tenant sells them.
+SELECT *
+FROM tenant_coin_packs
+WHERE tenant_id = $1
+    AND retired_at IS NULL
+    AND on_sale
+ORDER BY sort_order,
+    id;

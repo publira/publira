@@ -315,3 +315,11 @@ func withScanLocale(query string, args ...driver.Value) []driver.Value {
 	}
 	return slices.Insert(slices.Clone(args), 8, driver.Value("ja"))
 }
+
+// expectNoSavedPlatformPolicy answers the platform policy read with no saved
+// row, which is the built-in policy: tenant coins not allowed. The server's
+// resolver keeps what it read, so a test server reads it once.
+func expectNoSavedPlatformPolicy(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformPolicyConfig)).
+		WillReturnRows(sqlmock.NewRows([]string{"singleton"}))
+}

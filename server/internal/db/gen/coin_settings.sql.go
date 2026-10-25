@@ -68,6 +68,60 @@ func (q *Queries) GetTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) (
 	return i, err
 }
 
+const GetTenantCoinOffer = `-- name: GetTenantCoinOffer :one
+SELECT c.enabled,
+    c.selling,
+    c.coin_unit_amount,
+    c.expiry_days,
+    c.issuer_name,
+    c.terms_url,
+    c.contact,
+    c.notice,
+    -- Empty when the tenant has named the coin in no locale: sqlc reads the
+    -- columns of a function's row as never NULL.
+    COALESCE(n.name, '')::text AS coin_name
+FROM tenant_coin_config c
+    LEFT JOIN LATERAL tenant_coin_name_for(c.tenant_id, $1::text) n ON TRUE
+WHERE c.tenant_id = $2
+`
+
+type GetTenantCoinOfferParams struct {
+	Locale   string    `json:"locale"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetTenantCoinOfferRow struct {
+	Enabled        bool          `json:"enabled"`
+	Selling        bool          `json:"selling"`
+	CoinUnitAmount sql.NullInt32 `json:"coin_unit_amount"`
+	ExpiryDays     sql.NullInt32 `json:"expiry_days"`
+	IssuerName     string        `json:"issuer_name"`
+	TermsUrl       string        `json:"terms_url"`
+	Contact        string        `json:"contact"`
+	Notice         string        `json:"notice"`
+	CoinName       string        `json:"coin_name"`
+}
+
+// What a reader is told about the tenant's coins: the settings, and the coin's
+// name in the locale asked for, else the tenant default locale's, else the
+// oldest. No row is a tenant that has saved nothing.
+func (q *Queries) GetTenantCoinOffer(ctx context.Context, arg GetTenantCoinOfferParams) (GetTenantCoinOfferRow, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantCoinOffer, arg.Locale, arg.TenantID)
+	var i GetTenantCoinOfferRow
+	err := row.Scan(
+		&i.Enabled,
+		&i.Selling,
+		&i.CoinUnitAmount,
+		&i.ExpiryDays,
+		&i.IssuerName,
+		&i.TermsUrl,
+		&i.Contact,
+		&i.Notice,
+		&i.CoinName,
+	)
+	return i, err
+}
+
 const ListTenantCoinNames = `-- name: ListTenantCoinNames :many
 SELECT id, tenant_id, locale, name, created_at, updated_at
 FROM tenant_coin_name_translations
@@ -107,6 +161,38 @@ func (q *Queries) ListTenantCoinNames(ctx context.Context, tenantID uuid.UUID) (
 	return items, nil
 }
 
+const ListTenantsWithCoinsEnabled = `-- name: ListTenantsWithCoinsEnabled :many
+SELECT tenant_id
+FROM tenant_coin_config
+WHERE enabled
+ORDER BY tenant_id
+`
+
+// Every tenant that has turned its coins on, across every tenant: the ones
+// whose storefronts change when the platform allows or forbids tenant coins.
+func (q *Queries) ListTenantsWithCoinsEnabled(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, ListTenantsWithCoinsEnabled)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var tenant_id uuid.UUID
+		if err := rows.Scan(&tenant_id); err != nil {
+			return nil, err
+		}
+		items = append(items, tenant_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const LockTenantCoinConfig = `-- name: LockTenantCoinConfig :one
 SELECT tenant_id, enabled, selling, coin_unit_amount, expiry_days, issuer_name, terms_url, contact, notice, created_at, updated_at
 FROM tenant_coin_config
@@ -132,6 +218,29 @@ func (q *Queries) LockTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const LockTenantCoinConfigForSpend = `-- name: LockTenantCoinConfigForSpend :one
+SELECT enabled,
+    coin_unit_amount
+FROM tenant_coin_config
+WHERE tenant_id = $1
+FOR SHARE
+`
+
+type LockTenantCoinConfigForSpendRow struct {
+	Enabled        bool          `json:"enabled"`
+	CoinUnitAmount sql.NullInt32 `json:"coin_unit_amount"`
+}
+
+// The tenant's coin settings as a spend reads them, held against a save until
+// the spend commits, so a spend never lands after the save that turned coins
+// off or changed what one is worth.
+func (q *Queries) LockTenantCoinConfigForSpend(ctx context.Context, tenantID uuid.UUID) (LockTenantCoinConfigForSpendRow, error) {
+	row := q.db.QueryRowContext(ctx, LockTenantCoinConfigForSpend, tenantID)
+	var i LockTenantCoinConfigForSpendRow
+	err := row.Scan(&i.Enabled, &i.CoinUnitAmount)
 	return i, err
 }
 

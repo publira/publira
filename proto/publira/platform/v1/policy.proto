@@ -152,6 +152,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   optional bool tenant_coins_allowed = 18;
+  // How often one reader may ask CoinService.PayEpisodeWithCoins to open an
+  // episode with coins.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit coin_payment = 19;
 }
 
 message GetPlatformPolicyRequest {}

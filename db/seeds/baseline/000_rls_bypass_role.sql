@@ -529,3 +529,10 @@ GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO 
 -- tenant's staff lists the row a member of staff already holds as a follower,
 -- and writes nothing else of it.
 GRANT UPDATE (in_inbox) ON notifications TO publira_ticker;
+-- And for a coin grant: expire-coin-grants records the coins of every grant
+-- that expired unspent as an expiry in the reader's coin history, and zeroes
+-- what the grant has left so it stops being due. It writes nothing else of a
+-- grant, and SELECT on the history rides along for the RETURNING clause of
+-- the insert.
+GRANT SELECT, UPDATE (remaining_coins, updated_at) ON coin_grants TO publira_ticker;
+GRANT SELECT, INSERT ON coin_transactions TO publira_ticker;

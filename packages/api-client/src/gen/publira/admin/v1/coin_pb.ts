@@ -203,6 +203,14 @@ export const GetTenantCoinSettingsResponseSchema: GenMessage<GetTenantCoinSettin
  * ready, since there would be no way to sell a pack. Turning selling off is
  * always allowed.
  *
+ * Turning enabled off is failed_precondition with the ErrorInfo reason
+ * COIN_BALANCES_OUTSTANDING while any reader holds coins that have not
+ * expired, with the number of such readers in the metadata as `reader_count`:
+ * a tenant ends its coins by stopping sales and waiting the expiry out, or by
+ * settling the balances itself first. And once any coin has been granted,
+ * coin_unit_amount is the rate every balance is counted in, so changing it is
+ * failed_precondition with the ErrorInfo reason COIN_UNIT_AMOUNT_FIXED.
+ *
  * @generated from message publira.admin.v1.UpdateTenantCoinSettingsRequest
  */
 export type UpdateTenantCoinSettingsRequest = Message<"publira.admin.v1.UpdateTenantCoinSettingsRequest"> & {

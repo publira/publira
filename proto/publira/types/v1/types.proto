@@ -388,6 +388,24 @@ message Episode {
   // empty elsewhere, the console's reads included.
   int32 campaign_price = 22;
   string campaign_ends_at = 23;
+  // What the episode costs in the tenant's coins, which CoinService.
+  // PayEpisodeWithCoins spends: coin_price for the permanent copy, at
+  // campaign_price while a campaign is open and at price otherwise, and
+  // coin_rental_price for the rental, at rental_price. Each is that price
+  // divided by the value of one coin, rounded up. coin_name is the tenant's
+  // word for its coins in the reader's locale, so a client never names them
+  // itself.
+  //
+  // All three are 0 and empty on a free episode, and coin_rental_price on one
+  // that is not rented. They are 0 and empty too while the platform does not
+  // allow tenant coins or the tenant has not turned its coins on, and a client
+  // offers coins only where coin_price or coin_rental_price is set.
+  //
+  // Set on GetEpisodeDetail and on the episodes GetSeriesDetail lists; 0 and
+  // empty elsewhere, the console's reads included.
+  int32 coin_price = 24;
+  int32 coin_rental_price = 25;
+  string coin_name = 26;
 }
 
 // Which way the pages of a work are turned. A series states it for every one

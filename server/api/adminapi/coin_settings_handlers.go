@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -19,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -44,9 +46,47 @@ const (
 )
 
 var (
-	errCoinsNotAllowed   = errors.New("the platform does not allow tenants to issue coins")
-	errCoinsCannotBeSold = errors.New("coins need a ready payment provider or a ready app store to sell packs through")
+	errCoinsNotAllowed     = errors.New("the platform does not allow tenants to issue coins")
+	errCoinsCannotBeSold   = errors.New("coins need a ready payment provider or a ready app store to sell packs through")
+	errCoinBalancesHeld    = errors.New("readers hold coins that have not expired")
+	errCoinUnitAmountFixed = errors.New("coin_unit_amount cannot change once a coin has been granted")
 )
+
+// coinSettingsRevalidateTags are the cached storefront reads a save of the
+// coin settings leaves stale: the series and episode reads, which price each
+// episode in coins and name them.
+func coinSettingsRevalidateTags(tenantID uuid.UUID) []string {
+	return []string{fmt.Sprintf("tenant:%s:series:detail", tenantID)}
+}
+
+// requireCoinBalancesAllowSave refuses what the balances readers hold rule
+// out: turning coins off while any reader holds coins that have not expired,
+// which would leave them unable to spend what they paid for, and changing
+// what one coin is worth once any has been granted, which every balance is
+// counted in.
+func (s *adminServer) requireCoinBalancesAllowSave(txCtx context.Context, tenantID uuid.UUID, current dbmodels.TenantCoinConfig, in coinSettingsInput) error {
+	queries := s.queriesFor(txCtx)
+	if current.Enabled && !in.enabled {
+		readers, err := queries.CountReadersHoldingCoins(txCtx, tenantID)
+		if err != nil {
+			return s.internalDBError(txCtx, "failed to count the readers holding coins", err, "tenant_id", tenantID.String())
+		}
+		if readers > 0 {
+			return rpcerrors.NewErrorInfoErrorWithMetadata(connect.CodeFailedPrecondition, errCoinBalancesHeld, rpcerrors.ReasonCoinBalancesOutstanding,
+				map[string]string{rpcerrors.MetadataReaderCount: strconv.Itoa(int(readers))})
+		}
+	}
+	if current.CoinUnitAmount.Int32 != in.coinUnitAmount {
+		granted, err := queries.TenantHasCoinGrants(txCtx, tenantID)
+		if err != nil {
+			return s.internalDBError(txCtx, "failed to check whether the tenant has granted coins", err, "tenant_id", tenantID.String())
+		}
+		if granted {
+			return rpcerrors.NewErrorInfoError(connect.CodeFailedPrecondition, errCoinUnitAmountFixed, rpcerrors.ReasonCoinUnitAmountFixed)
+		}
+	}
+	return nil
+}
 
 // coinName is one locale's name of the tenant's coin, as a save writes it.
 type coinName struct {
@@ -401,11 +441,15 @@ func (s *adminServer) UpdateTenantCoinSettings(
 			return nil, err
 		}
 	}
+	if err := s.requireCoinBalancesAllowSave(txCtx, tenant.ID, current, input); err != nil {
+		return nil, err
+	}
 	currentNames, err := queries.ListTenantCoinNames(txCtx, tenant.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list coin names", err, "tenant_id", tenant.ID.String())
 	}
 
+	var owed revalidate.Owed
 	if !coinSettingsUnchanged(current, currentNames, input) {
 		if _, err := queries.UpdateTenantCoinConfig(txCtx, dbmodels.UpdateTenantCoinConfigParams{
 			TenantID:       tenant.ID,
@@ -442,6 +486,9 @@ func (s *adminServer) UpdateTenantCoinSettings(
 		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "coin_settings_updated", "coin_settings"); err != nil {
 			return nil, err
 		}
+		if owed, err = s.reval.Record(txCtx, queries, tenant.ID, coinSettingsRevalidateTags(tenant.ID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for the coin settings", err, "tenant_id", tenant.ID.String())
+		}
 	}
 
 	answer, err := s.readCoinSettings(txCtx, tenant.ID)
@@ -451,6 +498,7 @@ func (s *adminServer) UpdateTenantCoinSettings(
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit coin settings", err, "tenant_id", tenant.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 	return &publiraadminv1.UpdateTenantCoinSettingsResponse{
 		Settings:            answer.settings,
 		PlatformAllowsCoins: answer.platformAllowsCoins,

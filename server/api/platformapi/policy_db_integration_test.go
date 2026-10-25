@@ -65,6 +65,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.Passkey = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 16}
 	policy.SeriesRemainderCheckout = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 12}
 	policy.SubscriptionCheckout = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 14}
+	policy.CoinPayment = platformpolicy.MinuteDay{PerMinute: 5, PerDay: 40}
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
@@ -418,6 +419,45 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedSubscriptionCheckoutLimit(t *testin
 	third := saveWithout(t, want, second.Revision)
 	if got := platformPolicyFromProto(third.Policy); got != want {
 		t.Fatalf("save without the limit = %+v, want %+v keeping the stored subscription checkout limit", got, want)
+	}
+}
+
+// coin_payment reached the policy after the console screens that save it, in
+// the same way wait_free_ticket_use did, so an omitted one keeps what is
+// stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedCoinPaymentLimit(t *testing.T) {
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.CoinPayment = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without coin_payment: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.CoinPayment = platformpolicy.Defaults().CoinPayment
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default coin payment limit", got, want)
+	}
+
+	want.CoinPayment = platformpolicy.MinuteDay{PerMinute: 6, PerDay: 60}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with coin_payment: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored coin payment limit", got, want)
 	}
 }
 
@@ -892,5 +932,70 @@ func TestDBUpdatePlatformPolicyAuditsInTheSameTransaction(t *testing.T) {
 	}
 	if got := countRows(t, pg, `SELECT COUNT(*) FROM platform_audit_logs WHERE action = 'platform_policy_updated'`); got != 1 {
 		t.Fatalf("platform_policy_updated audit entries = %d, want 1", got)
+	}
+}
+
+// The storefront prices episodes in coins only while the platform allows
+// tenant coins, so allowing or forbidding them owes a drop of the cached
+// series and episode reads of every tenant whose coins are on, and of no other
+// tenant. The drop waits out the API's own cache of the policy.
+func TestDBUpdatePlatformPolicyDropsTheCoinPricesOfTenantsWithCoins(t *testing.T) {
+	client, pg, operator := newPolicyClient(t)
+	withCoins := pg.SeedTenant(t, "COINSON", "coins-on.example.com", "Coins on")
+	withoutCoins := pg.SeedTenant(t, "COINSOFF", "coins-off.example.com", "Coins off")
+	pg.SeedCoinSettings(t, withCoins.ID, testutil.CoinSettingsSeed{Names: map[string]string{"ja": "Tickets"}})
+	pg.SeedCoinSettings(t, withoutCoins.ID, testutil.CoinSettingsSeed{Disabled: true})
+
+	drops := func(tenantID string) int {
+		t.Helper()
+		var count int
+		if err := pg.DB.QueryRowContext(context.Background(), `
+			SELECT count(*) FROM outbox_events
+			WHERE tenant_id = $1
+				AND event_type = 'next_cache_revalidation'
+				AND payload->'tags' ? ('tenant:' || $1 || ':series:detail')
+				AND available_at > NOW()`, tenantID).Scan(&count); err != nil {
+			t.Fatalf("count the series detail drops: %v", err)
+		}
+		return count
+	}
+
+	policy := tightenedPolicy()
+	policy.TenantCoinsAllowed = false
+	first, err := updatePolicy(t, client, operator, policy, 0)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+	if got := drops(withCoins.ID.String()); got != 0 {
+		t.Fatalf("drops after a first save that leaves coins forbidden = %d, want 0", got)
+	}
+
+	policy.TenantCoinsAllowed = true
+	second, err := updatePolicy(t, client, operator, policy, first.Revision)
+	if err != nil {
+		t.Fatalf("allow tenant coins: %v", err)
+	}
+	if got := drops(withCoins.ID.String()); got != 1 {
+		t.Fatalf("drops of the tenant with coins = %d, want 1", got)
+	}
+	if got := drops(withoutCoins.ID.String()); got != 0 {
+		t.Fatalf("drops of the tenant without coins = %d, want 0", got)
+	}
+
+	policy.MFARequiredForTenantAdmin = !policy.MFARequiredForTenantAdmin
+	third, err := updatePolicy(t, client, operator, policy, second.Revision)
+	if err != nil {
+		t.Fatalf("save another change: %v", err)
+	}
+	if got := drops(withCoins.ID.String()); got != 1 {
+		t.Fatalf("drops after a save that keeps the allowance = %d, want still 1", got)
+	}
+
+	policy.TenantCoinsAllowed = false
+	if _, err := updatePolicy(t, client, operator, policy, third.Revision); err != nil {
+		t.Fatalf("forbid tenant coins: %v", err)
+	}
+	if got := drops(withCoins.ID.String()); got != 2 {
+		t.Fatalf("drops after forbidding coins = %d, want 2", got)
 	}
 }

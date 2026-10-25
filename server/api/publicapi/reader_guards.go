@@ -101,6 +101,9 @@ const (
 	// checkout, may expire the one before it, and asks the payment provider
 	// for a checkout.
 	actionStartSubscriptionCheckout readerAction = "subscription_checkout.start"
+	// An episode paid for with coins. Each payment writes a purchase and the
+	// coins it spent.
+	actionPayWithCoins readerAction = "coin_payment.pay"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -142,6 +145,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionPasskey:                        minuteDayRules(policy.Passkey),
 		actionStartSeriesRemainderCheckout:   minuteDayRules(policy.SeriesRemainderCheckout),
 		actionStartSubscriptionCheckout:      minuteDayRules(policy.SubscriptionCheckout),
+		actionPayWithCoins:                   minuteDayRules(policy.CoinPayment),
 	}
 }
 

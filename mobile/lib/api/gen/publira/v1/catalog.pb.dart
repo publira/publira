@@ -9773,6 +9773,8 @@ class MyPurchase extends $pb.GeneratedMessage {
     $0.PurchaseKind? kind,
     $0.Volume? volume,
     $0.SeriesBundle? seriesBundle,
+    $core.int? coinsSpent,
+    $core.String? coinName,
   }) {
     final result = MyPurchase._();
     if (id != null) result.id = id;
@@ -9789,6 +9791,8 @@ class MyPurchase extends $pb.GeneratedMessage {
     if (kind != null) result.kind = kind;
     if (volume != null) result.volume = volume;
     if (seriesBundle != null) result.seriesBundle = seriesBundle;
+    if (coinsSpent != null) result.coinsSpent = coinsSpent;
+    if (coinName != null) result.coinName = coinName;
     return result;
   }
 
@@ -9824,6 +9828,8 @@ class MyPurchase extends $pb.GeneratedMessage {
         subBuilder: $0.Volume.$_createMessage)
     ..aOM<$0.SeriesBundle>(14, _omitFieldNames ? '' : 'seriesBundle',
         subBuilder: $0.SeriesBundle.$_createMessage)
+    ..aI(15, _omitFieldNames ? '' : 'coinsSpent')
+    ..aOS(16, _omitFieldNames ? '' : 'coinName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10004,6 +10010,28 @@ class MyPurchase extends $pb.GeneratedMessage {
   void clearSeriesBundle() => $_clearField(14);
   @$pb.TagNumber(14)
   $0.SeriesBundle ensureSeriesBundle() => $_ensure(13);
+
+  /// Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
+  /// coins spent, and the tenant's word for its coins in the request's locale.
+  /// Such a purchase took no payment, so its price_at_purchase is 0. Both are 0
+  /// and empty on every other purchase.
+  @$pb.TagNumber(15)
+  $core.int get coinsSpent => $_getIZ(14);
+  @$pb.TagNumber(15)
+  set coinsSpent($core.int value) => $_setSignedInt32(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasCoinsSpent() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearCoinsSpent() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.String get coinName => $_getSZ(15);
+  @$pb.TagNumber(16)
+  set coinName($core.String value) => $_setString(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasCoinName() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearCoinName() => $_clearField(16);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.

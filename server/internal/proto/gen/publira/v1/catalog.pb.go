@@ -7711,7 +7711,13 @@ type MyPurchase struct {
 	// own: an episode whose permanent copy had a reading period when the
 	// checkout started stops opening when that period runs out, and the
 	// episode reads report it.
-	SeriesBundle  *v1.SeriesBundle `protobuf:"bytes,14,opt,name=series_bundle,json=seriesBundle,proto3" json:"series_bundle,omitempty"`
+	SeriesBundle *v1.SeriesBundle `protobuf:"bytes,14,opt,name=series_bundle,json=seriesBundle,proto3" json:"series_bundle,omitempty"`
+	// Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
+	// coins spent, and the tenant's word for its coins in the request's locale.
+	// Such a purchase took no payment, so its price_at_purchase is 0. Both are 0
+	// and empty on every other purchase.
+	CoinsSpent    int32  `protobuf:"varint,15,opt,name=coins_spent,json=coinsSpent,proto3" json:"coins_spent,omitempty"`
+	CoinName      string `protobuf:"bytes,16,opt,name=coin_name,json=coinName,proto3" json:"coin_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7842,6 +7848,20 @@ func (x *MyPurchase) GetSeriesBundle() *v1.SeriesBundle {
 		return x.SeriesBundle
 	}
 	return nil
+}
+
+func (x *MyPurchase) GetCoinsSpent() int32 {
+	if x != nil {
+		return x.CoinsSpent
+	}
+	return 0
+}
+
+func (x *MyPurchase) GetCoinName() string {
+	if x != nil {
+		return x.CoinName
+	}
+	return ""
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -9266,7 +9286,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x16\n" +
 	"\x06locale\x18\x04 \x01(\tR\x06locale\"I\n" +
 	"$StartSeriesRemainderCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xbe\x04\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xfc\x04\n" +
 	"\n" +
 	"MyPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
@@ -9286,7 +9306,10 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"revoked_at\x18\v \x01(\tR\trevokedAt\x122\n" +
 	"\x04kind\x18\f \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kind\x120\n" +
 	"\x06volume\x18\r \x01(\v2\x18.publira.types.v1.VolumeR\x06volume\x12C\n" +
-	"\rseries_bundle\x18\x0e \x01(\v2\x1e.publira.types.v1.SeriesBundleR\fseriesBundle\"\xd0\x01\n" +
+	"\rseries_bundle\x18\x0e \x01(\v2\x1e.publira.types.v1.SeriesBundleR\fseriesBundle\x12\x1f\n" +
+	"\vcoins_spent\x18\x0f \x01(\x05R\n" +
+	"coinsSpent\x12\x1b\n" +
+	"\tcoin_name\x18\x10 \x01(\tR\bcoinName\"\xd0\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +

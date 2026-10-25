@@ -149,6 +149,11 @@ var publicDataTables = []struct {
 	{name: "tenant_coin_config", count: "SELECT count(*) FROM tenant_coin_config"},
 	{name: "tenant_coin_name_translations", count: "SELECT count(*) FROM tenant_coin_name_translations"},
 	{name: "tenant_coin_packs", count: "SELECT count(*) FROM tenant_coin_packs"},
+	// A reader's coins: what they were granted, the history of their balance,
+	// and the grants each spend drew on.
+	{name: "coin_grants", count: "SELECT count(*) FROM coin_grants"},
+	{name: "coin_transactions", count: "SELECT count(*) FROM coin_transactions"},
+	{name: "coin_spend_allocations", count: "SELECT count(*) FROM coin_spend_allocations"},
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
 	{name: "tenant_config_translations", count: "SELECT count(*) FROM tenant_config_translations"},
 	{name: "tenant_themes", count: "SELECT count(*) FROM tenant_themes"},
@@ -455,6 +460,11 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("coin settings", "INSERT INTO tenant_coin_config (tenant_id, selling) VALUES ($1, true)", first.ID)
 	seed("coin name", "INSERT INTO tenant_coin_name_translations (id, tenant_id, locale, name) VALUES ($1, $2, 'en', 'Points')", uuid.Must(uuid.NewV7()), first.ID)
 	seed("coin pack", "INSERT INTO tenant_coin_packs (id, tenant_id, public_id, coins, price, on_sale) VALUES ($1, $2, 'COINPACKA001', 100, 100, true)", uuid.Must(uuid.NewV7()), first.ID)
+	coinGrantID := uuid.Must(uuid.NewV7())
+	coinTransactionID := uuid.Must(uuid.NewV7())
+	seed("coin grant", "INSERT INTO coin_grants (id, tenant_id, user_id, source, coins, remaining_coins, expires_at) VALUES ($1, $2, $3, 'staff', 100, 100, NOW() + interval '30 days')", coinGrantID, first.ID, member.ID)
+	seed("coin transaction", "INSERT INTO coin_transactions (id, tenant_id, user_id, kind, coins, grant_id) VALUES ($1, $2, $3, 'grant', 100, $4)", coinTransactionID, first.ID, member.ID, coinGrantID)
+	seed("coin spend allocation", "INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins) VALUES ($1, $2, $3, 10)", first.ID, coinTransactionID, coinGrantID)
 	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
 	seed("wait-free rule", "INSERT INTO series_wait_free_settings (tenant_id, series_id, enabled) VALUES ($1, $2, true)", first.ID, series.ID)
 	seed("wait-free ticket state", "INSERT INTO wait_free_ticket_states (tenant_id, user_id, series_id, next_available_at) VALUES ($1, $2, $3, NOW())", first.ID, member.ID, series.ID)

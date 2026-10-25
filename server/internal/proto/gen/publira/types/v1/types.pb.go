@@ -2263,8 +2263,26 @@ type Episode struct {
 	// empty elsewhere, the console's reads included.
 	CampaignPrice  int32  `protobuf:"varint,22,opt,name=campaign_price,json=campaignPrice,proto3" json:"campaign_price,omitempty"`
 	CampaignEndsAt string `protobuf:"bytes,23,opt,name=campaign_ends_at,json=campaignEndsAt,proto3" json:"campaign_ends_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// What the episode costs in the tenant's coins, which CoinService.
+	// PayEpisodeWithCoins spends: coin_price for the permanent copy, at
+	// campaign_price while a campaign is open and at price otherwise, and
+	// coin_rental_price for the rental, at rental_price. Each is that price
+	// divided by the value of one coin, rounded up. coin_name is the tenant's
+	// word for its coins in the reader's locale, so a client never names them
+	// itself.
+	//
+	// All three are 0 and empty on a free episode, and coin_rental_price on one
+	// that is not rented. They are 0 and empty too while the platform does not
+	// allow tenant coins or the tenant has not turned its coins on, and a client
+	// offers coins only where coin_price or coin_rental_price is set.
+	//
+	// Set on GetEpisodeDetail and on the episodes GetSeriesDetail lists; 0 and
+	// empty elsewhere, the console's reads included.
+	CoinPrice       int32  `protobuf:"varint,24,opt,name=coin_price,json=coinPrice,proto3" json:"coin_price,omitempty"`
+	CoinRentalPrice int32  `protobuf:"varint,25,opt,name=coin_rental_price,json=coinRentalPrice,proto3" json:"coin_rental_price,omitempty"`
+	CoinName        string `protobuf:"bytes,26,opt,name=coin_name,json=coinName,proto3" json:"coin_name,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -2454,6 +2472,27 @@ func (x *Episode) GetCampaignPrice() int32 {
 func (x *Episode) GetCampaignEndsAt() string {
 	if x != nil {
 		return x.CampaignEndsAt
+	}
+	return ""
+}
+
+func (x *Episode) GetCoinPrice() int32 {
+	if x != nil {
+		return x.CoinPrice
+	}
+	return 0
+}
+
+func (x *Episode) GetCoinRentalPrice() int32 {
+	if x != nil {
+		return x.CoinRentalPrice
+	}
+	return 0
+}
+
+func (x *Episode) GetCoinName() string {
+	if x != nil {
+		return x.CoinName
 	}
 	return ""
 }
@@ -3717,7 +3756,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x02id\x18\x16 \x01(\tR\x02id\x12.\n" +
 	"\x13rental_period_hours\x18\x17 \x01(\x05R\x11rentalPeriodHours\x12\x16\n" +
 	"\x06locale\x18\x18 \x01(\tR\x06locale\x126\n" +
-	"\x17bundle_discount_percent\x18\x19 \x01(\x05R\x15bundleDiscountPercentJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x8c\b\n" +
+	"\x17bundle_discount_percent\x18\x19 \x01(\x05R\x15bundleDiscountPercentJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xf4\b\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -3744,7 +3783,11 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x13rental_period_hours\x18\x14 \x01(\x05R\x11rentalPeriodHours\x12\x16\n" +
 	"\x06locale\x18\x15 \x01(\tR\x06locale\x12%\n" +
 	"\x0ecampaign_price\x18\x16 \x01(\x05R\rcampaignPrice\x12(\n" +
-	"\x10campaign_ends_at\x18\x17 \x01(\tR\x0ecampaignEndsAt\"\xd9\x01\n" +
+	"\x10campaign_ends_at\x18\x17 \x01(\tR\x0ecampaignEndsAt\x12\x1d\n" +
+	"\n" +
+	"coin_price\x18\x18 \x01(\x05R\tcoinPrice\x12*\n" +
+	"\x11coin_rental_price\x18\x19 \x01(\x05R\x0fcoinRentalPrice\x12\x1b\n" +
+	"\tcoin_name\x18\x1a \x01(\tR\bcoinName\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +

@@ -59,3 +59,40 @@ WHERE tenant_coin_name_translations.name IS DISTINCT FROM EXCLUDED.name;
 DELETE FROM tenant_coin_name_translations
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND NOT (locale = ANY(sqlc.arg('locales')::text []));
+
+-- name: GetTenantCoinOffer :one
+-- What a reader is told about the tenant's coins: the settings, and the coin's
+-- name in the locale asked for, else the tenant default locale's, else the
+-- oldest. No row is a tenant that has saved nothing.
+SELECT c.enabled,
+    c.selling,
+    c.coin_unit_amount,
+    c.expiry_days,
+    c.issuer_name,
+    c.terms_url,
+    c.contact,
+    c.notice,
+    -- Empty when the tenant has named the coin in no locale: sqlc reads the
+    -- columns of a function's row as never NULL.
+    COALESCE(n.name, '')::text AS coin_name
+FROM tenant_coin_config c
+    LEFT JOIN LATERAL tenant_coin_name_for(c.tenant_id, sqlc.arg('locale')::text) n ON TRUE
+WHERE c.tenant_id = sqlc.arg('tenant_id');
+
+-- name: LockTenantCoinConfigForSpend :one
+-- The tenant's coin settings as a spend reads them, held against a save until
+-- the spend commits, so a spend never lands after the save that turned coins
+-- off or changed what one is worth.
+SELECT enabled,
+    coin_unit_amount
+FROM tenant_coin_config
+WHERE tenant_id = $1
+FOR SHARE;
+
+-- name: ListTenantsWithCoinsEnabled :many
+-- Every tenant that has turned its coins on, across every tenant: the ones
+-- whose storefronts change when the platform allows or forbids tenant coins.
+SELECT tenant_id
+FROM tenant_coin_config
+WHERE enabled
+ORDER BY tenant_id;

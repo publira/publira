@@ -1,9 +1,9 @@
 // Package tickerjobs runs the jobs that have to act the moment a stored instant
 // passes — promoting due episodes, applying free window boundaries and the
 // publication of scheduled series, turning over each tenant's calendar day,
-// taking down a banner whose pinned window has closed, and applying the
-// boundaries of scheduled campaign banners and campaign prices — as River
-// periodic jobs.
+// taking down a banner whose pinned window has closed, applying the
+// boundaries of scheduled campaign banners and campaign prices, and recording
+// the coins of each grant that expired — as River periodic jobs.
 //
 // Each of them used to be a process of its own on a ticker, which meant a
 // deployment each to schedule, supervise, and keep from overlapping. River is
@@ -31,6 +31,7 @@ import (
 
 	"github.com/publira/publira/server/internal/campaignbanners"
 	"github.com/publira/publira/server/internal/campaignprices"
+	"github.com/publira/publira/server/internal/coinexpiry"
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/freewindows"
@@ -54,6 +55,7 @@ const (
 	ServiceNameApplySeriesPublications   = "publira-apply-series-publications"
 	ServiceNameApplyCampaignBanners      = "publira-apply-campaign-banners"
 	ServiceNameApplyCampaignPrices       = "publira-apply-campaign-prices"
+	ServiceNameExpireCoinGrants          = "publira-expire-coin-grants"
 )
 
 // QueueName is the River queue they run on. They are kept off the default queue
@@ -65,7 +67,7 @@ const QueueName = "ticker"
 // queueMaxWorkers is one slot per job. Two runs of the same job are already
 // refused by the unique constraint below, and the jobs are independent of each
 // other, so nothing is gained by a wider queue.
-const queueMaxWorkers = 7
+const queueMaxWorkers = 8
 
 const (
 	kindPublishEpisodes  = "ticker.publish_episodes"
@@ -76,6 +78,7 @@ const (
 	kindApplySeriesPublications   = "ticker.apply_series_publications"
 	kindApplyCampaignBanners      = "ticker.apply_campaign_banners"
 	kindApplyCampaignPrices       = "ticker.apply_campaign_prices"
+	kindExpireCoinGrants          = "ticker.expire_coin_grants"
 
 	DefaultPublishInterval            = time.Minute
 	DefaultPublishMaxRetries          = 3
@@ -85,6 +88,7 @@ const (
 	DefaultSeriesPublicationInterval  = time.Minute
 	DefaultCampaignBannerInterval     = time.Minute
 	DefaultCampaignPriceInterval      = time.Minute
+	DefaultCoinExpiryInterval         = time.Minute
 
 	// jobTimeout bounds one pass. It is well above any interval because a pass
 	// that has fallen behind is the one that must not be cut off half way: it
@@ -104,6 +108,7 @@ func ServiceNames() []string {
 		ServiceNameApplySeriesPublications,
 		ServiceNameApplyCampaignBanners,
 		ServiceNameApplyCampaignPrices,
+		ServiceNameExpireCoinGrants,
 	}
 }
 
@@ -132,6 +137,7 @@ type Config struct {
 	SeriesPublicationInterval  time.Duration
 	CampaignBannerInterval     time.Duration
 	CampaignPriceInterval      time.Duration
+	CoinExpiryInterval         time.Duration
 }
 
 func (c Config) withDefaults() Config {
@@ -159,6 +165,9 @@ func (c Config) withDefaults() Config {
 	if c.CampaignPriceInterval <= 0 {
 		c.CampaignPriceInterval = DefaultCampaignPriceInterval
 	}
+	if c.CoinExpiryInterval <= 0 {
+		c.CoinExpiryInterval = DefaultCoinExpiryInterval
+	}
 	return c
 }
 
@@ -175,6 +184,7 @@ type Jobs struct {
 	series     *seriespublications.Runner
 	banners    *campaignbanners.Runner
 	prices     *campaignprices.Runner
+	coins      *coinexpiry.Runner
 }
 
 // New constructs the runners over cfg.DB.
@@ -195,6 +205,7 @@ func New(cfg Config) (*Jobs, error) {
 		series:  seriespublications.New(queries, cfg.Revalidate, cfg.Logger),
 		banners: campaignbanners.New(queries, cfg.Revalidate, cfg.Logger),
 		prices:  campaignprices.New(queries, cfg.Revalidate, cfg.Logger),
+		coins:   coinexpiry.New(queries, cfg.Logger),
 	}, nil
 }
 
@@ -232,6 +243,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &applyCampaignPricesWorker{jobs: j}); err != nil {
 		return fmt.Errorf("tickerjobs: register apply-campaign-prices worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &expireCoinGrantsWorker{jobs: j}); err != nil {
+		return fmt.Errorf("tickerjobs: register expire-coin-grants worker: %w", err)
+	}
 	return nil
 }
 
@@ -256,6 +270,7 @@ func (j *Jobs) schedule() []scheduled {
 		{schedule: river.PeriodicInterval(j.cfg.SeriesPublicationInterval), args: ApplySeriesPublicationsArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.CampaignBannerInterval), args: ApplyCampaignBannersArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.CampaignPriceInterval), args: ApplyCampaignPricesArgs{}},
+		{schedule: river.PeriodicInterval(j.cfg.CoinExpiryInterval), args: ExpireCoinGrantsArgs{}},
 	}
 }
 
@@ -295,6 +310,7 @@ func (j *Jobs) Settings() []any {
 		"series_publication_interval", j.cfg.SeriesPublicationInterval,
 		"campaign_banner_interval", j.cfg.CampaignBannerInterval,
 		"campaign_price_interval", j.cfg.CampaignPriceInterval,
+		"coin_expiry_interval", j.cfg.CoinExpiryInterval,
 	}
 }
 
@@ -352,6 +368,13 @@ type ApplyCampaignPricesArgs struct{}
 func (ApplyCampaignPricesArgs) Kind() string { return kindApplyCampaignPrices }
 
 func (ApplyCampaignPricesArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
+
+// ExpireCoinGrantsArgs records the coins of every grant that expired unspent.
+type ExpireCoinGrantsArgs struct{}
+
+func (ExpireCoinGrantsArgs) Kind() string { return kindExpireCoinGrants }
+
+func (ExpireCoinGrantsArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
 
 // tickerInsertOpts is what keeps one tenant from being written twice.
 //
@@ -491,6 +514,22 @@ func (w *applyCampaignPricesWorker) Work(ctx context.Context, _ *river.Job[Apply
 	ctx, end := startRun(ctx, ServiceNameApplyCampaignPrices, kindApplyCampaignPrices)
 	defer end()
 	w.jobs.prices.RunOnce(ctx)
+	return nil
+}
+
+type expireCoinGrantsWorker struct {
+	river.WorkerDefaults[ExpireCoinGrantsArgs]
+	jobs *Jobs
+}
+
+func (w *expireCoinGrantsWorker) Timeout(*river.Job[ExpireCoinGrantsArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *expireCoinGrantsWorker) Work(ctx context.Context, _ *river.Job[ExpireCoinGrantsArgs]) error {
+	ctx, end := startRun(ctx, ServiceNameExpireCoinGrants, kindExpireCoinGrants)
+	defer end()
+	w.jobs.coins.RunOnce(ctx)
 	return nil
 }
 
