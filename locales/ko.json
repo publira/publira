@@ -289,6 +289,7 @@
       "targets": {
         "access_ticket": "이용권",
         "announcement": "공지사항",
+        "audience_stats": "독자 반응",
         "campaign_banner": "캠페인 배너",
         "coin_pack": "코인 팩",
         "coin_settings": "코인 설정",
@@ -309,6 +310,7 @@
         "page_translation": "페이지 번역",
         "payment_config": "결제 설정",
         "purchase": "구매",
+        "revenue_stats": "매출",
         "royalty_config": "인세 마감 설정",
         "royalty_statement": "인세 명세서",
         "series": "시리즈",
@@ -453,6 +455,7 @@
         "royalty_config_updated": "인세 마감 설정 변경",
         "royalty_statement_closed": "인세 월 마감",
         "royalty_statement_exported": "인세 명세서 CSV 다운로드",
+        "stats_exported": "애널리틱스 CSV 다운로드",
         "tenant_admin_invite_accepted": "초대 수락",
         "tenant_site_copy_updated": "공개 사이트 표시 설정 변경",
         "tenant_timezone_updated": "시간대 변경",

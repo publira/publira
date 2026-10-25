@@ -289,6 +289,7 @@
       "targets": {
         "access_ticket": "阅读券",
         "announcement": "公告",
+        "audience_stats": "读者反响",
         "campaign_banner": "活动横幅",
         "coin_pack": "代币包",
         "coin_settings": "代币设置",
@@ -309,6 +310,7 @@
         "page_translation": "页面翻译",
         "payment_config": "支付设置",
         "purchase": "购买",
+        "revenue_stats": "销售额",
         "royalty_config": "版税结算设置",
         "royalty_statement": "版税明细",
         "series": "系列",
@@ -453,6 +455,7 @@
         "royalty_config_updated": "更新了版税结算设置",
         "royalty_statement_closed": "结算了版税月份",
         "royalty_statement_exported": "下载了版税明细CSV",
+        "stats_exported": "下载了分析CSV",
         "tenant_admin_invite_accepted": "接受了邀请",
         "tenant_site_copy_updated": "更新了公开站点展示",
         "tenant_timezone_updated": "更新了时区",

@@ -55,6 +55,37 @@ func audienceListKey(report audienceReport) pagination.ListKey {
 	return key
 }
 
+// audienceReportFor resolves what an audience report of the tenant over the
+// period is read against, narrowed to the series seriesPublicID names unless
+// it is empty.
+func (s *adminServer) audienceReportFor(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	period statsPeriod,
+	seriesPublicID string,
+) (audienceReport, error) {
+	report := audienceReport{
+		tenantID: tenant.ID,
+		period:   period,
+		timeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
+	}
+	if seriesPublicID == "" {
+		return report, nil
+	}
+	series, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{
+		TenantID: tenant.ID,
+		PublicID: seriesPublicID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return audienceReport{}, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errAudienceSeriesNotFound, "series_public_id")
+	}
+	if err != nil {
+		return audienceReport{}, s.internalDBError(ctx, "failed to resolve series for audience stats", err, "tenant_id", tenant.ID.String())
+	}
+	report.seriesID = uuid.NullUUID{UUID: series.ID, Valid: true}
+	return report, nil
+}
+
 func (s *adminServer) audienceByDay(ctx context.Context, report audienceReport) ([]*publiraadminv1.AudienceStatsRow, error) {
 	days, err := s.queriesFor(ctx).ListAudienceByDay(ctx, dbmodels.ListAudienceByDayParams{
 		TenantID:  report.tenantID,
@@ -177,23 +208,9 @@ func (s *adminServer) GetAudienceStats(
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errAudienceGroupBy, "group_by")
 	}
 
-	report := audienceReport{
-		tenantID: tenant.ID,
-		period:   period,
-		timeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-	}
-	if req.SeriesPublicId != "" {
-		series, err := s.queriesFor(ctx).GetSeriesByPublicIDForTenant(ctx, dbmodels.GetSeriesByPublicIDForTenantParams{
-			TenantID: tenant.ID,
-			PublicID: req.SeriesPublicId,
-		})
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errAudienceSeriesNotFound, "series_public_id")
-		}
-		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to resolve series for audience stats", err, "tenant_id", tenant.ID.String())
-		}
-		report.seriesID = uuid.NullUUID{UUID: series.ID, Valid: true}
+	report, err := s.audienceReportFor(ctx, tenant, period, req.SeriesPublicId)
+	if err != nil {
+		return nil, err
 	}
 
 	ranked := req.GroupBy == publiraadminv1.AudienceGroupBy_AUDIENCE_GROUP_BY_SERIES

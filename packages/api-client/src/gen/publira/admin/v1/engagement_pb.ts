@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/engagement.proto.
  */
 export const file_publira_admin_v1_engagement: GenFile = /*@__PURE__*/
-  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAki3AEKD1JldmVudWVTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEhUKDWVwaXNvZGVfdGl0bGUYBSABKAkSFgoOcHVyY2hhc2VfY291bnQYBiABKAMSFAoMZ3Jvc3NfYW1vdW50GAcgASgDEhcKD3JlZnVuZGVkX2Ftb3VudBgIIAEoAxISCgpuZXRfYW1vdW50GAkgASgDIm8KElJldmVudWVTdGF0c1RvdGFscxIWCg5wdXJjaGFzZV9jb3VudBgBIAEoAxIUCgxncm9zc19hbW91bnQYAiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAMgASgDEhIKCm5ldF9hbW91bnQYBCABKAMiwQEKFkdldFJldmVudWVTdGF0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSMgoIZ3JvdXBfYnkYBCABKA4yIC5wdWJsaXJhLmFkbWluLnYxLlJldmVudWVHcm91cEJ5Eg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJIvcBChdHZXRSZXZlbnVlU3RhdHNSZXNwb25zZRIvCgRyb3dzGAEgAygLMiEucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSEAoIY3VycmVuY3kYBSABKAkSNAoGdG90YWxzGAYgASgLMiQucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNUb3RhbHMSFgoOcHJldmlvdXNfdG9rZW4YByABKAkSEgoKbmV4dF90b2tlbhgIIAEoCSKlAgoQQXVkaWVuY2VTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhYKDmZvbGxvd2VyX2NvdW50GAQgASgDEhYKDmZvbGxvd2VkX2NvdW50GAUgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYBiABKAMSEgoKdmlld19jb3VudBgHIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgIIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgJIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYCiABKAMSFgoOcmF0aW5nX2F2ZXJhZ2UYCyABKAESFAoMcmF0aW5nX2NvdW50GAwgASgDIrwBChNBdWRpZW5jZVN0YXRzVG90YWxzEhYKDmZvbGxvd2VyX2NvdW50GAEgASgDEhYKDmZvbGxvd2VkX2NvdW50GAIgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYAyABKAMSEgoKdmlld19jb3VudBgEIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgFIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgGIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYByABKAMi3QEKF0dldEF1ZGllbmNlU3RhdHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzdGFydF9kYXRlGAIgASgJEhAKCGVuZF9kYXRlGAMgASgJEjMKCGdyb3VwX2J5GAQgASgOMiEucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZUdyb3VwQnkSGAoQc2VyaWVzX3B1YmxpY19pZBgFIAEoCRINCgVsaW1pdBgGIAEoBRINCgV0b2tlbhgHIAEoCSLoAQoYR2V0QXVkaWVuY2VTdGF0c1Jlc3BvbnNlEjAKBHJvd3MYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLkF1ZGllbmNlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSNQoGdG90YWxzGAUgASgLMiUucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZVN0YXRzVG90YWxzEhYKDnByZXZpb3VzX3Rva2VuGAYgASgJEhIKCm5leHRfdG9rZW4YByABKAkiPAoQRXBpc29kZVBhZ2VSZWFjaBISCgpwYWdlX2luZGV4GAEgASgFEhQKDHJlYWRlcl9jb3VudBgCIAEoAyKMAQoYR2V0RXBpc29kZURyb3BPZmZSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRISCgpzdGFydF9kYXRlGAMgASgJEhAKCGVuZF9kYXRlGAQgASgJIpsBChlHZXRFcGlzb2RlRHJvcE9mZlJlc3BvbnNlEjEKBXBhZ2VzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUGFnZVJlYWNoEhIKCnBhZ2VfY291bnQYAiABKAUSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCRIRCgl0aW1lX3pvbmUYBSABKAkqhwEKDlJldmVudWVHcm91cEJ5EiAKHFJFVkVOVUVfR1JPVVBfQllfVU5TUEVDSUZJRUQQABIYChRSRVZFTlVFX0dST1VQX0JZX0RBWRABEhsKF1JFVkVOVUVfR1JPVVBfQllfU0VSSUVTEAISHAoYUkVWRU5VRV9HUk9VUF9CWV9FUElTT0RFEAMqbQoPQXVkaWVuY2VHcm91cEJ5EiEKHUFVRElFTkNFX0dST1VQX0JZX1VOU1BFQ0lGSUVEEAASGQoVQVVESUVOQ0VfR1JPVVBfQllfREFZEAESHAoYQVVESUVOQ0VfR1JPVVBfQllfU0VSSUVTEAIy3gMKFkFkbWluRW5nYWdlbWVudFNlcnZpY2USfQoWTGlzdEVwaXNvZGVSZWFkVGhyb3VnaBIvLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXNwb25zZSIAEmgKD0dldFJldmVudWVTdGF0cxIoLnB1YmxpcmEuYWRtaW4udjEuR2V0UmV2ZW51ZVN0YXRzUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuR2V0UmV2ZW51ZVN0YXRzUmVzcG9uc2UiABJrChBHZXRBdWRpZW5jZVN0YXRzEikucHVibGlyYS5hZG1pbi52MS5HZXRBdWRpZW5jZVN0YXRzUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuR2V0QXVkaWVuY2VTdGF0c1Jlc3BvbnNlIgASbgoRR2V0RXBpc29kZURyb3BPZmYSKi5wdWJsaXJhLmFkbWluLnYxLkdldEVwaXNvZGVEcm9wT2ZmUmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuR2V0RXBpc29kZURyb3BPZmZSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAki3AEKD1JldmVudWVTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEhUKDWVwaXNvZGVfdGl0bGUYBSABKAkSFgoOcHVyY2hhc2VfY291bnQYBiABKAMSFAoMZ3Jvc3NfYW1vdW50GAcgASgDEhcKD3JlZnVuZGVkX2Ftb3VudBgIIAEoAxISCgpuZXRfYW1vdW50GAkgASgDIm8KElJldmVudWVTdGF0c1RvdGFscxIWCg5wdXJjaGFzZV9jb3VudBgBIAEoAxIUCgxncm9zc19hbW91bnQYAiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAMgASgDEhIKCm5ldF9hbW91bnQYBCABKAMiwQEKFkdldFJldmVudWVTdGF0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSMgoIZ3JvdXBfYnkYBCABKA4yIC5wdWJsaXJhLmFkbWluLnYxLlJldmVudWVHcm91cEJ5Eg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJIvcBChdHZXRSZXZlbnVlU3RhdHNSZXNwb25zZRIvCgRyb3dzGAEgAygLMiEucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSEAoIY3VycmVuY3kYBSABKAkSNAoGdG90YWxzGAYgASgLMiQucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNUb3RhbHMSFgoOcHJldmlvdXNfdG9rZW4YByABKAkSEgoKbmV4dF90b2tlbhgIIAEoCSKlAgoQQXVkaWVuY2VTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhYKDmZvbGxvd2VyX2NvdW50GAQgASgDEhYKDmZvbGxvd2VkX2NvdW50GAUgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYBiABKAMSEgoKdmlld19jb3VudBgHIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgIIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgJIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYCiABKAMSFgoOcmF0aW5nX2F2ZXJhZ2UYCyABKAESFAoMcmF0aW5nX2NvdW50GAwgASgDIrwBChNBdWRpZW5jZVN0YXRzVG90YWxzEhYKDmZvbGxvd2VyX2NvdW50GAEgASgDEhYKDmZvbGxvd2VkX2NvdW50GAIgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYAyABKAMSEgoKdmlld19jb3VudBgEIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgFIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgGIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYByABKAMi3QEKF0dldEF1ZGllbmNlU3RhdHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzdGFydF9kYXRlGAIgASgJEhAKCGVuZF9kYXRlGAMgASgJEjMKCGdyb3VwX2J5GAQgASgOMiEucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZUdyb3VwQnkSGAoQc2VyaWVzX3B1YmxpY19pZBgFIAEoCRINCgVsaW1pdBgGIAEoBRINCgV0b2tlbhgHIAEoCSLoAQoYR2V0QXVkaWVuY2VTdGF0c1Jlc3BvbnNlEjAKBHJvd3MYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLkF1ZGllbmNlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSNQoGdG90YWxzGAUgASgLMiUucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZVN0YXRzVG90YWxzEhYKDnByZXZpb3VzX3Rva2VuGAYgASgJEhIKCm5leHRfdG9rZW4YByABKAkiPAoQRXBpc29kZVBhZ2VSZWFjaBISCgpwYWdlX2luZGV4GAEgASgFEhQKDHJlYWRlcl9jb3VudBgCIAEoAyKMAQoYR2V0RXBpc29kZURyb3BPZmZSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRISCgpzdGFydF9kYXRlGAMgASgJEhAKCGVuZF9kYXRlGAQgASgJIpsBChlHZXRFcGlzb2RlRHJvcE9mZlJlc3BvbnNlEjEKBXBhZ2VzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUGFnZVJlYWNoEhIKCnBhZ2VfY291bnQYAiABKAUSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCRIRCgl0aW1lX3pvbmUYBSABKAki0QEKEkV4cG9ydFN0YXRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSLwoEa2luZBgCIAEoDjIhLnB1YmxpcmEuYWRtaW4udjEuU3RhdHNFeHBvcnRLaW5kEhIKCnN0YXJ0X2RhdGUYAyABKAkSEAoIZW5kX2RhdGUYBCABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgFIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgGIAEoCSIiChNFeHBvcnRTdGF0c1Jlc3BvbnNlEgsKA2NzdhgBIAEoDCqHAQoOUmV2ZW51ZUdyb3VwQnkSIAocUkVWRU5VRV9HUk9VUF9CWV9VTlNQRUNJRklFRBAAEhgKFFJFVkVOVUVfR1JPVVBfQllfREFZEAESGwoXUkVWRU5VRV9HUk9VUF9CWV9TRVJJRVMQAhIcChhSRVZFTlVFX0dST1VQX0JZX0VQSVNPREUQAyptCg9BdWRpZW5jZUdyb3VwQnkSIQodQVVESUVOQ0VfR1JPVVBfQllfVU5TUEVDSUZJRUQQABIZChVBVURJRU5DRV9HUk9VUF9CWV9EQVkQARIcChhBVURJRU5DRV9HUk9VUF9CWV9TRVJJRVMQAiqmAgoPU3RhdHNFeHBvcnRLaW5kEiEKHVNUQVRTX0VYUE9SVF9LSU5EX1VOU1BFQ0lGSUVEEAASJAogU1RBVFNfRVhQT1JUX0tJTkRfUkVWRU5VRV9CWV9EQVkQARInCiNTVEFUU19FWFBPUlRfS0lORF9SRVZFTlVFX0JZX1NFUklFUxACEigKJFNUQVRTX0VYUE9SVF9LSU5EX1JFVkVOVUVfQllfRVBJU09ERRADEiUKIVNUQVRTX0VYUE9SVF9LSU5EX0FVRElFTkNFX0JZX0RBWRAEEigKJFNUQVRTX0VYUE9SVF9LSU5EX0FVRElFTkNFX0JZX1NFUklFUxAFEiYKIlNUQVRTX0VYUE9SVF9LSU5EX0VQSVNPREVfRFJPUF9PRkYQBjK8BAoWQWRtaW5FbmdhZ2VtZW50U2VydmljZRJ9ChZMaXN0RXBpc29kZVJlYWRUaHJvdWdoEi8ucHVibGlyYS5hZG1pbi52MS5MaXN0RXBpc29kZVJlYWRUaHJvdWdoUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlIgASaAoPR2V0UmV2ZW51ZVN0YXRzEigucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXNwb25zZSIAEmsKEEdldEF1ZGllbmNlU3RhdHMSKS5wdWJsaXJhLmFkbWluLnYxLkdldEF1ZGllbmNlU3RhdHNSZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5HZXRBdWRpZW5jZVN0YXRzUmVzcG9uc2UiABJuChFHZXRFcGlzb2RlRHJvcE9mZhIqLnB1YmxpcmEuYWRtaW4udjEuR2V0RXBpc29kZURyb3BPZmZSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5HZXRFcGlzb2RlRHJvcE9mZlJlc3BvbnNlIgASXAoLRXhwb3J0U3RhdHMSJC5wdWJsaXJhLmFkbWluLnYxLkV4cG9ydFN0YXRzUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuRXhwb3J0U3RhdHNSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * One episode's read-through over the reported period.
@@ -842,6 +842,108 @@ export const GetEpisodeDropOffResponseSchema: GenMessage<GetEpisodeDropOffRespon
   messageDesc(file_publira_admin_v1_engagement, 13);
 
 /**
+ * @generated from message publira.admin.v1.ExportStatsRequest
+ */
+export type ExportStatsRequest = Message<"publira.admin.v1.ExportStatsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * STATS_EXPORT_KIND_UNSPECIFIED is refused.
+   *
+   * @generated from field: publira.admin.v1.StatsExportKind kind = 2;
+   */
+  kind: StatsExportKind;
+
+  /**
+   * The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+   * zone, on the same terms as the report's own RPC.
+   *
+   * @generated from field: string start_date = 3;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 4;
+   */
+  endDate: string;
+
+  /**
+   * Narrows an audience report to one series, as GetAudienceStatsRequest's
+   * field of the same name does. Any other kind refuses it, since the file
+   * would not be narrowed the way the request says.
+   *
+   * @generated from field: string series_public_id = 5;
+   */
+  seriesPublicId: string;
+
+  /**
+   * The episode of STATS_EXPORT_KIND_EPISODE_DROP_OFF, which requires it. Any
+   * other kind refuses it.
+   *
+   * @generated from field: string episode_public_id = 6;
+   */
+  episodePublicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.ExportStatsRequest.
+ * Use `create(ExportStatsRequestSchema)` to create a new message.
+ */
+export const ExportStatsRequestSchema: GenMessage<ExportStatsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 14);
+
+/**
+ * @generated from message publira.admin.v1.ExportStatsResponse
+ */
+export type ExportStatsResponse = Message<"publira.admin.v1.ExportStatsResponse"> & {
+  /**
+   * The report as CSV: UTF-8 with a byte order mark, CRLF line endings,
+   * RFC 4180 quoting. A header row, then every row the report's RPC answers,
+   * in its order and over all of its pages, with no summary row; the totals
+   * are those of that RPC. Counts and amounts are integers, an amount in the
+   * minor unit of currency with no currency symbol. The IDs are public IDs,
+   * and a title is in the tenant's default locale. Columns, by kind:
+   *
+   *   REVENUE_BY_DAY        date, purchase_count, gross_amount,
+   *                         refunded_amount, net_amount, currency
+   *   REVENUE_BY_SERIES     start_date, end_date, series_id, series_title,
+   *                         purchase_count, gross_amount, refunded_amount,
+   *                         net_amount, currency
+   *   REVENUE_BY_EPISODE    start_date, end_date, series_id, series_title,
+   *                         episode_id, episode_title, purchase_count,
+   *                         gross_amount, refunded_amount, net_amount,
+   *                         currency
+   *   AUDIENCE_BY_DAY       date, follower_count, followed_count,
+   *                         unfollowed_count, view_count, complete_count,
+   *                         reaction_count, reaction_points
+   *   AUDIENCE_BY_SERIES    start_date, end_date, series_id, series_title,
+   *                         follower_count, followed_count, unfollowed_count,
+   *                         view_count, complete_count, reaction_count,
+   *                         reaction_points, rating_average, rating_count
+   *   EPISODE_DROP_OFF      start_date, end_date, episode_id, page_index,
+   *                         reader_count
+   *
+   * date, start_date, and end_date are the tenant's days (YYYY-MM-DD), the
+   * last two the period the request asked for. currency is the response
+   * currency of GetRevenueStats, the same on every row. rating_average has
+   * one decimal, and is 0.0 for a series no reader has reacted to.
+   *
+   * @generated from field: bytes csv = 1;
+   */
+  csv: Uint8Array;
+};
+
+/**
+ * Describes the message publira.admin.v1.ExportStatsResponse.
+ * Use `create(ExportStatsResponseSchema)` to create a new message.
+ */
+export const ExportStatsResponseSchema: GenMessage<ExportStatsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 15);
+
+/**
  * How GetRevenueStatsRequest cuts its period into rows.
  *
  * @generated from enum publira.admin.v1.RevenueGroupBy
@@ -915,6 +1017,67 @@ export const AudienceGroupBySchema: GenEnum<AudienceGroupBy> = /*@__PURE__*/
   enumDesc(file_publira_admin_v1_engagement, 1);
 
 /**
+ * Which report ExportStatsRequest writes, and how it cuts the period: each is
+ * one of the reports the RPCs above answer, under the grouping it names.
+ *
+ * @generated from enum publira.admin.v1.StatsExportKind
+ */
+export enum StatsExportKind {
+  /**
+   * @generated from enum value: STATS_EXPORT_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * GetRevenueStats by REVENUE_GROUP_BY_DAY.
+   *
+   * @generated from enum value: STATS_EXPORT_KIND_REVENUE_BY_DAY = 1;
+   */
+  REVENUE_BY_DAY = 1,
+
+  /**
+   * GetRevenueStats by REVENUE_GROUP_BY_SERIES.
+   *
+   * @generated from enum value: STATS_EXPORT_KIND_REVENUE_BY_SERIES = 2;
+   */
+  REVENUE_BY_SERIES = 2,
+
+  /**
+   * GetRevenueStats by REVENUE_GROUP_BY_EPISODE.
+   *
+   * @generated from enum value: STATS_EXPORT_KIND_REVENUE_BY_EPISODE = 3;
+   */
+  REVENUE_BY_EPISODE = 3,
+
+  /**
+   * GetAudienceStats by AUDIENCE_GROUP_BY_DAY.
+   *
+   * @generated from enum value: STATS_EXPORT_KIND_AUDIENCE_BY_DAY = 4;
+   */
+  AUDIENCE_BY_DAY = 4,
+
+  /**
+   * GetAudienceStats by AUDIENCE_GROUP_BY_SERIES.
+   *
+   * @generated from enum value: STATS_EXPORT_KIND_AUDIENCE_BY_SERIES = 5;
+   */
+  AUDIENCE_BY_SERIES = 5,
+
+  /**
+   * GetEpisodeDropOff.
+   *
+   * @generated from enum value: STATS_EXPORT_KIND_EPISODE_DROP_OFF = 6;
+   */
+  EPISODE_DROP_OFF = 6,
+}
+
+/**
+ * Describes the enum publira.admin.v1.StatsExportKind.
+ */
+export const StatsExportKindSchema: GenEnum<StatsExportKind> = /*@__PURE__*/
+  enumDesc(file_publira_admin_v1_engagement, 2);
+
+/**
  * @generated from service publira.admin.v1.AdminEngagementService
  */
 export const AdminEngagementService: GenService<{
@@ -967,6 +1130,22 @@ export const AdminEngagementService: GenService<{
     methodKind: "unary";
     input: typeof GetEpisodeDropOffRequestSchema;
     output: typeof GetEpisodeDropOffResponseSchema;
+  },
+  /**
+   * One of the reports above as a CSV file, whole: a ranked report's every
+   * page in one file. It reads what the report's RPC reads, when it is asked,
+   * and records the download in the tenant's audit log. The role is the one
+   * revenue needs whichever report is asked for, since one RPC serves them
+   * all.
+   *
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminEngagementService.ExportStats
+   */
+  exportStats: {
+    methodKind: "unary";
+    input: typeof ExportStatsRequestSchema;
+    output: typeof ExportStatsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_engagement, 0);

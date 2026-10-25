@@ -314,6 +314,75 @@ message GetEpisodeDropOffResponse {
   string time_zone = 5;
 }
 
+// Which report ExportStatsRequest writes, and how it cuts the period: each is
+// one of the reports the RPCs above answer, under the grouping it names.
+enum StatsExportKind {
+  STATS_EXPORT_KIND_UNSPECIFIED = 0;
+  // GetRevenueStats by REVENUE_GROUP_BY_DAY.
+  STATS_EXPORT_KIND_REVENUE_BY_DAY = 1;
+  // GetRevenueStats by REVENUE_GROUP_BY_SERIES.
+  STATS_EXPORT_KIND_REVENUE_BY_SERIES = 2;
+  // GetRevenueStats by REVENUE_GROUP_BY_EPISODE.
+  STATS_EXPORT_KIND_REVENUE_BY_EPISODE = 3;
+  // GetAudienceStats by AUDIENCE_GROUP_BY_DAY.
+  STATS_EXPORT_KIND_AUDIENCE_BY_DAY = 4;
+  // GetAudienceStats by AUDIENCE_GROUP_BY_SERIES.
+  STATS_EXPORT_KIND_AUDIENCE_BY_SERIES = 5;
+  // GetEpisodeDropOff.
+  STATS_EXPORT_KIND_EPISODE_DROP_OFF = 6;
+}
+
+message ExportStatsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // STATS_EXPORT_KIND_UNSPECIFIED is refused.
+  StatsExportKind kind = 2;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone, on the same terms as the report's own RPC.
+  string start_date = 3;
+  string end_date = 4;
+  // Narrows an audience report to one series, as GetAudienceStatsRequest's
+  // field of the same name does. Any other kind refuses it, since the file
+  // would not be narrowed the way the request says.
+  string series_public_id = 5;
+  // The episode of STATS_EXPORT_KIND_EPISODE_DROP_OFF, which requires it. Any
+  // other kind refuses it.
+  string episode_public_id = 6;
+}
+
+message ExportStatsResponse {
+  // The report as CSV: UTF-8 with a byte order mark, CRLF line endings,
+  // RFC 4180 quoting. A header row, then every row the report's RPC answers,
+  // in its order and over all of its pages, with no summary row; the totals
+  // are those of that RPC. Counts and amounts are integers, an amount in the
+  // minor unit of currency with no currency symbol. The IDs are public IDs,
+  // and a title is in the tenant's default locale. Columns, by kind:
+  //
+  //   REVENUE_BY_DAY        date, purchase_count, gross_amount,
+  //                         refunded_amount, net_amount, currency
+  //   REVENUE_BY_SERIES     start_date, end_date, series_id, series_title,
+  //                         purchase_count, gross_amount, refunded_amount,
+  //                         net_amount, currency
+  //   REVENUE_BY_EPISODE    start_date, end_date, series_id, series_title,
+  //                         episode_id, episode_title, purchase_count,
+  //                         gross_amount, refunded_amount, net_amount,
+  //                         currency
+  //   AUDIENCE_BY_DAY       date, follower_count, followed_count,
+  //                         unfollowed_count, view_count, complete_count,
+  //                         reaction_count, reaction_points
+  //   AUDIENCE_BY_SERIES    start_date, end_date, series_id, series_title,
+  //                         follower_count, followed_count, unfollowed_count,
+  //                         view_count, complete_count, reaction_count,
+  //                         reaction_points, rating_average, rating_count
+  //   EPISODE_DROP_OFF      start_date, end_date, episode_id, page_index,
+  //                         reader_count
+  //
+  // date, start_date, and end_date are the tenant's days (YYYY-MM-DD), the
+  // last two the period the request asked for. currency is the response
+  // currency of GetRevenueStats, the same on every row. rating_average has
+  // one decimal, and is 0.0 for a series no reader has reacted to.
+  bytes csv = 1;
+}
+
 service AdminEngagementService {
   // Minimum role: tenant_auditor.
   rpc ListEpisodeReadThrough(ListEpisodeReadThroughRequest) returns (ListEpisodeReadThroughResponse) {}
@@ -333,4 +402,12 @@ service AdminEngagementService {
   //
   // Minimum role: tenant_auditor.
   rpc GetEpisodeDropOff(GetEpisodeDropOffRequest) returns (GetEpisodeDropOffResponse) {}
+  // One of the reports above as a CSV file, whole: a ranked report's every
+  // page in one file. It reads what the report's RPC reads, when it is asked,
+  // and records the download in the tenant's audit log. The role is the one
+  // revenue needs whichever report is asked for, since one RPC serves them
+  // all.
+  //
+  // Minimum role: tenant_admin.
+  rpc ExportStats(ExportStatsRequest) returns (ExportStatsResponse) {}
 }

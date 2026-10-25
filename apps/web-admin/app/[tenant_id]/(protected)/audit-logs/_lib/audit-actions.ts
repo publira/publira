@@ -88,6 +88,7 @@ export const auditActions = [
   "royalty_config_updated",
   "royalty_statement_closed",
   "royalty_statement_exported",
+  "stats_exported",
   "tenant_member_added",
   "tenant_member_role_updated",
   "tenant_member_removed",

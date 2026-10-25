@@ -289,6 +289,7 @@
       "targets": {
         "access_ticket": "閱讀券",
         "announcement": "公告",
+        "audience_stats": "讀者反應",
         "campaign_banner": "活動橫幅",
         "coin_pack": "代幣包",
         "coin_settings": "代幣設定",
@@ -309,6 +310,7 @@
         "page_translation": "頁面翻譯",
         "payment_config": "付款設定",
         "purchase": "購買",
+        "revenue_stats": "銷售額",
         "royalty_config": "版稅結算設定",
         "royalty_statement": "版稅明細",
         "series": "系列",
@@ -453,6 +455,7 @@
         "royalty_config_updated": "更新了版稅結算設定",
         "royalty_statement_closed": "結算了版稅月份",
         "royalty_statement_exported": "下載了版稅明細CSV",
+        "stats_exported": "下載了分析CSV",
         "tenant_admin_invite_accepted": "接受了邀請",
         "tenant_site_copy_updated": "更新了公開網站呈現",
         "tenant_timezone_updated": "更新了時區",

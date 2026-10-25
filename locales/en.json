@@ -289,6 +289,7 @@
       "targets": {
         "access_ticket": "Access ticket",
         "announcement": "Announcement",
+        "audience_stats": "Audience",
         "campaign_banner": "Campaign banner",
         "coin_pack": "Coin pack",
         "coin_settings": "Coin settings",
@@ -309,6 +310,7 @@
         "page_translation": "Page translation",
         "payment_config": "Payment settings",
         "purchase": "Purchase",
+        "revenue_stats": "Revenue",
         "royalty_config": "Royalty closing settings",
         "royalty_statement": "Royalty statement",
         "series": "Series",
@@ -453,6 +455,7 @@
         "royalty_config_updated": "Royalty closing settings updated",
         "royalty_statement_closed": "Royalty month closed",
         "royalty_statement_exported": "Royalty statement CSV downloaded",
+        "stats_exported": "Analytics CSV downloaded",
         "tenant_admin_invite_accepted": "Invitation accepted",
         "tenant_site_copy_updated": "Public site display updated",
         "tenant_timezone_updated": "Time zone updated",

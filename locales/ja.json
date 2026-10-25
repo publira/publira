@@ -289,6 +289,7 @@
       "targets": {
         "access_ticket": "アクセスチケット",
         "announcement": "お知らせ",
+        "audience_stats": "読者の反応",
         "campaign_banner": "キャンペーンバナー",
         "coin_pack": "コインパック",
         "coin_settings": "コイン設定",
@@ -309,6 +310,7 @@
         "page_translation": "ページの翻訳",
         "payment_config": "決済設定",
         "purchase": "購入",
+        "revenue_stats": "売上",
         "royalty_config": "印税の締めの設定",
         "royalty_statement": "印税明細",
         "series": "シリーズ",
@@ -453,6 +455,7 @@
         "royalty_config_updated": "印税の締めの設定更新",
         "royalty_statement_closed": "印税の月締め",
         "royalty_statement_exported": "印税明細のCSVダウンロード",
+        "stats_exported": "アナリティクスのCSVダウンロード",
         "tenant_admin_invite_accepted": "招待の承諾",
         "tenant_site_copy_updated": "公開サイト表示設定更新",
         "tenant_timezone_updated": "タイムゾーン更新",
