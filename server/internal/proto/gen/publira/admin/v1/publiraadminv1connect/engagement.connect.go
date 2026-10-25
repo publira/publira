@@ -30,6 +30,9 @@ const (
 	// AdminEngagementServiceGetRevenueStatsProcedure is the procedure name of the
 	// AdminEngagementService's GetRevenueStats RPC.
 	AdminEngagementServiceGetRevenueStatsProcedure = "/publira.admin.v1.AdminEngagementService/GetRevenueStats"
+	// AdminEngagementServiceGetAudienceStatsProcedure is the procedure name of the
+	// AdminEngagementService's GetAudienceStats RPC.
+	AdminEngagementServiceGetAudienceStatsProcedure = "/publira.admin.v1.AdminEngagementService/GetAudienceStats"
 )
 
 var (
@@ -47,6 +50,13 @@ var (
 			Procedure:  AdminEngagementServiceGetRevenueStatsProcedure,
 		}
 	})
+	adminEngagementServiceGetAudienceStatsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_engagement_proto.Services().ByName("AdminEngagementService").Methods().ByName("GetAudienceStats"),
+			Procedure:  AdminEngagementServiceGetAudienceStatsProcedure,
+		}
+	})
 )
 
 // AdminEngagementServiceClient is a client for the publira.admin.v1.AdminEngagementService service.
@@ -59,6 +69,11 @@ type AdminEngagementServiceClient interface {
 	//
 	// Minimum role: tenant_admin.
 	GetRevenueStats(context.Context, *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error)
+	// How a tenant's series were followed, read, and reacted to over a period of
+	// its days, by day or by series, with the rating each series stands at.
+	//
+	// Minimum role: tenant_auditor.
+	GetAudienceStats(context.Context, *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error)
 }
 
 // NewAdminEngagementServiceClient constructs a client for the
@@ -79,6 +94,11 @@ type AdminEngagementServiceHandler interface {
 	//
 	// Minimum role: tenant_admin.
 	GetRevenueStats(context.Context, *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error)
+	// How a tenant's series were followed, read, and reacted to over a period of
+	// its days, by day or by series, with the rating each series stands at.
+	//
+	// Minimum role: tenant_auditor.
+	GetAudienceStats(context.Context, *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error)
 }
 
 // RegisterAdminEngagementServiceHandler registers svc as the
@@ -88,6 +108,7 @@ func RegisterAdminEngagementServiceHandler(server *connect.Server, svc AdminEnga
 	server.Register(
 		connect.Method{Spec: adminEngagementServiceListEpisodeReadThroughSpec(), Handler: adapter.listEpisodeReadThrough},
 		connect.Method{Spec: adminEngagementServiceGetRevenueStatsSpec(), Handler: adapter.getRevenueStats},
+		connect.Method{Spec: adminEngagementServiceGetAudienceStatsSpec(), Handler: adapter.getAudienceStats},
 	)
 }
 
@@ -100,6 +121,10 @@ func (UnimplementedAdminEngagementServiceHandler) ListEpisodeReadThrough(context
 
 func (UnimplementedAdminEngagementServiceHandler) GetRevenueStats(context.Context, *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.GetRevenueStats is not implemented")
+}
+
+func (UnimplementedAdminEngagementServiceHandler) GetAudienceStats(context.Context, *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.GetAudienceStats is not implemented")
 }
 
 type adminEngagementServiceClient struct {
@@ -117,6 +142,14 @@ func (c *adminEngagementServiceClient) ListEpisodeReadThrough(ctx context.Contex
 func (c *adminEngagementServiceClient) GetRevenueStats(ctx context.Context, req *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error) {
 	var res v1.GetRevenueStatsResponse
 	if err := c.client.CallUnary(ctx, adminEngagementServiceGetRevenueStatsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminEngagementServiceClient) GetAudienceStats(ctx context.Context, req *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error) {
+	var res v1.GetAudienceStatsResponse
+	if err := c.client.CallUnary(ctx, adminEngagementServiceGetAudienceStatsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -142,6 +175,18 @@ func (h adminEngagementServiceHandler) getRevenueStats(ctx context.Context, _ co
 		return err
 	}
 	res, err := h.svc.GetRevenueStats(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminEngagementServiceHandler) getAudienceStats(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetAudienceStatsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetAudienceStats(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -1113,6 +1113,20 @@ type SeriesFollow struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type SeriesFollowChange struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	Change    int16     `json:"change"`
+	ChangedAt time.Time `json:"changed_at"`
+}
+
+type SeriesFollowerCount struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+	Count    int64     `json:"count"`
+}
+
 type SeriesGenre struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	SeriesID  uuid.UUID `json:"series_id"`

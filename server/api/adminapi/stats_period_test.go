@@ -7,7 +7,7 @@ import (
 	"connectrpc.com/connect/v2"
 )
 
-func TestParseRevenuePeriod(t *testing.T) {
+func TestParseStatsPeriod(t *testing.T) {
 	tests := map[string]struct {
 		start, end string
 		wantErr    bool
@@ -24,16 +24,16 @@ func TestParseRevenuePeriod(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			period, err := parseRevenuePeriod(tt.start, tt.end)
+			period, err := parseStatsPeriod(tt.start, tt.end)
 			if tt.wantErr {
 				var connectErr *connect.Error
 				if !errors.As(err, &connectErr) || connectErr.Code() != connect.CodeInvalidArgument {
-					t.Fatalf("parseRevenuePeriod(%q, %q) error = %v, want invalid_argument", tt.start, tt.end, err)
+					t.Fatalf("parseStatsPeriod(%q, %q) error = %v, want invalid_argument", tt.start, tt.end, err)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("parseRevenuePeriod(%q, %q): %v", tt.start, tt.end, err)
+				t.Fatalf("parseStatsPeriod(%q, %q): %v", tt.start, tt.end, err)
 			}
 			if got := period.start.Format("2006-01-02") + ".." + period.end.Format("2006-01-02"); got != tt.start+".."+tt.end {
 				t.Fatalf("period = %s, want %s..%s", got, tt.start, tt.end)

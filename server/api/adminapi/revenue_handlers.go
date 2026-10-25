@@ -21,51 +21,15 @@ import (
 const (
 	defaultRevenueStatsPageSize = int32(20)
 	maxRevenueStatsPageSize     = int32(100)
-
-	// maxRevenuePeriodDays bounds the period a report may cover: a year, a
-	// leap one included. It is what keeps a day report one response, and what
-	// bounds the range of purchases any of the reports aggregates.
-	maxRevenuePeriodDays = 366
 )
 
-var (
-	errRevenuePeriodDate     = errors.New("start_date and end_date must be YYYY-MM-DD dates")
-	errRevenuePeriodReversed = errors.New("start_date must not be after end_date")
-	errRevenuePeriodTooLong  = errors.New("the period must cover at most 366 days")
-	errRevenueGroupBy        = errors.New("group_by is required")
-)
-
-// revenuePeriod is the closed range of tenant days a report covers. The dates
-// come back at midnight UTC because they name calendar days rather than
-// instants; the queries turn them into the tenant's midnights themselves.
-type revenuePeriod struct {
-	start time.Time
-	end   time.Time
-}
-
-func parseRevenuePeriod(rawStart, rawEnd string) (revenuePeriod, error) {
-	start, err := time.Parse(time.DateOnly, rawStart)
-	if err != nil {
-		return revenuePeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errRevenuePeriodDate, "start_date")
-	}
-	end, err := time.Parse(time.DateOnly, rawEnd)
-	if err != nil {
-		return revenuePeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errRevenuePeriodDate, "end_date")
-	}
-	if end.Before(start) {
-		return revenuePeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errRevenuePeriodReversed, "end_date")
-	}
-	if !end.Before(start.AddDate(0, 0, maxRevenuePeriodDays)) {
-		return revenuePeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errRevenuePeriodTooLong, "end_date")
-	}
-	return revenuePeriod{start: start, end: end}, nil
-}
+var errRevenueGroupBy = errors.New("group_by is required")
 
 // revenueReport is what every grouping is read against: the tenant, the
 // period in its zone, and the one currency its amounts are added up in.
 type revenueReport struct {
 	tenantID uuid.UUID
-	period   revenuePeriod
+	period   statsPeriod
 	timeZone string
 	currency string
 }
@@ -88,7 +52,7 @@ func revenueStatsRow(purchaseCount, grossAmount, refundedAmount int64) *publiraa
 
 // revenueListKey binds a ranked report's tokens to its grouping and its
 // period, since a boundary row sits elsewhere once either changes.
-func revenueListKey(groupBy publiraadminv1.RevenueGroupBy, period revenuePeriod) pagination.ListKey {
+func revenueListKey(groupBy publiraadminv1.RevenueGroupBy, period statsPeriod) pagination.ListKey {
 	order := "series_net_amount_desc"
 	if groupBy == publiraadminv1.RevenueGroupBy_REVENUE_GROUP_BY_EPISODE {
 		order = "episode_net_amount_desc"
@@ -254,7 +218,7 @@ func (s *adminServer) GetRevenueStats(
 		return nil, err
 	}
 
-	period, err := parseRevenuePeriod(req.StartDate, req.EndDate)
+	period, err := parseStatsPeriod(req.StartDate, req.EndDate)
 	if err != nil {
 		return nil, err
 	}
