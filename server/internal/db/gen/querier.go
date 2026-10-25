@@ -134,6 +134,8 @@ type Querier interface {
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
 	CountCampaignBannersForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
+	// The packs the tenant has not retired, which are what its cap counts.
+	CountCoinPacksForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// For the tenant dashboard.
 	CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Whether a role may still be deleted, counted over the episodes. The refusal
@@ -209,6 +211,7 @@ type Querier interface {
 	CreateCampaignBanner(ctx context.Context, arg CreateCampaignBannerParams) (CreateCampaignBannerRow, error)
 	CreateCampaignBannerImage(ctx context.Context, arg CreateCampaignBannerImageParams) (CampaignBannerImage, error)
 	CreateCampaignBannerImageVariant(ctx context.Context, arg CreateCampaignBannerImageVariantParams) (CampaignBannerImageVariant, error)
+	CreateCoinPack(ctx context.Context, arg CreateCoinPackParams) (TenantCoinPack, error)
 	// Messages readers send the tenant through the contact form, and the staff
 	// addresses the mail announcing one goes to.
 	//
@@ -519,6 +522,8 @@ type Querier interface {
 	DeleteSeriesTranslation(ctx context.Context, arg DeleteSeriesTranslationParams) (int64, error)
 	DeleteSubscriptionPlan(ctx context.Context, arg DeleteSubscriptionPlanParams) (int64, error)
 	DeleteSubscriptionPlanTargets(ctx context.Context, arg DeleteSubscriptionPlanTargetsParams) error
+	// Removes the names of every locale a save no longer names.
+	DeleteTenantCoinNamesExcept(ctx context.Context, arg DeleteTenantCoinNamesExceptParams) error
 	// A locale whose copy is cleared has no row, so its readers are served the
 	// copy tenant_config_translation_for falls back to.
 	DeleteTenantConfigTranslation(ctx context.Context, arg DeleteTenantConfigTranslationParams) (int64, error)
@@ -595,6 +600,9 @@ type Querier interface {
 	// the second updates nothing. Affecting no row is therefore an enrollment
 	// another request has already confirmed.
 	EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (int64, error)
+	// Gives a tenant that has saved nothing its row, with every column at its
+	// default, so the save after it always has a row to lock.
+	EnsureTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) error
 	// The console handles only the tickets staff issued. A wait-for-free ticket is
 	// one the reader took themselves, so the console neither lists it nor revokes
 	// it, and looking one up here finds nothing.
@@ -1123,6 +1131,7 @@ type Querier interface {
 	GetTenantByImageDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
+	GetTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) (TenantCoinConfig, error)
 	GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	// The copy written in exactly locale, which is what the console edits: no
@@ -1616,6 +1625,8 @@ type Querier interface {
 	// reader in that locale is shown, the translation it falls back to included.
 	ListCatalogIndexSeries(ctx context.Context, arg ListCatalogIndexSeriesParams) ([]ListCatalogIndexSeriesRow, error)
 	ListCatalogIndexTenantIDs(ctx context.Context) ([]uuid.UUID, error)
+	// The packs the tenant has not retired, in the order it sells them.
+	ListCoinPacksForTenant(ctx context.Context, tenantID uuid.UUID) ([]TenantCoinPack, error)
 	// One message's exchange as the console shows it under the message, oldest
 	// first so it reads in the order it was written. The author is joined for the
 	// name the console prints beside a staff entry.
@@ -2669,6 +2680,8 @@ type Querier interface {
 	// The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
+	// Every locale's name of the tenant's coin, oldest first.
+	ListTenantCoinNames(ctx context.Context, tenantID uuid.UUID) ([]TenantCoinNameTranslation, error)
 	ListTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) ([]string, error)
 	// Every tenant that sells in the platform's default currency, having saved no
 	// payment settings of its own, and whose site therefore shows its prices in
@@ -2789,6 +2802,8 @@ type Querier interface {
 	// The lock is taken on the inbox rather than on a row, so it holds before any
 	// account has it.
 	LockCanonicalEmailForTenant(ctx context.Context, arg LockCanonicalEmailForTenantParams) error
+	// A pack the tenant has not retired, locked for the write that follows.
+	LockCoinPackForTenant(ctx context.Context, arg LockCoinPackForTenantParams) (TenantCoinPack, error)
 	// Locks every role of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers
@@ -2931,6 +2946,9 @@ type Querier interface {
 	// be left billing for no one with nothing queued to cancel it.
 	LockSubscriptionsOfUser(ctx context.Context, arg LockSubscriptionsOfUserParams) error
 	LockTenantAdminInvitationByHashForTenant(ctx context.Context, arg LockTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
+	// Serializes the saves of one tenant's coin settings, so the check that the
+	// names hold the default locale's and the write after it see the same rows.
+	LockTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) (TenantCoinConfig, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant
@@ -2966,6 +2984,11 @@ type Querier interface {
 	// NO KEY UPDATE rather than UPDATE, so it does not hold back the foreign key
 	// checks every write naming the tenant makes.
 	LockTenantForCampaignBanners(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	// Serializes the creates of one tenant, so two of them cannot both count one
+	// short of the cap and both be stored. NO KEY UPDATE rather than UPDATE, so it
+	// does not hold back the foreign key checks every write naming the tenant
+	// makes.
+	LockTenantForCoinPacks(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Taken by a reader's icon change before it reads the policy, which is the
 	// next statement rather than this one: READ COMMITTED freezes a statement's
 	// snapshot when it starts, so a read waiting on the lock here would still see
@@ -3446,6 +3469,7 @@ type Querier interface {
 	// It is due at once and charges no attempt: the retry budget is for
 	// failures, and an event large enough to need many runs is not failing.
 	ResumeOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
+	RetireCoinPack(ctx context.Context, arg RetireCoinPackParams) error
 	// Staff tickets only, as GetAccessTicketForTenant: revoking a wait-for-free
 	// ticket would take away a read the reader was entitled to.
 	RevokeAccessTicketForTenant(ctx context.Context, arg RevokeAccessTicketForTenantParams) (AccessTicket, error)
@@ -3634,6 +3658,7 @@ type Querier interface {
 	UnsuspendUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	UpdateCampaignBanner(ctx context.Context, arg UpdateCampaignBannerParams) error
 	UpdateCampaignBannerDisplayOrder(ctx context.Context, arg UpdateCampaignBannerDisplayOrderParams) error
+	UpdateCoinPack(ctx context.Context, arg UpdateCoinPackParams) (TenantCoinPack, error)
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error
@@ -3709,6 +3734,7 @@ type Querier interface {
 	// A resend passes the role the invitation already grants; inviting the same
 	// address again passes the role that invitation asks for.
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
+	UpdateTenantCoinConfig(ctx context.Context, arg UpdateTenantCoinConfigParams) (TenantCoinConfig, error)
 	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	// The default and the set it belongs to are written in one statement, so the
 	// CHECK that the set holds the default sees them together and neither can be
@@ -3781,6 +3807,8 @@ type Querier interface {
 	UpsertTenantAppPurchaseRoute(ctx context.Context, arg UpsertTenantAppPurchaseRouteParams) (string, error)
 	UpsertTenantAppStoreConfig(ctx context.Context, arg UpsertTenantAppStoreConfigParams) (TenantAppStoreConfig, error)
 	UpsertTenantAppleSignInConfig(ctx context.Context, arg UpsertTenantAppleSignInConfigParams) (TenantAppleSignInConfig, error)
+	// Writes one locale's name. A name saved again as it was keeps its updated_at.
+	UpsertTenantCoinName(ctx context.Context, arg UpsertTenantCoinNameParams) error
 	// The settings screen can save what the tenant has decided about commenting
 	// for a tenant whose config row does not exist yet, so both columns are
 	// written without disturbing the columns the other settings cards own.

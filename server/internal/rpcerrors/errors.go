@@ -27,7 +27,13 @@ const (
 	// ReasonCampaignBannerLimit refuses creating a campaign banner for a
 	// tenant that holds as many as it may.
 	ReasonCampaignBannerLimit = "CAMPAIGN_BANNER_LIMIT"
-	ReasonCreatorRoleInUse    = "CREATOR_ROLE_IN_USE"
+	// ReasonCoinPackLimit refuses creating a coin pack for a tenant that
+	// holds as many as it may.
+	ReasonCoinPackLimit = "COIN_PACK_LIMIT"
+	// ReasonCoinPackSold refuses changing the price or the coins of a coin
+	// pack that has been sold.
+	ReasonCoinPackSold     = "COIN_PACK_SOLD"
+	ReasonCreatorRoleInUse = "CREATOR_ROLE_IN_USE"
 	// ReasonIdentityLinkedToAnotherAccount refuses linking a provider account
 	// that signs in to another reader of the tenant.
 	ReasonIdentityLinkedToAnotherAccount = "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT"

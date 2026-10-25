@@ -1,0 +1,196 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// One locale's word for the tenant's coin: the unit noun that follows a
+// number, such as "Points" in "120 Points". `coin` stays the identifier
+// everywhere in code; this is the word readers see.
+message CoinNameTranslation {
+  string locale = 1;
+  string name = 2;
+  // RFC 3339. Empty in a request.
+  string created_at = 3;
+  string updated_at = 4;
+}
+
+// A tenant's coins: whether it issues them, what one is worth, how long one
+// lasts, what it is called, and what a prepaid instrument has to disclose.
+//
+// A tenant that has saved nothing reads enabled and selling false, no names,
+// zero coin_unit_amount and expiry_days, and empty disclosures.
+message TenantCoinSettings {
+  // Whether readers may hold and spend the tenant's coins. Nothing about
+  // coins reaches a reader unless this is true and the platform allows tenant
+  // coins too.
+  bool enabled = 1;
+  // Whether packs are on sale. Independent of enabled, so a tenant can stop
+  // selling while readers spend what they hold.
+  bool selling = 2;
+  // What one coin is worth in the minor unit of currency. Zero before the
+  // tenant states it.
+  int32 coin_unit_amount = 3;
+  // How many days after purchase a coin can be spent. Zero before the tenant
+  // states it.
+  int32 expiry_days = 4;
+  // The disclosures a prepaid instrument carries: who issues it, its terms,
+  // how to reach the issuer, and a notice shown where coins are sold.
+  string issuer_name = 5;
+  string terms_url = 6;
+  string contact = 7;
+  string notice = 8;
+  // The coin's name in each locale it has one in, oldest first.
+  repeated CoinNameTranslation names = 9;
+}
+
+message GetTenantCoinSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantCoinSettingsResponse {
+  TenantCoinSettings settings = 1;
+  // Whether the platform lets tenants issue coins. While false, turning
+  // enabled on is failed_precondition, and nothing about coins reaches a
+  // reader whatever settings says.
+  bool platform_allows_coins = 2;
+  // The ISO 4217 code, in capitals, of the tenant's currency, which
+  // coin_unit_amount and every pack's price are in.
+  string currency = 3;
+}
+
+// Replaces every field of the tenant's coin settings with settings, the names
+// included: a locale settings.names leaves out loses its name.
+//
+// Each name is trimmed, and has to be 1 to 30 Unicode code points in a locale
+// the tenant offers, each locale named once. coin_unit_amount and expiry_days
+// are zero or positive, expiry_days at most 36500. issuer_name is at most 200
+// code points, contact 500, notice 2000, and terms_url an absolute http or
+// https URL of at most 2048 bytes. Anything else is invalid_argument on the
+// field.
+//
+// While enabled is true, a name in the tenant's default locale,
+// coin_unit_amount, expiry_days, and every disclosure are required, and a
+// missing one is invalid_argument on its field. Turning enabled on is
+// failed_precondition while the platform does not allow tenant coins, and
+// while neither the tenant's payment provider nor one of its app stores is
+// ready, since there would be no way to sell a pack. Turning selling off is
+// always allowed.
+message UpdateTenantCoinSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  TenantCoinSettings settings = 2;
+  // The ISO 4217 code coin_unit_amount was entered in: the tenant currency as
+  // the client read it. An amount in a currency that is no longer the
+  // tenant's when it is written is failed_precondition, with a field violation
+  // on currency. Empty states none, and the amount is written unchecked.
+  string currency = 3;
+}
+
+message UpdateTenantCoinSettingsResponse {
+  TenantCoinSettings settings = 1;
+  bool platform_allows_coins = 2;
+  string currency = 3;
+}
+
+// A pack of coins the tenant sells.
+message CoinPack {
+  // The pack's primary key, which every RPC below addresses it by.
+  string id = 1;
+  string public_id = 2;
+  // The coins a purchase of the pack grants, and the bonus coins it grants on
+  // top of them.
+  int32 coins = 3;
+  int32 bonus_coins = 4;
+  // In the minor unit of currency.
+  int32 price = 5;
+  // The ISO 4217 code, in capitals, of the tenant currency price is in.
+  string currency = 6;
+  // Packs are listed in ascending sort_order.
+  int32 sort_order = 7;
+  bool on_sale = 8;
+  // True once the pack has been sold. From then on its price, coins, and
+  // bonus coins are what a purchase of it bought, and never change.
+  bool sold = 9;
+  // RFC 3339.
+  string created_at = 10;
+  string updated_at = 11;
+}
+
+// The fields a pack is saved with, which CreateCoinPack and UpdateCoinPack
+// take alike. coins and price are at least 1, bonus_coins at least 0, and
+// coins and bonus_coins together fit in an int32; anything else is
+// invalid_argument on the field.
+message CoinPackInput {
+  int32 coins = 1;
+  int32 bonus_coins = 2;
+  int32 price = 3;
+  int32 sort_order = 4;
+  bool on_sale = 5;
+  // The ISO 4217 code price was entered in: the tenant currency as the client
+  // read it. A price in a currency that is no longer the tenant's when it is
+  // written is failed_precondition, with a field violation on pack.currency.
+  // Empty states none, and the price is written unchecked.
+  string currency = 6;
+}
+
+message ListCoinPacksRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every pack the tenant has not retired, in ascending sort_order. A tenant
+// holds at most 20, so the list is never paged.
+message ListCoinPacksResponse {
+  repeated CoinPack packs = 1;
+}
+
+// A tenant that already holds 20 packs is failed_precondition with the
+// ErrorInfo reason COIN_PACK_LIMIT.
+message CreateCoinPackRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  CoinPackInput pack = 2;
+}
+
+message CreateCoinPackResponse {
+  CoinPack pack = 1;
+}
+
+// Replaces every field of the pack with pack. A pack that has been sold keeps
+// its price, coins, and bonus coins: changing any of them is
+// failed_precondition with the ErrorInfo reason COIN_PACK_SOLD, and only its
+// sale state and sort order change. A retired pack is not_found.
+message UpdateCoinPackRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string coin_pack_id = 2;
+  CoinPackInput pack = 3;
+}
+
+message UpdateCoinPackResponse {
+  CoinPack pack = 1;
+}
+
+// Takes a pack off sale for good. It leaves ListCoinPacks and the tenant's
+// cap, and stays stored so that a purchase of it can still say what was
+// bought. A pack retired already is not_found.
+message RetireCoinPackRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string coin_pack_id = 2;
+}
+
+message RetireCoinPackResponse {}
+
+service AdminCoinService {
+  // Minimum role: tenant_auditor.
+  rpc GetTenantCoinSettings(GetTenantCoinSettingsRequest) returns (GetTenantCoinSettingsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantCoinSettings(UpdateTenantCoinSettingsRequest) returns (UpdateTenantCoinSettingsResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc ListCoinPacks(ListCoinPacksRequest) returns (ListCoinPacksResponse) {}
+  // Minimum role: tenant_admin.
+  rpc CreateCoinPack(CreateCoinPackRequest) returns (CreateCoinPackResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateCoinPack(UpdateCoinPackRequest) returns (UpdateCoinPackResponse) {}
+  // Minimum role: tenant_admin.
+  rpc RetireCoinPack(RetireCoinPackRequest) returns (RetireCoinPackResponse) {}
+}

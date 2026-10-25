@@ -16,6 +16,8 @@ export const RPC_ERROR_REASON = {
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
   campaignBannerLimit: "CAMPAIGN_BANNER_LIMIT",
+  coinPackLimit: "COIN_PACK_LIMIT",
+  coinPackSold: "COIN_PACK_SOLD",
   creatorRoleInUse: "CREATOR_ROLE_IN_USE",
   identityLinkedToAnotherAccount: "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT",
   invitationCanceled: "INVITATION_CANCELED",

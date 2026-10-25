@@ -196,6 +196,14 @@ A tenant sells a subscription plan through a provider that implements `paymentpr
 - **Manage.** `CreateBillingPortalSession` opens Stripe's customer portal for the reader's customer, configured in the tenant's own Stripe Dashboard, where the reader changes their payment method or cancels. What they change reaches `subscriptions` through the webhook.
 - **Close.** Deleting an account — `DeleteMe`, the tenant console's `DeleteReader`, or the Platform Console's `DeleteEndUser` — queues a `subscription_cancel` outbox event for each of its subscriptions that is trialing, active, past due, unpaid, or paused, in the transaction that deletes it, since a reader with no account can reach no billing portal. `ProcessPaymentWebhook` queues one too for a subscription it records in one of those states with no reader, which is one whose checkout was paid, or recorded, only after the account was gone. The worker reads the subscription from Stripe and cancels it at once with `CancelSubscription`, neither prorating nor refunding the period paid. A failure on Stripe's side is retried like any outbox failure. One only the tenant can put right — payments switched off, credentials missing or refused by Stripe, or a key of an account that holds no such subscription — leaves the event waiting without spending an attempt, so the cancellation is still owed whenever the settings come back.
 
+## Coins
+
+A tenant may sell coins that its readers buy in advance and spend on its episodes once two switches are on: the platform policy's `tenant_coins_allowed`, and the tenant's own `enabled` in `tenant_coin_config`. `AdminCoinService` manages the tenant's side.
+
+- **Settings.** `tenant_coin_config` holds the switches, what one coin is worth, how long a purchased coin lasts, and the disclosures a prepaid instrument carries.
+- **Name.** `tenant_coin_name_translations` holds the word readers see, one row per locale, and `tenant_coin_name_for(tenant_id, locale)` picks the one to show.
+- **Packs.** `tenant_coin_packs` holds the coins, bonus coins, and price of each pack.
+
 ## Contact message replies by email
 
 Staff answer a contact message from the console, and the `contact_message_reply_email` outbox handler mails the answer to the reader through the tenant's SMTP settings. Where the reader's reply goes depends on whether the tenant receives inbound email:

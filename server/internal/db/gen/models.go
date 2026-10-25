@@ -1368,6 +1368,44 @@ type TenantAppleSignInConfig struct {
 	UpdatedAt           time.Time      `json:"updated_at"`
 }
 
+type TenantCoinConfig struct {
+	TenantID       uuid.UUID     `json:"tenant_id"`
+	Enabled        bool          `json:"enabled"`
+	Selling        bool          `json:"selling"`
+	CoinUnitAmount sql.NullInt32 `json:"coin_unit_amount"`
+	ExpiryDays     sql.NullInt32 `json:"expiry_days"`
+	IssuerName     string        `json:"issuer_name"`
+	TermsUrl       string        `json:"terms_url"`
+	Contact        string        `json:"contact"`
+	Notice         string        `json:"notice"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+}
+
+type TenantCoinNameTranslation struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Locale    string    `json:"locale"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type TenantCoinPack struct {
+	ID          uuid.UUID    `json:"id"`
+	TenantID    uuid.UUID    `json:"tenant_id"`
+	PublicID    string       `json:"public_id"`
+	Coins       int32        `json:"coins"`
+	BonusCoins  int32        `json:"bonus_coins"`
+	Price       int32        `json:"price"`
+	SortOrder   int32        `json:"sort_order"`
+	OnSale      bool         `json:"on_sale"`
+	FirstSoldAt sql.NullTime `json:"first_sold_at"`
+	RetiredAt   sql.NullTime `json:"retired_at"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+}
+
 type TenantCommunityLimitOverride struct {
 	TenantID                             uuid.UUID     `json:"tenant_id"`
 	CommentPostLimitPerMinute            sql.NullInt32 `json:"comment_post_limit_per_minute"`

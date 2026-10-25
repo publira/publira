@@ -144,6 +144,11 @@ var publicDataTables = []struct {
 	{name: "subscriptions", count: "SELECT count(*) FROM subscriptions"},
 	{name: "billed_subscriptions", count: "SELECT count(*) FROM billed_subscriptions"},
 	{name: "subscription_checkouts", count: "SELECT count(*) FROM subscription_checkouts"},
+	// The tenant's coins: whether they are on, what they are called, and the
+	// packs they are sold in.
+	{name: "tenant_coin_config", count: "SELECT count(*) FROM tenant_coin_config"},
+	{name: "tenant_coin_name_translations", count: "SELECT count(*) FROM tenant_coin_name_translations"},
+	{name: "tenant_coin_packs", count: "SELECT count(*) FROM tenant_coin_packs"},
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
 	{name: "tenant_config_translations", count: "SELECT count(*) FROM tenant_config_translations"},
 	{name: "tenant_themes", count: "SELECT count(*) FROM tenant_themes"},
@@ -447,6 +452,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	plan := env.PG.SeedSubscriptionPlan(t, first.ID, testutil.SubscriptionPlanSeed{Scope: "label", LabelIDs: []uuid.UUID{label.ID}, Published: true})
 	env.PG.SeedSubscription(t, first.ID, member.ID, plan.ID, testutil.SubscriptionSeed{})
 	seed("subscription checkout", "INSERT INTO subscription_checkouts (tenant_id, user_id, plan_id, stripe_checkout_session_id) VALUES ($1, $2, $3, 'cs_rls_open')", first.ID, member.ID, plan.ID)
+	seed("coin settings", "INSERT INTO tenant_coin_config (tenant_id, selling) VALUES ($1, true)", first.ID)
+	seed("coin name", "INSERT INTO tenant_coin_name_translations (id, tenant_id, locale, name) VALUES ($1, $2, 'en', 'Points')", uuid.Must(uuid.NewV7()), first.ID)
+	seed("coin pack", "INSERT INTO tenant_coin_packs (id, tenant_id, public_id, coins, price, on_sale) VALUES ($1, $2, 'COINPACKA001', 100, 100, true)", uuid.Must(uuid.NewV7()), first.ID)
 	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
 	seed("wait-free rule", "INSERT INTO series_wait_free_settings (tenant_id, series_id, enabled) VALUES ($1, $2, true)", first.ID, series.ID)
 	seed("wait-free ticket state", "INSERT INTO wait_free_ticket_states (tenant_id, user_id, series_id, next_available_at) VALUES ($1, $2, $3, NOW())", first.ID, member.ID, series.ID)
