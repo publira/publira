@@ -6,6 +6,7 @@ import {
   DOCS_LOCALES,
   docsField,
   docsLabelPattern,
+  docsScreen,
   docsScreenHeader,
   docsSection,
   docsText,
@@ -13,17 +14,20 @@ import {
   setDocsLocale,
 } from "../src/docs-screenshots";
 import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
+import { DOCS_SUBSCRIPTION_PLANS } from "../src/scenarios/docs-subscription-plans";
 import { ROYALTIES_ADMIN, ROYALTIES_SALES } from "../src/scenarios/royalties";
+import { STOREFRONT_SUBSCRIPTIONS_ADMIN } from "../src/scenarios/storefront-subscriptions";
 import {
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
   WEB_ADMIN_ROYALTIES_BASE_URL,
+  WEB_ADMIN_SUBSCRIPTIONS_BASE_URL,
 } from "../src/urls";
 
 /**
  * The tenant console's payments and reports, as
- * `docs/<locale>/4-console/4-selling-episodes.md` and
- * `5-reports-and-royalties.md` show them.
+ * `docs/<locale>/4-console/4-selling-episodes.md`,
+ * `5-subscription-plans.md`, and `6-reports-and-royalties.md` show them.
  *
  * Payment methods are photographed on the seed tenant with Stripe chosen and nothing
  * saved, which is what the form shows while a Tenant admin follows the
@@ -32,6 +36,9 @@ import {
  * month, opened by its period so the screen does not move with today's
  * date; nothing here closes it. The month before it is a statement
  * `db/seeds/scenarios/460_docs_royalties.sql` writes as closed on a fixed day.
+ * The subscription plans are photographed on the subscriptions tenant of
+ * `db/seeds/scenarios/670_storefront_subscriptions.sql`, beside the two plans
+ * `680_docs_subscription_plans.sql` adds to it.
  */
 test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
@@ -46,6 +53,22 @@ const openScreen = async (
   await signInAsSeedAdmin(page, path);
   await setDocsLocale(page, WEB_ADMIN_BASE_URL, locale);
   await page.goto(path);
+};
+
+/** The same on the subscriptions tenant's console. */
+const openSubscriptionPlans = async (
+  page: Page,
+  locale: string,
+  path: string
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    STOREFRONT_SUBSCRIPTIONS_ADMIN,
+    path,
+    WEB_ADMIN_SUBSCRIPTIONS_BASE_URL
+  );
+  await setDocsLocale(page, WEB_ADMIN_SUBSCRIPTIONS_BASE_URL, locale);
+  await page.goto(`${WEB_ADMIN_SUBSCRIPTIONS_BASE_URL}${path}`);
 };
 
 /** The same on the royalty tenant's console. */
@@ -166,6 +189,47 @@ for (const locale of DOCS_LOCALES) {
           });
         });
       }
+    });
+
+    test.describe("subscription plans", () => {
+      const plansPage = "console/subscription-plans";
+
+      test("the list of plans", async ({ page }) => {
+        await openSubscriptionPlans(page, locale, "/subscription-plans");
+        await expect(
+          page.getByRole("cell", {
+            exact: true,
+            name: DOCS_SUBSCRIPTION_PLANS.yearly.name,
+          })
+        ).toBeVisible();
+
+        await expectDocsScreenshot(page, {
+          element: docsScreen(page),
+          locale,
+          page: plansPage,
+          subject: "list",
+        });
+      });
+
+      test("a plan of a label", async ({ page }) => {
+        await openSubscriptionPlans(
+          page,
+          locale,
+          `/subscription-plans/${DOCS_SUBSCRIPTION_PLANS.yearly.publicId}`
+        );
+        await expect(
+          page.getByRole("button", {
+            name: t("admin.subscription_plans.form.update"),
+          })
+        ).toBeVisible();
+
+        await expectDocsScreenshot(page, {
+          element: docsScreen(page),
+          locale,
+          page: plansPage,
+          subject: "form",
+        });
+      });
     });
 
     test.describe("reports and royalties", () => {

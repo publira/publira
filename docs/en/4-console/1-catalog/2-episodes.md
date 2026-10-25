@@ -124,7 +124,7 @@ To go back to the series' cover, choose **Delete the current cover image** and t
 
 ![The Authors section of an episode: a credit naming an Author, a role, and a share, the authors' and the publisher's shares in total, Add author, and Save authors.](./episodes-credits.png)
 
-The episode page on the site shows these credits, and the series page shows the series' own. The episode's credits are also the ones royalties are paid on, as [Reports and royalties](../5-reports-and-royalties.md#what-an-author-is-owed) describes, and an Author linked to a reader account can read the episodes credited to them, as [Authors and Author roles](./4-authors.md#linking-an-author-to-a-reader-account) describes.
+The episode page on the site shows these credits, and the series page shows the series' own. The episode's credits are also the ones royalties are paid on, as [Reports and royalties](../6-reports-and-royalties.md#what-an-author-is-owed) describes, and an Author linked to a reader account can read the episodes credited to them, as [Authors and Author roles](./4-authors.md#linking-an-author-to-a-reader-account) describes.
 
 To change the credits of many episodes at once, such as when an artist joins from episode 12, select the episodes on the list and choose **Credits**. Under **Operation**:
 

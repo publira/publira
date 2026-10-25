@@ -15,8 +15,10 @@ import { ANNOUNCEMENT_BANNER_SCENARIO } from "../src/scenarios/announcement-bann
 import { COMMENT_MODERATION_SCENARIO } from "../src/scenarios/comment-moderation";
 import { CONTACT_WORKFLOW_SCENARIO } from "../src/scenarios/contact-workflow";
 import { DOCS_GOOGLE_TAG_SCENARIO } from "../src/scenarios/docs-google-tag";
+import { DOCS_SUBSCRIPTION_PLANS_SCENARIO } from "../src/scenarios/docs-subscription-plans";
 import { ROYALTIES_SCENARIO } from "../src/scenarios/royalties";
 import { SIGN_IN_PROVIDERS_SCENARIO } from "../src/scenarios/sign-in-providers";
+import { STOREFRONT_SUBSCRIPTIONS_SCENARIO } from "../src/scenarios/storefront-subscriptions";
 
 /**
  * The state the documentation's screenshots show that the development seed
@@ -27,7 +29,8 @@ import { SIGN_IN_PROVIDERS_SCENARIO } from "../src/scenarios/sign-in-providers";
  * the documentation needs: comments in every state, episodes waiting to be
  * published, announcements, invitations, a closed royalty statement, the
  * Platform Console's own tenants, operators, and records, campaign banners in
- * every standing, and a Google tag saved in the gateway mode. Applying every
+ * every standing, a Google tag saved in the gateway mode, and subscription
+ * plans in both states, one with a subscriber. Applying every
  * file once, rather than from the specs that read them, is what lets those
  * specs run beside one another: a spec applying a file again deletes rows
  * another spec may be photographing at that moment. Nothing is reverted
@@ -49,6 +52,8 @@ const SCENARIOS = [
   "470_docs_platform",
   "560_docs_campaign_banners",
   DOCS_GOOGLE_TAG_SCENARIO,
+  STOREFRONT_SUBSCRIPTIONS_SCENARIO,
+  DOCS_SUBSCRIPTION_PLANS_SCENARIO,
 ] as const;
 
 setup("the scenario tenants the documentation's screenshots show", async () => {

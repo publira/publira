@@ -119,7 +119,7 @@ The edge removes `traceparent`, `tracestate`, and `baggage` from every request f
 
 ### The reader's region
 
-A tenant that serves its Google tag through the [Google tag gateway](../../4-console/7-google-tag.md#google-tag-gateway) has `web-storefront` forward the tag's requests to Google, and Google places the reader in a region for its regional reports and its region-specific consent defaults by the `X-Forwarded-CountryRegion` header of that request. `web-storefront` sends the one the edge hands it, an ISO 3166-2 code such as `JP-13` or `US-CA`, and none when the edge hands it none, or a value of another shape:
+A tenant that serves its Google tag through the [Google tag gateway](../../4-console/8-google-tag.md#google-tag-gateway) has `web-storefront` forward the tag's requests to Google, and Google places the reader in a region for its regional reports and its region-specific consent defaults by the `X-Forwarded-CountryRegion` header of that request. `web-storefront` sends the one the edge hands it, an ISO 3166-2 code such as `JP-13` or `US-CA`, and none when the edge hands it none, or a value of another shape:
 
 - **The edge removes `X-Forwarded-CountryRegion` from requests from outside.** A caller's value passed on would let any reader be reported in a region of their choosing.
 - **An edge that knows the reader's region sets it.** A CDN or a load balancer that looks up the country and region of the address that connected to it can write them into the header in that form, as [CloudFront in front of ECS](../6-ecs-fargate/1-cloudfront.md#the-headers) does. A hop after it passes the header on.

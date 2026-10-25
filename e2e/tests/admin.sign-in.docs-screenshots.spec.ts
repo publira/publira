@@ -14,7 +14,7 @@ import { WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL } from "../src/urls";
 
 /**
  * The tenant console's sign-in providers, as
- * `docs/<locale>/4-console/6-sign-in.md` shows them: Apple and Google, each
+ * `docs/<locale>/4-console/7-sign-in.md` shows them: Apple and Google, each
  * offered, with where readers see its button.
  *
  * Saving them changes the sign-in screens of the tenant's site, so they are

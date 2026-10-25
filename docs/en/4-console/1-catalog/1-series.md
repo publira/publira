@@ -23,7 +23,7 @@ The title and synopsis are written in the site's default language. A title and s
 
 - **Title**: up to 255 characters.
 - **Synopsis**: the description on the series page, up to 10,000 characters.
-- **Authors**: the people credited on the series, each in a role, as [Authors and Author roles](./4-authors.md#crediting-authors) describes. The percentage beside each is their share of the sales of the series' episodes, which [Reports and royalties](../5-reports-and-royalties.md#what-an-author-is-owed) explains. These credits are copied onto each episode when it is created: changing them later leaves the existing episodes as they are.
+- **Authors**: the people credited on the series, each in a role, as [Authors and Author roles](./4-authors.md#crediting-authors) describes. The percentage beside each is their share of the sales of the series' episodes, which [Reports and royalties](../6-reports-and-royalties.md#what-an-author-is-owed) explains. These credits are copied onto each episode when it is created: changing them later leaves the existing episodes as they are.
 - **Label**: the imprint the series is published under. A series must have one, so create a label first, as [Labels](./3-labels.md) describes.
 - **Genres**: any number of the tenant's genres, shown in the order set under **Genres**.
 - **Tags**: up to 20 free words, each up to 50 characters, that readers can browse by. A tag that matches one already in use, ignoring case, is filed under it.

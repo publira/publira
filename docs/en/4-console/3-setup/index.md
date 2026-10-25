@@ -21,7 +21,7 @@ The site is served on its domain from the moment the operator creates the tenant
 6. **Decide whose mail server sends the tenant's mail.** The platform's is used until you set your own under **Integrations** › **Email**. See [Email](./7-email.md).
 7. **Invite the rest of the staff** under **Members**. See [Members](./6-members.md).
 
-The catalog, payments, sign-in with Apple and Google, the Google tag, and the app are set up on their own pages: [Publishing works](../1-catalog/index.md), [Selling episodes](../4-selling-episodes.md), [Sign-in with Apple and Google](../6-sign-in.md), and [Google tag](../7-google-tag.md) in this section, and [Mobile app](../../5-mobile-app/index.md).
+The catalog, payments, sign-in with Apple and Google, the Google tag, and the app are set up on their own pages: [Publishing works](../1-catalog/index.md), [Selling episodes](../4-selling-episodes.md), [Sign-in with Apple and Google](../7-sign-in.md), and [Google tag](../8-google-tag.md) in this section, and [Mobile app](../../5-mobile-app/index.md).
 
 ## Who can change what
 
