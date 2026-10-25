@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/testutil"
@@ -327,6 +328,38 @@ func TestDBDeleteEndUserKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 	}
 	if got := countRows(t, pg, "SELECT COUNT(*) FROM purchases WHERE user_id IS NOT NULL"); got != 0 {
 		t.Fatalf("purchases still naming their buyer = %d, want 0", got)
+	}
+}
+
+// The deleted reader can reach no billing page to cancel a subscription, so
+// the delete queues the cancellation of each one Stripe would go on billing.
+func TestDBDeleteEndUserQueuesTheCancellationOfTheReadersSubscriptions(t *testing.T) {
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
+	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
+	reader := seedEndUser(t, pg, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")
+	plan := pg.SeedSubscriptionPlan(t, tenantID, testutil.SubscriptionPlanSeed{Published: true})
+	pg.SeedSubscription(t, tenantID, reader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_billed", Status: "past_due"})
+	pg.SeedSubscription(t, tenantID, reader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_over", Status: "incomplete_expired"})
+
+	client := publirasplatformv1connect.NewPlatformUserServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	if _, err := client.DeleteEndUser(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.DeleteEndUserRequest{
+		UserId: reader.ID.String(),
+	}); err != nil {
+		t.Fatalf("DeleteEndUser: %v", err)
+	}
+
+	if got := countRows(t, pg,
+		"SELECT COUNT(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2 AND payload->>'subscription_id' = 'sub_billed'",
+		tenantID, outbox.EventTypeSubscriptionCancel,
+	); got != 1 {
+		t.Fatalf("cancellations queued for the billed subscription = %d, want 1", got)
+	}
+	if got := countRows(t, pg,
+		"SELECT COUNT(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2",
+		tenantID, outbox.EventTypeSubscriptionCancel,
+	); got != 1 {
+		t.Fatalf("cancellations queued = %d, want only the billed subscription's", got)
 	}
 }
 

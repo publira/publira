@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenantlock"
@@ -397,6 +398,37 @@ func TestDBAdminDeleteReaderIsAudited(t *testing.T) {
 		t.Fatalf("audit log count = %d, want 1 (%+v)", len(logs), logs)
 	}
 	assertReaderAuditLog(t, logs[0], "reader_deleted", admin, reader.PublicID)
+}
+
+// The deleted reader can reach no billing page to cancel a subscription, so
+// the delete queues the cancellation of each one Stripe would go on billing.
+func TestDBAdminDeleteReaderQueuesTheCancellationOfTheReadersSubscriptions(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "RDSTENANT001", "reader-subscriptions.example.com", "Subscriptions", "RDSADMIN0001", "admin@reader-subscriptions.example.com")
+	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDSREADER001", "reader@reader-subscriptions.example.com", "Reader")
+	plan := env.PG.SeedSubscriptionPlan(t, admin.Tenant.ID, testutil.SubscriptionPlanSeed{Published: true})
+	env.PG.SeedSubscription(t, admin.Tenant.ID, reader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_billed"})
+	env.PG.SeedSubscription(t, admin.Tenant.ID, reader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_over", Status: "canceled"})
+
+	if _, err := env.userClient().DeleteReader(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.DeleteReaderRequest{
+		Tenant:   admin.tenantContext(),
+		ReaderId: reader.ID.String(),
+	}); err != nil {
+		t.Fatalf("DeleteReader: %v", err)
+	}
+
+	if got := env.countRows(t,
+		"SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2 AND payload->>'subscription_id' = 'sub_billed'",
+		admin.Tenant.ID, outbox.EventTypeSubscriptionCancel,
+	); got != 1 {
+		t.Fatalf("cancellations queued for the billed subscription = %d, want 1", got)
+	}
+	if got := env.countRows(t,
+		"SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2",
+		admin.Tenant.ID, outbox.EventTypeSubscriptionCancel,
+	); got != 1 {
+		t.Fatalf("cancellations queued = %d, want only the billed subscription's", got)
+	}
 }
 
 func TestDBAdminSetReaderBirthDateCorrectsAWrittenOnceDate(t *testing.T) {

@@ -108,6 +108,45 @@ func (q *Queries) GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSub
 	return i, err
 }
 
+const ListBilledStripeSubscriptionIDsForUser = `-- name: ListBilledStripeSubscriptionIDsForUser :many
+SELECT stripe_subscription_id
+FROM billed_subscriptions
+WHERE tenant_id = $1
+    AND user_id = $2
+ORDER BY created_at,
+    id
+`
+
+type ListBilledStripeSubscriptionIDsForUserParams struct {
+	TenantID uuid.UUID     `json:"tenant_id"`
+	UserID   uuid.NullUUID `json:"user_id"`
+}
+
+// The subscriptions of the reader Stripe will go on billing, which closing the
+// account cancels.
+func (q *Queries) ListBilledStripeSubscriptionIDsForUser(ctx context.Context, arg ListBilledStripeSubscriptionIDsForUserParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, ListBilledStripeSubscriptionIDsForUser, arg.TenantID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var stripe_subscription_id string
+		if err := rows.Scan(&stripe_subscription_id); err != nil {
+			return nil, err
+		}
+		items = append(items, stripe_subscription_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const LockSubscriptionCheckoutsOfUser = `-- name: LockSubscriptionCheckoutsOfUser :exec
 SELECT pg_advisory_xact_lock(
         hashtextextended(
@@ -148,6 +187,29 @@ type LockSubscriptionForTenantParams struct {
 // that read it later and wrote first.
 func (q *Queries) LockSubscriptionForTenant(ctx context.Context, arg LockSubscriptionForTenantParams) error {
 	_, err := q.db.ExecContext(ctx, LockSubscriptionForTenant, arg.TenantID, arg.StripeSubscriptionID)
+	return err
+}
+
+const LockSubscriptionsOfUser = `-- name: LockSubscriptionsOfUser :exec
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription-reader:' || $1::uuid::text || ':' || $2::uuid::text,
+            0
+        )
+    )
+`
+
+type LockSubscriptionsOfUserParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// Serializes recording a reader's subscriptions with deleting the reader's
+// account. The deletion reads which subscriptions to cancel and then takes the
+// reader off them, and a subscription recorded for the reader in between would
+// be left billing for no one with nothing queued to cancel it.
+func (q *Queries) LockSubscriptionsOfUser(ctx context.Context, arg LockSubscriptionsOfUserParams) error {
+	_, err := q.db.ExecContext(ctx, LockSubscriptionsOfUser, arg.TenantID, arg.UserID)
 	return err
 }
 
@@ -308,10 +370,9 @@ func (q *Queries) SubscriptionHasEnded(ctx context.Context, arg SubscriptionHasE
 const UserHoldsLiveSubscription = `-- name: UserHoldsLiveSubscription :one
 SELECT EXISTS (
         SELECT 1
-        FROM subscriptions
+        FROM billed_subscriptions
         WHERE tenant_id = $1
             AND user_id = $2
-            AND status IN ('trialing', 'active', 'past_due', 'unpaid', 'paused')
     ) AS holds
 `
 
@@ -321,9 +382,8 @@ type UserHoldsLiveSubscriptionParams struct {
 }
 
 // Whether the reader holds a subscription Stripe will go on billing, which a
-// second checkout would run beside. An incomplete one is not among them:
-// Stripe drops it within a day unless its first payment goes through, and a
-// reader whose payment failed starts again.
+// second checkout would run beside. A reader whose first payment failed starts
+// again.
 func (q *Queries) UserHoldsLiveSubscription(ctx context.Context, arg UserHoldsLiveSubscriptionParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, UserHoldsLiveSubscription, arg.TenantID, arg.UserID)
 	var holds bool

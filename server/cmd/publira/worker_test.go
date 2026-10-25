@@ -98,6 +98,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.AnnouncementNotificationHandlerConfig{}, outbox.EpisodePublishedNotificationHandlerConfig{},
 		outbox.CommentApprovedNotificationHandlerConfig{},
 		outbox.GooglePlayHandlerConfig{}, outbox.AppleSignInHandlerConfig{},
+		outbox.SubscriptionCancelHandlerConfig{},
 		nil, nil, nil)
 
 	messages := []string{
@@ -136,6 +137,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeGooglePlayPurchaseConsume,
 		outbox.EventTypeAppleSignInCodeExchange,
 		outbox.EventTypeAppleSignInTokenRevoke,
+		outbox.EventTypeSubscriptionCancel,
 	}
 
 	for _, eventType := range slices.Concat(messages, others) {

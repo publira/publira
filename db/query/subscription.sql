@@ -65,15 +65,13 @@ LIMIT 1;
 
 -- name: UserHoldsLiveSubscription :one
 -- Whether the reader holds a subscription Stripe will go on billing, which a
--- second checkout would run beside. An incomplete one is not among them:
--- Stripe drops it within a day unless its first payment goes through, and a
--- reader whose payment failed starts again.
+-- second checkout would run beside. A reader whose first payment failed starts
+-- again.
 SELECT EXISTS (
         SELECT 1
-        FROM subscriptions
+        FROM billed_subscriptions
         WHERE tenant_id = $1
             AND user_id = $2
-            AND status IN ('trialing', 'active', 'past_due', 'unpaid', 'paused')
     ) AS holds;
 
 -- name: GetLatestStripeCustomerIDForUser :one
@@ -94,6 +92,18 @@ LIMIT 1;
 SELECT pg_advisory_xact_lock(
         hashtextextended(
             'subscription:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('stripe_subscription_id')::text,
+            0
+        )
+    );
+
+-- name: LockSubscriptionsOfUser :exec
+-- Serializes recording a reader's subscriptions with deleting the reader's
+-- account. The deletion reads which subscriptions to cancel and then takes the
+-- reader off them, and a subscription recorded for the reader in between would
+-- be left billing for no one with nothing queued to cancel it.
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription-reader:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('user_id')::uuid::text,
             0
         )
     );
@@ -145,3 +155,13 @@ SELECT EXISTS (
             AND stripe_subscription_id = $2
             AND status IN ('canceled', 'incomplete_expired')
     ) AS ended;
+
+-- name: ListBilledStripeSubscriptionIDsForUser :many
+-- The subscriptions of the reader Stripe will go on billing, which closing the
+-- account cancels.
+SELECT stripe_subscription_id
+FROM billed_subscriptions
+WHERE tenant_id = $1
+    AND user_id = $2
+ORDER BY created_at,
+    id;

@@ -40,6 +40,7 @@ const (
 	defaultStaleProcessing = 15 * time.Minute
 	defaultJobTimeout      = 30 * time.Second
 	defaultUnknownTypeWait = time.Minute
+	defaultBlockedWait     = 10 * time.Minute
 	maxLastErrorBytes      = 2048
 
 	// unknownTypeWindow is how long after an event is written a worker that
@@ -88,6 +89,9 @@ type Config struct {
 	// handler for waits before it can be claimed again, by a worker of a
 	// newer release that has one. Zero uses the 1m default.
 	UnknownTypeWait time.Duration
+	// BlockedWait is how long an event whose handler answered [Blocked] waits
+	// before it can be claimed again. Zero uses the 10m default.
+	BlockedWait time.Duration
 	// FetchCooldown / FetchPollInterval are forwarded to River so tests
 	// can pick jobs up without waiting on the production 1s poll.
 	FetchCooldown     time.Duration
@@ -156,6 +160,9 @@ func (c Config) withDefaults() Config {
 	}
 	if c.UnknownTypeWait <= 0 {
 		c.UnknownTypeWait = defaultUnknownTypeWait
+	}
+	if c.BlockedWait <= 0 {
+		c.BlockedWait = defaultBlockedWait
 	}
 	return c
 }
@@ -592,6 +599,9 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 	if errors.Is(herr, ErrResume) {
 		return w.resume(ctx, event)
 	}
+	if IsBlocked(herr) {
+		return w.deferBlocked(ctx, event, herr)
+	}
 	if herr != nil {
 		return w.finishFailed(ctx, event, herr)
 	}
@@ -694,6 +704,31 @@ func (w *Worker) deferUnknown(ctx context.Context, event dbmodels.OutboxEvent) e
 		"event_id", event.ID,
 		"event_type", event.EventType,
 		"idempotency_key", event.IdempotencyKey,
+		"available_in", wait,
+	)
+	return nil
+}
+
+// deferBlocked hands back an event whose handler cannot go on until something
+// outside the outbox changes, charging it no attempt: spending the retry budget
+// on it would mark it dead minutes into an outage nobody had yet noticed.
+func (w *Worker) deferBlocked(ctx context.Context, event dbmodels.OutboxEvent, herr error) error {
+	wait := w.cfg.BlockedWait
+	if _, err := w.queries.DeferOutboxEvent(ctx, dbmodels.DeferOutboxEventParams{
+		ID:          event.ID,
+		AvailableAt: time.Now().UTC().Add(wait),
+		LastError:   lastErrorValue(herr),
+	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	w.cfg.Logger.WarnContext(ctx, "outbox event blocked; it waits without spending an attempt",
+		"event_id", event.ID,
+		"event_type", event.EventType,
+		"idempotency_key", event.IdempotencyKey,
+		"error", herr,
 		"available_in", wait,
 	)
 	return nil

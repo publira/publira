@@ -260,17 +260,43 @@ func (p *Provider) RetrieveSubscription(ctx context.Context, credentials payment
 	}
 	subscription, err := client.V1Subscriptions.Retrieve(ctx, subscriptionID, &stripego.SubscriptionRetrieveParams{})
 	if err != nil {
-		var stripeErr *stripego.Error
-		if errors.As(err, &stripeErr) && stripeErr.Code == stripego.ErrorCodeResourceMissing {
-			return paymentprovider.Subscription{}, paymentprovider.ErrSubscriptionNotFound
-		}
-		return paymentprovider.Subscription{}, fmt.Errorf("read subscription: %w", err)
+		return paymentprovider.Subscription{}, subscriptionError("read subscription", err)
 	}
 	read, err := readSubscription(subscription)
 	if err != nil {
 		return paymentprovider.Subscription{}, fmt.Errorf("read subscription %s: %w", subscriptionID, err)
 	}
 	return read, nil
+}
+
+// CancelSubscription cancels a subscription at once. Stripe neither prorates
+// the period paid for nor invoices it again, so the reader is charged nothing
+// further and refunded nothing.
+func (p *Provider) CancelSubscription(ctx context.Context, credentials paymentprovider.Credentials, subscriptionID string) error {
+	client, err := p.client(credentials)
+	if err != nil {
+		return err
+	}
+	if _, err := client.V1Subscriptions.Cancel(ctx, subscriptionID, &stripego.SubscriptionCancelParams{}); err != nil {
+		return subscriptionError("cancel subscription", err)
+	}
+	return nil
+}
+
+// subscriptionError answers what Stripe said about a call on one subscription:
+// that the account holds no such subscription, that the key is refused, or
+// else the error itself.
+func subscriptionError(call string, err error) error {
+	var stripeErr *stripego.Error
+	if errors.As(err, &stripeErr) {
+		switch {
+		case stripeErr.Code == stripego.ErrorCodeResourceMissing:
+			return paymentprovider.ErrSubscriptionNotFound
+		case stripeErr.HTTPStatusCode == http.StatusUnauthorized || stripeErr.HTTPStatusCode == http.StatusForbidden:
+			return fmt.Errorf("%s: %w: %s", call, paymentprovider.ErrCredentialsRefused, stripeErr.Msg)
+		}
+	}
+	return fmt.Errorf("%s: %w", call, err)
 }
 
 // readSubscription reads the subscription a subscription checkout started. A

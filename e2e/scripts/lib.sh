@@ -207,9 +207,10 @@ export PUBLIRA_EMAIL_RENDERER_URL="http://127.0.0.1:${PUBLIRA_E2E_EMAIL_RENDERER
 export PUBLIRA_SIGN_IN_APPLE_KEYS_URL="http://127.0.0.1:${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}/keys"
 export PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL="${PUBLIRA_SIGN_IN_APPLE_KEYS_URL}"
 
-# Where publira server calls Stripe's API: the stand-in scripts/stripe.ts
-# serves, so a checkout is paid on its page and reported by its webhook rather
-# than sent to Stripe. Always built from the E2E port, never inherited.
+# Where publira server and publira worker call Stripe's API: the stand-in
+# scripts/stripe.ts serves, so a checkout is paid on its page and reported by
+# its webhook rather than sent to Stripe. Always built from the E2E port, never
+# inherited.
 export PUBLIRA_STRIPE_API_URL="http://127.0.0.1:${PUBLIRA_E2E_STRIPE_PORT}"
 
 # Where web-storefront forwards a tenant's Google tag gateway path in place of

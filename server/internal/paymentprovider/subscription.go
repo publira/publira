@@ -17,6 +17,11 @@ var ErrPriceNotFound = errors.New("the payment provider holds no such recurring 
 // no subscription under.
 var ErrSubscriptionNotFound = errors.New("the payment provider holds no such subscription")
 
+// ErrCredentialsRefused reports credentials the provider refuses outright: a
+// key revoked or rolled, or one without the permission the call needs. Another
+// attempt with the same credentials is refused again.
+var ErrCredentialsRefused = errors.New("the payment provider refused the credentials")
+
 // ErrCheckoutNotOpen reports a checkout that could not be expired because it
 // had already completed or expired.
 var ErrCheckoutNotOpen = errors.New("the checkout is no longer open")
@@ -44,6 +49,10 @@ type Subscriptions interface {
 	// StartBillingPortal answers the URL of the provider's own page where the
 	// reader manages the subscriptions of one customer.
 	StartBillingPortal(ctx context.Context, credentials Credentials, req BillingPortalRequest) (string, error)
+	// CancelSubscription ends a subscription now rather than at the end of the
+	// period paid for, and refunds nothing of that period. A subscription the
+	// account does not hold answers [ErrSubscriptionNotFound].
+	CancelSubscription(ctx context.Context, credentials Credentials, subscriptionID string) error
 }
 
 // Interval is the unit a recurring price is billed every so many of, spelled
@@ -143,6 +152,18 @@ func (s SubscriptionStatus) Known() bool {
 	switch s {
 	case SubscriptionIncomplete, SubscriptionIncompleteExpired, SubscriptionTrialing, SubscriptionActive,
 		SubscriptionPastDue, SubscriptionCanceled, SubscriptionUnpaid, SubscriptionPaused:
+		return true
+	}
+	return false
+}
+
+// Billed reports whether the provider goes on billing a subscription in status
+// s, the statuses the billed_subscriptions view selects. An incomplete one is
+// not among them, since the provider drops it unless its first payment goes
+// through, and it becomes active if that payment does.
+func (s SubscriptionStatus) Billed() bool {
+	switch s {
+	case SubscriptionTrialing, SubscriptionActive, SubscriptionPastDue, SubscriptionUnpaid, SubscriptionPaused:
 		return true
 	}
 	return false
