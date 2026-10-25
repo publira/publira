@@ -12,7 +12,6 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -26,7 +25,7 @@ func loginGuardWith(perAccount platformpolicy.MinuteDay, perSource platformpolic
 	policy := platformpolicy.Defaults()
 	policy.LoginAttemptsPerAccount = perAccount
 	policy.LoginAttemptsPerSource = perSource
-	return loginguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), nil)
+	return loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), nil)
 }
 
 // newLoginLimitedServer starts a server that lets limit passwords be tried for

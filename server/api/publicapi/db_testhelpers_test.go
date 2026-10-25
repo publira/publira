@@ -20,7 +20,6 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -153,13 +152,11 @@ func openReaderGuards() readerGuards {
 }
 
 // guardsWith is openPolicy with the values a case is about tightened by adjust.
-// Tightening both halves of a limit keeps the allowance from refilling when a
-// case happens to run across the boundary of its shorter window.
 func guardsWith(adjust func(*platformpolicy.Policy)) readerGuards {
 	policy := openPolicy()
 	adjust(&policy)
 	return readerGuards{
-		limiter: ratelimit.New(ratelimit.NewMemoryStore()),
+		limiter: testutil.Limiter(),
 		policy:  platformpolicy.Fixed(policy),
 	}
 }
@@ -335,5 +332,5 @@ func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guar
 	policy := platformpolicy.Defaults()
 	policy.MailRequestsPerAddress = perAddress
 	policy.MailRequestsPerSource = perSource
-	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
+	return mailguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), slog.Default())
 }

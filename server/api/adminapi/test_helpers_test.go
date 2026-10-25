@@ -28,7 +28,6 @@ import (
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/revalidate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/storage"
@@ -650,5 +649,5 @@ func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guar
 	policy := platformpolicy.Defaults()
 	policy.MailRequestsPerAddress = perAddress
 	policy.MailRequestsPerSource = perSource
-	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
+	return mailguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), slog.Default())
 }
