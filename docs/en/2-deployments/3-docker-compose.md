@@ -108,7 +108,7 @@ PUBLIRA_EDGE_SITE_HOSTS=comics.example.com
 PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.example.com
 ```
 
-`PUBLIRA_EDGE_PLATFORM_HOSTS` is the Platform Console's, and stays empty unless you run it.
+`PUBLIRA_EDGE_PLATFORM_HOSTS` is the Platform Console's, and stays empty unless you run it. `PUBLIRA_EDGE_IMAGE_HOSTS` holds the image host of each tenant you give one, as [An image host](../3-operations/2-tenants.md#an-image-host) describes, and stays empty until you do; the proxy forwards `/images` on those hosts and nothing else. With `PUBLIRA_EDGE_ACME_EMAIL` set, the proxy obtains a certificate for the names in all four variables.
 
 ### The secrets
 
@@ -135,7 +135,7 @@ error while interpolating services.email-renderer.image: required variable PUBLI
 error while interpolating services.proxy.environment.PUBLIRA_EDGE_ADMIN_HOSTS: required variable PUBLIRA_EDGE_ADMIN_HOSTS is missing a value
 ```
 
-`PUBLIRA_EDGE_ACME_EMAIL` does not stop `docker compose` while it is empty: the proxy serves plain HTTP instead. The rest of the file may stay empty too: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, `PUBLIRA_EDGE_TRUSTED_PROXIES`, which only [A CDN or a load balancer in front](#a-cdn-or-a-load-balancer-in-front) fills in, and the variables of the optional processes, which the next section fills in when you turn one on.
+`PUBLIRA_EDGE_ACME_EMAIL` does not stop `docker compose` while it is empty: the proxy serves plain HTTP instead. The rest of the file may stay empty too: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, `PUBLIRA_EDGE_IMAGE_HOSTS`, `PUBLIRA_EDGE_TRUSTED_PROXIES`, which only [A CDN or a load balancer in front](#a-cdn-or-a-load-balancer-in-front) fills in, and the variables of the optional processes, which the next section fills in when you turn one on.
 
 A variable exported in the shell you run `docker compose` from takes precedence over the same variable in `.env`. If a value you wrote in `.env` seems to be ignored, look for a `PUBLIRA_*` variable in your shell's environment.
 

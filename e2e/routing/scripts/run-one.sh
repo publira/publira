@@ -2,7 +2,7 @@
 # Edge routing check for one proxy.
 #
 #   up → wait for the edge to serve → probe hosts / /rpc / /images
-#   → up again with no platform hosts → wait → probe what that leaves
+#   → up again with no platform or image hosts → wait → probe what that leaves
 #   → for Caddy, up again terminating TLS → wait → probe over HTTPS
 #   → up again behind a trusted hop → wait → probe the client address → down
 #
@@ -57,13 +57,14 @@ bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test.sh"
 
-# An install that runs no web-platform leaves its list empty and removes
-# nothing from the sample, so the same files have to start with an empty list
-# and still route the other two apps.
+# An install that runs no web-platform and gives no tenant an image host leaves
+# both lists empty and removes nothing from the sample, so the same files have
+# to start with empty lists and still route the other two apps.
 export PUBLIRA_ROUTING_PLATFORM_HOSTS=""
+export PUBLIRA_ROUTING_IMAGE_HOSTS=""
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
-bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-without-platform.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-empty-lists.sh"
 
 # The Caddyfile terminates TLS itself once it is given the host lists as its
 # site addresses, which the Compose install does, so Caddy runs a third time
@@ -84,9 +85,11 @@ fi
 # is written, it has to let that hop name the client address and nobody else.
 # This pass starts other compose files, so the stack before it is torn down
 # with its own, and lib.sh is sourced again for the teardown and the
-# diagnostics to address the new ones.
+# diagnostics to address the new ones. The image hosts are listed again, so
+# that the hop reaches one too.
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/down.sh"
 export PUBLIRA_ROUTING_TRUSTED_HOP=1
+unset PUBLIRA_ROUTING_IMAGE_HOSTS
 # shellcheck source=lib.sh
 source "${PUBLIRA_ROUTING_SCRIPTS_DIR}/lib.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"

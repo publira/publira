@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-10-23
+updated: 2026-10-25
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -46,6 +46,19 @@ The edge forwards the path as it arrived, and the `Host` header as the browser s
 
 An edge that checks the health of what it forwards to, as a load balancer does, can probe `GET /readyz` on each process. [Health checks](../../3-operations/11-monitoring.md#health-checks) says what each one checks, and what pointing a load balancer at it means when the database stops answering.
 
+### A tenant's image host
+
+A tenant can be given an image host of its own, with `--image-domain` or **Image host**, as [An image host](../../3-operations/2-tenants.md#an-image-host) describes. Its site's images are then served there rather than on its domain, and `publira server` is the one process that answers the host:
+
+| Host | Path | Process |
+| --- | --- | --- |
+| A tenant's image host, such as `images.comics.example.com` | Starting with `/images` | `publira server` |
+| A tenant's image host | Anything else | None: nothing on it has an answer |
+
+No web app serves an image host, and neither does the public API, so what the edge does with its other paths is yours to decide; the sample configurations answer them with a `404` of their own. `Host` is passed on unchanged here as on every other host, since it is what `publira server` finds the tenant from. The `publira server` an image host reaches serves the storefront: it runs `--role storefront`, or no `--role` at all. One run `--role admin,platform` answers every image there with `404`.
+
+The image host can reach `publira server` through the same edge as the tenant's other host names, or through a load balancer of its own, as [Serving the images and the public API apart](../7-scaling-out.md#serving-the-images-and-the-public-api-apart) describes. Whichever forwards it terminates TLS for it and does with its requests what the rest of this page asks: [The client address](#the-client-address), [The host the request was sent to](#the-host-the-request-was-sent-to), and [Trace context](#trace-context) apply to an image host as they do to a tenant's domain.
+
 ### Only the public API goes through the edge
 
 `publira server` serves the tenant console's and the Platform Console's APIs, `publira.admin.v1` and `publira.platform.v1`, under `/rpc` beside the public API, on the one port the edge forwards to. Nothing reaches them through the edge: `web-admin` and `web-platform` call them from their own servers, over the private network on `PUBLIRA_GRPC_URL`, and the mobile app calls the public API alone. No host needs them forwarded, so the edge answers them with a `404` of its own, on the console hosts as on the tenants' domains. An edge that forwards them anyway exposes two APIs to the internet for nothing, along with every call of theirs that runs before there is a session: signing in, resetting a password, confirming an email address, and creating the Platform Console's first operator. Their own authentication, which [The console APIs](../../3-operations/12-security/index.md#the-console-apis) describes, stays in place behind the edge rule.
@@ -59,6 +72,7 @@ The edge terminates TLS for every host name it serves, and needs a certificate f
 - Each tenant's domain, such as `comics.example.com`.
 - Each tenant's console host, such as `admin.comics.example.com`.
 - The Platform Console's host, if you run it.
+- Each tenant's image host, if it has one and this edge serves it.
 
 A wildcard certificate for `*.comics.example.com` covers the console host but not `comics.example.com` itself, and a tenant on a domain of its own needs names of its own: no one certificate covers every tenant. Where the certificates come from is the edge's choice: a load balancer or a CDN that issues and renews them itself, an ACME client such as one built into a proxy, or a certificate issued elsewhere that you install and renew.
 
@@ -76,7 +90,9 @@ A tenant made with `publiractl tenant create` or in the Platform Console is serv
 
 An edge that sends every host it does not name to `web-storefront` needs only the console host in step 3. The sample configurations name every host, so each of them needs both, given the way [The host lists](./1-sample-configurations.md#the-host-lists) describes.
 
-Moving a console host later, with `publiractl tenant update --admin-domain` or in the **Admin domain** field of the Platform Console, follows the same order: add the new name to DNS, the certificates, and the routing before the change, and remove the old one after it. `--admin-domain ""` moves the console back to `admin.<domain>`.
+A tenant given an image host needs the same three steps for it, on whichever edge or load balancer serves it, with `/images` on it routed to `publira server` as [A tenant's image host](#a-tenants-image-host) describes. Take them before you give the tenant its image host: from then on, its site and its app load their images there.
+
+Moving a console host later, with `publiractl tenant update --admin-domain` or in the **Admin domain** field of the Platform Console, follows the same order: add the new name to DNS, the certificates, and the routing before the change, and remove the old one after it. `--admin-domain ""` moves the console back to `admin.<domain>`. Setting, moving, or clearing an image host, with `--image-domain` or **Image host**, does too, and `--image-domain ""` serves the site's images on its domain again.
 
 ### The client address
 

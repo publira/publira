@@ -55,23 +55,27 @@ export PUBLIRA_ROUTING_EDGE_TLS_PORT="${PUBLIRA_ROUTING_EDGE_TLS_PORT:-13443}"
 # which wait-ready.sh copies out of the container.
 export PUBLIRA_ROUTING_TLS="${PUBLIRA_ROUTING_TLS:-0}"
 
-# The hosts the proxy under test is given, one list per app, as the
-# PUBLIRA_EDGE_*_HOSTS variables every sample reads. Most of the names follow no
-# convention on purpose: a listed host reaches its app whatever it is called,
-# so `admin.reader.example.org` is a tenant site here and `studio.example.com`
-# a console. The run of spaces in the first list is there to be split. The
+# The hosts the proxy under test is given, one list per app and one of the
+# tenants' image hosts, as the PUBLIRA_EDGE_*_HOSTS variables every sample
+# reads. Most of the names follow no convention on purpose: a listed host
+# reaches its app whatever it is called, so `admin.reader.example.org` is a
+# tenant site here, `studio.example.com` a console, and `admin.art.example.com`
+# an image host. The run of spaces in the first list is there to be split. The
 # `localhost` names are the ones the Dev Container lists, which the rest of the
-# probes use. run-one.sh empties the platform list for its second pass, the
-# install that runs no web-platform, so an empty value is kept as it is.
+# probes use. run-one.sh empties the platform and image lists for its second
+# pass, the install that runs no web-platform and gives no tenant an image
+# host, so an empty value is kept as it is.
 if [[ "${PUBLIRA_ROUTING_TLS}" == "1" ]]; then
   export PUBLIRA_ROUTING_SITE_HOSTS="localhost reader.internal"
   export PUBLIRA_ROUTING_ADMIN_HOSTS="admin.localhost studio.internal"
   export PUBLIRA_ROUTING_PLATFORM_HOSTS="platform.localhost operators.internal"
-  export PUBLIRA_ROUTING_TLS_HOSTS="${PUBLIRA_ROUTING_SITE_HOSTS} ${PUBLIRA_ROUTING_ADMIN_HOSTS} ${PUBLIRA_ROUTING_PLATFORM_HOSTS}"
+  export PUBLIRA_ROUTING_IMAGE_HOSTS="pictures.internal"
+  export PUBLIRA_ROUTING_TLS_HOSTS="${PUBLIRA_ROUTING_SITE_HOSTS} ${PUBLIRA_ROUTING_ADMIN_HOSTS} ${PUBLIRA_ROUTING_PLATFORM_HOSTS} ${PUBLIRA_ROUTING_IMAGE_HOSTS}"
 else
   export PUBLIRA_ROUTING_SITE_HOSTS="localhost  reader.example.org admin.reader.example.org"
   export PUBLIRA_ROUTING_ADMIN_HOSTS="admin.localhost studio.example.com"
   export PUBLIRA_ROUTING_PLATFORM_HOSTS="${PUBLIRA_ROUTING_PLATFORM_HOSTS-platform.localhost operators.example.net}"
+  export PUBLIRA_ROUTING_IMAGE_HOSTS="${PUBLIRA_ROUTING_IMAGE_HOSTS-pictures.example.net admin.art.example.com}"
   export PUBLIRA_ROUTING_TLS_HOSTS=""
 fi
 
@@ -199,7 +203,8 @@ fi
 PUBLIRA_ROUTING_CADDY_ROOT="${RUN_DIR}/caddy-root.crt"
 
 # Router names Traefik loads from infra/proxy/traefik/dynamic/routes.yaml. A
-# list with no hosts leaves its router out.
+# list with no hosts leaves its router out. The image hosts have no router of
+# their own: they join the images router.
 PUBLIRA_ROUTING_ROUTERS=(
   web-storefront
   web-admin

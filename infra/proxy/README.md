@@ -21,40 +21,44 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 | `web-storefront` | The public tenant site | `3000` |
 | `web-admin` | The tenant console | `4000` |
 | `web-platform` | The platform console | `4100` |
-| `api` | `publira server`: the public API under `/rpc`, and image delivery for the tenant site and the tenant console alike | `8000` |
+| `api` | `publira server`: the public API under `/rpc`, and image delivery for the tenant site, a tenant's image host, and the tenant console alike | `8000` |
 
 ### Host rules
 
-The hostname decides which Next.js app answers, and the hosts are listed rather than recognised: each sample reads one environment variable per app and routes exactly the hosts it names.
+The hostname decides which Next.js app answers, and the hosts are listed rather than recognised: each sample reads one environment variable per app, and one for the hosts no app answers, and routes exactly the hosts they name.
 
 | Variable | App | Holds |
 | --- | --- | --- |
 | `PUBLIRA_EDGE_SITE_HOSTS` | `web-storefront` | Every tenant's domain |
 | `PUBLIRA_EDGE_ADMIN_HOSTS` | `web-admin` | Every tenant's console host |
 | `PUBLIRA_EDGE_PLATFORM_HOSTS` | `web-platform` | The Platform Console's host |
+| `PUBLIRA_EDGE_IMAGE_HOSTS` | None: `/images…` alone, to `api` | Every tenant's image host |
 
 Each is a list of host names separated by spaces, without a port: the form a Caddyfile placeholder and nginx's `server_name` take as they are, and the Traefik template splits. A host belongs to one list. Matching ignores the port the `Host` header carries, so `admin.localhost:3080` is a console host when `admin.localhost` is listed.
 
 A listed host reaches its app whatever its name: nothing about `admin.` or `platform.` means anything to the edge. A tenant's console host is the one it was given (`admin_domain`), or `admin.<domain>` without one, and the application answers on whichever it is, so adding a tenant means adding its domain to the first list and its console host to the second.
 
+A tenant's image host is the host it was given for its storefront images (`image_domain`), which it has only when one was set. `publira server` then hands out the tenant's storefront image URLs on that host and answers it as the tenant's storefront, so the fourth list holds it, and on it the edge forwards `/images…` and answers every other path with a 404 of its own, `/rpc` included: no app serves the host. The edge forwards `Host` unrewritten here as everywhere, which is what the server resolves the tenant from, so the list only widens which hosts reach `api`.
+
 A host in no list reaches no backend: the edge answers it with a 404 of its own, on every path, `/rpc` and `/images` included.
 
-An install that runs no `web-platform` leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty. Every sample stays valid with an empty list, so no block is removed for it; the `web-platform` upstream may be left out of the backend addresses as well.
+An install that runs no `web-platform` leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty, and one that gives no tenant an image host, or serves the image hosts behind a load balancer of their own, leaves `PUBLIRA_EDGE_IMAGE_HOSTS` empty. Every sample stays valid with an empty list, so no block is removed for it; the `web-platform` upstream may be left out of the backend addresses as well.
 
 ### Path rules
 
-| Path                       | Backend                       |
-| -------------------------- | ----------------------------- |
-| `/images…`                 | `api`                         |
-| `/rpc/publira.v1.…`        | `api`                         |
-| `/rpc`, `/rpc/…` otherwise | none: the edge answers 404    |
-| Everything else            | the app the host rules picked |
+| Path                              | Backend                       |
+| --------------------------------- | ----------------------------- |
+| `/images…`                        | `api`                         |
+| Everything else, on an image host | none: the edge answers 404    |
+| `/rpc/publira.v1.…`               | `api`                         |
+| `/rpc`, `/rpc/…` otherwise        | none: the edge answers 404    |
+| Everything else                   | the app the host rules picked |
 
 No rule rewrites the path.
 
 Only the public API is forwarded under `/rpc`. `publira server` answers the tenant console's and the Platform Console's namespaces, `publira.admin.v1` and `publira.platform.v1`, on the same paths, but `web-admin` and `web-platform` call them over the private network, and the mobile app calls `publira.v1` alone, so no host needs them, and the edge answers them itself rather than expose two authenticated APIs to the internet for nothing. The prefix ends at the dot after `v1`, so that `publira.v1.<Service>/<Method>` is all it matches: `publira.v1beta.…` and a bare `/rpc/publira.v1` are answered by the edge as well.
 
-The path rules apply on every listed host: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend, and the rest of `/rpc` answers 404 on all of them. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/rpc/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
+The path rules apply on every host an app answers: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend, and the rest of `/rpc` answers 404 on all of them. An image host takes the first two rows alone. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/rpc/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
 
 A webhook an outside service calls on the public site lives at `/api/v1/webhook/<kind>/<provider>`, such as `/api/v1/webhook/payment/stripe` or `/api/v1/webhook/email/sendgrid`; a new kind of webhook is added under that layout rather than beside it. It is one of the Route Handlers each app mounts under `/api/v1`, which the last row above routes to the app with every other path, so no proxy names a webhook path.
 
@@ -70,9 +74,10 @@ Highest first. A proxy with no numeric priorities reaches the same result by ord
 
 1. A host in no list, answered by the edge itself
 2. `/images…`
-3. `/rpc/publira.v1.…`
-4. The rest of `/rpc`, answered by the edge itself
-5. The app whose list names the host
+3. The rest of an image host, answered by the edge itself
+4. `/rpc/publira.v1.…`
+5. The rest of `/rpc`, answered by the edge itself
+6. The app whose list names the host
 
 ### Request headers
 
@@ -113,11 +118,11 @@ Traefik's trusted addresses govern only the `X-Forwarded-*` headers it writes it
 
 Four things are deployment decisions, and each proxy's files mark them.
 
-- **Hosts.** The three `PUBLIRA_EDGE_*_HOSTS` variables above, read from the proxy's environment: by the Traefik file provider when it renders `routes.yaml`, by the official nginx image when it renders `default.conf.template` at startup, and by Caddy when it parses the Caddyfile. Each proxy reads them once, so a changed list takes effect when the proxy restarts. None of them has a default: the Dev Container, the edge in front of a host-side `task dev`, and each `dev-env` profile list the development seed's tenant and the Platform Console, and the E2E stack every tenant its seeds and scenarios create.
+- **Hosts.** The four `PUBLIRA_EDGE_*_HOSTS` variables above, read from the proxy's environment: by the Traefik file provider when it renders `routes.yaml`, by the official nginx image when it renders `default.conf.template` at startup, and by Caddy when it parses the Caddyfile. Each proxy reads them once, so a changed list takes effect when the proxy restarts. None of them has a default: the Dev Container, the edge in front of a host-side `task dev`, and each `dev-env` profile list the development seed's tenant and the Platform Console, and the E2E stack every tenant its seeds and scenarios create. None of them lists an image host, since no tenant they serve has one.
 - **Backend addresses.** They are the half of the configuration that changes per environment, so every proxy here keeps them apart from the routing: Traefik in `traefik/dynamic/services.yaml`, nginx in `nginx/upstreams.conf`, Caddy in the `PUBLIRA_UPSTREAM_*` environment variables. The addresses committed here name the Dev Container's `app` container.
 - **TLS.** Which certificate source and which listen addresses apply depend on where the edge runs. Traefik and nginx listen on plain HTTP and carry a commented placeholder where the TLS listener goes. Caddy listens on plain HTTP until `PUBLIRA_EDGE_TLS_HOSTS` names hosts, separated by spaces: it then obtains a certificate for each over ACME, registering the account with `PUBLIRA_EDGE_ACME_EMAIL`, serves them on `:443`, and redirects plain HTTP for them to HTTPS. A host in no list gets no certificate, so its TLS handshake fails. The Compose install in [`infra/deploy/`](../deploy/README.md) gives it every listed host once its ACME contact is set.
 - **Trusted hops.** The addresses of a load balancer, a CDN, or a TLS terminator in front of the edge, in the setting [above](#a-trusted-hop-in-front). Traefik and nginx carry it commented out, naming the documentation range `192.0.2.0/24` in place of the hop's addresses, and Traefik reads the same addresses from `PUBLIRA_EDGE_TRUSTED_PROXIES` as well; Caddy reads it from `PUBLIRA_EDGE_TRUSTED_PROXIES` alone, which the Compose install passes on from its `.env`.
 
 ## Verification
 
-`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, gives it hosts whose names follow no convention, and probes every row above, along with unlisted hosts that look like a console or the Platform Console. It then starts Caddy with every listed host in `PUBLIRA_EDGE_TLS_HOSTS` and probes it over HTTPS, and enables each sample's trusted-hop setting as it is written and probes it through a hop that names a client address, a scheme, and a region, and from outside its range. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
+`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, gives it hosts whose names follow no convention, image hosts among them, and probes every row above, along with unlisted hosts that look like a console or the Platform Console. It then starts Caddy with every listed host in `PUBLIRA_EDGE_TLS_HOSTS` and probes it over HTTPS, and enables each sample's trusted-hop setting as it is written and probes it through a hop that names a client address, a scheme, and a region, and from outside its range. See [`e2e/routing/README.md`](../../e2e/routing/README.md).

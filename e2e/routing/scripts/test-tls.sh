@@ -28,6 +28,9 @@ assert_route "web-platform listed host of no convention" GET operators.internal 
 assert_route "rpc on a listed host" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_route "api procedure on a listed host" GET studio.internal "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" web-admin "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_route "images on a listed host" GET admin.localhost /images/cover api /images/cover
+assert_route "images on an image host" GET pictures.internal /images/cover api /images/cover
+assert_unrouted "rpc on an image host" GET pictures.internal "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_unrouted "page on an image host" GET pictures.internal /
 assert_route "api/v1 on a listed host" POST reader.internal /api/v1/revalidate web-storefront /api/v1/revalidate
 assert_unrouted "console API on a listed host" POST admin.localhost /rpc/publira.admin.v1.AdminSeriesService/ListSeries
 assert_unrouted "platform API on a listed host" POST operators.internal /rpc/publira.platform.v1.PlatformTenantService/ListTenants
@@ -36,6 +39,7 @@ assert_trace_context_stripped "trace context on web-storefront" GET localhost / 
 assert_forwarded_headers "forwarded headers on web-storefront" GET reader.internal / web-storefront
 assert_forwarded_headers "forwarded headers on web-admin" GET studio.internal / web-admin
 assert_forwarded_headers "forwarded headers on rpc" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
+assert_forwarded_headers "forwarded headers on an image host" GET pictures.internal /images/cover api
 
 # Plain HTTP to a listed host: the edge answers it with a redirect to the same
 # path over HTTPS, and no backend sees the request.
@@ -55,6 +59,7 @@ assert_redirected_to_https() {
 assert_redirected_to_https "web-storefront over plain HTTP" reader.internal "/catalog?page=2"
 assert_redirected_to_https "web-admin over plain HTTP" admin.localhost /series
 assert_redirected_to_https "rpc over plain HTTP" localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_redirected_to_https "image host over plain HTTP" pictures.internal "/images/cover?w=640"
 
 # A host in no list has no certificate, so the TLS handshake fails before any
 # request is read, and over plain HTTP the edge answers it with its own 404,
