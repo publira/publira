@@ -331,6 +331,17 @@ export const WEB_ADMIN_PURCHASES_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the analytics tenant from
+ * `db/seeds/scenarios/690_admin_analytics.sql`. Its suite counts one week of
+ * the tenant's sales, follows, and reads exactly, so none of them may come from
+ * a suite selling or following on another tenant.
+ */
+export const WEB_ADMIN_ANALYTICS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_ANALYTICS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.analytics.localhost")
+);
+
+/**
  * Admin console of the subscription plans tenant from
  * `db/seeds/scenarios/650_subscription_plans.sql`. Its suite takes the
  * tenant's payments through Stripe, which a plan's Price is read through, and

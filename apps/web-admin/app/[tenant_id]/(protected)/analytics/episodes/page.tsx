@@ -9,6 +9,7 @@ import * as Table from "@publira/ui-components/table";
 import { formatPercent, formatPlainDate } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
@@ -27,14 +28,16 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
-type EngagementPageProps = PageProps<"/[tenant_id]/engagement">;
+import { formatCount } from "../_lib/format";
+
+type EpisodesPageProps = PageProps<"/[tenant_id]/analytics/episodes">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const t = await getMessagesFor(locale);
 
-  return { title: t("admin.engagement.title") };
+  return { title: t("admin.analytics.episodes.title") };
 };
 
 export const generateStaticParams = () =>
@@ -51,7 +54,7 @@ const formatReadThroughRate = async (
   const t = await getMessagesFor(locale);
 
   return rate === null
-    ? t("admin.engagement.rate_unavailable")
+    ? t("admin.analytics.episodes.rate_unavailable")
     : formatPercent(rate, { locale });
 };
 
@@ -74,7 +77,7 @@ const ReadThroughRateCell = async ({
     locale
   );
 
-const EngagementSkeleton = () => (
+const EpisodesSkeleton = () => (
   <ConsoleSection.Stack>
     <FigureLine.Root>
       {(["skeleton-1", "skeleton-2", "skeleton-3"] as const).map((key) => (
@@ -116,9 +119,9 @@ const EngagementSkeleton = () => (
   </ConsoleSection.Stack>
 );
 
-const EngagementContent = async ({
+const EpisodesContent = async ({
   searchParams,
-}: Pick<EngagementPageProps, "searchParams">) => {
+}: Pick<EpisodesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
@@ -138,7 +141,7 @@ const EngagementContent = async ({
         <SectionError.Heading>
           <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-              <Message message="admin.engagement.section_error" />
+              <Message message="admin.analytics.episodes.section_error" />
             </Suspense>
           </SectionError.Title>
           <SectionError.Description>{result.message}</SectionError.Description>
@@ -160,7 +163,7 @@ const EngagementContent = async ({
         <p className="max-w-3xl text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
             <Message
-              message="admin.engagement.period"
+              message="admin.analytics.episodes.period"
               values={{
                 end: formatPlainDate(result.period.end, { locale }),
                 start: formatPlainDate(result.period.start, { locale }),
@@ -173,23 +176,27 @@ const EngagementContent = async ({
           <FigureLine.Figure>
             <FigureLine.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.engagement.complete_count_label" />
+                <Message message="admin.analytics.episodes.complete_count_label" />
               </Suspense>
             </FigureLine.Label>
-            <FigureLine.Value>{result.totalCompleteCount}</FigureLine.Value>
+            <FigureLine.Value>
+              {formatCount(result.totalCompleteCount, locale)}
+            </FigureLine.Value>
           </FigureLine.Figure>
           <FigureLine.Figure>
             <FigureLine.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.engagement.member_view_count_label" />
+                <Message message="admin.analytics.episodes.member_view_count_label" />
               </Suspense>
             </FigureLine.Label>
-            <FigureLine.Value>{result.totalMemberViewCount}</FigureLine.Value>
+            <FigureLine.Value>
+              {formatCount(result.totalMemberViewCount, locale)}
+            </FigureLine.Value>
           </FigureLine.Figure>
           <FigureLine.Figure>
             <FigureLine.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.engagement.rate_label" />
+                <Message message="admin.analytics.episodes.rate_label" />
               </Suspense>
             </FigureLine.Label>
             <FigureLine.Value>
@@ -199,7 +206,7 @@ const EngagementContent = async ({
         </FigureLine.Root>
         <p className="text-xs text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <Message message="admin.engagement.definition" />
+            <Message message="admin.analytics.episodes.definition" />
           </Suspense>
         </p>
       </ConsoleSection.Root>
@@ -209,12 +216,12 @@ const EngagementContent = async ({
           <ConsoleSection.Heading>
             <ConsoleSection.Title>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.engagement.list_title" />
+                <Message message="admin.analytics.episodes.list_title" />
               </Suspense>
             </ConsoleSection.Title>
             <ConsoleSection.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.engagement.list_description" />
+                <Message message="admin.analytics.episodes.list_description" />
               </Suspense>
             </ConsoleSection.Description>
           </ConsoleSection.Heading>
@@ -222,14 +229,14 @@ const EngagementContent = async ({
         {result.episodes.length === 0 ? (
           <CursorPageEmptyState
             hasPageLinks={hasPageLinks}
-            itemLabel={t("admin.engagement.title")}
+            itemLabel={t("admin.analytics.episodes.title")}
           >
             <EmptyState.Heading>
               <EmptyState.Title>
-                {t("admin.engagement.empty_title")}
+                {t("admin.analytics.episodes.empty_title")}
               </EmptyState.Title>
               <EmptyState.Description>
-                <Message message="admin.engagement.empty_description" />
+                <Message message="admin.analytics.episodes.empty_description" />
               </EmptyState.Description>
             </EmptyState.Heading>
           </CursorPageEmptyState>
@@ -239,27 +246,27 @@ const EngagementContent = async ({
               <Table.Row>
                 <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.engagement.columns.series" />
+                    <Message message="admin.analytics.episodes.columns.series" />
                   </Suspense>
                 </Table.Head>
                 <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.engagement.columns.episode" />
+                    <Message message="admin.analytics.episodes.columns.episode" />
                   </Suspense>
                 </Table.Head>
                 <Table.Head className="w-32">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.engagement.columns.complete_count" />
+                    <Message message="admin.analytics.episodes.columns.complete_count" />
                   </Suspense>
                 </Table.Head>
                 <Table.Head className="w-32">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.engagement.columns.member_view_count" />
+                    <Message message="admin.analytics.episodes.columns.member_view_count" />
                   </Suspense>
                 </Table.Head>
                 <Table.Head className="w-32">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                    <Message message="admin.engagement.columns.rate" />
+                    <Message message="admin.analytics.episodes.columns.rate" />
                   </Suspense>
                 </Table.Head>
               </Table.Row>
@@ -271,10 +278,19 @@ const EngagementContent = async ({
                 >
                   <Table.Cell>{item.seriesTitle}</Table.Cell>
                   <Table.Cell className="font-medium">
-                    {item.episodeTitle}
+                    <Link
+                      className="underline-offset-4 hover:underline"
+                      href={`/analytics/episodes/${item.seriesPublicId}/${item.episodePublicId}`}
+                    >
+                      {item.episodeTitle}
+                    </Link>
                   </Table.Cell>
-                  <Table.Cell>{item.completeCount}</Table.Cell>
-                  <Table.Cell>{item.memberViewCount}</Table.Cell>
+                  <Table.Cell>
+                    {formatCount(item.completeCount, locale)}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {formatCount(item.memberViewCount, locale)}
+                  </Table.Cell>
                   <Table.Cell>
                     <ReadThroughRateCell
                       completeCount={item.completeCount}
@@ -291,13 +307,13 @@ const EngagementContent = async ({
         {result.episodes.length > 0 || hasPageLinks ? (
           <PaginationFooter.Root>
             <PaginationFooter.Description>
-              {t("admin.engagement.pagination_description", {
+              {t("admin.analytics.episodes.pagination_description", {
                 count: DEFAULT_PAGE_SIZE,
               })}
             </PaginationFooter.Description>
             <PaginationFooter.Controls
               {...pageHrefs}
-              aria-label={t("admin.engagement.pagination_aria")}
+              aria-label={t("admin.analytics.episodes.pagination_aria")}
             />
           </PaginationFooter.Root>
         ) : null}
@@ -306,18 +322,18 @@ const EngagementContent = async ({
   );
 };
 
-const EngagementPage = ({ searchParams }: EngagementPageProps) => (
+const EpisodesPage = ({ searchParams }: EpisodesPageProps) => (
   <ConsolePage.Root>
     <ConsolePage.Header>
       <ConsolePage.Heading>
         <ConsolePage.Title>
           <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
-            <Message message="admin.engagement.title" />
+            <Message message="admin.analytics.episodes.title" />
           </Suspense>
         </ConsolePage.Title>
         <ConsolePage.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
-            <Message message="admin.engagement.page_description" />
+            <Message message="admin.analytics.episodes.page_description" />
           </Suspense>
         </ConsolePage.Description>
       </ConsolePage.Heading>
@@ -326,16 +342,16 @@ const EngagementPage = ({ searchParams }: EngagementPageProps) => (
       <SectionErrorBoundary
         title={
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-            <Message message="admin.engagement.section_error" />
+            <Message message="admin.analytics.episodes.section_error" />
           </Suspense>
         }
       >
-        <Suspense fallback={<EngagementSkeleton />}>
-          <EngagementContent searchParams={searchParams} />
+        <Suspense fallback={<EpisodesSkeleton />}>
+          <EpisodesContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>
     </ConsolePage.Content>
   </ConsolePage.Root>
 );
 
-export default EngagementPage;
+export default EpisodesPage;

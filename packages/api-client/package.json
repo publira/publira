@@ -87,6 +87,10 @@
       "types": "./dist/admin/announcement.d.mts",
       "default": "./dist/admin/announcement.mjs"
     },
+    "./admin/engagement": {
+      "types": "./dist/admin/engagement.d.mts",
+      "default": "./dist/admin/engagement.mjs"
+    },
     "./admin/purchase": {
       "types": "./dist/admin/purchase.d.mts",
       "default": "./dist/admin/purchase.mjs"

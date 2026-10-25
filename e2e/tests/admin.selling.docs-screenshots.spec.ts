@@ -265,15 +265,17 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
-      test("Read-through, below the dates it covers", async ({ page }) => {
-        await openScreen(page, locale, "/engagement");
+      test("Episodes' read-through, below the dates it covers", async ({
+        page,
+      }) => {
+        await openScreen(page, locale, "/analytics/episodes");
 
         // From the figures down: the line above them names the last 28 days,
         // which move with the day the shot is taken.
         await expectDocsScreenshot(page, {
           element: [
             page.getByRole("main").locator("dl").first(),
-            docsSection(page, t("admin.engagement.list_title")),
+            docsSection(page, t("admin.analytics.episodes.list_title")),
           ],
           locale,
           page: reportsPage,

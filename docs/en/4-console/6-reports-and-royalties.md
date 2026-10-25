@@ -1,13 +1,13 @@
 ---
 title: Reports and royalties
-description: Read the Dashboard and Read-through, close a month of royalties into a statement for each Author, and export it as CSV.
+description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-10-20
+updated: 2026-10-25
 ---
 
-Three screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands, **Read-through** under **Reports** shows how far members read, and **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
+Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, and **Episodes** how far members read each episode and the page at which readers leave it. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
 
-Every member of the staff sees **Dashboard** and **Read-through**. Only a **Tenant admin** sees **Royalties**, closes a month, downloads a statement, or changes how months are closed; for anyone else the screens are not there.
+Every member of the staff sees **Dashboard**, **Audience**, and **Episodes**. Only a **Tenant admin** sees **Revenue** and **Royalties**, closes a month, downloads a statement, or changes how months are closed; for anyone else those screens are not there.
 
 ## Which day a sale or a read falls on
 
@@ -15,9 +15,10 @@ Every date these screens count by is a calendar day in the tenant's time zone, s
 
 - A sale falls on the moment the purchase was recorded, which for a payment that settles later, such as konbini, is when the payment arrived.
 - A read falls on the day the member opened or finished the episode.
+- A follow falls on the moment it was made, and its end on the moment the reader took it back or deleted their account.
 - A statement keeps the zone its month was cut in, and shows it under the month as **Cut in the tenant's time zone at close**.
 
-Changing the time zone after a statement has been closed leaves that statement as it was closed. The month after it starts where the statement ended, at midnight in the old zone, and ends at midnight in the new one, so a sale made in the hours between the two midnights is counted once, in whichever month the old zone put it in. Every month after that runs from midnight to midnight in the new zone. Days that **Read-through** has already counted are not recounted; the change applies from the next day it counts.
+Changing the time zone after a statement has been closed leaves that statement as it was closed. The month after it starts where the statement ended, at midnight in the old zone, and ends at midnight in the new one, so a sale made in the hours between the two midnights is counted once, in whichever month the old zone put it in. Every month after that runs from midnight to midnight in the new zone. Days the daily statistics have already counted, which **Audience** and **Episodes** read, are not recounted; the change applies from the next day they count. **Revenue** and the followers on **Audience** are read from the sales and the follows themselves, so they follow the new zone at once.
 
 ## Dashboard
 
@@ -35,9 +36,43 @@ Changing the time zone after a statement has been closed leaves that statement a
 
 The screen updates as soon as a member of the staff saves a series or an episode, and when a scheduled episode goes live on its own, which then leaves the queue.
 
-## Read-through
+## Analytics
 
-**Read-through** shows how many members finish each episode they open. It covers the last 28 days in the tenant's time zone, up to and including yesterday; the line under the title states the dates and the zone.
+**Revenue**, **Audience**, and the drop-off of an episode each report a period of the tenant's days. Choose it with **From** and **To** and **Apply**; it covers at most 366 days. Without a choice a screen covers the 28 days up to and including yesterday, and the line under the dates names the period and the zone. **Reset** goes back to those 28 days.
+
+A screen opens with the totals of its period and a chart of them by day, and below them a table. **By day**, **By series**, and **By episode** choose what the table's rows are, and choosing a column's heading sorts the table by it; choosing it again sorts it the other way. The period, the rows, and the sort are all in the page's address, so a bookmark or a link reopens the same report.
+
+Figures that come from the daily statistics reach a day once that day is over. `publira worker` counts each day after midnight in the tenant's time zone, on its next hourly pass, so a read made today appears tomorrow. While the worker is stopped no new day is counted, and when it starts again it catches up on the days it missed. [Overview](../2-deployments/1-overview.md) describes keeping `publira worker` running.
+
+### Revenue
+
+**Revenue** shows what sold over the period, in the tenant's currency.
+
+| Figure | What it counts |
+| --- | --- |
+| **Purchases** | Purchases made in the period, refunded ones included |
+| **Gross sales** | What those purchases were paid |
+| **Refunded** | What went back to the readers of them: refunds, and disputes the tenant lost |
+| **Net sales** | **Gross sales** less **Refunded**: what the tenant kept |
+
+The chart is the net sales of each day. A sale counts on the day it was made, and what went back on it is taken off that same day, however much later it went back, so a day already reported can fall afterwards, and a day on which more went back than sold is drawn below the line. A dispute still open takes nothing back until it is lost. A purchase of a volume or of the rest of a series is a sale of each episode it opened, at the part of the price the episode accounts for, the part a royalty statement credits, and a sale of their series at all of it. A purchase paid in a currency other than the tenant's current one is in no figure. Revenue reads the purchases themselves, so a sale made a moment ago is already in it.
+
+### Audience
+
+**Audience** shows how readers followed, read, and reacted to the tenant's series over the period.
+
+| Figure | What it counts |
+| --- | --- |
+| **Followers** | Readers following at the end of the period. A follow is counted as soon as it is made, and ends when the reader takes it back or deletes their account |
+| **Views** | Views of a series' page and of its episodes, by every reader, signed in or not |
+| **Completions** | Members finishing one of its episodes for the first time |
+| **Reactions** | Presses of an episode's reaction control that added to the reader's score of it |
+
+The chart is the followers at the end of each day. **By series** lists every series, with the follows made and ended in the period, and its **Rating** and **Raters**: the rating the series stands at now, the one its page shows, over every reaction it has ever collected rather than the period's. A series no reader has rated shows `—`.
+
+### Episodes
+
+**Episodes** shows how many members finish each episode they open. Its figures cover the last 28 days in the tenant's time zone, up to and including yesterday, whatever period the other screens show; the line under the title states the dates and the zone.
 
 | Figure | What it counts |
 | --- | --- |
@@ -47,11 +82,21 @@ The screen updates as soon as a member of the staff saves a series or an episode
 
 Only signed-in members count. A reader who is not signed in cannot be recorded as finishing an episode, so their views are left out as well. How a member came to read the episode makes no difference: an episode bought, opened with a ticket, or free counts the same, and a purchase alone counts nothing.
 
-**Episodes** lists each episode read in the period, the most completions first, twenty to a page. The totals at the top cover the whole period, whichever page is shown.
+**Read-through** lists each episode read in the period, the most completions first, twenty to a page. The totals at the top cover the whole period, whichever page is shown.
 
-![Read-through below the line naming its dates: Completions, Member views, and Read-through rate, how the rate is worked out, and the Episodes list.](./reports-and-royalties-read-through.png)
+![Episodes below the line naming its dates: Completions, Member views, and Read-through rate, how the rate is worked out, and the Read-through list.](./reports-and-royalties-read-through.png)
 
-The figures are counted once a day is over. `publira worker` counts each day after midnight in the tenant's time zone, on its next hourly pass, so a read made today appears tomorrow. While the worker is stopped, no new day is counted: the screen keeps showing the days counted before, and empties as they leave the 28-day window. When the worker starts again, it catches up on the days it missed. [Overview](../2-deployments/1-overview.md) describes keeping `publira worker` running.
+#### Drop-off
+
+Choosing an episode in **Read-through** opens its **Drop-off**: how far into the episode its readers got over a period, page by page.
+
+| Figure                    | What it counts                              |
+| ------------------------- | ------------------------------------------- |
+| **Readers**               | Readers who reached the first page          |
+| **Reached the last page** | Readers who reached the episode's last page |
+| **Pages**                 | The pages the episode has now               |
+
+The chart steps down from the first page to the last, and the table gives each page the readers who reached it, their share of those who reached the first, and the readers who left at it: those who reached it but not the next. Sorting by **Left here** brings the page most readers leave at to the top. A reader is counted at the page where their place in the episode stood at the end of a day, so a reader who read on several days of the period is counted once on each. A page past the episode's last, marked **(removed)**, was reached before pages were taken out of the episode.
 
 ## Royalties
 

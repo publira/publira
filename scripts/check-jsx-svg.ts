@@ -29,6 +29,9 @@ const EXCEPTIONS = [
   // text it encodes, and the fixed black-on-white palette is what makes the
   // code scannable, so nothing in @publira/icons could stand in for it.
   "packages/ui-components/src/qr-code/qr-code.tsx",
+  // A chart rather than an icon: its bars and lines are drawn from the figures
+  // a screen hands it, in a box the screen sizes, which no fixed glyph can be.
+  "packages/ui-components/src/chart/chart.tsx",
 ];
 
 export interface Finding {

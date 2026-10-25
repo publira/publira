@@ -8,6 +8,7 @@ export default defineConfig({
     "src/badge/index.ts",
     "src/button/index.ts",
     "src/card/index.ts",
+    "src/chart/index.ts",
     "src/checkbox/index.ts",
     "src/combobox/index.ts",
     "src/confirm-dialog/index.ts",

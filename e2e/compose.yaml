@@ -212,6 +212,7 @@ services:
         localhost
         age.localhost
         agree.localhost
+        analytics.localhost
         announce.localhost
         app-links.localhost
         aset.localhost
@@ -251,6 +252,7 @@ services:
         admin.localhost
         admin.age.localhost
         admin.agree.localhost
+        admin.analytics.localhost
         admin.announce.localhost
         admin.app-links.localhost
         admin.aset.localhost
