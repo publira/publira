@@ -703,3 +703,68 @@ func TestDBProcessPaymentWebhookCancelsASubscriptionWhoseReaderIsGone(t *testing
 		t.Fatalf("the subscription is %q on Stripe, want canceled", got)
 	}
 }
+
+// A webhook that records a reader's subscription while their account is being
+// deleted, after the deletion read which subscriptions to cancel, waits for
+// the deletion and then finds the reader gone, so the subscription it records
+// is canceled too rather than left billing for no one.
+func TestDBProcessPaymentWebhookWaitsForAnAccountDeletionInProgress(t *testing.T) {
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	deletion, err := f.pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the deletion: %v", err)
+	}
+	defer deletion.Rollback() //nolint:errcheck
+	if err := outbox.QueueSubscriptionCancellationsForUser(ctx, dbmodels.New(deletion), f.tenant.ID, f.reader.ID); err != nil {
+		t.Fatalf("QueueSubscriptionCancellationsForUser: %v", err)
+	}
+
+	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, "cs_during_deletion", stripetest.Subscription{
+		ID:         "sub_during_deletion",
+		CustomerID: "cus_during_deletion",
+		PriceID:    "price_monthly",
+		Status:     "active",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_monthly"),
+	})
+	delivered := make(chan error, 1)
+	go func() { delivered <- f.deliver(t, payload, headers) }()
+
+	// The webhook is waiting on the deletion once some session waits for an
+	// advisory lock. Without that lock it would commit here with the reader on
+	// the row, and the delete below would leave it naming no one.
+	for {
+		select {
+		case err := <-delivered:
+			t.Fatalf("the webhook finished during the deletion (err=%v), want it to wait", err)
+		case <-ctx.Done():
+			t.Fatal("the webhook never waited on the deletion")
+		default:
+		}
+		var waiting int
+		if err := f.pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted").Scan(&waiting); err != nil {
+			t.Fatalf("read pg_locks: %v", err)
+		}
+		if waiting > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if _, err := deletion.ExecContext(ctx, "DELETE FROM users WHERE id = $1", f.reader.ID); err != nil {
+		t.Fatalf("delete the account: %v", err)
+	}
+	if err := deletion.Commit(); err != nil {
+		t.Fatalf("commit the deletion: %v", err)
+	}
+	if err := <-delivered; err != nil {
+		t.Fatalf("deliver the completed checkout: %v", err)
+	}
+
+	if got := f.countRows(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2 AND payload->>'subscription_id' = 'sub_during_deletion'", f.tenant.ID, outbox.EventTypeSubscriptionCancel); got != 1 {
+		t.Fatalf("cancellations queued for the subscription = %d, want 1", got)
+	}
+}

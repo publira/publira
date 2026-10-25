@@ -53,8 +53,13 @@ func QueueSubscriptionCancellation(ctx context.Context, queries dbmodels.Querier
 // QueueSubscriptionCancellationsForUser queues the cancellation of every
 // subscription the provider goes on billing an account for. Call it in the
 // transaction that deletes the account, before the delete: the delete leaves
-// the subscriptions naming no one.
+// the subscriptions naming no one. It holds the reader's subscriptions lock
+// until that transaction ends, so a webhook recording one of them either
+// commits before the read here or waits and finds the account gone.
 func QueueSubscriptionCancellationsForUser(ctx context.Context, queries dbmodels.Querier, tenantID, userID uuid.UUID) error {
+	if err := queries.LockSubscriptionsOfUser(ctx, dbmodels.LockSubscriptionsOfUserParams{TenantID: tenantID, UserID: userID}); err != nil {
+		return fmt.Errorf("lock the subscriptions of the account: %w", err)
+	}
 	subscriptionIDs, err := queries.ListBilledStripeSubscriptionIDsForUser(ctx, dbmodels.ListBilledStripeSubscriptionIDsForUserParams{
 		TenantID: tenantID,
 		UserID:   uuid.NullUUID{UUID: userID, Valid: true},

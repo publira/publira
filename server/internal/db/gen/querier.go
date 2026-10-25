@@ -2864,6 +2864,11 @@ type Querier interface {
 	// Stripe and the write of what was read are never split by another delivery
 	// that read it later and wrote first.
 	LockSubscriptionForTenant(ctx context.Context, arg LockSubscriptionForTenantParams) error
+	// Serializes recording a reader's subscriptions with deleting the reader's
+	// account. The deletion reads which subscriptions to cancel and then takes the
+	// reader off them, and a subscription recorded for the reader in between would
+	// be left billing for no one with nothing queued to cancel it.
+	LockSubscriptionsOfUser(ctx context.Context, arg LockSubscriptionsOfUserParams) error
 	LockTenantAdminInvitationByHashForTenant(ctx context.Context, arg LockTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a

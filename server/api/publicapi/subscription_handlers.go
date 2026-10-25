@@ -490,6 +490,11 @@ func (s *apiServer) recordSubscription(
 	if subscription.TenantID != tenantID {
 		return connect.NewError(connect.CodeInvalidArgument, "subscription tenant does not match webhook path")
 	}
+	// Taken only now, after the read from the provider, so a deletion waits on
+	// the write alone.
+	if err := queries.LockSubscriptionsOfUser(ctx, dbmodels.LockSubscriptionsOfUserParams{TenantID: tenantID, UserID: subscription.ReaderID}); err != nil {
+		return s.internalDBError(ctx, "failed to lock the reader's subscriptions", err, "event_id", event.ID, "subscription_id", subscription.ID)
+	}
 	planID, err := queries.GetSubscriptionPlanForSubscriptionForTenant(ctx, dbmodels.GetSubscriptionPlanForSubscriptionForTenantParams{
 		TenantID:             tenantID,
 		StripePriceID:        subscription.PriceID,

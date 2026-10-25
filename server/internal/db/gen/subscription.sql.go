@@ -190,6 +190,29 @@ func (q *Queries) LockSubscriptionForTenant(ctx context.Context, arg LockSubscri
 	return err
 }
 
+const LockSubscriptionsOfUser = `-- name: LockSubscriptionsOfUser :exec
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription-reader:' || $1::uuid::text || ':' || $2::uuid::text,
+            0
+        )
+    )
+`
+
+type LockSubscriptionsOfUserParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// Serializes recording a reader's subscriptions with deleting the reader's
+// account. The deletion reads which subscriptions to cancel and then takes the
+// reader off them, and a subscription recorded for the reader in between would
+// be left billing for no one with nothing queued to cancel it.
+func (q *Queries) LockSubscriptionsOfUser(ctx context.Context, arg LockSubscriptionsOfUserParams) error {
+	_, err := q.db.ExecContext(ctx, LockSubscriptionsOfUser, arg.TenantID, arg.UserID)
+	return err
+}
+
 const RecordSubscriptionCheckout = `-- name: RecordSubscriptionCheckout :exec
 INSERT INTO subscription_checkouts (
         tenant_id,

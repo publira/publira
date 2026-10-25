@@ -96,6 +96,18 @@ SELECT pg_advisory_xact_lock(
         )
     );
 
+-- name: LockSubscriptionsOfUser :exec
+-- Serializes recording a reader's subscriptions with deleting the reader's
+-- account. The deletion reads which subscriptions to cancel and then takes the
+-- reader off them, and a subscription recorded for the reader in between would
+-- be left billing for no one with nothing queued to cancel it.
+SELECT pg_advisory_xact_lock(
+        hashtextextended(
+            'subscription-reader:' || sqlc.arg('tenant_id')::uuid::text || ':' || sqlc.arg('user_id')::uuid::text,
+            0
+        )
+    );
+
 -- name: LockSubscriptionCheckoutsOfUser :exec
 -- Serializes one reader's subscription checkouts, so two requests cannot each
 -- find no open checkout and each start one.
