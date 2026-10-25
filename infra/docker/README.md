@@ -77,7 +77,7 @@ docker build -f infra/docker/node/Dockerfile \
 | Stage | Image |
 | --- | --- |
 | Build | Debian 13 (trixie) image with the full toolchain (`node:*-trixie-slim` / `golang:*-trixie`) |
-| Runtime | distroless on Debian 13 (Web / Node: `nodejs24-debian13:nonroot`; publiractl: `static-debian13:nonroot`). The server image alone uses `debian:13.*-slim` plus `libvips42t64` (CGO, for Manael). |
+| Runtime | distroless on Debian 13 (Web / Node: `nodejs24-debian13:nonroot`; publiractl: `static-debian13:nonroot`). The server image alone uses `debian:13.*-slim` plus `libvips42t64` and `libheif-plugin-aomenc` (CGO, for Manael; the plugin encodes AVIF). |
 
 Every base image is pinned by digest under a tag that names its full version and OS release, and Renovate keeps both current.
 

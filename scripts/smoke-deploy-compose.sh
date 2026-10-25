@@ -5,8 +5,8 @@
 # documents, from generating .env to running `setup` a second time, and check
 # that the tenant site, the tenant console, and the Platform Console answer
 # through the edge, that `server` hosts the worker, that the proxy cannot reach
-# the database or Valkey, and that image delivery resizes an image through
-# libvips.
+# the database or Valkey, and that image delivery converts an image to WebP and
+# to AVIF and resizes it through libvips.
 #
 # The stack runs under its own project name, so an install on the same host is
 # left alone, and is always removed with its volumes.
@@ -205,10 +205,12 @@ echo "[deploy-smoke] ok: the proxy reaches server and the web apps, and not the 
 
 # Image delivery converts and resizes through libvips, which the server binary
 # links with CGO, so a server image whose runtime libvips does not match the
-# one it was built against fails here and nowhere above. Manael answers with
-# the original bytes when a conversion fails, so the check is on the output:
-# a WebP at the requested width. The request is the one the apps' next/image
-# loader makes, `fit=scale-down` included.
+# one it was built against fails here and nowhere above, and so does one
+# whose libheif has no AVIF encoder. Manael answers with the original bytes
+# when a conversion fails, so the check is on the output: a WebP, and an AVIF
+# for an `Accept` that prefers it, at the requested width. Manael converts only
+# a JPEG to AVIF, so that check asks for one. The request is the one the apps'
+# next/image loader makes, `fit=scale-down` included.
 #
 # A 64×32 PNG, stored the way a tenant's logo upload stores one.
 printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAAN0lEQVR42u3PQQkAAAgEsItjCPtjLDP4FAYrsEzXaxEQEBAQEBAQEBAQEBAQEBAQEBAQEBAQuFq5D2CIoSw0JwAAAABJRU5ErkJggg==' |
@@ -256,3 +258,50 @@ if [ "${answer}" != "200 image/webp" ] || [ "${width}" != 16 ]; then
   exit 1
 fi
 echo "[deploy-smoke] ok: image delivery resized a 64px PNG to a 16px WebP"
+
+# Prints the width of an AVIF file, from the first image spatial extents
+# (`ispe`) property it carries, or nothing for anything else.
+avif_width() {
+  local file="$1" offset b
+  [ "$(tail -c +5 "${file}" | head -c 8)" = ftypavif ] || return 0
+  offset="$(grep -obUa ispe "${file}" | head -n 1 | cut -d: -f1)"
+  [ -n "${offset}" ] || return 0
+  read -ra b <<< "$(od -An -tu1 -j$((offset + 8)) -N4 "${file}")"
+  echo $((b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3]))
+}
+
+# A 64×32 JPEG, stored the way a label image upload stores one.
+printf '%s' '/9j/2wCEABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2MBERISGBUYLxoaL2NCOEJjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY//AAAsIACAAQAEBEQD/xADSAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/aAAgBAQAAPwAooooooooooooooooooooooooooooooor/2Q==' |
+  base64 -d > "${work}/label.jpg"
+# shellcheck disable=SC2016 # expanded inside the container
+compose exec -T rustfs sh -c \
+  'curl -fsS -X PUT --aws-sigv4 aws:amz:us-east-1:s3 --user "$RUSTFS_ACCESS_KEY:$RUSTFS_SECRET_KEY" -H "Content-Type: image/jpeg" --data-binary @- http://localhost:9000/publira/smoke/label.jpg' \
+  < "${work}/label.jpg" > /dev/null
+label_image_id="$(compose exec -T postgres psql -U postgres -d publira -v ON_ERROR_STOP=1 -qtA -c "
+  WITH label AS (
+    INSERT INTO labels (id, tenant_id, public_id, name) SELECT gen_random_uuid(), id, 'smokelabel01', 'Smoke' FROM tenants RETURNING id, tenant_id
+  ), image AS (
+    INSERT INTO label_images (id, tenant_id, label_id) SELECT gen_random_uuid(), tenant_id, id FROM label RETURNING id, tenant_id
+  )
+  INSERT INTO label_image_variants
+    (id, tenant_id, label_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+  SELECT gen_random_uuid(), tenant_id, id, 'landscape-64w', 'landscape', 's3', 'smoke/label.jpg', 'image/jpeg', $(wc -c < "${work}/label.jpg"), 64, 32
+  FROM image
+  RETURNING label_image_id")"
+
+# The `Accept` Chromium sends for an image; Firefox and Safari list image/avif
+# too.
+answer="$(curl -sS -o "${work}/label.avif" -w '%{http_code} %{content_type}' \
+  -H 'Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' \
+  --resolve "${domain}:${edge_port}:127.0.0.1" "http://${domain}:${edge_port}/images/labels/${label_image_id}/landscape/64?w=16&fit=scale-down" || true)"
+width="$(avif_width "${work}/label.avif")"
+if [ "${answer}" != "200 image/avif" ] || [ "${width}" != 16 ]; then
+  echo "[deploy-smoke] ERROR: image delivery answered ${answer:-nothing} at width ${width:-unknown}, want 200 image/avif at width 16" >&2
+  exit 1
+fi
+if failures="$(compose logs --no-color server | grep -F 'failed to convert image')"; then
+  echo "[deploy-smoke] ERROR: server logged a failed conversion:" >&2
+  echo "${failures}" >&2
+  exit 1
+fi
+echo "[deploy-smoke] ok: image delivery resized a 64px JPEG to a 16px AVIF"
