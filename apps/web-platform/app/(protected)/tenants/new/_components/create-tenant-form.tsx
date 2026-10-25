@@ -5,6 +5,7 @@ import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
+import { ImageDomainPreview } from "#components/image-domain-preview";
 import { Message } from "#components/message";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 
@@ -63,6 +64,20 @@ export const CreateTenantForm = () => (
       </Field.Content>
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
         <AdminDomainPreview showCurrentDomain={false} />
+      </Suspense>
+    </Field.Root>
+
+    <Field.Root>
+      <Field.Label>
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="platform.tenants.image_domain" />
+        </Suspense>
+      </Field.Label>
+      <Field.Content>
+        <Input name="tenant_image_domain" type="text" />
+      </Field.Content>
+      <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+        <ImageDomainPreview />
       </Suspense>
     </Field.Root>
 

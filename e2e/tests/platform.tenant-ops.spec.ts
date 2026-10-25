@@ -56,6 +56,12 @@ const tenantAdminDomainInput = (page: Page): Locator =>
     .filter({ visible: true })
     .first();
 
+const tenantImageDomainInput = (page: Page): Locator =>
+  page
+    .getByRole("textbox", { name: /^Image host/u })
+    .filter({ visible: true })
+    .first();
+
 const tenantNameForm = (page: Page): Locator =>
   page
     .locator("form")
@@ -199,6 +205,60 @@ test.describe("platform tenant operations", () => {
     await expect(tenantNameInput(page)).toHaveValue(editedName);
     await expect(tenantDomainInput(page)).toHaveValue(newDomain);
     await expect(tenantAdminDomainInput(page)).toHaveValue(newAdminDomain);
+  });
+
+  test("sets an image host, refuses one another tenant holds, and clears it", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const name = `E2E Image Host Tenant ${suffix}`;
+    const domain = `e2e-img-${suffix}.localhost`;
+    const imageDomain = `images.e2e-img-${suffix}.localhost`;
+    const otherDomain = `e2e-img-other-${suffix}.localhost`;
+
+    trackTenant(
+      await createTenantViaUi(page, {
+        domain: otherDomain,
+        name: `E2E Image Host Neighbour ${suffix}`,
+      })
+    );
+    const tenantId = trackTenant(
+      await createTenantViaUi(page, { domain, imageDomain, name })
+    );
+
+    await expect(tenantImageDomainInput(page)).toHaveValue(imageDomain);
+    await expect(
+      page.getByText(`Storefront images will be served on ${imageDomain}.`)
+    ).toBeVisible();
+
+    await tenantImageDomainInput(page).fill(otherDomain);
+    await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
+    await expect(formMessage(page)).toContainText(
+      "This image host is already in use."
+    );
+
+    await page.goto(platformUrl(`/tenants/${tenantId}`));
+    await expect(tenantImageDomainInput(page)).toHaveValue(imageDomain);
+
+    await tenantImageDomainInput(page).fill("");
+    await tenantDomainForm(page).getByRole("button", { name: "Save" }).click();
+    await expect(formMessage(page)).toContainText("Saved.");
+
+    await page.goto(platformUrl(`/tenants/${tenantId}`));
+    await expect(tenantImageDomainInput(page)).toHaveValue("");
+    await expect(
+      page.getByText(
+        `If no image host is set, storefront images are served on ${domain}.`
+      )
+    ).toBeVisible();
+    expect(
+      querySql(`
+        SELECT COALESCE(image_domain, '')
+        FROM tenants
+        WHERE public_id = '${tenantId}'
+        LIMIT 1
+      `)
+    ).toBe("");
   });
 
   /**

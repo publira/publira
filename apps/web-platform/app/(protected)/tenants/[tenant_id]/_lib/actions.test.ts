@@ -149,7 +149,7 @@ describe("tenant detail actions", () => {
     );
   });
 
-  it("moving a tenant sends its domains alone, so its name stays as it is", async () => {
+  it("moving a tenant sends its hosts alone, so its name stays as it is", async () => {
     mockUpdatePlatformTenant.mockResolvedValueOnce({ ok: true });
 
     const { updateTenantDomainAction } = await import("./actions");
@@ -161,13 +161,18 @@ describe("tenant detail actions", () => {
           tenant_admin_domain: "console.example.net",
           tenant_domain: "renamed.example.com",
           tenant_id: "01a0deb5-0000-7000-8000-000000000002",
+          tenant_image_domain: "images.example.net",
         })
       )
     ).resolves.toMatchObject({ ok: true });
 
     expect(mockUpdatePlatformTenant).toHaveBeenCalledWith(
       "01a0deb5-0000-7000-8000-000000000002",
-      { adminDomain: "console.example.net", domain: "renamed.example.com" },
+      {
+        adminDomain: "console.example.net",
+        domain: "renamed.example.com",
+        imageDomain: "images.example.net",
+      },
       "en"
     );
   });

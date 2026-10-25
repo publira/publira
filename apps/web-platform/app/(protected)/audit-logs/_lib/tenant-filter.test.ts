@@ -9,6 +9,7 @@ const tenant: PlatformTenantDetail = {
   createdAt: "2026-03-01T00:00:00Z",
   domain: "example.com",
   id: "0190c6a4-0000-7000-8000-000000000001",
+  imageDomain: "",
   name: "Example Press",
   publicId: "tenantPublic1",
   status: "active",

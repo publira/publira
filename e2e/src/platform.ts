@@ -52,6 +52,7 @@ export interface CreateTenantInput {
   name: string;
   domain: string;
   adminDomain?: string;
+  imageDomain?: string;
   initialAdminEmails?: string;
   /**
    * Label of the option to pick in the default-language selector.
@@ -86,6 +87,11 @@ export const submitTenantForm = async (
     await page
       .getByRole("textbox", { name: /^Admin domain/u })
       .fill(input.adminDomain);
+  }
+  if (input.imageDomain !== undefined) {
+    await page
+      .getByRole("textbox", { name: /^Image host/u })
+      .fill(input.imageDomain);
   }
   if (input.initialAdminEmails !== undefined) {
     await page

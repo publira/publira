@@ -19,6 +19,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
+import { ImageDomainPreview } from "#components/image-domain-preview";
 import { Message } from "#components/message";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
 import { getPlatformLocale } from "#lib/locale";
@@ -332,6 +333,25 @@ const TenantDetailContent = async ({
                       adminDomain={tenant.adminDomain}
                       domain={tenant.domain}
                       showCurrentDomain
+                    />
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-24" />}
+                      >
+                        <Message message="platform.tenants.image_domain" />
+                      </Suspense>
+                    </Field.Label>
+                    <Input
+                      key={tenant.imageDomain}
+                      defaultValue={tenant.imageDomain}
+                      name="tenant_image_domain"
+                      type="text"
+                    />
+                    <ImageDomainPreview
+                      domain={tenant.domain}
+                      imageDomain={tenant.imageDomain}
                     />
                   </Field.Root>
                 </div>

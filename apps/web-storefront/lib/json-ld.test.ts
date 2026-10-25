@@ -267,6 +267,22 @@ describe("seriesJsonLd", () => {
     ]);
   });
 
+  it("keeps an image on the tenant's image host as the API answered it", () => {
+    const eyeCatchImageVariants = [
+      variant(
+        "landscape",
+        1600,
+        "https://images.example.test/images/series/landscape-1600.webp"
+      ),
+    ];
+
+    const document = seriesJsonLd(SITE, { ...SERIES, eyeCatchImageVariants });
+
+    expect(document.image).toStrictEqual([
+      "https://images.example.test/images/series/landscape-1600.webp",
+    ]);
+  });
+
   it("names the label as the publisher where the work is filed under one", () => {
     const document = seriesJsonLd(SITE, {
       ...SERIES,

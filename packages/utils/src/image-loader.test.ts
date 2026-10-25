@@ -66,10 +66,30 @@ describe("imageServerLoader", () => {
     expect(url.searchParams.get("w")).toBe("828");
   });
 
+  it("asks an image host for the requested width, on that host", () => {
+    expect(
+      imageServerLoader({
+        src: "https://images.example.test/images/series/cover?v=3",
+        width: 828,
+      })
+    ).toBe(
+      "https://images.example.test/images/series/cover?v=3&w=828&fit=scale-down"
+    );
+  });
+
+  it("keeps a host-relative image path host-relative", () => {
+    expect(
+      imageServerLoader({ src: "/images/series/cover?v=3", width: 828 })
+    ).toBe("/images/series/cover?v=3&w=828&fit=scale-down");
+  });
+
   it.each([
     "blob:https://example.test/2f1b1e6a-1c5f-4a34-9f2f-2b3a0a4a0d1e",
     "data:image/png;base64,iVBORw0KGgo=",
-    "https://cdn.example.test/images/cover.png",
+    "https://cdn.example.test/assets/images/cover.png",
+    "https://cdn.example.test/cover.png",
+    "//cdn.example.test/images/cover.png",
+    "images/cover.png",
     "/logo.svg",
   ])("returns %s untouched", (src) => {
     expect(imageServerLoader({ src, width: 640 })).toBe(src);

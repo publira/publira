@@ -189,6 +189,7 @@ describe("listPlatformTenants", () => {
           adminDomain: "admin.example.com",
           createdAt: "2026-03-01 10:00",
           domain: "example.com",
+          imageDomain: "",
           name: "Test Publishing",
           publicId: "tenant_test",
           status: "active",
@@ -298,6 +299,7 @@ describe("createPlatformTenant", () => {
         adminDomain: "",
         defaultLocale: "ja",
         domain: "example.com",
+        imageDomain: "",
         initialAdminEmails: ["owner@example.com"],
         name: "New Publishing",
         supportedLocales: ["ja", "en"],
@@ -433,6 +435,35 @@ describe("createPlatformTenant", () => {
     });
   });
 
+  it("shows an image_domain field violation as an image host conflict", async () => {
+    mockCreateTenant.mockRejectedValueOnce(
+      new ConnectError("duplicate key", Code.AlreadyExists, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: { fieldViolations: [{ field: "image_domain" }] },
+        },
+      ])
+    );
+
+    await expect(
+      createPlatformTenant({
+        defaultLocale: "ja",
+        domain: "example.com",
+        imageDomain: " images.example.net ",
+        locale: "en",
+        name: "n",
+        supportedLocales: ["ja", "en"],
+      })
+    ).resolves.toEqual({
+      message: "This image host is already in use.",
+      ok: false,
+    });
+    expect(mockCreateTenant).toHaveBeenCalledWith(
+      expect.objectContaining({ imageDomain: "images.example.net" }),
+      expect.anything()
+    );
+  });
+
   it("converts input errors to validation errors", async () => {
     mockCreateTenant.mockRejectedValueOnce(
       new ConnectError("invalid initial_admin_emails", Code.InvalidArgument)
@@ -459,6 +490,7 @@ describe("createPlatformTenant", () => {
         createdAt: "2026-03-01T10:00:00Z",
         domain: "example.com",
         id: tenantId,
+        imageDomain: "images.example.net",
         name: "Blue Maple Press",
         publicId: "tenant_bluemaple",
         status: "active",
@@ -472,6 +504,7 @@ describe("createPlatformTenant", () => {
         createdAt: "2026-03-01T10:00:00Z",
         domain: "example.com",
         id: tenantId,
+        imageDomain: "images.example.net",
         name: "Blue Maple Press",
         publicId: "tenant_bluemaple",
         status: "active",
@@ -658,7 +691,7 @@ describe("createPlatformTenant", () => {
     await expect(
       updatePlatformTenant(
         tenantId,
-        { adminDomain: "", domain: "example.com" },
+        { adminDomain: "", domain: "example.com", imageDomain: " " },
         "en"
       )
     ).resolves.toEqual({ ok: true });
@@ -669,7 +702,7 @@ describe("createPlatformTenant", () => {
         { headers: { Authorization: "Bearer sess_abc" } },
       ],
       [
-        { adminDomain: "", domain: "example.com", tenantId },
+        { adminDomain: "", domain: "example.com", imageDomain: "", tenantId },
         { headers: { Authorization: "Bearer sess_abc" } },
       ],
     ]);
