@@ -231,6 +231,7 @@ services:
         notify.localhost
         other.localhost
         payment.localhost
+        plans.localhost
         policy.localhost
         purchases.localhost
         reject.localhost
@@ -268,6 +269,7 @@ services:
         admin.notify.localhost
         admin.other.localhost
         admin.payment.localhost
+        admin.plans.localhost
         admin.policy.localhost
         admin.purchases.localhost
         admin.reject.localhost

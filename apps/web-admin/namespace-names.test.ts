@@ -24,6 +24,7 @@ import * as PasskeyAddition from "./app/[tenant_id]/(protected)/settings/_compon
 import * as LegalPage from "./app/[tenant_id]/(protected)/settings/_components/tenant-legal-page-picker";
 import * as PolicyOverride from "./app/[tenant_id]/(protected)/settings/policy/_components/policy-override-group";
 import * as ReaderIconPolicySelection from "./app/[tenant_id]/(protected)/settings/reader-icons/_components/reader-icon-policy-selection";
+import * as SubscriptionPlanScope from "./app/[tenant_id]/(protected)/subscription-plans/_components/subscription-plan-scope";
 import * as MfaEnrollSteps from "./app/[tenant_id]/mfa/_components/mfa-enroll-steps";
 import * as MfaVerifyMethods from "./app/[tenant_id]/mfa/_components/mfa-verify-methods";
 import * as MfaVerifySteps from "./app/[tenant_id]/mfa/_components/mfa-verify-steps";
@@ -87,6 +88,7 @@ const namespaces = {
   Sortable,
   SpreadStart,
   SubmitGate,
+  SubscriptionPlanScope,
   ThemeSettings,
   TicketTarget,
 };

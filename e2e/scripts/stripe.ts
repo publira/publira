@@ -18,6 +18,10 @@
  * server's client verifies it against. The reader
  * therefore returns to an episode the purchase already opens.
  *
+ * A subscription plan the console saves names a recurring Price, which publira
+ * server reads with `GET /v1/prices/:id`; a spec makes one first with
+ * `POST /v1/prices`, as an operator makes one in Stripe's dashboard.
+ *
  * The console's refund reaches `POST /v1/refunds`, which refunds whatever is
  * left of a payment intent the secret key paid, and
  * `GET /v1/payment_intents/:id` answers one with its latest charge expanded.
@@ -80,11 +84,22 @@ interface PaymentIntent {
   refunded: number;
 }
 
+/** A recurring Price of one fixed amount, the only kind a plan can bill. */
+interface Price {
+  amount: number;
+  currency: string;
+  id: string;
+  interval: string;
+  intervalCount: number;
+}
+
 /** The endpoints each secret key registered, one per URL. */
 const endpoints = new Map<string, WebhookEndpoint[]>();
 const sessions = new Map<string, CheckoutSession>();
 /** The payment intents each secret key paid, by secret key and id. */
 const paymentIntents = new Map<string, PaymentIntent>();
+/** The Prices each secret key made, by secret key and id. */
+const prices = new Map<string, Price>();
 /** The fixed amount each coupon takes off, by secret key and coupon id. */
 const coupons = new Map<string, number>();
 /**
@@ -338,6 +353,76 @@ const createCheckoutSession = async (
     idempotent.set(replayKey, created);
   }
   answerJSON(response, 200, created);
+};
+
+const priceObject = (price: Price) => ({
+  active: true,
+  billing_scheme: "per_unit",
+  currency: price.currency,
+  custom_unit_amount: null,
+  id: price.id,
+  livemode: false,
+  object: "price",
+  recurring: {
+    interval: price.interval,
+    interval_count: price.intervalCount,
+    usage_type: "licensed",
+  },
+  type: "recurring",
+  unit_amount: price.amount,
+});
+
+/**
+ * A recurring Price billed `recurring[interval_count]` (1 when omitted)
+ * `recurring[interval]`s, at `unit_amount` in `currency`. A Price that bills
+ * once is not made here: no plan can name one.
+ */
+const createPrice = async (
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const form = new URLSearchParams(await readBody(request));
+  const amount = Number(form.get("unit_amount"));
+  const currency = (form.get("currency") ?? "").toLowerCase();
+  const interval = form.get("recurring[interval]") ?? "";
+  const intervalCount = Number(form.get("recurring[interval_count]") ?? "1");
+  if (
+    !Number.isInteger(amount) ||
+    amount < 0 ||
+    !currency ||
+    !["day", "week", "month", "year"].includes(interval) ||
+    !Number.isInteger(intervalCount) ||
+    intervalCount < 1
+  ) {
+    answerError(
+      response,
+      400,
+      "A Price needs a unit_amount, a currency, and a recurring interval."
+    );
+    return;
+  }
+  const price: Price = {
+    amount,
+    currency,
+    id: randomId("price_test_"),
+    interval,
+    intervalCount,
+  };
+  prices.set(`${secretKeyOf(request)}\n${price.id}`, price);
+  answerJSON(response, 200, priceObject(price));
+};
+
+const getPrice = (
+  id: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const price = prices.get(`${secretKeyOf(request)}\n${id}`);
+  if (!price) {
+    answerError(response, 404, `No such price: '${id}'`, "resource_missing");
+    return;
+  }
+  answerJSON(response, 200, priceObject(price));
 };
 
 /** A payment intent with its latest charge expanded, as the provider asks. */
@@ -704,6 +789,7 @@ const apiRoutes = new Map<string, Handler>([
   ["POST /payment-intents", registerPaymentIntent],
   ["POST /v1/checkout/sessions", createCheckoutSession],
   ["POST /v1/coupons", createCoupon],
+  ["POST /v1/prices", createPrice],
   ["POST /v1/refunds", createRefund],
   ["POST /v1/webhook_endpoints", createWebhookEndpoint],
 ]);
@@ -720,6 +806,7 @@ const handle = async (
   const route = apiRoutes.get(`${request.method} ${pathname}`);
   const intent = /^\/v1\/payment_intents\/(?<id>[^/]+)$/u.exec(pathname)?.groups
     ?.id;
+  const price = /^\/v1\/prices\/(?<id>[^/]+)$/u.exec(pathname)?.groups?.id;
   if ((route || pathname.startsWith("/v1/")) && !secretKeyOf(request)) {
     answerError(response, 401, "You did not provide an API key.");
     return;
@@ -730,6 +817,10 @@ const handle = async (
   }
   if (request.method === "GET" && intent) {
     getPaymentIntent(intent, request, response);
+    return;
+  }
+  if (request.method === "GET" && price) {
+    getPrice(price, request, response);
     return;
   }
   const checkout = /^\/checkout\/(?<id>[^/]+)$/u.exec(pathname)?.groups?.id;

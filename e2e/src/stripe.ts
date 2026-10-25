@@ -44,3 +44,37 @@ export const registerStripePaymentIntent = async (
     );
   }
 };
+
+/**
+ * Make a recurring Price on the account `secretKey` names, billed `amount` in
+ * `currency` every `intervalCount` `interval`s, and answer its id, which a
+ * subscription plan is saved with as an operator copies it from Stripe's
+ * dashboard.
+ */
+export const createStripePrice = async (
+  secretKey: string,
+  price: {
+    amount: number;
+    currency: string;
+    interval: "day" | "month" | "week" | "year";
+    intervalCount?: number;
+  }
+): Promise<string> => {
+  const response = await fetch(`${STRIPE_BASE_URL}/v1/prices`, {
+    body: new URLSearchParams({
+      currency: price.currency,
+      "recurring[interval]": price.interval,
+      "recurring[interval_count]": String(price.intervalCount ?? 1),
+      unit_amount: String(price.amount),
+    }),
+    headers: { authorization: `Bearer ${secretKey}` },
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(
+      `the Stripe stand-in refused the price: ${response.status}`
+    );
+  }
+  const { id } = (await response.json()) as { id: string };
+  return id;
+};

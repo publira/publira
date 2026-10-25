@@ -2,7 +2,7 @@
 title: Tenant console
 description: The console a publisher's staff run their site from, who may use which part of it, and how to sign in.
 published: 2026-10-06
-updated: 2026-10-22
+updated: 2026-10-25
 ---
 
 Every tenant has a console of its own, where the publisher's staff manage the works on its site, its readers, and the site's settings. These pages are for those staff. They assume the tenant already exists and that you have been given access to it, as [A tenant's staff](../3-operations/3-tenant-staff.md) describes from the operator's side.
@@ -25,7 +25,7 @@ Every member of the staff holds one of three roles, and the console shows each o
 
 | Role | What it may do |
 | --- | --- |
-| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, sign-in, and the Google tag, readers' accounts, purchases and their refunds, royalties, and the audit log |
+| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, sign-in, and the Google tag, readers' accounts, purchases and their refunds, subscription plans, royalties, and the audit log |
 | **Editor** | Write the catalog and the site's pages, announcements, and campaign banners, and moderate comments |
 | **Auditor** | See what an Editor works on, and the tenant's settings, without changing any of it |
 

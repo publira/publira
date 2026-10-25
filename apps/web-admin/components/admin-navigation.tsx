@@ -17,6 +17,7 @@ import {
   PaletteIcon,
   PenLineIcon,
   ReceiptIcon,
+  RepeatIcon,
   ScrollTextIcon,
   SendIcon,
   SettingsIcon,
@@ -60,6 +61,7 @@ const hrefs = [
   "/engagement",
   "/royalties",
   "/purchases",
+  "/subscription-plans",
   "/integrations/payment",
   "/integrations/email",
   "/integrations/mobile-push",
@@ -332,6 +334,18 @@ export const AdminNavigation = () => (
                 <ConsoleSidebar.NavigationItemLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.nav.purchases_label" />
+                  </Suspense>
+                </ConsoleSidebar.NavigationItemLabel>
+              </ConsoleSidebar.NavigationItemHeading>
+            </ConsoleSidebar.NavigationItem>
+            <ConsoleSidebar.NavigationItem href="/subscription-plans">
+              <ConsoleSidebar.NavigationItemIcon>
+                <RepeatIcon className="size-4" />
+              </ConsoleSidebar.NavigationItemIcon>
+              <ConsoleSidebar.NavigationItemHeading>
+                <ConsoleSidebar.NavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                    <Message message="admin.nav.subscription_plans_label" />
                   </Suspense>
                 </ConsoleSidebar.NavigationItemLabel>
               </ConsoleSidebar.NavigationItemHeading>
