@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -67,6 +67,14 @@ The Platform Console's own operators are not covered by this setting; the next o
 ![The Require two-step verification for every Platform Console operator checkbox on Security.](./platform-policies-operator-mfa-required.png)
 
 It covers every role, **Auditor** included, since every operator can read every tenant's data. It takes effect at each operator's next sign-in, not on sessions already open. An operator can still turn their authenticator off from **Account settings**, and is asked to set one up again the next time they sign in. It is off until someone turns it on. An install whose `publira server` has no `PUBLIRA_SECRET_ENCRYPTION_KEYS` refuses to turn it on, since no operator could set up an authenticator there and nobody could sign in to turn it off again.
+
+### Coins issued by tenants
+
+`publiractl policy set --tenant-coins-allowed` lets tenants issue coins: a balance a tenant's readers buy in advance and spend on that tenant's episodes. It is off until someone turns it on, both on a new install and on one upgraded from a release that did not have it.
+
+Coins are a stored-value instrument, so laws on prepaid payment instruments, electronic money, money transmission, or gift cards may reach them, depending on where you and each tenant are. In some jurisdictions the platform that runs the install, rather than the tenant that sells the coins, is the party those laws look at. Leave it off unless you have established that letting tenants issue coins does not make you the issuer, or have done what being one requires.
+
+Turning it on changes nothing a reader sees: a tenant still has to turn coins on for itself. Turning it off with `--tenant-coins-allowed=false` stops every tenant at once, whatever its own setting: no tenant sells coins and no reader spends them, and every reader keeps their balance. Turning it on again gives each tenant back the setting it had saved.
 
 ### Rate limits
 

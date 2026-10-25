@@ -21,6 +21,7 @@ INSERT INTO platform_policy_config (
         singleton,
         mfa_required_for_tenant_admin,
         mfa_required_for_platform_operator,
+        tenant_coins_allowed,
         password_verify_limit_per_minute,
         password_verify_limit_per_day,
         mail_request_limit_per_address_per_hour,
@@ -69,6 +70,7 @@ VALUES (
         TRUE,
         sqlc.arg('mfa_required_for_tenant_admin'),
         sqlc.arg('mfa_required_for_platform_operator'),
+        sqlc.arg('tenant_coins_allowed'),
         sqlc.arg('password_verify_limit_per_minute'),
         sqlc.arg('password_verify_limit_per_day'),
         sqlc.arg('mail_request_limit_per_address_per_hour'),
@@ -121,6 +123,7 @@ RETURNING *;
 UPDATE platform_policy_config
 SET mfa_required_for_tenant_admin = sqlc.arg('mfa_required_for_tenant_admin'),
     mfa_required_for_platform_operator = sqlc.arg('mfa_required_for_platform_operator'),
+    tenant_coins_allowed = sqlc.arg('tenant_coins_allowed'),
     password_verify_limit_per_minute = sqlc.arg('password_verify_limit_per_minute'),
     password_verify_limit_per_day = sqlc.arg('password_verify_limit_per_day'),
     mail_request_limit_per_address_per_hour = sqlc.arg('mail_request_limit_per_address_per_hour'),

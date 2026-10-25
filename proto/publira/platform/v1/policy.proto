@@ -143,6 +143,15 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit subscription_checkout = 17;
+  // Whether a tenant may issue coins. Coins are a stored-value instrument,
+  // and in some jurisdictions the platform rather than the tenant is the
+  // issuer the law looks at, so it is off until an operator turns it on.
+  // While it is off, no tenant's coins are sold or spent, whatever the
+  // tenant's own setting says, and every balance is kept.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  optional bool tenant_coins_allowed = 18;
 }
 
 message GetPlatformPolicyRequest {}
