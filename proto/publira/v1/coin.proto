@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+import "publira/v1/catalog.proto";
+
+// What a prepaid instrument has to disclose wherever its coins are sold: who
+// issues them, the terms they are sold under, how to reach the issuer, and a
+// notice in the tenant's own words.
+message CoinDisclosures {
+  string issuer_name = 1;
+  // An absolute http or https URL.
+  string terms_url = 2;
+  string contact = 3;
+  string notice = 4;
+}
+
+// A pack of coins the tenant has on sale.
+message CoinPack {
+  // The pack's primary key.
+  string id = 1;
+  string public_id = 2;
+  // The coins a purchase of the pack grants, and the bonus coins it grants on
+  // top of them.
+  int32 coins = 3;
+  int32 bonus_coins = 4;
+  // In the minor unit of currency.
+  int32 price = 5;
+  // The ISO 4217 code, in capitals, of the tenant currency price is in.
+  string currency = 6;
+}
+
+// What a client needs to show the tenant's coins at all.
+message CoinSettings {
+  // The tenant's word for its coins in the request's locale, else in the
+  // tenant's default locale: the unit noun that follows a number, such as
+  // "Points" in "120 Points". A client shows this wherever it names the
+  // coins, and never a word of its own.
+  string coin_name = 1;
+  // What one coin is worth, in the minor unit of currency.
+  int32 coin_unit_amount = 2;
+  // The ISO 4217 code, in capitals, of the tenant's currency.
+  string currency = 3;
+  // How many days after purchase a coin can be spent.
+  int32 expiry_days = 4;
+  // Whether the tenant sells packs now. A tenant can stop selling while
+  // readers spend the coins they hold, so false still leaves a balance to
+  // spend.
+  bool selling = 5;
+  // The packs on sale, in the order the tenant sells them. Empty while
+  // selling is false.
+  repeated CoinPack packs = 6;
+  CoinDisclosures disclosures = 7;
+}
+
+// Answers the tenant's coin settings. Optional authentication.
+message GetCoinSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale, which coin_name is given in. Empty means the
+  // tenant's default locale.
+  string locale = 2;
+}
+
+message GetCoinSettingsResponse {
+  CoinSettings settings = 1;
+}
+
+// A reader's coins: how many they can spend now, and the next of them to
+// expire.
+message CoinBalance {
+  // The coins of every grant that has not expired, less what has been spent
+  // from them.
+  int64 coins = 1;
+  // The tenant's word for its coins, as CoinSettings.coin_name gives it.
+  string coin_name = 2;
+  // RFC3339: when the coins that expire first expire, and how many of the
+  // balance expire then. Empty and 0 while the balance is 0.
+  string nearest_expiry_at = 3;
+  int64 nearest_expiry_coins = 4;
+}
+
+// Answers the signed-in reader's balance.
+message GetCoinBalanceRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale, which coin_name is given in. Empty means the
+  // tenant's default locale.
+  string locale = 2;
+}
+
+message GetCoinBalanceResponse {
+  CoinBalance balance = 1;
+}
+
+enum CoinTransactionKind {
+  COIN_TRANSACTION_KIND_UNSPECIFIED = 0;
+  // Coins added to the balance.
+  COIN_TRANSACTION_KIND_GRANT = 1;
+  // Coins spent on an episode.
+  COIN_TRANSACTION_KIND_SPEND = 2;
+  // Coins taken back, because the pack that granted them was refunded or
+  // disputed.
+  COIN_TRANSACTION_KIND_REVOCATION = 3;
+  // Coins that lapsed unspent once their grant expired. They are never
+  // restored.
+  COIN_TRANSACTION_KIND_EXPIRY = 4;
+}
+
+// One entry of a reader's coin history.
+message CoinTransaction {
+  string id = 1;
+  CoinTransactionKind kind = 2;
+  // How many coins moved, always positive: kind says which way.
+  int32 coins = 3;
+  // RFC3339. An expiry is dated when its grant expired.
+  string created_at = 4;
+  // On a grant: when the coins it added expire.
+  string expires_at = 5;
+  // On a spend: the purchase it paid for, and the episode and series of that
+  // purchase, titled in the request's locale. The episode carries the id, the
+  // public_id, the title, the locale, and the order_index, and the series the
+  // id, the public_id, the title, and the locale. Both are left out for an
+  // episode the calling surface may not show; the purchase is not.
+  string purchase_id = 6;
+  publira.types.v1.Episode episode = 7;
+  publira.types.v1.Series series = 8;
+}
+
+// Cursor pagination, newest first. Field shape and token rules:
+// proto/README.md.
+message ListCoinTransactionsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 2;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 3;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale, which coin_name and every title are given in. Empty
+  // means the tenant's default locale.
+  string locale = 5;
+}
+
+message ListCoinTransactionsResponse {
+  repeated CoinTransaction transactions = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+  // The tenant's word for its coins, as CoinSettings.coin_name gives it, which
+  // every amount in transactions is counted in.
+  string coin_name = 4;
+}
+
+// Opens an episode for the signed-in reader by spending the episode's coin
+// price (Episode.coin_price for the permanent copy, Episode.coin_rental_price
+// for the rental) from their balance, drawing on the coins that expire first.
+// It records a purchase as a checkout does, which opens the episode for the
+// same reading period and appears in ListMyPurchases with coins_spent.
+//
+// An episode the calling surface may not show is not_found, and one it shows
+// but may not sell (Episode.purchase_availability) is failed_precondition, as
+// they are for StartEpisodeCheckout, and so are a free episode and the rental
+// of an episode that is not rented. A reader who holds an active permanent
+// copy is already_exists for either kind, and one who holds an active rental
+// for another rental. An episode that credits a creator the reader's account
+// is linked to is permission_denied with the ErrorInfo reason
+// READER_CREDITED_ON_EPISODE.
+//
+// A coin price other than `coins` is failed_precondition with the ErrorInfo
+// reason COIN_PRICE_CHANGED and the price now in the metadata as
+// `coin_price`, so a reader is never charged other than what they were shown.
+// A balance short of the price is failed_precondition with the ErrorInfo
+// reason COIN_BALANCE_INSUFFICIENT and the coins missing in the metadata as
+// `shortfall`, so a client can offer the smallest pack that covers it;
+// nothing is spent.
+//
+// Each call spends the reader's allowance for coin payments, and a reader past
+// it is resource_exhausted before anything is read.
+message PayEpisodeWithCoinsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // Which of the episode's sales to pay for. Unspecified is the permanent
+  // copy.
+  publira.types.v1.PurchaseKind kind = 3;
+  // The coin price the reader was shown and agreed to. Required.
+  int32 coins = 4;
+  // A key of the client's choosing, 1 to 200 characters, that names this one
+  // payment. A request sent again with a key that already paid answers that
+  // payment and spends nothing, so a double tap or a retried request spends
+  // once; the same key sent for another episode or kind is invalid_argument.
+  // Required.
+  string idempotency_key = 5;
+  // The client making the call. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 6;
+  // The reader's locale, which every title and coin_name in the answer is
+  // given in. Empty means the tenant's default locale.
+  string locale = 7;
+}
+
+message PayEpisodeWithCoinsResponse {
+  MyPurchase purchase = 1;
+  // The balance once the payment is made.
+  CoinBalance balance = 2;
+}
+
+// A tenant's coins: what they are, how many a reader holds, and spending them
+// on an episode. Every RPC here is failed_precondition with the ErrorInfo
+// reason COINS_UNAVAILABLE while the platform does not allow tenant coins or
+// the tenant has not turned its coins on, and a client answered that shows
+// nothing about coins. GetCoinSettings takes optional authentication; the
+// others answer the signed-in reader alone.
+service CoinService {
+  rpc GetCoinSettings(GetCoinSettingsRequest) returns (GetCoinSettingsResponse) {}
+  rpc GetCoinBalance(GetCoinBalanceRequest) returns (GetCoinBalanceResponse) {}
+  rpc ListCoinTransactions(ListCoinTransactionsRequest) returns (ListCoinTransactionsResponse) {}
+  rpc PayEpisodeWithCoins(PayEpisodeWithCoinsRequest) returns (PayEpisodeWithCoinsResponse) {}
+}

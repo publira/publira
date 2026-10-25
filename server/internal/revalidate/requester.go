@@ -144,6 +144,14 @@ func RecordSiteDrop(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID
 	return RecordDeferred(ctx, q, tenantID, []string{fmt.Sprintf("tenant:%s:site", tenantID)}, time.Now())
 }
 
+// RecordCatalogDrop writes down, on q, that the series and episode reads of
+// tenantID the web apps cached, tagged `tenant:<id>:series:detail`, are owed
+// a drop once availableAt has passed. It is for a platform-wide write that
+// changes what those reads answer, which has no [Requester] to hand.
+func RecordCatalogDrop(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, availableAt time.Time) error {
+	return RecordDeferred(ctx, q, tenantID, []string{fmt.Sprintf("tenant:%s:series:detail", tenantID)}, availableAt)
+}
+
 // RecordDeferred writes tags down as owed by tenantID on q, for the outbox
 // worker to send once availableAt has passed, and attempts nothing itself.
 //

@@ -809,6 +809,15 @@ const Episode$json = {
     {'1': 'locale', '3': 21, '4': 1, '5': 9, '10': 'locale'},
     {'1': 'campaign_price', '3': 22, '4': 1, '5': 5, '10': 'campaignPrice'},
     {'1': 'campaign_ends_at', '3': 23, '4': 1, '5': 9, '10': 'campaignEndsAt'},
+    {'1': 'coin_price', '3': 24, '4': 1, '5': 5, '10': 'coinPrice'},
+    {
+      '1': 'coin_rental_price',
+      '3': 25,
+      '4': 1,
+      '5': 5,
+      '10': 'coinRentalPrice'
+    },
+    {'1': 'coin_name', '3': 26, '4': 1, '5': 9, '10': 'coinName'},
   ],
 };
 
@@ -832,7 +841,9 @@ final $typed_data.Uint8List episodeDescriptor = $convert.base64Decode(
     'RjaEltYWdlVmFyaWFudHMSIQoMcmVudGFsX3ByaWNlGBMgASgFUgtyZW50YWxQcmljZRIuChNy'
     'ZW50YWxfcGVyaW9kX2hvdXJzGBQgASgFUhFyZW50YWxQZXJpb2RIb3VycxIWCgZsb2NhbGUYFS'
     'ABKAlSBmxvY2FsZRIlCg5jYW1wYWlnbl9wcmljZRgWIAEoBVINY2FtcGFpZ25QcmljZRIoChBj'
-    'YW1wYWlnbl9lbmRzX2F0GBcgASgJUg5jYW1wYWlnbkVuZHNBdA==');
+    'YW1wYWlnbl9lbmRzX2F0GBcgASgJUg5jYW1wYWlnbkVuZHNBdBIdCgpjb2luX3ByaWNlGBggAS'
+    'gFUgljb2luUHJpY2USKgoRY29pbl9yZW50YWxfcHJpY2UYGSABKAVSD2NvaW5SZW50YWxQcmlj'
+    'ZRIbCgljb2luX25hbWUYGiABKAlSCGNvaW5OYW1l');
 
 @$core.Deprecated('Use episodeImageDescriptor instead')
 const EpisodeImage$json = {

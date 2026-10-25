@@ -1066,6 +1066,13 @@ func (s *apiServer) GetSeriesDetail(
 	if res.Volumes, err = s.seriesVolumes(ctx, images, tenant.ID, row.ID, surface, res.Episodes); err != nil {
 		return nil, err
 	}
+	coins, err := s.tenantCoinOffer(ctx, tenant.ID, readerLocale)
+	if err != nil {
+		return nil, err
+	}
+	for _, episode := range res.Episodes {
+		setEpisodeCoinPrices(episode, coins)
+	}
 
 	return res, nil
 }
@@ -1313,6 +1320,11 @@ func (s *apiServer) GetEpisodeDetail(
 	if err := s.fillEpisodeEyeCatches(ctx, images, tenant.ID, episode); err != nil {
 		return nil, err
 	}
+	coins, err := s.tenantCoinOffer(ctx, tenant.ID, readerLocale)
+	if err != nil {
+		return nil, err
+	}
+	setEpisodeCoinPrices(episode, coins)
 
 	return res, nil
 }

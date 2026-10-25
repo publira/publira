@@ -441,6 +441,7 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 			"content_type", "file_size_bytes", "width", "height",
 		}))
 	expectNoEpisodeEyeCatches(mock, tenantID)
+	expectNoSavedPlatformPolicy(mock)
 	recorded := forbidEpisodeViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -497,6 +498,7 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 	expectSeriesRating(mock, tenantID, seriesID, 0, 0)
 	expectNoSeriesWaitFreeRule(mock, tenantID, seriesID)
 	expectNoSeriesVolumes(mock, tenantID, seriesID)
+	expectNoSavedPlatformPolicy(mock)
 	recorded := forbidSeriesViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))

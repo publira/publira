@@ -1725,6 +1725,9 @@ class Episode extends $pb.GeneratedMessage {
     $core.String? locale,
     $core.int? campaignPrice,
     $core.String? campaignEndsAt,
+    $core.int? coinPrice,
+    $core.int? coinRentalPrice,
+    $core.String? coinName,
   }) {
     final result = Episode._();
     if (publicId != null) result.publicId = publicId;
@@ -1754,6 +1757,9 @@ class Episode extends $pb.GeneratedMessage {
     if (locale != null) result.locale = locale;
     if (campaignPrice != null) result.campaignPrice = campaignPrice;
     if (campaignEndsAt != null) result.campaignEndsAt = campaignEndsAt;
+    if (coinPrice != null) result.coinPrice = coinPrice;
+    if (coinRentalPrice != null) result.coinRentalPrice = coinRentalPrice;
+    if (coinName != null) result.coinName = coinName;
     return result;
   }
 
@@ -1800,6 +1806,9 @@ class Episode extends $pb.GeneratedMessage {
     ..aOS(21, _omitFieldNames ? '' : 'locale')
     ..aI(22, _omitFieldNames ? '' : 'campaignPrice')
     ..aOS(23, _omitFieldNames ? '' : 'campaignEndsAt')
+    ..aI(24, _omitFieldNames ? '' : 'coinPrice')
+    ..aI(25, _omitFieldNames ? '' : 'coinRentalPrice')
+    ..aOS(26, _omitFieldNames ? '' : 'coinName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2087,6 +2096,48 @@ class Episode extends $pb.GeneratedMessage {
   $core.bool hasCampaignEndsAt() => $_has(22);
   @$pb.TagNumber(23)
   void clearCampaignEndsAt() => $_clearField(23);
+
+  /// What the episode costs in the tenant's coins, which CoinService.
+  /// PayEpisodeWithCoins spends: coin_price for the permanent copy, at
+  /// campaign_price while a campaign is open and at price otherwise, and
+  /// coin_rental_price for the rental, at rental_price. Each is that price
+  /// divided by the value of one coin, rounded up. coin_name is the tenant's
+  /// word for its coins in the reader's locale, so a client never names them
+  /// itself.
+  ///
+  /// All three are 0 and empty on a free episode, and coin_rental_price on one
+  /// that is not rented. They are 0 and empty too while the platform does not
+  /// allow tenant coins or the tenant has not turned its coins on, and a client
+  /// offers coins only where coin_price or coin_rental_price is set.
+  ///
+  /// Set on GetEpisodeDetail and on the episodes GetSeriesDetail lists; 0 and
+  /// empty elsewhere, the console's reads included.
+  @$pb.TagNumber(24)
+  $core.int get coinPrice => $_getIZ(23);
+  @$pb.TagNumber(24)
+  set coinPrice($core.int value) => $_setSignedInt32(23, value);
+  @$pb.TagNumber(24)
+  $core.bool hasCoinPrice() => $_has(23);
+  @$pb.TagNumber(24)
+  void clearCoinPrice() => $_clearField(24);
+
+  @$pb.TagNumber(25)
+  $core.int get coinRentalPrice => $_getIZ(24);
+  @$pb.TagNumber(25)
+  set coinRentalPrice($core.int value) => $_setSignedInt32(24, value);
+  @$pb.TagNumber(25)
+  $core.bool hasCoinRentalPrice() => $_has(24);
+  @$pb.TagNumber(25)
+  void clearCoinRentalPrice() => $_clearField(25);
+
+  @$pb.TagNumber(26)
+  $core.String get coinName => $_getSZ(25);
+  @$pb.TagNumber(26)
+  set coinName($core.String value) => $_setString(25, value);
+  @$pb.TagNumber(26)
+  $core.bool hasCoinName() => $_has(25);
+  @$pb.TagNumber(26)
+  void clearCoinName() => $_clearField(26);
 }
 
 class EpisodeImage extends $pb.GeneratedMessage {

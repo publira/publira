@@ -136,6 +136,53 @@ func (q *Queries) ListCoinPacksForTenant(ctx context.Context, tenantID uuid.UUID
 	return items, nil
 }
 
+const ListCoinPacksOnSale = `-- name: ListCoinPacksOnSale :many
+SELECT id, tenant_id, public_id, coins, bonus_coins, price, sort_order, on_sale, first_sold_at, retired_at, created_at, updated_at
+FROM tenant_coin_packs
+WHERE tenant_id = $1
+    AND retired_at IS NULL
+    AND on_sale
+ORDER BY sort_order,
+    id
+`
+
+// The packs a reader can buy now, in the order the tenant sells them.
+func (q *Queries) ListCoinPacksOnSale(ctx context.Context, tenantID uuid.UUID) ([]TenantCoinPack, error) {
+	rows, err := q.db.QueryContext(ctx, ListCoinPacksOnSale, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TenantCoinPack
+	for rows.Next() {
+		var i TenantCoinPack
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PublicID,
+			&i.Coins,
+			&i.BonusCoins,
+			&i.Price,
+			&i.SortOrder,
+			&i.OnSale,
+			&i.FirstSoldAt,
+			&i.RetiredAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const LockCoinPackForTenant = `-- name: LockCoinPackForTenant :one
 SELECT id, tenant_id, public_id, coins, bonus_coins, price, sort_order, on_sale, first_sold_at, retired_at, created_at, updated_at
 FROM tenant_coin_packs

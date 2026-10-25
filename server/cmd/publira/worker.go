@@ -185,6 +185,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		SeriesPublicationInterval:  envSeconds("PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS", 0),
 		CampaignBannerInterval:     envSeconds("PUBLIRA_CAMPAIGN_BANNER_INTERVAL_SECONDS", 0),
 		CampaignPriceInterval:      envSeconds("PUBLIRA_CAMPAIGN_PRICE_INTERVAL_SECONDS", 0),
+		CoinExpiryInterval:         envSeconds("PUBLIRA_COIN_EXPIRY_INTERVAL_SECONDS", 0),
 	}
 	if tickerDB := pools.ticker; tickerDB != nil {
 		tickerConfig.DB = tickerDB

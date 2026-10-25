@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -313,15 +314,18 @@ func (s *apiServer) appPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (s
 }
 
 type purchasePageRow struct {
-	id                uuid.UUID
-	kind              string
-	priceAtPurchase   int32
-	currency          string
-	expiresAt         sql.NullTime
-	revokedAt         sql.NullTime
-	refundedAmount    sql.NullInt32
-	refundedAt        sql.NullTime
-	purchasedAt       time.Time
+	id              uuid.UUID
+	kind            string
+	priceAtPurchase int32
+	currency        string
+	expiresAt       sql.NullTime
+	revokedAt       sql.NullTime
+	refundedAmount  sql.NullInt32
+	refundedAt      sql.NullTime
+	purchasedAt     time.Time
+	// coinsSpent is the coins a purchase paid with coins spent, and zero on
+	// any other purchase.
+	coinsSpent        int32
 	episodeID         uuid.NullUUID
 	episodePublicID   string
 	episodeTitle      string
@@ -355,6 +359,7 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			refundedAmount:              row.RefundedAmount,
 			refundedAt:                  row.RefundedAt,
 			purchasedAt:                 row.PurchasedAt,
+			coinsSpent:                  row.CoinsSpent,
 			episodeID:                   row.EpisodeID,
 			episodePublicID:             row.EpisodePublicID.String,
 			episodeTitle:                row.EpisodeTitle,
@@ -389,6 +394,7 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			refundedAmount:              row.RefundedAmount,
 			refundedAt:                  row.RefundedAt,
 			purchasedAt:                 row.PurchasedAt,
+			coinsSpent:                  row.CoinsSpent,
 			episodeID:                   row.EpisodeID,
 			episodePublicID:             row.EpisodePublicID.String,
 			episodeTitle:                row.EpisodeTitle,
@@ -445,7 +451,10 @@ func (s *apiServer) purchasePage(
 	return mapPurchaseDescRows(rows), nil
 }
 
-func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurchase, error) {
+// purchaseItemFromRow maps one purchase of the reader's library. coinName is
+// the tenant's word for its coins in the reader's locale, which a purchase
+// paid with coins is answered with.
+func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*publirav1.MyPurchase, error) {
 	kind, err := protomapper.PurchaseKindFromStored(row.kind)
 	if err != nil {
 		return nil, err
@@ -478,12 +487,16 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurch
 		RefundedAmount:  row.refundedAmount.Int32,
 		RefundedAt:      refundedAt,
 		RevokedAt:       revokedAt,
+		CoinsSpent:      row.coinsSpent,
 		Series: &publirattypesv1.Series{
 			Id:       row.seriesID.String(),
 			PublicId: row.seriesPublicID,
 			Title:    row.seriesTitle,
 			Locale:   row.seriesLocale,
 		},
+	}
+	if row.coinsSpent > 0 {
+		item.CoinName = coinName
 	}
 	// A purchase is of an episode, a volume, or the rest of a series, and the
 	// library names whichever it bought.
@@ -549,10 +562,18 @@ func (s *apiServer) ListMyPurchases(
 		return nil, s.internalDBError(ctx, "failed to list purchases", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+	// The coins are named only on a page that holds a purchase paid with
+	// them, so a library that holds none reads nothing about coins.
+	var coinName string
+	if slices.ContainsFunc(rows, func(row purchasePageRow) bool { return row.coinsSpent > 0 }) {
+		if coinName, err = s.coinNameFor(ctx, tenant.ID, readerLocale); err != nil {
+			return nil, err
+		}
+	}
 	now := time.Now()
 	items := make([]*publirav1.MyPurchase, 0, len(rows))
 	for _, row := range rows {
-		item, err := purchaseItemFromRow(row, now)
+		item, err := purchaseItemFromRow(row, coinName, now)
 		if err != nil {
 			return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenant.ID.String(), "purchase_id", row.id.String())
 		}
@@ -1024,11 +1045,7 @@ func (s *apiServer) createPurchase(
 			ProviderPromotionCodeID: promotionCodeID,
 		})
 	default:
-		var expiresAt sql.NullTime
-		if hours := purchase.ReadingPeriodHours; hours > 0 {
-			now := time.Now().UTC()
-			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
-		}
+		expiresAt := readingPeriodExpiry(purchase.ReadingPeriodHours, time.Now().UTC())
 		created, err = queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
 			ID:                      uuid.New(),
 			TenantID:                tenantID,

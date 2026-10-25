@@ -16,8 +16,13 @@ export const RPC_ERROR_REASON = {
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
   campaignBannerLimit: "CAMPAIGN_BANNER_LIMIT",
+  coinBalanceInsufficient: "COIN_BALANCE_INSUFFICIENT",
+  coinBalancesOutstanding: "COIN_BALANCES_OUTSTANDING",
   coinPackLimit: "COIN_PACK_LIMIT",
   coinPackSold: "COIN_PACK_SOLD",
+  coinPriceChanged: "COIN_PRICE_CHANGED",
+  coinUnitAmountFixed: "COIN_UNIT_AMOUNT_FIXED",
+  coinsUnavailable: "COINS_UNAVAILABLE",
   creatorRoleInUse: "CREATOR_ROLE_IN_USE",
   identityLinkedToAnotherAccount: "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT",
   invitationCanceled: "INVITATION_CANCELED",
@@ -66,8 +71,11 @@ export type RpcFieldViolationReason =
 
 /** ErrorInfo metadata keys Publira APIs attach. Values are always strings. */
 export const RPC_ERROR_METADATA = {
+  coinPrice: "coin_price",
   creditCount: "credit_count",
   nextAvailableAt: "next_available_at",
+  readerCount: "reader_count",
+  shortfall: "shortfall",
 } as const;
 
 export type RpcErrorReason =

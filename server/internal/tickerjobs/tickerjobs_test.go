@@ -43,6 +43,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		SeriesPublicationInterval:  17 * time.Second,
 		CampaignBannerInterval:     19 * time.Second,
 		CampaignPriceInterval:      23 * time.Second,
+		CoinExpiryInterval:         29 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -56,6 +57,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		kindApplySeriesPublications:   17 * time.Second,
 		kindApplyCampaignBanners:      19 * time.Second,
 		kindApplyCampaignPrices:       23 * time.Second,
+		kindExpireCoinGrants:          29 * time.Second,
 	})
 }
 
@@ -73,6 +75,7 @@ func TestPeriodicJobsFallBackToTheDefaultIntervals(t *testing.T) {
 		kindApplySeriesPublications:   DefaultSeriesPublicationInterval,
 		kindApplyCampaignBanners:      DefaultCampaignBannerInterval,
 		kindApplyCampaignPrices:       DefaultCampaignPriceInterval,
+		kindExpireCoinGrants:          DefaultCoinExpiryInterval,
 	})
 }
 
@@ -127,6 +130,7 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 		ApplySeriesPublicationsArgs{},
 		ApplyCampaignBannersArgs{},
 		ApplyCampaignPricesArgs{},
+		ExpireCoinGrantsArgs{},
 	} {
 		withOpts, ok := args.(river.JobArgsWithInsertOpts)
 		if !ok {
@@ -161,8 +165,8 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	if !ok {
 		t.Fatalf("queues = %v, want one named %q", queues, QueueName)
 	}
-	if queue.MaxWorkers != 7 {
-		t.Fatalf("%s max workers = %d, want 7", QueueName, queue.MaxWorkers)
+	if queue.MaxWorkers != 8 {
+		t.Fatalf("%s max workers = %d, want 8", QueueName, queue.MaxWorkers)
 	}
 	if _, ok := queues[river.QueueDefault]; ok {
 		t.Fatalf("queues = %v, want the default queue left to the outbox drain", queues)
@@ -178,6 +182,7 @@ func TestServiceNamesCoverEveryJob(t *testing.T) {
 		"publira-apply-series-publications",
 		"publira-apply-campaign-banners",
 		"publira-apply-campaign-prices",
+		"publira-expire-coin-grants",
 	}
 	if got := ServiceNames(); !slices.Equal(got, want) {
 		t.Fatalf("ServiceNames() = %v, want %v", got, want)

@@ -283,11 +283,14 @@ func (s *apiServer) recordedStorePurchase(
 	if !existing.UserID.Valid || existing.UserID.UUID != userID {
 		return nil, false, connect.NewError(connect.CodePermissionDenied, "transaction belongs to another reader")
 	}
-	purchase, err := s.myPurchase(ctx, queries, tenantID, userID, locale, existing.ID)
+	purchase, err := s.myPurchase(ctx, queries, tenantID, userID, locale, "", existing.ID)
 	return purchase, err == nil, err
 }
 
-func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, userID uuid.UUID, locale string, purchaseID uuid.UUID) (*publirav1.MyPurchase, error) {
+// myPurchase reads one purchase of the reader's as the library lists it.
+// coinName is the tenant's word for its coins in locale, which a purchase paid
+// with coins is answered with.
+func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, userID uuid.UUID, locale, coinName string, purchaseID uuid.UUID) (*publirav1.MyPurchase, error) {
 	row, err := queries.GetMyPurchase(ctx, dbmodels.GetMyPurchaseParams{
 		TenantID: tenantID,
 		UserID:   userID,
@@ -305,14 +308,17 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 		expiresAt:         row.ExpiresAt,
 		revokedAt:         row.RevokedAt,
 		purchasedAt:       row.PurchasedAt,
+		coinsSpent:        row.CoinsSpent,
+		episodeID:         uuid.NullUUID{UUID: row.EpisodeID, Valid: true},
 		episodePublicID:   row.EpisodePublicID,
 		episodeTitle:      row.EpisodeTitle,
 		episodeLocale:     row.EpisodeTitleLocale,
 		episodeOrderIndex: row.EpisodeOrderIndex,
+		seriesID:          row.SeriesID,
 		seriesPublicID:    row.SeriesPublicID,
 		seriesTitle:       row.SeriesTitle,
 		seriesLocale:      row.SeriesTitleLocale,
-	}, time.Now())
+	}, coinName, time.Now())
 	if err != nil {
 		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
@@ -535,5 +541,5 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 		"store", transaction.store,
 		"is_test", transaction.isTest,
 	)
-	return s.myPurchase(ctx, s.queriesFor(ctx), tenantID, userID, locale, purchase.ID)
+	return s.myPurchase(ctx, s.queriesFor(ctx), tenantID, userID, locale, "", purchase.ID)
 }

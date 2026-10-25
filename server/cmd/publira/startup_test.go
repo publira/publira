@@ -455,6 +455,7 @@ func TestWorkerReplicasSplitTheQueues(t *testing.T) {
 				"ticker.apply_series_publications",
 				"ticker.apply_campaign_banners",
 				"ticker.apply_campaign_prices",
+				"ticker.expire_coin_grants",
 				"maintenance.project_episode_reads",
 				"maintenance.aggregate_content_stats",
 				"maintenance.aggregate_rankings",

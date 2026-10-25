@@ -410,6 +410,24 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args:       []any{first.tenantID, second.userID, first.subscriptionPlanID},
 		},
 		{
+			name:       "coin_grants.user_id",
+			constraint: "coin_grants_tenant_user_id_fkey",
+			statement:  `INSERT INTO coin_grants (id, tenant_id, user_id, source, coins, remaining_coins, expires_at) VALUES ($1, $2, $3, 'staff', 10, 10, NOW() + interval '1 day')`,
+			args:       []any{mustUUID(t), first.tenantID, second.userID},
+		},
+		{
+			name:       "coin_transactions.grant_id",
+			constraint: "coin_transactions_tenant_grant_id_fkey",
+			statement:  `INSERT INTO coin_transactions (id, tenant_id, user_id, kind, coins, grant_id) VALUES ($1, $2, $3, 'expiry', 10, $4)`,
+			args:       []any{mustUUID(t), first.tenantID, first.userID, second.coinGrantID},
+		},
+		{
+			name:       "coin_spend_allocations.grant_id",
+			constraint: "coin_spend_allocations_tenant_grant_id_fkey",
+			statement:  `INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins) VALUES ($1, $2, $3, 10)`,
+			args:       []any{first.tenantID, first.coinTransactionID, second.coinGrantID},
+		},
+		{
 			name:       "access_tickets.created_by_user_id",
 			constraint: "access_tickets_tenant_created_by_user_id_fkey",
 			statement:  `UPDATE access_tickets SET created_by_user_id = $2 WHERE id = $1`,
@@ -611,6 +629,8 @@ type foreignKeyTenant struct {
 	announcementID         uuid.UUID
 	accessTicketID         uuid.UUID
 	subscriptionPlanID     uuid.UUID
+	coinGrantID            uuid.UUID
+	coinTransactionID      uuid.UUID
 }
 
 // seedForeignKeyTenant builds one whole tenant. prefix keeps the public ids
@@ -722,6 +742,16 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 		INSERT INTO subscription_plans (id, tenant_id, public_id, name, stripe_price_id, price_amount, currency, recurring_interval, recurring_interval_count, scope)
 		VALUES ($1, $2, $3, 'Plan', 'price_monthly', 980, 'JPY', 'month', 1, 'series')`,
 		seeded.subscriptionPlanID, seeded.tenantID, prefix+"PLAN00001")
+	seeded.coinGrantID = mustUUID(t)
+	mustExec(t, ctx, db, `
+		INSERT INTO coin_grants (id, tenant_id, user_id, source, coins, remaining_coins, expires_at)
+		VALUES ($1, $2, $3, 'staff', 100, 100, NOW() + interval '30 days')`,
+		seeded.coinGrantID, seeded.tenantID, seeded.userID)
+	seeded.coinTransactionID = mustUUID(t)
+	mustExec(t, ctx, db, `
+		INSERT INTO coin_transactions (id, tenant_id, user_id, kind, coins, grant_id)
+		VALUES ($1, $2, $3, 'grant', 100, $4)`,
+		seeded.coinTransactionID, seeded.tenantID, seeded.userID, seeded.coinGrantID)
 
 	return seeded
 }

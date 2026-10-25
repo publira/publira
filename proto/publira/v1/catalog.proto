@@ -1827,6 +1827,12 @@ message MyPurchase {
   // checkout started stops opening when that period runs out, and the
   // episode reads report it.
   publira.types.v1.SeriesBundle series_bundle = 14;
+  // Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
+  // coins spent, and the tenant's word for its coins in the request's locale.
+  // Such a purchase took no payment, so its price_at_purchase is 0. Both are 0
+  // and empty on every other purchase.
+  int32 coins_spent = 15;
+  string coin_name = 16;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

@@ -168,6 +168,9 @@ type Querier interface {
 	// For the tenant dashboard.
 	CountPublishedSeriesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	CountReaderIconPresets(ctx context.Context, tenantID uuid.UUID) (int32, error)
+	// The readers of the tenant who hold coins that have not expired, which keeps
+	// the tenant's coins from being turned off.
+	CountReadersHoldingCoins(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// For the tenant dashboard.
 	CountScheduledEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Whether a genre may still be deleted. The refusal is the handler's, and this
@@ -212,6 +215,8 @@ type Querier interface {
 	CreateCampaignBannerImage(ctx context.Context, arg CreateCampaignBannerImageParams) (CampaignBannerImage, error)
 	CreateCampaignBannerImageVariant(ctx context.Context, arg CreateCampaignBannerImageVariantParams) (CampaignBannerImageVariant, error)
 	CreateCoinPack(ctx context.Context, arg CreateCoinPackParams) (TenantCoinPack, error)
+	CreateCoinSpend(ctx context.Context, arg CreateCoinSpendParams) error
+	CreateCoinSpendAllocation(ctx context.Context, arg CreateCoinSpendAllocationParams) error
 	// Messages readers send the tenant through the contact form, and the staff
 	// addresses the mail announcing one goes to.
 	//
@@ -363,6 +368,12 @@ type Querier interface {
 	// is a purchase of its own, and a redelivery of the same checkout is no row. A
 	// volume is never rented and never expires.
 	CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, arg CreatePurchaseFromProviderVolumeCheckoutParams) (Purchase, error)
+	// The purchase a spend of coins pays for. It names the spend as its checkout,
+	// under the provider `coins`, so that what follows a purchase — the episode it
+	// opens, its reading period, its revocation, the reader's purchase history —
+	// applies to it unchanged. No payment was taken, so it has no payment id and
+	// its price is 0.
+	CreatePurchasePaidWithCoins(ctx context.Context, arg CreatePurchasePaidWithCoinsParams) (Purchase, error)
 	// A reply the reader mailed back, as the inbound webhook stores it. A provider
 	// delivers a mail again whenever it is not sure the first delivery landed, so
 	// a Message-ID or a delivery key already stored is a redelivery: nothing is
@@ -582,6 +593,7 @@ type Querier interface {
 	// again.
 	DeleteUserWebauthnCredentialsByUserID(ctx context.Context, arg DeleteUserWebauthnCredentialsByUserIDParams) (int64, error)
 	DeleteVolumeEpisodes(ctx context.Context, arg DeleteVolumeEpisodesParams) error
+	DrawCoinGrant(ctx context.Context, arg DrawCoinGrantParams) error
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a sign-in code is, which stored it.
 	//
@@ -603,6 +615,11 @@ type Querier interface {
 	// Gives a tenant that has saved nothing its row, with every column at its
 	// default, so the save after it always has a row to lock.
 	EnsureTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) error
+	// Records, across every tenant, the coins of up to `batch` grants that expired
+	// unspent, and zeroes what the grants have left so that the next pass does not
+	// reach them again. Each expiry is dated when its grant expired. A grant a
+	// spend holds is passed over and reached by a later pass.
+	ExpireLapsedCoinGrants(ctx context.Context, batch int32) ([]ExpireLapsedCoinGrantsRow, error)
 	// The console handles only the tickets staff issued. A wait-for-free ticket is
 	// one the reader took themselves, so the console neither lists it nor revokes
 	// it, and looking one up here finds nothing.
@@ -667,6 +684,8 @@ type Querier interface {
 	// snapshot misses commits after this instant, and the outbox event that write
 	// queued is read later still, under a higher version.
 	GetCatalogIndexSnapshotTime(ctx context.Context) (time.Time, error)
+	// The spend a reader's client already sent with the key, and what it paid for.
+	GetCoinSpendByIdempotencyKey(ctx context.Context, arg GetCoinSpendByIdempotencyKeyParams) (GetCoinSpendByIdempotencyKeyRow, error)
 	// The account a message may be assigned to: an active tenant_admin of the
 	// tenant, because the inbox is theirs alone and an account that cannot open it
 	// could never work the message it was handed.
@@ -1132,6 +1151,10 @@ type Querier interface {
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) (TenantCoinConfig, error)
+	// What a reader is told about the tenant's coins: the settings, and the coin's
+	// name in the locale asked for, else the tenant default locale's, else the
+	// oldest. No row is a tenant that has saved nothing.
+	GetTenantCoinOffer(ctx context.Context, arg GetTenantCoinOfferParams) (GetTenantCoinOfferRow, error)
 	GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	// The copy written in exactly locale, which is what the console edits: no
@@ -1627,6 +1650,15 @@ type Querier interface {
 	ListCatalogIndexTenantIDs(ctx context.Context) ([]uuid.UUID, error)
 	// The packs the tenant has not retired, in the order it sells them.
 	ListCoinPacksForTenant(ctx context.Context, tenantID uuid.UUID) ([]TenantCoinPack, error)
+	// The packs a reader can buy now, in the order the tenant sells them.
+	ListCoinPacksOnSale(ctx context.Context, tenantID uuid.UUID) ([]TenantCoinPack, error)
+	// The same history oldest first, which a backward page is scanned in.
+	ListCoinTransactionsAsc(ctx context.Context, arg ListCoinTransactionsAscParams) ([]ListCoinTransactionsAscRow, error)
+	// The reader's coin history, newest first. A spend names the episode of the
+	// purchase it paid for, and whether the calling surface may show it, so the
+	// history keeps every entry it sums to while a surface leaves out what it
+	// cannot name.
+	ListCoinTransactionsDesc(ctx context.Context, arg ListCoinTransactionsDescParams) ([]ListCoinTransactionsDescRow, error)
 	// One message's exchange as the console shows it under the message, oldest
 	// first so it reads in the order it was written. The author is joined for the
 	// name the console prints beside a staff entry.
@@ -2739,6 +2771,13 @@ type Querier interface {
 	// the ones whose voided purchases the worker reads. Read across tenants, so
 	// only a role that bypasses row-level security sees them all.
 	ListTenantsSellingOnGooglePlay(ctx context.Context) ([]uuid.UUID, error)
+	// Every tenant that has turned its coins on, across every tenant: the ones
+	// whose storefronts change when the platform allows or forbids tenant coins.
+	ListTenantsWithCoinsEnabled(ctx context.Context) ([]uuid.UUID, error)
+	// The coins the reader can spend now, by when they expire, the soonest first:
+	// the unspent coins of every grant that has not expired. A grant past its
+	// expiry counts for nothing whether or not the expiry job has reached it yet.
+	ListUnspentCoinsForUser(ctx context.Context, arg ListUnspentCoinsForUserParams) ([]ListUnspentCoinsForUserRow, error)
 	ListUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) ([]ListUnusedPlatformUserMfaRecoveryCodesRow, error)
 	ListUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) ([]ListUnusedUserMfaRecoveryCodesRow, error)
 	// The previous-page half of ListUserFollowsByCreatedAtDesc. The handler reverses
@@ -2804,6 +2843,10 @@ type Querier interface {
 	LockCanonicalEmailForTenant(ctx context.Context, arg LockCanonicalEmailForTenantParams) error
 	// A pack the tenant has not retired, locked for the write that follows.
 	LockCoinPackForTenant(ctx context.Context, arg LockCoinPackForTenantParams) (TenantCoinPack, error)
+	// Serializes, for the rest of the caller's transaction, the spends of one
+	// reader, so a request sent twice and two payments of the same episode each
+	// see what the other committed before they check what the reader holds.
+	LockCoinSpendsOfUser(ctx context.Context, arg LockCoinSpendsOfUserParams) error
 	// Locks every role of the tenant and hands back the order they are in now, so
 	// a reorder can check the client's expected order against a list no concurrent
 	// write can move underneath it. The names come along because a reorder answers
@@ -2949,6 +2992,10 @@ type Querier interface {
 	// Serializes the saves of one tenant's coin settings, so the check that the
 	// names hold the default locale's and the write after it see the same rows.
 	LockTenantCoinConfig(ctx context.Context, tenantID uuid.UUID) (TenantCoinConfig, error)
+	// The tenant's coin settings as a spend reads them, held against a save until
+	// the spend commits, so a spend never lands after the save that turned coins
+	// off or changed what one is worth.
+	LockTenantCoinConfigForSpend(ctx context.Context, tenantID uuid.UUID) (LockTenantCoinConfigForSpendRow, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant
@@ -3029,6 +3076,9 @@ type Querier interface {
 	// GetTenantHostsTaken would otherwise both commit.
 	LockTenantHosts(ctx context.Context) error
 	LockTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
+	// The reader's grants a spend can draw on, in the order it draws on them: the
+	// one that expires first first. Locked for the draws that follow.
+	LockUnspentCoinGrantsForUser(ctx context.Context, arg LockUnspentCoinGrantsForUserParams) ([]LockUnspentCoinGrantsForUserRow, error)
 	// Removing the tags a save let go of takes two statements, because one cannot
 	// be trusted on its own.
 	//
@@ -3618,6 +3668,8 @@ type Querier interface {
 	// verified claim to it. The password goes: whoever set it never proved the
 	// address was theirs, and could otherwise sign in beside its owner.
 	TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Whether the tenant has ever granted a coin, which fixes the value of one.
+	TenantHasCoinGrants(ctx context.Context, tenantID uuid.UUID) (bool, error)
 	// Whether the tenant has any purchase, from a provider's checkout or a store,
 	// test ones included, which keeps the tenant currency from changing.
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)

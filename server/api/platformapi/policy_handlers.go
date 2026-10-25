@@ -9,6 +9,7 @@ import (
 
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -35,6 +36,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 		Passkey:                        minuteDayToProto(policy.Passkey),
 		SeriesRemainderCheckout:        minuteDayToProto(policy.SeriesRemainderCheckout),
 		SubscriptionCheckout:           minuteDayToProto(policy.SubscriptionCheckout),
+		CoinPayment:                    minuteDayToProto(policy.CoinPayment),
 		LoginAttemptsPerAccount:        minuteDayToProto(policy.LoginAttemptsPerAccount),
 		LoginAttemptsPerSource:         hourDayToProto(policy.LoginAttemptsPerSource),
 		MailRequestsPerAddress:         hourDayToProto(policy.MailRequestsPerAddress),
@@ -78,6 +80,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 		Passkey:                        minuteDayFromProto(policy.GetPasskey()),
 		SeriesRemainderCheckout:        minuteDayFromProto(policy.GetSeriesRemainderCheckout()),
 		SubscriptionCheckout:           minuteDayFromProto(policy.GetSubscriptionCheckout()),
+		CoinPayment:                    minuteDayFromProto(policy.GetCoinPayment()),
 		LoginAttemptsPerAccount:        minuteDayFromProto(policy.GetLoginAttemptsPerAccount()),
 		LoginAttemptsPerSource:         hourDayFromProto(policy.GetLoginAttemptsPerSource()),
 		MailRequestsPerAddress:         hourDayFromProto(policy.GetMailRequestsPerAddress()),
@@ -135,7 +138,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 		ExpectedRevision: &expectedRevision,
 	}
 	// wait_free_ticket_use, legal_page_agreement, identity_link, icon_change,
-	// passkey, series_remainder_checkout, subscription_checkout, the login limits, the notification
+	// passkey, series_remainder_checkout, subscription_checkout, coin_payment, the login limits, the notification
 	// settings limit, the operator MFA requirement and the tenant coin allowance reached the policy after the console screens
 	// that save it, and those are deployed apart from this server, so a
 	// request that leaves one out keeps what is stored rather than being
@@ -153,7 +156,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// be saved while it is being switched off.
 	requested := req.GetPolicy()
 	enablesOperatorMfaWithoutSecrets := requested.GetMfaRequiredForPlatformOperator() && s.encryptor == nil
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetCoinPayment() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -186,6 +189,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		if requested.GetSubscriptionCheckout() == nil {
 			params.Policy.SubscriptionCheckout = stored.SubscriptionCheckout
 		}
+		if requested.GetCoinPayment() == nil {
+			params.Policy.CoinPayment = stored.CoinPayment
+		}
 		if requested.GetLoginAttemptsPerAccount() == nil {
 			params.Policy.LoginAttemptsPerAccount = stored.LoginAttemptsPerAccount
 		}
@@ -210,7 +216,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 		return nil, err
 	}
 
-	updated, err := platformpolicy.Save(ctx, s.db, s.logger, actor, params)
+	updated, err := platformpolicy.Save(ctx, s.db, s.logger, actor, params, revalidate.RecordCatalogDrop)
 	if err != nil {
 		return nil, s.platformPolicyError(ctx, err)
 	}

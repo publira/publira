@@ -22,6 +22,7 @@ Start from what you see, and look at the job that owns it:
 | A series is still missing from the site's lists after its **Publication date and time** | Scheduled series | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | A campaign banner is still missing from the site after its window opened, or still up after it closed | Campaign banners | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | An episode's site page still quotes its regular price after a campaign price started, or the campaign price after it ended | Campaign prices | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
+| A reader's coin history does not show the coins that expired unspent | Coin expiry | [Other scheduled jobs](#other-scheduled-jobs) |
 | A page keeps showing what it showed before a change | Cache revalidation, in the outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | A mail or a push notification never arrives | The outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | The rankings, series ratings, or recommendations stop moving | The statistics and ranking chain | [Statistics and rankings](#statistics-and-rankings) |
@@ -36,7 +37,7 @@ Every one of them first needs `publira worker` to be running and ready: an insta
 
 The worker logs every failure, and the log line names the job. Every run of a scheduled job also leaves a row in the `river_job` table of the database, where the worker queues its own work, so that table shows whether a job ran at all, and when.
 
-What the row says about a failure depends on the job. The publication, free reading period, day rollover, pinned announcement, scheduled series, campaign banner, and campaign price jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's [administrative login](../2-deployments/2-installing.md#provision-the-services):
+What the row says about a failure depends on the job. The publication, free reading period, day rollover, pinned announcement, scheduled series, campaign banner, campaign price, and coin expiry jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's [administrative login](../2-deployments/2-installing.md#provision-the-services):
 
 ```sql
 SELECT kind, state, attempt, finalized_at, errors
@@ -90,6 +91,7 @@ The worker remembers, per tenant, the last day each link finished, and starts fr
 
 | Job | How often | What it does |
 | --- | --- | --- |
+| Coin expiry | Every minute | Writes an entry into a reader's coin history for each grant of coins that expired with coins unspent, so the history says where they went. The coins stop counting toward the balance at the moment they expire, with no job involved, and are never restored. Like the jobs that keep cached pages on time, it has no `publiractl job` command |
 | Royalty close (`close-royalty-statements`) | Every hour | Closes each month a tenant on **Close automatically** owes, once the tenant's close day has come. A month already closed, by hand or by an earlier pass, is left as it is |
 | Google Play refund sync (`sync-google-play-voided-purchases`) | Every hour | Reads the purchases Google Play refunded in the last 30 days, for every tenant whose Google Play store is on, and takes them back, as [Selling episodes](../4-console/4-selling-episodes.md#refunds) describes |
 | Search index build (`build-search-index`) | Every 30 seconds | Builds the index on a newly saved search engine and moves the search onto it, as [Search](./7-search.md#moving-to-another-engine) describes |
@@ -102,7 +104,7 @@ A worker started with `--queue` runs the jobs of the queues it names and leaves 
 | Queue | Jobs |
 | --- | --- |
 | `outbox` | [The outbox](#the-outbox-mail-push-and-cache-revalidation): mail, push notifications, cache revalidation, and the search engine's index updates |
-| `ticker` | Scheduled publication, free reading periods, the tenant day rollover, pinned announcements, scheduled series, campaign banners, and campaign prices |
+| `ticker` | Scheduled publication, free reading periods, the tenant day rollover, pinned announcements, scheduled series, campaign banners, campaign prices, and coin expiry |
 | `maintenance` | The statistics and ranking chain, the royalty close, the Google Play refund sync, and the purges |
 | `search_index` | The search index build |
 

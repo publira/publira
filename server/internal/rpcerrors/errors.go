@@ -27,12 +27,27 @@ const (
 	// ReasonCampaignBannerLimit refuses creating a campaign banner for a
 	// tenant that holds as many as it may.
 	ReasonCampaignBannerLimit = "CAMPAIGN_BANNER_LIMIT"
+	// ReasonCoinBalanceInsufficient refuses paying for an episode with more
+	// coins than the reader holds, and spends nothing.
+	ReasonCoinBalanceInsufficient = "COIN_BALANCE_INSUFFICIENT"
+	// ReasonCoinBalancesOutstanding refuses turning a tenant's coins off while
+	// any reader holds coins that have not expired.
+	ReasonCoinBalancesOutstanding = "COIN_BALANCES_OUTSTANDING"
 	// ReasonCoinPackLimit refuses creating a coin pack for a tenant that
 	// holds as many as it may.
 	ReasonCoinPackLimit = "COIN_PACK_LIMIT"
 	// ReasonCoinPackSold refuses changing the price or the coins of a coin
 	// pack that has been sold.
-	ReasonCoinPackSold     = "COIN_PACK_SOLD"
+	ReasonCoinPackSold = "COIN_PACK_SOLD"
+	// ReasonCoinPriceChanged refuses paying for an episode with coins when its
+	// coin price is no longer the one the reader was shown.
+	ReasonCoinPriceChanged = "COIN_PRICE_CHANGED"
+	// ReasonCoinUnitAmountFixed refuses changing what one coin is worth once
+	// the tenant has granted any coin, since every balance is counted in it.
+	ReasonCoinUnitAmountFixed = "COIN_UNIT_AMOUNT_FIXED"
+	// ReasonCoinsUnavailable refuses every coin RPC while the platform does
+	// not allow tenant coins or the tenant has not turned its coins on.
+	ReasonCoinsUnavailable = "COINS_UNAVAILABLE"
 	ReasonCreatorRoleInUse = "CREATOR_ROLE_IN_USE"
 	// ReasonIdentityLinkedToAnotherAccount refuses linking a provider account
 	// that signs in to another reader of the tenant.
@@ -138,6 +153,18 @@ const (
 	// instant a reader's next wait-for-free ticket is ready, on
 	// ReasonWaitFreeNotRecharged.
 	MetadataNextAvailableAt = "next_available_at"
+
+	// MetadataShortfall is the ErrorInfo metadata key for the coins a reader
+	// is short of a payment by, on ReasonCoinBalanceInsufficient, and
+	// MetadataCoinPrice the coin price in force, on ReasonCoinPriceChanged.
+	// Both are decimal integers.
+	MetadataShortfall = "shortfall"
+	MetadataCoinPrice = "coin_price"
+
+	// MetadataReaderCount is the ErrorInfo metadata key for how many readers
+	// hold coins that have not expired, on ReasonCoinBalancesOutstanding. The
+	// value is a decimal integer.
+	MetadataReaderCount = "reader_count"
 )
 
 // NewFieldViolationError reports that one request field caused a rejected RPC.

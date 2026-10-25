@@ -2,11 +2,16 @@ package adminapi
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/connect/v2/connectproto"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
@@ -496,4 +501,108 @@ func TestDBCreateCoinPackRefusesPastTheCap(t *testing.T) {
 		t.Fatalf("RetireCoinPack: %v", err)
 	}
 	f.createPack(t, &publiraadminv1.CoinPackInput{Coins: 100, Price: 100})
+}
+
+// errorInfoMetadata reads the metadata of the Publira ErrorInfo an error
+// carries, or nil when it carries none.
+func errorInfoMetadata(t *testing.T, err error) map[string]string {
+	t.Helper()
+
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("error is not a connect error: %v", err)
+	}
+	for _, detail := range connectErr.Details() {
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
+		if valueErr != nil {
+			continue
+		}
+		if info, ok := value.(*errdetails.ErrorInfo); ok && info.GetDomain() == rpcerrors.ErrorInfoDomain {
+			return info.GetMetadata()
+		}
+	}
+	return nil
+}
+
+// Readers who hold coins keep the tenant's coins on, and once a coin has been
+// granted what one is worth stays fixed. Stopping selling is never refused.
+func TestDBUpdateTenantCoinSettingsKeepsWhatBalancesAreCountedIn(t *testing.T) {
+	f := newCoinFixture(t)
+	f.allowCoins(t, true)
+	f.takePayments(t)
+	if _, err := f.save(completeCoinSettings()); err != nil {
+		t.Fatalf("turn coins on: %v", err)
+	}
+	tenantID := f.admin.Tenant.ID
+	first := f.env.PG.SeedEndUser(t, tenantID, "COINREADER01", "first@tenant-a.example.com", "First reader")
+	second := f.env.PG.SeedEndUser(t, tenantID, "COINREADER02", "second@tenant-a.example.com", "Second reader")
+	lapsed := f.env.PG.SeedEndUser(t, tenantID, "COINREADER03", "lapsed@tenant-a.example.com", "Lapsed reader")
+	f.env.PG.SeedCoinGrant(t, tenantID, first.ID, 10, time.Now().Add(30*24*time.Hour))
+	f.env.PG.SeedCoinGrant(t, tenantID, second.ID, 5, time.Now().Add(30*24*time.Hour))
+	f.env.PG.SeedCoinGrant(t, tenantID, second.ID, 5, time.Now().Add(60*24*time.Hour))
+	f.env.PG.SeedCoinGrant(t, tenantID, lapsed.ID, 5, time.Now().Add(-time.Hour))
+
+	off := completeCoinSettings()
+	off.Enabled = false
+	_, err := f.save(off)
+	assertConnectCode(t, "turning coins off with balances held", err, connect.CodeFailedPrecondition)
+	if got := errorInfoReason(t, err); got != rpcerrors.ReasonCoinBalancesOutstanding {
+		t.Fatalf("reason = %q, want %q", got, rpcerrors.ReasonCoinBalancesOutstanding)
+	}
+	if got := errorInfoMetadata(t, err)[rpcerrors.MetadataReaderCount]; got != "2" {
+		t.Fatalf("reader_count = %q, want 2: the reader whose coins expired holds none", got)
+	}
+
+	revalued := completeCoinSettings()
+	revalued.CoinUnitAmount = 2
+	_, err = f.save(revalued)
+	assertConnectCode(t, "changing coin_unit_amount after a grant", err, connect.CodeFailedPrecondition)
+	if got := errorInfoReason(t, err); got != rpcerrors.ReasonCoinUnitAmountFixed {
+		t.Fatalf("reason = %q, want %q", got, rpcerrors.ReasonCoinUnitAmountFixed)
+	}
+
+	notSelling := completeCoinSettings()
+	notSelling.Selling = false
+	if _, err := f.save(notSelling); err != nil {
+		t.Fatalf("stop selling with balances held: %v", err)
+	}
+
+	if _, err := f.env.PG.DB.ExecContext(context.Background(), `UPDATE coin_grants SET remaining_coins = 0 WHERE tenant_id = $1`, tenantID); err != nil {
+		t.Fatalf("spend every balance: %v", err)
+	}
+	notSelling.Enabled = false
+	if _, err := f.save(notSelling); err != nil {
+		t.Fatalf("turn coins off once no balance is held: %v", err)
+	}
+	notSelling.CoinUnitAmount = 2
+	_, err = f.save(notSelling)
+	assertConnectCode(t, "changing coin_unit_amount after every grant is spent", err, connect.CodeFailedPrecondition)
+	if got := f.auditCount(t, "coin_settings_updated"); got != 3 {
+		t.Fatalf("audit entries = %d, want the three saves that went through", got)
+	}
+}
+
+// The storefront prices episodes in coins and names them, so a save that
+// changes the settings drops the cached series and episode reads, and one that
+// changes nothing drops nothing.
+func TestDBUpdateTenantCoinSettingsDropsTheCachedEpisodePrices(t *testing.T) {
+	env := newReaderIconDBEnv(t)
+	f := &coinFixture{env: env, admin: env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAADMIN01", "admin@tenant-a.example.com")}
+	f.allowCoins(t, true)
+	f.takePayments(t)
+	env.takeRevalidatedTags(t, f.admin.Tenant)
+	want := []string{"tenant:" + f.admin.Tenant.ID.String() + ":series:detail"}
+
+	if _, err := f.save(completeCoinSettings()); err != nil {
+		t.Fatalf("turn coins on: %v", err)
+	}
+	if got := env.takeRevalidatedTags(t, f.admin.Tenant); !slices.Equal(got, want) {
+		t.Fatalf("invalidations recorded by a change = %v, want %v", got, want)
+	}
+	if _, err := f.save(completeCoinSettings()); err != nil {
+		t.Fatalf("save the same settings again: %v", err)
+	}
+	if got := env.takeRevalidatedTags(t, f.admin.Tenant); len(got) != 0 {
+		t.Fatalf("invalidations recorded by an unchanged save = %v, want none", got)
+	}
 }

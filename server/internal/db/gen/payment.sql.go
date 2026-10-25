@@ -717,6 +717,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.purchased_at,
+    -- The coins a purchase paid with coins spent, 0 on every other purchase.
+    COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     -- Empty on a purchase of a volume or a bundle, which joins no
@@ -741,6 +743,8 @@ SELECT p.id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
+    LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
+    AND ct.purchase_id = p.id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, $1::text) et ON TRUE
@@ -811,6 +815,7 @@ type ListMyPurchasesAscRow struct {
 	RefundedAmount              sql.NullInt32  `json:"refunded_amount"`
 	RefundedAt                  sql.NullTime   `json:"refunded_at"`
 	PurchasedAt                 time.Time      `json:"purchased_at"`
+	CoinsSpent                  int32          `json:"coins_spent"`
 	EpisodeID                   uuid.NullUUID  `json:"episode_id"`
 	EpisodePublicID             sql.NullString `json:"episode_public_id"`
 	EpisodeTitle                string         `json:"episode_title"`
@@ -857,6 +862,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.RefundedAmount,
 			&i.RefundedAt,
 			&i.PurchasedAt,
+			&i.CoinsSpent,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -897,6 +903,8 @@ SELECT p.id,
     p.refunded_amount,
     p.refunded_at,
     p.purchased_at,
+    -- The coins a purchase paid with coins spent, 0 on every other purchase.
+    COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     -- Empty on a purchase of a volume or a bundle, which joins no
@@ -921,6 +929,8 @@ SELECT p.id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
+    LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
+    AND ct.purchase_id = p.id
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
     LEFT JOIN LATERAL episode_translation_for(e.id, $1::text) et ON TRUE
@@ -991,6 +1001,7 @@ type ListMyPurchasesDescRow struct {
 	RefundedAmount              sql.NullInt32  `json:"refunded_amount"`
 	RefundedAt                  sql.NullTime   `json:"refunded_at"`
 	PurchasedAt                 time.Time      `json:"purchased_at"`
+	CoinsSpent                  int32          `json:"coins_spent"`
 	EpisodeID                   uuid.NullUUID  `json:"episode_id"`
 	EpisodePublicID             sql.NullString `json:"episode_public_id"`
 	EpisodeTitle                string         `json:"episode_title"`
@@ -1043,6 +1054,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.RefundedAmount,
 			&i.RefundedAt,
 			&i.PurchasedAt,
+			&i.CoinsSpent,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
