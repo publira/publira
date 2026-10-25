@@ -22,8 +22,8 @@ import (
 
 // A rebuild given a replica writes the rows a rebuild on the primary alone
 // writes, however far behind the standby is when it starts: one that catches
-// up within the wait answers the reads of content_events, and one that does
-// not leaves them to the primary. Either way nothing it reads is older than
+// up within the wait answers the reads of content_events and of the reading
+// positions, and one that does not leaves them to the primary. Either way nothing it reads is older than
 // what the primary had committed when the rebuild began.
 func TestRebuildsOnAReplicaWriteThePrimarysRows(t *testing.T) {
 	pg := testutil.StartReplicatedPostgres(t)
@@ -61,12 +61,27 @@ func TestRebuildsOnAReplicaWriteThePrimarysRows(t *testing.T) {
 			t.Fatalf("insert view: %v", err)
 		}
 	}
+	// move saves where reader stopped in the episode, which the content stats
+	// rebuild reads on the replica beside content_events.
+	move := func(t *testing.T, reader uuid.UUID, pageIndex int) {
+		t.Helper()
+		bucket++
+		if _, err := pg.DB.ExecContext(ctx, `
+			INSERT INTO episode_reading_positions (tenant_id, user_id, episode_id, page_index, page_count, updated_at)
+			VALUES ($1, $2, $3, $4, 10, $5)
+			ON CONFLICT (tenant_id, user_id, episode_id) DO UPDATE
+			SET page_index = EXCLUDED.page_index, updated_at = EXCLUDED.updated_at
+		`, tenant.ID, reader, episode.ID, pageIndex, day.Add(time.Duration(bucket)*time.Minute)); err != nil {
+			t.Fatalf("save a reading position: %v", err)
+		}
+	}
 	view(t, readers[0])
+	move(t, readers[0], 2)
 	pg.WaitForReplay(t)
 
 	// rebuild runs the two rebuilds that read content_events on deps and
-	// answers what they wrote, and the ports the reads of content_events were
-	// answered on.
+	// answers what they wrote, and the ports the reads of content_events and
+	// episode_reading_positions were answered on.
 	rebuild := func(t *testing.T, deps Deps) (rebuilt string, readOn []int64) {
 		t.Helper()
 		before := len(spans.Ended())
@@ -87,7 +102,7 @@ func TestRebuildsOnAReplicaWriteThePrimarysRows(t *testing.T) {
 					port = kv.Value.AsInt64()
 				}
 			}
-			if strings.Contains(text, "FROM content_events") {
+			if strings.Contains(text, "FROM content_events") || strings.Contains(text, "FROM episode_reading_positions") {
 				readOn = append(readOn, port)
 			}
 		}
@@ -103,6 +118,7 @@ func TestRebuildsOnAReplicaWriteThePrimarysRows(t *testing.T) {
 	t.Run("a standby that catches up within the wait answers the reads", func(t *testing.T) {
 		pg.PauseReplay(t)
 		view(t, readers[1])
+		move(t, readers[1], 4)
 		// The superuser resumes replay a second into the rebuild, well inside
 		// the wait, from a goroutine that must not fail the test itself.
 		standby, err := sql.Open("pgx", pg.StandbyURL)
@@ -132,6 +148,7 @@ func TestRebuildsOnAReplicaWriteThePrimarysRows(t *testing.T) {
 		pg.PauseReplay(t)
 		view(t, readers[0])
 		view(t, readers[1])
+		move(t, readers[0], 6)
 		got, readOn := rebuild(t, withReplica)
 		if len(readOn) == 0 || slices.Contains(readOn, standbyPort) {
 			t.Fatalf("content_events was read on ports %v, want none on the lagging standby (%d)", readOn, standbyPort)
@@ -175,6 +192,8 @@ func rebuiltRows(t *testing.T, db *sql.DB, tenantID uuid.UUID, day time.Time) st
 			member_view_count || ' ' || purchase_count || ' ' || complete_count || ' ' || rating_count || ' ' ||
 			rating_sum || ' ' || favorite_count || ' ' || comment_count
 		 FROM content_daily_stats WHERE tenant_id = $1 AND stat_date = $2 ORDER BY 1`,
+		`SELECT 'reach ' || episode_id || ' ' || page_index || ' ' || reader_count
+		 FROM episode_page_reach_stats WHERE tenant_id = $1 AND stat_date = $2 ORDER BY episode_id, page_index`,
 		`SELECT 'item ' || entity_type || ' ' || entity_id || ' ' || features::text || ' ' || feature_version
 		 FROM item_recommend_features WHERE tenant_id = $1 AND $2::date IS NOT NULL ORDER BY 1`,
 		`SELECT 'user ' || user_id || ' ' || features::text || ' ' || feature_version

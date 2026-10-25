@@ -33,6 +33,9 @@ const (
 	// AdminEngagementServiceGetAudienceStatsProcedure is the procedure name of the
 	// AdminEngagementService's GetAudienceStats RPC.
 	AdminEngagementServiceGetAudienceStatsProcedure = "/publira.admin.v1.AdminEngagementService/GetAudienceStats"
+	// AdminEngagementServiceGetEpisodeDropOffProcedure is the procedure name of the
+	// AdminEngagementService's GetEpisodeDropOff RPC.
+	AdminEngagementServiceGetEpisodeDropOffProcedure = "/publira.admin.v1.AdminEngagementService/GetEpisodeDropOff"
 )
 
 var (
@@ -57,6 +60,13 @@ var (
 			Procedure:  AdminEngagementServiceGetAudienceStatsProcedure,
 		}
 	})
+	adminEngagementServiceGetEpisodeDropOffSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_engagement_proto.Services().ByName("AdminEngagementService").Methods().ByName("GetEpisodeDropOff"),
+			Procedure:  AdminEngagementServiceGetEpisodeDropOffProcedure,
+		}
+	})
 )
 
 // AdminEngagementServiceClient is a client for the publira.admin.v1.AdminEngagementService service.
@@ -74,6 +84,11 @@ type AdminEngagementServiceClient interface {
 	//
 	// Minimum role: tenant_auditor.
 	GetAudienceStats(context.Context, *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error)
+	// How far into one episode its readers got over a period of the tenant's
+	// days, page by page, which shows the page at which they leave it.
+	//
+	// Minimum role: tenant_auditor.
+	GetEpisodeDropOff(context.Context, *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error)
 }
 
 // NewAdminEngagementServiceClient constructs a client for the
@@ -99,6 +114,11 @@ type AdminEngagementServiceHandler interface {
 	//
 	// Minimum role: tenant_auditor.
 	GetAudienceStats(context.Context, *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error)
+	// How far into one episode its readers got over a period of the tenant's
+	// days, page by page, which shows the page at which they leave it.
+	//
+	// Minimum role: tenant_auditor.
+	GetEpisodeDropOff(context.Context, *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error)
 }
 
 // RegisterAdminEngagementServiceHandler registers svc as the
@@ -109,6 +129,7 @@ func RegisterAdminEngagementServiceHandler(server *connect.Server, svc AdminEnga
 		connect.Method{Spec: adminEngagementServiceListEpisodeReadThroughSpec(), Handler: adapter.listEpisodeReadThrough},
 		connect.Method{Spec: adminEngagementServiceGetRevenueStatsSpec(), Handler: adapter.getRevenueStats},
 		connect.Method{Spec: adminEngagementServiceGetAudienceStatsSpec(), Handler: adapter.getAudienceStats},
+		connect.Method{Spec: adminEngagementServiceGetEpisodeDropOffSpec(), Handler: adapter.getEpisodeDropOff},
 	)
 }
 
@@ -125,6 +146,10 @@ func (UnimplementedAdminEngagementServiceHandler) GetRevenueStats(context.Contex
 
 func (UnimplementedAdminEngagementServiceHandler) GetAudienceStats(context.Context, *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.GetAudienceStats is not implemented")
+}
+
+func (UnimplementedAdminEngagementServiceHandler) GetEpisodeDropOff(context.Context, *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.GetEpisodeDropOff is not implemented")
 }
 
 type adminEngagementServiceClient struct {
@@ -150,6 +175,14 @@ func (c *adminEngagementServiceClient) GetRevenueStats(ctx context.Context, req 
 func (c *adminEngagementServiceClient) GetAudienceStats(ctx context.Context, req *v1.GetAudienceStatsRequest) (*v1.GetAudienceStatsResponse, error) {
 	var res v1.GetAudienceStatsResponse
 	if err := c.client.CallUnary(ctx, adminEngagementServiceGetAudienceStatsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminEngagementServiceClient) GetEpisodeDropOff(ctx context.Context, req *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error) {
+	var res v1.GetEpisodeDropOffResponse
+	if err := c.client.CallUnary(ctx, adminEngagementServiceGetEpisodeDropOffSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -187,6 +220,18 @@ func (h adminEngagementServiceHandler) getAudienceStats(ctx context.Context, _ c
 		return err
 	}
 	res, err := h.svc.GetAudienceStats(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminEngagementServiceHandler) getEpisodeDropOff(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetEpisodeDropOffRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetEpisodeDropOff(ctx, &req)
 	if err != nil {
 		return err
 	}

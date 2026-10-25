@@ -454,6 +454,15 @@ func TestSourceQueriesHaveEligibleIndexes(t *testing.T) {
 			AND event_type IN ('episode_view', 'series_view', 'episode_complete', 'rating', 'favorite')
 	`, tenant.ID, statDate, "idx_content_events_tenant_type_occurred_at")
 
+	assertPlanUsesIndex(t, pg.DB, `
+		SELECT episode_id, page_index, count(*)
+		FROM episode_reading_positions
+		WHERE tenant_id = $1
+			AND updated_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
+			AND updated_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
+		GROUP BY episode_id, page_index
+	`, tenant.ID, statDate, "idx_episode_reading_positions_tenant_updated_at")
+
 	// Every index on purchases that leads with tenant_id costs the same on an
 	// empty, never analyzed table, so which one the planner picks there is a
 	// tie-break that any new index can tip. A tenant with purchases spread over

@@ -444,6 +444,14 @@ type EpisodeListing struct {
 	RentalPeriodHours  sql.NullInt32 `json:"rental_period_hours"`
 }
 
+type EpisodePageReachStat struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	StatDate    time.Time `json:"stat_date"`
+	EpisodeID   uuid.UUID `json:"episode_id"`
+	PageIndex   int32     `json:"page_index"`
+	ReaderCount int64     `json:"reader_count"`
+}
+
 type EpisodePurchaseAvailability struct {
 	EpisodeID            uuid.UUID `json:"episode_id"`
 	TenantID             uuid.UUID `json:"tenant_id"`

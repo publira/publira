@@ -1278,6 +1278,224 @@ func (x *GetAudienceStatsResponse) GetNextToken() string {
 	return ""
 }
 
+// How many of an episode's readers reached one of its pages.
+type EpisodePageReach struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Zero-based, so the episode's last page is page_count - 1.
+	PageIndex int32 `protobuf:"varint,1,opt,name=page_index,json=pageIndex,proto3" json:"page_index,omitempty"`
+	// Readers who stopped at this page or after it. Those who left at it are
+	// this count less the next page's, and at the last page this count.
+	ReaderCount   int64 `protobuf:"varint,2,opt,name=reader_count,json=readerCount,proto3" json:"reader_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EpisodePageReach) Reset() {
+	*x = EpisodePageReach{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EpisodePageReach) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EpisodePageReach) ProtoMessage() {}
+
+func (x *EpisodePageReach) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EpisodePageReach.ProtoReflect.Descriptor instead.
+func (*EpisodePageReach) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *EpisodePageReach) GetPageIndex() int32 {
+	if x != nil {
+		return x.PageIndex
+	}
+	return 0
+}
+
+func (x *EpisodePageReach) GetReaderCount() int64 {
+	if x != nil {
+		return x.ReaderCount
+	}
+	return 0
+}
+
+type GetEpisodeDropOffRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The episode to report. One the tenant does not have is not_found.
+	EpisodePublicId string `protobuf:"bytes,2,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	// The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+	// zone: the first no later than the last, and covering at most 366 days.
+	// Both are required.
+	StartDate     string `protobuf:"bytes,3,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate       string `protobuf:"bytes,4,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEpisodeDropOffRequest) Reset() {
+	*x = GetEpisodeDropOffRequest{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEpisodeDropOffRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEpisodeDropOffRequest) ProtoMessage() {}
+
+func (x *GetEpisodeDropOffRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEpisodeDropOffRequest.ProtoReflect.Descriptor instead.
+func (*GetEpisodeDropOffRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetEpisodeDropOffRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetEpisodeDropOffRequest) GetEpisodePublicId() string {
+	if x != nil {
+		return x.EpisodePublicId
+	}
+	return ""
+}
+
+func (x *GetEpisodeDropOffRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetEpisodeDropOffRequest) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+type GetEpisodeDropOffResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Every page from the first through the episode's last, and through the
+	// furthest page a reader reached if that is further, in page order. Empty
+	// for an episode with no pages that no reader reached.
+	//
+	// A reader is counted on the day their saved position was last moved, at
+	// the page it holds, as the day stood when the daily aggregates were
+	// rebuilt for it. A reader who moved on several days of the period is
+	// counted once on each, at the page they stopped at that day. Today, and a
+	// day still waiting for its rebuild, counts no reader yet.
+	Pages []*EpisodePageReach `protobuf:"bytes,1,rep,name=pages,proto3" json:"pages,omitempty"`
+	// The pages the episode has now. A page past them was reached before the
+	// episode lost pages.
+	PageCount int32 `protobuf:"varint,2,opt,name=page_count,json=pageCount,proto3" json:"page_count,omitempty"`
+	// The period the request asked for, echoed back.
+	StartDate string `protobuf:"bytes,3,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,4,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// The IANA time zone the dates are the tenant's days in. It is the tenant's
+	// resolved zone: the counting and the wording come from the same read.
+	TimeZone      string `protobuf:"bytes,5,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEpisodeDropOffResponse) Reset() {
+	*x = GetEpisodeDropOffResponse{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEpisodeDropOffResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEpisodeDropOffResponse) ProtoMessage() {}
+
+func (x *GetEpisodeDropOffResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEpisodeDropOffResponse.ProtoReflect.Descriptor instead.
+func (*GetEpisodeDropOffResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetEpisodeDropOffResponse) GetPages() []*EpisodePageReach {
+	if x != nil {
+		return x.Pages
+	}
+	return nil
+}
+
+func (x *GetEpisodeDropOffResponse) GetPageCount() int32 {
+	if x != nil {
+		return x.PageCount
+	}
+	return 0
+}
+
+func (x *GetEpisodeDropOffResponse) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetEpisodeDropOffResponse) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *GetEpisodeDropOffResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
 var File_publira_admin_v1_engagement_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_engagement_proto_rawDesc = "" +
@@ -1383,7 +1601,25 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x06totals\x18\x05 \x01(\v2%.publira.admin.v1.AudienceStatsTotalsR\x06totals\x12%\n" +
 	"\x0eprevious_token\x18\x06 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\a \x01(\tR\tnextToken*\x87\x01\n" +
+	"next_token\x18\a \x01(\tR\tnextToken\"T\n" +
+	"\x10EpisodePageReach\x12\x1d\n" +
+	"\n" +
+	"page_index\x18\x01 \x01(\x05R\tpageIndex\x12!\n" +
+	"\freader_count\x18\x02 \x01(\x03R\vreaderCount\"\xb9\x01\n" +
+	"\x18GetEpisodeDropOffRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12*\n" +
+	"\x11episode_public_id\x18\x02 \x01(\tR\x0fepisodePublicId\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x03 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x04 \x01(\tR\aendDate\"\xcb\x01\n" +
+	"\x19GetEpisodeDropOffResponse\x128\n" +
+	"\x05pages\x18\x01 \x03(\v2\".publira.admin.v1.EpisodePageReachR\x05pages\x12\x1d\n" +
+	"\n" +
+	"page_count\x18\x02 \x01(\x05R\tpageCount\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x03 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x04 \x01(\tR\aendDate\x12\x1b\n" +
+	"\ttime_zone\x18\x05 \x01(\tR\btimeZone*\x87\x01\n" +
 	"\x0eRevenueGroupBy\x12 \n" +
 	"\x1cREVENUE_GROUP_BY_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14REVENUE_GROUP_BY_DAY\x10\x01\x12\x1b\n" +
@@ -1392,11 +1628,12 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x0fAudienceGroupBy\x12!\n" +
 	"\x1dAUDIENCE_GROUP_BY_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15AUDIENCE_GROUP_BY_DAY\x10\x01\x12\x1c\n" +
-	"\x18AUDIENCE_GROUP_BY_SERIES\x10\x022\xee\x02\n" +
+	"\x18AUDIENCE_GROUP_BY_SERIES\x10\x022\xde\x03\n" +
 	"\x16AdminEngagementService\x12}\n" +
 	"\x16ListEpisodeReadThrough\x12/.publira.admin.v1.ListEpisodeReadThroughRequest\x1a0.publira.admin.v1.ListEpisodeReadThroughResponse\"\x00\x12h\n" +
 	"\x0fGetRevenueStats\x12(.publira.admin.v1.GetRevenueStatsRequest\x1a).publira.admin.v1.GetRevenueStatsResponse\"\x00\x12k\n" +
-	"\x10GetAudienceStats\x12).publira.admin.v1.GetAudienceStatsRequest\x1a*.publira.admin.v1.GetAudienceStatsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x10GetAudienceStats\x12).publira.admin.v1.GetAudienceStatsRequest\x1a*.publira.admin.v1.GetAudienceStatsResponse\"\x00\x12n\n" +
+	"\x11GetEpisodeDropOff\x12*.publira.admin.v1.GetEpisodeDropOffRequest\x1a+.publira.admin.v1.GetEpisodeDropOffResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_engagement_proto_rawDescOnce sync.Once
@@ -1411,7 +1648,7 @@ func file_publira_admin_v1_engagement_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_engagement_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_publira_admin_v1_engagement_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_publira_admin_v1_engagement_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_publira_admin_v1_engagement_proto_goTypes = []any{
 	(RevenueGroupBy)(0),                    // 0: publira.admin.v1.RevenueGroupBy
 	(AudienceGroupBy)(0),                   // 1: publira.admin.v1.AudienceGroupBy
@@ -1426,30 +1663,37 @@ var file_publira_admin_v1_engagement_proto_goTypes = []any{
 	(*AudienceStatsTotals)(nil),            // 10: publira.admin.v1.AudienceStatsTotals
 	(*GetAudienceStatsRequest)(nil),        // 11: publira.admin.v1.GetAudienceStatsRequest
 	(*GetAudienceStatsResponse)(nil),       // 12: publira.admin.v1.GetAudienceStatsResponse
-	(*v1.TenantContext)(nil),               // 13: publira.types.v1.TenantContext
+	(*EpisodePageReach)(nil),               // 13: publira.admin.v1.EpisodePageReach
+	(*GetEpisodeDropOffRequest)(nil),       // 14: publira.admin.v1.GetEpisodeDropOffRequest
+	(*GetEpisodeDropOffResponse)(nil),      // 15: publira.admin.v1.GetEpisodeDropOffResponse
+	(*v1.TenantContext)(nil),               // 16: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_engagement_proto_depIdxs = []int32{
-	13, // 0: publira.admin.v1.ListEpisodeReadThroughRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 0: publira.admin.v1.ListEpisodeReadThroughRequest.tenant:type_name -> publira.types.v1.TenantContext
 	2,  // 1: publira.admin.v1.ListEpisodeReadThroughResponse.episodes:type_name -> publira.admin.v1.EpisodeReadThrough
-	13, // 2: publira.admin.v1.GetRevenueStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 2: publira.admin.v1.GetRevenueStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 3: publira.admin.v1.GetRevenueStatsRequest.group_by:type_name -> publira.admin.v1.RevenueGroupBy
 	5,  // 4: publira.admin.v1.GetRevenueStatsResponse.rows:type_name -> publira.admin.v1.RevenueStatsRow
 	6,  // 5: publira.admin.v1.GetRevenueStatsResponse.totals:type_name -> publira.admin.v1.RevenueStatsTotals
-	13, // 6: publira.admin.v1.GetAudienceStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 6: publira.admin.v1.GetAudienceStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	1,  // 7: publira.admin.v1.GetAudienceStatsRequest.group_by:type_name -> publira.admin.v1.AudienceGroupBy
 	9,  // 8: publira.admin.v1.GetAudienceStatsResponse.rows:type_name -> publira.admin.v1.AudienceStatsRow
 	10, // 9: publira.admin.v1.GetAudienceStatsResponse.totals:type_name -> publira.admin.v1.AudienceStatsTotals
-	3,  // 10: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:input_type -> publira.admin.v1.ListEpisodeReadThroughRequest
-	7,  // 11: publira.admin.v1.AdminEngagementService.GetRevenueStats:input_type -> publira.admin.v1.GetRevenueStatsRequest
-	11, // 12: publira.admin.v1.AdminEngagementService.GetAudienceStats:input_type -> publira.admin.v1.GetAudienceStatsRequest
-	4,  // 13: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:output_type -> publira.admin.v1.ListEpisodeReadThroughResponse
-	8,  // 14: publira.admin.v1.AdminEngagementService.GetRevenueStats:output_type -> publira.admin.v1.GetRevenueStatsResponse
-	12, // 15: publira.admin.v1.AdminEngagementService.GetAudienceStats:output_type -> publira.admin.v1.GetAudienceStatsResponse
-	13, // [13:16] is the sub-list for method output_type
-	10, // [10:13] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	16, // 10: publira.admin.v1.GetEpisodeDropOffRequest.tenant:type_name -> publira.types.v1.TenantContext
+	13, // 11: publira.admin.v1.GetEpisodeDropOffResponse.pages:type_name -> publira.admin.v1.EpisodePageReach
+	3,  // 12: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:input_type -> publira.admin.v1.ListEpisodeReadThroughRequest
+	7,  // 13: publira.admin.v1.AdminEngagementService.GetRevenueStats:input_type -> publira.admin.v1.GetRevenueStatsRequest
+	11, // 14: publira.admin.v1.AdminEngagementService.GetAudienceStats:input_type -> publira.admin.v1.GetAudienceStatsRequest
+	14, // 15: publira.admin.v1.AdminEngagementService.GetEpisodeDropOff:input_type -> publira.admin.v1.GetEpisodeDropOffRequest
+	4,  // 16: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:output_type -> publira.admin.v1.ListEpisodeReadThroughResponse
+	8,  // 17: publira.admin.v1.AdminEngagementService.GetRevenueStats:output_type -> publira.admin.v1.GetRevenueStatsResponse
+	12, // 18: publira.admin.v1.AdminEngagementService.GetAudienceStats:output_type -> publira.admin.v1.GetAudienceStatsResponse
+	15, // 19: publira.admin.v1.AdminEngagementService.GetEpisodeDropOff:output_type -> publira.admin.v1.GetEpisodeDropOffResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_engagement_proto_init() }
@@ -1463,7 +1707,7 @@ func file_publira_admin_v1_engagement_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_engagement_proto_rawDesc), len(file_publira_admin_v1_engagement_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

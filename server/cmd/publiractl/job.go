@@ -17,7 +17,7 @@ var jobGroup = commandGroup{
 	note:     "Every job reads its settings from the environment.",
 	commands: []command{
 		jobCommand("project-episode-reads", "File the missing episode_complete events for stored episode reads", runProjectEpisodeReads),
-		jobCommand("aggregate-content-stats", "Rebuild one calendar day of content_daily_stats for every tenant", runAggregateContentStats),
+		jobCommand("aggregate-content-stats", "Rebuild one calendar day of content_daily_stats and episode_page_reach_stats for every tenant", runAggregateContentStats),
 		jobCommand("aggregate-rankings", "Rebuild the daily and weekly ranking snapshots for every tenant", runAggregateRankings),
 		jobCommand("purge-content-events", "Delete content_events rows past their retention window", runPurgeContentEvents),
 		jobCommand("purge-ranking-snapshots", "Delete content_ranking_snapshots rows past their retention window", runPurgeRankingSnapshots),

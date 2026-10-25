@@ -1,6 +1,7 @@
 // Package contentstats rebuilds the daily engagement aggregates used by
-// rankings. It deliberately reads every source of truth for one day and
-// replaces that tenant's snapshot in a single transaction.
+// rankings and the console's reports. It deliberately reads every source of
+// truth for one day and replaces that tenant's snapshot in a single
+// transaction.
 package contentstats
 
 import (
@@ -21,8 +22,9 @@ import (
 )
 
 // Aggregator rebuilds content_daily_stats from content_events, purchases and
-// episode_comments. Its database connection must use a role that reaches every
-// tenant, because each run reads and writes every tenant:
+// episode_comments, and episode_page_reach_stats from
+// episode_reading_positions. Its database connection must use a role that
+// reaches every tenant, because each run reads and writes every tenant:
 // [dbroles.RequireEveryTenant] refuses any other.
 type Aggregator struct {
 	db *sql.DB
@@ -37,7 +39,9 @@ type Aggregator struct {
 // describe the tenants that succeeded rather than the ones that were tried.
 type Result struct {
 	TenantCount int
-	RowCount    int64
+	// RowCount is the rows written to content_daily_stats and
+	// episode_page_reach_stats together.
+	RowCount int64
 	// Skipped are the tenants whose day the run left alone because their
 	// content events for it may be gone. They count in neither total.
 	Skipped []Skipped
@@ -217,7 +221,7 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 		return 0, fmt.Errorf("delete previous stats: %w", err)
 	}
 
-	rowCount, err := insertStats(ctx, tx, replica, tenantID, statDate, tenant.TimeZone)
+	rowCount, err := insertRebuilt(ctx, tx, replica, dailyStatsStatements, tenantID, statDate, tenant.TimeZone)
 	if err != nil {
 		return 0, fmt.Errorf("insert rebuilt stats: %w", err)
 	}
@@ -231,10 +235,26 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 		return 0, fmt.Errorf("store rebuilt rating totals: %w", err)
 	}
 
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM episode_page_reach_stats
+		WHERE tenant_id = $1 AND stat_date = $2::date
+	`, tenantID, statDate); err != nil {
+		return 0, fmt.Errorf("delete previous page reach: %w", err)
+	}
+	reachCount, err := insertRebuilt(ctx, tx, replica, pageReachStatements, tenantID, statDate, tenant.TimeZone)
+	if err != nil {
+		return 0, fmt.Errorf("insert rebuilt page reach: %w", err)
+	}
+	// Every position moved during the day reaches at least its episode's
+	// first page, so the same check holds here on its own.
+	if sources.positions > 0 && reachCount == 0 {
+		return 0, fmt.Errorf("page reach produced no rows from %d reading positions", sources.positions)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-	return rowCount, nil
+	return rowCount + reachCount, nil
 }
 
 // querier is where a day's sources are read: the rebuild's own transaction, or
@@ -243,23 +263,37 @@ type querier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// insertStats writes the rebuilt rows of one tenant's day in tx. Without a
+// rebuildStatements are the three forms of one table's rebuild of a tenant
+// day: read and written in one statement on the primary, read on the replica
+// one JSON object per row, and that read written as one batch.
+type rebuildStatements struct {
+	insert       string
+	selectRows   string
+	insertCopied string
+}
+
+var (
+	dailyStatsStatements = rebuildStatements{insert: insertStatsSQL, selectRows: selectStatsSQL, insertCopied: insertCopiedStatsSQL}
+	pageReachStatements  = rebuildStatements{insert: insertPageReachSQL, selectRows: selectPageReachSQL, insertCopied: insertCopiedPageReachSQL}
+)
+
+// insertRebuilt writes the rebuilt rows of one tenant's day in tx. Without a
 // replica they are read and written by one statement; with one, they are read
 // on the replica and copied into tx.
-func insertStats(ctx context.Context, tx *sql.Tx, replica *sql.Conn, tenantID uuid.UUID, statDate, timeZone string) (int64, error) {
+func insertRebuilt(ctx context.Context, tx *sql.Tx, replica *sql.Conn, statements rebuildStatements, tenantID uuid.UUID, statDate, timeZone string) (int64, error) {
 	if replica == nil {
-		inserted, err := tx.ExecContext(ctx, insertStatsSQL, tenantID, statDate, timeZone)
+		inserted, err := tx.ExecContext(ctx, statements.insert, tenantID, statDate, timeZone)
 		if err != nil {
 			return 0, err
 		}
 		return inserted.RowsAffected()
 	}
-	rows, err := replica.QueryContext(ctx, selectStatsSQL, tenantID, statDate, timeZone)
+	rows, err := replica.QueryContext(ctx, statements.selectRows, tenantID, statDate, timeZone)
 	if err != nil {
 		return 0, fmt.Errorf("read on the replica: %w", err)
 	}
 	return readreplica.Copy(rows, func(batch string) (int64, error) {
-		inserted, err := tx.ExecContext(ctx, insertCopiedStatsSQL, tenantID, statDate, batch)
+		inserted, err := tx.ExecContext(ctx, statements.insertCopied, tenantID, statDate, batch)
 		if err != nil {
 			return 0, err
 		}
@@ -271,6 +305,8 @@ type sourceCounts struct {
 	events    int64
 	purchases int64
 	comments  int64
+	// positions feed episode_page_reach_stats alone, so total leaves them out.
+	positions int64
 }
 
 func (s sourceCounts) total() int64 {
@@ -298,8 +334,13 @@ func countSources(ctx context.Context, reads querier, tenantID uuid.UUID, statDa
 			 WHERE tenant_id = $1
 			   AND status = 'published'
 			   AND published_at >= ($2::date::timestamp AT TIME ZONE $3::text)
-			   AND published_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text))
-	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases, &counts.comments)
+			   AND published_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)),
+			(SELECT count(*)
+			 FROM episode_reading_positions
+			 WHERE tenant_id = $1
+			   AND updated_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND updated_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text))
+	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases, &counts.comments, &counts.positions)
 	return counts, err
 }
 
@@ -521,6 +562,69 @@ FROM jsonb_to_recordset($3::jsonb) AS r(
 	rating_sum bigint,
 	favorite_count bigint,
 	comment_count bigint
+)
+`
+
+// rebuiltPageReachSQL reads into page_reach how far into each episode the
+// readers of one tenant day got, with $2 and $3 the day and its zone as in
+// rebuiltStatsSQL. A reader of the day is one whose position was last moved
+// during it: the position is rewritten in place and keeps no history, so the
+// page it holds is the one the reader stopped at, and a reader who has moved
+// again since the day ended is counted on the later day instead.
+//
+// A reader reached every page up to their position, so a page's reader_count
+// is the readers stopped at it or after it. The stops are counted first and
+// summed from the furthest page down, rather than every reader being spread
+// over every page they passed.
+const rebuiltPageReachSQL = `
+WITH stops AS (
+	SELECT rp.episode_id, rp.page_index, count(*) AS reader_count
+	FROM episode_reading_positions rp
+	WHERE rp.tenant_id = $1
+		AND rp.updated_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND rp.updated_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+	GROUP BY rp.episode_id, rp.page_index
+), furthest AS (
+	SELECT episode_id, max(page_index) AS page_index
+	FROM stops
+	GROUP BY episode_id
+), page_reach AS (
+	SELECT
+		f.episode_id,
+		p.page_index,
+		(sum(COALESCE(s.reader_count, 0)) OVER (
+			PARTITION BY f.episode_id
+			ORDER BY p.page_index DESC
+		))::bigint AS reader_count
+	FROM furthest f
+	CROSS JOIN LATERAL generate_series(0, f.page_index) AS p(page_index)
+	LEFT JOIN stops s ON s.episode_id = f.episode_id AND s.page_index = p.page_index
+)
+`
+
+// insertPageReachSQL reads and writes one tenant's day in one statement, on
+// the primary.
+const insertPageReachSQL = rebuiltPageReachSQL + `
+INSERT INTO episode_page_reach_stats (tenant_id, stat_date, episode_id, page_index, reader_count)
+SELECT $1, $2::date, episode_id, page_index, reader_count
+FROM page_reach
+`
+
+// selectPageReachSQL reads one tenant's day on the replica, one JSON object
+// per row, for insertCopiedPageReachSQL to write on the primary.
+const selectPageReachSQL = rebuiltPageReachSQL + `
+SELECT to_jsonb(page_reach) FROM page_reach
+`
+
+// insertCopiedPageReachSQL writes a batch selectPageReachSQL read, $3, as one
+// tenant's rows for its day $2.
+const insertCopiedPageReachSQL = `
+INSERT INTO episode_page_reach_stats (tenant_id, stat_date, episode_id, page_index, reader_count)
+SELECT $1, $2::date, r.episode_id, r.page_index, r.reader_count
+FROM jsonb_to_recordset($3::jsonb) AS r(
+	episode_id uuid,
+	page_index integer,
+	reader_count bigint
 )
 `
 
