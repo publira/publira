@@ -22,6 +22,63 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// How GetRevenueStatsRequest cuts its period into rows.
+type RevenueGroupBy int32
+
+const (
+	RevenueGroupBy_REVENUE_GROUP_BY_UNSPECIFIED RevenueGroupBy = 0
+	// One row per day of the period, the tenant's own days, a day without a
+	// sale included.
+	RevenueGroupBy_REVENUE_GROUP_BY_DAY RevenueGroupBy = 1
+	// One row per series that sold in the period.
+	RevenueGroupBy_REVENUE_GROUP_BY_SERIES RevenueGroupBy = 2
+	// One row per episode that sold in the period.
+	RevenueGroupBy_REVENUE_GROUP_BY_EPISODE RevenueGroupBy = 3
+)
+
+// Enum value maps for RevenueGroupBy.
+var (
+	RevenueGroupBy_name = map[int32]string{
+		0: "REVENUE_GROUP_BY_UNSPECIFIED",
+		1: "REVENUE_GROUP_BY_DAY",
+		2: "REVENUE_GROUP_BY_SERIES",
+		3: "REVENUE_GROUP_BY_EPISODE",
+	}
+	RevenueGroupBy_value = map[string]int32{
+		"REVENUE_GROUP_BY_UNSPECIFIED": 0,
+		"REVENUE_GROUP_BY_DAY":         1,
+		"REVENUE_GROUP_BY_SERIES":      2,
+		"REVENUE_GROUP_BY_EPISODE":     3,
+	}
+)
+
+func (x RevenueGroupBy) Enum() *RevenueGroupBy {
+	p := new(RevenueGroupBy)
+	*p = x
+	return p
+}
+
+func (x RevenueGroupBy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RevenueGroupBy) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_admin_v1_engagement_proto_enumTypes[0].Descriptor()
+}
+
+func (RevenueGroupBy) Type() protoreflect.EnumType {
+	return &file_publira_admin_v1_engagement_proto_enumTypes[0]
+}
+
+func (x RevenueGroupBy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RevenueGroupBy.Descriptor instead.
+func (RevenueGroupBy) EnumDescriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{0}
+}
+
 // One episode's read-through over the reported period.
 //
 // complete_count and member_view_count are the numerator and denominator of
@@ -290,6 +347,419 @@ func (x *ListEpisodeReadThroughResponse) GetTimeZone() string {
 	return ""
 }
 
+// What sold in one row of a revenue report, in the minor unit of the
+// response's currency.
+//
+// A sale is counted on the day it was made, and what went back on it is taken
+// off that day too, however long after it went back: a refund, and a dispute
+// of the payment the tenant lost, which takes all of it back. A day already
+// reported can therefore fall afterwards. A dispute still open takes nothing
+// back until it is lost.
+//
+// A purchase of a volume or of the rest of a series sold every episode in it,
+// so it is a sale of each of those episodes at the part of its price that
+// episode accounts for, the part a royalty statement credits, and a sale of
+// the series they belong to at all of it. What went back on such a purchase
+// is divided over its episodes in the same proportion, each part rounded
+// down, so the episode rows' refunded_amount can fall short of the totals by
+// less than one minor unit per episode.
+type RevenueStatsRow struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The tenant day (YYYY-MM-DD) of a REVENUE_GROUP_BY_DAY row. Empty
+	// otherwise.
+	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	// The series of a REVENUE_GROUP_BY_SERIES or REVENUE_GROUP_BY_EPISODE row,
+	// under its title in the tenant's default locale. Empty for a day.
+	SeriesPublicId string `protobuf:"bytes,2,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
+	SeriesTitle    string `protobuf:"bytes,3,opt,name=series_title,json=seriesTitle,proto3" json:"series_title,omitempty"`
+	// The episode of a REVENUE_GROUP_BY_EPISODE row. Empty otherwise.
+	EpisodePublicId string `protobuf:"bytes,4,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
+	EpisodeTitle    string `protobuf:"bytes,5,opt,name=episode_title,json=episodeTitle,proto3" json:"episode_title,omitempty"`
+	// Purchases made, refunded ones included.
+	PurchaseCount int64 `protobuf:"varint,6,opt,name=purchase_count,json=purchaseCount,proto3" json:"purchase_count,omitempty"`
+	// What those purchases were paid.
+	GrossAmount int64 `protobuf:"varint,7,opt,name=gross_amount,json=grossAmount,proto3" json:"gross_amount,omitempty"`
+	// What went back to the readers of them.
+	RefundedAmount int64 `protobuf:"varint,8,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
+	// gross_amount less refunded_amount: what the tenant kept.
+	NetAmount     int64 `protobuf:"varint,9,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueStatsRow) Reset() {
+	*x = RevenueStatsRow{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueStatsRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueStatsRow) ProtoMessage() {}
+
+func (x *RevenueStatsRow) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueStatsRow.ProtoReflect.Descriptor instead.
+func (*RevenueStatsRow) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RevenueStatsRow) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *RevenueStatsRow) GetSeriesPublicId() string {
+	if x != nil {
+		return x.SeriesPublicId
+	}
+	return ""
+}
+
+func (x *RevenueStatsRow) GetSeriesTitle() string {
+	if x != nil {
+		return x.SeriesTitle
+	}
+	return ""
+}
+
+func (x *RevenueStatsRow) GetEpisodePublicId() string {
+	if x != nil {
+		return x.EpisodePublicId
+	}
+	return ""
+}
+
+func (x *RevenueStatsRow) GetEpisodeTitle() string {
+	if x != nil {
+		return x.EpisodeTitle
+	}
+	return ""
+}
+
+func (x *RevenueStatsRow) GetPurchaseCount() int64 {
+	if x != nil {
+		return x.PurchaseCount
+	}
+	return 0
+}
+
+func (x *RevenueStatsRow) GetGrossAmount() int64 {
+	if x != nil {
+		return x.GrossAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsRow) GetRefundedAmount() int64 {
+	if x != nil {
+		return x.RefundedAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsRow) GetNetAmount() int64 {
+	if x != nil {
+		return x.NetAmount
+	}
+	return 0
+}
+
+// The same four figures over the whole period, each purchase counted once
+// whatever its episodes.
+type RevenueStatsTotals struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PurchaseCount  int64                  `protobuf:"varint,1,opt,name=purchase_count,json=purchaseCount,proto3" json:"purchase_count,omitempty"`
+	GrossAmount    int64                  `protobuf:"varint,2,opt,name=gross_amount,json=grossAmount,proto3" json:"gross_amount,omitempty"`
+	RefundedAmount int64                  `protobuf:"varint,3,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
+	NetAmount      int64                  `protobuf:"varint,4,opt,name=net_amount,json=netAmount,proto3" json:"net_amount,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RevenueStatsTotals) Reset() {
+	*x = RevenueStatsTotals{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueStatsTotals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueStatsTotals) ProtoMessage() {}
+
+func (x *RevenueStatsTotals) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueStatsTotals.ProtoReflect.Descriptor instead.
+func (*RevenueStatsTotals) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RevenueStatsTotals) GetPurchaseCount() int64 {
+	if x != nil {
+		return x.PurchaseCount
+	}
+	return 0
+}
+
+func (x *RevenueStatsTotals) GetGrossAmount() int64 {
+	if x != nil {
+		return x.GrossAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsTotals) GetRefundedAmount() int64 {
+	if x != nil {
+		return x.RefundedAmount
+	}
+	return 0
+}
+
+func (x *RevenueStatsTotals) GetNetAmount() int64 {
+	if x != nil {
+		return x.NetAmount
+	}
+	return 0
+}
+
+type GetRevenueStatsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+	// zone: the first no later than the last, and covering at most 366 days.
+	// Both are required.
+	StartDate string `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// REVENUE_GROUP_BY_UNSPECIFIED is refused.
+	GroupBy RevenueGroupBy `protobuf:"varint,4,opt,name=group_by,json=groupBy,proto3,enum=publira.admin.v1.RevenueGroupBy" json:"group_by,omitempty"`
+	// Cursor pagination of a REVENUE_GROUP_BY_SERIES or
+	// REVENUE_GROUP_BY_EPISODE report. Field shape and token rules:
+	// proto/README.md. A REVENUE_GROUP_BY_DAY report holds one row per day of a
+	// period no longer than 366 days, answers all of them at once, and ignores
+	// both fields.
+	//
+	// Max items in one page. <= 0 or > 100 falls back to 20.
+	Limit int32 `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page. A token
+	// is bound to the grouping and the period it was issued for.
+	Token         string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRevenueStatsRequest) Reset() {
+	*x = GetRevenueStatsRequest{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRevenueStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRevenueStatsRequest) ProtoMessage() {}
+
+func (x *GetRevenueStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRevenueStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetRevenueStatsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetRevenueStatsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetRevenueStatsRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetRevenueStatsRequest) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *GetRevenueStatsRequest) GetGroupBy() RevenueGroupBy {
+	if x != nil {
+		return x.GroupBy
+	}
+	return RevenueGroupBy_REVENUE_GROUP_BY_UNSPECIFIED
+}
+
+func (x *GetRevenueStatsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetRevenueStatsRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type GetRevenueStatsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A day report in date order. A series or an episode report ordered by
+	// net_amount, highest first.
+	Rows []*RevenueStatsRow `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	// The period the request asked for, echoed back.
+	StartDate string `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// The IANA time zone the dates are the tenant's days in. It is the tenant's
+	// resolved zone: the counting and the wording come from the same read.
+	TimeZone string `protobuf:"bytes,4,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	// The ISO 4217 code every amount is in: the currency the tenant sells in.
+	// A purchase paid in another, from before the tenant changed it, is in no
+	// row and no total, since its price cannot be added to theirs.
+	Currency string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	// The figures over the whole period. They stay the same on every page.
+	Totals *RevenueStatsTotals `protobuf:"bytes,6,opt,name=totals,proto3" json:"totals,omitempty"`
+	// Token for the previous page. Empty on the first page, and always for a
+	// day report.
+	PreviousToken string `protobuf:"bytes,7,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page, and always for a day
+	// report.
+	NextToken     string `protobuf:"bytes,8,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRevenueStatsResponse) Reset() {
+	*x = GetRevenueStatsResponse{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRevenueStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRevenueStatsResponse) ProtoMessage() {}
+
+func (x *GetRevenueStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRevenueStatsResponse.ProtoReflect.Descriptor instead.
+func (*GetRevenueStatsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetRevenueStatsResponse) GetRows() []*RevenueStatsRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+func (x *GetRevenueStatsResponse) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetRevenueStatsResponse) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *GetRevenueStatsResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+func (x *GetRevenueStatsResponse) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *GetRevenueStatsResponse) GetTotals() *RevenueStatsTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
+func (x *GetRevenueStatsResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *GetRevenueStatsResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
+}
+
 var File_publira_admin_v1_engagement_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_engagement_proto_rawDesc = "" +
@@ -316,9 +786,51 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\x0eprevious_token\x18\x06 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
 	"next_token\x18\a \x01(\tR\tnextToken\x12\x1b\n" +
-	"\ttime_zone\x18\b \x01(\tR\btimeZone2\x97\x01\n" +
+	"\ttime_zone\x18\b \x01(\tR\btimeZone\"\xd5\x02\n" +
+	"\x0fRevenueStatsRow\x12\x12\n" +
+	"\x04date\x18\x01 \x01(\tR\x04date\x12(\n" +
+	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12!\n" +
+	"\fseries_title\x18\x03 \x01(\tR\vseriesTitle\x12*\n" +
+	"\x11episode_public_id\x18\x04 \x01(\tR\x0fepisodePublicId\x12#\n" +
+	"\repisode_title\x18\x05 \x01(\tR\fepisodeTitle\x12%\n" +
+	"\x0epurchase_count\x18\x06 \x01(\x03R\rpurchaseCount\x12!\n" +
+	"\fgross_amount\x18\a \x01(\x03R\vgrossAmount\x12'\n" +
+	"\x0frefunded_amount\x18\b \x01(\x03R\x0erefundedAmount\x12\x1d\n" +
+	"\n" +
+	"net_amount\x18\t \x01(\x03R\tnetAmount\"\xa6\x01\n" +
+	"\x12RevenueStatsTotals\x12%\n" +
+	"\x0epurchase_count\x18\x01 \x01(\x03R\rpurchaseCount\x12!\n" +
+	"\fgross_amount\x18\x02 \x01(\x03R\vgrossAmount\x12'\n" +
+	"\x0frefunded_amount\x18\x03 \x01(\x03R\x0erefundedAmount\x12\x1d\n" +
+	"\n" +
+	"net_amount\x18\x04 \x01(\x03R\tnetAmount\"\xf4\x01\n" +
+	"\x16GetRevenueStatsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x03 \x01(\tR\aendDate\x12;\n" +
+	"\bgroup_by\x18\x04 \x01(\x0e2 .publira.admin.v1.RevenueGroupByR\agroupBy\x12\x14\n" +
+	"\x05limit\x18\x05 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x06 \x01(\tR\x05token\"\xc7\x02\n" +
+	"\x17GetRevenueStatsResponse\x125\n" +
+	"\x04rows\x18\x01 \x03(\v2!.publira.admin.v1.RevenueStatsRowR\x04rows\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x03 \x01(\tR\aendDate\x12\x1b\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\x12\x1a\n" +
+	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12<\n" +
+	"\x06totals\x18\x06 \x01(\v2$.publira.admin.v1.RevenueStatsTotalsR\x06totals\x12%\n" +
+	"\x0eprevious_token\x18\a \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\b \x01(\tR\tnextToken*\x87\x01\n" +
+	"\x0eRevenueGroupBy\x12 \n" +
+	"\x1cREVENUE_GROUP_BY_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14REVENUE_GROUP_BY_DAY\x10\x01\x12\x1b\n" +
+	"\x17REVENUE_GROUP_BY_SERIES\x10\x02\x12\x1c\n" +
+	"\x18REVENUE_GROUP_BY_EPISODE\x10\x032\x81\x02\n" +
 	"\x16AdminEngagementService\x12}\n" +
-	"\x16ListEpisodeReadThrough\x12/.publira.admin.v1.ListEpisodeReadThroughRequest\x1a0.publira.admin.v1.ListEpisodeReadThroughResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\x16ListEpisodeReadThrough\x12/.publira.admin.v1.ListEpisodeReadThroughRequest\x1a0.publira.admin.v1.ListEpisodeReadThroughResponse\"\x00\x12h\n" +
+	"\x0fGetRevenueStats\x12(.publira.admin.v1.GetRevenueStatsRequest\x1a).publira.admin.v1.GetRevenueStatsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_engagement_proto_rawDescOnce sync.Once
@@ -332,23 +844,35 @@ func file_publira_admin_v1_engagement_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_engagement_proto_rawDescData
 }
 
-var file_publira_admin_v1_engagement_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_publira_admin_v1_engagement_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_publira_admin_v1_engagement_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_publira_admin_v1_engagement_proto_goTypes = []any{
-	(*EpisodeReadThrough)(nil),             // 0: publira.admin.v1.EpisodeReadThrough
-	(*ListEpisodeReadThroughRequest)(nil),  // 1: publira.admin.v1.ListEpisodeReadThroughRequest
-	(*ListEpisodeReadThroughResponse)(nil), // 2: publira.admin.v1.ListEpisodeReadThroughResponse
-	(*v1.TenantContext)(nil),               // 3: publira.types.v1.TenantContext
+	(RevenueGroupBy)(0),                    // 0: publira.admin.v1.RevenueGroupBy
+	(*EpisodeReadThrough)(nil),             // 1: publira.admin.v1.EpisodeReadThrough
+	(*ListEpisodeReadThroughRequest)(nil),  // 2: publira.admin.v1.ListEpisodeReadThroughRequest
+	(*ListEpisodeReadThroughResponse)(nil), // 3: publira.admin.v1.ListEpisodeReadThroughResponse
+	(*RevenueStatsRow)(nil),                // 4: publira.admin.v1.RevenueStatsRow
+	(*RevenueStatsTotals)(nil),             // 5: publira.admin.v1.RevenueStatsTotals
+	(*GetRevenueStatsRequest)(nil),         // 6: publira.admin.v1.GetRevenueStatsRequest
+	(*GetRevenueStatsResponse)(nil),        // 7: publira.admin.v1.GetRevenueStatsResponse
+	(*v1.TenantContext)(nil),               // 8: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_engagement_proto_depIdxs = []int32{
-	3, // 0: publira.admin.v1.ListEpisodeReadThroughRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.admin.v1.ListEpisodeReadThroughResponse.episodes:type_name -> publira.admin.v1.EpisodeReadThrough
-	1, // 2: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:input_type -> publira.admin.v1.ListEpisodeReadThroughRequest
-	2, // 3: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:output_type -> publira.admin.v1.ListEpisodeReadThroughResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	8, // 0: publira.admin.v1.ListEpisodeReadThroughRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1, // 1: publira.admin.v1.ListEpisodeReadThroughResponse.episodes:type_name -> publira.admin.v1.EpisodeReadThrough
+	8, // 2: publira.admin.v1.GetRevenueStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0, // 3: publira.admin.v1.GetRevenueStatsRequest.group_by:type_name -> publira.admin.v1.RevenueGroupBy
+	4, // 4: publira.admin.v1.GetRevenueStatsResponse.rows:type_name -> publira.admin.v1.RevenueStatsRow
+	5, // 5: publira.admin.v1.GetRevenueStatsResponse.totals:type_name -> publira.admin.v1.RevenueStatsTotals
+	2, // 6: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:input_type -> publira.admin.v1.ListEpisodeReadThroughRequest
+	6, // 7: publira.admin.v1.AdminEngagementService.GetRevenueStats:input_type -> publira.admin.v1.GetRevenueStatsRequest
+	3, // 8: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:output_type -> publira.admin.v1.ListEpisodeReadThroughResponse
+	7, // 9: publira.admin.v1.AdminEngagementService.GetRevenueStats:output_type -> publira.admin.v1.GetRevenueStatsResponse
+	8, // [8:10] is the sub-list for method output_type
+	6, // [6:8] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_engagement_proto_init() }
@@ -361,13 +885,14 @@ func file_publira_admin_v1_engagement_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_engagement_proto_rawDesc), len(file_publira_admin_v1_engagement_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
+			NumEnums:      1,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_publira_admin_v1_engagement_proto_goTypes,
 		DependencyIndexes: file_publira_admin_v1_engagement_proto_depIdxs,
+		EnumInfos:         file_publira_admin_v1_engagement_proto_enumTypes,
 		MessageInfos:      file_publira_admin_v1_engagement_proto_msgTypes,
 	}.Build()
 	File_publira_admin_v1_engagement_proto = out.File

@@ -961,10 +961,11 @@ type Purchase struct {
 }
 
 type PurchaseEpisodePart struct {
-	TenantID   uuid.UUID `json:"tenant_id"`
-	PurchaseID uuid.UUID `json:"purchase_id"`
-	EpisodeID  uuid.UUID `json:"episode_id"`
-	Price      int32     `json:"price"`
+	TenantID    uuid.UUID `json:"tenant_id"`
+	PurchaseID  uuid.UUID `json:"purchase_id"`
+	EpisodeID   uuid.UUID `json:"episode_id"`
+	Price       int32     `json:"price"`
+	PurchasedAt time.Time `json:"purchased_at"`
 }
 
 type ReaderIconPreset struct {

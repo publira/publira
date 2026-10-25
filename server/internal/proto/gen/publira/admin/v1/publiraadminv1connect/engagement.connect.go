@@ -27,6 +27,9 @@ const (
 	// AdminEngagementServiceListEpisodeReadThroughProcedure is the procedure name of the
 	// AdminEngagementService's ListEpisodeReadThrough RPC.
 	AdminEngagementServiceListEpisodeReadThroughProcedure = "/publira.admin.v1.AdminEngagementService/ListEpisodeReadThrough"
+	// AdminEngagementServiceGetRevenueStatsProcedure is the procedure name of the
+	// AdminEngagementService's GetRevenueStats RPC.
+	AdminEngagementServiceGetRevenueStatsProcedure = "/publira.admin.v1.AdminEngagementService/GetRevenueStats"
 )
 
 var (
@@ -37,12 +40,25 @@ var (
 			Procedure:  AdminEngagementServiceListEpisodeReadThroughProcedure,
 		}
 	})
+	adminEngagementServiceGetRevenueStatsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_engagement_proto.Services().ByName("AdminEngagementService").Methods().ByName("GetRevenueStats"),
+			Procedure:  AdminEngagementServiceGetRevenueStatsProcedure,
+		}
+	})
 )
 
 // AdminEngagementServiceClient is a client for the publira.admin.v1.AdminEngagementService service.
 type AdminEngagementServiceClient interface {
 	// Minimum role: tenant_auditor.
 	ListEpisodeReadThrough(context.Context, *v1.ListEpisodeReadThroughRequest) (*v1.ListEpisodeReadThroughResponse, error)
+	// What sold over a period of the tenant's days, by day, by series, or by
+	// episode, net of what went back to the readers, in the tenant's currency.
+	// It reads purchases themselves, so a sale made a moment ago is in it.
+	//
+	// Minimum role: tenant_admin.
+	GetRevenueStats(context.Context, *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error)
 }
 
 // NewAdminEngagementServiceClient constructs a client for the
@@ -57,6 +73,12 @@ func NewAdminEngagementServiceClient(client *connect.Client) AdminEngagementServ
 type AdminEngagementServiceHandler interface {
 	// Minimum role: tenant_auditor.
 	ListEpisodeReadThrough(context.Context, *v1.ListEpisodeReadThroughRequest) (*v1.ListEpisodeReadThroughResponse, error)
+	// What sold over a period of the tenant's days, by day, by series, or by
+	// episode, net of what went back to the readers, in the tenant's currency.
+	// It reads purchases themselves, so a sale made a moment ago is in it.
+	//
+	// Minimum role: tenant_admin.
+	GetRevenueStats(context.Context, *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error)
 }
 
 // RegisterAdminEngagementServiceHandler registers svc as the
@@ -65,6 +87,7 @@ func RegisterAdminEngagementServiceHandler(server *connect.Server, svc AdminEnga
 	adapter := adminEngagementServiceHandler{svc: svc}
 	server.Register(
 		connect.Method{Spec: adminEngagementServiceListEpisodeReadThroughSpec(), Handler: adapter.listEpisodeReadThrough},
+		connect.Method{Spec: adminEngagementServiceGetRevenueStatsSpec(), Handler: adapter.getRevenueStats},
 	)
 }
 
@@ -73,6 +96,10 @@ type UnimplementedAdminEngagementServiceHandler struct{}
 
 func (UnimplementedAdminEngagementServiceHandler) ListEpisodeReadThrough(context.Context, *v1.ListEpisodeReadThroughRequest) (*v1.ListEpisodeReadThroughResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough is not implemented")
+}
+
+func (UnimplementedAdminEngagementServiceHandler) GetRevenueStats(context.Context, *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.GetRevenueStats is not implemented")
 }
 
 type adminEngagementServiceClient struct {
@@ -87,6 +114,14 @@ func (c *adminEngagementServiceClient) ListEpisodeReadThrough(ctx context.Contex
 	return &res, nil
 }
 
+func (c *adminEngagementServiceClient) GetRevenueStats(ctx context.Context, req *v1.GetRevenueStatsRequest) (*v1.GetRevenueStatsResponse, error) {
+	var res v1.GetRevenueStatsResponse
+	if err := c.client.CallUnary(ctx, adminEngagementServiceGetRevenueStatsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 type adminEngagementServiceHandler struct{ svc AdminEngagementServiceHandler }
 
 func (h adminEngagementServiceHandler) listEpisodeReadThrough(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
@@ -95,6 +130,18 @@ func (h adminEngagementServiceHandler) listEpisodeReadThrough(ctx context.Contex
 		return err
 	}
 	res, err := h.svc.ListEpisodeReadThrough(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminEngagementServiceHandler) getRevenueStats(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetRevenueStatsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetRevenueStats(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -56,7 +56,117 @@ message ListEpisodeReadThroughResponse {
   string time_zone = 8;
 }
 
+// How GetRevenueStatsRequest cuts its period into rows.
+enum RevenueGroupBy {
+  REVENUE_GROUP_BY_UNSPECIFIED = 0;
+  // One row per day of the period, the tenant's own days, a day without a
+  // sale included.
+  REVENUE_GROUP_BY_DAY = 1;
+  // One row per series that sold in the period.
+  REVENUE_GROUP_BY_SERIES = 2;
+  // One row per episode that sold in the period.
+  REVENUE_GROUP_BY_EPISODE = 3;
+}
+
+// What sold in one row of a revenue report, in the minor unit of the
+// response's currency.
+//
+// A sale is counted on the day it was made, and what went back on it is taken
+// off that day too, however long after it went back: a refund, and a dispute
+// of the payment the tenant lost, which takes all of it back. A day already
+// reported can therefore fall afterwards. A dispute still open takes nothing
+// back until it is lost.
+//
+// A purchase of a volume or of the rest of a series sold every episode in it,
+// so it is a sale of each of those episodes at the part of its price that
+// episode accounts for, the part a royalty statement credits, and a sale of
+// the series they belong to at all of it. What went back on such a purchase
+// is divided over its episodes in the same proportion, each part rounded
+// down, so the episode rows' refunded_amount can fall short of the totals by
+// less than one minor unit per episode.
+message RevenueStatsRow {
+  // The tenant day (YYYY-MM-DD) of a REVENUE_GROUP_BY_DAY row. Empty
+  // otherwise.
+  string date = 1;
+  // The series of a REVENUE_GROUP_BY_SERIES or REVENUE_GROUP_BY_EPISODE row,
+  // under its title in the tenant's default locale. Empty for a day.
+  string series_public_id = 2;
+  string series_title = 3;
+  // The episode of a REVENUE_GROUP_BY_EPISODE row. Empty otherwise.
+  string episode_public_id = 4;
+  string episode_title = 5;
+  // Purchases made, refunded ones included.
+  int64 purchase_count = 6;
+  // What those purchases were paid.
+  int64 gross_amount = 7;
+  // What went back to the readers of them.
+  int64 refunded_amount = 8;
+  // gross_amount less refunded_amount: what the tenant kept.
+  int64 net_amount = 9;
+}
+
+// The same four figures over the whole period, each purchase counted once
+// whatever its episodes.
+message RevenueStatsTotals {
+  int64 purchase_count = 1;
+  int64 gross_amount = 2;
+  int64 refunded_amount = 3;
+  int64 net_amount = 4;
+}
+
+message GetRevenueStatsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone: the first no later than the last, and covering at most 366 days.
+  // Both are required.
+  string start_date = 2;
+  string end_date = 3;
+  // REVENUE_GROUP_BY_UNSPECIFIED is refused.
+  RevenueGroupBy group_by = 4;
+  // Cursor pagination of a REVENUE_GROUP_BY_SERIES or
+  // REVENUE_GROUP_BY_EPISODE report. Field shape and token rules:
+  // proto/README.md. A REVENUE_GROUP_BY_DAY report holds one row per day of a
+  // period no longer than 366 days, answers all of them at once, and ignores
+  // both fields.
+  //
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 5;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // is bound to the grouping and the period it was issued for.
+  string token = 6;
+}
+
+message GetRevenueStatsResponse {
+  // A day report in date order. A series or an episode report ordered by
+  // net_amount, highest first.
+  repeated RevenueStatsRow rows = 1;
+  // The period the request asked for, echoed back.
+  string start_date = 2;
+  string end_date = 3;
+  // The IANA time zone the dates are the tenant's days in. It is the tenant's
+  // resolved zone: the counting and the wording come from the same read.
+  string time_zone = 4;
+  // The ISO 4217 code every amount is in: the currency the tenant sells in.
+  // A purchase paid in another, from before the tenant changed it, is in no
+  // row and no total, since its price cannot be added to theirs.
+  string currency = 5;
+  // The figures over the whole period. They stay the same on every page.
+  RevenueStatsTotals totals = 6;
+  // Token for the previous page. Empty on the first page, and always for a
+  // day report.
+  string previous_token = 7;
+  // Token for the next page. Empty on the last page, and always for a day
+  // report.
+  string next_token = 8;
+}
+
 service AdminEngagementService {
   // Minimum role: tenant_auditor.
   rpc ListEpisodeReadThrough(ListEpisodeReadThroughRequest) returns (ListEpisodeReadThroughResponse) {}
+  // What sold over a period of the tenant's days, by day, by series, or by
+  // episode, net of what went back to the readers, in the tenant's currency.
+  // It reads purchases themselves, so a sale made a moment ago is in it.
+  //
+  // Minimum role: tenant_admin.
+  rpc GetRevenueStats(GetRevenueStatsRequest) returns (GetRevenueStatsResponse) {}
 }

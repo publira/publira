@@ -96,6 +96,41 @@ func TestListKeyDecodeTimeUUIDRoundTrip(t *testing.T) {
 	}
 }
 
+func TestListKeyDecodeCountUUIDRoundTrip(t *testing.T) {
+	id := uuid.MustParse("019d008d-184d-7d31-a78a-89728a746e38")
+	key := pagination.NewListKey("net_amount_desc").Value("from", "2026-03-01")
+
+	for _, tc := range []struct {
+		token     string
+		inclusive bool
+	}{
+		{token: key.EncodeCountUUID(pagination.Forward, -1200, id)},
+		{token: key.EncodeCountUUIDRecovery(pagination.Backward, -1200, id), inclusive: true},
+	} {
+		cursor, err := pagination.Decode(tc.token)
+		if err != nil {
+			t.Fatalf("Decode: %v", err)
+		}
+		keys, err := key.DecodeCountUUID(cursor)
+		if err != nil {
+			t.Fatalf("DecodeCountUUID: %v", err)
+		}
+		want := pagination.CountUUIDKeys{Count: -1200, ID: id, Inclusive: tc.inclusive, Valid: true}
+		if keys != want {
+			t.Fatalf("keys = %+v, want %+v", keys, want)
+		}
+	}
+
+	other := pagination.NewListKey("net_amount_desc").Value("from", "2026-03-02")
+	cursor, err := pagination.Decode(key.EncodeCountUUID(pagination.Forward, 0, id))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if _, err := other.DecodeCountUUID(cursor); !errors.Is(err, pagination.ErrListMismatch) {
+		t.Fatalf("DecodeCountUUID() under another period error = %v, want ErrListMismatch", err)
+	}
+}
+
 func TestListKeyDecodeRefusesAnotherList(t *testing.T) {
 	at := time.Date(2026, time.March, 18, 0, 0, 0, 0, time.UTC)
 	id := uuid.MustParse("019d008d-184d-7d31-a78a-89728a746e38")

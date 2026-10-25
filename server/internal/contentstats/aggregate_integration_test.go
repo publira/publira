@@ -477,7 +477,7 @@ func TestSourceQueriesHaveEligibleIndexes(t *testing.T) {
 			AND purchased_at >= ($2::date::timestamp AT TIME ZONE 'UTC')
 			AND purchased_at < (($2::date + 1)::timestamp AT TIME ZONE 'UTC')
 		GROUP BY episode_id
-	`, tenant.ID, statDate, "idx_purchases_tenant_purchased_at_id")
+	`, tenant.ID, statDate, "idx_purchases_tenant_purchased_at_id_amounts")
 }
 
 func assertPlanUsesIndex(t *testing.T, db *sql.DB, query string, tenantID uuid.UUID, statDate, index string) {
