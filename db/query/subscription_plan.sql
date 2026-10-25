@@ -87,29 +87,44 @@ WHERE tenant_id = $1
 LIMIT 1;
 
 -- name: GetSubscriptionPlanForSubscriptionForTenant :one
--- The plan a subscription is recorded on: the one it is already recorded on
--- while it is billed at the Price it was recorded at, which keeps it there
--- when staff hand that Price to another plan; else the one billed at the Price
--- Stripe reports, which follows a reader who changed their Price in the
--- billing portal; else the one it is already recorded on, which keeps it where
--- it is when its plan has since been given another Price; else, for one not
--- recorded yet, the one its checkout named.
+-- The plan a subscription is recorded on. Its anchor is the plan and Price it
+-- is already recorded on, or, for one not recorded yet, the plan its checkout
+-- named and the Price that checkout was started at. While it is billed at the
+-- anchor's Price it stays on the anchor's plan, even when staff have since
+-- handed that Price to another plan; once billed at another Price, as after a
+-- reader changed it in the billing portal, it follows that Price to its plan;
+-- billed at a Price no plan names, it stays on the anchor's plan.
+WITH recorded AS (
+    SELECT plan_id,
+        stripe_price_id
+    FROM subscriptions
+    WHERE tenant_id = sqlc.arg('tenant_id')
+        AND stripe_subscription_id = sqlc.arg('stripe_subscription_id')
+),
+anchor AS (
+    SELECT plan_id,
+        stripe_price_id
+    FROM recorded
+    UNION ALL
+    SELECT sqlc.arg('checkout_plan_id')::uuid,
+        sqlc.arg('checkout_price_id')::text
+    WHERE NOT EXISTS (
+            SELECT 1
+            FROM recorded
+        )
+)
 SELECT sp.id
 FROM subscription_plans sp
-    LEFT JOIN subscriptions s ON s.tenant_id = sp.tenant_id
-    AND s.plan_id = sp.id
-    AND s.stripe_subscription_id = sqlc.arg('stripe_subscription_id')
+    LEFT JOIN anchor a ON a.plan_id = sp.id
 WHERE sp.tenant_id = sqlc.arg('tenant_id')
     AND (
         sp.stripe_price_id = sqlc.arg('stripe_price_id')
-        OR s.id IS NOT NULL
-        OR sp.id = sqlc.arg('plan_id')
+        OR a.plan_id IS NOT NULL
     )
 ORDER BY CASE
-        WHEN s.stripe_price_id = sqlc.arg('stripe_price_id') THEN 0
+        WHEN a.stripe_price_id = sqlc.arg('stripe_price_id') THEN 0
         WHEN sp.stripe_price_id = sqlc.arg('stripe_price_id') THEN 1
-        WHEN s.id IS NOT NULL THEN 2
-        ELSE 3
+        ELSE 2
     END
 LIMIT 1;
 

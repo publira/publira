@@ -160,6 +160,9 @@ type Subscription struct {
 	TenantID uuid.UUID
 	ReaderID uuid.UUID
 	PlanID   uuid.UUID
+	// CheckoutPriceID is the price that checkout was started at, which PlanID
+	// was billed at then.
+	CheckoutPriceID string
 	// PriceID is the price it bills at now, which differs from the plan's when
 	// the reader changed it on the provider's billing page.
 	PriceID string

@@ -189,8 +189,9 @@ func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {
 	}
 	if form.Get("subscription_data[metadata]["+stripe.MetadataPlanID+"]") != plan.ID.String() ||
 		form.Get("subscription_data[metadata]["+stripe.MetadataUserID+"]") != f.reader.ID.String() ||
-		form.Get("subscription_data[metadata]["+stripe.MetadataTenantID+"]") != f.tenant.ID.String() {
-		t.Fatalf("session = %v, want the subscription to carry the tenant, the reader, and the plan", form)
+		form.Get("subscription_data[metadata]["+stripe.MetadataTenantID+"]") != f.tenant.ID.String() ||
+		form.Get("subscription_data[metadata]["+stripe.MetadataPriceID+"]") != "price_monthly" {
+		t.Fatalf("session = %v, want the subscription to carry the tenant, the reader, the plan, and its price", form)
 	}
 	// The scheme is the deployment's; the host is the tenant's own domain.
 	if withoutScheme(form.Get("success_url")) != "subscriptions.example.com/my?session_id=%7BCHECKOUT_SESSION_ID%7D&subscription=success" ||
@@ -205,7 +206,7 @@ func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {
 		PriceID:          "price_monthly",
 		Status:           "active",
 		CurrentPeriodEnd: periodEnd.Unix(),
-		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID),
+		Metadata:         stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_monthly"),
 	}
 	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, checkoutIDOf(started.CheckoutUrl), subscription)
 	for range 2 {
@@ -347,7 +348,7 @@ func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testi
 		CustomerID: "cus_switch",
 		PriceID:    "price_monthly",
 		Status:     "active",
-		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, monthly.ID),
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, monthly.ID, "price_monthly"),
 	}
 	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, "cs_switch", subscription)
 	if err := f.deliver(t, payload, headers); err != nil {
@@ -395,7 +396,7 @@ func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testi
 	// A subscription whose metadata names another tenant is refused.
 	foreign := subscription
 	foreign.ID = "sub_foreign_tenant"
-	foreign.Metadata = stripetest.SubscriptionMetadata(uuid.New(), f.reader.ID, monthly.ID)
+	foreign.Metadata = stripetest.SubscriptionMetadata(uuid.New(), f.reader.ID, monthly.ID, "price_monthly")
 	payload, headers = f.stripe.SubscriptionUpdated(t, f.credentials, foreign)
 	if err := f.deliver(t, payload, headers); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("deliver a subscription of another tenant = %v, want invalid_argument", err)
@@ -406,13 +407,52 @@ func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testi
 	orphan := subscription
 	orphan.ID = "sub_orphan"
 	orphan.PriceID = "price_deleted"
-	orphan.Metadata = stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, uuid.New())
+	orphan.Metadata = stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, uuid.New(), "price_deleted")
 	payload, headers = f.stripe.SubscriptionUpdated(t, f.credentials, orphan)
 	if err := f.deliver(t, payload, headers); err != nil {
 		t.Fatalf("deliver a subscription of no plan: %v", err)
 	}
 	if got := f.countRows(t, "SELECT count(*) FROM subscriptions WHERE tenant_id = $1", f.tenant.ID); got != 1 {
 		t.Fatalf("subscriptions = %d, want the first alone", got)
+	}
+}
+
+// A checkout started before staff handed its Price to another plan records the
+// subscription it starts on the plan the reader chose, and keeps it there.
+func TestDBProcessPaymentWebhookRecordsANewSubscriptionOnThePlanItsCheckoutNamed(t *testing.T) {
+	f := newSubscriptionFixture(t)
+	monthly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	yearly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_yearly", Published: true})
+	subscription := stripetest.Subscription{
+		ID:         "sub_reassigned",
+		CustomerID: "cus_reassigned",
+		PriceID:    "price_monthly",
+		Status:     "active",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, monthly.ID, "price_monthly"),
+	}
+	// While the checkout is open, the monthly plan gets another Price and its
+	// old one goes to the yearly plan.
+	for _, update := range []struct {
+		planID  uuid.UUID
+		priceID string
+	}{{monthly.ID, "price_monthly_v2"}, {yearly.ID, "price_monthly"}} {
+		if _, err := f.pg.DB.ExecContext(context.Background(), "UPDATE subscription_plans SET stripe_price_id = $2 WHERE id = $1", update.planID, update.priceID); err != nil {
+			t.Fatalf("give plan %s the price %s: %v", update.planID, update.priceID, err)
+		}
+	}
+	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, "cs_reassigned", subscription)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the completed checkout: %v", err)
+	}
+	if got := f.mySubscription(t); got.GetPlan().GetId() != monthly.ID.String() {
+		t.Fatalf("subscription plan = %s, want the monthly plan the checkout named", got.GetPlan().GetId())
+	}
+	payload, headers = f.stripe.SubscriptionUpdated(t, f.credentials, subscription)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the update: %v", err)
+	}
+	if got := f.mySubscription(t); got.GetPlan().GetId() != monthly.ID.String() {
+		t.Fatalf("subscription plan after an update = %s, want it kept on the monthly plan", got.GetPlan().GetId())
 	}
 }
 
@@ -483,14 +523,14 @@ func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
 		CustomerID: "cus_on_its_way",
 		PriceID:    "price_yearly",
 		Status:     "incomplete",
-		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID, "price_yearly"),
 	})
 	payload, headers := f.stripe.SubscriptionUpdated(t, f.credentials, stripetest.Subscription{
 		ID:         "sub_on_its_way",
 		CustomerID: "cus_on_its_way",
 		PriceID:    "price_yearly",
 		Status:     "incomplete",
-		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID, "price_yearly"),
 	})
 	if err := f.deliver(t, payload, headers); err != nil {
 		t.Fatalf("deliver the incomplete subscription: %v", err)
@@ -506,13 +546,13 @@ func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
 		CustomerID: "cus_on_its_way",
 		PriceID:    "price_yearly",
 		Status:     "canceled",
-		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID, "price_yearly"),
 	})
 	payload, headers = f.stripe.SubscriptionDeleted(t, f.credentials, stripetest.Subscription{
 		ID:         "sub_on_its_way",
 		CustomerID: "cus_on_its_way",
 		PriceID:    "price_yearly",
-		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID),
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, yearly.ID, "price_yearly"),
 	})
 	if err := f.deliver(t, payload, headers); err != nil {
 		t.Fatalf("deliver the deletion: %v", err)

@@ -21,6 +21,11 @@ import (
 // the subscription names whose it is.
 const MetadataPlanID = "subscription_plan_id"
 
+// MetadataPriceID is the metadata key a subscription checkout carries the
+// Price it was started at in, beside MetadataPlanID: the plan billed at that
+// Price then, which staff may since have handed to another plan.
+const MetadataPriceID = "subscription_price_id"
+
 var _ paymentprovider.Subscriptions = (*Provider)(nil)
 
 // DescribePrice reads a Price. Only a Price that bills one fixed amount every
@@ -77,6 +82,7 @@ func (p *Provider) StartSubscriptionCheckout(ctx context.Context, credentials pa
 		MetadataTenantID: req.TenantID.String(),
 		MetadataUserID:   req.ReaderID.String(),
 		MetadataPlanID:   req.PlanID.String(),
+		MetadataPriceID:  req.PriceID,
 	}
 	params := &stripego.CheckoutSessionCreateParams{
 		AllowPromotionCodes: stripego.Bool(true),
@@ -316,6 +322,7 @@ func readSubscription(subscription *stripego.Subscription) (paymentprovider.Subs
 		TenantID:          tenantID,
 		ReaderID:          readerID,
 		PlanID:            planID,
+		CheckoutPriceID:   subscription.Metadata[MetadataPriceID],
 		PriceID:           item.Price.ID,
 		Status:            status,
 		CurrentPeriodEnd:  currentPeriodEnd,

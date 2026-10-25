@@ -1076,13 +1076,13 @@ type Querier interface {
 	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
 	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
-	// The plan a subscription is recorded on: the one it is already recorded on
-	// while it is billed at the Price it was recorded at, which keeps it there
-	// when staff hand that Price to another plan; else the one billed at the Price
-	// Stripe reports, which follows a reader who changed their Price in the
-	// billing portal; else the one it is already recorded on, which keeps it where
-	// it is when its plan has since been given another Price; else, for one not
-	// recorded yet, the one its checkout named.
+	// The plan a subscription is recorded on. Its anchor is the plan and Price it
+	// is already recorded on, or, for one not recorded yet, the plan its checkout
+	// named and the Price that checkout was started at. While it is billed at the
+	// anchor's Price it stays on the anchor's plan, even when staff have since
+	// handed that Price to another plan; once billed at another Price, as after a
+	// reader changed it in the billing portal, it follows that Price to its plan;
+	// billed at a Price no plan names, it stays on the anchor's plan.
 	GetSubscriptionPlanForSubscriptionForTenant(ctx context.Context, arg GetSubscriptionPlanForSubscriptionForTenantParams) (uuid.UUID, error)
 	// Whether a slug the series list was filtered by names a tag of this tenant.
 	// A filter naming nothing is refused rather than answered with an empty list,

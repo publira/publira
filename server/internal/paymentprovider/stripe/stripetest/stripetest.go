@@ -774,13 +774,14 @@ func (*Fixture) CheckoutExpired(t testing.TB, credentials paymentprovider.Creden
 	})
 }
 
-// SubscriptionMetadata is the metadata a subscription checkout, and the
-// subscription it starts, carry.
-func SubscriptionMetadata(tenantID, readerID, planID uuid.UUID) map[string]string {
+// SubscriptionMetadata is the metadata a subscription checkout of planID at
+// priceID, and the subscription it starts, carry.
+func SubscriptionMetadata(tenantID, readerID, planID uuid.UUID, priceID string) map[string]string {
 	return map[string]string{
 		stripe.MetadataTenantID: tenantID.String(),
 		stripe.MetadataUserID:   readerID.String(),
 		stripe.MetadataPlanID:   planID.String(),
+		stripe.MetadataPriceID:  priceID,
 	}
 }
 

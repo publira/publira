@@ -364,46 +364,63 @@ func (q *Queries) GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetS
 }
 
 const GetSubscriptionPlanForSubscriptionForTenant = `-- name: GetSubscriptionPlanForSubscriptionForTenant :one
+WITH recorded AS (
+    SELECT plan_id,
+        stripe_price_id
+    FROM subscriptions
+    WHERE tenant_id = $1
+        AND stripe_subscription_id = $3
+),
+anchor AS (
+    SELECT plan_id,
+        stripe_price_id
+    FROM recorded
+    UNION ALL
+    SELECT $4::uuid,
+        $5::text
+    WHERE NOT EXISTS (
+            SELECT 1
+            FROM recorded
+        )
+)
 SELECT sp.id
 FROM subscription_plans sp
-    LEFT JOIN subscriptions s ON s.tenant_id = sp.tenant_id
-    AND s.plan_id = sp.id
-    AND s.stripe_subscription_id = $1
-WHERE sp.tenant_id = $2
+    LEFT JOIN anchor a ON a.plan_id = sp.id
+WHERE sp.tenant_id = $1
     AND (
-        sp.stripe_price_id = $3
-        OR s.id IS NOT NULL
-        OR sp.id = $4
+        sp.stripe_price_id = $2
+        OR a.plan_id IS NOT NULL
     )
 ORDER BY CASE
-        WHEN s.stripe_price_id = $3 THEN 0
-        WHEN sp.stripe_price_id = $3 THEN 1
-        WHEN s.id IS NOT NULL THEN 2
-        ELSE 3
+        WHEN a.stripe_price_id = $2 THEN 0
+        WHEN sp.stripe_price_id = $2 THEN 1
+        ELSE 2
     END
 LIMIT 1
 `
 
 type GetSubscriptionPlanForSubscriptionForTenantParams struct {
-	StripeSubscriptionID string    `json:"stripe_subscription_id"`
 	TenantID             uuid.UUID `json:"tenant_id"`
 	StripePriceID        string    `json:"stripe_price_id"`
-	PlanID               uuid.UUID `json:"plan_id"`
+	StripeSubscriptionID string    `json:"stripe_subscription_id"`
+	CheckoutPlanID       uuid.UUID `json:"checkout_plan_id"`
+	CheckoutPriceID      string    `json:"checkout_price_id"`
 }
 
-// The plan a subscription is recorded on: the one it is already recorded on
-// while it is billed at the Price it was recorded at, which keeps it there
-// when staff hand that Price to another plan; else the one billed at the Price
-// Stripe reports, which follows a reader who changed their Price in the
-// billing portal; else the one it is already recorded on, which keeps it where
-// it is when its plan has since been given another Price; else, for one not
-// recorded yet, the one its checkout named.
+// The plan a subscription is recorded on. Its anchor is the plan and Price it
+// is already recorded on, or, for one not recorded yet, the plan its checkout
+// named and the Price that checkout was started at. While it is billed at the
+// anchor's Price it stays on the anchor's plan, even when staff have since
+// handed that Price to another plan; once billed at another Price, as after a
+// reader changed it in the billing portal, it follows that Price to its plan;
+// billed at a Price no plan names, it stays on the anchor's plan.
 func (q *Queries) GetSubscriptionPlanForSubscriptionForTenant(ctx context.Context, arg GetSubscriptionPlanForSubscriptionForTenantParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, GetSubscriptionPlanForSubscriptionForTenant,
-		arg.StripeSubscriptionID,
 		arg.TenantID,
 		arg.StripePriceID,
-		arg.PlanID,
+		arg.StripeSubscriptionID,
+		arg.CheckoutPlanID,
+		arg.CheckoutPriceID,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)

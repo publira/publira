@@ -86,8 +86,9 @@ func TestStartSubscriptionCheckoutCarriesThePlanOnTheSessionAndTheSubscription(t
 	for _, prefix := range []string{"metadata", "subscription_data[metadata]"} {
 		if form.Get(prefix+"["+stripe.MetadataTenantID+"]") != request.TenantID.String() ||
 			form.Get(prefix+"["+stripe.MetadataUserID+"]") != request.ReaderID.String() ||
-			form.Get(prefix+"["+stripe.MetadataPlanID+"]") != request.PlanID.String() {
-			t.Fatalf("session = %v, want the tenant, the reader, and the plan in %s", form, prefix)
+			form.Get(prefix+"["+stripe.MetadataPlanID+"]") != request.PlanID.String() ||
+			form.Get(prefix+"["+stripe.MetadataPriceID+"]") != "price_monthly" {
+			t.Fatalf("session = %v, want the tenant, the reader, the plan, and its price in %s", form, prefix)
 		}
 	}
 	if form.Get("success_url") != "https://store.example/my?session_id=%7BCHECKOUT_SESSION_ID%7D&subscription=success" {
@@ -134,7 +135,7 @@ func TestParseNotificationNamesTheSubscription(t *testing.T) {
 		CustomerID: "cus_parse",
 		PriceID:    "price_monthly",
 		Status:     "active",
-		Metadata:   stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New()),
+		Metadata:   stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New(), "price_monthly"),
 	}
 	cases := map[string]func() ([]byte, map[string][]string){
 		"a completed subscription checkout": func() ([]byte, map[string][]string) {
@@ -182,7 +183,7 @@ func TestRetrieveSubscriptionAnswersTheSubscriptionAsStripeHoldsItNow(t *testing
 		PriceID:          "price_monthly",
 		Status:           "active",
 		CurrentPeriodEnd: periodEnd.Unix(),
-		Metadata:         stripetest.SubscriptionMetadata(tenantID, readerID, planID),
+		Metadata:         stripetest.SubscriptionMetadata(tenantID, readerID, planID, "price_monthly"),
 	}
 	fixture.SubscriptionUpdated(t, credentials, subscription)
 	// The subscription changes again after the notification was sent.
@@ -200,6 +201,7 @@ func TestRetrieveSubscriptionAnswersTheSubscriptionAsStripeHoldsItNow(t *testing
 		TenantID:          tenantID,
 		ReaderID:          readerID,
 		PlanID:            planID,
+		CheckoutPriceID:   "price_monthly",
 		PriceID:           "price_monthly",
 		Status:            paymentprovider.SubscriptionPastDue,
 		CurrentPeriodEnd:  periodEnd,
@@ -225,7 +227,7 @@ func TestRetrieveSubscriptionRefusesASubscriptionItCannotRead(t *testing.T) {
 		CustomerID: "cus_unknown_status",
 		PriceID:    "price_monthly",
 		Status:     "suspended",
-		Metadata:   stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New()),
+		Metadata:   stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New(), "price_monthly"),
 	})
 	if _, err := provider.RetrieveSubscription(t.Context(), credentials, "sub_unknown_status"); err == nil {
 		t.Fatal("RetrieveSubscription of an unknown status succeeded")
@@ -350,7 +352,7 @@ func TestParseNotificationIgnoresAnExpiredSubscriptionCheckout(t *testing.T) {
 		"id":       "cs_expired_subscription",
 		"object":   "checkout.session",
 		"mode":     "subscription",
-		"metadata": stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New()),
+		"metadata": stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New(), "price_monthly"),
 	})
 	event, err := stripe.New().ParseNotification(t.Context(), payload, headers, paymentprovider.Credentials{
 		stripe.FieldWebhookSecret: testWebhookSecret,

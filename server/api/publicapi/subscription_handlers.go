@@ -451,9 +451,10 @@ func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPl
 // last is also the one that read last, and a state Stripe has moved past is
 // never written over the newer one.
 //
-// The plan it is recorded on is the one it is already recorded on while its
-// Price is unchanged, else the one billed at the Price the provider reports,
-// else the one it is already recorded on, else the one its checkout named. A
+// The plan it is recorded on is the one it is already recorded on, or for one
+// not recorded yet the one its checkout named, while it is billed at the Price
+// that plan was recorded or checked out at; else the one billed at the Price
+// the provider reports; else that same recorded or checked-out plan. A
 // subscription to none of them — a
 // checkout started for a plan deleted before it completed — is logged and
 // acknowledged, since no delivery of the same notification would find one.
@@ -492,7 +493,8 @@ func (s *apiServer) recordSubscription(
 		TenantID:             tenantID,
 		StripePriceID:        subscription.PriceID,
 		StripeSubscriptionID: subscription.ID,
-		PlanID:               subscription.PlanID,
+		CheckoutPlanID:       subscription.PlanID,
+		CheckoutPriceID:      subscription.CheckoutPriceID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		s.logger.ErrorContext(ctx, "a subscription names no plan of the tenant and is not recorded",
