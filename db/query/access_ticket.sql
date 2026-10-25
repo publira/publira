@@ -225,12 +225,12 @@ ORDER BY created_at DESC,
 LIMIT 1;
 
 -- name: UserHasEpisodeContentAccess :one
--- True when the user holds a grant in episode_content_grants for the episode.
+-- True when the user holds a grant in episode_grants for the episode.
 -- Whether the body is free to everyone — price = 0, or an open free window —
 -- is evaluated by the caller; this query only covers grants.
 SELECT EXISTS (
     SELECT 1
-    FROM episode_content_grants g
+    FROM episode_grants g
     WHERE g.tenant_id = sqlc.arg('tenant_id')
         -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
         AND g.user_id = sqlc.arg('user_id')::uuid

@@ -110,7 +110,7 @@ func TestAVolumePurchaseGrantsTheEpisodesOfTheVolume(t *testing.T) {
 		t.Helper()
 		rows, err := pg.DB.QueryContext(ctx, `
 			SELECT episode_id, kind || ':' || coalesce(purchase_kind, '')
-			FROM episode_content_grants
+			FROM episode_grants
 			WHERE tenant_id = $1
 				AND user_id = $2
 		`, tenant.ID, reader.ID)

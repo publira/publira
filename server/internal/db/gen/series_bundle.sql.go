@@ -327,7 +327,7 @@ SELECT e.id,
     el.reading_period_hours,
     EXISTS (
         SELECT 1
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = e.tenant_id
             AND g.user_id = $1::uuid
             AND g.episode_id = e.id

@@ -98,7 +98,7 @@ LIMIT 1;
 -- counts as its permanent copy.
 SELECT EXISTS (
         SELECT 1
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = sqlc.arg('tenant_id')
             -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
             AND g.user_id = sqlc.arg('user_id')::uuid
@@ -107,7 +107,7 @@ SELECT EXISTS (
     ) AS holds_purchase,
     EXISTS (
         SELECT 1
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = sqlc.arg('tenant_id')
             AND g.user_id = sqlc.arg('user_id')::uuid
             AND g.episode_id = sqlc.arg('episode_id')

@@ -110,10 +110,10 @@ func TestPurchaseKindDefaultsToThePermanentCopy(t *testing.T) {
 	}
 }
 
-// episode_content_grants names which sale a purchase grant is, and nothing on
+// episode_grants names which sale a purchase grant is, and nothing on
 // the grants that are no purchase, so a reader holding a rental can still be
 // told apart from one holding the permanent copy.
-func TestEpisodeContentGrantsNameThePurchaseKind(t *testing.T) {
+func TestEpisodeGrantsNameThePurchaseKind(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -141,7 +141,7 @@ func TestEpisodeContentGrantsNameThePurchaseKind(t *testing.T) {
 
 	rows, err := pg.DB.QueryContext(ctx, `
 		SELECT kind, purchase_kind
-		FROM episode_content_grants
+		FROM episode_grants
 		WHERE tenant_id = $1
 			AND user_id = $2
 			AND episode_id = $3

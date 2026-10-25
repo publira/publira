@@ -197,10 +197,10 @@ message SeriesEpisodeAccess {
   string episode_id = 3;
   // Whether the caller holds an active permanent copy of the episode: a
   // purchase of its permanent copy, of a volume holding it, or of the rest of
-  // the series. A rental, an access ticket, a creator's own episode, and a
-  // staff role open it without owning it, so `access` may be
-  // EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest. It
-  // says nothing about the age rule, which may still keep an owned episode
+  // the series. A rental, an access ticket, a creator's own episode, a
+  // subscription, and a staff role open it without owning it, so `access` may
+  // be EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest.
+  // It says nothing about the age rule, which may still keep an owned episode
   // closed.
   bool owned = 4;
   // Which grant opens the episode, as GetEpisodeDetailResponse reports it. Set
@@ -284,6 +284,12 @@ enum EpisodeEntitlementSource {
   // reported under any other grant the same reader also holds, so a member of
   // staff who bought an episode sees the purchase.
   EPISODE_ENTITLEMENT_SOURCE_STAFF = 4;
+  // The reader's subscription is to a plan whose scope holds the episode's
+  // series, and Stripe reports it trialing, active, or past due within the
+  // period it bills for. It is reported under a purchase, an access ticket,
+  // and a creator's credit the same reader also holds, and over the staff
+  // grant.
+  EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION = 5;
 }
 
 // A published episode of the series being read that the episode detail links

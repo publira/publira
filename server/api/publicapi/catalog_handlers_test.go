@@ -1203,7 +1203,7 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 		authed bool
 		// invalidBearer sends Authorization with a non-verifiable token (no auth SQL expected).
 		invalidBearer bool
-		// grantKind is the episode_content_grants kind the reader holds, empty
+		// grantKind is the episode_grants kind the reader holds, empty
 		// for none.
 		grantKind      string
 		wantAccess     publirav1.EpisodeAccess
@@ -1247,6 +1247,15 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			grantKind:      "creator",
 			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
 			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_CREATOR,
+			wantImageCount: 1,
+		},
+		{
+			name:           "paid-authed-as-subscriber-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "subscription",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION,
 			wantImageCount: 1,
 		},
 		{

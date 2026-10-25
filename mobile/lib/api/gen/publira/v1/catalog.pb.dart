@@ -1076,10 +1076,10 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
 
   /// Whether the caller holds an active permanent copy of the episode: a
   /// purchase of its permanent copy, of a volume holding it, or of the rest of
-  /// the series. A rental, an access ticket, a creator's own episode, and a
-  /// staff role open it without owning it, so `access` may be
-  /// EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest. It
-  /// says nothing about the age rule, which may still keep an owned episode
+  /// the series. A rental, an access ticket, a creator's own episode, a
+  /// subscription, and a staff role open it without owning it, so `access` may
+  /// be EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest.
+  /// It says nothing about the age rule, which may still keep an owned episode
   /// closed.
   @$pb.TagNumber(4)
   $core.bool get owned => $_getBF(3);

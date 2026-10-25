@@ -1,7 +1,7 @@
 -- name: ListPublishedEpisodeAccessInSeries :many
 -- Every published episode of one series with the two facts its access state is
 -- decided from: whether published_free_episodes counts it free to everyone
--- right now, and which grant in episode_content_grants opens it to the reader,
+-- right now, and which grant in episode_grants opens it to the reader,
 -- in the order GetEpisodeEntitlementSource reports one, or '' when none
 -- does. owned is whether one of those grants is a permanent copy, which is the
 -- grant ListSeriesRemainderEpisodes counts as held. A guest passes a NULL
@@ -17,7 +17,7 @@ SELECT e.id,
     ) AS free_to_everyone,
     COALESCE((
         SELECT g.kind
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = e.tenant_id
             AND g.user_id = sqlc.narg('user_id')::uuid
             AND g.episode_id = e.id
@@ -25,13 +25,14 @@ SELECT e.id,
                 WHEN 'creator' THEN 0
                 WHEN 'purchase' THEN 1
                 WHEN 'access_ticket' THEN 2
-                ELSE 3
+                WHEN 'subscription' THEN 3
+                ELSE 4
             END
         LIMIT 1
     ), '')::text AS grant_kind,
     EXISTS (
         SELECT 1
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = e.tenant_id
             AND g.user_id = sqlc.narg('user_id')::uuid
             AND g.episode_id = e.id
@@ -49,13 +50,15 @@ ORDER BY e.order_index ASC,
 -- Which grant opens the episode to the reader, when one does. A reader can
 -- hold several, and the creator grant is reported first because it is the
 -- standing one: it is what the credit line says, where a purchase or a ticket
--- only says how a reader came to hold the episode. The staff grant comes last:
--- it holds every episode of the tenant, so it would otherwise hide the
--- purchase a member of staff made to try the checkout.
+-- only says how a reader came to hold the episode. A subscription and then the
+-- staff grant come after those two, because each opens many episodes at once:
+-- a subscription would otherwise hide the episode a subscriber bought to keep,
+-- and the staff grant, which holds every episode of the tenant, the purchase a
+-- member of staff made to try the checkout.
 -- ListPublishedEpisodeAccessInSeries reports in the same order. No row means
 -- no grant.
 SELECT g.kind
-FROM episode_content_grants g
+FROM episode_grants g
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND g.user_id = sqlc.arg('user_id')::uuid
     AND g.episode_id = sqlc.arg('episode_id')
@@ -63,7 +66,8 @@ ORDER BY CASE g.kind
         WHEN 'creator' THEN 0
         WHEN 'purchase' THEN 1
         WHEN 'access_ticket' THEN 2
-        ELSE 3
+        WHEN 'subscription' THEN 3
+        ELSE 4
     END
 LIMIT 1;
 
@@ -73,7 +77,7 @@ LIMIT 1;
 -- count as staff stay written in one place.
 SELECT EXISTS (
     SELECT 1
-    FROM episode_content_grants g
+    FROM episode_grants g
     WHERE g.tenant_id = sqlc.arg('tenant_id')
         AND g.user_id = sqlc.arg('user_id')::uuid
         AND g.episode_id = sqlc.arg('episode_id')
