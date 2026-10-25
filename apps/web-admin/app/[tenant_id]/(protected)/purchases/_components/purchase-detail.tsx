@@ -182,20 +182,26 @@ export const PurchaseDetail = async ({
           {formatInstant(purchase.purchasedAt, locale, timeZone)}
         </dd>
 
-        <dt className={labelClassName}>
-          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-            <Message message="admin.purchases.expires_at" />
-          </Suspense>
-        </dt>
-        <dd className={`${valueClassName} tabular-nums`}>
-          {purchase.expiresAt ? (
-            formatInstant(purchase.expiresAt, locale, timeZone)
-          ) : (
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="admin.purchases.expires_never" />
-            </Suspense>
-          )}
-        </dd>
+        {/* A pack of coins opens nothing to read, so it has no reading period
+            to show; its coins expire on their own. */}
+        {purchase.item.kind === "coin_pack" ? null : (
+          <>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.purchases.expires_at" />
+              </Suspense>
+            </dt>
+            <dd className={`${valueClassName} tabular-nums`}>
+              {purchase.expiresAt ? (
+                formatInstant(purchase.expiresAt, locale, timeZone)
+              ) : (
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.purchases.expires_never" />
+                </Suspense>
+              )}
+            </dd>
+          </>
+        )}
 
         <dt className={labelClassName}>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
