@@ -11,14 +11,16 @@ import { Suspense } from "react";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import * as PaginationFooter from "#components/pagination-controls";
+import {
+  PurchasePaidThrough,
+  PurchaseStatusChip,
+} from "#components/purchase-status";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
-
-import { purchasedItemLabel } from "../_lib/purchased-item";
-import { PurchasePaidThrough, PurchaseStatusChip } from "./purchase-status";
+import { purchasedItemLabel } from "#lib/purchased-item";
 
 type PurchaseListProps = CursorPageHrefs & {
   /** The href that opens the drawer on a purchase, keeping the list's page. */

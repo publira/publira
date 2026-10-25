@@ -8,7 +8,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AccessTicketItem } from "../ticket-types";
+import type { AccessTicketItem } from "#lib/access-ticket-shared";
+
 import { TicketManager } from "./ticket-manager";
 
 vi.mock("#lib/messages", () => ({
@@ -46,7 +47,7 @@ vi.mock("next/link", () => ({
 
 // The revoke button is a client component carrying a Server Action and
 // useRouter, so all that is checked here is that the list renders one per row.
-vi.mock("./revoke-ticket-button", () => ({
+vi.mock("#components/revoke-access-ticket-button", () => ({
   RevokeTicketButton: ({ ticketId }: { ticketId: string }) => (
     <button type="button">{`Revoke ${ticketId}`}</button>
   ),

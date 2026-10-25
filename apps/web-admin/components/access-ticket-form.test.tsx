@@ -15,11 +15,11 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import { listEpisodeOptionsAction } from "#lib/access-ticket-actions";
+import type { IssueAccessTicketActionState } from "#lib/access-ticket-shared";
 import { listReaderOptionsAction } from "#lib/reader-options-action";
 
-import { listEpisodeOptionsAction } from "../_lib/actions";
-import type { IssueAccessTicketActionState } from "../ticket-types";
-import { TicketForm } from "./ticket-form";
+import { TicketForm } from "./access-ticket-form";
 
 vi.mock("#components/client-message", () => ({
   ClientMessage: ({
@@ -55,7 +55,7 @@ vi.mock("#lib/reader-options-action", () => ({
   listReaderOptionsAction: vi.fn(),
 }));
 
-vi.mock("../_lib/actions", () => ({
+vi.mock("#lib/access-ticket-actions", () => ({
   listEpisodeOptionsAction: vi.fn(),
 }));
 
@@ -222,6 +222,42 @@ describe("TicketForm", () => {
     );
     expect(formData.has("user_public_id")).toBe(false);
     expect(formData.has("episode_public_id")).toBe(false);
+  });
+
+  it("issues to the reader the screen names once an episode is chosen, without a reader picker", async () => {
+    mockListEpisodeOptionsAction.mockResolvedValue({
+      episodes: [episodeOne],
+      ok: true,
+    });
+    const submitted = Promise.withResolvers<FormData>();
+    const recordingAction = (
+      _state: IssueAccessTicketActionState,
+      formData: FormData
+    ) => {
+      submitted.resolve(formData);
+      return Promise.resolve<IssueAccessTicketActionState>(null);
+    };
+
+    await renderForm({
+      action: recordingAction,
+      readerId: "018f0e6a-5000-7000-8000-000000000009",
+      series: [seriesA],
+    });
+    expect(screen.queryByLabelText(/^Reader/u)).toBeNull();
+
+    selectSeries(seriesA);
+    await screen.findByRole("option", { name: "Episode 1 (EPISODE001)" });
+    fireEvent.change(episodeCombobox(), { target: { value: episodeOne.id } });
+    await waitFor(() => {
+      expect(issueButton().hasAttribute("disabled")).toBe(false);
+    });
+    fireEvent.click(issueButton());
+
+    const formData = await submitted.promise;
+    expect(formData.getAll("user_id")).toEqual([
+      "018f0e6a-5000-7000-8000-000000000009",
+    ]);
+    expect(formData.get("episode_id")).toBe(episodeOne.id);
   });
 
   it("says there is no episode to grant when the series list is empty", async () => {

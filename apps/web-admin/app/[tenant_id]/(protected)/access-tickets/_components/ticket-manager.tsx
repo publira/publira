@@ -1,22 +1,24 @@
 import type { Locale } from "@publira/i18n";
-import type { BadgeTone } from "@publira/ui-components/badge";
 import { StatusChip } from "@publira/ui-components/badge";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
-import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
+import {
+  formatTicketDateTime,
+  TicketStatusLabel,
+  ticketStatusTone,
+} from "#components/access-ticket-status";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import * as PaginationFooter from "#components/pagination-controls";
+import { RevokeTicketButton } from "#components/revoke-access-ticket-button";
+import type { AccessTicketItem } from "#lib/access-ticket-shared";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
-
-import type { AccessTicketItem } from "../ticket-types";
-import { RevokeTicketButton } from "./revoke-ticket-button";
 
 type TicketManagerProps = CursorPageHrefs & {
   listErrorMessage?: string;
@@ -26,53 +28,6 @@ type TicketManagerProps = CursorPageHrefs & {
   tickets: AccessTicketItem[];
   timeZone: string;
 };
-
-/**
- * The ticket's status, worded one branch at a time. Each branch names its key
- * inside the `<Message>` it returns, so the key stays where anything reading
- * this file for the strings the screen uses can see it.
- */
-const TicketStatusLabel = ({ status }: { status: string }) => {
-  switch (status) {
-    case "active": {
-      return <Message message="admin.access_tickets.status_active" />;
-    }
-    case "expired": {
-      return <Message message="admin.access_tickets.status_expired" />;
-    }
-    case "revoked": {
-      return <Message message="admin.access_tickets.status_revoked" />;
-    }
-    default: {
-      return status;
-    }
-  }
-};
-
-const statusTone = (status: string): BadgeTone => {
-  switch (status) {
-    case "active": {
-      return "success";
-    }
-    case "expired": {
-      return "warning";
-    }
-    case "revoked": {
-      return "muted";
-    }
-    default: {
-      return "info";
-    }
-  }
-};
-
-// Absolute API timestamp → tenant display zone. `formatDateTime` falls back to
-// the raw value when it cannot be parsed, so only the empty case is special.
-const formatTicketDateTime = (
-  value: string,
-  locale: Locale,
-  timeZone: string
-): string => (value ? formatDateTime(value, { locale, timeZone }) : "—");
 
 const TicketListBody = ({
   emptyDescription,
@@ -170,7 +125,7 @@ const TicketListBody = ({
           <Table.Row key={ticket.publicId}>
             <Table.Cell>
               <div className="grid gap-1">
-                <StatusChip status={statusTone(ticket.status)}>
+                <StatusChip status={ticketStatusTone(ticket.status)}>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <TicketStatusLabel status={ticket.status} />
                   </Suspense>

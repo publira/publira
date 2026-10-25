@@ -6,8 +6,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { SettledToast } from "#components/settled-toast";
-
-import { revokeAccessTicketAction } from "../_lib/actions";
+import { revokeAccessTicketAction } from "#lib/access-ticket-actions";
 
 interface RevokeTicketButtonProps {
   tenantId: string;

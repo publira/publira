@@ -2,7 +2,6 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import * as TicketTarget from "./app/[tenant_id]/(protected)/access-tickets/_components/ticket-target-controls";
 import * as AnnouncementPinned from "./app/[tenant_id]/(protected)/announcements/_components/announcement-pinned-controls";
 import * as ThemeSettings from "./app/[tenant_id]/(protected)/branding/_components/theme-settings-fields";
 import * as CreatorIcon from "./app/[tenant_id]/(protected)/creators/_components/creator-icon-controls";
@@ -28,6 +27,7 @@ import * as ReaderIconPolicySelection from "./app/[tenant_id]/(protected)/settin
 import * as MfaEnrollSteps from "./app/[tenant_id]/mfa/_components/mfa-enroll-steps";
 import * as MfaVerifyMethods from "./app/[tenant_id]/mfa/_components/mfa-verify-methods";
 import * as MfaVerifySteps from "./app/[tenant_id]/mfa/_components/mfa-verify-steps";
+import * as TicketTarget from "./components/access-ticket-target";
 import * as CredentialsEnabled from "./components/credentials-enabled";
 import * as ErrorScreen from "./components/error-screen";
 import * as EyeCatchAspect from "./components/eye-catch/aspect-slot";

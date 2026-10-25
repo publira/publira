@@ -18,9 +18,8 @@ import { useAdminLocale } from "#components/admin-locale-context";
 import { useClientMessages } from "#components/client-message";
 import { ReaderPicker } from "#components/reader-picker";
 import * as SubmitGate from "#components/submit-gate";
-
-import { listEpisodeOptionsAction } from "../_lib/actions";
-import type { TicketEpisodeOption } from "../ticket-types";
+import { listEpisodeOptionsAction } from "#lib/access-ticket-actions";
+import type { TicketEpisodeOption } from "#lib/access-ticket-shared";
 
 interface TicketTargetContextValue {
   episodeId: string;
@@ -54,10 +53,13 @@ const useTicketTarget = () => {
  */
 const TicketTarget = ({
   children,
+  readerId: fixedReaderId,
   seriesItems,
   tenantId,
 }: {
   children: ReactNode;
+  /** The reader the screen already names, which leaves nobody to pick. */
+  readerId?: string;
   seriesItems: Combobox.Item[];
   tenantId: string;
 }) => {
@@ -65,7 +67,8 @@ const TicketTarget = ({
   const t = useClientMessages();
   const setSubmittable = SubmitGate.useSetSubmittable();
   const [isEpisodePending, startEpisodeTransition] = useTransition();
-  const [readerId, setReaderId] = useState("");
+  const [pickedReaderId, setPickedReaderId] = useState("");
+  const readerId = fixedReaderId ?? pickedReaderId;
   const [seriesId, setSeriesId] = useState("");
   const [episodeId, setEpisodeId] = useState("");
   const [episodes, setEpisodes] = useState<TicketEpisodeOption[]>([]);
@@ -120,7 +123,7 @@ const TicketTarget = ({
         setSubmittable(readerId !== "" && nextEpisodeId !== "");
       },
       onReaderChange: (nextReaderId) => {
-        setReaderId(nextReaderId);
+        setPickedReaderId(nextReaderId);
         setSubmittable(nextReaderId !== "" && episodeId !== "");
       },
       onRetryEpisodes: () => {
