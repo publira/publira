@@ -3,6 +3,7 @@ import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/subscription.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -11,7 +12,8 @@ import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 
 /// [PurchaseRepository] backed by `publira.v1.PurchaseService` and the reads
-/// of `TenantService` and `CatalogService` a purchase is offered from.
+/// of `TenantService`, `CatalogService`, and `SubscriptionService` a purchase
+/// is offered from.
 class HttpPurchaseRepository implements PurchaseRepository {
   const HttpPurchaseRepository({
     required this._client,
@@ -100,6 +102,14 @@ class HttpPurchaseRepository implements PurchaseRepository {
             if (item.episodePublicId.isNotEmpty)
               item.episodePublicId: EpisodeAccess.fromWire(item.access),
         }),
+        entitlementSources: Map.unmodifiable({
+          for (final item in body.episodes)
+            if (item.episodePublicId.isNotEmpty)
+              if (EpisodeEntitlementSource.fromWire(item.entitlementSource)
+                  case final source
+                  when source != EpisodeEntitlementSource.unspecified)
+                item.episodePublicId: source,
+        }),
         ownedEpisodeIds: Set.unmodifiable({
           for (final item in body.episodes)
             if (item.owned && item.episodeId.isNotEmpty) item.episodeId,
@@ -119,6 +129,48 @@ class HttpPurchaseRepository implements PurchaseRepository {
       throw _toFailure(error);
     }
   }
+
+  @override
+  Future<List<SubscriptionPlan>> subscriptionPlans() async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.SubscriptionServiceApi(_client)
+          .listSubscriptionPlans(
+            ConnectCallContext(tenantId: tenantId),
+            pb.ListSubscriptionPlansRequest(
+              surface: appClientSurface,
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      return List.unmodifiable([
+        for (final plan in body.plans)
+          // A scope this build has no name for opens nothing it could say.
+          if (_planScopes[plan.scope] case final scope?)
+            SubscriptionPlan(
+              scope: scope,
+              labelIds: Set.unmodifiable({
+                for (final label in plan.labels)
+                  if (label.publicId.isNotEmpty) label.publicId,
+              }),
+              seriesIds: Set.unmodifiable({
+                for (final series in plan.series)
+                  if (series.publicId.isNotEmpty) series.publicId,
+              }),
+            ),
+      ]);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  static const _planScopes = {
+    pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_ALL:
+        SubscriptionPlanScope.all,
+    pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_LABEL:
+        SubscriptionPlanScope.label,
+    pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_SERIES:
+        SubscriptionPlanScope.series,
+  };
 
   @override
   Future<String?> seriesOfEpisode(String episodePublicId) async {

@@ -1235,6 +1235,26 @@ void main() {
       );
     });
 
+    testWidgets('a subscriber is told their plan opens the episode', (
+      tester,
+    ) async {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.entitled,
+        entitlementSource: EpisodeEntitlementSource.subscription,
+      );
+      react(readerCredited: false);
+      await pumpApp(tester, session: fakeSession);
+      await turnToEnd(tester);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('episode-end-plan-access')),
+        findsOneWidget,
+      );
+      expect(find.text('Included in your plan'), findsOneWidget);
+      expect(creatorAccess, findsNothing);
+    });
+
     testWidgets('a linked creator is not offered the reaction on a free '
         'episode either', (tester) async {
       // A free body carries no entitlement source, so the reaction state is

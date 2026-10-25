@@ -18,6 +18,7 @@ import 'package:publira/content_views/content_view_recorder.dart';
 import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/links/app_link.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
@@ -27,6 +28,7 @@ import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/subscription_offer.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_end_panel.dart';
@@ -47,6 +49,7 @@ class _OpenEpisode {
     this.readerHasBirthDate = false,
     this.provenRating,
     this.waitFree,
+    this.plansOffered = false,
   });
 
   final EpisodeDetail detail;
@@ -62,6 +65,10 @@ class _OpenEpisode {
   /// What a locked body's gate says about wait-for-free, or `null` when it
   /// says nothing about it.
   final WaitFreeOffer? waitFree;
+
+  /// Whether a plan the tenant sells opens a locked body, so its gate offers
+  /// the plans.
+  final bool plansOffered;
 }
 
 /// Episode reader. Loads the body of one published episode, the images
@@ -161,6 +168,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// once the body has been read, which is before either has a page to send.
   String _episodeInternalId = '';
 
+  /// Whether the reader was handed to the plans in the browser, so the body is
+  /// read again once they come back to the app: they may have subscribed
+  /// there.
+  var _awaitingPlan = false;
+
   /// Whether the reader asked to give a birth date, which the account tab
   /// takes, and whether this tab has since gone off screen for it. The date is
   /// read back once the tab is on screen again.
@@ -211,6 +223,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           catalog,
           AuthScope.of(context),
           waitFree: WaitFreeScope.maybeOf(context),
+          purchase: PurchaseScope.maybeOf(context)?.repository,
           resumeAt: relocalized ? _pageOnScreen : null,
         );
       }
@@ -244,6 +257,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       catalog,
       AuthScope.of(context),
       waitFree: WaitFreeScope.maybeOf(context),
+      purchase: PurchaseScope.maybeOf(context)?.repository,
       confirmPurchase: widget.checkout == CheckoutOutcome.success,
     );
     final purchase = PurchaseScope.maybeOf(context)?.repository;
@@ -337,6 +351,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         state == AppLifecycleState.hidden) {
       _saver?.flush();
     }
+    if (state == AppLifecycleState.resumed && _awaitingPlan) {
+      _awaitingPlan = false;
+      _reload();
+    }
   }
 
   /// The body and the page to open it on.
@@ -348,9 +366,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// [checkoutConfirmationDelays], for a reader the browser has just sent
   /// back from paying.
   ///
-  /// A body that stays locked is asked what [waitFree] offers on it, before
-  /// the gate is drawn rather than after, so the gate does not change under a
-  /// reader already reaching for its button.
+  /// A body that stays locked is asked what [waitFree] offers on it, and
+  /// [purchase] whether a plan opens it, before the gate is drawn rather than
+  /// after, so the gate does not change under a reader already reaching for
+  /// its button.
   ///
   /// [resumeAt] is the page to open on in place of the one recorded, for a
   /// body read again while the reader is in it.
@@ -358,6 +377,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     CatalogRepository catalog,
     AuthController auth, {
     WaitFreeRepository? waitFree,
+    PurchaseRepository? purchase,
     bool confirmPurchase = false,
     int? resumeAt,
   }) async {
@@ -407,12 +427,21 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             signedIn: auth.isSignedIn,
             locale: locale,
           );
+    final plansOffered =
+        purchase != null &&
+        await offersSubscriptionPlan(
+          purchase: purchase,
+          catalog: catalog,
+          detail: detail,
+          locale: locale,
+        );
     return _OpenEpisode(
       detail: detail,
       startPage: resumePageIndex(saved, detail.images.length),
       readerHasBirthDate: age?.hasBirthDate ?? false,
       provenRating: age?.provenAgeRating(DateTime.now()),
       waitFree: offer,
+      plansOffered: plansOffered,
     );
   }
 
@@ -487,6 +516,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         CatalogScope.of(context),
         AuthScope.of(context),
         waitFree: WaitFreeScope.maybeOf(context),
+        purchase: PurchaseScope.maybeOf(context)?.repository,
       );
     });
   }
@@ -573,7 +603,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Widget _body(AppMessages messages, _OpenEpisode open) {
     final detail = open.detail;
     if (detail.access == EpisodeAccess.locked) {
-      return _locked(messages, detail, open.waitFree);
+      return _locked(
+        messages,
+        detail,
+        open.waitFree,
+        plansOffered: open.plansOffered,
+      );
     }
     if (detail.images.isEmpty) {
       return _ViewerMessage(
@@ -615,14 +650,19 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   /// What stands where the pages would be while the episode is not the
   /// reader's: its blurred opening pages, and over them why, the
-  /// wait-for-free ticket and the purchase that open it where the series and
-  /// the tenant offer them, and the nearest later episode the reader could
-  /// read instead.
+  /// wait-for-free ticket, the purchase, and the plans that open it where the
+  /// series and the tenant offer them, and the nearest later episode the
+  /// reader could read instead.
+  ///
+  /// The plans are offered where a plan the tenant sells opens the episode
+  /// and the tenant sells through its web checkout: the store sells no plan,
+  /// so an app on the store route sends nobody to the site for one.
   Widget _locked(
     AppMessages messages,
     EpisodeDetail detail,
-    WaitFreeOffer? waitFree,
-  ) {
+    WaitFreeOffer? waitFree, {
+    required bool plansOffered,
+  }) {
     final signedIn = AuthScope.of(context).isSignedIn;
     // The browser reported the payment and the API has not recorded it yet.
     if (signedIn && widget.checkout == CheckoutOutcome.success) {
@@ -703,6 +743,19 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             onRefused: _reload,
           )
         : null;
+    final site = LinkScope.maybeOf(context)?.site;
+    final plans =
+        plansOffered &&
+            _acceptsPayments &&
+            _sellsOnWeb &&
+            site != null &&
+            PurchaseScope.maybeOf(context) != null
+        ? OutlinedButton(
+            key: const ValueKey('episode-see-plans'),
+            onPressed: () => unawaited(_openPlans(site)),
+            child: AutospacedText(messages.purchaseSeePlans),
+          )
+        : null;
     final Widget? accessAction;
     if (buy != null) {
       accessAction = buy;
@@ -734,7 +787,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       notice: waitFree == null
           ? null
           : WaitFreeNotice(offer: waitFree, onRecharged: _reload),
-      actions: [?ticket, ?accessAction, ?rent, _backToSeries(messages)],
+      actions: [?ticket, ?accessAction, ?rent, ?plans, _backToSeries(messages)],
       footer: nextFree == null
           ? null
           : TextButton(
@@ -821,6 +874,28 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       actions: actions,
       footer: footer,
     );
+  }
+
+  /// Hands the reader to the plans on the tenant's site, in the browser a
+  /// checkout opens in, where they choose a plan and pay for it.
+  Future<void> _openPlans(PublicSite site) async {
+    final purchase = PurchaseScope.maybeOf(context);
+    if (purchase == null) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final messages = AppMessages.of(context);
+    final url = site.uriFor(
+      subscriptionPlansPath,
+      locale: Localizations.localeOf(context).toLanguageTag(),
+    );
+    _awaitingPlan = true;
+    if (!await purchase.launcher!.open(url)) {
+      _awaitingPlan = false;
+      messenger.showSnackBar(
+        SnackBar(content: AutospacedText(messages.purchasePlansOpenFailed)),
+      );
+    }
   }
 
   Widget _backToSeries(AppMessages messages) {

@@ -5,6 +5,7 @@ import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/subscription.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
@@ -213,6 +214,86 @@ void main() {
       ConnectFixtureServer.internalIdOf(seriesId),
     );
     expect(call.headers['authorization'], 'Bearer $accessToken');
+  });
+
+  test('says which grant opens each episode the reader may read', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server.entitledEpisodes = {
+      paidEpisodeId:
+          ConnectFixtureServer.populatedEntitledEpisodes()[paidEpisodeId]!
+            ..entitlementSource = pb
+                .EpisodeEntitlementSource
+                .EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION,
+    };
+
+    final holdings = await repository().seriesEpisodeAccess(
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
+
+    expect(holdings.access[paidEpisodeId], EpisodeAccess.entitled);
+    // A free episode is open to everyone, so no grant is named for it.
+    expect(holdings.entitlementSources, {
+      paidEpisodeId: EpisodeEntitlementSource.subscription,
+    });
+  });
+
+  test('the plans name what each one opens', () async {
+    server.subscriptionPlans = [
+      pb.SubscriptionPlan(
+        id: 'plan-all',
+        scope: pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_ALL,
+      ),
+      pb.SubscriptionPlan(
+        id: 'plan-label',
+        scope: pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_LABEL,
+        labels: [pb.PublishedLabel(publicId: 'SeedLABLAAA1')],
+      ),
+      pb.SubscriptionPlan(
+        id: 'plan-series',
+        scope: pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_SERIES,
+        series: [pb.Series(publicId: seriesId)],
+      ),
+      // A scope this build has no name for opens nothing it could say.
+      pb.SubscriptionPlan(id: 'plan-unknown'),
+    ];
+
+    final plans = await repository().subscriptionPlans();
+
+    expect(
+      [for (final plan in plans) plan.scope],
+      [
+        SubscriptionPlanScope.all,
+        SubscriptionPlanScope.label,
+        SubscriptionPlanScope.series,
+      ],
+    );
+    expect(plans[1].labelIds, {'SeedLABLAAA1'});
+    expect(plans[2].seriesIds, {seriesId});
+    final call = server.requestsTo('ListSubscriptionPlans').single;
+    expect(
+      call.decode(pb.ListSubscriptionPlansRequest()).surface,
+      appClientSurface,
+    );
+  });
+
+  test('a plan opens the works its scope names', () {
+    const all = SubscriptionPlan(scope: SubscriptionPlanScope.all);
+    const label = SubscriptionPlan(
+      scope: SubscriptionPlanScope.label,
+      labelIds: {'LABEL1'},
+    );
+    const series = SubscriptionPlan(
+      scope: SubscriptionPlanScope.series,
+      seriesIds: {'SERIES1'},
+    );
+
+    expect(all.opens(seriesId: 'SERIES2'), isTrue);
+    expect(label.opens(seriesId: 'SERIES2', labelId: 'LABEL1'), isTrue);
+    expect(label.opens(seriesId: 'SERIES2', labelId: 'LABEL2'), isFalse);
+    // A series under no label is opened by no plan of labels.
+    expect(label.opens(seriesId: 'SERIES2'), isFalse);
+    expect(series.opens(seriesId: 'SERIES1'), isTrue);
+    expect(series.opens(seriesId: 'SERIES2', labelId: 'LABEL1'), isFalse);
   });
 
   test('says which episodes the reader owns and what the rest costs', () async {

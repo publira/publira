@@ -5513,9 +5513,12 @@
       "cancelled": "The purchase was cancelled. You have not been charged.",
       "check_again": "Check again",
       "confirming": "We are confirming your payment. The episode opens once the purchase is applied.",
+      "included_in_plan": "Included in your plan",
       "not_sold_in_app": "This episode cannot be bought in the app right now. Try again later.",
+      "plans_open_failed": "Could not open the plans. Try again later.",
       "rent_for": "Rent for {$period} ({$price})",
       "rental_period": ".input {$hours :integer}\n.match $hours\none {{{$hours} hour}}\n* {{{$hours} hours}}",
+      "see_plans": "See plans",
       "sold_on_web": "Sold on the website",
       "start_failed": "Could not start the purchase. Try again later.",
       "store_unavailable": "Purchases are not available on this device. Check that you are signed in to the store and that purchases are allowed."

@@ -2,7 +2,7 @@
 title: In-app purchase and sign-in
 description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple, Google, and passkeys.
 published: 2026-10-06
-updated: 2026-10-20
+updated: 2026-10-25
 ---
 
 Selling episodes and signing in with Apple or Google are set up once for the whole tenant, in the tenant console, and the site and the app share that setup. This page covers what is particular to the app: the parts of each store's and each provider's console that only the app needs, and how the app decides what to offer. The app's build needs nothing for either beyond the [manifest](./1-app-manifest.md) and [App links](./4-app-links.md), except the Google client named in the manifest for Google sign-in on iOS.
@@ -19,6 +19,8 @@ Under **Payments** › **Payment methods**, two settings decide what the app off
 A rented episode is offered both ways on **Web checkout**, as on the site: **Buy for** the price and **Rent for** the rental period at the rental price, and the episode list names both prices. **In-app purchase** sells the permanent copy alone, so the app offers no rental there. Either way, **Purchases** in the app marks a rental as one and shows the time it has left.
 
 A series' volumes and the rest of a series are sold through **Web checkout** too, as on the site. The series screen lists each volume on sale with its cover, how many episodes it holds, its price, and **Buy volume**, and above the episode list offers **Buy remaining episodes** for every episode the reader does not own yet, less the series' bundle discount. Both open the site's checkout in the phone's browser and bring the reader back to the series, which says the payment is being confirmed until it is. Neither has a store product, so with **In-app purchase** the app names each volume as sold on the website and does not offer the rest of the series. **Purchases** lists a volume and the rest of a series as purchases of their own, and opens the series from either.
+
+A reader who subscribes to one of the tenant's subscription plans reads every episode it covers in the app as well, and the episode list says **Included in your plan** in place of those episodes' prices. Plans are sold on the site alone. With **Web checkout**, a locked episode that a published plan covers offers **See plans**, which opens the site's plan page in the phone's browser; the reader subscribes there, and the app reads the episode again when they come back to it. With **In-app purchase**, the store sells no plan, so the app does not send the reader to the site for one.
 
 The App Store and Google Play each have rules on how an app may sell digital content, and they decide in review whether an app follows them. Read their current guidelines before choosing **Web checkout** for an app you submit.
 

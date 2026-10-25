@@ -256,7 +256,7 @@ mobile/
 │   ├── pages/                    # PageRepository: the tenant's published pages
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification / announcement
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
-│   ├── purchase/                 # A paid episode bought through the web checkout in the browser or the store's in-app purchase
+│   ├── purchase/                 # A paid episode bought through the web checkout in the browser or the store's in-app purchase, and the plans that open one
 │   ├── push/                     # PushController: Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / passkeys / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation

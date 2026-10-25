@@ -2409,9 +2409,19 @@ final class AppMessages {
     return _format('mobile.purchase.confirming');
   }
 
+  /// `mobile.purchase.included_in_plan`
+  String get purchaseIncludedInPlan {
+    return _format('mobile.purchase.included_in_plan');
+  }
+
   /// `mobile.purchase.not_sold_in_app`
   String get purchaseNotSoldInApp {
     return _format('mobile.purchase.not_sold_in_app');
+  }
+
+  /// `mobile.purchase.plans_open_failed`
+  String get purchasePlansOpenFailed {
+    return _format('mobile.purchase.plans_open_failed');
   }
 
   /// `mobile.purchase.rent_for`
@@ -2425,6 +2435,11 @@ final class AppMessages {
   /// `mobile.purchase.rental_period`
   String purchaseRentalPeriod({required num hours}) {
     return _format('mobile.purchase.rental_period', {'hours': hours});
+  }
+
+  /// `mobile.purchase.see_plans`
+  String get purchaseSeePlans {
+    return _format('mobile.purchase.see_plans');
   }
 
   /// `mobile.purchase.sold_on_web`
@@ -4036,9 +4051,12 @@ const _jaSources = <String, String>{
   'mobile.purchase.cancelled': '購入手続きをキャンセルしました。料金は発生していません。',
   'mobile.purchase.check_again': 'もう一度確認',
   'mobile.purchase.confirming': '決済を確認しています。購入が反映されると本文を表示します。',
+  'mobile.purchase.included_in_plan': 'プランに含まれています',
   'mobile.purchase.not_sold_in_app': '現在、このエピソードはアプリで購入できません。時間をおいて再試行してください。',
+  'mobile.purchase.plans_open_failed': 'プランを開けませんでした。時間をおいて再試行してください。',
   'mobile.purchase.rent_for': '{\$period}レンタル（{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}時間',
+  'mobile.purchase.see_plans': 'プランを見る',
   'mobile.purchase.sold_on_web': 'ウェブサイトで販売',
   'mobile.purchase.start_failed': '購入手続きを開始できませんでした。時間をおいて再試行してください。',
   'mobile.purchase.store_unavailable':
@@ -4888,11 +4906,15 @@ const _enSources = <String, String>{
   'mobile.purchase.check_again': 'Check again',
   'mobile.purchase.confirming':
       'We are confirming your payment. The episode opens once the purchase is applied.',
+  'mobile.purchase.included_in_plan': 'Included in your plan',
   'mobile.purchase.not_sold_in_app':
       'This episode cannot be bought in the app right now. Try again later.',
+  'mobile.purchase.plans_open_failed':
+      'Could not open the plans. Try again later.',
   'mobile.purchase.rent_for': 'Rent for {\$period} ({\$price})',
   'mobile.purchase.rental_period':
       '.input {\$hours :integer}\n.match \$hours\none {{{\$hours} hour}}\n* {{{\$hours} hours}}',
+  'mobile.purchase.see_plans': 'See plans',
   'mobile.purchase.sold_on_web': 'Sold on the website',
   'mobile.purchase.start_failed':
       'Could not start the purchase. Try again later.',
@@ -5684,10 +5706,13 @@ const _koSources = <String, String>{
   'mobile.purchase.cancelled': '구매를 취소했습니다. 요금은 청구되지 않았습니다.',
   'mobile.purchase.check_again': '다시 확인',
   'mobile.purchase.confirming': '결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.',
+  'mobile.purchase.included_in_plan': '플랜에 포함됨',
   'mobile.purchase.not_sold_in_app':
       '지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.purchase.plans_open_failed': '플랜을 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchase.rent_for': '{\$period} 대여 ({\$price})',
   'mobile.purchase.rental_period': '{\$hours :integer}시간',
+  'mobile.purchase.see_plans': '플랜 보기',
   'mobile.purchase.sold_on_web': '웹사이트에서 판매',
   'mobile.purchase.start_failed': '구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchase.store_unavailable':
@@ -6399,9 +6424,12 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.cancelled': '购买已取消，未产生任何扣款。',
   'mobile.purchase.check_again': '再次确认',
   'mobile.purchase.confirming': '我们正在确认您的付款。购买生效后即可打开该章节。',
+  'mobile.purchase.included_in_plan': '已包含在您的方案中',
   'mobile.purchase.not_sold_in_app': '目前无法在应用中购买该章节。请稍后再试。',
+  'mobile.purchase.plans_open_failed': '无法打开方案。请稍后再试。',
   'mobile.purchase.rent_for': '租阅{\$period}（{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小时',
+  'mobile.purchase.see_plans': '查看方案',
   'mobile.purchase.sold_on_web': '在网站上销售',
   'mobile.purchase.start_failed': '无法开始购买。请稍后再试。',
   'mobile.purchase.store_unavailable': '此设备无法进行购买。请确认已登录商店且未限制购买。',
@@ -7090,9 +7118,12 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.cancelled': '購買已取消，未產生任何扣款。',
   'mobile.purchase.check_again': '再次確認',
   'mobile.purchase.confirming': '我們正在確認您的付款。購買生效後即可開啟該章節。',
+  'mobile.purchase.included_in_plan': '已包含在您的方案中',
   'mobile.purchase.not_sold_in_app': '目前無法在應用程式中購買該章節。請稍後再試。',
+  'mobile.purchase.plans_open_failed': '無法開啟方案。請稍後再試。',
   'mobile.purchase.rent_for': '租閱{\$period}（{\$price}）',
   'mobile.purchase.rental_period': '{\$hours :integer}小時',
+  'mobile.purchase.see_plans': '查看方案',
   'mobile.purchase.sold_on_web': '在網站上販售',
   'mobile.purchase.start_failed': '無法開始購買。請稍後再試。',
   'mobile.purchase.store_unavailable': '此裝置無法進行購買。請確認已登入商店且未限制購買。',

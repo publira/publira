@@ -91,11 +91,57 @@ class SeriesRemainderOffer {
   final int price;
 }
 
+/// What a subscription plan opens, as `publira.types.v1.SubscriptionPlanScope`
+/// names it.
+enum SubscriptionPlanScope {
+  /// Every episode of the tenant.
+  all,
+
+  /// Every episode of the series filed under the plan's labels.
+  label,
+
+  /// Every episode of the plan's series.
+  series,
+}
+
+/// A plan the tenant sells, as `ListSubscriptionPlans` answers it, reduced to
+/// what decides whether it opens a work.
+class SubscriptionPlan {
+  const SubscriptionPlan({
+    required this.scope,
+    this.labelIds = const {},
+    this.seriesIds = const {},
+  });
+
+  final SubscriptionPlanScope scope;
+
+  /// Public ids of the labels a [SubscriptionPlanScope.label] plan opens the
+  /// series of, among those the app may show.
+  final Set<String> labelIds;
+
+  /// Public ids of the series a [SubscriptionPlanScope.series] plan opens,
+  /// among those the app may show.
+  final Set<String> seriesIds;
+
+  /// Whether the plan opens the series [seriesId] names, which is filed under
+  /// the label [labelId] names. An empty [labelId] is a series under no label,
+  /// or one whose label is not known, which a plan of labels does not open.
+  bool opens({required String seriesId, String labelId = ''}) {
+    return switch (scope) {
+      SubscriptionPlanScope.all => true,
+      SubscriptionPlanScope.label =>
+        labelId.isNotEmpty && labelIds.contains(labelId),
+      SubscriptionPlanScope.series => seriesIds.contains(seriesId),
+    };
+  }
+}
+
 /// What the reader in front of the app holds of one series, as
 /// `GetSeriesEpisodeAccess` answers it.
 class SeriesPurchaseState {
   const SeriesPurchaseState({
     this.access = const {},
+    this.entitlementSources = const {},
     this.ownedEpisodeIds = const {},
     this.remainder,
   });
@@ -107,6 +153,11 @@ class SeriesPurchaseState {
   /// What the reader may do with each published episode, keyed by episode
   /// public id.
   final Map<String, EpisodeAccess> access;
+
+  /// Why the reader may open each episode [access] answers as
+  /// [EpisodeAccess.entitled], keyed by episode public id. An episode missing
+  /// here is not entitled, or names a source this build does not know.
+  final Map<String, EpisodeEntitlementSource> entitlementSources;
 
   /// Internal ids of the episodes the reader owns for good: bought one by one,
   /// in a volume, or with the rest of the series. A rental or a ticket opens
@@ -160,6 +211,12 @@ abstract class PurchaseRepository {
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<SeriesPurchaseState> seriesEpisodeAccess(String seriesInternalId);
+
+  /// The plans the tenant sells, in the order it created them. A tenant that
+  /// sells none answers an empty list. Needs no session.
+  ///
+  /// Throws [PurchaseFailure] on a transport or unexpected server error.
+  Future<List<SubscriptionPlan>> subscriptionPlans();
 
   /// The series public id [episodePublicId] belongs to, or `null` when the
   /// episode is not public. A checkout return names the episode alone, and

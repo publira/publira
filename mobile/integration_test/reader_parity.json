@@ -463,17 +463,22 @@
       "tests": ["a volume bought in the browser opens every episode in it"]
     },
     {
-      "name": "Subscription plans: subscribing, the plan a reader holds on My Page, and the billing portal",
+      "name": "Subscription plans: finding the plans that open an episode, and subscribing",
       "web": {
         "routes": ["[locale]/(site)/plans"],
-        "rpcs": [
-          "ListSubscriptionPlans",
-          "StartSubscriptionCheckout",
-          "GetMySubscription",
-          "CreateBillingPortalSession"
-        ]
+        "rpcs": ["ListSubscriptionPlans", "StartSubscriptionCheckout"]
       },
-      "exception": "Not in the app yet: #1804."
+      "mobile": {
+        "routes": ["/series/:seriesId/episodes/:episodeId"],
+        "rpcs": ["ListSubscriptionPlans"]
+      }
+    },
+    {
+      "name": "The plan a reader holds on My Page, and the billing portal",
+      "web": {
+        "rpcs": ["GetMySubscription", "CreateBillingPortalSession"]
+      },
+      "exception": "Not in the app yet: #4877."
     },
     {
       "name": "Saving the purchase history as a CSV file",

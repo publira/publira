@@ -57,8 +57,19 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// What [seriesEpisodeAccess] answers, whichever series is asked about.
   Map<String, EpisodeAccess> access;
 
+  /// Why [seriesEpisodeAccess] answers each entitled episode open, keyed by
+  /// episode public id.
+  Map<String, EpisodeEntitlementSource> sources = const {};
+
   /// Internal ids of the episodes [seriesEpisodeAccess] answers as owned.
   Set<String> owned = const {};
+
+  /// What [subscriptionPlans] answers.
+  List<SubscriptionPlan> plans = const [];
+
+  /// Thrown by [subscriptionPlans], standing in for an API that cannot
+  /// answer.
+  PurchaseFailure? plansFailure;
 
   /// The quote of the rest of the series [seriesEpisodeAccess] answers.
   SeriesRemainderOffer? remainder;
@@ -128,6 +139,7 @@ class FakePurchaseRepository implements PurchaseRepository {
     accessReads++;
     final answer = SeriesPurchaseState(
       access: access,
+      entitlementSources: sources,
       ownedEpisodeIds: owned,
       remainder: remainder,
     );
@@ -137,6 +149,15 @@ class FakePurchaseRepository implements PurchaseRepository {
       throw failure;
     }
     return answer;
+  }
+
+  @override
+  Future<List<SubscriptionPlan>> subscriptionPlans() async {
+    final failure = plansFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return plans;
   }
 
   @override
