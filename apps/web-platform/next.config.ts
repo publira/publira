@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
     authInterrupts: true,
     // Unmatched URLs skip normal layout rendering.
     globalNotFound: true,
+    // Drops work no route has reached for three days from memory and `.next/`.
+    turbopackGc: true,
     turbopackRustReactCompiler: true,
     // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
     useOffline: true,
