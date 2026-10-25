@@ -46,10 +46,15 @@ RUN CGO_ENABLED=1 go build -trimpath \
 # The Debian release matches the builder's, because the binary is linked
 # against the libvips the builder installed. Debian 13's 64-bit time_t
 # transition renamed the runtime package to libvips42t64.
+#
+# libvips42t64 brings libheif with its decoder plugins only, and image delivery
+# converts a JPEG to AVIF for every browser that accepts it: without an encoder
+# plugin, heifsave fails and Manael answers with the original bytes, neither
+# converted nor resized.
 FROM debian:13.7-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates libvips42t64 \
+ && apt-get install -y --no-install-recommends ca-certificates libvips42t64 libheif-plugin-aomenc \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 65532 nonroot \
  && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin nonroot
