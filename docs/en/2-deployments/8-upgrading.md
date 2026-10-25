@@ -2,7 +2,7 @@
 title: Upgrading
 description: Bring a running install to a new release, from the backup before it to the processes of the new release serving.
 published: 2026-10-06
-updated: 2026-10-23
+updated: 2026-10-24
 ---
 
 A release can change the database schema its processes expect, so upgrading an install is more than restarting it on new images. The database goes first: the `publiractl` image of the new release brings the schema and the database roles forward, and only then do the processes of the new release start on it. This page goes through that order, how to check each step, and what to do when a migration fails.
@@ -38,9 +38,7 @@ The examples on this page name the published images, such as `ghcr.io/publira/pu
 The processes of a release work side by side with those of the release right after it, so an upgrade to the next release can keep the install serving through both moments where the two releases run together:
 
 - **Between `db migrate` and the restart**, the processes of the release you run serve on the schema and the roles of the new one. A release keeps every table, column, and grant the release before it reads, and leaves dropping them to a later release, so nothing those processes do fails.
-- **While the processes are replaced**, the web apps and `publira server` of the two releases call each other, in whichever order they are replaced, one copy at a time, and whichever of them you roll back. Everything the release you run already did keeps working; what the new release adds works once both sides run it.
-
-`publira worker` is the exception, and [step 4](#4-replace-the-processes) replaces it before the others.
+- **While the processes are replaced**, the web apps and `publira server` of the two releases call each other, in whichever order they are replaced, one copy at a time, and whichever of them you roll back. The workers of the two releases share the outbox: a worker of the release you run leaves an entry of a kind only the new release writes for a worker of the new release to send. Everything the release you run already did keeps working; what the new release adds works once both sides run it.
 
 The promise reaches only the release right after the one you run. When you skip a release, the processes you run can read a column or call an API that a release in between retired, so stop them first, or upgrade one release at a time.
 
@@ -94,10 +92,9 @@ If the release adds a role, pass that role's password with its `--<name>-passwor
 Replace every process with the image of the new release, with any variable the release notes asked you to set, in this order:
 
 1. **`email-renderer`**, if you run it, so that the worker of either release finds the templates it renders.
-2. **`publira worker`**: stop every copy of the release you run before the first copy of the new release starts. A worker marks an outbox entry of a kind it does not know as failed, so a copy of the release you run would discard a mail or a notification that only the new release's server writes, and never send it. The entries written in between wait in the outbox and go out once the new worker starts. It applies the migrations of its own job queue when it starts, so its tables need no step of their own.
-3. **`publira server`, `web-storefront`, and `web-admin`**, together with `web-platform` if you run it, in any order and one copy at a time if you like: the install keeps serving while an orchestrator rolls them.
+2. **`publira worker`, `publira server`, `web-storefront`, and `web-admin`**, together with `web-platform` if you run it, in any order and one copy at a time if you like: the install keeps serving while an orchestrator rolls them. A mail or a notification of a kind only the new release sends waits in the outbox until a copy of the new worker takes it. A copy of the release you run sets such an entry aside for a minute at a time, so once the last of those copies has stopped, the entry is free for a new worker to take within a minute, and is then sent like any other. The worker applies the migrations of its own job queue when it starts, so its tables need no step of their own.
 
-An install that runs `publira server --with-worker` has a worker in every copy of the server, so it replaces those copies together, stopping every copy of the release it runs before the first copy of the new release starts. If you stopped the processes in step 1, start them all.
+An install that runs `publira server --with-worker` replaces its copies the same way, one at a time if you like. If you stopped the processes in step 1, start them all.
 
 ### 5. Check the install
 

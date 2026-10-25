@@ -39,7 +39,15 @@ const (
 	defaultMaxWorkers      = 8
 	defaultStaleProcessing = 15 * time.Minute
 	defaultJobTimeout      = 30 * time.Second
+	defaultUnknownTypeWait = time.Minute
 	maxLastErrorBytes      = 2048
+
+	// unknownTypeWindow is how long after an event is written a worker that
+	// has no handler for its type keeps leaving it for one that has. It
+	// outlasts an upgrade that rolls the workers of two releases one copy at
+	// a time, and a mail still waiting after that is one no running release
+	// sends.
+	unknownTypeWindow = 24 * time.Hour
 )
 
 // ServiceName is the service.name the drain's spans carry, and the worker
@@ -76,6 +84,10 @@ type Config struct {
 	MaxWorkers int
 	// RetryDelay waits after a failed attempt. Nil uses [RetryDelay].
 	RetryDelay func(attempts int) time.Duration
+	// UnknownTypeWait is how long an event whose type this worker has no
+	// handler for waits before it can be claimed again, by a worker of a
+	// newer release that has one. Zero uses the 1m default.
+	UnknownTypeWait time.Duration
 	// FetchCooldown / FetchPollInterval are forwarded to River so tests
 	// can pick jobs up without waiting on the production 1s poll.
 	FetchCooldown     time.Duration
@@ -141,6 +153,9 @@ func (c Config) withDefaults() Config {
 	}
 	if c.RetryDelay == nil {
 		c.RetryDelay = RetryDelay
+	}
+	if c.UnknownTypeWait <= 0 {
+		c.UnknownTypeWait = defaultUnknownTypeWait
 	}
 	return c
 }
@@ -559,7 +574,7 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 
 	handler, ok := w.cfg.Handlers.Lookup(event.EventType)
 	if !ok {
-		return w.finishFailed(ctx, event, Permanent(fmt.Errorf("unknown outbox event type %q", event.EventType)))
+		return w.deferUnknown(ctx, event)
 	}
 	if w.cfg.Handlers.IsMessage(event.EventType) {
 		suspended, err := w.tenantSuspended(ctx, event)
@@ -647,6 +662,39 @@ func (w *Worker) resume(ctx context.Context, event dbmodels.OutboxEvent) error {
 		"event_id", event.ID,
 		"event_type", event.EventType,
 		"idempotency_key", event.IdempotencyKey,
+	)
+	return nil
+}
+
+// deferUnknown hands back an event whose type this worker has no handler for.
+// While an upgrade runs the workers of two releases side by side, such a type
+// is one only the newer release writes, and a worker of that release claims
+// the event on a later drain; marking it dead here would lose the mail or the
+// notification that worker was about to send. An event still unknown
+// [unknownTypeWindow] after it was written has a type no running release
+// handles, and dies as a permanent failure.
+func (w *Worker) deferUnknown(ctx context.Context, event dbmodels.OutboxEvent) error {
+	unknown := fmt.Errorf("unknown outbox event type %q", event.EventType)
+	if time.Since(event.CreatedAt) >= unknownTypeWindow {
+		return w.finishFailed(ctx, event, Permanent(unknown))
+	}
+
+	wait := w.cfg.UnknownTypeWait
+	if _, err := w.queries.DeferOutboxEvent(ctx, dbmodels.DeferOutboxEventParams{
+		ID:          event.ID,
+		AvailableAt: time.Now().UTC().Add(wait),
+		LastError:   lastErrorValue(fmt.Errorf("%w; left for a worker that handles it", unknown)),
+	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	w.cfg.Logger.InfoContext(ctx, "outbox event of an unknown type left for a newer worker",
+		"event_id", event.ID,
+		"event_type", event.EventType,
+		"idempotency_key", event.IdempotencyKey,
+		"available_in", wait,
 	)
 	return nil
 }

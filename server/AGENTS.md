@@ -167,9 +167,9 @@ No lint covers this — nothing can tell an RPC that checks a password against a
 
 ## The worker handles what the previous server writes
 
-Upgrading has the worker of the new release replaced before any `publira server` of it starts, so while the servers roll, the new worker drains outbox events that the release before wrote. A handler therefore keeps accepting every event type and every payload the newest release writes: a type's handler is removed only in the release after the last one that writes the type, and a payload field a handler starts to need has a fallback for an event written without it.
+An upgrade rolls the workers and the servers of two releases in any order, so the worker of each release drains outbox events that the other's server wrote. A handler therefore keeps accepting every event type and every payload the newest release writes: a type's handler is removed only in the release after the last one that writes the type, and a payload field a handler starts to need has a fallback for an event written without it.
 
-The other direction is not covered yet. A worker that meets an event type it has no handler for marks the event dead, so the worker of the release before would lose an event of a type only the new release writes. That is why the order above is the operator's to keep, and why an install on `server --with-worker` replaces every copy together, until #4807 leaves such an event for a newer worker.
+The other direction is the worker's own. A worker that meets an event type it has no handler for leaves the event pending, charging it no attempt, for a worker of the newer release to claim, and marks it dead only once the event is older than the window `deferUnknown` keeps. The worker of the release before therefore never loses an event of a type only the new release writes, and adding an event type asks nothing of it.
 
 No lint covers this: nothing records which release last wrote an event type.
 
