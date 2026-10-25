@@ -191,6 +191,79 @@ func TestDBListSubscriptionPlansAnswersThePublishedPlans(t *testing.T) {
 	}
 }
 
+// A plan names its labels and series by primary key whatever they hold, and
+// answers beside them the ones a reader on the calling surface could open: a
+// label with a series published there, and a series published there.
+func TestDBListSubscriptionPlansNamesWhatEachPlanOpensOnTheSurface(t *testing.T) {
+	f := newSubscriptionFixture(t)
+	shown := f.pg.SeedLabel(t, f.tenant.ID, testutil.LabelSeed{PublicID: "SUBLABELSHOW", Name: "Shown label"})
+	empty := f.pg.SeedLabel(t, f.tenant.ID, testutil.LabelSeed{PublicID: "SUBLABELNONE", Name: "Empty label"})
+	appOnly := f.pg.SeedLabel(t, f.tenant.ID, testutil.LabelSeed{PublicID: "SUBLABELAPP1", Name: "App label"})
+	published := f.pg.SeedSeries(t, f.tenant.ID, testutil.SeriesSeed{PublicID: "SUBSERIESPUB", Title: "Published", Published: true, LabelID: shown.ID})
+	draft := f.pg.SeedSeries(t, f.tenant.ID, testutil.SeriesSeed{PublicID: "SUBSERIESDRF", Title: "Draft", LabelID: empty.ID})
+	inApp := f.pg.SeedSeries(t, f.tenant.ID, testutil.SeriesSeed{PublicID: "SUBSERIESAPP", Title: "In the app", Published: true, Availability: "app", LabelID: appOnly.ID})
+	byLabel := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{Name: "Labels", Scope: "label", LabelIDs: []uuid.UUID{shown.ID, empty.ID, appOnly.ID}, Published: true})
+	bySeries := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{Name: "Series", Scope: "series", SeriesIDs: []uuid.UUID{published.ID, draft.ID, inApp.ID}, Published: true})
+
+	plansOn := func(t *testing.T, surface publirattypesv1.ClientSurface) map[string]*publirav1.SubscriptionPlan {
+		t.Helper()
+		res, err := f.subscriptions.ListSubscriptionPlans(context.Background(), &publirav1.ListSubscriptionPlansRequest{Tenant: tenantContext(f.tenant), Surface: surface})
+		if err != nil {
+			t.Fatalf("ListSubscriptionPlans: %v", err)
+		}
+		plans := map[string]*publirav1.SubscriptionPlan{}
+		for _, plan := range res.Plans {
+			plans[plan.Id] = plan
+		}
+		return plans
+	}
+	labelsOf := func(plan *publirav1.SubscriptionPlan) []string {
+		var publicIDs []string
+		for _, label := range plan.Labels {
+			publicIDs = append(publicIDs, label.PublicId)
+		}
+		slices.Sort(publicIDs)
+		return publicIDs
+	}
+	seriesOf := func(plan *publirav1.SubscriptionPlan) []string {
+		var publicIDs []string
+		for _, series := range plan.Series {
+			publicIDs = append(publicIDs, series.PublicId)
+		}
+		slices.Sort(publicIDs)
+		return publicIDs
+	}
+
+	web := plansOn(t, publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB)
+	if got := web[byLabel.ID.String()]; len(got.LabelIds) != 3 || !slices.Equal(labelsOf(got), []string{shown.PublicID}) {
+		t.Fatalf("label plan on the web = ids %v, labels %v; want three ids and the shown label alone", got.LabelIds, labelsOf(got))
+	}
+	if got := web[byLabel.ID.String()].Labels[0]; got.Name != "Shown label" || got.PublishedSeriesCount != 1 {
+		t.Fatalf("shown label = %+v", got)
+	}
+	if got := web[bySeries.ID.String()]; len(got.SeriesIds) != 3 || !slices.Equal(seriesOf(got), []string{published.PublicID}) {
+		t.Fatalf("series plan on the web = ids %v, series %v; want three ids and the published series alone", got.SeriesIds, seriesOf(got))
+	}
+	if got := web[bySeries.ID.String()].Series[0]; got.Id != published.ID.String() || got.Title != "Published" {
+		t.Fatalf("published series = %+v", got)
+	}
+
+	app := plansOn(t, publirattypesv1.ClientSurface_CLIENT_SURFACE_APP)
+	if got := labelsOf(app[byLabel.ID.String()]); !slices.Equal(got, []string{appOnly.PublicID, shown.PublicID}) {
+		t.Fatalf("labels of the label plan in the app = %v, want the shown label and the app label", got)
+	}
+	if got := seriesOf(app[bySeries.ID.String()]); !slices.Equal(got, []string{inApp.PublicID, published.PublicID}) {
+		t.Fatalf("series of the series plan in the app = %v, want the published series and the one in the app", got)
+	}
+
+	// The reader's own plan is reported without them: it is the plan they
+	// hold, not one they are choosing.
+	f.pg.SeedSubscription(t, f.tenant.ID, f.reader.ID, bySeries.ID, testutil.SubscriptionSeed{})
+	if got := f.mySubscription(t).Plan; len(got.SeriesIds) != 3 || len(got.Series) != 0 {
+		t.Fatalf("plan of the reader's subscription = ids %v, series %v; want the ids alone", got.SeriesIds, got.Series)
+	}
+}
+
 // A subscription is started through Stripe Checkout and from then on is what
 // Stripe last reported it to be: active, set to cancel, past due, and ended.
 func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {

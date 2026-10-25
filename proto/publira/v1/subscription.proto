@@ -5,6 +5,7 @@ package publira.v1;
 option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
 
 import "publira/types/v1/types.proto";
+import "publira/v1/catalog.proto";
 
 // A subscription plan the tenant has published: a recurring price on its
 // Stripe account, and what a reader who pays it may read.
@@ -31,6 +32,14 @@ message SubscriptionPlan {
   // catalog reads answer.
   repeated string label_ids = 10;
   repeated string series_ids = 11;
+  // The labels of label_ids and the series of series_ids that the calling
+  // surface may show, in the order the plan names them: a label with no
+  // series published there, and a series that is not, are left out. The
+  // series are titled in the reader's locale. ListSubscriptionPlans fills
+  // them; GetMySubscription, which reports a plan the reader already holds,
+  // leaves them empty.
+  repeated PublishedLabel labels = 12;
+  repeated publira.types.v1.Series series = 13;
 }
 
 // A reader's subscription to one plan, as Stripe last reported it.
@@ -52,6 +61,12 @@ message Subscription {
 
 message ListSubscriptionPlansRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 2;
+  // The reader's locale, which every series title in the answer is written
+  // in, else the tenant's default locale's, else the oldest one. Empty means
+  // the tenant's default locale.
+  string locale = 3;
 }
 
 // Every published plan of the tenant, in the order the tenant created them. A

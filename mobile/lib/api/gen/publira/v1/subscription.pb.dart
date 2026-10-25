@@ -15,7 +15,8 @@ import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
 
-import '../types/v1/types.pb.dart' as $0;
+import '../types/v1/types.pb.dart' as $1;
+import 'catalog.pb.dart' as $0;
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
@@ -29,11 +30,13 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
     $core.String? description,
     $core.int? priceAmount,
     $core.String? currency,
-    $0.SubscriptionInterval? interval,
+    $1.SubscriptionInterval? interval,
     $core.int? intervalCount,
-    $0.SubscriptionPlanScope? scope,
+    $1.SubscriptionPlanScope? scope,
     $core.Iterable<$core.String>? labelIds,
     $core.Iterable<$core.String>? seriesIds,
+    $core.Iterable<$0.PublishedLabel>? labels,
+    $core.Iterable<$1.Series>? series,
   }) {
     final result = SubscriptionPlan._();
     if (id != null) result.id = id;
@@ -47,6 +50,8 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
     if (scope != null) result.scope = scope;
     if (labelIds != null) result.labelIds.addAll(labelIds);
     if (seriesIds != null) result.seriesIds.addAll(seriesIds);
+    if (labels != null) result.labels.addAll(labels);
+    if (series != null) result.series.addAll(series);
     return result;
   }
 
@@ -69,13 +74,17 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'description')
     ..aI(5, _omitFieldNames ? '' : 'priceAmount')
     ..aOS(6, _omitFieldNames ? '' : 'currency')
-    ..aE<$0.SubscriptionInterval>(7, _omitFieldNames ? '' : 'interval',
-        enumValues: $0.SubscriptionInterval.values)
+    ..aE<$1.SubscriptionInterval>(7, _omitFieldNames ? '' : 'interval',
+        enumValues: $1.SubscriptionInterval.values)
     ..aI(8, _omitFieldNames ? '' : 'intervalCount')
-    ..aE<$0.SubscriptionPlanScope>(9, _omitFieldNames ? '' : 'scope',
-        enumValues: $0.SubscriptionPlanScope.values)
+    ..aE<$1.SubscriptionPlanScope>(9, _omitFieldNames ? '' : 'scope',
+        enumValues: $1.SubscriptionPlanScope.values)
     ..pPS(10, _omitFieldNames ? '' : 'labelIds')
     ..pPS(11, _omitFieldNames ? '' : 'seriesIds')
+    ..pPM<$0.PublishedLabel>(12, _omitFieldNames ? '' : 'labels',
+        subBuilder: $0.PublishedLabel.$_createMessage)
+    ..pPM<$1.Series>(13, _omitFieldNames ? '' : 'series',
+        subBuilder: $1.Series.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -161,9 +170,9 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
   /// The plan bills price_amount every interval_count intervals: a monthly plan
   /// is SUBSCRIPTION_INTERVAL_MONTH and 1.
   @$pb.TagNumber(7)
-  $0.SubscriptionInterval get interval => $_getN(6);
+  $1.SubscriptionInterval get interval => $_getN(6);
   @$pb.TagNumber(7)
-  set interval($0.SubscriptionInterval value) => $_setField(7, value);
+  set interval($1.SubscriptionInterval value) => $_setField(7, value);
   @$pb.TagNumber(7)
   $core.bool hasInterval() => $_has(6);
   @$pb.TagNumber(7)
@@ -179,9 +188,9 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
   void clearIntervalCount() => $_clearField(8);
 
   @$pb.TagNumber(9)
-  $0.SubscriptionPlanScope get scope => $_getN(8);
+  $1.SubscriptionPlanScope get scope => $_getN(8);
   @$pb.TagNumber(9)
-  set scope($0.SubscriptionPlanScope value) => $_setField(9, value);
+  set scope($1.SubscriptionPlanScope value) => $_setField(9, value);
   @$pb.TagNumber(9)
   $core.bool hasScope() => $_has(8);
   @$pb.TagNumber(9)
@@ -197,6 +206,18 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(11)
   $pb.PbList<$core.String> get seriesIds => $_getList(10);
+
+  /// The labels of label_ids and the series of series_ids that the calling
+  /// surface may show, in the order the plan names them: a label with no
+  /// series published there, and a series that is not, are left out. The
+  /// series are titled in the reader's locale. ListSubscriptionPlans fills
+  /// them; GetMySubscription, which reports a plan the reader already holds,
+  /// leaves them empty.
+  @$pb.TagNumber(12)
+  $pb.PbList<$0.PublishedLabel> get labels => $_getList(11);
+
+  @$pb.TagNumber(13)
+  $pb.PbList<$1.Series> get series => $_getList(12);
 }
 
 /// A reader's subscription to one plan, as Stripe last reported it.
@@ -204,7 +225,7 @@ class Subscription extends $pb.GeneratedMessage {
   factory Subscription({
     $core.String? id,
     SubscriptionPlan? plan,
-    $0.SubscriptionStatus? status,
+    $1.SubscriptionStatus? status,
     $core.String? currentPeriodEnd,
     $core.bool? cancelAtPeriodEnd,
     $core.String? createdAt,
@@ -235,8 +256,8 @@ class Subscription extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOM<SubscriptionPlan>(2, _omitFieldNames ? '' : 'plan',
         subBuilder: SubscriptionPlan.$_createMessage)
-    ..aE<$0.SubscriptionStatus>(3, _omitFieldNames ? '' : 'status',
-        enumValues: $0.SubscriptionStatus.values)
+    ..aE<$1.SubscriptionStatus>(3, _omitFieldNames ? '' : 'status',
+        enumValues: $1.SubscriptionStatus.values)
     ..aOS(4, _omitFieldNames ? '' : 'currentPeriodEnd')
     ..aOB(5, _omitFieldNames ? '' : 'cancelAtPeriodEnd')
     ..aOS(6, _omitFieldNames ? '' : 'createdAt')
@@ -288,9 +309,9 @@ class Subscription extends $pb.GeneratedMessage {
   SubscriptionPlan ensurePlan() => $_ensure(1);
 
   @$pb.TagNumber(3)
-  $0.SubscriptionStatus get status => $_getN(2);
+  $1.SubscriptionStatus get status => $_getN(2);
   @$pb.TagNumber(3)
-  set status($0.SubscriptionStatus value) => $_setField(3, value);
+  set status($1.SubscriptionStatus value) => $_setField(3, value);
   @$pb.TagNumber(3)
   $core.bool hasStatus() => $_has(2);
   @$pb.TagNumber(3)
@@ -330,10 +351,14 @@ class Subscription extends $pb.GeneratedMessage {
 
 class ListSubscriptionPlansRequest extends $pb.GeneratedMessage {
   factory ListSubscriptionPlansRequest({
-    $0.TenantContext? tenant,
+    $1.TenantContext? tenant,
+    $1.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListSubscriptionPlansRequest._();
     if (tenant != null) result.tenant = tenant;
+    if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -350,8 +375,11 @@ class ListSubscriptionPlansRequest extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'ListSubscriptionPlansRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
       createEmptyInstance: ListSubscriptionPlansRequest.$_createMessage)
-    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
-        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOM<$1.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $1.TenantContext.$_createMessage)
+    ..aE<$1.ClientSurface>(2, _omitFieldNames ? '' : 'surface',
+        enumValues: $1.ClientSurface.values)
+    ..aOS(3, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -383,15 +411,37 @@ class ListSubscriptionPlansRequest extends $pb.GeneratedMessage {
   static ListSubscriptionPlansRequest? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $0.TenantContext get tenant => $_getN(0);
+  $1.TenantContext get tenant => $_getN(0);
   @$pb.TagNumber(1)
-  set tenant($0.TenantContext value) => $_setField(1, value);
+  set tenant($1.TenantContext value) => $_setField(1, value);
   @$pb.TagNumber(1)
   $core.bool hasTenant() => $_has(0);
   @$pb.TagNumber(1)
   void clearTenant() => $_clearField(1);
   @$pb.TagNumber(1)
-  $0.TenantContext ensureTenant() => $_ensure(0);
+  $1.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The client making the read. Unspecified is answered as the web storefront.
+  @$pb.TagNumber(2)
+  $1.ClientSurface get surface => $_getN(1);
+  @$pb.TagNumber(2)
+  set surface($1.ClientSurface value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSurface() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSurface() => $_clearField(2);
+
+  /// The reader's locale, which every series title in the answer is written
+  /// in, else the tenant's default locale's, else the oldest one. Empty means
+  /// the tenant's default locale.
+  @$pb.TagNumber(3)
+  $core.String get locale => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set locale($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLocale() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLocale() => $_clearField(3);
 }
 
 /// Every published plan of the tenant, in the order the tenant created them. A
@@ -477,7 +527,7 @@ class ListSubscriptionPlansResponse extends $pb.GeneratedMessage {
 /// in the query, or to `/plans` with `subscription=cancelled`.
 class StartSubscriptionCheckoutRequest extends $pb.GeneratedMessage {
   factory StartSubscriptionCheckoutRequest({
-    $0.TenantContext? tenant,
+    $1.TenantContext? tenant,
     $core.String? planId,
   }) {
     final result = StartSubscriptionCheckoutRequest._();
@@ -500,8 +550,8 @@ class StartSubscriptionCheckoutRequest extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'StartSubscriptionCheckoutRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
       createEmptyInstance: StartSubscriptionCheckoutRequest.$_createMessage)
-    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
-        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOM<$1.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $1.TenantContext.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'planId')
     ..hasRequiredFields = false;
 
@@ -534,15 +584,15 @@ class StartSubscriptionCheckoutRequest extends $pb.GeneratedMessage {
   static StartSubscriptionCheckoutRequest? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $0.TenantContext get tenant => $_getN(0);
+  $1.TenantContext get tenant => $_getN(0);
   @$pb.TagNumber(1)
-  set tenant($0.TenantContext value) => $_setField(1, value);
+  set tenant($1.TenantContext value) => $_setField(1, value);
   @$pb.TagNumber(1)
   $core.bool hasTenant() => $_has(0);
   @$pb.TagNumber(1)
   void clearTenant() => $_clearField(1);
   @$pb.TagNumber(1)
-  $0.TenantContext ensureTenant() => $_ensure(0);
+  $1.TenantContext ensureTenant() => $_ensure(0);
 
   @$pb.TagNumber(2)
   $core.String get planId => $_getSZ(1);
@@ -620,7 +670,7 @@ class StartSubscriptionCheckoutResponse extends $pb.GeneratedMessage {
 
 class GetMySubscriptionRequest extends $pb.GeneratedMessage {
   factory GetMySubscriptionRequest({
-    $0.TenantContext? tenant,
+    $1.TenantContext? tenant,
   }) {
     final result = GetMySubscriptionRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -640,8 +690,8 @@ class GetMySubscriptionRequest extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'GetMySubscriptionRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
       createEmptyInstance: GetMySubscriptionRequest.$_createMessage)
-    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
-        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOM<$1.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $1.TenantContext.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -670,15 +720,15 @@ class GetMySubscriptionRequest extends $pb.GeneratedMessage {
   static GetMySubscriptionRequest? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $0.TenantContext get tenant => $_getN(0);
+  $1.TenantContext get tenant => $_getN(0);
   @$pb.TagNumber(1)
-  set tenant($0.TenantContext value) => $_setField(1, value);
+  set tenant($1.TenantContext value) => $_setField(1, value);
   @$pb.TagNumber(1)
   $core.bool hasTenant() => $_has(0);
   @$pb.TagNumber(1)
   void clearTenant() => $_clearField(1);
   @$pb.TagNumber(1)
-  $0.TenantContext ensureTenant() => $_ensure(0);
+  $1.TenantContext ensureTenant() => $_ensure(0);
 }
 
 /// The signed-in reader's subscription: the latest one that is not over, or
@@ -758,7 +808,7 @@ class GetMySubscriptionResponse extends $pb.GeneratedMessage {
 /// tenant that takes no payments through Stripe.
 class CreateBillingPortalSessionRequest extends $pb.GeneratedMessage {
   factory CreateBillingPortalSessionRequest({
-    $0.TenantContext? tenant,
+    $1.TenantContext? tenant,
   }) {
     final result = CreateBillingPortalSessionRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -779,8 +829,8 @@ class CreateBillingPortalSessionRequest extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'CreateBillingPortalSessionRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
       createEmptyInstance: CreateBillingPortalSessionRequest.$_createMessage)
-    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
-        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOM<$1.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $1.TenantContext.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -812,15 +862,15 @@ class CreateBillingPortalSessionRequest extends $pb.GeneratedMessage {
   static CreateBillingPortalSessionRequest? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $0.TenantContext get tenant => $_getN(0);
+  $1.TenantContext get tenant => $_getN(0);
   @$pb.TagNumber(1)
-  set tenant($0.TenantContext value) => $_setField(1, value);
+  set tenant($1.TenantContext value) => $_setField(1, value);
   @$pb.TagNumber(1)
   $core.bool hasTenant() => $_has(0);
   @$pb.TagNumber(1)
   void clearTenant() => $_clearField(1);
   @$pb.TagNumber(1)
-  $0.TenantContext ensureTenant() => $_ensure(0);
+  $1.TenantContext ensureTenant() => $_ensure(0);
 }
 
 class CreateBillingPortalSessionResponse extends $pb.GeneratedMessage {

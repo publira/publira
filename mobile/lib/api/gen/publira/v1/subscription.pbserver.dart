@@ -15,32 +15,32 @@ import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
 
-import 'subscription.pb.dart' as $1;
+import 'subscription.pb.dart' as $2;
 import 'subscription.pbjson.dart';
 
 export 'subscription.pb.dart';
 
 abstract class SubscriptionServiceBase extends $pb.GeneratedService {
-  $async.Future<$1.ListSubscriptionPlansResponse> listSubscriptionPlans(
-      $pb.ServerContext ctx, $1.ListSubscriptionPlansRequest request);
-  $async.Future<$1.StartSubscriptionCheckoutResponse> startSubscriptionCheckout(
-      $pb.ServerContext ctx, $1.StartSubscriptionCheckoutRequest request);
-  $async.Future<$1.GetMySubscriptionResponse> getMySubscription(
-      $pb.ServerContext ctx, $1.GetMySubscriptionRequest request);
-  $async.Future<$1.CreateBillingPortalSessionResponse>
+  $async.Future<$2.ListSubscriptionPlansResponse> listSubscriptionPlans(
+      $pb.ServerContext ctx, $2.ListSubscriptionPlansRequest request);
+  $async.Future<$2.StartSubscriptionCheckoutResponse> startSubscriptionCheckout(
+      $pb.ServerContext ctx, $2.StartSubscriptionCheckoutRequest request);
+  $async.Future<$2.GetMySubscriptionResponse> getMySubscription(
+      $pb.ServerContext ctx, $2.GetMySubscriptionRequest request);
+  $async.Future<$2.CreateBillingPortalSessionResponse>
       createBillingPortalSession(
-          $pb.ServerContext ctx, $1.CreateBillingPortalSessionRequest request);
+          $pb.ServerContext ctx, $2.CreateBillingPortalSessionRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
       case 'ListSubscriptionPlans':
-        return $1.ListSubscriptionPlansRequest();
+        return $2.ListSubscriptionPlansRequest();
       case 'StartSubscriptionCheckout':
-        return $1.StartSubscriptionCheckoutRequest();
+        return $2.StartSubscriptionCheckoutRequest();
       case 'GetMySubscription':
-        return $1.GetMySubscriptionRequest();
+        return $2.GetMySubscriptionRequest();
       case 'CreateBillingPortalSession':
-        return $1.CreateBillingPortalSessionRequest();
+        return $2.CreateBillingPortalSessionRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -51,15 +51,15 @@ abstract class SubscriptionServiceBase extends $pb.GeneratedService {
     switch (methodName) {
       case 'ListSubscriptionPlans':
         return listSubscriptionPlans(
-            ctx, request as $1.ListSubscriptionPlansRequest);
+            ctx, request as $2.ListSubscriptionPlansRequest);
       case 'StartSubscriptionCheckout':
         return startSubscriptionCheckout(
-            ctx, request as $1.StartSubscriptionCheckoutRequest);
+            ctx, request as $2.StartSubscriptionCheckoutRequest);
       case 'GetMySubscription':
-        return getMySubscription(ctx, request as $1.GetMySubscriptionRequest);
+        return getMySubscription(ctx, request as $2.GetMySubscriptionRequest);
       case 'CreateBillingPortalSession':
         return createBillingPortalSession(
-            ctx, request as $1.CreateBillingPortalSessionRequest);
+            ctx, request as $2.CreateBillingPortalSessionRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
