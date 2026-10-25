@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "11mb",
     },
+    turbopackGc: true,
     turbopackRustReactCompiler: true,
     // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
     useOffline: true,

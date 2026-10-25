@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     authInterrupts: true,
     // Unmatched URLs skip normal layout rendering.
     globalNotFound: true,
+    turbopackGc: true,
     turbopackRustReactCompiler: true,
     // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
     useOffline: true,
