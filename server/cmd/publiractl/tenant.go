@@ -67,6 +67,7 @@ var tenantFlags = map[string]string{
 	platformtenants.FieldName:               "--name",
 	platformtenants.FieldDomain:             "--domain",
 	platformtenants.FieldAdminDomain:        "--admin-domain",
+	platformtenants.FieldImageDomain:        "--image-domain",
 	platformtenants.FieldDefaultLocale:      "--default-locale",
 	platformtenants.FieldSupportedLocales:   "--supported-locale",
 	platformtenants.FieldTimezone:           "--timezone",
@@ -85,7 +86,7 @@ func tenantError(err error) error {
 	}
 	switch {
 	case errors.Is(err, platformtenants.ErrNoChange):
-		return fmt.Errorf("--name, --domain, or --admin-domain: %w", err)
+		return fmt.Errorf("--name, --domain, --admin-domain, or --image-domain: %w", err)
 	case errors.Is(err, tenantmembers.ErrUserOrEmailRequired), errors.Is(err, tenantmembers.ErrUserAndEmailBothSet):
 		return fmt.Errorf("--user or --email: %w", err)
 	}
@@ -129,6 +130,7 @@ func setupTenantCreate(f *commandFlags) func(context.Context, *commandEnv) error
 	f.StringVar(&params.Name, "name", "", "the tenant's name")
 	f.StringVar(&params.Domain, "domain", "", "the host the tenant's site is served on")
 	f.StringVar(&params.AdminDomain, "admin-domain", "", "the host the tenant's console is served on, if not the default one")
+	f.StringVar(&params.ImageDomain, "image-domain", "", "the host the tenant's storefront images are served on, if not its domain")
 	f.StringVar(&params.DefaultLocale, "default-locale", "", "the tenant's language, one of "+strings.Join(locale.Supported, ", "))
 	f.Func("supported-locale", "a language the tenant's site offers, --default-locale among them; repeat for several, or leave out to offer --default-locale alone", func(code string) error {
 		params.SupportedLocales = append(params.SupportedLocales, code)
@@ -183,12 +185,17 @@ func setupTenantShow(f *commandFlags) func(context.Context, *commandEnv) error {
 			if tenant.AdminDomain.Valid {
 				adminDomain = tenant.AdminDomain.String
 			}
+			imageDomain := tenant.Domain + " (default)"
+			if tenant.ImageDomain.Valid {
+				imageDomain = tenant.ImageDomain.String
+			}
 			var b strings.Builder
 			fmt.Fprintf(&b, "Public ID:\t%s\n", tenant.PublicID)
 			fmt.Fprintf(&b, "Name:\t%s\n", tenant.Name)
 			fmt.Fprintf(&b, "Status:\t%s\n", tenant.Status)
 			fmt.Fprintf(&b, "Domain:\t%s\n", tenant.Domain)
 			fmt.Fprintf(&b, "Admin domain:\t%s\n", adminDomain)
+			fmt.Fprintf(&b, "Image domain:\t%s\n", imageDomain)
 			fmt.Fprintf(&b, "Time zone:\t%s\n", tenant.Timezone)
 			fmt.Fprintf(&b, "Default locale:\t%s\n", tenant.DefaultLocale)
 			fmt.Fprintf(&b, "Supported locales:\t%s\n", strings.Join(tenant.SupportedLocales, ", "))
@@ -203,9 +210,10 @@ func setupTenantUpdate(f *commandFlags) func(context.Context, *commandEnv) error
 	name := f.String("name", "", "the tenant's new name")
 	domain := f.String("domain", "", "the new host the tenant's site is served on")
 	adminDomain := f.String("admin-domain", "", `the new host the tenant's console is served on; "" goes back to the default one`)
+	imageDomain := f.String("image-domain", "", `the new host the tenant's storefront images are served on; "" goes back to its domain`)
 	return func(ctx context.Context, env *commandEnv) error {
-		// Only a flag given changes anything, so a --admin-domain left out keeps
-		// the tenant's while --admin-domain "" clears it.
+		// Only a flag given changes anything, so a --admin-domain or
+		// --image-domain left out keeps the tenant's while "" clears it.
 		var params platformtenants.UpdateParams
 		f.Visit(func(fl *flag.Flag) {
 			switch fl.Name {
@@ -215,6 +223,8 @@ func setupTenantUpdate(f *commandFlags) func(context.Context, *commandEnv) error
 				params.Domain = domain
 			case "admin-domain":
 				params.AdminDomain = adminDomain
+			case "image-domain":
+				params.ImageDomain = imageDomain
 			}
 		})
 

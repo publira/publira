@@ -184,7 +184,7 @@ func TestCreateRefusesAHostAnotherTenantServes(t *testing.T) {
 	pg.Reset(t)
 	for _, p := range []CreateParams{
 		// A console host of its own, and one implied by the domain.
-		{Name: "Stored", Domain: "stored.example.com", AdminDomain: "console.stored.example.com", DefaultLocale: "en"},
+		{Name: "Stored", Domain: "stored.example.com", AdminDomain: "console.stored.example.com", ImageDomain: "images.stored.example.com", DefaultLocale: "en"},
 		{Name: "Implied", Domain: "implied.example.com", DefaultLocale: "en"},
 		// A domain that is the admin.{domain} of a name no tenant has yet.
 		{Name: "Prefixed", Domain: "admin.shop.example.com", DefaultLocale: "en"},
@@ -198,6 +198,7 @@ func TestCreateRefusesAHostAnotherTenantServes(t *testing.T) {
 		name        string
 		domain      string
 		adminDomain string
+		imageDomain string
 		field       string
 	}{
 		{name: "domain equal to a domain", domain: "stored.example.com", field: FieldDomain},
@@ -208,10 +209,18 @@ func TestCreateRefusesAHostAnotherTenantServes(t *testing.T) {
 		{name: "admin domain equal to a domain", domain: "new.example.com", adminDomain: "implied.example.com", field: FieldAdminDomain},
 		{name: "implied console host equal to a domain", domain: "shop.example.com", field: FieldAdminDomain},
 		{name: "admin domain equal to its own domain", domain: "new.example.com", adminDomain: "new.example.com", field: FieldAdminDomain},
+		{name: "domain equal to an image host", domain: "images.stored.example.com", field: FieldDomain},
+		{name: "admin domain equal to an image host", domain: "new.example.com", adminDomain: "images.stored.example.com", field: FieldAdminDomain},
+		{name: "image domain equal to an image host", domain: "new.example.com", imageDomain: "images.stored.example.com", field: FieldImageDomain},
+		{name: "image domain equal to a domain", domain: "new.example.com", imageDomain: "implied.example.com", field: FieldImageDomain},
+		{name: "image domain equal to a stored console host", domain: "new.example.com", imageDomain: "console.stored.example.com", field: FieldImageDomain},
+		{name: "image domain equal to an implied console host", domain: "new.example.com", imageDomain: "admin.implied.example.com", field: FieldImageDomain},
+		{name: "image domain equal to its own domain", domain: "new.example.com", imageDomain: "new.example.com", field: FieldImageDomain},
+		{name: "image domain equal to its own console host", domain: "new.example.com", imageDomain: "admin.new.example.com", field: FieldImageDomain},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := create(t, pg, auditlog.SystemPlatformActor, CreateParams{
-				Name: "New", Domain: tc.domain, AdminDomain: tc.adminDomain, DefaultLocale: "en",
+				Name: "New", Domain: tc.domain, AdminDomain: tc.adminDomain, ImageDomain: tc.imageDomain, DefaultLocale: "en",
 			})
 			var conflict *fielderr.Conflict
 			if !errors.As(err, &conflict) {

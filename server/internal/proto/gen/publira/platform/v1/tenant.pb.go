@@ -35,7 +35,10 @@ type Tenant struct {
 	Timezone string `protobuf:"bytes,8,opt,name=timezone,proto3" json:"timezone,omitempty"`
 	// Primary key (UUID). Every request that acts on the tenant names it by
 	// this; public_id only resolves the tenant a URL names.
-	Id            string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,9,opt,name=id,proto3" json:"id,omitempty"`
+	// The host the tenant's storefront images are served on, when they are not
+	// served on its domain. Empty when it has none.
+	ImageDomain   string `protobuf:"bytes,10,opt,name=image_domain,json=imageDomain,proto3" json:"image_domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -122,6 +125,13 @@ func (x *Tenant) GetTimezone() string {
 func (x *Tenant) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *Tenant) GetImageDomain() string {
+	if x != nil {
+		return x.ImageDomain
 	}
 	return ""
 }
@@ -361,8 +371,11 @@ type CreateTenantRequest struct {
 	// publira.admin.v1.UpdateTenantDefaultLocaleRequest. Empty starts the tenant
 	// on default_locale alone.
 	SupportedLocales []string `protobuf:"bytes,7,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The host the tenant's storefront images are served on. Empty serves them
+	// on the domain.
+	ImageDomain   string `protobuf:"bytes,8,opt,name=image_domain,json=imageDomain,proto3" json:"image_domain,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateTenantRequest) Reset() {
@@ -435,6 +448,13 @@ func (x *CreateTenantRequest) GetSupportedLocales() []string {
 		return x.SupportedLocales
 	}
 	return nil
+}
+
+func (x *CreateTenantRequest) GetImageDomain() string {
+	if x != nil {
+		return x.ImageDomain
+	}
+	return ""
 }
 
 type CreateTenantResponse struct {
@@ -1719,14 +1739,16 @@ func (x *CancelTenantAdminInvitationResponse) GetInvitation() *TenantAdminInvita
 }
 
 // Only the fields a request carries change: an absent one keeps the tenant's
-// value, and a present empty admin_domain moves the console back to
-// admin.<domain>.
+// value, a present empty admin_domain moves the console back to
+// admin.<domain>, and a present empty image_domain moves the storefront images
+// back to the domain.
 type UpdateTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Domain        *string                `protobuf:"bytes,4,opt,name=domain,proto3,oneof" json:"domain,omitempty"`
 	AdminDomain   *string                `protobuf:"bytes,5,opt,name=admin_domain,json=adminDomain,proto3,oneof" json:"admin_domain,omitempty"`
 	TenantId      string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ImageDomain   *string                `protobuf:"bytes,7,opt,name=image_domain,json=imageDomain,proto3,oneof" json:"image_domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1789,6 +1811,13 @@ func (x *UpdateTenantRequest) GetTenantId() string {
 	return ""
 }
 
+func (x *UpdateTenantRequest) GetImageDomain() string {
+	if x != nil && x.ImageDomain != nil {
+		return *x.ImageDomain
+	}
+	return ""
+}
+
 type UpdateTenantResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *Tenant                `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1837,7 +1866,7 @@ var File_publira_platform_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\xdd\x01\n" +
+	" publira/platform/v1/tenant.proto\x12\x13publira.platform.v1\"\x80\x02\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -1847,7 +1876,9 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x06domain\x18\x05 \x01(\tR\x06domain\x12!\n" +
 	"\fadmin_domain\x18\a \x01(\tR\vadminDomain\x12\x1a\n" +
 	"\btimezone\x18\b \x01(\tR\btimezone\x12\x0e\n" +
-	"\x02id\x18\t \x01(\tR\x02idJ\x04\b\x06\x10\a\"\x8b\x01\n" +
+	"\x02id\x18\t \x01(\tR\x02id\x12!\n" +
+	"\fimage_domain\x18\n" +
+	" \x01(\tR\vimageDomainJ\x04\b\x06\x10\a\"\x8b\x01\n" +
 	"\x12ListTenantsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x16\n" +
@@ -1861,14 +1892,15 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\"H\n" +
 	"\x11GetTenantResponse\x123\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\xf0\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"\x93\x02\n" +
 	"\x13CreateTenantRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x03 \x01(\tR\x06domain\x120\n" +
 	"\x14initial_admin_emails\x18\x04 \x03(\tR\x12initialAdminEmails\x12!\n" +
 	"\fadmin_domain\x18\x05 \x01(\tR\vadminDomain\x12%\n" +
 	"\x0edefault_locale\x18\x06 \x01(\tR\rdefaultLocale\x12+\n" +
-	"\x11supported_locales\x18\a \x03(\tR\x10supportedLocalesJ\x04\b\x02\x10\x03\"K\n" +
+	"\x11supported_locales\x18\a \x03(\tR\x10supportedLocales\x12!\n" +
+	"\fimage_domain\x18\b \x01(\tR\vimageDomainJ\x04\b\x02\x10\x03\"K\n" +
 	"\x14CreateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant\"D\n" +
 	"\x14SuspendTenantRequest\x12\x1b\n" +
@@ -1959,15 +1991,17 @@ const file_publira_platform_v1_tenant_proto_rawDesc = "" +
 	"#CancelTenantAdminInvitationResponse\x12J\n" +
 	"\n" +
 	"invitation\x18\x01 \x01(\v2*.publira.platform.v1.TenantAdminInvitationR\n" +
-	"invitation\"\xcc\x01\n" +
+	"invitation\"\x85\x02\n" +
 	"\x13UpdateTenantRequest\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1b\n" +
 	"\x06domain\x18\x04 \x01(\tH\x01R\x06domain\x88\x01\x01\x12&\n" +
 	"\fadmin_domain\x18\x05 \x01(\tH\x02R\vadminDomain\x88\x01\x01\x12\x1b\n" +
-	"\ttenant_id\x18\x06 \x01(\tR\btenantIdB\a\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12&\n" +
+	"\fimage_domain\x18\a \x01(\tH\x03R\vimageDomain\x88\x01\x01B\a\n" +
 	"\x05_nameB\t\n" +
 	"\a_domainB\x0f\n" +
-	"\r_admin_domainJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04R\tpublic_id\"K\n" +
+	"\r_admin_domainB\x0f\n" +
+	"\r_image_domainJ\x04\b\x01\x10\x02J\x04\b\x03\x10\x04R\tpublic_id\"K\n" +
 	"\x14UpdateTenantResponse\x123\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1b.publira.platform.v1.TenantR\x06tenant2\xae\r\n" +
 	"\x15PlatformTenantService\x12b\n" +

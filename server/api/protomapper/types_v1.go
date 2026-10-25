@@ -2,7 +2,6 @@ package protomapper
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -251,10 +250,10 @@ func SetEpisodeRental(episode *publirattypesv1.Episode, price, periodHours sql.N
 	episode.RentalPeriodHours = periodHours.Int32
 }
 
-func EpisodeImageFromEpisodeImage(row dbmodels.ListEpisodeImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
+func EpisodeImageFromEpisodeImage(origin ImageOrigin, row dbmodels.ListEpisodeImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
 	return &publirattypesv1.EpisodeImage{
 		Id:            row.ID.String(),
-		ImageUrl:      fmt.Sprintf("/images/episodes/%s", row.ID.String()),
+		ImageUrl:      origin.imageURL("/images/episodes/%s", row.ID.String()),
 		ContentType:   row.ContentType,
 		FileSizeBytes: row.FileSizeBytes,
 		DisplayOrder:  row.DisplayOrder,
@@ -268,11 +267,11 @@ func EpisodeImageFromEpisodeImage(row dbmodels.ListEpisodeImagesByEpisodeIDRow) 
 // rendition is rendered from by the same function that renders it, so a
 // client lays out the box the image will fill. The byte size is not known
 // before the rendition is first rendered and stays 0.
-func EpisodePreviewImageFromRow(row dbmodels.ListEpisodePreviewImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
+func EpisodePreviewImageFromRow(origin ImageOrigin, row dbmodels.ListEpisodePreviewImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {
 	width, height := imageproc.EpisodePreviewSize(int(row.Width), int(row.Height))
 	return &publirattypesv1.EpisodeImage{
 		Id:           row.ID.String(),
-		ImageUrl:     fmt.Sprintf("/images/episodes/%s/preview", row.ID.String()),
+		ImageUrl:     origin.imageURL("/images/episodes/%s/preview", row.ID.String()),
 		ContentType:  imageproc.EpisodePreviewContentType,
 		DisplayOrder: row.DisplayOrder,
 		Width:        int32(width),
@@ -280,10 +279,10 @@ func EpisodePreviewImageFromRow(row dbmodels.ListEpisodePreviewImagesByEpisodeID
 	}
 }
 
-func EpisodeImageFromImageAndVariant(image dbmodels.EpisodeImage, variant dbmodels.EpisodeImageVariant) *publirattypesv1.EpisodeImage {
+func EpisodeImageFromImageAndVariant(origin ImageOrigin, image dbmodels.EpisodeImage, variant dbmodels.EpisodeImageVariant) *publirattypesv1.EpisodeImage {
 	return &publirattypesv1.EpisodeImage{
 		Id:            image.ID.String(),
-		ImageUrl:      fmt.Sprintf("/images/episodes/%s", image.ID.String()),
+		ImageUrl:      origin.imageURL("/images/episodes/%s", image.ID.String()),
 		ContentType:   variant.ContentType,
 		FileSizeBytes: variant.FileSizeBytes,
 		DisplayOrder:  image.DisplayOrder,
@@ -318,6 +317,7 @@ func SeriesFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisodeF
 }
 
 func CreatorFromRow(
+	origin ImageOrigin,
 	publicID string,
 	name string,
 	profileText string,
@@ -337,21 +337,26 @@ func CreatorFromRow(
 		creator.IconImageUpdatedAt = iconImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 	}
 	if iconImageID.Valid {
-		creator.IconImageUrl = fmt.Sprintf("/images/creators/%s", iconImageID.UUID.String())
+		creator.IconImageUrl = CreatorIconURL(origin, iconImageID.UUID)
 	}
 	return creator
+}
+
+// CreatorIconURL is the image server route a creator's icon is served from.
+func CreatorIconURL(origin ImageOrigin, iconImageID uuid.UUID) string {
+	return origin.imageURL("/images/creators/%s", iconImageID.String())
 }
 
 // EpisodeCreditsByEpisodeID groups the credits of several episodes by the
 // episode they are on. The query returns them in role priority order, so
 // nothing here reorders them.
-func EpisodeCreditsByEpisodeID(rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) map[uuid.UUID][]*publirattypesv1.Creator {
+func EpisodeCreditsByEpisodeID(origin ImageOrigin, rows []dbmodels.ListEpisodeCreatorsByEpisodeIDsRow) map[uuid.UUID][]*publirattypesv1.Creator {
 	credits := make(map[uuid.UUID][]*publirattypesv1.Creator)
 	for _, row := range rows {
 		// The icon's byte size is not on the credit read, the way it is not on
 		// the series aggregate's: what a page needs to render the icon is its
 		// URL and the instant it last changed.
-		creator := CreatorFromRow(row.PublicID, row.Name, row.ProfileText.String, row.IconImageID, 0, row.IconImageUpdatedAt)
+		creator := CreatorFromRow(origin, row.PublicID, row.Name, row.ProfileText.String, row.IconImageID, 0, row.IconImageUpdatedAt)
 		// A credit baked from one written before roles existed carries none,
 		// and says so by leaving the field unset rather than by naming an
 		// empty role.
@@ -461,6 +466,7 @@ func TenantThemeFromGetRow(
 // the image they belong to, so one read of tenant_image_variants serves every
 // slot of the theme.
 func TenantImageVariantsByImageID(
+	origin ImageOrigin,
 	rows []dbmodels.ListTenantImageVariantsByImageIDsRow,
 ) map[uuid.UUID][]*publirattypesv1.TenantImageVariant {
 	byImageID := make(map[uuid.UUID][]*publirattypesv1.TenantImageVariant, len(rows))
@@ -468,7 +474,7 @@ func TenantImageVariantsByImageID(
 		byImageID[row.TenantImageID] = append(byImageID[row.TenantImageID], &publirattypesv1.TenantImageVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           TenantImageURL(row.TenantImageID, row.VariantType),
+			Url:           TenantImageURL(origin, row.TenantImageID, row.VariantType),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,
@@ -485,14 +491,14 @@ func TenantImageVariantsByImageID(
 // does not read version. It is there so a cache holding the previous response
 // cannot serve that response for the new image. A request for the previous
 // URL still resolves to whatever that ratio holds now.
-func EyeCatchVariantURL(collection string, imageID uuid.UUID, variantType string, width int32, version uuid.UUID) string {
-	return fmt.Sprintf("/images/%s/%s/%s/%d?v=%s", collection, imageID.String(), variantType, width, version.String())
+func EyeCatchVariantURL(origin ImageOrigin, collection string, imageID uuid.UUID, variantType string, width int32, version uuid.UUID) string {
+	return origin.imageURL("/images/%s/%s/%s/%d?v=%s", collection, imageID.String(), variantType, width, version.String())
 }
 
 // EyeCatchVariants answers the stored variants of an owner's images, grouped
 // by image as ownerimages.Load reads them, as the messages a response
 // carries, each with the URL its collection delivers it at.
-func EyeCatchVariants(collection string, byImageID map[uuid.UUID][]ownerimages.Variant) map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant {
+func EyeCatchVariants(origin ImageOrigin, collection string, byImageID map[uuid.UUID][]ownerimages.Variant) map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant {
 	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
 	for imageID, variants := range byImageID {
 		items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(variants))
@@ -500,7 +506,7 @@ func EyeCatchVariants(collection string, byImageID map[uuid.UUID][]ownerimages.V
 			items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
 				Label:         variant.Label,
 				VariantType:   variant.VariantType,
-				Url:           EyeCatchVariantURL(collection, imageID, variant.VariantType, variant.Width, variant.ID),
+				Url:           EyeCatchVariantURL(origin, collection, imageID, variant.VariantType, variant.Width, variant.ID),
 				ContentType:   variant.ContentType,
 				Width:         variant.Width,
 				Height:        variant.Height,
@@ -517,8 +523,8 @@ func EyeCatchVariants(collection string, byImageID map[uuid.UUID][]ownerimages.V
 // by aspect ratio. A replace stores a new image, so this URL changes on its own
 // and needs no cache-busting query. Callers that want a smaller rendition add
 // the image server's own `w` parameter; nothing is pre-generated per size.
-func TenantImageURL(tenantImageID uuid.UUID, variantType string) string {
-	return fmt.Sprintf("/images/tenants/%s/%s", tenantImageID.String(), variantType)
+func TenantImageURL(origin ImageOrigin, tenantImageID uuid.UUID, variantType string) string {
+	return origin.imageURL("/images/tenants/%s/%s", tenantImageID.String(), variantType)
 }
 
 // UserIcon is the icon one account elects, as a response that names the
@@ -538,15 +544,15 @@ type UserIcon struct {
 // Every variant is served at the icon's one URL: image-server answers an icon
 // with its largest variant and scales it for each size a page asks for, so the
 // URL names the icon rather than the rendition.
-func UserIconsByUserID(rows []dbmodels.ListUserIconVariantsByUserIDsRow) map[uuid.UUID]UserIcon {
+func UserIconsByUserID(origin ImageOrigin, rows []dbmodels.ListUserIconVariantsByUserIDsRow) map[uuid.UUID]UserIcon {
 	icons := make(map[uuid.UUID]UserIcon)
 	for _, row := range rows {
 		icon := icons[row.UserID]
 		icon.UpdatedAt = row.UpdatedAt.UTC().Format(time.RFC3339)
-		url := fmt.Sprintf("/images/users/%s", row.IconID.String())
+		url := origin.imageURL("/images/users/%s", row.IconID.String())
 		if row.Preset {
 			icon.PresetID = row.IconID.String()
-			url = readerIconPresetURL(row.IconID)
+			url = readerIconPresetURL(origin, row.IconID)
 		}
 		icon.Variants = append(icon.Variants, &publirattypesv1.UserIconVariant{
 			Label:         row.Label,
@@ -564,7 +570,7 @@ func UserIconsByUserID(rows []dbmodels.ListUserIconVariantsByUserIDsRow) map[uui
 // ReaderIconPresets groups the stored variants of a tenant's presets by
 // preset, in the order the query returns them: oldest preset first, and each
 // preset's variants largest first.
-func ReaderIconPresets(rows []dbmodels.ListReaderIconPresetVariantsRow) []*publirattypesv1.ReaderIconPreset {
+func ReaderIconPresets(origin ImageOrigin, rows []dbmodels.ListReaderIconPresetVariantsRow) []*publirattypesv1.ReaderIconPreset {
 	presets := []*publirattypesv1.ReaderIconPreset{}
 	for _, row := range rows {
 		id := row.ReaderIconPresetID.String()
@@ -577,7 +583,7 @@ func ReaderIconPresets(rows []dbmodels.ListReaderIconPresetVariantsRow) []*publi
 		preset := presets[len(presets)-1]
 		preset.Variants = append(preset.Variants, &publirattypesv1.UserIconVariant{
 			Label:         row.Label,
-			Url:           readerIconPresetURL(row.ReaderIconPresetID),
+			Url:           readerIconPresetURL(origin, row.ReaderIconPresetID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,
@@ -587,6 +593,6 @@ func ReaderIconPresets(rows []dbmodels.ListReaderIconPresetVariantsRow) []*publi
 	return presets
 }
 
-func readerIconPresetURL(presetID uuid.UUID) string {
-	return fmt.Sprintf("/images/reader-icon-presets/%s", presetID.String())
+func readerIconPresetURL(origin ImageOrigin, presetID uuid.UUID) string {
+	return origin.imageURL("/images/reader-icon-presets/%s", presetID.String())
 }

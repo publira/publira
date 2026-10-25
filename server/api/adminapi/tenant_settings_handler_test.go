@@ -81,7 +81,7 @@ func TestUpdateTenantTimezonePersistsIANAName(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow, nil))
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectCommit()
 
@@ -116,7 +116,7 @@ func TestUpdateTenantTimezoneRecordsItsInvalidationBeforeCommitting(t *testing.T
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow, nil))
 	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
@@ -150,7 +150,7 @@ func TestUpdateTenantTimezoneRollsBackWhenItsInvalidationCannotBeRecorded(t *tes
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantTimezone)).
 		WithArgs("Europe/Berlin", tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "Europe/Berlin", "ja", testSupportedLocalesRow, nil))
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(sql.ErrConnDone)
@@ -324,7 +324,7 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantDefaultLocale)).
 		WithArgs("en", pq.Array([]string{"en", "ko"}), tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "en", "{en,ko}"))
+			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "en", "{en,ko}", nil))
 	expectAdminAuditLogInsert(mock)
 	// The save changed the row, so every search document of the tenant is
 	// written again.

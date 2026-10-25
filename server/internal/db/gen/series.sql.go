@@ -483,11 +483,8 @@ SELECT s.id,
                     cr.name,
                     'profile_text',
                     c.profile_text,
-                    'icon_image_url',
-                    CASE
-                        WHEN c.icon_image_id IS NOT NULL THEN '/images/creators/' || c.icon_image_id::text
-                        ELSE ''
-                    END,
+                    'icon_image_id',
+                    c.icon_image_id,
                     'icon_image_file_size_bytes',
                     0,
                     'icon_image_updated_at',

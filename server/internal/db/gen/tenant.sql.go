@@ -53,9 +53,9 @@ func (q *Queries) CountSuspendedTenants(ctx context.Context) (int32, error) {
 }
 
 const CreateTenant = `-- name: CreateTenant :one
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale, supported_locales)
-VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8::text[])
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+INSERT INTO tenants (id, public_id, domain, admin_domain, image_domain, name, status, timezone, default_locale, supported_locales)
+VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $8, $9::text[])
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 `
 
 type CreateTenantParams struct {
@@ -63,6 +63,7 @@ type CreateTenantParams struct {
 	PublicID         string         `json:"public_id"`
 	Domain           string         `json:"domain"`
 	AdminDomain      sql.NullString `json:"admin_domain"`
+	ImageDomain      sql.NullString `json:"image_domain"`
 	Name             string         `json:"name"`
 	Timezone         string         `json:"timezone"`
 	DefaultLocale    string         `json:"default_locale"`
@@ -79,6 +80,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		arg.PublicID,
 		arg.Domain,
 		arg.AdminDomain,
+		arg.ImageDomain,
 		arg.Name,
 		arg.Timezone,
 		arg.DefaultLocale,
@@ -96,6 +98,7 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
@@ -133,7 +136,7 @@ func (q *Queries) CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (T
 }
 
 const GetAdminTenantByDomains = `-- name: GetAdminTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t
     ON t.admin_domain = candidate.domain
@@ -161,6 +164,7 @@ func (q *Queries) GetAdminTenantByDomains(ctx context.Context, domains []string)
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
@@ -182,7 +186,7 @@ func (q *Queries) GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.U
 }
 
 const GetTenantByDomains = `-- name: GetTenantByDomains :one
-SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain
 FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
 JOIN tenants t ON t.domain = candidate.domain
 ORDER BY candidate.ord
@@ -205,12 +209,13 @@ func (q *Queries) GetTenantByDomains(ctx context.Context, domains []string) (Ten
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
 
 const GetTenantByID = `-- name: GetTenantByID :one
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 FROM tenants
 WHERE id = $1
 LIMIT 1
@@ -230,12 +235,42 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
+	)
+	return i, err
+}
+
+const GetTenantByImageDomains = `-- name: GetTenantByImageDomains :one
+SELECT t.id, t.public_id, t.domain, t.name, t.created_at, t.status, t.admin_domain, t.timezone, t.default_locale, t.supported_locales, t.image_domain
+FROM unnest($1::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t ON t.image_domain = candidate.domain
+ORDER BY candidate.ord
+LIMIT 1
+`
+
+// Return the first tenant whose image_domain matches, keeping the order of the
+// candidate host names.
+func (q *Queries) GetTenantByImageDomains(ctx context.Context, domains []string) (Tenant, error) {
+	row := q.db.QueryRowContext(ctx, GetTenantByImageDomains, pq.Array(domains))
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Domain,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.AdminDomain,
+		&i.Timezone,
+		&i.DefaultLocale,
+		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
 
 const GetTenantByPublicID = `-- name: GetTenantByPublicID :one
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 FROM tenants
 WHERE public_id = $1
 LIMIT 1
@@ -255,6 +290,7 @@ func (q *Queries) GetTenantByPublicID(ctx context.Context, publicID string) (Ten
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
@@ -325,39 +361,53 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 const GetTenantHostsTaken = `-- name: GetTenantHostsTaken :one
 SELECT COALESCE(
         bool_or(
-            $1::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+            $1::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)), t.image_domain)
         ),
         false
     )::boolean AS domain_taken,
     COALESCE(
         bool_or(
-            $2::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+            $2::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)), t.image_domain)
         ),
         false
-    )::boolean AS console_host_taken
+    )::boolean AS console_host_taken,
+    COALESCE(
+        bool_or(
+            $3::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)), t.image_domain)
+        ),
+        false
+    )::boolean AS image_host_taken
 FROM tenants t
-WHERE t.id <> $3
+WHERE t.id <> $4
 `
 
 type GetTenantHostsTakenParams struct {
-	Domain      string    `json:"domain"`
-	ConsoleHost string    `json:"console_host"`
-	ID          uuid.UUID `json:"id"`
+	Domain      string         `json:"domain"`
+	ConsoleHost string         `json:"console_host"`
+	ImageHost   sql.NullString `json:"image_host"`
+	ID          uuid.UUID      `json:"id"`
 }
 
 type GetTenantHostsTakenRow struct {
 	DomainTaken      bool `json:"domain_taken"`
 	ConsoleHostTaken bool `json:"console_host_taken"`
+	ImageHostTaken   bool `json:"image_host_taken"`
 }
 
-// Whether a tenant other than id already serves the domain or the console host
-// as either of its own: its domain, or its console host, which is its
-// admin_domain or else admin.{domain}. Take LockTenantHosts first, in a
-// statement of its own, so this sees every write that held it before.
+// Whether a tenant other than id already serves the domain, the console host,
+// or the image host as any of its own: its domain, its console host, which is
+// its admin_domain or else admin.{domain}, or its image_domain. A NULL
+// image_host is taken by no one. Take LockTenantHosts first, in a statement of
+// its own, so this sees every write that held it before.
 func (q *Queries) GetTenantHostsTaken(ctx context.Context, arg GetTenantHostsTakenParams) (GetTenantHostsTakenRow, error) {
-	row := q.db.QueryRowContext(ctx, GetTenantHostsTaken, arg.Domain, arg.ConsoleHost, arg.ID)
+	row := q.db.QueryRowContext(ctx, GetTenantHostsTaken,
+		arg.Domain,
+		arg.ConsoleHost,
+		arg.ImageHost,
+		arg.ID,
+	)
 	var i GetTenantHostsTakenRow
-	err := row.Scan(&i.DomainTaken, &i.ConsoleHostTaken)
+	err := row.Scan(&i.DomainTaken, &i.ConsoleHostTaken, &i.ImageHostTaken)
 	return i, err
 }
 
@@ -437,7 +487,7 @@ func (q *Queries) GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPag
 }
 
 const ListTenantsAsc = `-- name: ListTenantsAsc :many
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR status = $2::text)
@@ -492,6 +542,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 			&i.Timezone,
 			&i.DefaultLocale,
 			pq.Array(&i.SupportedLocales),
+			&i.ImageDomain,
 		); err != nil {
 			return nil, err
 		}
@@ -507,7 +558,7 @@ func (q *Queries) ListTenantsAsc(ctx context.Context, arg ListTenantsAscParams) 
 }
 
 const ListTenantsDesc = `-- name: ListTenantsDesc :many
-SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+SELECT id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 FROM tenants
 WHERE ($1::text = '' OR name ILIKE '%' || $1::text || '%')
   AND ($2::text = '' OR status = $2::text)
@@ -566,6 +617,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 			&i.Timezone,
 			&i.DefaultLocale,
 			pq.Array(&i.SupportedLocales),
+			&i.ImageDomain,
 		); err != nil {
 			return nil, err
 		}
@@ -641,9 +693,10 @@ SELECT pg_advisory_xact_lock(hashtextextended('tenant_hosts', 0))
 `
 
 // Serializes, for the rest of the transaction, the writes that decide which
-// tenant a host name belongs to. The unique constraints keep two domains or two
-// stored admin domains apart, but none of them can see a domain equal to
-// another tenant's console host, so two writes that each pass
+// tenant a host name belongs to. The unique constraints keep two domains, two
+// stored admin domains, or two image domains apart, but none of them can see a
+// domain equal to another tenant's console host or image host, so two writes
+// that each pass
 // GetTenantHostsTaken would otherwise both commit.
 func (q *Queries) LockTenantHosts(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, LockTenantHosts)
@@ -659,7 +712,7 @@ WHERE id = $3
         default_locale <> $1
         OR supported_locales <> $2::text[]
     )
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 `
 
 type UpdateTenantDefaultLocaleParams struct {
@@ -686,21 +739,26 @@ func (q *Queries) UpdateTenantDefaultLocale(ctx context.Context, arg UpdateTenan
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
 
 const UpdateTenantInfo = `-- name: UpdateTenantInfo :one
 UPDATE tenants
-SET name = $1, domain = $2, admin_domain = $3
-WHERE id = $4
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+SET name = $1,
+    domain = $2,
+    admin_domain = $3,
+    image_domain = $4
+WHERE id = $5
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 `
 
 type UpdateTenantInfoParams struct {
 	Name        string         `json:"name"`
 	Domain      string         `json:"domain"`
 	AdminDomain sql.NullString `json:"admin_domain"`
+	ImageDomain sql.NullString `json:"image_domain"`
 	ID          uuid.UUID      `json:"id"`
 }
 
@@ -710,6 +768,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		arg.Name,
 		arg.Domain,
 		arg.AdminDomain,
+		arg.ImageDomain,
 		arg.ID,
 	)
 	var i Tenant
@@ -724,6 +783,7 @@ func (q *Queries) UpdateTenantInfo(ctx context.Context, arg UpdateTenantInfoPara
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
@@ -732,7 +792,7 @@ const UpdateTenantStatus = `-- name: UpdateTenantStatus :one
 UPDATE tenants
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 `
 
 type UpdateTenantStatusParams struct {
@@ -755,6 +815,7 @@ func (q *Queries) UpdateTenantStatus(ctx context.Context, arg UpdateTenantStatus
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }
@@ -764,7 +825,7 @@ UPDATE tenants
 SET timezone = $1
 WHERE id = $2
     AND timezone <> $1
-RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales
+RETURNING id, public_id, domain, name, created_at, status, admin_domain, timezone, default_locale, supported_locales, image_domain
 `
 
 type UpdateTenantTimezoneParams struct {
@@ -789,6 +850,7 @@ func (q *Queries) UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTime
 		&i.Timezone,
 		&i.DefaultLocale,
 		pq.Array(&i.SupportedLocales),
+		&i.ImageDomain,
 	)
 	return i, err
 }

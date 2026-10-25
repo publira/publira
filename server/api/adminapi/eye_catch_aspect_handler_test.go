@@ -179,8 +179,8 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	for _, variant := range resp.Series.GetEyeCatchImageVariants() {
 		ratios[variant.GetVariantType()] = variant.GetUrl()
 	}
-	if ratios["landscape"] != protomapper.EyeCatchVariantURL("series", imageID, "landscape", 1600, landscapeID) ||
-		ratios["portrait"] != protomapper.EyeCatchVariantURL("series", imageID, "portrait", 1200, portraitID) {
+	if ratios["landscape"] != protomapper.EyeCatchVariantURL(protomapper.HostRelative, "series", imageID, "landscape", 1600, landscapeID) ||
+		ratios["portrait"] != protomapper.EyeCatchVariantURL(protomapper.HostRelative, "series", imageID, "portrait", 1200, portraitID) {
 		t.Fatalf("variant urls = %v, want landscape and portrait addressed by their own rows", ratios)
 	}
 	assertExpectations(t, mock)
@@ -506,7 +506,7 @@ func TestUploadLabelEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		t.Fatalf("UploadLabelEyeCatchAspectImage: %v", err)
 	}
 	variants := resp.Label.GetEyeCatchImageVariants()
-	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("labels", imageID, "square", 1200, squareID) {
+	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL(protomapper.HostRelative, "labels", imageID, "square", 1200, squareID) {
 		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
 	}
 	assertExpectations(t, mock)
@@ -616,7 +616,7 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 		t.Fatalf("UploadGenreEyeCatchAspectImage: %v", err)
 	}
 	variants := resp.Genre.GetEyeCatchImageVariants()
-	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL("genres", imageID, "square", 1200, squareID) {
+	if len(variants) != 1 || variants[0].GetUrl() != protomapper.EyeCatchVariantURL(protomapper.HostRelative, "genres", imageID, "square", 1200, squareID) {
 		t.Fatalf("variants = %v, want the square variant addressed by its row", variants)
 	}
 	assertExpectations(t, mock)

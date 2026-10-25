@@ -263,7 +263,7 @@ func (s *apiServer) ListEpisodeComments(
 			authorIDs = append(authorIDs, row.authorID)
 		}
 	}
-	icons, err := s.userIcons(ctx, s.queriesFor(ctx), tenant.ID, authorIDs)
+	icons, err := s.userIcons(ctx, s.queriesFor(ctx), tenant, authorIDs)
 	if err != nil {
 		return nil, err
 	}

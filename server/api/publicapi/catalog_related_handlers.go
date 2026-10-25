@@ -210,6 +210,10 @@ func (s *apiServer) ListRelatedSeries(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -283,7 +287,7 @@ func (s *apiServer) ListRelatedSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list related series", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, err
 	}

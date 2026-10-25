@@ -27,17 +27,19 @@ import (
 	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
-// stubResolver answers one of the two tenant lookups and leaves the other
+// stubResolver answers one of the three tenant lookups and leaves the others
 // empty, which is how the handler decides the site a request arrived on: a
-// `domain` match is the storefront and an `admin_domain` match is the console.
+// `domain` match is the storefront, an `admin_domain` match is the console,
+// and an `image_domain` match is the image host.
 type stubResolver struct {
 	tenant  dbmodels.Tenant
 	err     error
 	console bool
+	images  bool
 }
 
 func (s stubResolver) GetTenantByDomains(context.Context, []string) (dbmodels.Tenant, error) {
-	if s.console {
+	if s.console || s.images {
 		return dbmodels.Tenant{}, sql.ErrNoRows
 	}
 	return s.tenant, s.err
@@ -45,6 +47,13 @@ func (s stubResolver) GetTenantByDomains(context.Context, []string) (dbmodels.Te
 
 func (s stubResolver) GetAdminTenantByDomains(context.Context, []string) (dbmodels.Tenant, error) {
 	if !s.console {
+		return dbmodels.Tenant{}, sql.ErrNoRows
+	}
+	return s.tenant, s.err
+}
+
+func (s stubResolver) GetTenantByImageDomains(context.Context, []string) (dbmodels.Tenant, error) {
+	if !s.images {
 		return dbmodels.Tenant{}, sql.ErrNoRows
 	}
 	return s.tenant, s.err
@@ -1263,6 +1272,7 @@ func TestAHostOfASiteTheServerIsNotGivenIsNotFound(t *testing.T) {
 	}
 	storefront := stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}}
 	console := stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, console: true}
+	images := stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, images: true}
 
 	for _, tc := range []struct {
 		name     string
@@ -1272,8 +1282,10 @@ func TestAHostOfASiteTheServerIsNotGivenIsNotFound(t *testing.T) {
 	}{
 		{"a storefront host on a storefront-only server", storefront, "storefront", http.StatusOK},
 		{"a console host on a storefront-only server", console, "storefront", http.StatusNotFound},
+		{"an image host on a storefront-only server", images, "storefront", http.StatusOK},
 		{"a console host on a console-only server", console, "console", http.StatusOK},
 		{"a storefront host on a console-only server", storefront, "console", http.StatusNotFound},
+		{"an image host on a console-only server", images, "console", http.StatusNotFound},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("PUBLIRA_REDIS_URL", "disabled")
@@ -2202,6 +2214,10 @@ func (s switchingResolver) GetAdminTenantByDomains(context.Context, []string) (d
 		return dbmodels.Tenant{}, sql.ErrNoRows
 	}
 	return *s.tenant, nil
+}
+
+func (switchingResolver) GetTenantByImageDomains(context.Context, []string) (dbmodels.Tenant, error) {
+	return dbmodels.Tenant{}, sql.ErrNoRows
 }
 
 // suspensionCheckingFactory opens the tenant's rows, and fails the test when it

@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -61,6 +61,7 @@ func decodeCreatorCursorKeys(cursor pagination.Cursor) (creatorCursorKeys, error
 }
 
 func publishedCreatorFromFields(
+	images protomapper.ImageOrigin,
 	id uuid.UUID,
 	publicID string,
 	name string,
@@ -80,7 +81,7 @@ func publishedCreatorFromFields(
 		creator.ProfileText = profileText.String
 	}
 	if iconImageID.Valid {
-		creator.IconImageUrl = fmt.Sprintf("/images/creators/%s", iconImageID.UUID.String())
+		creator.IconImageUrl = protomapper.CreatorIconURL(images, iconImageID.UUID)
 		creator.IconImageFileSizeBytes = iconImageFileSizeBytes
 	}
 	if iconImageUpdatedAt.Valid {
@@ -89,8 +90,9 @@ func publishedCreatorFromFields(
 	return creator
 }
 
-func publishedCreatorFromListRow(row dbmodels.ListPublishedCreatorsByIDsRow) *publirav1.PublishedCreator {
+func publishedCreatorFromListRow(images protomapper.ImageOrigin, row dbmodels.ListPublishedCreatorsByIDsRow) *publirav1.PublishedCreator {
 	return publishedCreatorFromFields(
+		images,
 		row.ID,
 		row.PublicID,
 		row.Name,
@@ -102,8 +104,9 @@ func publishedCreatorFromListRow(row dbmodels.ListPublishedCreatorsByIDsRow) *pu
 	)
 }
 
-func publishedCreatorFromDetailRow(row dbmodels.GetPublishedCreatorForTenantRow) *publirav1.PublishedCreator {
+func publishedCreatorFromDetailRow(images protomapper.ImageOrigin, row dbmodels.GetPublishedCreatorForTenantRow) *publirav1.PublishedCreator {
 	return publishedCreatorFromFields(
+		images,
 		row.ID,
 		row.PublicID,
 		row.Name,
@@ -189,6 +192,10 @@ func (s *apiServer) ListPublishedCreators(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -218,7 +225,7 @@ func (s *apiServer) ListPublishedCreators(
 
 	items := make([]*publirav1.PublishedCreator, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, publishedCreatorFromListRow(row))
+		items = append(items, publishedCreatorFromListRow(images, row))
 	}
 
 	res := &publirav1.ListPublishedCreatorsResponse{Creators: items}
@@ -248,6 +255,10 @@ func (s *apiServer) GetPublishedCreatorDetail(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -270,6 +281,7 @@ func (s *apiServer) GetPublishedCreatorDetail(
 
 	series, previousToken, nextToken, err := s.publishedCreatorSeriesPage(
 		ctx,
+		images,
 		tenant.ID,
 		surface,
 		readerLocale,
@@ -282,7 +294,7 @@ func (s *apiServer) GetPublishedCreatorDetail(
 	}
 
 	return &publirav1.GetPublishedCreatorDetailResponse{
-		Creator:       publishedCreatorFromDetailRow(row),
+		Creator:       publishedCreatorFromDetailRow(images, row),
 		Series:        series,
 		PreviousToken: previousToken,
 		NextToken:     nextToken,
@@ -294,6 +306,7 @@ func (s *apiServer) GetPublishedCreatorDetail(
 // fold the same way ListPublishedCreators does.
 func (s *apiServer) publishedCreatorSeriesPage(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID uuid.UUID,
 	surface string,
 	locale string,
@@ -324,7 +337,7 @@ func (s *apiServer) publishedCreatorSeriesPage(
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published creator series", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, "", "", err
 	}

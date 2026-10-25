@@ -283,7 +283,7 @@ func (s *adminServer) tenantTheme(ctx context.Context, tenantID uuid.UUID) (*pub
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list tenant image variants", err, "tenant_id", tenantID.String())
 	}
-	byImageID := protomapper.TenantImageVariantsByImageID(variantRows)
+	byImageID := protomapper.TenantImageVariantsByImageID(protomapper.HostRelative, variantRows)
 
 	return protomapper.TenantThemeFromGetRow(
 		row,

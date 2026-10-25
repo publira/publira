@@ -24,6 +24,9 @@ var (
 	// ErrAdminDomainNotConfigured reports a tenant with neither an admin
 	// domain nor a storefront domain to derive one from.
 	ErrAdminDomainNotConfigured = errors.New("tenant admin domain is not configured")
+	// ErrImageDomainNotConfigured reports a tenant with no image domain, whose
+	// storefront images are served on its storefront domain.
+	ErrImageDomainNotConfigured = errors.New("tenant image domain is not configured")
 )
 
 // Site is the origin of the tenant's storefront.
@@ -49,6 +52,20 @@ func AdminConsole(tenant dbmodels.Tenant) (*url.URL, error) {
 	}
 	if host == "" {
 		return nil, ErrAdminDomainNotConfigured
+	}
+	return origin(host)
+}
+
+// Images is the origin the tenant's storefront images are served on: its saved
+// image domain. A tenant with none reports [ErrImageDomainNotConfigured], and
+// its images are served on [Site].
+func Images(tenant dbmodels.Tenant) (*url.URL, error) {
+	host := ""
+	if tenant.ImageDomain.Valid {
+		host = normalizeHost(tenant.ImageDomain.String)
+	}
+	if host == "" {
+		return nil, ErrImageDomainNotConfigured
 	}
 	return origin(host)
 }

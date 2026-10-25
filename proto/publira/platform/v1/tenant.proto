@@ -18,6 +18,9 @@ message Tenant {
   // Primary key (UUID). Every request that acts on the tenant names it by
   // this; public_id only resolves the tenant a URL names.
   string id = 9;
+  // The host the tenant's storefront images are served on, when they are not
+  // served on its domain. Empty when it has none.
+  string image_domain = 10;
   reserved 6;
 }
 
@@ -67,6 +70,9 @@ message CreateTenantRequest {
   // publira.admin.v1.UpdateTenantDefaultLocaleRequest. Empty starts the tenant
   // on default_locale alone.
   repeated string supported_locales = 7;
+  // The host the tenant's storefront images are served on. Empty serves them
+  // on the domain.
+  string image_domain = 8;
   reserved 2;
 }
 
@@ -238,13 +244,15 @@ message CancelTenantAdminInvitationResponse {
 }
 
 // Only the fields a request carries change: an absent one keeps the tenant's
-// value, and a present empty admin_domain moves the console back to
-// admin.<domain>.
+// value, a present empty admin_domain moves the console back to
+// admin.<domain>, and a present empty image_domain moves the storefront images
+// back to the domain.
 message UpdateTenantRequest {
   optional string name = 2;
   optional string domain = 4;
   optional string admin_domain = 5;
   string tenant_id = 6;
+  optional string image_domain = 7;
   reserved 1, 3;
   reserved "public_id";
 }

@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -37,6 +38,10 @@ func (s *apiServer) GetPublishedLabelDetail(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -59,7 +64,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 
 	label := publishedLabelFromRow(row)
 	if row.EyeCatchImageID.Valid {
-		variants, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		variants, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, images, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			// Variants decorate the label; the page itself is still usable.
 			slog.WarnContext(ctx, "label eye catch variants unavailable", "error", variantErr)
@@ -70,6 +75,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 
 	series, previousToken, nextToken, err := s.publishedLabelSeriesPage(
 		ctx,
+		images,
 		tenant.ID,
 		surface,
 		readerLocale,
@@ -94,6 +100,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 // fold the same way GetPublishedCreatorDetail does.
 func (s *apiServer) publishedLabelSeriesPage(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID uuid.UUID,
 	surface string,
 	locale string,
@@ -124,7 +131,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, "", "", err
 	}

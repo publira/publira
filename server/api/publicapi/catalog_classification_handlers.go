@@ -126,6 +126,7 @@ func (s *apiServer) publishedGenrePage(
 // mostly empty and would reshuffle the tiles every day.
 func (s *apiServer) genreFeaturedSeries(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID uuid.UUID,
 	surface string,
 	locale string,
@@ -157,7 +158,7 @@ func (s *apiServer) genreFeaturedSeries(
 			imageIDs = append(imageIDs, row.EyeCatchImageID.UUID)
 		}
 	}
-	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, images, imageIDs)
 	if err != nil {
 		// Variants decorate the tiles; a frame without them shows the title.
 		slog.WarnContext(ctx, "eye catch variants unavailable", "error", err)
@@ -193,6 +194,10 @@ func (s *apiServer) ListPublishedGenres(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	limit := pagination.NormalizeLimit(req.Limit, defaultGenrePageSize, maxGenrePageSize)
 	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
@@ -220,7 +225,7 @@ func (s *apiServer) ListPublishedGenres(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	featured, err := s.genreFeaturedSeries(ctx, tenant.ID, surface, readerLocale, rows)
+	featured, err := s.genreFeaturedSeries(ctx, images, tenant.ID, surface, readerLocale, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +235,7 @@ func (s *apiServer) ListPublishedGenres(
 			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
 		}
 	}
-	eyeCatches, err := s.genreEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	eyeCatches, err := s.genreEyeCatchVariantsByImageIDs(ctx, images, imageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -281,6 +286,7 @@ func (s *apiServer) ListPublishedGenres(
 // images.
 func (s *apiServer) genreEyeCatchVariantsByImageIDs(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	imageIDs []uuid.UUID,
 ) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
 	if len(imageIDs) == 0 {
@@ -297,7 +303,7 @@ func (s *apiServer) genreEyeCatchVariantsByImageIDs(
 		mapped[row.GenreImageID] = append(mapped[row.GenreImageID], &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           protomapper.EyeCatchVariantURL("genres", row.GenreImageID, row.VariantType, row.Width, row.ID),
+			Url:           protomapper.EyeCatchVariantURL(images, "genres", row.GenreImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,

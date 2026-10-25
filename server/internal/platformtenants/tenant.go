@@ -28,7 +28,7 @@ var (
 	ErrTenantIDInvalid  = errors.New("tenant_id must be a UUID")
 	ErrTenantRequired   = errors.New("tenant is required")
 	// ErrNoChange refuses an update that sets nothing.
-	ErrNoChange = errors.New("name, domain, or admin_domain is required")
+	ErrNoChange = errors.New("name, domain, admin_domain, or image_domain is required")
 )
 
 // ParsePublicID trims the public ID a tenant is named by, refusing a blank
@@ -95,12 +95,14 @@ func found(tenant dbmodels.Tenant, err error) (dbmodels.Tenant, error) {
 }
 
 // UpdateParams replaces the name and domains of the tenant ID names.
-// A nil field keeps what the tenant has; an AdminDomain of "" clears it.
+// A nil field keeps what the tenant has; an AdminDomain or an ImageDomain of
+// "" clears it.
 type UpdateParams struct {
 	ID          uuid.UUID
 	Name        *string
 	Domain      *string
 	AdminDomain *string
+	ImageDomain *string
 }
 
 // Change is an UpdateParams that passed [UpdateParams.Validate].
@@ -109,6 +111,7 @@ type Change struct {
 	name        *string
 	domain      *string
 	adminDomain *sql.NullString
+	imageDomain *sql.NullString
 }
 
 // Validate normalizes p, or refuses it with a [*fielderr.Invalid], without
@@ -137,17 +140,22 @@ func (p UpdateParams) Validate() (Change, error) {
 		adminDomain.Valid = adminDomain.String != ""
 		c.adminDomain = &adminDomain
 	}
-	if c.name == nil && c.domain == nil && c.adminDomain == nil {
+	if p.ImageDomain != nil {
+		imageDomain := sql.NullString{String: strings.TrimSpace(*p.ImageDomain)}
+		imageDomain.Valid = imageDomain.String != ""
+		c.imageDomain = &imageDomain
+	}
+	if c.name == nil && c.domain == nil && c.adminDomain == nil && c.imageDomain == nil {
 		return Change{}, ErrNoChange
 	}
 	return c, nil
 }
 
-// Update writes c inside tx and files the entry under actor. A domain or admin
-// domain another tenant serves, as its domain or as its console host, is
-// refused with a [*fielderr.Conflict], and so is a change that moves the
-// console host it implies onto one: clearing the admin domain, or a domain
-// whose admin.{domain} is taken.
+// Update writes c inside tx and files the entry under actor. A domain, admin
+// domain, or image domain another tenant serves, as its domain, its console
+// host, or its image host, is refused with a [*fielderr.Conflict], and so is a
+// change that moves the console host it implies onto one: clearing the admin
+// domain, or a domain whose admin.{domain} is taken.
 func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, c Change) (dbmodels.Tenant, error) {
 	q := dbmodels.New(tx)
 	params := dbmodels.UpdateTenantInfoParams{ID: c.id}
@@ -158,12 +166,12 @@ func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	if err := lockHosts(ctx, q); err != nil {
 		return dbmodels.Tenant{}, err
 	}
-	if c.name == nil || c.domain == nil || c.adminDomain == nil {
+	if c.name == nil || c.domain == nil || c.adminDomain == nil || c.imageDomain == nil {
 		current, err := found(q.GetTenantByID(ctx, c.id))
 		if err != nil {
 			return dbmodels.Tenant{}, err
 		}
-		params.Name, params.Domain, params.AdminDomain = current.Name, current.Domain, current.AdminDomain
+		params.Name, params.Domain, params.AdminDomain, params.ImageDomain = current.Name, current.Domain, current.AdminDomain, current.ImageDomain
 	}
 	if c.name != nil {
 		params.Name = *c.name
@@ -174,9 +182,12 @@ func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	if c.adminDomain != nil {
 		params.AdminDomain = *c.adminDomain
 	}
+	if c.imageDomain != nil {
+		params.ImageDomain = *c.imageDomain
+	}
 	// A rename alone moves no host name, so it is not judged by them.
-	if c.domain != nil || c.adminDomain != nil {
-		if err := checkHosts(ctx, q, c.id, params.Domain, params.AdminDomain); err != nil {
+	if c.domain != nil || c.adminDomain != nil || c.imageDomain != nil {
+		if err := checkHosts(ctx, q, c.id, params.Domain, params.AdminDomain, params.ImageDomain); err != nil {
 			return dbmodels.Tenant{}, err
 		}
 	}

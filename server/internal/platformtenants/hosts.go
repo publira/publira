@@ -31,26 +31,31 @@ func lockHosts(ctx context.Context, q *dbmodels.Queries) error {
 	return nil
 }
 
-// checkHosts refuses the domain and admin domain the tenant id is about to be
-// written with when another tenant already serves either one, as its domain or
-// as its console host. The proxy sends a host name to one app, so a name two
-// tenants claim reaches one of them and never the other. The caller holds
-// [lockHosts].
+// checkHosts refuses the domain, admin domain, and image domain the tenant id
+// is about to be written with when another tenant already serves any one of
+// them, as its domain, as its console host, or as its image host. The proxy
+// sends a host name to one app, and image delivery answers it as one tenant,
+// so a name two tenants claim reaches one of them and never the other. The
+// caller holds [lockHosts].
 //
-// A console host equal to the tenant's own domain is refused too, for the
-// same reason. Every collision is a [*fielderr.Conflict] on the field whose
-// value is taken; a console host that is only implied is reported on
-// [FieldAdminDomain] all the same, because giving the tenant an admin domain
-// of its own is what resolves it.
-func checkHosts(ctx context.Context, q *dbmodels.Queries, id uuid.UUID, domain string, adminDomain sql.NullString) error {
+// A console host or an image host equal to another of the tenant's own hosts
+// is refused too, for the same reason. Every collision is a
+// [*fielderr.Conflict] on the field whose value is taken; a console host that
+// is only implied is reported on [FieldAdminDomain] all the same, because
+// giving the tenant an admin domain of its own is what resolves it.
+func checkHosts(ctx context.Context, q *dbmodels.Queries, id uuid.UUID, domain string, adminDomain, imageDomain sql.NullString) error {
 	console := consoleHost(domain, adminDomain)
 	if console == domain {
 		return &fielderr.Conflict{Field: FieldAdminDomain}
+	}
+	if imageDomain.Valid && (imageDomain.String == domain || imageDomain.String == console) {
+		return &fielderr.Conflict{Field: FieldImageDomain}
 	}
 	taken, err := q.GetTenantHostsTaken(ctx, dbmodels.GetTenantHostsTakenParams{
 		ID:          id,
 		Domain:      domain,
 		ConsoleHost: console,
+		ImageHost:   imageDomain,
 	})
 	if err != nil {
 		return fmt.Errorf("read tenant hosts: %w", err)
@@ -60,6 +65,8 @@ func checkHosts(ctx context.Context, q *dbmodels.Queries, id uuid.UUID, domain s
 		return &fielderr.Conflict{Field: FieldDomain}
 	case taken.ConsoleHostTaken:
 		return &fielderr.Conflict{Field: FieldAdminDomain}
+	case taken.ImageHostTaken:
+		return &fielderr.Conflict{Field: FieldImageDomain}
 	default:
 		return nil
 	}

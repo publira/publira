@@ -23,6 +23,10 @@ func (s *apiServer) ListCampaignBanners(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 
 	rows, err := s.queriesFor(ctx).ListShowingCampaignBannersForTenant(ctx, tenant.ID)
 	if err != nil {
@@ -33,7 +37,7 @@ func (s *apiServer) ListCampaignBanners(
 	for _, row := range rows {
 		imageIDs = append(imageIDs, row.ImageID.UUID)
 	}
-	variants, err := s.campaignBannerImageVariantsByImageIDs(ctx, imageIDs)
+	variants, err := s.campaignBannerImageVariantsByImageIDs(ctx, images, imageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +59,7 @@ func (s *apiServer) ListCampaignBanners(
 // banner images.
 func (s *apiServer) campaignBannerImageVariantsByImageIDs(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	imageIDs []uuid.UUID,
 ) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
 	if len(imageIDs) == 0 {
@@ -71,7 +76,7 @@ func (s *apiServer) campaignBannerImageVariantsByImageIDs(
 		mapped[row.CampaignBannerImageID] = append(mapped[row.CampaignBannerImageID], &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           protomapper.EyeCatchVariantURL(campaignBannerImagePath, row.CampaignBannerImageID, row.VariantType, row.Width, row.ID),
+			Url:           protomapper.EyeCatchVariantURL(images, campaignBannerImagePath, row.CampaignBannerImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,

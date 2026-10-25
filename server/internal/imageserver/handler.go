@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/requestmeta"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/tenanttz"
 	"github.com/publira/publira/server/internal/tracing"
@@ -90,6 +91,7 @@ func freeWindowCacheControl(freeUntil, now time.Time) string {
 type ResolverQuerier interface {
 	GetTenantByDomains(ctx context.Context, domains []string) (dbmodels.Tenant, error)
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (dbmodels.Tenant, error)
+	GetTenantByImageDomains(ctx context.Context, domains []string) (dbmodels.Tenant, error)
 }
 
 type TenantScopedQuerier interface {
@@ -1103,38 +1105,58 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
 }
 
-// resolveTenantFromHost names the tenant a request belongs to and reports
-// whether it arrived on that tenant's console host: a `domain` match is the
-// storefront and an `admin_domain` match is the console.
+// hostKind is which of a tenant's host names a request arrived on.
+type hostKind int
+
+const (
+	// storefrontHost is the tenant's domain.
+	storefrontHost hostKind = iota
+	// consoleHost is the tenant's console host.
+	consoleHost
+	// imageHost is the tenant's image domain, which is answered as the
+	// storefront and is another origin than the storefront's pages.
+	imageHost
+)
+
+// resolveTenantFromHost names the tenant a request belongs to and which of its
+// hosts the request arrived on: a `domain` match is the storefront, an
+// `admin_domain` match is the console, and an `image_domain` match is the
+// image host, which is answered as the storefront.
 //
 // Each lookup runs on the pool of the site it looks for, so a storefront host
-// is resolved without the console's login. A console host is looked up as a
-// storefront first, because the site is not known until one of them answers;
-// both read `tenants`, which carries no row-level security and which both
-// logins may select from. A site this server was given no SiteDB for is never
-// looked up, so its hosts are not found rather than answered as the other
-// site's login.
-func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, bool, error) {
-	candidates := requestmeta.HostCandidatesFromRequest(r)
+// and an image host are resolved without the console's login. The hosts are
+// looked up in that order, because the site is not known until one of them
+// answers; every lookup reads `tenants`, which carries no row-level security
+// and which both logins may select from. A site this server was given no
+// SiteDB for is never looked up, so its hosts are not found rather than
+// answered as the other site's login.
+func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (dbmodels.Tenant, hostKind, error) {
+	type lookup struct {
+		resolve func(context.Context, []string) (dbmodels.Tenant, error)
+		kind    hostKind
+	}
+	var lookups []lookup
 	if h.public.Resolver != nil {
-		tenant, err := h.public.Resolver.GetTenantByDomains(ctx, candidates)
+		lookups = append(lookups, lookup{h.public.Resolver.GetTenantByDomains, storefrontHost})
+	}
+	if h.admin.Resolver != nil {
+		lookups = append(lookups, lookup{h.admin.Resolver.GetAdminTenantByDomains, consoleHost})
+	}
+	if h.public.Resolver != nil {
+		lookups = append(lookups, lookup{h.public.Resolver.GetTenantByImageDomains, imageHost})
+	}
+	candidates := requestmeta.HostCandidatesFromRequest(r)
+	for _, l := range lookups {
+		tenant, err := l.resolve(ctx, candidates)
 		if err == nil {
 			tracing.SetTenant(ctx, tenant.PublicID)
-			return tenant, false, nil
+			return tenant, l.kind, nil
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.Tenant{}, false, err
+			return dbmodels.Tenant{}, storefrontHost, err
 		}
 	}
-	if h.admin.Resolver == nil {
-		return dbmodels.Tenant{}, false, sql.ErrNoRows
-	}
-	tenant, err := h.admin.Resolver.GetAdminTenantByDomains(ctx, candidates)
-	if err != nil {
-		return dbmodels.Tenant{}, false, err
-	}
-	tracing.SetTenant(ctx, tenant.PublicID)
-	return tenant, true, nil
+	return dbmodels.Tenant{}, storefrontHost, sql.ErrNoRows
 }
 
 // tenantFromHost resolves the tenant a request arrived for and answers the
@@ -1149,9 +1171,13 @@ func (h *Handler) resolveTenantFromHost(ctx context.Context, r *http.Request) (d
 // being reused for the max-age it was served with — an hour at most — because
 // nothing the server does can recall a response it has handed out, and the
 // image URLs do not change with the tenant's status.
+//
+// A request on an image host is answered as the storefront, and every response
+// to it carries the CORS headers [allowStorefrontOrigin] sets, the refusals
+// included.
 func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmodels.Tenant, bool, bool) {
 	ctx := r.Context()
-	tenant, adminHost, err := h.resolveTenantFromHost(ctx, r)
+	tenant, kind, err := h.resolveTenantFromHost(ctx, r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "tenant not found", http.StatusNotFound)
@@ -1161,12 +1187,38 @@ func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmode
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return dbmodels.Tenant{}, false, false
 	}
+	if kind == imageHost {
+		if err := allowStorefrontOrigin(w, tenant); err != nil {
+			h.logger.ErrorContext(ctx, "failed to resolve the storefront origin of an image host", "error", err, "host", r.Host)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return dbmodels.Tenant{}, false, false
+		}
+	}
 	if tenantstatus.IsSuspended(tenant) {
 		w.Header().Set("Cache-Control", "no-store")
 		http.Error(w, "tenant is suspended", http.StatusForbidden)
 		return dbmodels.Tenant{}, false, false
 	}
-	return tenant, adminHost, true
+	return tenant, kind == consoleHost, true
+}
+
+// allowStorefrontOrigin lets the tenant's storefront read a response from its
+// image host. The viewer loads an episode's pages with fetch() from the
+// storefront's origin and reads the decryption headers of each response, which
+// a cross-origin fetch sees only when they are exposed. Its request is a
+// simple GET, so there is no preflight to answer. The origin is the same for
+// every request to the host, so the response does not vary by Origin.
+//
+// The storefront's own domain and the console host are same-origin to the
+// pages that load from them, and their responses carry none of this.
+func allowStorefrontOrigin(w http.ResponseWriter, tenant dbmodels.Tenant) error {
+	site, err := tenantorigin.Site(tenant)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Access-Control-Allow-Origin", site.String())
+	w.Header().Set("Access-Control-Expose-Headers", strings.Join([]string{imageEncryptionHeader, imageContentTypeHeader, imageKeyIDHeader}, ", "))
+	return nil
 }
 
 // tenantQueries opens the tenant-scoped queries on the pool belonging to the

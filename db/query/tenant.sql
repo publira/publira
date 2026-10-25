@@ -45,8 +45,8 @@ LIMIT sqlc.arg('limit');
 -- default_locale and supported_locales have no column DEFAULT, so the caller
 -- always passes them explicitly. timezone is not left to its column DEFAULT
 -- either: the platform default is applied explicitly.
-INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale, supported_locales)
-VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'), sqlc.arg('supported_locales')::text[])
+INSERT INTO tenants (id, public_id, domain, admin_domain, image_domain, name, status, timezone, default_locale, supported_locales)
+VALUES (sqlc.arg('id'), sqlc.arg('public_id'), sqlc.arg('domain'), sqlc.narg('admin_domain'), sqlc.narg('image_domain'), sqlc.arg('name'), 'active', sqlc.arg('timezone'), sqlc.arg('default_locale'), sqlc.arg('supported_locales')::text[])
 RETURNING *;
 
 -- name: UpdateTenantStatus :one
@@ -59,7 +59,10 @@ RETURNING *;
 -- name: UpdateTenantInfo :one
 -- Update the tenant name and its domains.
 UPDATE tenants
-SET name = sqlc.arg('name'), domain = sqlc.arg('domain'), admin_domain = sqlc.narg('admin_domain')
+SET name = sqlc.arg('name'),
+    domain = sqlc.arg('domain'),
+    admin_domain = sqlc.narg('admin_domain'),
+    image_domain = sqlc.narg('image_domain')
 WHERE id = sqlc.arg('id')
 RETURNING *;
 
@@ -111,31 +114,48 @@ JOIN tenants t
 ORDER BY candidate.ord
 LIMIT 1;
 
+-- name: GetTenantByImageDomains :one
+-- Return the first tenant whose image_domain matches, keeping the order of the
+-- candidate host names.
+SELECT t.*
+FROM unnest(sqlc.arg('domains')::text[]) WITH ORDINALITY AS candidate(domain, ord)
+JOIN tenants t ON t.image_domain = candidate.domain
+ORDER BY candidate.ord
+LIMIT 1;
+
 -- name: LockTenantHosts :exec
 -- Serializes, for the rest of the transaction, the writes that decide which
--- tenant a host name belongs to. The unique constraints keep two domains or two
--- stored admin domains apart, but none of them can see a domain equal to
--- another tenant's console host, so two writes that each pass
+-- tenant a host name belongs to. The unique constraints keep two domains, two
+-- stored admin domains, or two image domains apart, but none of them can see a
+-- domain equal to another tenant's console host or image host, so two writes
+-- that each pass
 -- GetTenantHostsTaken would otherwise both commit.
 SELECT pg_advisory_xact_lock(hashtextextended('tenant_hosts', 0));
 
 -- name: GetTenantHostsTaken :one
--- Whether a tenant other than id already serves the domain or the console host
--- as either of its own: its domain, or its console host, which is its
--- admin_domain or else admin.{domain}. Take LockTenantHosts first, in a
--- statement of its own, so this sees every write that held it before.
+-- Whether a tenant other than id already serves the domain, the console host,
+-- or the image host as any of its own: its domain, its console host, which is
+-- its admin_domain or else admin.{domain}, or its image_domain. A NULL
+-- image_host is taken by no one. Take LockTenantHosts first, in a statement of
+-- its own, so this sees every write that held it before.
 SELECT COALESCE(
         bool_or(
-            sqlc.arg('domain')::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+            sqlc.arg('domain')::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)), t.image_domain)
         ),
         false
     )::boolean AS domain_taken,
     COALESCE(
         bool_or(
-            sqlc.arg('console_host')::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)))
+            sqlc.arg('console_host')::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)), t.image_domain)
         ),
         false
-    )::boolean AS console_host_taken
+    )::boolean AS console_host_taken,
+    COALESCE(
+        bool_or(
+            sqlc.narg('image_host')::text IN (t.domain, COALESCE(t.admin_domain, CONCAT('admin.', t.domain)), t.image_domain)
+        ),
+        false
+    )::boolean AS image_host_taken
 FROM tenants t
 WHERE t.id <> sqlc.arg('id');
 

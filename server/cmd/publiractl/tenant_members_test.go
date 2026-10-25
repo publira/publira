@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"regexp"
 	"strings"
 	"testing"
@@ -51,7 +52,7 @@ func TestTenantShowUpdateSuspendAndResume(t *testing.T) {
 	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
 
 	shown := tenantCommand(t, "", "show", "--tenant", "tenant-a.example.com")
-	for _, want := range []string{"Public ID:          TENANTAAAAAA\n", "Name:               Tenant A\n", "Status:             active\n", "Admin domain:       " + tenant.AdminDomain + "\n"} {
+	for _, want := range []string{"Public ID:          TENANTAAAAAA\n", "Name:               Tenant A\n", "Status:             active\n", "Admin domain:       " + tenant.AdminDomain + "\n", "Image domain:       tenant-a.example.com (default)\n"} {
 		if !strings.Contains(shown, want) {
 			t.Fatalf("show = %q, want %q", shown, want)
 		}
@@ -63,7 +64,20 @@ func TestTenantShowUpdateSuspendAndResume(t *testing.T) {
 	if shown := tenantCommand(t, "", "show", "--tenant", "TENANTAAAAAA"); !strings.Contains(shown, "Name:               Renamed\n") || !strings.Contains(shown, "Admin domain:       admin.tenant-a.example.com (default)\n") {
 		t.Fatalf("show after update = %q, want the new name and the default admin domain", shown)
 	}
-	tenantCommand(t, "", "update", "--tenant", "TENANTAAAAAA", "--admin-domain", "console.tenant-a.example.com")
+	tenantCommand(t, "", "update", "--tenant", "TENANTAAAAAA", "--admin-domain", "console.tenant-a.example.com", "--image-domain", "images.tenant-a.example.com")
+	if shown := tenantCommand(t, "", "show", "--tenant", "TENANTAAAAAA"); !strings.Contains(shown, "Image domain:       images.tenant-a.example.com\n") {
+		t.Fatalf("show after setting the image domain = %q, want it", shown)
+	}
+	// A flag left out keeps the image domain, and "" clears it.
+	tenantCommand(t, "", "update", "--tenant", "TENANTAAAAAA", "--name", "Renamed")
+	var imageDomain sql.NullString
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT image_domain FROM tenants WHERE id = $1`, tenant.ID).Scan(&imageDomain); err != nil || imageDomain.String != "images.tenant-a.example.com" {
+		t.Fatalf("image_domain after a rename = %v (%v), want it kept", imageDomain, err)
+	}
+	tenantCommand(t, "", "update", "--tenant", "TENANTAAAAAA", "--image-domain", "")
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT image_domain FROM tenants WHERE id = $1`, tenant.ID).Scan(&imageDomain); err != nil || imageDomain.Valid {
+		t.Fatalf("image_domain after clearing = %v (%v), want none", imageDomain, err)
+	}
 	if got := tenantCommand(t, "", "suspend", "--tenant", "tenant-a.example.com"); got != "Suspended tenant TENANTAAAAAA for tenant-a.example.com\n" {
 		t.Fatalf("suspend = %q", got)
 	}
@@ -76,7 +90,7 @@ func TestTenantShowUpdateSuspendAndResume(t *testing.T) {
 	if name != "Renamed" || adminDomain != "console.tenant-a.example.com" || status != "active" {
 		t.Fatalf("tenant = %s, %s, %s; want the new name and admin domain, active", name, adminDomain, status)
 	}
-	if got := platformActions(t, pg); got != "tenant_info_updated,tenant_info_updated,tenant_suspended,tenant_resumed" {
+	if got := platformActions(t, pg); got != "tenant_info_updated,tenant_info_updated,tenant_info_updated,tenant_info_updated,tenant_suspended,tenant_resumed" {
 		t.Fatalf("audit actions = %s", got)
 	}
 }
@@ -266,7 +280,8 @@ func TestTenantCommandsNameTheRefusedFlag(t *testing.T) {
 		{name: "no such tenant", args: []string{"suspend", "--tenant", "nowhere.example.com"}, want: "tenant not found"},
 		{name: "update with a blank name", args: append([]string{"update", "--name", " "}, tenant...), want: "--name: name is required"},
 		{name: "update with a taken domain", args: append([]string{"update", "--domain", "tenant-b.example.com"}, tenant...), want: "--domain: domain already exists"},
-		{name: "update with nothing", args: append([]string{"update"}, tenant...), want: "--name, --domain, or --admin-domain: name, domain, or admin_domain is required"},
+		{name: "update with nothing", args: append([]string{"update"}, tenant...), want: "--name, --domain, --admin-domain, or --image-domain: name, domain, admin_domain, or image_domain is required"},
+		{name: "update with a taken image domain", args: append([]string{"update", "--image-domain", "tenant-b.example.com"}, tenant...), want: "--image-domain: image_domain already exists"},
 		{name: "add a member with an unknown role", args: append([]string{"member", "add", "--user", "USER1", "--role", "owner"}, tenant...), want: "--role: invalid role"},
 		{name: "add a member by a malformed email", args: append([]string{"member", "add", "--email", "nobody", "--role", "tenant_admin"}, tenant...), want: "--email: invalid email"},
 		{name: "add a member named twice", args: append([]string{"member", "add", "--user", "USER1", "--email", "a@example.com", "--role", "tenant_admin"}, tenant...), want: "--user or --email: user_public_id and email cannot both be set"},

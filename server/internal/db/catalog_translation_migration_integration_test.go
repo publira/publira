@@ -33,8 +33,8 @@ func TestCatalogTranslationMigrationKeepsExistingTitles(t *testing.T) {
 	defer cancel()
 	db := pg.DB
 
-	japanese := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	english := pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	japanese := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	english := pg.SeedTenantOnOlderSchema(t, "TENANTB", "tenant-b.example.com", "Tenant B")
 	mustExec(t, ctx, db, `UPDATE tenants SET default_locale = 'en' WHERE id = $1`, english.ID)
 
 	described := pg.SeedSeries(t, japanese.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Starlit Library", Synopsis: "A library that opens at night.", Published: true})

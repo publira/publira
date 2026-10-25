@@ -33,10 +33,10 @@ func TestTenantConfigTranslationMigrationKeepsExistingCopy(t *testing.T) {
 	defer cancel()
 	db := pg.DB
 
-	japanese := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	english := pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
-	blank := pg.SeedTenant(t, "TENANTC", "tenant-c.example.com", "Tenant C")
-	unconfigured := pg.SeedTenant(t, "TENANTD", "tenant-d.example.com", "Tenant D")
+	japanese := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	english := pg.SeedTenantOnOlderSchema(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	blank := pg.SeedTenantOnOlderSchema(t, "TENANTC", "tenant-c.example.com", "Tenant C")
+	unconfigured := pg.SeedTenantOnOlderSchema(t, "TENANTD", "tenant-d.example.com", "Tenant D")
 	mustExec(t, ctx, db, `UPDATE tenants SET default_locale = 'en' WHERE id = $1`, english.ID)
 	mustExec(t, ctx, db, `
 		INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)

@@ -36,6 +36,10 @@ func tenantToProto(t dbmodels.Tenant, platformDefaultTimezone func() string) *pu
 	if t.AdminDomain.Valid {
 		adminDomain = strings.TrimSpace(t.AdminDomain.String)
 	}
+	imageDomain := ""
+	if t.ImageDomain.Valid {
+		imageDomain = strings.TrimSpace(t.ImageDomain.String)
+	}
 
 	return &publirasplatformv1.Tenant{
 		Id:          t.ID.String(),
@@ -45,6 +49,7 @@ func tenantToProto(t dbmodels.Tenant, platformDefaultTimezone func() string) *pu
 		CreatedAt:   t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 		Domain:      t.Domain,
 		AdminDomain: adminDomain,
+		ImageDomain: imageDomain,
 		Timezone:    tenanttz.Resolve(t.Timezone, platformDefaultTimezone),
 	}
 }
@@ -153,6 +158,7 @@ func (s *platformServer) CreateTenant(
 		Name:               req.Name,
 		Domain:             req.Domain,
 		AdminDomain:        req.AdminDomain,
+		ImageDomain:        req.ImageDomain,
 		DefaultLocale:      req.DefaultLocale,
 		SupportedLocales:   req.SupportedLocales,
 		InitialAdminEmails: req.InitialAdminEmails,
@@ -281,13 +287,13 @@ func (s *platformServer) UpdateTenant(
 		return nil, s.tenantError(ctx, "invalid update tenant request", err)
 	}
 	// Only the fields the request carries change, so a form that edits the name
-	// cannot write back a domain or admin domain it read before someone else
-	// changed it.
+	// cannot write back a host it read before someone else changed it.
 	change, err := platformtenants.UpdateParams{
 		ID:          tenantID,
 		Name:        req.Name,
 		Domain:      req.Domain,
 		AdminDomain: req.AdminDomain,
+		ImageDomain: req.ImageDomain,
 	}.Validate()
 	if err != nil {
 		return nil, s.tenantError(ctx, "invalid update tenant request", err)

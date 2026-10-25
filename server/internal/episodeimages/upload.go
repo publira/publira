@@ -279,7 +279,7 @@ func (s Service) storeImages(
 			lastVariant = createdVariant
 		}
 
-		items = append(items, protomapper.EpisodeImageFromImageAndVariant(createdImage, lastVariant))
+		items = append(items, protomapper.EpisodeImageFromImageAndVariant(protomapper.HostRelative, createdImage, lastVariant))
 		if hasSession && s.Recorder != nil {
 			s.Recorder.RecordTenant(ctx, auditlog.TenantEntry{
 				TenantID:    tenant.ID,

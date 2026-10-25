@@ -410,7 +410,7 @@ func (s *apiServer) FinishPasskeyLogin(
 	if err != nil {
 		return fail(account.PublicID, "token_issue_failed", err)
 	}
-	user, err := s.ownAccountWithIcon(ctx, q, tenant.ID, account, role)
+	user, err := s.ownAccountWithIcon(ctx, q, tenant, account, role)
 	if err != nil {
 		return fail(account.PublicID, "icon_lookup_failed", err)
 	}

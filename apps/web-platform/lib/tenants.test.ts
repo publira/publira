@@ -171,6 +171,7 @@ describe("listPlatformTenants", () => {
             createdAt: "2026-03-01 10:00",
             domain: "example.com",
             id: "01a0deb5-0000-7000-8000-000000000001",
+            imageDomain: "",
             name: "Test Publishing",
             publicId: "tenant_test",
             status: "active",

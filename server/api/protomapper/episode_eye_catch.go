@@ -33,7 +33,7 @@ func EpisodeIDs(episodes []*publirattypesv1.Episode) ([]uuid.UUID, error) {
 // SetEpisodeEyeCatches puts each episode's own eye-catch onto it from the rows
 // ListEpisodeEyeCatchVariantsByEpisodeIDs read for them. An episode no row
 // names keeps both fields empty, which is how a response says it has none.
-func SetEpisodeEyeCatches(episodes []*publirattypesv1.Episode, rows []dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDsRow) {
+func SetEpisodeEyeCatches(origin ImageOrigin, episodes []*publirattypesv1.Episode, rows []dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDsRow) {
 	byID := make(map[string]*publirattypesv1.Episode, len(episodes))
 	for _, episode := range episodes {
 		byID[episode.GetId()] = episode
@@ -47,7 +47,7 @@ func SetEpisodeEyeCatches(episodes []*publirattypesv1.Episode, rows []dbmodels.L
 		episode.EyeCatchImageVariants = append(episode.EyeCatchImageVariants, &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           EyeCatchVariantURL(EpisodeEyeCatchCollection, row.EpisodeEyeCatchImageID, row.VariantType, row.Width, row.ID),
+			Url:           EyeCatchVariantURL(origin, EpisodeEyeCatchCollection, row.EpisodeEyeCatchImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,

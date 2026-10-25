@@ -1318,6 +1318,7 @@ type Tenant struct {
 	Timezone         string         `json:"timezone"`
 	DefaultLocale    string         `json:"default_locale"`
 	SupportedLocales []string       `json:"supported_locales"`
+	ImageDomain      sql.NullString `json:"image_domain"`
 }
 
 type TenantAdminInvitation struct {

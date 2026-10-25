@@ -319,6 +319,7 @@ func (s *adminServer) ListCreators(
 	items := make([]*publirattypesv1.Creator, 0, len(rows))
 	for _, row := range rows {
 		item := protomapper.CreatorFromRow(
+			protomapper.HostRelative,
 			row.publicID,
 			row.name,
 			row.profileText.String,
@@ -377,6 +378,7 @@ func (s *adminServer) GetCreator(
 	}
 	return &publiraadminv1.GetCreatorResponse{
 		Creator: adminCreator(row.ID, protomapper.CreatorFromRow(
+			protomapper.HostRelative,
 			row.PublicID,
 			row.Name,
 			row.ProfileText.String,
@@ -598,6 +600,7 @@ func (s *adminServer) CreateCreator(
 	}
 	s.reval.Send(ctx, owed)
 	return &publiraadminv1.CreateCreatorResponse{Creator: adminCreator(created.ID, protomapper.CreatorFromRow(
+		protomapper.HostRelative,
 		created.PublicID,
 		created.Name,
 		created.ProfileText.String,
@@ -695,6 +698,7 @@ func (s *adminServer) UpdateCreator(
 	}
 	s.reval.Send(ctx, owed)
 	return &publiraadminv1.UpdateCreatorResponse{Creator: adminCreator(updated.ID, protomapper.CreatorFromRow(
+		protomapper.HostRelative,
 		updated.PublicID,
 		updated.Name,
 		updated.ProfileText.String,

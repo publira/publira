@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
@@ -219,6 +220,7 @@ func (s *apiServer) readerRecommendedPageRows(
 // that window, so it has to read the date the same way.
 func (s *apiServer) readerRecommendedSeriesPage(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID, userID uuid.UUID,
 	surface, locale, timeZone string,
 	limit int32,
@@ -260,7 +262,7 @@ func (s *apiServer) readerRecommendedSeriesPage(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list the reader's recommended series", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -308,6 +310,10 @@ func (s *apiServer) ListMyRecommendedSeries(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -342,12 +348,12 @@ func (s *apiServer) ListMyRecommendedSeries(
 	var res *publirav1.ListMyRecommendedSeriesResponse
 	if hasFeatures {
 		zone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx)))
-		res, err = s.readerRecommendedSeriesPage(ctx, tenant.ID, user.ID, surface, readerLocale, zone, limit, cursor)
+		res, err = s.readerRecommendedSeriesPage(ctx, images, tenant.ID, user.ID, surface, readerLocale, zone, limit, cursor)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		page, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, readerLocale, limit, cursor)
+		page, err := s.tenantRecommendedSeriesPage(ctx, images, tenant.ID, surface, readerLocale, limit, cursor)
 		if err != nil {
 			return nil, err
 		}
