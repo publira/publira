@@ -30,6 +30,34 @@ func Permanent(err error) error {
 	return &permanentError{err: err}
 }
 
+// Blocked wraps err so the worker hands the event back after
+// [Config.BlockedWait] without charging an attempt. It is for a failure that
+// no retry clears and no payload is at fault for: something outside the
+// outbox, such as a tenant's settings, has to change first, and the event is
+// owed for whenever it does. An event waits on it for as long as that takes,
+// so a failure the next attempt might clear is an ordinary error instead.
+func Blocked(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &blockedError{err: err}
+}
+
+// IsBlocked reports whether err (or a value it unwraps to) was produced by
+// [Blocked].
+func IsBlocked(err error) bool {
+	var target *blockedError
+	return errors.As(err, &target)
+}
+
+type blockedError struct {
+	err error
+}
+
+func (e *blockedError) Error() string { return e.err.Error() }
+
+func (e *blockedError) Unwrap() error { return e.err }
+
 // ErrResume is returned by a handler that has recorded its progress
 // (RecordOutboxEventProgress) and has work left: the worker hands the event back
 // as due without charging an attempt. Return it only after the cursor has moved,

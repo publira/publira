@@ -102,6 +102,9 @@ type API struct {
 	// failCancel the ones whose next cancellation it fails, by secret key.
 	cancellations []SubscriptionCancellation
 	failCancel    map[string]map[string]bool
+	// revoked are the secret keys the fake refuses on its subscription
+	// routes, as Stripe refuses a key that was rolled or revoked.
+	revoked map[string]bool
 	// sessionStates holds where each Checkout Session the fake made stands,
 	// by its id, and the subscription a completed one started.
 	sessionStates map[string]sessionState
@@ -194,6 +197,7 @@ func NewAPI(t testing.TB) *API {
 		prices:        map[string]map[string]Price{},
 		subscriptions: map[string]map[string]Subscription{},
 		failCancel:    map[string]map[string]bool{},
+		revoked:       map[string]bool{},
 		sessionStates: map[string]sessionState{},
 	}
 	mux := http.NewServeMux()
@@ -588,6 +592,33 @@ func (a *API) FailNextSubscriptionCancel(secretKey, id string) {
 	a.failCancel[secretKey][id] = true
 }
 
+// RevokeSecretKey makes the fake refuse secretKey on its subscription routes,
+// as Stripe refuses a key that was rolled or revoked, and RestoreSecretKey
+// takes it back.
+func (a *API) RevokeSecretKey(secretKey string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.revoked[secretKey] = true
+}
+
+func (a *API) RestoreSecretKey(secretKey string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.revoked, secretKey)
+}
+
+// refuseRevoked answers 401 for a revoked key, as Stripe does, and reports
+// whether it did.
+func (a *API) refuseRevoked(w http.ResponseWriter, secretKey string) bool {
+	a.mu.Lock()
+	revoked := a.revoked[secretKey]
+	a.mu.Unlock()
+	if revoked {
+		writeError(w, http.StatusUnauthorized, "", "Invalid API Key provided: "+secretKey)
+	}
+	return revoked
+}
+
 // SubscriptionCancellations answers every subscription the fake canceled.
 func (a *API) SubscriptionCancellations() []SubscriptionCancellation {
 	a.mu.Lock()
@@ -634,6 +665,9 @@ func (a *API) getPrice(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) getSubscription(w http.ResponseWriter, r *http.Request) {
 	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if a.refuseRevoked(w, secretKey) {
+		return
+	}
 	id := r.PathValue("id")
 	a.mu.Lock()
 	subscription, ok := a.subscriptions[secretKey][id]
@@ -650,6 +684,9 @@ func (a *API) getSubscription(w http.ResponseWriter, r *http.Request) {
 // period end is asked for. Stripe refuses to cancel one that has already ended.
 func (a *API) cancelSubscription(w http.ResponseWriter, r *http.Request) {
 	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if a.refuseRevoked(w, secretKey) {
+		return
+	}
 	id := r.PathValue("id")
 	a.mu.Lock()
 	subscription, ok := a.subscriptions[secretKey][id]

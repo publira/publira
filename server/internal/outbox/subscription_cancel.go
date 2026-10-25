@@ -79,6 +79,13 @@ func QueueSubscriptionCancellationsForUser(ctx context.Context, queries dbmodels
 // reads the subscription first, so a delivery that repeats one already sent,
 // or follows a cancellation the reader or the tenant made meanwhile, asks the
 // provider for nothing more.
+//
+// What the tenant alone can put right is [Blocked] rather than spent against
+// the retry budget, and waits however long that takes: payments switched off,
+// credentials missing, refused, or naming an account that holds no such
+// subscription, a provider this build does not register or that sells no
+// subscriptions. The subscription bills the reader all the while, and a
+// deleted reader has no other way to end it.
 func NewSubscriptionCancelHandler(cfg SubscriptionCancelHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil || cfg.Providers == nil {
@@ -97,39 +104,31 @@ func NewSubscriptionCancelHandler(cfg SubscriptionCancelHandlerConfig) Handler {
 			return Permanent(errors.New("subscription cancel payload names no subscription"))
 		}
 
-		// A tenant that switched its payments off, or broke or replaced its
-		// key, is retried rather than dropped: the subscription bills the
-		// reader all the same, and restored credentials can still end it.
 		config, credentials, err := paymentsettings.New(dbmodels.New(cfg.DB), cfg.Encryptor, cfg.Providers, nil, cfg.Logger).LoadEnabledSecrets(ctx, tenantID)
+		if paymentsettings.IsUnavailable(err) {
+			return Blocked(fmt.Errorf("load the payment settings: %w", err))
+		}
 		if err != nil {
 			return fmt.Errorf("load the payment settings: %w", err)
 		}
 		provider, ok := cfg.Providers.Lookup(config.Provider)
 		if !ok {
-			return fmt.Errorf("the tenant's payment provider %q is not registered", config.Provider)
+			return Blocked(fmt.Errorf("the tenant's payment provider %q is not registered", config.Provider))
 		}
 		subscriptions, ok := provider.(paymentprovider.Subscriptions)
 		if !ok {
-			return fmt.Errorf("the tenant's payment provider %q sells no subscriptions", config.Provider)
+			return Blocked(fmt.Errorf("the tenant's payment provider %q sells no subscriptions", config.Provider))
 		}
 
 		subscription, err := subscriptions.RetrieveSubscription(ctx, credentials, subscriptionID)
-		if errors.Is(err, paymentprovider.ErrSubscriptionNotFound) {
-			// Nothing the account holds bills anyone under this id.
-			return nil
-		}
 		if err != nil {
-			return fmt.Errorf("read the subscription: %w", err)
+			return subscriptionCallError("read the subscription", err)
 		}
 		if !subscription.Status.Billed() {
 			return nil
 		}
-		err = subscriptions.CancelSubscription(ctx, credentials, subscriptionID)
-		if errors.Is(err, paymentprovider.ErrSubscriptionNotFound) {
-			return nil
-		}
-		if err != nil {
-			return fmt.Errorf("cancel the subscription: %w", err)
+		if err := subscriptions.CancelSubscription(ctx, credentials, subscriptionID); err != nil {
+			return subscriptionCallError("cancel the subscription", err)
 		}
 		if cfg.Logger != nil {
 			cfg.Logger.InfoContext(ctx, "canceled the subscription of a deleted account",
@@ -140,4 +139,16 @@ func NewSubscriptionCancelHandler(cfg SubscriptionCancelHandlerConfig) Handler {
 		}
 		return nil
 	}
+}
+
+// subscriptionCallError blocks on what the provider answers about the
+// credentials rather than about the call. A subscription the account does not
+// hold is one of those: the provider keeps an ended subscription readable, so
+// the id names one on another account, which credentials pointed back at it
+// can still cancel.
+func subscriptionCallError(call string, err error) error {
+	if errors.Is(err, paymentprovider.ErrSubscriptionNotFound) || errors.Is(err, paymentprovider.ErrCredentialsRefused) {
+		return Blocked(fmt.Errorf("%s: %w", call, err))
+	}
+	return fmt.Errorf("%s: %w", call, err)
 }

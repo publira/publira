@@ -260,11 +260,7 @@ func (p *Provider) RetrieveSubscription(ctx context.Context, credentials payment
 	}
 	subscription, err := client.V1Subscriptions.Retrieve(ctx, subscriptionID, &stripego.SubscriptionRetrieveParams{})
 	if err != nil {
-		var stripeErr *stripego.Error
-		if errors.As(err, &stripeErr) && stripeErr.Code == stripego.ErrorCodeResourceMissing {
-			return paymentprovider.Subscription{}, paymentprovider.ErrSubscriptionNotFound
-		}
-		return paymentprovider.Subscription{}, fmt.Errorf("read subscription: %w", err)
+		return paymentprovider.Subscription{}, subscriptionError("read subscription", err)
 	}
 	read, err := readSubscription(subscription)
 	if err != nil {
@@ -281,15 +277,26 @@ func (p *Provider) CancelSubscription(ctx context.Context, credentials paymentpr
 	if err != nil {
 		return err
 	}
-	_, err = client.V1Subscriptions.Cancel(ctx, subscriptionID, &stripego.SubscriptionCancelParams{})
-	if err != nil {
-		var stripeErr *stripego.Error
-		if errors.As(err, &stripeErr) && stripeErr.Code == stripego.ErrorCodeResourceMissing {
-			return paymentprovider.ErrSubscriptionNotFound
-		}
-		return fmt.Errorf("cancel subscription: %w", err)
+	if _, err := client.V1Subscriptions.Cancel(ctx, subscriptionID, &stripego.SubscriptionCancelParams{}); err != nil {
+		return subscriptionError("cancel subscription", err)
 	}
 	return nil
+}
+
+// subscriptionError answers what Stripe said about a call on one subscription:
+// that the account holds no such subscription, that the key is refused, or
+// else the error itself.
+func subscriptionError(call string, err error) error {
+	var stripeErr *stripego.Error
+	if errors.As(err, &stripeErr) {
+		switch {
+		case stripeErr.Code == stripego.ErrorCodeResourceMissing:
+			return paymentprovider.ErrSubscriptionNotFound
+		case stripeErr.HTTPStatusCode == http.StatusUnauthorized || stripeErr.HTTPStatusCode == http.StatusForbidden:
+			return fmt.Errorf("%s: %w: %s", call, paymentprovider.ErrCredentialsRefused, stripeErr.Msg)
+		}
+	}
+	return fmt.Errorf("%s: %w", call, err)
 }
 
 // readSubscription reads the subscription a subscription checkout started. A

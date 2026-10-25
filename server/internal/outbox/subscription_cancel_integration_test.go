@@ -47,13 +47,12 @@ func newSubscriptionCancelFixture(t *testing.T) *subscriptionCancelFixture {
 		tenantID:  tenant.ID,
 	}
 	f.secretKey = f.stripe.Credentials()[stripe.FieldSecretKey]
-	f.savePaymentSettings(t, true)
+	f.savePaymentSettings(t, f.stripe.Credentials(), true)
 	return f
 }
 
-func (f *subscriptionCancelFixture) savePaymentSettings(t *testing.T, enabled bool) {
+func (f *subscriptionCancelFixture) savePaymentSettings(t *testing.T, credentials paymentprovider.Credentials, enabled bool) {
 	t.Helper()
-	credentials := f.stripe.Credentials()
 	if _, err := paymentsettings.New(dbmodels.New(f.pg.DB), f.encryptor, f.registry(), nil, slog.Default()).Upsert(context.Background(), f.tenantID, paymentsettings.UpdateInput{
 		Provider: stripe.ID,
 		Enabled:  enabled,
@@ -137,7 +136,7 @@ func TestSubscriptionCancelLeavesASubscriptionThatIsNoLongerBilled(t *testing.T)
 	f.subscribe("sub_once", "active")
 	f.subscribe("sub_expired", "incomplete_expired")
 
-	for _, id := range []string{"sub_once", "sub_once", "sub_expired", "sub_not_on_the_account"} {
+	for _, id := range []string{"sub_once", "sub_once", "sub_expired"} {
 		if err := handle(context.Background(), f.event(t, id)); err != nil {
 			t.Fatalf("handle %s: %v", id, err)
 		}
@@ -148,31 +147,57 @@ func TestSubscriptionCancelLeavesASubscriptionThatIsNoLongerBilled(t *testing.T)
 	}
 }
 
-// A cancellation Stripe does not take is retried, and so is one the tenant's
-// settings cannot send for now: the subscription bills the reader either way.
-func TestSubscriptionCancelIsRetriedUntilItIsSent(t *testing.T) {
+// A cancellation Stripe does not take this time is retried as any failure is.
+func TestSubscriptionCancelIsRetriedWhenStripeFails(t *testing.T) {
 	f := newSubscriptionCancelFixture(t)
 	handle := f.handler(t)
 	f.subscribe("sub_retry", "active")
 	event := f.event(t, "sub_retry")
 
 	f.stripe.API.FailNextSubscriptionCancel(f.secretKey, "sub_retry")
-	if err := handle(context.Background(), event); err == nil || outbox.IsPermanent(err) {
-		t.Fatalf("handle while Stripe fails = %v, want an error to retry", err)
+	if err := handle(context.Background(), event); err == nil || outbox.IsPermanent(err) || outbox.IsBlocked(err) {
+		t.Fatalf("handle while Stripe fails = %v, want an ordinary error to retry", err)
 	}
-	f.savePaymentSettings(t, false)
-	if err := handle(context.Background(), event); err == nil || outbox.IsPermanent(err) {
-		t.Fatalf("handle while payments are off = %v, want an error to retry", err)
-	}
-	if got := f.status(t, "sub_retry"); got != "active" {
-		t.Fatalf("status before a cancellation went through = %q, want active", got)
-	}
-
-	f.savePaymentSettings(t, true)
 	if err := handle(context.Background(), event); err != nil {
 		t.Fatalf("handle once Stripe takes it: %v", err)
 	}
 	if got := f.status(t, "sub_retry"); got != "canceled" {
+		t.Fatalf("status = %q, want canceled", got)
+	}
+}
+
+// What only the tenant can put right blocks the cancellation instead of
+// spending its retries, so it is still owed when the tenant does: payments
+// switched off, a key Stripe refuses, and a key of another account, which
+// holds no such subscription.
+func TestSubscriptionCancelWaitsForTheTenantsSettings(t *testing.T) {
+	f := newSubscriptionCancelFixture(t)
+	handle := f.handler(t)
+	f.subscribe("sub_blocked", "active")
+	event := f.event(t, "sub_blocked")
+
+	blocked := func(t *testing.T, while string) {
+		t.Helper()
+		if err := handle(context.Background(), event); !outbox.IsBlocked(err) {
+			t.Fatalf("handle while %s = %v, want it blocked", while, err)
+		}
+	}
+	f.savePaymentSettings(t, f.stripe.Credentials(), false)
+	blocked(t, "payments are off")
+	f.savePaymentSettings(t, f.stripe.OtherCredentials(), true)
+	blocked(t, "the settings name another account")
+	f.savePaymentSettings(t, f.stripe.Credentials(), true)
+	f.stripe.API.RevokeSecretKey(f.secretKey)
+	blocked(t, "Stripe refuses the key")
+	if got := f.status(t, "sub_blocked"); got != "active" {
+		t.Fatalf("status while blocked = %q, want active", got)
+	}
+
+	f.stripe.API.RestoreSecretKey(f.secretKey)
+	if err := handle(context.Background(), event); err != nil {
+		t.Fatalf("handle once the settings are back: %v", err)
+	}
+	if got := f.status(t, "sub_blocked"); got != "canceled" {
 		t.Fatalf("status = %q, want canceled", got)
 	}
 }

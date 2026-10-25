@@ -17,6 +17,11 @@ var ErrPriceNotFound = errors.New("the payment provider holds no such recurring 
 // no subscription under.
 var ErrSubscriptionNotFound = errors.New("the payment provider holds no such subscription")
 
+// ErrCredentialsRefused reports credentials the provider refuses outright: a
+// key revoked or rolled, or one without the permission the call needs. Another
+// attempt with the same credentials is refused again.
+var ErrCredentialsRefused = errors.New("the payment provider refused the credentials")
+
 // ErrCheckoutNotOpen reports a checkout that could not be expired because it
 // had already completed or expired.
 var ErrCheckoutNotOpen = errors.New("the checkout is no longer open")

@@ -247,8 +247,18 @@ func TestCancelSubscriptionEndsTheSubscriptionNow(t *testing.T) {
 		t.Fatalf("CancelSubscription on another account = %v, want ErrSubscriptionNotFound", err)
 	}
 	api.FailNextSubscriptionCancel(secretKey, "sub_cancel")
-	if err := provider.CancelSubscription(t.Context(), checkoutCredentials, "sub_cancel"); err == nil || errors.Is(err, paymentprovider.ErrSubscriptionNotFound) {
-		t.Fatalf("CancelSubscription Stripe could not take = %v, want an error other than not found", err)
+	if err := provider.CancelSubscription(t.Context(), checkoutCredentials, "sub_cancel"); err == nil ||
+		errors.Is(err, paymentprovider.ErrSubscriptionNotFound) || errors.Is(err, paymentprovider.ErrCredentialsRefused) {
+		t.Fatalf("CancelSubscription Stripe could not take = %v, want an error about neither the subscription nor the key", err)
+	}
+
+	// A rolled or revoked key is refused before Stripe looks the subscription up.
+	api.RevokeSecretKey(secretKey)
+	if err := provider.CancelSubscription(t.Context(), checkoutCredentials, "sub_cancel"); !errors.Is(err, paymentprovider.ErrCredentialsRefused) {
+		t.Fatalf("CancelSubscription with a revoked key = %v, want ErrCredentialsRefused", err)
+	}
+	if _, err := provider.RetrieveSubscription(t.Context(), checkoutCredentials, "sub_cancel"); !errors.Is(err, paymentprovider.ErrCredentialsRefused) {
+		t.Fatalf("RetrieveSubscription with a revoked key = %v, want ErrCredentialsRefused", err)
 	}
 }
 

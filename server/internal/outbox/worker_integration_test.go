@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -128,6 +129,42 @@ func TestWorkerLeavesUnknownEventTypeForAWorkerThatHandlesIt(t *testing.T) {
 	}
 	if n := older.Metrics().Dead.Load(); n != 0 {
 		t.Fatalf("older worker dead metric = %d, want 0", n)
+	}
+}
+
+// A handler that cannot go on until something outside the outbox changes
+// answers Blocked, and its event waits for that rather than spending the retry
+// budget: with one attempt allowed, an ordinary failure would mark it dead.
+func TestWorkerLeavesABlockedEventWaitingWithoutChargingAnAttempt(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	event := insertUnknownTypeEvent(t, ctx, queries, tenant.ID, "test:blocked")
+
+	var calls atomic.Int64
+	handlers := outbox.NewRegistry()
+	handlers.Register(unknownEventType, func(context.Context, dbmodels.OutboxEvent) error {
+		if calls.Add(1) < 3 {
+			return outbox.Blocked(errors.New("the tenant's settings are switched off"))
+		}
+		return nil
+	})
+	w := startTestWorker(t, pg.DB, outbox.Config{Handlers: handlers, MaxAttempts: 1, BlockedWait: 20 * time.Millisecond})
+
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0", got.Attempts)
+	}
+	if n := calls.Load(); n != 3 {
+		t.Fatalf("handler ran %d times, want 3", n)
+	}
+	if n := w.Metrics().Dead.Load(); n != 0 {
+		t.Fatalf("dead metric = %d, want 0", n)
 	}
 }
 

@@ -185,7 +185,7 @@ It also handles these non-mail events:
 | `admin_password_reset_request` | A password reset the admin console accepted: the reset token and an `admin_password_reset_email` when the address has an account in the tenant |
 | `platform_password_reset_request` | A password reset the platform console accepted, or an operator a Super admin added: the reset token and a `platform_password_reset_email` when the address belongs to an operator |
 | `google_play_purchase_consume` | The Google Play Developer API consume of a Play purchase `ConfirmStorePurchase` recorded, which also acknowledges it |
-| `subscription_cancel` | The immediate cancellation, on the tenant's Stripe account, of a subscription whose reader's account was deleted; see [Subscription plans](../../README.md#subscription-plans) |
+| `subscription_cancel` | The immediate cancellation, on the tenant's Stripe account, of a subscription whose reader's account was deleted. While the tenant's payment settings cannot send it, it is tried again every 10 minutes without spending an attempt, so `PUBLIRA_OUTBOX_MAX_ATTEMPTS` does not mark it `dead`; see [Subscription plans](../../README.md#subscription-plans) |
 
 The push handler is always registered and reads its credentials per delivery: a mobile device is sent with its tenant's stored FCM credentials and skipped while the tenant has none, and a browser with the platform's VAPID key pair; see [Mobile push](../../README.md#mobile-push-firebase-cloud-messaging) and [Web Push](../../README.md#web-push).
 
