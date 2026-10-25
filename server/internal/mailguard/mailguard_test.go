@@ -277,6 +277,9 @@ func TestRulesPairAnHourlyBurstWithADailyBudget(t *testing.T) {
 // form with no bound on the mail it causes.
 func TestNewDefaultLimitsAnUnconfiguredCaller(t *testing.T) {
 	guard := NewDefault()
+	// The policy is what this case is about. Its counters move to a clock that
+	// stays inside one window, so an hour turning over mid-case refills nothing.
+	guard.limiter = testutil.Limiter()
 	allowance := platformpolicy.Defaults().MailRequestsPerAddress.PerHour
 
 	for attempt := 1; attempt <= allowance; attempt++ {

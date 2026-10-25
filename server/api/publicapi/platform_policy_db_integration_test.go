@@ -12,7 +12,6 @@ import (
 	"github.com/publira/publira/server/internal/mailguard"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -28,8 +27,8 @@ func newPublicDBEnvWithSavedPolicy(t *testing.T, policy platformpolicy.Policy) *
 	db := pg.OpenPublicDB(t)
 
 	resolver := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, slog.Default())
-	guards := readerGuards{limiter: ratelimit.New(ratelimit.NewMemoryStore()), policy: resolver}
-	mail := mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), resolver, slog.Default())
+	guards := readerGuards{limiter: testutil.Limiter(), policy: resolver}
+	mail := mailguard.New(testutil.Limiter(), resolver, slog.Default())
 	server := httptest.NewServer(handlerFromServer(
 		newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), guards, mail, nil),
 	))

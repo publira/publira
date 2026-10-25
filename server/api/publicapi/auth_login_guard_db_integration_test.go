@@ -18,7 +18,6 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -28,13 +27,12 @@ import (
 // shape of the response.
 
 // loginGuardWith is the sign-in limit at perAccount and perSource over
-// in-process counters. Tightening both halves of a limit keeps the allowance
-// from refilling when a case runs across the boundary of its shorter window.
+// in-process counters.
 func loginGuardWith(perAccount platformpolicy.MinuteDay, perSource platformpolicy.HourDay) *loginguard.Guard {
 	policy := openPolicy()
 	policy.LoginAttemptsPerAccount = perAccount
 	policy.LoginAttemptsPerSource = perSource
-	return loginguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), nil)
+	return loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), nil)
 }
 
 // newLoginLimitedEnv starts a server that lets limit passwords be tried for one

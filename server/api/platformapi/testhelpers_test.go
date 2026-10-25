@@ -24,7 +24,6 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	"github.com/publira/publira/server/internal/publicid"
-	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -310,7 +309,7 @@ func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guar
 	policy := platformpolicy.Defaults()
 	policy.MailRequestsPerAddress = perAddress
 	policy.MailRequestsPerSource = perSource
-	return mailguard.New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(policy), slog.Default())
+	return mailguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), slog.Default())
 }
 
 // bearerHandlerContext is the context a handler sees while it serves an RPC
