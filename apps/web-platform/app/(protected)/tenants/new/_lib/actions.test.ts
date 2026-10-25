@@ -60,6 +60,7 @@ const tenantFormData = (
     tenant_admin_domain: "",
     tenant_default_locale: "en",
     tenant_domain: "tenant-example.example.com",
+    tenant_image_domain: "",
     tenant_name: "Example Tenant",
     ...overrides,
   };
@@ -134,6 +135,26 @@ describe("createTenantAction", () => {
         defaultLocale: "en",
         supportedLocales: ["ja", "en"],
       })
+    );
+  });
+
+  it("sends the image host the form names", async () => {
+    mockCreatePlatformTenant.mockResolvedValueOnce({
+      ok: true,
+      publicId: "TENANT00001",
+    });
+
+    const { createTenantAction } = await import("./actions");
+
+    await expect(
+      createTenantAction(
+        null,
+        tenantFormData({ tenant_image_domain: " images.example.net " })
+      )
+    ).rejects.toThrow("NEXT_REDIRECT:/tenants/TENANT00001");
+
+    expect(mockCreatePlatformTenant).toHaveBeenCalledWith(
+      expect.objectContaining({ imageDomain: "images.example.net" })
     );
   });
 

@@ -80,6 +80,7 @@ const updateTenantDomainFormSchema = async (locale: Locale) => {
   return z.object({
     adminDomain: optionalTrimmedString(),
     domain: requiredTrimmedString(t("platform.tenants.domain_required")),
+    imageDomain: optionalTrimmedString(),
     tenantId,
   });
 };
@@ -235,6 +236,7 @@ export const updateTenantDomainAction = async (
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
       domain: { kind: "value", name: "tenant_domain" },
+      imageDomain: { kind: "value", name: "tenant_image_domain" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
@@ -245,7 +247,11 @@ export const updateTenantDomainAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformTenant(
       parsed.data.tenantId,
-      { adminDomain: parsed.data.adminDomain, domain: parsed.data.domain },
+      {
+        adminDomain: parsed.data.adminDomain,
+        domain: parsed.data.domain,
+        imageDomain: parsed.data.imageDomain,
+      },
       locale
     )
   );

@@ -44,6 +44,7 @@ export interface PlatformTenantSummary {
   adminDomain: string;
   createdAt: string;
   domain: string;
+  imageDomain: string;
   name: string;
   publicId: string;
   status: string;
@@ -62,6 +63,7 @@ export interface PlatformTenantDetail {
   domain: string;
   /** The internal ID every write and every read under the tenant sends. */
   id: string;
+  imageDomain: string;
   name: string;
   publicId: string;
   status: string;
@@ -132,6 +134,7 @@ export interface CreatePlatformTenantInput {
    */
   defaultLocale: Locale;
   domain: string;
+  imageDomain?: string;
   initialAdminEmails?: string[];
   locale: Locale;
   name: string;
@@ -198,6 +201,7 @@ const listPlatformTenantsForLocale = async (
         adminDomain: tenant.adminDomain,
         createdAt: tenant.createdAt,
         domain: tenant.domain,
+        imageDomain: tenant.imageDomain,
         name: tenant.name,
         publicId: tenant.publicId,
         status: tenant.status,
@@ -247,7 +251,14 @@ export const listPlatformTenants = async (
  */
 type RawTenant = Pick<
   Tenant,
-  "adminDomain" | "createdAt" | "domain" | "id" | "name" | "publicId" | "status"
+  | "adminDomain"
+  | "createdAt"
+  | "domain"
+  | "id"
+  | "imageDomain"
+  | "name"
+  | "publicId"
+  | "status"
 >;
 
 const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
@@ -260,6 +271,7 @@ const mapTenant = (tenant?: RawTenant): PlatformTenantDetail | null => {
     createdAt: tenant.createdAt,
     domain: tenant.domain,
     id: tenant.id,
+    imageDomain: tenant.imageDomain,
     name: tenant.name,
     publicId: tenant.publicId,
     status: tenant.status,
@@ -457,8 +469,8 @@ export const resumePlatformTenant = async (
 };
 
 /**
- * `already_exists` may name either domain field. The server identifies the
- * rejected field with `google.rpc.BadRequest`, so this wording stays stable
+ * `already_exists` may name any of the three host fields. The server identifies
+ * the rejected field with `google.rpc.BadRequest`, so this wording stays stable
  * when its message changes.
  */
 const duplicateDomainMessage = async (
@@ -470,6 +482,9 @@ const duplicateDomainMessage = async (
 
   if (rpcErrorHasFieldViolation(error, "admin_domain")) {
     return t("platform.tenants.admin_domain_taken");
+  }
+  if (rpcErrorHasFieldViolation(error, "image_domain")) {
+    return t("platform.tenants.image_domain_taken");
   }
   if (rpcErrorHasFieldViolation(error, "domain")) {
     return t("platform.tenants.domain_taken");
@@ -497,6 +512,7 @@ export const createPlatformTenant = async (
   const name = input.name.trim();
   const domain = input.domain.trim();
   const adminDomain = input.adminDomain?.trim() ?? "";
+  const imageDomain = input.imageDomain?.trim() ?? "";
   const initialAdminEmails = (input.initialAdminEmails ?? []).flatMap(
     (email) => {
       const trimmed = email.trim();
@@ -510,6 +526,7 @@ export const createPlatformTenant = async (
         adminDomain,
         defaultLocale: input.defaultLocale,
         domain,
+        imageDomain,
         initialAdminEmails,
         name,
         supportedLocales: [...input.supportedLocales],
@@ -841,13 +858,14 @@ export const cancelPlatformTenantAdminInvitation = async (
 
 /**
  * What one console form saves: the name alone, or the domain with the admin
- * domain. `UpdateTenant` changes only the fields a request carries, so a field
- * the form does not edit is left out rather than sent back as the value the
- * page was rendered with, which another operator may have changed since.
+ * domain and the image host. `UpdateTenant` changes only the fields a request
+ * carries, so a field the form does not edit is left out rather than sent back
+ * as the value the page was rendered with, which another operator may have
+ * changed since.
  */
 export type PlatformTenantChange =
   | { name: string }
-  | { adminDomain: string; domain: string };
+  | { adminDomain: string; domain: string; imageDomain: string };
 
 export const updatePlatformTenant = async (
   tenantId: string,
@@ -883,7 +901,11 @@ export const updatePlatformTenant = async (
         ok: false,
       };
     }
-    fields = { adminDomain: change.adminDomain.trim(), domain };
+    fields = {
+      adminDomain: change.adminDomain.trim(),
+      domain,
+      imageDomain: change.imageDomain.trim(),
+    };
   }
 
   try {

@@ -40,6 +40,7 @@ const createTenantFormSchema = async (locale: Locale) => {
         error: t("platform.tenants.locale_required"),
       }),
       domain: requiredTrimmedString(t("platform.tenants.domain_required")),
+      imageDomain: optionalTrimmedString(),
       initialAdminEmails: commaOrNewlineStringListFormSchema,
       name: requiredTrimmedString(t("platform.tenants.name_required")),
       supportedLocales: z.array(
@@ -66,6 +67,7 @@ export const createTenantAction = async (
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
       defaultLocale: { kind: "value", name: "tenant_default_locale" },
       domain: { kind: "value", name: "tenant_domain" },
+      imageDomain: { kind: "value", name: "tenant_image_domain" },
       initialAdminEmails: { kind: "value", name: "initial_admin_emails" },
       name: { kind: "value", name: "tenant_name" },
       supportedLocales: { kind: "values", name: "tenant_supported_locales" },

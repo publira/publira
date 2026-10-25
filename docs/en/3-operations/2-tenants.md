@@ -40,11 +40,12 @@ Choose **Create tenant** under **Tenants** in the sidebar, and fill in:
 - **Tenant name**: the publisher's name, which the invitations and the rest of the tenant's mail call it by.
 - **Domain**: the domain you chose.
 - **Admin domain**: the console host, only when it is not `admin.<domain>`. Left empty, the console is served on `admin.<domain>`, as the line under the field shows.
+- **Image host**: the host the tenant's site images are served on, only when they are not served on its domain. Left empty, they are served on the domain, as the line under the field shows.
 - **Default language**.
 - **Languages offered**: a box for each language, ticked for each one the tenant's site offers. The default language's box is always ticked and cannot be cleared, and the rest start cleared.
 - **Initial admin emails (optional, multiple allowed)**: the addresses to invite as the tenant's administrators, separated by commas or line breaks. Each one is mailed an invitation as soon as the tenant is created.
 
-![The Create tenant form: Tenant name, Domain with the notes on domain settings, Admin domain with the line under it, Default language, Languages offered with the default's box ticked, Initial admin emails, and Create.](./tenants-create-tenant.png)
+![The Create tenant form: Tenant name, Domain with the notes on domain settings, Admin domain and Image host with the line under each, Default language, Languages offered with the default's box ticked, Initial admin emails, and Create.](./tenants-create-tenant.png)
 
 **Create** creates the tenant and opens its page. Its time zone is the platform's default, which its administrators can change from the tenant console.
 
@@ -74,9 +75,9 @@ A tenant's name, domain, and console host can be changed after it is created. It
 
 ### From the Platform Console
 
-Open the tenant from **Tenants**. **Profile** changes its **Tenant name**, and **Domain settings** changes its **Domain** and **Admin domain**. Emptying **Admin domain** moves the console back to `admin.<domain>`.
+Open the tenant from **Tenants**. **Profile** changes its **Tenant name**, and **Domain settings** changes its **Domain**, **Admin domain**, and **Image host**. Emptying **Admin domain** moves the console back to `admin.<domain>`, and emptying **Image host** serves the site's images on the domain again.
 
-![A tenant's page: Profile with Tenant name, when it was created, its status, and Save, and Domain settings with its notes, Domain, Admin domain with the line under it, and Save.](./tenants-profile-domain.png)
+![A tenant's page: Profile with Tenant name, when it was created, its status, and Save, and Domain settings with its notes, Domain, Admin domain and Image host with the line under each, and Save.](./tenants-profile-domain.png)
 
 ### From publiractl
 
