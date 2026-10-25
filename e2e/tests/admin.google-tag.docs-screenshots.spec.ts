@@ -16,7 +16,7 @@ import { WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL } from "../src/urls";
 
 /**
  * The tenant console's Google tag form, as
- * `docs/<locale>/4-console/7-google-tag.md` shows it: the IDs and the serving
+ * `docs/<locale>/4-console/8-google-tag.md` shows it: the IDs and the serving
  * modes, the server container URL, the gateway path with the tag it is set up
  * for, and the dialog that generates a new path.
  *

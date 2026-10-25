@@ -39,8 +39,9 @@ A Tenant admin gives the other staff their roles under **Members**. [A tenant's 
 - [Readers, comments, and contact messages](./2-readers/index.md): suspending and deleting readers' accounts, working the comment approval and report queues, answering contact messages, and opening a paid episode to a reader with an access ticket.
 - [Setting up the tenant](./3-setup/index.md): taking a new tenant to a site with the publisher's look, legal pages, and staff, through its settings, branding, pages, announcements, campaign banners, members, mail server, audit log, and your own account.
 - [Selling episodes](./4-selling-episodes.md): pricing an episode, taking payment through Stripe or PAY.JP, where episodes are sold, in-app purchase, refunds, and testing a setup before going live.
-- [Reports and royalties](./5-reports-and-royalties.md): what the Dashboard and Read-through count, how each Author's royalties are worked out, closing a month into a statement, and exporting it as CSV.
-- [Sign-in with Apple and Google](./6-sign-in.md): letting readers sign in to the site and the app with an Apple or Google account, and what to create in Apple's and Google's consoles for it.
-- [Google tag](./7-google-tag.md): measuring the site with Google Analytics or Google Tag Manager, the three places the tag can be loaded from, and what to set up in Google Tag Manager for the gateway.
+- [Subscription plans](./5-subscription-plans.md): selling readers a plan billed every period through Stripe that opens the whole catalog, some labels, or some series, the Price and the webhook events it needs in Stripe, and what a subscriber does on the site.
+- [Reports and royalties](./6-reports-and-royalties.md): what the Dashboard and Read-through count, how each Author's royalties are worked out, closing a month into a statement, and exporting it as CSV.
+- [Sign-in with Apple and Google](./7-sign-in.md): letting readers sign in to the site and the app with an Apple or Google account, and what to create in Apple's and Google's consoles for it.
+- [Google tag](./8-google-tag.md): measuring the site with Google Analytics or Google Tag Manager, the three places the tag can be loaded from, and what to set up in Google Tag Manager for the gateway.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.

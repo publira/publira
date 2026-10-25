@@ -45,7 +45,7 @@ Once linked, the reader:
 - Is not offered a purchase of those episodes, and cannot rate them.
 - Is shown with an **Author** badge on their comments on those episodes, with their name linked to the Author's page.
 
-A linked reader sees no sales figures or royalty statements; those stay in the console, as [Reports and royalties](../5-reports-and-royalties.md) describes. **Unlink** removes the link, and leaves the reader's account as it was. Both are recorded in the audit log.
+A linked reader sees no sales figures or royalty statements; those stay in the console, as [Reports and royalties](../6-reports-and-royalties.md) describes. **Unlink** removes the link, and leaves the reader's account as it was. Both are recorded in the audit log.
 
 ## Author roles
 
@@ -74,4 +74,4 @@ On saving, the rows are grouped by role in the roles' priority order; drag a row
 
 The site shows the credits the same way: each role followed by its Authors, such as "Original Author Name1, Name2 / Artist Name3". A series page shows the series' credits, and an episode page the episode's own.
 
-The series' credits are the template for its new episodes: an episode is created with a copy of them, and keeps that copy when the series' credits change. [Credits](./2-episodes.md#credits) describes changing them on an episode, or on many episodes at once, and [Reports and royalties](../5-reports-and-royalties.md#what-an-author-is-owed) how the shares become royalties.
+The series' credits are the template for its new episodes: an episode is created with a copy of them, and keeps that copy when the series' credits change. [Credits](./2-episodes.md#credits) describes changing them on an episode, or on many episodes at once, and [Reports and royalties](../6-reports-and-royalties.md#what-an-author-is-owed) how the shares become royalties.
