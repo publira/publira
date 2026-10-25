@@ -21,7 +21,8 @@ ORDER BY CASE g.kind
         WHEN 'creator' THEN 0
         WHEN 'purchase' THEN 1
         WHEN 'access_ticket' THEN 2
-        ELSE 3
+        WHEN 'subscription' THEN 3
+        ELSE 4
     END
 LIMIT 1
 `
@@ -35,9 +36,11 @@ type GetEpisodeEntitlementSourceParams struct {
 // Which grant opens the episode to the reader, when one does. A reader can
 // hold several, and the creator grant is reported first because it is the
 // standing one: it is what the credit line says, where a purchase or a ticket
-// only says how a reader came to hold the episode. The staff grant comes last:
-// it holds every episode of the tenant, so it would otherwise hide the
-// purchase a member of staff made to try the checkout.
+// only says how a reader came to hold the episode. A subscription and then the
+// staff grant come after those two, because each opens many episodes at once:
+// a subscription would otherwise hide the episode a subscriber bought to keep,
+// and the staff grant, which holds every episode of the tenant, the purchase a
+// member of staff made to try the checkout.
 // ListPublishedEpisodeAccessInSeries reports in the same order. No row means
 // no grant.
 func (q *Queries) GetEpisodeEntitlementSource(ctx context.Context, arg GetEpisodeEntitlementSourceParams) (string, error) {
@@ -65,7 +68,8 @@ SELECT e.id,
                 WHEN 'creator' THEN 0
                 WHEN 'purchase' THEN 1
                 WHEN 'access_ticket' THEN 2
-                ELSE 3
+                WHEN 'subscription' THEN 3
+                ELSE 4
             END
         LIMIT 1
     ), '')::text AS grant_kind,

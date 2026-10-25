@@ -698,9 +698,11 @@ type Querier interface {
 	// Which grant opens the episode to the reader, when one does. A reader can
 	// hold several, and the creator grant is reported first because it is the
 	// standing one: it is what the credit line says, where a purchase or a ticket
-	// only says how a reader came to hold the episode. The staff grant comes last:
-	// it holds every episode of the tenant, so it would otherwise hide the
-	// purchase a member of staff made to try the checkout.
+	// only says how a reader came to hold the episode. A subscription and then the
+	// staff grant come after those two, because each opens many episodes at once:
+	// a subscription would otherwise hide the episode a subscriber bought to keep,
+	// and the staff grant, which holds every episode of the tenant, the purchase a
+	// member of staff made to try the checkout.
 	// ListPublishedEpisodeAccessInSeries reports in the same order. No row means
 	// no grant.
 	GetEpisodeEntitlementSource(ctx context.Context, arg GetEpisodeEntitlementSourceParams) (string, error)

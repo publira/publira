@@ -135,6 +135,15 @@ class EpisodeEntitlementSource extends $pb.ProtobufEnum {
       EpisodeEntitlementSource._(
           4, _omitEnumNames ? '' : 'EPISODE_ENTITLEMENT_SOURCE_STAFF');
 
+  /// The reader's subscription is to a plan whose scope holds the episode's
+  /// series, and Stripe reports it trialing, active, or past due within the
+  /// period it bills for. It is reported under a purchase, an access ticket,
+  /// and a creator's credit the same reader also holds, and over the staff
+  /// grant.
+  static const EpisodeEntitlementSource
+      EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION = EpisodeEntitlementSource._(
+          5, _omitEnumNames ? '' : 'EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION');
+
   static const $core.List<EpisodeEntitlementSource> values =
       <EpisodeEntitlementSource>[
     EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED,
@@ -142,10 +151,11 @@ class EpisodeEntitlementSource extends $pb.ProtobufEnum {
     EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET,
     EPISODE_ENTITLEMENT_SOURCE_CREATOR,
     EPISODE_ENTITLEMENT_SOURCE_STAFF,
+    EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION,
   ];
 
   static final $core.List<EpisodeEntitlementSource?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 4);
+      $pb.ProtobufEnum.$_initByValueList(values, 5);
   static EpisodeEntitlementSource? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

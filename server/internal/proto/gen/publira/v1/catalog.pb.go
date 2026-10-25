@@ -175,6 +175,12 @@ const (
 	// reported under any other grant the same reader also holds, so a member of
 	// staff who bought an episode sees the purchase.
 	EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_STAFF EpisodeEntitlementSource = 4
+	// The reader's subscription is to a plan whose scope holds the episode's
+	// series, and Stripe reports it trialing, active, or past due within the
+	// period it bills for. It is reported under a purchase, an access ticket,
+	// and a creator's credit the same reader also holds, and over the staff
+	// grant.
+	EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION EpisodeEntitlementSource = 5
 )
 
 // Enum value maps for EpisodeEntitlementSource.
@@ -185,6 +191,7 @@ var (
 		2: "EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET",
 		3: "EPISODE_ENTITLEMENT_SOURCE_CREATOR",
 		4: "EPISODE_ENTITLEMENT_SOURCE_STAFF",
+		5: "EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION",
 	}
 	EpisodeEntitlementSource_value = map[string]int32{
 		"EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED":   0,
@@ -192,6 +199,7 @@ var (
 		"EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET": 2,
 		"EPISODE_ENTITLEMENT_SOURCE_CREATOR":       3,
 		"EPISODE_ENTITLEMENT_SOURCE_STAFF":         4,
+		"EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION":  5,
 	}
 )
 
@@ -1362,10 +1370,10 @@ type SeriesEpisodeAccess struct {
 	EpisodeId string        `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
 	// Whether the caller holds an active permanent copy of the episode: a
 	// purchase of its permanent copy, of a volume holding it, or of the rest of
-	// the series. A rental, an access ticket, a creator's own episode, and a
-	// staff role open it without owning it, so `access` may be
-	// EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest. It
-	// says nothing about the age rule, which may still keep an owned episode
+	// the series. A rental, an access ticket, a creator's own episode, a
+	// subscription, and a staff role open it without owning it, so `access` may
+	// be EPISODE_ACCESS_ENTITLED while this is false. Always false for a guest.
+	// It says nothing about the age rule, which may still keep an owned episode
 	// closed.
 	Owned bool `protobuf:"varint,4,opt,name=owned,proto3" json:"owned,omitempty"`
 	// Which grant opens the episode, as GetEpisodeDetailResponse reports it. Set
@@ -9353,13 +9361,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x13EPISODE_ACCESS_FREE\x10\x01\x12\x19\n" +
 	"\x15EPISODE_ACCESS_LOCKED\x10\x02\x12\x1b\n" +
 	"\x17EPISODE_ACCESS_ENTITLED\x10\x03\x12!\n" +
-	"\x1dEPISODE_ACCESS_AGE_RESTRICTED\x10\x04*\xeb\x01\n" +
+	"\x1dEPISODE_ACCESS_AGE_RESTRICTED\x10\x04*\x98\x02\n" +
 	"\x18EpisodeEntitlementSource\x12*\n" +
 	"&EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED\x10\x00\x12'\n" +
 	"#EPISODE_ENTITLEMENT_SOURCE_PURCHASE\x10\x01\x12,\n" +
 	"(EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET\x10\x02\x12&\n" +
 	"\"EPISODE_ENTITLEMENT_SOURCE_CREATOR\x10\x03\x12$\n" +
-	" EPISODE_ENTITLEMENT_SOURCE_STAFF\x10\x04*\xb3\x01\n" +
+	" EPISODE_ENTITLEMENT_SOURCE_STAFF\x10\x04\x12+\n" +
+	"'EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION\x10\x05*\xb3\x01\n" +
 	"\x14RecommendationSource\x12%\n" +
 	"!RECOMMENDATION_SOURCE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dRECOMMENDATION_SOURCE_RANKING\x10\x01\x12&\n" +

@@ -1250,6 +1250,15 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 			wantImageCount: 1,
 		},
 		{
+			name:           "paid-authed-as-subscriber-entitled",
+			price:          500,
+			authed:         true,
+			grantKind:      "subscription",
+			wantAccess:     publirav1.EpisodeAccess_EPISODE_ACCESS_ENTITLED,
+			wantSource:     publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION,
+			wantImageCount: 1,
+		},
+		{
 			name:           "paid-authed-without-grant-locked",
 			price:          500,
 			authed:         true,
