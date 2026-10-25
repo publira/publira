@@ -10,7 +10,7 @@ class TenantBrandController extends ChangeNotifier {
     required this._repository,
     required this.tenantHost,
     this.library,
-    this.logoRequestHeaders = const {},
+    this.imageRequestHeaders = const {},
   });
 
   final TenantBrandRepository _repository;
@@ -21,10 +21,10 @@ class TenantBrandController extends ChangeNotifier {
   /// Where the last answer is kept, so a launch without a network is branded.
   final OfflineLibrary? library;
 
-  /// Headers the logo is fetched with. They name the tenant this build points
+  /// Headers the logo and the sign-in image are fetched with. They name the tenant this build points
   /// at rather than anything the API said, so the saved copy does not keep
   /// them.
-  final Map<String, String> logoRequestHeaders;
+  final Map<String, String> imageRequestHeaders;
 
   TenantBrand? _brand;
 

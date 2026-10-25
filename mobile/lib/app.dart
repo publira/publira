@@ -300,7 +300,7 @@ class PubliraApp extends StatefulWidget {
         ),
         tenantHost: resolved.tenantHost,
         library: library,
-        logoRequestHeaders: resolved.publicImageRequestHeaders,
+        imageRequestHeaders: resolved.publicImageRequestHeaders,
       ),
       tenantAvailability: availability,
       // Only the app's own Android and iOS sources report a screenshot.

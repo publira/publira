@@ -100,9 +100,10 @@ class TenantPalette {
   }
 }
 
-/// The stored logo the catalog app bar draws in place of the tenant name.
-class TenantLogo {
-  const TenantLogo({
+/// One stored tenant image — the logo the catalog app bar draws in place of
+/// the tenant name, or the image the sign-in screen is set beside.
+class TenantImage {
+  const TenantImage({
     required this.url,
     required this.width,
     required this.height,
@@ -120,11 +121,15 @@ class TenantBrand {
     required this.name,
     this.palette = TenantPalette.standard,
     this.logo,
+    this.signInImage,
   });
 
   final String name;
   final TenantPalette palette;
 
   /// `null` while the tenant has uploaded no logo.
-  final TenantLogo? logo;
+  final TenantImage? logo;
+
+  /// `null` while the tenant has uploaded no sign-in image.
+  final TenantImage? signInImage;
 }

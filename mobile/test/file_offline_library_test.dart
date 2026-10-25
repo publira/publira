@@ -146,10 +146,15 @@ void main() {
       TenantBrand(
         name: 'Harbor Comics',
         palette: TenantPalette.fromWire(const {'primaryColor': '#0b6e4f'}),
-        logo: TenantLogo(
+        logo: TenantImage(
           url: Uri.parse('http://images.test/images/tenants/LOGO/logo'),
           width: 320,
           height: 80,
+        ),
+        signInImage: TenantImage(
+          url: Uri.parse('http://images.test/images/tenants/SIGNIN/sign_in'),
+          width: 1600,
+          height: 1200,
         ),
       ),
     );
@@ -167,6 +172,11 @@ void main() {
       Uri.parse('http://images.test/images/tenants/LOGO/logo'),
     );
     expect(restored.logo?.height, 80);
+    expect(
+      restored.signInImage?.url,
+      Uri.parse('http://images.test/images/tenants/SIGNIN/sign_in'),
+    );
+    expect(restored.signInImage?.width, 1600);
   });
 
   test('clearing the library forgets the tenant brand', () async {

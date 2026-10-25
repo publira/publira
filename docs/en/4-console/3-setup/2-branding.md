@@ -2,7 +2,7 @@
 title: Branding
 description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, and check them in the preview before readers see them.
 published: 2026-10-07
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 **Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, its colors, and the faces its text is set in. The screen has four cards: **Logo**, **Icon**, **Sign-in image**, and the theme's colors and typefaces. Each card is saved on its own, and saving one leaves the others as they are.
@@ -15,10 +15,10 @@ All three take a JPEG, PNG, or WebP image of at most 10MB. The logo and the icon
 
 |  | **Logo** | **Icon** | **Sign-in image** |
 | --- | --- | --- | --- |
-| Where it appears | In place of the site's name at the top of every page of the site and of this console. The tenant's app shows it in place of the name on its catalog screen | In the browser's tab and address bar, and as the icon a phone uses when a reader adds the site to their home screen | Beside the form on the site's sign-in and sign-up screens, on a screen at least 1024px wide. A narrower screen shows the form alone |
-| Shape | Kept as it is | Cropped to a square from the center | Kept as it is. The site crops it to fill the space beside the form, whose shape changes with the window |
+| Where it appears | In place of the site's name at the top of every page of the site and of this console. The tenant's app shows it in place of the name on its catalog screen | In the browser's tab and address bar, and as the icon a phone uses when a reader adds the site to their home screen | Beside the form on the site's sign-in and sign-up screens, on a screen at least 1024px wide. A narrower screen shows the form alone. The tenant's app shows it on its sign-in screen: beside the form on a screen at least 840px wide, and above it on a narrower one |
+| Shape | Kept as it is | Cropped to a square from the center | Kept as it is. The site and the app crop it to fill the space beside or above the form, whose shape changes with the window |
 | Size | An image wider or taller than 1024px is scaled down, and must still be at least 32px on each side afterwards | At least 32×32px. An image larger than 512×512px is scaled down | An image wider or taller than 2560px is scaled down, and its shorter side must still be at least 512px afterwards |
-| Without one | The site shows the tenant's name | The browser shows its default icon | The space beside the form is filled with the theme's colors |
+| Without one | The site shows the tenant's name | The browser shows its default icon | The space for it is filled with the theme's colors, on the site and in the app |
 
 Choose the file under **Logo image**, **Icon image**, or **Sign-in image file**, then **Save the logo**, **Save the icon**, or **Save the sign-in image**. Saving again replaces the image. **Delete** removes it after you confirm.
 

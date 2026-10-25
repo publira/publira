@@ -131,12 +131,15 @@ class OfflineIndex {
 Map<String, Object?> _tenantToJson(TenantBrand brand) => {
   'name': brand.name,
   'theme': brand.palette.toWire(),
-  if (brand.logo case final logo?)
-    'logo': {
-      'url': logo.url.toString(),
-      'width': logo.width,
-      'height': logo.height,
-    },
+  if (brand.logo case final logo?) 'logo': _tenantImageToJson(logo),
+  if (brand.signInImage case final image?)
+    'signInImage': _tenantImageToJson(image),
+};
+
+Map<String, Object?> _tenantImageToJson(TenantImage image) => {
+  'url': image.url.toString(),
+  'width': image.width,
+  'height': image.height,
 };
 
 TenantBrand? _tenantFromJson(Object? decoded) {
@@ -146,23 +149,24 @@ TenantBrand? _tenantFromJson(Object? decoded) {
   return TenantBrand(
     name: _string(decoded['name']),
     palette: TenantPalette.fromWire(decoded['theme']),
-    logo: _logoFromJson(decoded['logo']),
+    logo: _tenantImageFromJson(decoded['logo']),
+    signInImage: _tenantImageFromJson(decoded['signInImage']),
   );
 }
 
-TenantLogo? _logoFromJson(Object? decoded) {
+TenantImage? _tenantImageFromJson(Object? decoded) {
   if (decoded is! Map) {
     return null;
   }
   final url = Uri.tryParse(_string(decoded['url']));
   final width = _int(decoded['width']);
   final height = _int(decoded['height']);
-  // Written down already resolved, like a cover; anything else is a logo this
-  // build cannot address or lay out.
+  // Written down already resolved, like a cover; anything else is an image
+  // this build cannot address or lay out.
   if (url == null || !url.isAbsolute || width <= 0 || height <= 0) {
     return null;
   }
-  return TenantLogo(url: url, width: width, height: height);
+  return TenantImage(url: url, width: width, height: height);
 }
 
 // The request headers are left out the way a body page's are: they name the
