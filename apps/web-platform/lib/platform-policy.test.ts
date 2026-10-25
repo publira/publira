@@ -148,6 +148,23 @@ describe("getPlatformPolicy", () => {
       },
     });
   });
+
+  // A server older than the allowance answers without the field, and a fresh
+  // install has never saved it: both read as off.
+  it("reads the tenant coin allowance, off when the answer leaves it out", async () => {
+    mockGetPlatformPolicy.mockResolvedValueOnce({
+      policy: { tenantCoinsAllowed: true },
+      revision: 3n,
+    });
+    await expect(getPlatformPolicy()).resolves.toMatchObject({
+      values: { security: { tenantCoinsAllowed: true } },
+    });
+
+    mockGetPlatformPolicy.mockResolvedValueOnce({ policy: {}, revision: 0n });
+    await expect(getPlatformPolicy()).resolves.toMatchObject({
+      values: { security: { tenantCoinsAllowed: false } },
+    });
+  });
 });
 
 const listUrl = "https://lists.example.com/disposable.conf";
@@ -163,6 +180,7 @@ const securityValues: PlatformSecurityPolicy = {
   mfaRequiredForTenantAdmin: false,
   passwordVerification: { perDay: 50, perMinute: 5 },
   storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
+  tenantCoinsAllowed: false,
   waitFreeTicketUse: { perDay: 100, perMinute: 10 },
 };
 
@@ -178,6 +196,7 @@ const storedPolicy = {
   mfaRequiredForPlatformOperator: true,
   mfaRequiredForTenantAdmin: true,
   passwordVerification: { perDay: 50, perMinute: 5 },
+  tenantCoinsAllowed: true,
 };
 
 const community: PlatformCommunityLimits = {
@@ -203,7 +222,7 @@ describe("savePlatformPolicy", () => {
 
   // `UpdatePlatformPolicy` writes the whole row, so a value this screen does
   // not edit has to be sent back as read, or the save would clear it.
-  it("keeps the stored list URL, sign-in attempt limits, and MFA requirements when the community limits are saved", async () => {
+  it("keeps the stored list URL, sign-in attempt limits, MFA requirements, and coin allowance when the community limits are saved", async () => {
     await expect(
       updatePlatformCommunityLimits(community, 4n, "en")
     ).resolves.toEqual({ ok: true });
@@ -217,6 +236,7 @@ describe("savePlatformPolicy", () => {
           loginAttemptsPerSource: { perDay: 400, perHour: 40 },
           mfaRequiredForPlatformOperator: true,
           mfaRequiredForTenantAdmin: true,
+          tenantCoinsAllowed: true,
         }),
       }),
       { headers: { Authorization: "Bearer session-1" } }
@@ -265,6 +285,31 @@ describe("savePlatformPolicy", () => {
     });
   });
 
+  // The server keeps the stored allowance only when the field is left out, so
+  // the screen sends `false` rather than omitting it, or it could never turn
+  // the allowance off.
+  it("sends the coin allowance the security screen saves, off as well as on", async () => {
+    await updatePlatformSecurityPolicy(securityValues, 4n, "en");
+    expect(mockUpdatePlatformPolicy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        policy: expect.objectContaining({ tenantCoinsAllowed: false }),
+      }),
+      expect.anything()
+    );
+
+    await updatePlatformSecurityPolicy(
+      { ...securityValues, tenantCoinsAllowed: true },
+      4n,
+      "en"
+    );
+    expect(mockUpdatePlatformPolicy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        policy: expect.objectContaining({ tenantCoinsAllowed: true }),
+      }),
+      expect.anything()
+    );
+  });
+
   it("sends the list URL and the operator MFA requirement the security screen saves", async () => {
     await updatePlatformSecurityPolicy(
       {
@@ -277,6 +322,7 @@ describe("savePlatformPolicy", () => {
         mfaRequiredForTenantAdmin: false,
         passwordVerification: { perDay: 50, perMinute: 5 },
         storePurchaseConfirmation: { perDay: 100, perMinute: 10 },
+        tenantCoinsAllowed: false,
         waitFreeTicketUse: { perDay: 100, perMinute: 10 },
       },
       4n,
