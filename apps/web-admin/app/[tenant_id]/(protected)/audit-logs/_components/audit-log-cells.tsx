@@ -41,6 +41,11 @@ const catalogActionName = (action: string) => {
         <Message message="admin.audit.actions.series_wait_free_settings_updated" />
       );
     }
+    case "series_free_after_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.series_free_after_settings_updated" />
+      );
+    }
     case "series_translation_deleted": {
       return (
         <Message message="admin.audit.actions.series_translation_deleted" />

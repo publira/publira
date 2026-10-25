@@ -2,8 +2,9 @@
 // passes — promoting due episodes, applying free window boundaries and the
 // publication of scheduled series, turning over each tenant's calendar day,
 // taking down a banner whose pinned window has closed, applying the
-// boundaries of scheduled campaign banners and campaign prices, and recording
-// the coins of each grant that expired — as River periodic jobs.
+// boundaries of scheduled campaign banners and campaign prices, recording
+// the coins of each grant that expired, and opening the episodes a series'
+// free-after-publication rule has reached — as River periodic jobs.
 //
 // Each of them used to be a process of its own on a ticker, which meant a
 // deployment each to schedule, supervise, and keep from overlapping. River is
@@ -34,6 +35,7 @@ import (
 	"github.com/publira/publira/server/internal/coinexpiry"
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/freeafter"
 	"github.com/publira/publira/server/internal/freewindows"
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	"github.com/publira/publira/server/internal/publishepisodes"
@@ -56,6 +58,7 @@ const (
 	ServiceNameApplyCampaignBanners      = "publira-apply-campaign-banners"
 	ServiceNameApplyCampaignPrices       = "publira-apply-campaign-prices"
 	ServiceNameExpireCoinGrants          = "publira-expire-coin-grants"
+	ServiceNameApplyFreeAfterRules       = "publira-apply-free-after-rules"
 )
 
 // QueueName is the River queue they run on. They are kept off the default queue
@@ -67,7 +70,7 @@ const QueueName = "ticker"
 // queueMaxWorkers is one slot per job. Two runs of the same job are already
 // refused by the unique constraint below, and the jobs are independent of each
 // other, so nothing is gained by a wider queue.
-const queueMaxWorkers = 8
+const queueMaxWorkers = 9
 
 const (
 	kindPublishEpisodes  = "ticker.publish_episodes"
@@ -79,6 +82,7 @@ const (
 	kindApplyCampaignBanners      = "ticker.apply_campaign_banners"
 	kindApplyCampaignPrices       = "ticker.apply_campaign_prices"
 	kindExpireCoinGrants          = "ticker.expire_coin_grants"
+	kindApplyFreeAfterRules       = "ticker.apply_free_after_rules"
 
 	DefaultPublishInterval            = time.Minute
 	DefaultPublishMaxRetries          = 3
@@ -89,6 +93,7 @@ const (
 	DefaultCampaignBannerInterval     = time.Minute
 	DefaultCampaignPriceInterval      = time.Minute
 	DefaultCoinExpiryInterval         = time.Minute
+	DefaultFreeAfterInterval          = time.Minute
 
 	// jobTimeout bounds one pass. It is well above any interval because a pass
 	// that has fallen behind is the one that must not be cut off half way: it
@@ -109,6 +114,7 @@ func ServiceNames() []string {
 		ServiceNameApplyCampaignBanners,
 		ServiceNameApplyCampaignPrices,
 		ServiceNameExpireCoinGrants,
+		ServiceNameApplyFreeAfterRules,
 	}
 }
 
@@ -138,6 +144,7 @@ type Config struct {
 	CampaignBannerInterval     time.Duration
 	CampaignPriceInterval      time.Duration
 	CoinExpiryInterval         time.Duration
+	FreeAfterInterval          time.Duration
 }
 
 func (c Config) withDefaults() Config {
@@ -168,6 +175,9 @@ func (c Config) withDefaults() Config {
 	if c.CoinExpiryInterval <= 0 {
 		c.CoinExpiryInterval = DefaultCoinExpiryInterval
 	}
+	if c.FreeAfterInterval <= 0 {
+		c.FreeAfterInterval = DefaultFreeAfterInterval
+	}
 	return c
 }
 
@@ -185,6 +195,7 @@ type Jobs struct {
 	banners    *campaignbanners.Runner
 	prices     *campaignprices.Runner
 	coins      *coinexpiry.Runner
+	freeAfter  *freeafter.Runner
 }
 
 // New constructs the runners over cfg.DB.
@@ -201,11 +212,12 @@ func New(cfg Config) (*Jobs, error) {
 		tenantDay: dayroll.New(func(ctx context.Context) ([]tenantday.Tenant, error) {
 			return tenantday.List(ctx, cfg.DB)
 		}, cfg.Revalidate, cfg.Logger),
-		pinned:  pinnedannouncements.New(queries, cfg.Revalidate, cfg.Logger),
-		series:  seriespublications.New(queries, cfg.Revalidate, cfg.Logger),
-		banners: campaignbanners.New(queries, cfg.Revalidate, cfg.Logger),
-		prices:  campaignprices.New(queries, cfg.Revalidate, cfg.Logger),
-		coins:   coinexpiry.New(queries, cfg.Logger),
+		pinned:    pinnedannouncements.New(queries, cfg.Revalidate, cfg.Logger),
+		series:    seriespublications.New(queries, cfg.Revalidate, cfg.Logger),
+		banners:   campaignbanners.New(queries, cfg.Revalidate, cfg.Logger),
+		prices:    campaignprices.New(queries, cfg.Revalidate, cfg.Logger),
+		coins:     coinexpiry.New(queries, cfg.Logger),
+		freeAfter: freeafter.New(cfg.DB, queries, cfg.Revalidate, cfg.Logger),
 	}, nil
 }
 
@@ -246,6 +258,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &expireCoinGrantsWorker{jobs: j}); err != nil {
 		return fmt.Errorf("tickerjobs: register expire-coin-grants worker: %w", err)
 	}
+	if err := river.AddWorkerSafely(workers, &applyFreeAfterRulesWorker{jobs: j}); err != nil {
+		return fmt.Errorf("tickerjobs: register apply-free-after-rules worker: %w", err)
+	}
 	return nil
 }
 
@@ -271,6 +286,7 @@ func (j *Jobs) schedule() []scheduled {
 		{schedule: river.PeriodicInterval(j.cfg.CampaignBannerInterval), args: ApplyCampaignBannersArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.CampaignPriceInterval), args: ApplyCampaignPricesArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.CoinExpiryInterval), args: ExpireCoinGrantsArgs{}},
+		{schedule: river.PeriodicInterval(j.cfg.FreeAfterInterval), args: ApplyFreeAfterRulesArgs{}},
 	}
 }
 
@@ -311,6 +327,7 @@ func (j *Jobs) Settings() []any {
 		"campaign_banner_interval", j.cfg.CampaignBannerInterval,
 		"campaign_price_interval", j.cfg.CampaignPriceInterval,
 		"coin_expiry_interval", j.cfg.CoinExpiryInterval,
+		"free_after_interval", j.cfg.FreeAfterInterval,
 	}
 }
 
@@ -375,6 +392,14 @@ type ExpireCoinGrantsArgs struct{}
 func (ExpireCoinGrantsArgs) Kind() string { return kindExpireCoinGrants }
 
 func (ExpireCoinGrantsArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
+
+// ApplyFreeAfterRulesArgs opens every episode a series' free-after-publication
+// rule has reached.
+type ApplyFreeAfterRulesArgs struct{}
+
+func (ApplyFreeAfterRulesArgs) Kind() string { return kindApplyFreeAfterRules }
+
+func (ApplyFreeAfterRulesArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
 
 // tickerInsertOpts is what keeps one tenant from being written twice.
 //
@@ -530,6 +555,22 @@ func (w *expireCoinGrantsWorker) Work(ctx context.Context, _ *river.Job[ExpireCo
 	ctx, end := startRun(ctx, ServiceNameExpireCoinGrants, kindExpireCoinGrants)
 	defer end()
 	w.jobs.coins.RunOnce(ctx)
+	return nil
+}
+
+type applyFreeAfterRulesWorker struct {
+	river.WorkerDefaults[ApplyFreeAfterRulesArgs]
+	jobs *Jobs
+}
+
+func (w *applyFreeAfterRulesWorker) Timeout(*river.Job[ApplyFreeAfterRulesArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *applyFreeAfterRulesWorker) Work(ctx context.Context, _ *river.Job[ApplyFreeAfterRulesArgs]) error {
+	ctx, end := startRun(ctx, ServiceNameApplyFreeAfterRules, kindApplyFreeAfterRules)
+	defer end()
+	w.jobs.freeAfter.RunOnce(ctx)
 	return nil
 }
 

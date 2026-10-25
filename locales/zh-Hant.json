@@ -381,6 +381,7 @@
         "series_free_windows_created": "為系列批次新增了免費閱讀期間",
         "series_campaign_prices_created": "為系列批次新增了活動價格",
         "series_wait_free_settings_updated": "更新了等待即可免費設定",
+        "series_free_after_settings_updated": "更新了發布後免費設定",
         "episode_updated": "更新了章節",
         "episode_translation_deleted": "刪除了章節翻譯",
         "episode_image_uploaded": "上傳了章節正文圖片",

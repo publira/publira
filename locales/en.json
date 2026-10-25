@@ -381,6 +381,7 @@
         "series_free_windows_created": "Free reading periods added across a series",
         "series_campaign_prices_created": "Campaign prices added across a series",
         "series_wait_free_settings_updated": "Free-if-you-wait settings updated",
+        "series_free_after_settings_updated": "Free-after settings updated",
         "episode_updated": "Episode updated",
         "episode_translation_deleted": "Episode translation deleted",
         "episode_image_uploaded": "Episode body image uploaded",

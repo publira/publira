@@ -615,10 +615,10 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 			TenantID: tenant.ID,
 			ID:       windowID,
 		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, s.undeletedFreeWindowError(txCtx, tenant.ID, windowID)
+		}
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, "free window not found")
-			}
 			return nil, s.internalDBError(ctx, "failed to delete episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", windowID.String())
 		}
 		deleted = row
@@ -652,6 +652,39 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 	return &publiraadminv1.DeleteEpisodeFreeWindowResponse{}, nil
 }
 
+// errRuleFreeWindow is a delete of a window a series' free-after-publication
+// rule wrote, which the rule would only write again.
+var errRuleFreeWindow = errors.New("the free window was written by the series' free-after-publication rule; change or turn off the rule to remove it")
+
+// undeletedFreeWindowError answers a delete that removed nothing: a window the
+// series' rule wrote is failed_precondition, and anything else is a window
+// that does not exist.
+func (s *adminServer) undeletedFreeWindowError(ctx context.Context, tenantID, windowID uuid.UUID) error {
+	row, err := s.queriesFor(ctx).GetEpisodeFreeWindowByIDForTenant(ctx, dbmodels.GetEpisodeFreeWindowByIDForTenantParams{
+		TenantID: tenantID,
+		ID:       windowID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return connect.NewError(connect.CodeNotFound, "free window not found")
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to read the free window a delete left", err, "tenant_id", tenantID.String(), "free_window_id", windowID.String())
+	}
+	if row.RuleSeriesID.Valid {
+		return connect.NewError(connect.CodeFailedPrecondition, errRuleFreeWindow.Error()).WithCause(errRuleFreeWindow)
+	}
+	return connect.NewError(connect.CodeNotFound, "free window not found")
+}
+
+// ruleSeriesID is the series whose rule wrote a window, as
+// AdminEpisodeFreeWindow names it: empty on one scheduled by hand.
+func ruleSeriesID(id uuid.NullUUID) string {
+	if !id.Valid {
+		return ""
+	}
+	return id.UUID.String()
+}
+
 func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByIDForTenantRow) *publiraadminv1.AdminEpisodeFreeWindow {
 	return &publiraadminv1.AdminEpisodeFreeWindow{
 		Id:              row.ID.String(),
@@ -664,6 +697,7 @@ func freeWindowFromGetRow(row dbmodels.GetEpisodeFreeWindowByIDForTenantRow) *pu
 		StartsAt:        row.StartsAt.UTC().Format(time.RFC3339),
 		EndsAt:          row.EndsAt.UTC().Format(time.RFC3339),
 		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
+		RuleSeriesId:    ruleSeriesID(row.RuleSeriesID),
 	}
 }
 
@@ -679,5 +713,6 @@ func freeWindowFromListRow(row freeWindowListRow) *publiraadminv1.AdminEpisodeFr
 		StartsAt:        row.StartsAt.UTC().Format(time.RFC3339),
 		EndsAt:          row.EndsAt.UTC().Format(time.RFC3339),
 		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
+		RuleSeriesId:    ruleSeriesID(row.RuleSeriesID),
 	}
 }

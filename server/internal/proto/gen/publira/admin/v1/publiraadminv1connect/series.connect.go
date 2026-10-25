@@ -132,6 +132,12 @@ const (
 	// AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure is the procedure name of the
 	// AdminSeriesService's UpdateSeriesWaitFreeSettings RPC.
 	AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure = "/publira.admin.v1.AdminSeriesService/UpdateSeriesWaitFreeSettings"
+	// AdminSeriesServiceGetSeriesFreeAfterSettingsProcedure is the procedure name of the
+	// AdminSeriesService's GetSeriesFreeAfterSettings RPC.
+	AdminSeriesServiceGetSeriesFreeAfterSettingsProcedure = "/publira.admin.v1.AdminSeriesService/GetSeriesFreeAfterSettings"
+	// AdminSeriesServiceUpdateSeriesFreeAfterSettingsProcedure is the procedure name of the
+	// AdminSeriesService's UpdateSeriesFreeAfterSettings RPC.
+	AdminSeriesServiceUpdateSeriesFreeAfterSettingsProcedure = "/publira.admin.v1.AdminSeriesService/UpdateSeriesFreeAfterSettings"
 	// AdminSeriesServiceDeleteSeriesTranslationProcedure is the procedure name of the
 	// AdminSeriesService's DeleteSeriesTranslation RPC.
 	AdminSeriesServiceDeleteSeriesTranslationProcedure = "/publira.admin.v1.AdminSeriesService/DeleteSeriesTranslation"
@@ -417,6 +423,20 @@ var (
 			Procedure:  AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure,
 		}
 	})
+	adminSeriesServiceGetSeriesFreeAfterSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("GetSeriesFreeAfterSettings"),
+			Procedure:  AdminSeriesServiceGetSeriesFreeAfterSettingsProcedure,
+		}
+	})
+	adminSeriesServiceUpdateSeriesFreeAfterSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateSeriesFreeAfterSettings"),
+			Procedure:  AdminSeriesServiceUpdateSeriesFreeAfterSettingsProcedure,
+		}
+	})
 	adminSeriesServiceDeleteSeriesTranslationSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -575,6 +595,10 @@ type AdminSeriesServiceClient interface {
 	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error)
+	// Minimum role: tenant_auditor.
+	GetSeriesFreeAfterSettings(context.Context, *v1.GetSeriesFreeAfterSettingsRequest) (*v1.GetSeriesFreeAfterSettingsResponse, error)
+	// Minimum role: tenant_editor.
+	UpdateSeriesFreeAfterSettings(context.Context, *v1.UpdateSeriesFreeAfterSettingsRequest) (*v1.UpdateSeriesFreeAfterSettingsResponse, error)
 	// Minimum role: tenant_editor.
 	DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error)
 	// Minimum role: tenant_editor.
@@ -690,6 +714,10 @@ type AdminSeriesServiceHandler interface {
 	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error)
+	// Minimum role: tenant_auditor.
+	GetSeriesFreeAfterSettings(context.Context, *v1.GetSeriesFreeAfterSettingsRequest) (*v1.GetSeriesFreeAfterSettingsResponse, error)
+	// Minimum role: tenant_editor.
+	UpdateSeriesFreeAfterSettings(context.Context, *v1.UpdateSeriesFreeAfterSettingsRequest) (*v1.UpdateSeriesFreeAfterSettingsResponse, error)
 	// Minimum role: tenant_editor.
 	DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error)
 	// Minimum role: tenant_editor.
@@ -753,6 +781,8 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceDeleteEpisodeCampaignPriceSpec(), Handler: adapter.deleteEpisodeCampaignPrice},
 		connect.Method{Spec: adminSeriesServiceGetSeriesWaitFreeSettingsSpec(), Handler: adapter.getSeriesWaitFreeSettings},
 		connect.Method{Spec: adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), Handler: adapter.updateSeriesWaitFreeSettings},
+		connect.Method{Spec: adminSeriesServiceGetSeriesFreeAfterSettingsSpec(), Handler: adapter.getSeriesFreeAfterSettings},
+		connect.Method{Spec: adminSeriesServiceUpdateSeriesFreeAfterSettingsSpec(), Handler: adapter.updateSeriesFreeAfterSettings},
 		connect.Method{Spec: adminSeriesServiceDeleteSeriesTranslationSpec(), Handler: adapter.deleteSeriesTranslation},
 		connect.Method{Spec: adminSeriesServiceDeleteEpisodeTranslationSpec(), Handler: adapter.deleteEpisodeTranslation},
 		connect.Method{Spec: adminSeriesServiceListVolumesSpec(), Handler: adapter.listVolumes},
@@ -911,6 +941,14 @@ func (UnimplementedAdminSeriesServiceHandler) GetSeriesWaitFreeSettings(context.
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) GetSeriesFreeAfterSettings(context.Context, *v1.GetSeriesFreeAfterSettingsRequest) (*v1.GetSeriesFreeAfterSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.GetSeriesFreeAfterSettings is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UpdateSeriesFreeAfterSettings(context.Context, *v1.UpdateSeriesFreeAfterSettingsRequest) (*v1.UpdateSeriesFreeAfterSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateSeriesFreeAfterSettings is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error) {
@@ -1240,6 +1278,22 @@ func (c *adminSeriesServiceClient) GetSeriesWaitFreeSettings(ctx context.Context
 func (c *adminSeriesServiceClient) UpdateSeriesWaitFreeSettings(ctx context.Context, req *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error) {
 	var res v1.UpdateSeriesWaitFreeSettingsResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) GetSeriesFreeAfterSettings(ctx context.Context, req *v1.GetSeriesFreeAfterSettingsRequest) (*v1.GetSeriesFreeAfterSettingsResponse, error) {
+	var res v1.GetSeriesFreeAfterSettingsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceGetSeriesFreeAfterSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateSeriesFreeAfterSettings(ctx context.Context, req *v1.UpdateSeriesFreeAfterSettingsRequest) (*v1.UpdateSeriesFreeAfterSettingsResponse, error) {
+	var res v1.UpdateSeriesFreeAfterSettingsResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateSeriesFreeAfterSettingsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1753,6 +1807,30 @@ func (h adminSeriesServiceHandler) updateSeriesWaitFreeSettings(ctx context.Cont
 		return err
 	}
 	res, err := h.svc.UpdateSeriesWaitFreeSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) getSeriesFreeAfterSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetSeriesFreeAfterSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetSeriesFreeAfterSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateSeriesFreeAfterSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateSeriesFreeAfterSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateSeriesFreeAfterSettings(ctx, &req)
 	if err != nil {
 		return err
 	}

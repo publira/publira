@@ -83,6 +83,7 @@ const DeleteEpisodeFreeWindowByIDForTenant = `-- name: DeleteEpisodeFreeWindowBy
 DELETE FROM episode_free_windows w
 WHERE w.tenant_id = $1
     AND w.id = $2
+    AND w.rule_series_id IS NULL
 RETURNING w.id,
     w.public_id,
     w.episode_id,
@@ -116,6 +117,11 @@ type DeleteEpisodeFreeWindowByIDForTenantRow struct {
 // from the read it did first. end_revalidated_at says whether apply-free-windows
 // has already closed the window, and the series is the one whose search
 // document a window it has not closed yet leaves stale.
+//
+// A window a series' free-after-publication rule wrote is not deleted: the
+// rule would write it again on the worker's next pass, so it ends only when
+// the rule stops covering the episode. No row comes back for one, and the
+// caller reads the window to tell it apart from one that does not exist.
 func (q *Queries) DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, DeleteEpisodeFreeWindowByIDForTenant, arg.TenantID, arg.ID)
 	var i DeleteEpisodeFreeWindowByIDForTenantRow
@@ -137,6 +143,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -159,17 +166,18 @@ type GetEpisodeFreeWindowByIDForTenantParams struct {
 }
 
 type GetEpisodeFreeWindowByIDForTenantRow struct {
-	ID              uuid.UUID `json:"id"`
-	PublicID        string    `json:"public_id"`
-	StartsAt        time.Time `json:"starts_at"`
-	EndsAt          time.Time `json:"ends_at"`
-	CreatedAt       time.Time `json:"created_at"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesID        uuid.UUID `json:"series_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
-	SeriesTitle     string    `json:"series_title"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	StartsAt        time.Time     `json:"starts_at"`
+	EndsAt          time.Time     `json:"ends_at"`
+	CreatedAt       time.Time     `json:"created_at"`
+	RuleSeriesID    uuid.NullUUID `json:"rule_series_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
+	EpisodePublicID string        `json:"episode_public_id"`
+	EpisodeTitle    string        `json:"episode_title"`
+	SeriesID        uuid.UUID     `json:"series_id"`
+	SeriesPublicID  string        `json:"series_public_id"`
+	SeriesTitle     string        `json:"series_title"`
 }
 
 func (q *Queries) GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByIDForTenantParams) (GetEpisodeFreeWindowByIDForTenantRow, error) {
@@ -181,6 +189,7 @@ func (q *Queries) GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg Get
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.CreatedAt,
+		&i.RuleSeriesID,
 		&i.EpisodeID,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
@@ -283,6 +292,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -320,16 +330,17 @@ type ListEpisodeFreeWindowsByEpisodeForTenantAscParams struct {
 }
 
 type ListEpisodeFreeWindowsByEpisodeForTenantAscRow struct {
-	ID              uuid.UUID `json:"id"`
-	PublicID        string    `json:"public_id"`
-	StartsAt        time.Time `json:"starts_at"`
-	EndsAt          time.Time `json:"ends_at"`
-	CreatedAt       time.Time `json:"created_at"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesID        uuid.UUID `json:"series_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	StartsAt        time.Time     `json:"starts_at"`
+	EndsAt          time.Time     `json:"ends_at"`
+	CreatedAt       time.Time     `json:"created_at"`
+	RuleSeriesID    uuid.NullUUID `json:"rule_series_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
+	EpisodePublicID string        `json:"episode_public_id"`
+	EpisodeTitle    string        `json:"episode_title"`
+	SeriesID        uuid.UUID     `json:"series_id"`
+	SeriesPublicID  string        `json:"series_public_id"`
 }
 
 func (q *Queries) ListEpisodeFreeWindowsByEpisodeForTenantAsc(ctx context.Context, arg ListEpisodeFreeWindowsByEpisodeForTenantAscParams) ([]ListEpisodeFreeWindowsByEpisodeForTenantAscRow, error) {
@@ -354,6 +365,7 @@ func (q *Queries) ListEpisodeFreeWindowsByEpisodeForTenantAsc(ctx context.Contex
 			&i.StartsAt,
 			&i.EndsAt,
 			&i.CreatedAt,
+			&i.RuleSeriesID,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -379,6 +391,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -416,16 +429,17 @@ type ListEpisodeFreeWindowsByEpisodeForTenantDescParams struct {
 }
 
 type ListEpisodeFreeWindowsByEpisodeForTenantDescRow struct {
-	ID              uuid.UUID `json:"id"`
-	PublicID        string    `json:"public_id"`
-	StartsAt        time.Time `json:"starts_at"`
-	EndsAt          time.Time `json:"ends_at"`
-	CreatedAt       time.Time `json:"created_at"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesID        uuid.UUID `json:"series_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	StartsAt        time.Time     `json:"starts_at"`
+	EndsAt          time.Time     `json:"ends_at"`
+	CreatedAt       time.Time     `json:"created_at"`
+	RuleSeriesID    uuid.NullUUID `json:"rule_series_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
+	EpisodePublicID string        `json:"episode_public_id"`
+	EpisodeTitle    string        `json:"episode_title"`
+	SeriesID        uuid.UUID     `json:"series_id"`
+	SeriesPublicID  string        `json:"series_public_id"`
 }
 
 // Admin ListEpisodeFreeWindows is (starts_at, id) DESC: the window furthest
@@ -464,6 +478,7 @@ func (q *Queries) ListEpisodeFreeWindowsByEpisodeForTenantDesc(ctx context.Conte
 			&i.StartsAt,
 			&i.EndsAt,
 			&i.CreatedAt,
+			&i.RuleSeriesID,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -489,6 +504,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -502,7 +518,8 @@ FROM series s
             fw.public_id,
             fw.starts_at,
             fw.ends_at,
-            fw.created_at
+            fw.created_at,
+            fw.rule_series_id
         FROM episode_free_windows fw
         WHERE fw.episode_id = e.id
             AND (
@@ -537,16 +554,17 @@ type ListEpisodeFreeWindowsBySeriesForTenantAscParams struct {
 }
 
 type ListEpisodeFreeWindowsBySeriesForTenantAscRow struct {
-	ID              uuid.UUID `json:"id"`
-	PublicID        string    `json:"public_id"`
-	StartsAt        time.Time `json:"starts_at"`
-	EndsAt          time.Time `json:"ends_at"`
-	CreatedAt       time.Time `json:"created_at"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesID        uuid.UUID `json:"series_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	StartsAt        time.Time     `json:"starts_at"`
+	EndsAt          time.Time     `json:"ends_at"`
+	CreatedAt       time.Time     `json:"created_at"`
+	RuleSeriesID    uuid.NullUUID `json:"rule_series_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
+	EpisodePublicID string        `json:"episode_public_id"`
+	EpisodeTitle    string        `json:"episode_title"`
+	SeriesID        uuid.UUID     `json:"series_id"`
+	SeriesPublicID  string        `json:"series_public_id"`
 }
 
 func (q *Queries) ListEpisodeFreeWindowsBySeriesForTenantAsc(ctx context.Context, arg ListEpisodeFreeWindowsBySeriesForTenantAscParams) ([]ListEpisodeFreeWindowsBySeriesForTenantAscRow, error) {
@@ -571,6 +589,7 @@ func (q *Queries) ListEpisodeFreeWindowsBySeriesForTenantAsc(ctx context.Context
 			&i.StartsAt,
 			&i.EndsAt,
 			&i.CreatedAt,
+			&i.RuleSeriesID,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -596,6 +615,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -609,7 +629,8 @@ FROM series s
             fw.public_id,
             fw.starts_at,
             fw.ends_at,
-            fw.created_at
+            fw.created_at,
+            fw.rule_series_id
         FROM episode_free_windows fw
         WHERE fw.episode_id = e.id
             AND (
@@ -644,16 +665,17 @@ type ListEpisodeFreeWindowsBySeriesForTenantDescParams struct {
 }
 
 type ListEpisodeFreeWindowsBySeriesForTenantDescRow struct {
-	ID              uuid.UUID `json:"id"`
-	PublicID        string    `json:"public_id"`
-	StartsAt        time.Time `json:"starts_at"`
-	EndsAt          time.Time `json:"ends_at"`
-	CreatedAt       time.Time `json:"created_at"`
-	EpisodeID       uuid.UUID `json:"episode_id"`
-	EpisodePublicID string    `json:"episode_public_id"`
-	EpisodeTitle    string    `json:"episode_title"`
-	SeriesID        uuid.UUID `json:"series_id"`
-	SeriesPublicID  string    `json:"series_public_id"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	StartsAt        time.Time     `json:"starts_at"`
+	EndsAt          time.Time     `json:"ends_at"`
+	CreatedAt       time.Time     `json:"created_at"`
+	RuleSeriesID    uuid.NullUUID `json:"rule_series_id"`
+	EpisodeID       uuid.UUID     `json:"episode_id"`
+	EpisodePublicID string        `json:"episode_public_id"`
+	EpisodeTitle    string        `json:"episode_title"`
+	SeriesID        uuid.UUID     `json:"series_id"`
+	SeriesPublicID  string        `json:"series_public_id"`
 }
 
 func (q *Queries) ListEpisodeFreeWindowsBySeriesForTenantDesc(ctx context.Context, arg ListEpisodeFreeWindowsBySeriesForTenantDescParams) ([]ListEpisodeFreeWindowsBySeriesForTenantDescRow, error) {
@@ -678,6 +700,7 @@ func (q *Queries) ListEpisodeFreeWindowsBySeriesForTenantDesc(ctx context.Contex
 			&i.StartsAt,
 			&i.EndsAt,
 			&i.CreatedAt,
+			&i.RuleSeriesID,
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,

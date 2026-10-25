@@ -104,6 +104,26 @@ describe("AuditLogActionCell", () => {
   );
 
   it.each(getLocales())(
+    "names a change to a series' free-after-publication rule in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "series_free_after_settings_updated",
+        "series",
+        "SERIES001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.series_free_after_settings_updated",
+        locale
+      );
+      const targetName = sharedMessage("admin.audit.targets.series", locale);
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / SERIES001`);
+    }
+  );
+
+  it.each(getLocales())(
     "names a change to the inbound email settings in %s",
     async (locale) => {
       const cell = await renderActionCell(

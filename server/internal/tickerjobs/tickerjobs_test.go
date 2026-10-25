@@ -44,6 +44,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		CampaignBannerInterval:     19 * time.Second,
 		CampaignPriceInterval:      23 * time.Second,
 		CoinExpiryInterval:         29 * time.Second,
+		FreeAfterInterval:          31 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -58,6 +59,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		kindApplyCampaignBanners:      19 * time.Second,
 		kindApplyCampaignPrices:       23 * time.Second,
 		kindExpireCoinGrants:          29 * time.Second,
+		kindApplyFreeAfterRules:       31 * time.Second,
 	})
 }
 
@@ -76,6 +78,7 @@ func TestPeriodicJobsFallBackToTheDefaultIntervals(t *testing.T) {
 		kindApplyCampaignBanners:      DefaultCampaignBannerInterval,
 		kindApplyCampaignPrices:       DefaultCampaignPriceInterval,
 		kindExpireCoinGrants:          DefaultCoinExpiryInterval,
+		kindApplyFreeAfterRules:       DefaultFreeAfterInterval,
 	})
 }
 
@@ -131,6 +134,7 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 		ApplyCampaignBannersArgs{},
 		ApplyCampaignPricesArgs{},
 		ExpireCoinGrantsArgs{},
+		ApplyFreeAfterRulesArgs{},
 	} {
 		withOpts, ok := args.(river.JobArgsWithInsertOpts)
 		if !ok {
@@ -165,8 +169,8 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	if !ok {
 		t.Fatalf("queues = %v, want one named %q", queues, QueueName)
 	}
-	if queue.MaxWorkers != 8 {
-		t.Fatalf("%s max workers = %d, want 8", QueueName, queue.MaxWorkers)
+	if queue.MaxWorkers != 9 {
+		t.Fatalf("%s max workers = %d, want 9", QueueName, queue.MaxWorkers)
 	}
 	if _, ok := queues[river.QueueDefault]; ok {
 		t.Fatalf("queues = %v, want the default queue left to the outbox drain", queues)
@@ -183,6 +187,7 @@ func TestServiceNamesCoverEveryJob(t *testing.T) {
 		"publira-apply-campaign-banners",
 		"publira-apply-campaign-prices",
 		"publira-expire-coin-grants",
+		"publira-apply-free-after-rules",
 	}
 	if got := ServiceNames(); !slices.Equal(got, want) {
 		t.Fatalf("ServiceNames() = %v, want %v", got, want)
