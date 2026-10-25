@@ -1,18 +1,23 @@
--- VIEW: episode_content_grants
--- Adds the subscription grant: a reader's subscription opens every episode in
--- its plan's scope — the whole tenant, the series of the labels the plan
--- names, or the series it names — while Stripe reports it trialing, active,
--- or past due and the period it bills for has not ended. Past due is the
--- grace: Stripe is retrying a renewal that has already moved the period on,
--- and the tenant's retry settings in Stripe decide when it gives up and the
--- subscription becomes canceled or unpaid. The period end is what stops a
--- subscription set to cancel then, even before the notification of its end
--- arrives; one with no period recorded opens nothing.
+-- VIEW: episode_grants
+-- Every grant that opens an episode to one reader: the grants
+-- episode_content_grants holds, and a reader's subscription. Every query that
+-- decides access reads this view from now on. The release before reads
+-- episode_content_grants and fails a read whose grant kind it does not know,
+-- so the subscription grant is added here and not there.
+--
+-- A subscription opens every episode in its plan's scope — the whole tenant,
+-- the series of the labels the plan names, or the series it names — while
+-- Stripe reports it trialing, active, or past due and the period it bills for
+-- has not ended. Past due is the grace: Stripe is retrying a renewal that has
+-- already moved the period on, and the tenant's retry settings in Stripe
+-- decide when it gives up and the subscription becomes canceled or unpaid. The
+-- period end is what stops a subscription set to cancel then, even before the
+-- notification of its end arrives; one with no period recorded opens nothing.
 --
 -- A plan staff have since unpublished goes on opening its scope to the
 -- readers who pay for it. A target is read by its plan's scope, so one that
 -- does not match the scope opens nothing.
-CREATE OR REPLACE VIEW episode_content_grants WITH (security_invoker = true) AS
+CREATE VIEW episode_grants WITH (security_invoker = true) AS
 SELECT at.tenant_id,
     at.user_id,
     at.episode_id,
@@ -117,3 +122,27 @@ WHERE s.status IN ('trialing', 'active', 'past_due')
                 )
         )
     );
+
+-- FUNCTION: reader_may_open_episode
+-- Reads episode_grants, so the release before opens the body to a subscriber
+-- in the queries that ask through it too: what it answers is a boolean, which
+-- that release reads whatever grant made it true.
+CREATE OR REPLACE FUNCTION reader_may_open_episode(tenant_id uuid, user_id uuid, episode_id uuid) RETURNS boolean
+    LANGUAGE sql
+    STABLE
+    PARALLEL SAFE
+    SECURITY INVOKER
+AS $$
+    SELECT EXISTS (
+            SELECT 1
+            FROM published_free_episodes fe
+            WHERE fe.episode_id = reader_may_open_episode.episode_id
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM episode_grants g
+            WHERE g.tenant_id = reader_may_open_episode.tenant_id
+                AND g.user_id = reader_may_open_episode.user_id
+                AND g.episode_id = reader_may_open_episode.episode_id
+        )
+$$;

@@ -12,7 +12,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
-// episodeGrantKindCreator is the episode_content_grants kind of an account
+// episodeGrantKindCreator is the episode_grants kind of an account
 // linked to a creator the episode credits.
 const episodeGrantKindCreator = "creator"
 

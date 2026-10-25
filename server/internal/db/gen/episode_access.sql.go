@@ -13,7 +13,7 @@ import (
 
 const GetEpisodeEntitlementSource = `-- name: GetEpisodeEntitlementSource :one
 SELECT g.kind
-FROM episode_content_grants g
+FROM episode_grants g
 WHERE g.tenant_id = $1
     AND g.user_id = $2::uuid
     AND g.episode_id = $3
@@ -60,7 +60,7 @@ SELECT e.id,
     ) AS free_to_everyone,
     COALESCE((
         SELECT g.kind
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = e.tenant_id
             AND g.user_id = $1::uuid
             AND g.episode_id = e.id
@@ -75,7 +75,7 @@ SELECT e.id,
     ), '')::text AS grant_kind,
     EXISTS (
         SELECT 1
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = e.tenant_id
             AND g.user_id = $1::uuid
             AND g.episode_id = e.id
@@ -107,7 +107,7 @@ type ListPublishedEpisodeAccessInSeriesRow struct {
 
 // Every published episode of one series with the two facts its access state is
 // decided from: whether published_free_episodes counts it free to everyone
-// right now, and which grant in episode_content_grants opens it to the reader,
+// right now, and which grant in episode_grants opens it to the reader,
 // in the order GetEpisodeEntitlementSource reports one, or ” when none
 // does. owned is whether one of those grants is a permanent copy, which is the
 // grant ListSeriesRemainderEpisodes counts as held. A guest passes a NULL
@@ -151,7 +151,7 @@ func (q *Queries) ListPublishedEpisodeAccessInSeries(ctx context.Context, arg Li
 const ReaderHoldsStaffGrantOnEpisode = `-- name: ReaderHoldsStaffGrantOnEpisode :one
 SELECT EXISTS (
     SELECT 1
-    FROM episode_content_grants g
+    FROM episode_grants g
     WHERE g.tenant_id = $1
         AND g.user_id = $2::uuid
         AND g.episode_id = $3

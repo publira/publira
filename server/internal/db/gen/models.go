@@ -401,6 +401,14 @@ type EpisodeFreeWindow struct {
 	CreatedAt          time.Time     `json:"created_at"`
 }
 
+type EpisodeGrant struct {
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	UserID       uuid.UUID      `json:"user_id"`
+	EpisodeID    uuid.UUID      `json:"episode_id"`
+	Kind         string         `json:"kind"`
+	PurchaseKind sql.NullString `json:"purchase_kind"`
+}
+
 type EpisodeImage struct {
 	ID           uuid.UUID `json:"id"`
 	TenantID     uuid.UUID `json:"tenant_id"`

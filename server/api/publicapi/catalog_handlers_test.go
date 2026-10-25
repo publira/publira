@@ -1203,7 +1203,7 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 		authed bool
 		// invalidBearer sends Authorization with a non-verifiable token (no auth SQL expected).
 		invalidBearer bool
-		// grantKind is the episode_content_grants kind the reader holds, empty
+		// grantKind is the episode_grants kind the reader holds, empty
 		// for none.
 		grantKind      string
 		wantAccess     publirav1.EpisodeAccess

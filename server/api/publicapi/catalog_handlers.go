@@ -1297,7 +1297,7 @@ func (s *apiServer) GetEpisodeDetail(
 	return res, nil
 }
 
-// episodeEntitlementSourceFromGrantKind maps an episode_content_grants kind to
+// episodeEntitlementSourceFromGrantKind maps an episode_grants kind to
 // the reason GetEpisodeDetail and GetSeriesEpisodeAccess report beside
 // EPISODE_ACCESS_ENTITLED.
 func episodeEntitlementSourceFromGrantKind(kind string) (publirav1.EpisodeEntitlementSource, error) {

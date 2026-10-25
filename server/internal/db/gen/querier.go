@@ -447,8 +447,8 @@ type Querier interface {
 	// down, so the parts add up to the amount exactly.
 	CreateVolumePurchaseEpisodes(ctx context.Context, arg CreateVolumePurchaseEpisodesParams) error
 	// The grant a spent ticket opens. It is an access_tickets row so every read
-	// that decides access sees it through episode_content_grants, and it expires
-	// by the series' access period from the same clock.
+	// that decides access sees it through episode_grants, and it expires by the
+	// series' access period from the same clock.
 	CreateWaitFreeAccessTicket(ctx context.Context, arg CreateWaitFreeAccessTicketParams) (CreateWaitFreeAccessTicketRow, error)
 	// Hand back an event whose type this worker has no handler for, so that a
 	// worker of a newer release, which writes the type, claims it later. Like
@@ -2165,7 +2165,7 @@ type Querier interface {
 	ListPublishedCreatorsBySearchNameDesc(ctx context.Context, arg ListPublishedCreatorsBySearchNameDescParams) ([]ListPublishedCreatorsBySearchNameDescRow, error)
 	// Every published episode of one series with the two facts its access state is
 	// decided from: whether published_free_episodes counts it free to everyone
-	// right now, and which grant in episode_content_grants opens it to the reader,
+	// right now, and which grant in episode_grants opens it to the reader,
 	// in the order GetEpisodeEntitlementSource reports one, or '' when none
 	// does. owned is whether one of those grants is a permanent copy, which is the
 	// grant ListSeriesRemainderEpisodes counts as held. A guest passes a NULL
@@ -3808,7 +3808,7 @@ type Querier interface {
 	// Matches GetPublishedSeriesID, so an unpublished series is
 	// indistinguishable from an unfollowed one.
 	UserFollowsPublishedSeries(ctx context.Context, arg UserFollowsPublishedSeriesParams) (bool, error)
-	// True when the user holds a grant in episode_content_grants for the episode.
+	// True when the user holds a grant in episode_grants for the episode.
 	// Whether the body is free to everyone — price = 0, or an open free window —
 	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)

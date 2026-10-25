@@ -269,7 +269,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 const GetActiveEpisodePurchaseKinds = `-- name: GetActiveEpisodePurchaseKinds :one
 SELECT EXISTS (
         SELECT 1
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = $1
             -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
             AND g.user_id = $2::uuid
@@ -278,7 +278,7 @@ SELECT EXISTS (
     ) AS holds_purchase,
     EXISTS (
         SELECT 1
-        FROM episode_content_grants g
+        FROM episode_grants g
         WHERE g.tenant_id = $1
             AND g.user_id = $2::uuid
             AND g.episode_id = $3

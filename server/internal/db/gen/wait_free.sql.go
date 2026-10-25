@@ -98,8 +98,8 @@ type CreateWaitFreeAccessTicketRow struct {
 }
 
 // The grant a spent ticket opens. It is an access_tickets row so every read
-// that decides access sees it through episode_content_grants, and it expires
-// by the series' access period from the same clock.
+// that decides access sees it through episode_grants, and it expires by the
+// series' access period from the same clock.
 func (q *Queries) CreateWaitFreeAccessTicket(ctx context.Context, arg CreateWaitFreeAccessTicketParams) (CreateWaitFreeAccessTicketRow, error) {
 	row := q.db.QueryRowContext(ctx, CreateWaitFreeAccessTicket,
 		arg.ID,

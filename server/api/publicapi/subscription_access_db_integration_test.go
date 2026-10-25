@@ -280,3 +280,19 @@ func TestDBPostEpisodeCommentOpensThePlanScopeToASubscriber(t *testing.T) {
 		t.Fatalf("PostEpisodeComment outside the plan error = %v, want permission_denied", err)
 	}
 }
+
+// The release before reads episode_content_grants and fails a read whose grant
+// kind it does not know, so a subscription opens nothing there while it opens
+// the episode here.
+func TestDBSubscriptionGrantStaysOutOfThePreviousReleasesView(t *testing.T) {
+	f := newSubscriptionAccessFixture(t)
+	env, tenant := f.env, f.tenant
+	plan := env.PG.SeedSubscriptionPlan(t, tenant.ID, testutil.SubscriptionPlanSeed{Scope: "all"})
+	reader := f.newReader(t)
+	env.PG.SeedSubscription(t, tenant.ID, reader.ID, plan.ID, testutil.SubscriptionSeed{})
+
+	f.assertSubscribed(t, reader, f.labelled)
+	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_content_grants WHERE tenant_id = $1 AND user_id = $2", tenant.ID, reader.ID); got != 0 {
+		t.Fatalf("episode_content_grants rows of a subscriber = %d, want none", got)
+	}
+}

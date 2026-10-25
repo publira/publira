@@ -121,8 +121,8 @@ RETURNING next_available_at;
 
 -- name: CreateWaitFreeAccessTicket :one
 -- The grant a spent ticket opens. It is an access_tickets row so every read
--- that decides access sees it through episode_content_grants, and it expires
--- by the series' access period from the same clock.
+-- that decides access sees it through episode_grants, and it expires by the
+-- series' access period from the same clock.
 INSERT INTO access_tickets (
         id,
         tenant_id,
