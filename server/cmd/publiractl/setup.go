@@ -760,7 +760,7 @@ func (r *setupRun) smtpStep(ctx context.Context) error {
 			if fielderr.Field(err) == platformsmtp.FieldRecipientEmail {
 				return fmt.Errorf("--smtp-test-to: %w", err)
 			}
-			return fmt.Errorf("the SMTP settings were saved, but %w; correct them with publiractl smtp set and try again with publiractl smtp test", err)
+			return fmt.Errorf("the SMTP settings were saved, but %w; correct them with publiractl smtp set if one is wrong, send the test again with publiractl smtp test, and then run setup again to finish", err)
 		}
 		detail += ", test message sent to " + to
 	}

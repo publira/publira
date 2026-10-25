@@ -2,7 +2,7 @@
 title: Installing
 description: Bring an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 This page takes an install from nothing to a tenant console its first administrator signs in to. It follows the order the steps have to run in and explains what each one decides; the full list of variables each process reads, and every flag of `publiractl`, stay in the reference linked from each step.
@@ -116,7 +116,7 @@ docker run --rm -it \
 
 On a terminal it asks for every value. The same run can be made unattended, from a CI job or an init container, with every value given as a flag; that form is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup). The links it prints are built on `PUBLIRA_TENANT_URL_SCHEME`, the scheme readers' browsers reach the tenant on, which is `https` unless set. It describes the public address, not how the proxy reaches the processes, so a plain HTTP hop behind the TLS terminator does not change it. Set it to `http` only when browsers really open the tenant over HTTP, and then on `publiractl` and the processes alike.
 
-A run that stops halfway, because a connection test failed for instance, is finished by running it again: it keeps every step already saved and asks only for the rest.
+A run that stops halfway, because a connection test failed for instance, is finished by running it again: it keeps every step already saved and asks only for the rest. A refused test message is the exception: the SMTP settings are saved before the test, so the next run keeps them and sends none. Correct a wrong setting with `publiractl smtp set` and send the test with `publiractl smtp test`, as in [Email](../3-operations/6-email.md#testing-the-account), and then run `setup` again.
 
 `setup` can also take steps 1 and 2 on itself, and create an empty bucket that does not exist yet. Given `PUBLIRA_DB_URL` and each role's password, it applies the migrations and creates the roles before its own steps, and with `--create-bucket` it creates the bucket before the connection test. An install that runs every process only after `setup` has finished, as the [Docker Compose](./3-docker-compose.md) install does, then needs no other command; the flags are in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#the-database-steps).
 
