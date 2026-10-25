@@ -38,10 +38,21 @@ func (s *adminServer) GetEpisodeDropOff(
 		return nil, err
 	}
 
+	return s.episodeDropOff(ctx, tenant, req.EpisodePublicId, period)
+}
+
+// episodeDropOff reads the page reach of the tenant's episode episodePublicID
+// names over the period.
+func (s *adminServer) episodeDropOff(
+	ctx context.Context,
+	tenant dbmodels.Tenant,
+	episodePublicID string,
+	period statsPeriod,
+) (*publiraadminv1.GetEpisodeDropOffResponse, error) {
 	queries := s.queriesFor(ctx)
 	episode, err := queries.GetEpisodePageCountByPublicID(ctx, dbmodels.GetEpisodePageCountByPublicIDParams{
 		TenantID: tenant.ID,
-		PublicID: req.EpisodePublicId,
+		PublicID: episodePublicID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeNotFound, errDropOffEpisodeNotFound, "episode_public_id")

@@ -36,6 +36,9 @@ const (
 	// AdminEngagementServiceGetEpisodeDropOffProcedure is the procedure name of the
 	// AdminEngagementService's GetEpisodeDropOff RPC.
 	AdminEngagementServiceGetEpisodeDropOffProcedure = "/publira.admin.v1.AdminEngagementService/GetEpisodeDropOff"
+	// AdminEngagementServiceExportStatsProcedure is the procedure name of the AdminEngagementService's
+	// ExportStats RPC.
+	AdminEngagementServiceExportStatsProcedure = "/publira.admin.v1.AdminEngagementService/ExportStats"
 )
 
 var (
@@ -67,6 +70,13 @@ var (
 			Procedure:  AdminEngagementServiceGetEpisodeDropOffProcedure,
 		}
 	})
+	adminEngagementServiceExportStatsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_engagement_proto.Services().ByName("AdminEngagementService").Methods().ByName("ExportStats"),
+			Procedure:  AdminEngagementServiceExportStatsProcedure,
+		}
+	})
 )
 
 // AdminEngagementServiceClient is a client for the publira.admin.v1.AdminEngagementService service.
@@ -89,6 +99,14 @@ type AdminEngagementServiceClient interface {
 	//
 	// Minimum role: tenant_auditor.
 	GetEpisodeDropOff(context.Context, *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error)
+	// One of the reports above as a CSV file, whole: a ranked report's every
+	// page in one file. It reads what the report's RPC reads, when it is asked,
+	// and records the download in the tenant's audit log. The role is the one
+	// revenue needs whichever report is asked for, since one RPC serves them
+	// all.
+	//
+	// Minimum role: tenant_admin.
+	ExportStats(context.Context, *v1.ExportStatsRequest) (*v1.ExportStatsResponse, error)
 }
 
 // NewAdminEngagementServiceClient constructs a client for the
@@ -119,6 +137,14 @@ type AdminEngagementServiceHandler interface {
 	//
 	// Minimum role: tenant_auditor.
 	GetEpisodeDropOff(context.Context, *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error)
+	// One of the reports above as a CSV file, whole: a ranked report's every
+	// page in one file. It reads what the report's RPC reads, when it is asked,
+	// and records the download in the tenant's audit log. The role is the one
+	// revenue needs whichever report is asked for, since one RPC serves them
+	// all.
+	//
+	// Minimum role: tenant_admin.
+	ExportStats(context.Context, *v1.ExportStatsRequest) (*v1.ExportStatsResponse, error)
 }
 
 // RegisterAdminEngagementServiceHandler registers svc as the
@@ -130,6 +156,7 @@ func RegisterAdminEngagementServiceHandler(server *connect.Server, svc AdminEnga
 		connect.Method{Spec: adminEngagementServiceGetRevenueStatsSpec(), Handler: adapter.getRevenueStats},
 		connect.Method{Spec: adminEngagementServiceGetAudienceStatsSpec(), Handler: adapter.getAudienceStats},
 		connect.Method{Spec: adminEngagementServiceGetEpisodeDropOffSpec(), Handler: adapter.getEpisodeDropOff},
+		connect.Method{Spec: adminEngagementServiceExportStatsSpec(), Handler: adapter.exportStats},
 	)
 }
 
@@ -150,6 +177,10 @@ func (UnimplementedAdminEngagementServiceHandler) GetAudienceStats(context.Conte
 
 func (UnimplementedAdminEngagementServiceHandler) GetEpisodeDropOff(context.Context, *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.GetEpisodeDropOff is not implemented")
+}
+
+func (UnimplementedAdminEngagementServiceHandler) ExportStats(context.Context, *v1.ExportStatsRequest) (*v1.ExportStatsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminEngagementService.ExportStats is not implemented")
 }
 
 type adminEngagementServiceClient struct {
@@ -183,6 +214,14 @@ func (c *adminEngagementServiceClient) GetAudienceStats(ctx context.Context, req
 func (c *adminEngagementServiceClient) GetEpisodeDropOff(ctx context.Context, req *v1.GetEpisodeDropOffRequest) (*v1.GetEpisodeDropOffResponse, error) {
 	var res v1.GetEpisodeDropOffResponse
 	if err := c.client.CallUnary(ctx, adminEngagementServiceGetEpisodeDropOffSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminEngagementServiceClient) ExportStats(ctx context.Context, req *v1.ExportStatsRequest) (*v1.ExportStatsResponse, error) {
+	var res v1.ExportStatsResponse
+	if err := c.client.CallUnary(ctx, adminEngagementServiceExportStatsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -232,6 +271,18 @@ func (h adminEngagementServiceHandler) getEpisodeDropOff(ctx context.Context, _ 
 		return err
 	}
 	res, err := h.svc.GetEpisodeDropOff(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminEngagementServiceHandler) exportStats(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ExportStatsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ExportStats(ctx, &req)
 	if err != nil {
 		return err
 	}

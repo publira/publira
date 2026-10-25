@@ -415,6 +415,9 @@ const readerActionName = (action: string) => {
         <Message message="admin.audit.actions.royalty_statement_exported" />
       );
     }
+    case "stats_exported": {
+      return <Message message="admin.audit.actions.stats_exported" />;
+    }
     case "tenant_member_added": {
       return <Message message="admin.audit.actions.tenant_member_added" />;
     }
@@ -824,11 +827,14 @@ const settingTargetName = (targetType: string) => {
 };
 
 /**
- * The name of an integration, subscription plan, coin, royalty, or account
- * target type.
+ * The name of an integration, subscription plan, coin, royalty, analytics, or
+ * account target type.
  */
 const tenantTargetName = (targetType: string) => {
   switch (targetType) {
+    case "audience_stats": {
+      return <Message message="admin.audit.targets.audience_stats" />;
+    }
     case "coin_pack": {
       return <Message message="admin.audit.targets.coin_pack" />;
     }
@@ -843,6 +849,9 @@ const tenantTargetName = (targetType: string) => {
     }
     case "payment_config": {
       return <Message message="admin.audit.targets.payment_config" />;
+    }
+    case "revenue_stats": {
+      return <Message message="admin.audit.targets.revenue_stats" />;
     }
     case "royalty_config": {
       return <Message message="admin.audit.targets.royalty_config" />;

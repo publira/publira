@@ -62,6 +62,21 @@ func revenueListKey(groupBy publiraadminv1.RevenueGroupBy, period statsPeriod) p
 		Value("to", period.end.Format(time.DateOnly))
 }
 
+// revenueReportFor reads what a revenue report of the tenant over the period
+// is counted against: the tenant's zone and the currency it sells in.
+func (s *adminServer) revenueReportFor(ctx context.Context, tenant dbmodels.Tenant, period statsPeriod) (revenueReport, error) {
+	currency, err := paymentsettings.TenantCurrency(ctx, s.queriesFor(ctx), tenant.ID)
+	if err != nil {
+		return revenueReport{}, s.internalDBError(ctx, "failed to read the tenant currency", err, "tenant_id", tenant.ID.String())
+	}
+	return revenueReport{
+		tenantID: tenant.ID,
+		period:   period,
+		timeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
+		currency: currency,
+	}, nil
+}
+
 func (s *adminServer) revenueByDay(ctx context.Context, report revenueReport) ([]*publiraadminv1.RevenueStatsRow, error) {
 	days, err := s.queriesFor(ctx).ListRevenueByDay(ctx, dbmodels.ListRevenueByDayParams{
 		TenantID:  report.tenantID,
@@ -248,15 +263,9 @@ func (s *adminServer) GetRevenueStats(
 		}
 	}
 
-	currency, err := paymentsettings.TenantCurrency(ctx, s.queriesFor(ctx), tenant.ID)
+	report, err := s.revenueReportFor(ctx, tenant, period)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to read the tenant currency", err, "tenant_id", tenant.ID.String())
-	}
-	report := revenueReport{
-		tenantID: tenant.ID,
-		period:   period,
-		timeZone: tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx))),
-		currency: currency,
+		return nil, err
 	}
 
 	totals, err := s.queriesFor(ctx).GetRevenueTotals(ctx, dbmodels.GetRevenueTotalsParams{
