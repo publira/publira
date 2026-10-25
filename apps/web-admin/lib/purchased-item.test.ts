@@ -69,6 +69,33 @@ describe("purchasedItemLabel", () => {
       )
     ).toBe("Remaining episodes (12)");
   });
+
+  it("counts the coins of a pack under the tenant's word for them", async () => {
+    const t = await getMessagesFor("en");
+
+    expect(
+      purchasedItemLabel(
+        purchase({
+          bonusCoins: 100,
+          coinName: "Points",
+          coins: 1000,
+          kind: "coin_pack",
+        }),
+        t
+      )
+    ).toBe("1,100 Points (including 100 bonus)");
+    expect(
+      purchasedItemLabel(
+        purchase({
+          bonusCoins: 0,
+          coinName: "Points",
+          coins: 500,
+          kind: "coin_pack",
+        }),
+        t
+      )
+    ).toBe("500 Points");
+  });
 });
 
 describe("purchasedItemHref", () => {
@@ -86,5 +113,18 @@ describe("purchasedItemHref", () => {
     expect(
       purchasedItemHref(purchase({ episodeCount: 3, kind: "series_bundle" }))
     ).toBe("/series/SERIES001");
+  });
+
+  it("opens nothing for a pack, which has no page", () => {
+    expect(
+      purchasedItemHref(
+        purchase({
+          bonusCoins: 0,
+          coinName: "Points",
+          coins: 500,
+          kind: "coin_pack",
+        })
+      )
+    ).toBeNull();
   });
 });

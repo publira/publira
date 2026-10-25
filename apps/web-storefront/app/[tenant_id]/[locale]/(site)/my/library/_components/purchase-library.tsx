@@ -80,7 +80,8 @@ const PurchasePagination = ({
 /**
  * Where a card leads, and what it calls the purchase: an episode opens
  * itself, while a volume and the rest of a series open the series page, which
- * lists every episode the purchase holds.
+ * lists every episode the purchase holds. A pack of coins leads nowhere: it
+ * is the coins it granted, under the tenant's word for them.
  */
 const purchasedItemLink = (
   { item, series }: PurchaseItem,
@@ -88,6 +89,23 @@ const purchasedItemLink = (
 ): { href: string; open: string; title: string } => {
   const seriesHref = `/series/${series.publicId}`;
   switch (item.kind) {
+    case "coin_pack": {
+      return {
+        href: "",
+        open: "",
+        title:
+          item.bonusCoins > 0
+            ? t("storefront.library.coin_pack_title_bonus", {
+                bonus: item.bonusCoins,
+                coin_name: item.coinName,
+                count: item.coins + item.bonusCoins,
+              })
+            : t("storefront.library.coin_pack_title", {
+                coin_name: item.coinName,
+                count: item.coins,
+              }),
+      };
+    }
     case "volume": {
       return {
         href: seriesHref,
@@ -124,6 +142,9 @@ const PurchaseCard = async ({
   const locale = await getLocale();
   const t = await getMessagesFor(locale);
   const { href, open, title } = purchasedItemLink(purchase, t);
+  // A pack is no reading right: it neither expires nor is read, so it says
+  // when it was bought and what was paid, and whether it was refunded.
+  const isCoinPack = purchase.item.kind === "coin_pack";
   const expiryLabel = purchase.expiresAt
     ? formatDateTime(purchase.expiresAt, { fallback: "-", locale, timeZone })
     : t("storefront.library.no_expiry");
@@ -132,13 +153,19 @@ const PurchaseCard = async ({
     <article className="rounded-xl border border-border/70 bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-muted-foreground">
-            {purchase.series.title}
-          </p>
+          {purchase.series.title ? (
+            <p className="text-xs text-muted-foreground">
+              {purchase.series.title}
+            </p>
+          ) : null}
           <h3 className="mt-1 font-medium">
-            <LocaleLink className="hover:underline" href={href}>
-              {title}
-            </LocaleLink>
+            {href ? (
+              <LocaleLink className="hover:underline" href={href}>
+                {title}
+              </LocaleLink>
+            ) : (
+              title
+            )}
           </h3>
         </div>
         {purchase.refundedAt ? (
@@ -151,7 +178,7 @@ const PurchaseCard = async ({
             {t("storefront.library.canceled")}
           </span>
         ) : null}
-        {purchase.refundedAt || purchase.revokedAt ? null : (
+        {purchase.refundedAt || purchase.revokedAt || isCoinPack ? null : (
           <span
             className={
               purchase.isActive
@@ -166,14 +193,16 @@ const PurchaseCard = async ({
         )}
       </div>
       <dl className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-4">
-        <div>
-          <dt>{t("storefront.library.kind")}</dt>
-          <dd className="mt-1 text-foreground">
-            {purchase.kind === "rental"
-              ? t("storefront.library.kind_rental")
-              : t("storefront.library.kind_purchase")}
-          </dd>
-        </div>
+        {isCoinPack ? null : (
+          <div>
+            <dt>{t("storefront.library.kind")}</dt>
+            <dd className="mt-1 text-foreground">
+              {purchase.kind === "rental"
+                ? t("storefront.library.kind_rental")
+                : t("storefront.library.kind_purchase")}
+            </dd>
+          </div>
+        )}
         <div>
           <dt>{t("storefront.library.purchased_at")}</dt>
           <dd className="mt-1 text-foreground">
@@ -193,29 +222,40 @@ const PurchaseCard = async ({
             })}
           </dd>
         </div>
-        <div>
-          <dt>{t("storefront.library.expires_at")}</dt>
-          <dd className="mt-1 text-foreground">
-            {expiryLabel}
-            {purchase.kind === "rental" &&
-            purchase.isActive &&
-            purchase.expiresAt ? (
-              <RentalTimeLeft expiresAt={purchase.expiresAt} />
-            ) : null}
-          </dd>
-        </div>
+        {isCoinPack ? null : (
+          <div>
+            <dt>{t("storefront.library.expires_at")}</dt>
+            <dd className="mt-1 text-foreground">
+              {expiryLabel}
+              {purchase.kind === "rental" &&
+              purchase.isActive &&
+              purchase.expiresAt ? (
+                <RentalTimeLeft expiresAt={purchase.expiresAt} />
+              ) : null}
+            </dd>
+          </div>
+        )}
       </dl>
-      <div className="mt-4">
-        <LocaleLink
-          className="text-sm text-primary underline-offset-4 hover:underline"
-          href={href}
-        >
-          {open}
-        </LocaleLink>
-      </div>
+      {href ? (
+        <div className="mt-4">
+          <LocaleLink
+            className="text-sm text-primary underline-offset-4 hover:underline"
+            href={href}
+          >
+            {open}
+          </LocaleLink>
+        </div>
+      ) : null}
     </article>
   );
 };
+
+/**
+ * The bookshelf is what the reader can read now, which a pack of coins is not,
+ * so every pack is listed under the purchase history.
+ */
+const onShelf = (purchase: PurchaseItem): boolean =>
+  purchase.isActive && purchase.item.kind !== "coin_pack";
 
 export const PurchaseLibrary = ({
   listErrorMessage,
@@ -225,8 +265,8 @@ export const PurchaseLibrary = ({
   purchases,
   timeZone,
 }: PurchaseLibraryProps) => {
-  const activePurchases = purchases.filter((purchase) => purchase.isActive);
-  const expiredPurchases = purchases.filter((purchase) => !purchase.isActive);
+  const activePurchases = purchases.filter(onShelf);
+  const expiredPurchases = purchases.filter((purchase) => !onShelf(purchase));
 
   return (
     <div className="space-y-6">

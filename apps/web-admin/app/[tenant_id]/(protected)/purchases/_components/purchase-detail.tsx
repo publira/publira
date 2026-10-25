@@ -11,12 +11,12 @@ import {
   PurchasePaidThrough,
   PurchaseStatusChip,
 } from "#components/purchase-status";
+import { PurchasedItemName } from "#components/purchased-item-name";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
 import { getPurchase } from "#lib/purchase";
-import { purchasedItemHref, purchasedItemLabel } from "#lib/purchased-item";
 
 import { RefundPurchaseButton } from "./refund-purchase-button";
 
@@ -166,12 +166,7 @@ export const PurchaseDetail = async ({
         </dt>
         <dd className={valueClassName}>
           <div className="grid gap-0.5">
-            <Link
-              className="font-medium underline-offset-4 hover:underline"
-              href={purchasedItemHref(purchase)}
-            >
-              {purchasedItemLabel(purchase, t)}
-            </Link>
+            <PurchasedItemName purchase={purchase} t={t} />
             <span className="text-muted-foreground">
               {purchase.seriesTitle || purchase.seriesPublicId}
             </span>

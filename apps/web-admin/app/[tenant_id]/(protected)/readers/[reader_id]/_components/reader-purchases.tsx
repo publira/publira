@@ -16,12 +16,13 @@ import {
   PurchasePaidThrough,
   PurchaseStatusChip,
 } from "#components/purchase-status";
+import { PurchasedItemName } from "#components/purchased-item-name";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
-import { purchasedItemHref, purchasedItemLabel } from "#lib/purchased-item";
+import { purchasedItemLabel } from "#lib/purchased-item";
 
 type ReaderPurchasesProps = CursorPageHrefs & {
   listErrorMessage?: string;
@@ -154,12 +155,7 @@ export const ReaderPurchases = async ({
                 </Table.Cell>
                 <Table.Cell>
                   <div className="grid gap-0.5">
-                    <Link
-                      className="font-medium underline-offset-4 hover:underline"
-                      href={purchasedItemHref(purchase)}
-                    >
-                      {purchasedItemLabel(purchase, t)}
-                    </Link>
+                    <PurchasedItemName purchase={purchase} t={t} />
                     <span className="text-xs text-muted-foreground">
                       {purchase.seriesTitle || purchase.seriesPublicId}
                     </span>

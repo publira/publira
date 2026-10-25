@@ -37,7 +37,12 @@ export type PurchasedItem =
   | { kind: "episode"; publicId: string; title: string }
   | { kind: "volume"; publicId: string; title: string }
   /** The rest of the series, bought in one checkout. */
-  | { episodeCount: number; kind: "series_bundle" };
+  | { episodeCount: number; kind: "series_bundle" }
+  /**
+   * A pack of the tenant's coins: the coins and bonus coins it granted, and
+   * the tenant's word for them in its default locale. It is of no series.
+   */
+  | { bonusCoins: number; coinName: string; coins: number; kind: "coin_pack" };
 
 export interface PurchaseItem {
   currency: string;
@@ -108,6 +113,8 @@ const revocationReasons: Record<
 /** The generated `AdminPurchase` fields {@link mapPurchase} reads (see `series.ts`). */
 type RawPurchase = Pick<
   AdminPurchase,
+  | "coinName"
+  | "coinPack"
   | "currency"
   | "episodePublicId"
   | "episodeTitle"
@@ -134,6 +141,14 @@ type RawPurchase = Pick<
 >;
 
 const mapPurchasedItem = (item: RawPurchase): PurchasedItem => {
+  if (item.coinPack) {
+    return {
+      bonusCoins: item.coinPack.bonusCoins,
+      coinName: item.coinName,
+      coins: item.coinPack.coins,
+      kind: "coin_pack",
+    };
+  }
   if (item.seriesBundle) {
     return {
       episodeCount: item.seriesBundle.episodeCount,

@@ -47,6 +47,13 @@ const PURCHASE_ID = "018f0e6a-5000-7000-8000-000000000001";
 
 const purchase = (
   overrides: Partial<{
+    coinName: string;
+    coinPack: {
+      bonusCoins: number;
+      coins: number;
+      id: string;
+      publicId: string;
+    };
     episodeId: string;
     episodePublicId: string;
     episodeTitle: string;
@@ -169,6 +176,18 @@ describe("listPurchases", () => {
             id: "018f0e6a-5000-7000-8000-000000000004",
           },
         }),
+        purchase({
+          coinName: "Points",
+          coinPack: {
+            bonusCoins: 100,
+            coins: 1000,
+            id: "018f0e6a-5000-7000-8000-000000000005",
+            publicId: "PACK00000001",
+          },
+          episodeId: "",
+          episodePublicId: "",
+          episodeTitle: "",
+        }),
       ],
     });
 
@@ -179,6 +198,7 @@ describe("listPurchases", () => {
       { kind: "episode", publicId: "EPISODE001", title: "Episode 1" },
       { kind: "volume", publicId: "VOLUME001", title: "Volume 1" },
       { episodeCount: 12, kind: "series_bundle" },
+      { bonusCoins: 100, coinName: "Points", coins: 1000, kind: "coin_pack" },
     ]);
   });
 

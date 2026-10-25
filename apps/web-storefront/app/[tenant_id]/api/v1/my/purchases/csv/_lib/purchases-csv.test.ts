@@ -5,7 +5,7 @@ import type { PurchaseItem } from "#lib/purchases";
 import { renderPurchasesCsv } from "./purchases-csv";
 
 const HEADER =
-  "purchase_id,purchased_at,series_title,episode_number,episode_title,price,refunded_amount,currency,expires_at,refunded_at,status,item,volume_title\r\n";
+  "purchase_id,purchased_at,series_title,episode_number,episode_title,price,refunded_amount,currency,expires_at,refunded_at,status,item,volume_title,coins,bonus_coins\r\n";
 
 const purchase = (overrides: Partial<PurchaseItem> = {}): PurchaseItem => ({
   currency: "USD",
@@ -41,8 +41,8 @@ describe("renderPurchasesCsv", () => {
 
     expect(csv).toBe(
       `\uFEFF${HEADER}` +
-        "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,,,active,episode,\r\n" +
-        "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,500,0,JPY,,,active,episode,\r\n"
+        "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,,,active,episode,,,\r\n" +
+        "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,500,0,JPY,,,active,episode,,,\r\n"
     );
   });
 
@@ -63,9 +63,9 @@ describe("renderPurchasesCsv", () => {
     ]);
 
     expect(csv.split("\r\n").slice(1, 4)).toEqual([
-      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,4.99,USD,,2026-10-02T09:00:00Z,refunded,episode,",
-      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,2.00,USD,,,active,episode,",
-      "PURCHASE03,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2026-10-01T10:00:00Z,,expired,episode,",
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,4.99,USD,,2026-10-02T09:00:00Z,refunded,episode,,,",
+      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,2.00,USD,,,active,episode,,,",
+      "PURCHASE03,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2026-10-01T10:00:00Z,,expired,episode,,,",
     ]);
   });
 
@@ -79,7 +79,7 @@ describe("renderPurchasesCsv", () => {
     ]);
 
     expect(csv.split("\r\n")[1]).toBe(
-      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2099-01-01T00:00:00Z,,canceled,episode,"
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2099-01-01T00:00:00Z,,canceled,episode,,,"
     );
   });
 
@@ -129,8 +129,27 @@ describe("renderPurchasesCsv", () => {
     ]);
 
     expect(csv.split("\r\n").slice(1, 3)).toEqual([
-      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,,,12.00,0.00,USD,,,active,volume,Volume 1",
-      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,,,18.00,0.00,USD,,,active,remaining_episodes,",
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,,,12.00,0.00,USD,,,active,volume,Volume 1,,",
+      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,,,18.00,0.00,USD,,,active,remaining_episodes,,,",
     ]);
+  });
+
+  it("counts the coins of a pack, its bonus among them, in columns of their own", () => {
+    const csv = renderPurchasesCsv([
+      purchase({
+        item: {
+          bonusCoins: 100,
+          coinName: "Points",
+          coins: 1000,
+          kind: "coin_pack",
+        },
+        priceAtPurchase: 1000,
+        series: { publicId: "", title: "" },
+      }),
+    ]);
+
+    expect(csv.split("\r\n")[1]).toBe(
+      "PURCHASE01,2026-10-01T09:00:00Z,,,,10.00,0.00,USD,,,active,coin_pack,,1100,100"
+    );
   });
 });
