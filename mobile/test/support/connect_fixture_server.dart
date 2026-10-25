@@ -14,6 +14,7 @@ import 'package:publira/api/gen/publira/v1/contact.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/page.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/subscription.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/image_cipher.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -611,6 +612,9 @@ class ConnectFixtureServer {
   /// What `GetSeriesEpisodeAccess` quotes the rest of a series at, keyed by
   /// series public id. A series missing here quotes nothing.
   Map<String, pb.SeriesRemainderOffer> seriesRemainders = const {};
+
+  /// The plans `ListSubscriptionPlans` answers, whoever asks.
+  List<pb.SubscriptionPlan> subscriptionPlans = const [];
 
   /// The Connect code `StartVolumeCheckout` and
   /// `StartSeriesRemainderCheckout` refuse a signed-in member with, or `null`
@@ -2154,6 +2158,15 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/ListSubscriptionPlans')) {
+      recorded.decode(pb.ListSubscriptionPlansRequest());
+      await _writeMessage(
+        request,
+        pb.ListSubscriptionPlansResponse(plans: subscriptionPlans),
+      );
+      return;
+    }
+
     if (path.endsWith('/GetSeriesEpisodeAccess')) {
       await _writeSeriesEpisodeAccess(
         request,
@@ -2522,8 +2535,15 @@ class ConnectFixtureServer {
       return;
     }
     final authorized = _isAuthorized(request);
-    pb.EpisodeAccess? accessOf(pb.GetEpisodeDetailResponse? episode) =>
-        episode != null && episode.hasAccess() ? episode.access : null;
+    pb.GetEpisodeDetailResponse? answerOf(String publicId) {
+      final entitled = authorized ? entitledEpisodes[publicId] : null;
+      if (entitled != null && entitled.hasAccess()) {
+        return entitled;
+      }
+      final episode = episodes[publicId];
+      return episode != null && episode.hasAccess() ? episode : null;
+    }
+
     await _writeMessage(
       request,
       pb.GetSeriesEpisodeAccessResponse(
@@ -2534,12 +2554,12 @@ class ConnectFixtureServer {
                 episodeId: internalIdOf(episode.publicId),
                 episodePublicId: episode.publicId,
                 access:
-                    accessOf(
-                      authorized ? entitledEpisodes[episode.publicId] : null,
-                    ) ??
-                    accessOf(episodes[episode.publicId]) ??
+                    answerOf(episode.publicId)?.access ??
                     pb.EpisodeAccess.EPISODE_ACCESS_FREE,
                 owned: authorized && ownedEpisodes.contains(episode.publicId),
+                entitlementSource: answerOf(
+                  episode.publicId,
+                )?.entitlementSource,
               ),
         ],
         remainder: seriesRemainders[seriesPublicId],

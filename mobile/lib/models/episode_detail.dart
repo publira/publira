@@ -20,8 +20,9 @@ enum EpisodeAccess {
   /// The episode is paid and this reader holds no purchase or ticket.
   locked,
 
-  /// The episode is paid and this reader holds a purchase or an active ticket,
-  /// or is credited on it. Which of those is [EpisodeEntitlementSource].
+  /// The episode is paid and this reader holds a purchase, an active ticket,
+  /// or a subscription to a plan that opens it, or is credited on it. Which of
+  /// those is [EpisodeEntitlementSource].
   entitled,
 
   /// The tenant makes a reader prove an age for this series' rating and this
@@ -63,6 +64,11 @@ enum EpisodeEntitlementSource {
   /// server reports it over a purchase or a ticket the same reader also holds.
   creator,
 
+  /// The reader subscribes to a plan that opens the episode's series. The
+  /// server reports it under a purchase, a ticket, and a creator's credit the
+  /// same reader also holds.
+  subscription,
+
   /// No source: the body is not entitled, or the server named one this build
   /// does not know.
   unspecified;
@@ -78,6 +84,8 @@ enum EpisodeEntitlementSource {
         EpisodeEntitlementSource.accessTicket,
       pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_CREATOR =>
         EpisodeEntitlementSource.creator,
+      pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_SUBSCRIPTION =>
+        EpisodeEntitlementSource.subscription,
       _ => EpisodeEntitlementSource.unspecified,
     };
   }

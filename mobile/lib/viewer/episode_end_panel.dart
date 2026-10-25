@@ -60,6 +60,19 @@ class EpisodeEndPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
     final next = detail.nextEpisode;
+    // A purchase, the reader's own credit, and a plan open the body alike, so
+    // the author and the subscriber are told which this is.
+    final access = switch (detail.entitlementSource) {
+      EpisodeEntitlementSource.creator => (
+        'episode-end-creator-access',
+        messages.viewerCreatorAccess,
+      ),
+      EpisodeEntitlementSource.subscription => (
+        'episode-end-plan-access',
+        messages.purchaseIncludedInPlan,
+      ),
+      _ => null,
+    };
     return Center(
       key: const ValueKey('episode-end-panel'),
       child: SingleChildScrollView(
@@ -81,13 +94,10 @@ class EpisodeEndPanel extends StatelessWidget {
                 onOpen: () => onOpenNext(next),
               ),
             const SizedBox(height: 24),
-            // A purchase and the reader's own credit open the body alike, so
-            // the author is told which of the two this is.
-            if (detail.entitlementSource ==
-                EpisodeEntitlementSource.creator) ...[
+            if (access case (final key, final text)) ...[
               AutospacedText(
-                key: const ValueKey('episode-end-creator-access'),
-                messages.viewerCreatorAccess,
+                key: ValueKey(key),
+                text,
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,

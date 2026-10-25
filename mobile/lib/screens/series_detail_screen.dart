@@ -270,6 +270,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// What this reader may do with each episode, keyed by public id.
   Map<String, EpisodeAccess> get _access => _holdings?.access ?? const {};
 
+  /// Whether the reader's plan is what opens [episode], which its row says in
+  /// place of a price they are not charged.
+  bool _includedInPlan(EpisodeItem episode) =>
+      _holdings?.entitlementSources[episode.id] ==
+      EpisodeEntitlementSource.subscription;
+
   /// Whether the tenant takes payments, which it has to before any row offers
   /// one.
   var _acceptsPayments = false;
@@ -568,11 +574,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
 
   /// The campaign open on [episode] at [now], for a row that quotes its price,
   /// and `null` for any other row. A free window open over a campaign still
-  /// opens the episode to everyone, so it wins; a row of an episode sold on
-  /// the website alone names that instead of a price, and a row with no
-  /// currency shows none.
+  /// opens the episode to everyone, so it wins; a row of an episode the
+  /// reader's plan opens, or of one sold on the website alone, names that
+  /// instead of a price, and a row with no currency shows none.
   EpisodeCampaign? _quotedCampaign(EpisodeItem episode, DateTime now) {
     if (episode.isFreeAt(now) ||
+        _includedInPlan(episode) ||
         _currency == null ||
         _acceptsPayments &&
             episode.purchaseSurface == EpisodePurchaseSurface.web) {
@@ -1202,6 +1209,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                       soldOnWeb:
                           _acceptsPayments &&
                           episode.purchaseSurface == EpisodePurchaseSurface.web,
+                      includedInPlan: _includedInPlan(episode),
                       saved: _saved.contains(episode.id),
                       download: downloader == null || !_canSave(episode)
                           ? null
@@ -1586,6 +1594,7 @@ class _EpisodeTrailing extends StatelessWidget {
     required this.price,
     required this.currency,
     required this.soldOnWeb,
+    required this.includedInPlan,
     required this.saved,
     required this.download,
     required this.buy,
@@ -1600,6 +1609,10 @@ class _EpisodeTrailing extends StatelessWidget {
   /// Whether the episode is sold on the website alone, which the row says in
   /// place of a price the app cannot take.
   final bool soldOnWeb;
+
+  /// Whether the reader's plan opens the episode, which the row says in place
+  /// of a price they are not charged.
+  final bool includedInPlan;
   final bool saved;
 
   /// The way to save the episode, which stands in for the mark where there is
@@ -1627,6 +1640,11 @@ class _EpisodeTrailing extends StatelessWidget {
           const _SavedOfflineMark(),
         if (buy != null)
           buy
+        else if (price > 0 && includedInPlan)
+          AutospacedText(
+            key: const ValueKey('episode-included-in-plan'),
+            messages.purchaseIncludedInPlan,
+          )
         else if (price > 0 && soldOnWeb)
           AutospacedText(
             key: const ValueKey('episode-sold-on-web'),

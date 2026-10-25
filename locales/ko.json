@@ -5513,9 +5513,12 @@
       "cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",
       "check_again": "다시 확인",
       "confirming": "결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.",
+      "included_in_plan": "플랜에 포함됨",
       "not_sold_in_app": "지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "plans_open_failed": "플랜을 열 수 없습니다. 잠시 후 다시 시도해 주세요.",
       "rent_for": "{$period} 대여 ({$price})",
       "rental_period": "{$hours :integer}시간",
+      "see_plans": "플랜 보기",
       "sold_on_web": "웹사이트에서 판매",
       "start_failed": "구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.",
       "store_unavailable": "이 기기에서는 구매할 수 없습니다. 스토어에 로그인되어 있는지, 구매가 제한되어 있지 않은지 확인해 주세요."
