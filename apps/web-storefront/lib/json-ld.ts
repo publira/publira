@@ -93,9 +93,11 @@ export const jsonLdUrl = (site: JsonLdSite, href: string): string => {
 };
 
 /**
- * An image path the API answered with, against the tenant's origin. The image
- * server's paths are relative (`/images/series/…`): metadata resolves them
- * against `metadataBase`, and a JSON-LD document has nothing that would.
+ * An image URL the API answered with, against the tenant's origin. The image
+ * server's paths are host-relative (`/images/series/…`) unless the tenant has
+ * an image host, whose URLs are absolute and come through unchanged: metadata
+ * resolves the relative ones against `metadataBase`, and a JSON-LD document
+ * has nothing that would.
  */
 const absoluteUrl = (site: JsonLdSite, path: string): string =>
   new URL(path, site.origin).href;

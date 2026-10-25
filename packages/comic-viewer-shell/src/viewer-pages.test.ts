@@ -55,6 +55,24 @@ describe("toViewerPages", () => {
     ]);
   });
 
+  it("offers the renditions of a page on a tenant's image host", () => {
+    const [page] = toViewerPages(
+      "Episode 1",
+      [
+        image({
+          imageUrl: "https://images.example.com/images/episodes/IMG_001?t=abc",
+          width: 720,
+        }),
+      ],
+      formatPageTitle
+    );
+
+    expect(page?.srcset?.split(", ")).toEqual([
+      "https://images.example.com/images/episodes/IMG_001?t=abc&w=480&fit=scale-down 480w",
+      "https://images.example.com/images/episodes/IMG_001?t=abc&w=720&fit=scale-down 720w",
+    ]);
+  });
+
   it("offers a page stored wider than every step of the ladder at its stored width too", () => {
     const [page] = toViewerPages(
       "Episode 1",

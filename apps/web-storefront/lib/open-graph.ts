@@ -8,7 +8,10 @@ import type { EyeCatchImageVariant } from "./catalog";
  */
 const OPEN_GRAPH_VARIANT_TYPE = "og";
 
-/** One image on a card, at the path `metadataBase` resolves for a crawler. */
+/**
+ * One image on a card, at the URL the API answered: a path `metadataBase`
+ * resolves for a crawler, or an absolute URL on the tenant's image host.
+ */
 export interface OpenGraphImage {
   alt: string;
   height: number;
