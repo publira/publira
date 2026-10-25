@@ -173,7 +173,7 @@ class _CatalogTitle extends StatelessWidget {
     return Image.network(
       logo.url.toString(),
       key: const ValueKey('catalog-logo'),
-      headers: tenant?.logoRequestHeaders,
+      headers: tenant?.imageRequestHeaders,
       height: _logoHeight,
       fit: BoxFit.contain,
       alignment: AlignmentDirectional.centerStart,

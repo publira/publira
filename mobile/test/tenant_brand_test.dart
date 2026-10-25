@@ -25,7 +25,7 @@ final _harborPalette = TenantPalette.fromWire(const {
 final _harbor = TenantBrand(
   name: 'Harbor Comics',
   palette: _harborPalette,
-  logo: TenantLogo(
+  logo: TenantImage(
     url: Uri.parse('http://images.test/images/tenants/HARBOR/logo'),
     width: 320,
     height: 80,
@@ -39,7 +39,7 @@ final _ember = TenantBrand(
     'backgroundColor': '#fff6ef',
     'foregroundColor': '#2b1308',
   }),
-  logo: TenantLogo(
+  logo: TenantImage(
     url: Uri.parse('http://images.test/images/tenants/EMBER/logo'),
     width: 240,
     height: 60,
@@ -235,7 +235,7 @@ void main() {
         tenantBrand: TenantBrandController(
           tenantHost: _tenantHost,
           repository: FakeTenantBrandRepository(brand: _ember),
-          logoRequestHeaders: const {'x-forwarded-host': 'ember.test'},
+          imageRequestHeaders: const {'x-forwarded-host': 'ember.test'},
         ),
       );
 

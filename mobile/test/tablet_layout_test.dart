@@ -289,9 +289,11 @@ void main() {
     testWidgets('draws a form no wider than a readable line, centred', (
       tester,
     ) async {
+      // Wide enough that the half the form takes beside the tenant's sign-in
+      // panel still holds more than a readable line.
       await pumpApp(
         tester,
-        size: tabletLandscape,
+        size: const Size(1600, 1000),
         initialLocation: AppRoutes.signIn,
         session: null,
       );
@@ -300,7 +302,9 @@ void main() {
 
       final field = tester.getRect(email);
       final body = tester.getRect(
-        find.ancestor(of: email, matching: find.byType(Scaffold)).first,
+        find
+            .ancestor(of: email, matching: find.byType(SingleChildScrollView))
+            .first,
       );
       expect(field.width, readableWidth);
       expect(field.center.dx, closeTo(body.center.dx, 1));

@@ -535,6 +535,9 @@ void main() {
       find.byKey(const ValueKey('sign-in-resend-verification')),
     );
 
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('sign-in-resend-verification')),
+    );
     await tester.tap(find.byKey(const ValueKey('sign-in-resend-verification')));
     await pumpUntilFound(
       tester,

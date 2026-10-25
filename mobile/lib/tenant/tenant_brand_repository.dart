@@ -39,15 +39,18 @@ class HttpTenantBrandRepository implements TenantBrandRepository {
           for (final color in TenantColor.values)
             color: _themeColor(theme, color),
         }),
-        logo: _logo(theme.logoImageVariants),
+        logo: _image(theme.logoImageVariants),
+        signInImage: _image(theme.signInImageVariants),
       );
     } on ConnectException {
       return null;
     }
   }
 
-  /// The logo's one variant, when it names an image with a size to lay out.
-  TenantLogo? _logo(List<pb.TenantImageVariant> variants) {
+  /// The image's one variant, when it names an image with a size to lay out.
+  /// The server keeps an upload's own proportions rather than cutting sizes
+  /// of it, so a logo and a sign-in image each have one.
+  TenantImage? _image(List<pb.TenantImageVariant> variants) {
     if (variants.isEmpty) {
       return null;
     }
@@ -56,7 +59,7 @@ class HttpTenantBrandRepository implements TenantBrandRepository {
     if (url.isEmpty || variant.width <= 0 || variant.height <= 0) {
       return null;
     }
-    return TenantLogo(
+    return TenantImage(
       url: config.imageUri(url),
       width: variant.width,
       height: variant.height,

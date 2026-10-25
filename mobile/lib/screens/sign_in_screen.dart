@@ -9,6 +9,7 @@ import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/provider_sign_in_buttons.dart';
+import 'package:publira/screens/sign_in_panel.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Email and password sign-in against `AuthService/Login`.
@@ -17,6 +18,9 @@ import 'package:publira/typography/autospaced_text.dart';
 /// which this form leads to. `AuthService/Login` refuses an account whose
 /// address is unconfirmed, and the form then offers a fresh link for the
 /// address it was given.
+///
+/// The form is set against the tenant's [SignInPanel]: above it in a narrow
+/// window, beside it once the window has room for two halves.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key, this.returnTo});
 
@@ -112,95 +116,127 @@ class _SignInScreenState extends State<SignInScreen> {
     return Scaffold(
       appBar: AppBar(title: AutospacedText(messages.commonSignIn)),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ReadableWidth(
-            child: Form(
-              key: _formKey,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final form = _buildForm(context, messages, failure);
+            if (constraints.maxWidth >= signInPanelBesideWidth) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: ReadableWidth(child: form),
+                    ),
+                  ),
+                  const Expanded(child: SignInPanel()),
+                ],
+              );
+            }
+            return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (failure != null) ...[
-                    AutospacedText(
-                      _failureCopy(messages, failure),
-                      key: const ValueKey('sign-in-error'),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  TextFormField(
-                    key: const ValueKey('sign-in-email'),
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      label: AutospacedText(messages.authEmailLabel),
-                      border: const OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    autocorrect: false,
-                    autofillHints: const [AutofillHints.username],
-                    textInputAction: TextInputAction.next,
-                    errorBuilder: (context, error) => AutospacedText(error),
-                    validator: (value) =>
-                        validateAuthEmail(messages, value ?? ''),
+                  const SizedBox(
+                    height: signInPanelBandHeight,
+                    child: SignInPanel(),
                   ),
-                  const SizedBox(height: 16),
-                  PasswordField(
-                    key: const ValueKey('sign-in-password'),
-                    controller: _passwordController,
-                    label: messages.authPasswordLabel,
-                    autofillHints: const [AutofillHints.password],
-                    textInputAction: TextInputAction.done,
-                    validator: (value) => (value ?? '').isEmpty
-                        ? messages.authPasswordRequired
-                        : null,
-                    onFieldSubmitted: (_) => _submit(),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    key: const ValueKey('sign-in-submit'),
-                    onPressed: _submitting ? null : _submit,
-                    child: _submitting
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : AutospacedText(messages.commonSignIn),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    key: const ValueKey('sign-in-forgot-password'),
-                    onPressed: _openResetPassword,
-                    child: AutospacedText(messages.signInForgotPassword),
-                  ),
-                  // The address is already typed, so the reader is not asked
-                  // for it again on the way to a replacement link.
-                  if (failure == AuthFailureKind.emailNotVerified) ...[
-                    const SizedBox(height: 16),
-                    OutlinedButton(
-                      key: const ValueKey('sign-in-resend-verification'),
-                      onPressed: _openResendVerification,
-                      child: AutospacedText(messages.authResendVerification),
-                    ),
-                  ],
-                  ProviderSignInButtons(returnTo: widget.returnTo),
-                  const SizedBox(height: 24),
-                  AutospacedText(
-                    messages.signInNoAccount,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    key: const ValueKey('sign-in-to-sign-up'),
-                    onPressed: () => context.pushInTab(AppRoutes.signUp),
-                    child: AutospacedText(messages.signInSignUp),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: ReadableWidth(child: form),
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          },
         ),
+      ),
+    );
+  }
+
+  Widget _buildForm(
+    BuildContext context,
+    AppMessages messages,
+    AuthFailureKind? failure,
+  ) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (failure != null) ...[
+            AutospacedText(
+              _failureCopy(messages, failure),
+              key: const ValueKey('sign-in-error'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            const SizedBox(height: 16),
+          ],
+          TextFormField(
+            key: const ValueKey('sign-in-email'),
+            controller: _emailController,
+            decoration: InputDecoration(
+              label: AutospacedText(messages.authEmailLabel),
+              border: const OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            autofillHints: const [AutofillHints.username],
+            textInputAction: TextInputAction.next,
+            errorBuilder: (context, error) => AutospacedText(error),
+            validator: (value) => validateAuthEmail(messages, value ?? ''),
+          ),
+          const SizedBox(height: 16),
+          PasswordField(
+            key: const ValueKey('sign-in-password'),
+            controller: _passwordController,
+            label: messages.authPasswordLabel,
+            autofillHints: const [AutofillHints.password],
+            textInputAction: TextInputAction.done,
+            validator: (value) =>
+                (value ?? '').isEmpty ? messages.authPasswordRequired : null,
+            onFieldSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            key: const ValueKey('sign-in-submit'),
+            onPressed: _submitting ? null : _submit,
+            child: _submitting
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : AutospacedText(messages.commonSignIn),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            key: const ValueKey('sign-in-forgot-password'),
+            onPressed: _openResetPassword,
+            child: AutospacedText(messages.signInForgotPassword),
+          ),
+          // The address is already typed, so the reader is not asked
+          // for it again on the way to a replacement link.
+          if (failure == AuthFailureKind.emailNotVerified) ...[
+            const SizedBox(height: 16),
+            OutlinedButton(
+              key: const ValueKey('sign-in-resend-verification'),
+              onPressed: _openResendVerification,
+              child: AutospacedText(messages.authResendVerification),
+            ),
+          ],
+          ProviderSignInButtons(returnTo: widget.returnTo),
+          const SizedBox(height: 24),
+          AutospacedText(
+            messages.signInNoAccount,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: const ValueKey('sign-in-to-sign-up'),
+            onPressed: () => context.pushInTab(AppRoutes.signUp),
+            child: AutospacedText(messages.signInSignUp),
+          ),
+        ],
       ),
     );
   }

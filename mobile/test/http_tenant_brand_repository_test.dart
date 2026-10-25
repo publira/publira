@@ -33,7 +33,7 @@ void main() {
     );
   }
 
-  test('reads the name, colours, and logo the tenant stored', () async {
+  test('reads the name, colours, and images the tenant stored', () async {
     server.tenantTheme = pb.TenantTheme(
       primaryColor: '#0b6e4f',
       logoImageVariants: [
@@ -43,6 +43,15 @@ void main() {
           url: '/images/tenants/LOGO/logo',
           width: 320,
           height: 80,
+        ),
+      ],
+      signInImageVariants: [
+        pb.TenantImageVariant(
+          label: 'sign_in',
+          variantType: 'sign_in',
+          url: '/images/tenants/SIGNIN/sign_in',
+          width: 1600,
+          height: 1200,
         ),
       ],
     );
@@ -57,6 +66,11 @@ void main() {
     );
     expect(brand?.logo?.width, 320);
     expect(
+      brand?.signInImage?.url,
+      Uri.parse('${server.baseUrl}/images/tenants/SIGNIN/sign_in'),
+    );
+    expect(brand?.signInImage?.height, 1200);
+    expect(
       server.requestsOf(pb.GetTenantRequest.new).single.tenant,
       pb.TenantContext(tenantId: ConnectFixtureServer.defaultTenantId),
     );
@@ -66,6 +80,7 @@ void main() {
     final brand = await repository().read();
 
     expect(brand?.logo, isNull);
+    expect(brand?.signInImage, isNull);
     expect(brand?.palette[TenantColor.primary], TenantColor.primary.fallback);
   });
 
