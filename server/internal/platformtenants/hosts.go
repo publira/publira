@@ -71,3 +71,31 @@ func checkHosts(ctx context.Context, q *dbmodels.Queries, id uuid.UUID, domain s
 		return nil
 	}
 }
+
+// hostsMoved reports whether before and after differ in any of the tenant's
+// hosts, which a rename alone never does.
+func hostsMoved(before, after dbmodels.Tenant) bool {
+	return before.Domain != after.Domain ||
+		before.AdminDomain != after.AdminDomain ||
+		before.ImageDomain != after.ImageDomain
+}
+
+// hostCacheTags names the storefront entries whose answers are built from the
+// tenant's hosts. The catalog reads and the campaign banners carry image URLs,
+// which are absolute on the image host when the tenant has one. The site read
+// carries the tenant's own images and the domain every link that leaves the
+// site is written against, and moving its tag is also what makes the
+// storefront look up again a host it holds for the tenant, so the previous
+// domain stops answering. Every read that carries a single series' tag carries
+// the list or the detail tag as well.
+func hostCacheTags(tenantID uuid.UUID) []string {
+	id := tenantID.String()
+	return []string{
+		fmt.Sprintf("tenant:%s:series:list", id),
+		fmt.Sprintf("tenant:%s:series:detail", id),
+		fmt.Sprintf("tenant:%s:creators", id),
+		fmt.Sprintf("tenant:%s:labels", id),
+		fmt.Sprintf("tenant:%s:campaign-banners", id),
+		fmt.Sprintf("tenant:%s:site", id),
+	}
+}
