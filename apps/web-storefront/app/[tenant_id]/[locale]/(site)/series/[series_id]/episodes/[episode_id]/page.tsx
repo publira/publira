@@ -229,6 +229,10 @@ const fromSeriesRead = (
     // If that read failed, do not offer a form whose submission might be
     // rejected; the next request retries the uncached failure value.
     commentMode: work?.commentMode ?? "disabled",
+    // A plan of labels is matched against the label the series read names, so
+    // while that read is failing the gate offers only the plans that open the
+    // whole site or this series by name.
+    labelPublicId: work?.labelPublicId ?? "",
     // A ticket is offered only where the rule is known to hold. The episode's
     // own access is unaffected: a failed read leaves the gate as it was.
     waitFree: work?.waitFree,
@@ -299,7 +303,8 @@ const EpisodeContent = async (
     previousEpisode,
     series,
   } = result.value;
-  const { commentMode, waitFree, workCredits } = fromSeriesRead(seriesResult);
+  const { commentMode, labelPublicId, waitFree, workCredits } =
+    fromSeriesRead(seriesResult);
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -388,6 +393,7 @@ const EpisodeContent = async (
                     episode={episode}
                     googlePlayUrl={tenant?.googlePlayUrl}
                     images={images}
+                    labelPublicId={labelPublicId}
                     nextEpisode={nextEpisode}
                     nextFreeEpisode={nextFreeEpisode}
                     previewImages={previewImages}

@@ -463,6 +463,19 @@
       "tests": ["a volume bought in the browser opens every episode in it"]
     },
     {
+      "name": "Subscription plans: subscribing, the plan a reader holds on My Page, and the billing portal",
+      "web": {
+        "routes": ["[locale]/(site)/plans"],
+        "rpcs": [
+          "ListSubscriptionPlans",
+          "StartSubscriptionCheckout",
+          "GetMySubscription",
+          "CreateBillingPortalSession"
+        ]
+      },
+      "exception": "Not in the app yet: #1804."
+    },
+    {
       "name": "Saving the purchase history as a CSV file",
       "web": {
         "routes": ["api/v1/my/purchases/csv"],

@@ -21,6 +21,7 @@ import { getLocale } from "#lib/locale";
 import { getMyWaitFreeTicketState } from "#lib/wait-free";
 
 import { renewEpisodePageUrlsAction } from "../_lib/renew-page-urls-action";
+import { offersSubscription } from "../_lib/subscription-offer";
 import {
   toWaitFreeOffer,
   waitFreeEpisodeEligible,
@@ -42,6 +43,7 @@ export const EpisodeBody = async ({
   episode,
   googlePlayUrl,
   images,
+  labelPublicId,
   nextEpisode,
   nextFreeEpisode,
   previewImages,
@@ -70,6 +72,11 @@ export const EpisodeBody = async ({
   episode: EpisodeDetail;
   googlePlayUrl?: string;
   images: EpisodeImageItem[];
+  /**
+   * The label the series is filed under, which a plan of labels is matched
+   * against; empty for a series under none, or while the series read failed.
+   */
+  labelPublicId: string;
   /** Absent at the ends of the series; the viewer's own chrome links to them. */
   nextEpisode?: EpisodeNeighborItem;
   /** What the gate offers instead of a locked body, when there is one. */
@@ -104,6 +111,11 @@ export const EpisodeBody = async ({
     getLocale(),
     resolveAccessToken(),
   ]);
+  const subscription = {
+    acceptsPayments,
+    labelPublicId,
+    seriesPublicId: series.publicId,
+  };
   if (!sessionId) {
     return (
       <EpisodeGateFrame
@@ -127,6 +139,11 @@ export const EpisodeBody = async ({
           rentalPrice={episode.rentalPrice}
           seriesPublicId={series.publicId}
           signedIn={false}
+          subscribable={await offersSubscription(
+            tenantId,
+            locale,
+            subscription
+          )}
           tenantId={tenantId}
           timeZone={timeZone}
           waitFree={toWaitFreeOffer({
@@ -230,6 +247,7 @@ export const EpisodeBody = async ({
         rentalPrice={episode.rentalPrice}
         seriesPublicId={series.publicId}
         signedIn
+        subscribable={await offersSubscription(tenantId, locale, subscription)}
         tenantId={tenantId}
         timeZone={timeZone}
         waitFree={toWaitFreeOffer({
