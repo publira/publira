@@ -4532,7 +4532,8 @@
         "wait_free_recharging_in": "次の無料チケットはあと{$duration}で使えるようになります。",
         "wait_free_excluded": "最新のエピソードのため、無料チケットでは読めません。",
         "wait_free_guest": "このシリーズは待てば無料です。ログインすると無料チケットでこのエピソードを読めます。",
-        "wait_free_state_failed": "このシリーズの無料チケットを確認できませんでした。"
+        "wait_free_state_failed": "このシリーズの無料チケットを確認できませんでした。",
+        "subscribe": "購読する"
       },
       "images_empty": "本文画像はまだ公開されていません。",
       "navigation": {
@@ -4691,7 +4692,22 @@
       "recommended_heading": "おすすめ作品",
       "title": "マイページ",
       "to_library": "購入済みを開く",
-      "to_settings": "設定を開く"
+      "to_settings": "設定を開く",
+      "plan_heading": "ご利用中のプラン",
+      "plan_error": "ご利用中のプランを表示できませんでした",
+      "plan_failed": "ご利用中のプランを取得できませんでした。時間をおいて再試行してください。",
+      "plan_renews_on": "{$date}に更新されます。",
+      "plan_ends_on": "{$date}に終了します。それまでは引き続き読めます。",
+      "plan_past_due": "前回の支払いが完了しませんでした。読み続けるには、支払いの管理から支払い方法を更新してください。",
+      "plan_on_hold": "支払いが完了するまでプランは停止しています。支払いの管理から支払い方法を更新してください。",
+      "plan_incomplete": "初回の支払いがまだ完了していません。",
+      "plan_ended": "このプランは終了しました。",
+      "plan_none": "ご利用中のプランはありません。プランを購読すると、対象のエピソードを1話ずつ購入せずに読めます。",
+      "to_plans": "プランを見る",
+      "manage_billing": "支払いの管理",
+      "subscription_success": "ご購読ありがとうございます。支払いが確認されると、ここにプランが表示されます。",
+      "billing_unavailable": "現在このサイトでは支払いの管理を利用できません。",
+      "billing_error": "支払いの管理を開けませんでした。時間をおいて再試行してください。"
     },
     "nav": {
       "account_menu": "アカウントメニュー",
@@ -4756,6 +4772,31 @@
       "fallback_notice": "このページはお使いの言語では公開されていないため、{$language}で表示しています。",
       "read_failed": "ページの内容を取得できませんでした。時間をおいて再試行してください。",
       "untitled": "ページ"
+    },
+    "plans": {
+      "title": "サブスクリプションプラン",
+      "description": "期間ごとに支払うと、プランの対象のエピソードを1話ずつ購入せずに読めます。",
+      "list_error": "サブスクリプションプランを表示できませんでした",
+      "list_failed": "サブスクリプションプランを取得できませんでした。時間をおいて再試行してください。",
+      "empty": "現在このサイトで提供しているサブスクリプションプランはありません。",
+      "scope_all": "このサイトのすべての作品が対象です。",
+      "scope_label": "次のレーベルの作品が対象です:",
+      "scope_series": "次の作品が対象です:",
+      "scope_none_shown": "このプランの対象の作品は、現在このサイトに掲載されていません。",
+      "subscribe": "購読する",
+      "login_to_subscribe": "ログインして購読する",
+      "already_subscribed": "{$plan}を購読中です。",
+      "to_my_page": "マイページで確認する",
+      "not_selling": "現在このサイトでは購読の申し込みを受け付けていません。",
+      "checkout_cancelled": "購読の手続きをキャンセルしました。料金は発生していません。",
+      "checkout_unavailable": "現在このプランは購読できません。別のプランを選ぶか、時間をおいて再試行してください。",
+      "checkout_error": "購読の手続きを開始できませんでした。時間をおいて再試行してください。",
+      "billing": {
+        "day": ".input {$count :integer}\n.match $count\n1 {{1日ごとに{$price}}}\n* {{{$count}日ごとに{$price}}}",
+        "week": ".input {$count :integer}\n.match $count\n1 {{1週間ごとに{$price}}}\n* {{{$count}週間ごとに{$price}}}",
+        "month": ".input {$count :integer}\n.match $count\n1 {{月額{$price}}}\n* {{{$count}か月ごとに{$price}}}",
+        "year": ".input {$count :integer}\n.match $count\n1 {{年額{$price}}}\n* {{{$count}年ごとに{$price}}}"
+      }
     },
     "ranking": {
       "age_gate": {

@@ -359,6 +359,23 @@ export const WEB_STOREFRONT_RENTALS_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the subscriptions tenant from
+ * `db/seeds/scenarios/670_storefront_subscriptions.sql`. Its suite takes the
+ * tenant's payments through Stripe, which is what lets the public site sell
+ * the tenant's plan, so it needs a console of its own.
+ */
+export const WEB_ADMIN_SUBSCRIPTIONS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_SUBSCRIPTIONS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.subs.localhost")
+);
+
+/** Public site of the same subscriptions tenant, whose reader subscribes. */
+export const WEB_STOREFRONT_SUBSCRIPTIONS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SUBSCRIPTIONS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "subs.localhost")
+);
+
+/**
  * Admin console of the app links tenant from
  * `db/seeds/scenarios/280_app_links.sql`. Its suite saves and clears the apps
  * the tenant's links open in, so it needs a console of its own.

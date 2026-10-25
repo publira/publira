@@ -9,6 +9,7 @@ import {
   FollowUpdatesSection,
   FollowUpdatesSectionSkeleton,
 } from "./_components/follow-updates";
+import { MyNotice } from "./_components/my-notice";
 import { ReadingHistorySection } from "./_components/reading-history";
 import {
   RecommendedCreatorsSection,
@@ -16,6 +17,7 @@ import {
   RecommendedSeriesSection,
   RecommendedSeriesSkeleton,
 } from "./_components/recommendations";
+import { SubscriptionSection } from "./_components/subscription-section";
 
 type MyPageProps = PageProps<"/[tenant_id]/[locale]/my">;
 
@@ -30,7 +32,9 @@ const CREATORS_HEADING_ID = "creators-heading";
 
 /**
  * My Page opens with what has arrived in what the reader follows, then what to
- * read next, and only then with what they have already read.
+ * read next, and only then with what they have already read. The reader's plan
+ * sits above all of them, because it is where a reader coming back from a
+ * plan's checkout or its billing portal lands.
  *
  * Nothing here tells the reader who they are. Their display name is in the
  * account menu this page is reached from, and everything they can change about
@@ -77,6 +81,24 @@ const MyPage = ({ searchParams }: MyPageProps) => (
         </div>
       </div>
     </section>
+
+    <Suspense fallback={null}>
+      <MyNotice searchParams={searchParams} />
+    </Suspense>
+
+    {/* No skeleton: most readers hold no plan, and on a site that sells none
+      the section renders nothing, so a placeholder would only flash. */}
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="storefront.my.plan_error" />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <SubscriptionSection />
+      </Suspense>
+    </SectionErrorBoundary>
 
     <section
       aria-labelledby={FOLLOW_UPDATES_HEADING_ID}

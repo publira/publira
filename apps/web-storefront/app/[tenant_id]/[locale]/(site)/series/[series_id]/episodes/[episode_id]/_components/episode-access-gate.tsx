@@ -399,6 +399,11 @@ const WaitFreeSection = ({
  * still recharging counts down to the moment it is ready and then offers
  * itself, without taking the Shu from an action already on screen.
  *
+ * A plan the tenant sells that opens the episode is offered beside the
+ * purchase, as a link to the plan page rather than a checkout of its own: the
+ * reader chooses between plans there, sees what each one opens, and is told
+ * if they already hold one.
+ *
  * An episode under a campaign that the site sells says so over the actions,
  * to a guest as to a reader signed in: the campaign is a reason to sign in and
  * buy now, and its end is when that reason runs out. One sold in the app is
@@ -421,6 +426,7 @@ export const EpisodeAccessGate = ({
   rentalPrice,
   seriesPublicId,
   signedIn,
+  subscribable,
   tenantId,
   timeZone,
   waitFree,
@@ -447,6 +453,8 @@ export const EpisodeAccessGate = ({
   rentalPrice: number;
   seriesPublicId: string;
   signedIn: boolean;
+  /** Whether a plan the site sells right now opens this episode. */
+  subscribable: boolean;
   tenantId: string;
   /**
    * The tenant's time zone, which a recharging ticket's instant and the end of
@@ -565,6 +573,17 @@ export const EpisodeAccessGate = ({
         ) : null}
         <div className="flex flex-wrap justify-center gap-3">
           {accessAction}
+          {subscribable ? (
+            <LinkButton
+              render={<LocaleLink href="/plans" />}
+              size="lg"
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="storefront.episode.gate.subscribe" />
+              </Suspense>
+            </LinkButton>
+          ) : null}
           <LinkButton
             render={<LocaleLink href={`/series/${seriesPublicId}`} />}
             variant="outline"

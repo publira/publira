@@ -20,7 +20,15 @@
  *
  * A subscription plan the console saves names a recurring Price, which publira
  * server reads with `GET /v1/prices/:id`; a spec makes one first with
- * `POST /v1/prices`, as an operator makes one in Stripe's dashboard.
+ * `POST /v1/prices`, as an operator makes one in Stripe's dashboard. A
+ * checkout of the plan is a session in `mode=subscription` that names the
+ * Price: paying it starts an active subscription billed at that Price for one
+ * of its periods, which `GET /v1/subscriptions/:id` answers and the delivered
+ * event names. `GET /v1/checkout/sessions/:id` answers a session, and
+ * `POST /v1/checkout/sessions/:id/expire` closes an open one, as the server
+ * asks of a reader's earlier checkout. `POST /v1/billing_portal/sessions`
+ * answers a page here that stands in for Stripe's customer portal, which links
+ * back to the session's return URL.
  *
  * The console's refund reaches `POST /v1/refunds`, which refunds whatever is
  * left of a payment intent the secret key paid, and
@@ -61,6 +69,8 @@ interface LineItem {
 interface CheckoutSession {
   /** What the reader pays: the line items, less the coupon's amount. */
   amount: number;
+  /** The customer the server named; a subscription checkout makes one if not. */
+  customer: string;
   /** The `Stripe-Version` the session was created with, which its events carry. */
   apiVersion: string;
   cancelURL: string;
@@ -70,9 +80,16 @@ interface CheckoutSession {
   id: string;
   lineItems: LineItem[];
   metadata: Record<string, string>;
+  mode: "payment" | "subscription";
   paymentIntent: string;
   secretKey: string;
-  status: "complete" | "open";
+  status: "complete" | "expired" | "open";
+  /** The subscription paying it started; empty until then. */
+  subscription: string;
+  /** What a subscription checkout puts on the subscription it starts. */
+  subscriptionMetadata: Record<string, string>;
+  /** The Price a subscription checkout bills; empty for a payment. */
+  subscriptionPrice: string;
   successURL: string;
 }
 
@@ -91,6 +108,25 @@ interface Price {
   id: string;
   interval: string;
   intervalCount: number;
+  /** The product it is a Price of, which heads its checkout page. */
+  name: string;
+}
+
+/** A subscription a paid subscription checkout started. */
+interface Subscription {
+  customer: string;
+  /** Unix seconds; the end of the period paid for. */
+  currentPeriodEnd: number;
+  id: string;
+  metadata: Record<string, string>;
+  price: string;
+}
+
+/** A session of the customer portal, which returns the reader to `returnURL`. */
+interface BillingPortalSession {
+  customer: string;
+  id: string;
+  returnURL: string;
 }
 
 /** The endpoints each secret key registered, one per URL. */
@@ -102,6 +138,9 @@ const paymentIntents = new Map<string, PaymentIntent>();
 const prices = new Map<string, Price>();
 /** The fixed amount each coupon takes off, by secret key and coupon id. */
 const coupons = new Map<string, number>();
+/** The subscriptions each secret key's checkouts started, by secret key and id. */
+const subscriptions = new Map<string, Subscription>();
+const portals = new Map<string, BillingPortalSession>();
 /**
  * What each secret key's idempotency key was first answered, which Stripe
  * answers again however the session has moved on since.
@@ -180,14 +219,19 @@ const sessionObject = (session: CheckoutSession) => ({
   amount_total: session.amount,
   cancel_url: session.cancelURL,
   currency: session.currency,
+  customer: session.customer || null,
   id: session.id,
   livemode: false,
   metadata: session.metadata,
-  mode: "payment",
+  mode: session.mode,
   object: "checkout.session",
-  payment_intent: session.status === "complete" ? session.paymentIntent : null,
+  payment_intent:
+    session.mode === "payment" && session.status === "complete"
+      ? session.paymentIntent
+      : null,
   payment_status: session.status === "complete" ? "paid" : "unpaid",
   status: session.status,
+  subscription: session.subscription || null,
   success_url: session.successURL,
   url: session.status === "open" ? `${origin}/checkout/${session.id}` : null,
 });
@@ -299,6 +343,36 @@ const lineItemsOf = (
   }
 };
 
+/**
+ * What a session sells: the Price a subscription checkout names, which the
+ * account holds, or the line items a payment is built of. `null` is a
+ * subscription checkout of a Price the account does not hold.
+ */
+const checkoutItemsOf = (
+  form: URLSearchParams,
+  secretKey: string
+): {
+  currency: string;
+  items: LineItem[];
+  mode: CheckoutSession["mode"];
+  price?: Price;
+} | null => {
+  if (form.get("mode") !== "subscription") {
+    return { ...lineItemsOf(form), mode: "payment" };
+  }
+  const price = prices.get(
+    `${secretKey}\n${form.get("line_items[0][price]") ?? ""}`
+  );
+  return price
+    ? {
+        currency: price.currency,
+        items: [{ amount: price.amount, name: price.name }],
+        mode: "subscription",
+        price,
+      }
+    : null;
+};
+
 const createCheckoutSession = async (
   request: IncomingMessage,
   response: ServerResponse
@@ -311,7 +385,17 @@ const createCheckoutSession = async (
     return;
   }
 
-  const { currency, items } = lineItemsOf(form);
+  const sold = checkoutItemsOf(form, secretKey);
+  if (!sold) {
+    answerError(
+      response,
+      400,
+      `No such price: '${form.get("line_items[0][price]") ?? ""}'`,
+      "resource_missing"
+    );
+    return;
+  }
+  const { currency, items, mode, price: subscriptionPrice } = sold;
   const couponId = form.get("discounts[0][coupon]");
   const discount = couponId ? coupons.get(`${secretKey}\n${couponId}`) : 0;
   if (discount === undefined) {
@@ -324,13 +408,18 @@ const createCheckoutSession = async (
     apiVersion: String(request.headers["stripe-version"] ?? ""),
     cancelURL: form.get("cancel_url") ?? "",
     currency,
+    customer: form.get("customer") ?? "",
     discount,
     id: randomId("cs_test_"),
     lineItems: items,
     metadata: hashOf(form, "metadata"),
+    mode,
     paymentIntent: randomId("pi_test_"),
     secretKey,
     status: "open",
+    subscription: "",
+    subscriptionMetadata: hashOf(form, "subscription_data\\[metadata\\]"),
+    subscriptionPrice: subscriptionPrice?.id ?? "",
     successURL: form.get("success_url") ?? "",
   };
   if (
@@ -374,8 +463,9 @@ const priceObject = (price: Price) => ({
 
 /**
  * A recurring Price billed `recurring[interval_count]` (1 when omitted)
- * `recurring[interval]`s, at `unit_amount` in `currency`. A Price that bills
- * once is not made here: no plan can name one.
+ * `recurring[interval]`s, at `unit_amount` in `currency`, of the product
+ * `product_data[name]` names. A Price that bills once is not made here: no
+ * plan can name one.
  */
 const createPrice = async (
   request: IncomingMessage,
@@ -407,6 +497,7 @@ const createPrice = async (
     id: randomId("price_test_"),
     interval,
     intervalCount,
+    name: form.get("product_data[name]") ?? "Subscription",
   };
   prices.set(`${secretKeyOf(request)}\n${price.id}`, price);
   answerJSON(response, 200, priceObject(price));
@@ -578,6 +669,127 @@ const createRefund = async (
   answerJSON(response, 200, created);
 };
 
+const getCheckoutSession = (
+  id: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const session = sessions.get(id);
+  if (!session || session.secretKey !== secretKeyOf(request)) {
+    answerError(
+      response,
+      404,
+      `No such checkout.session: '${id}'`,
+      "resource_missing"
+    );
+    return;
+  }
+  answerJSON(response, 200, sessionObject(session));
+};
+
+/** Close an open session, which Stripe refuses for one that is not open. */
+const expireCheckoutSession = (
+  id: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const session = sessions.get(id);
+  if (!session || session.secretKey !== secretKeyOf(request)) {
+    answerError(
+      response,
+      404,
+      `No such checkout.session: '${id}'`,
+      "resource_missing"
+    );
+    return;
+  }
+  if (session.status !== "open") {
+    answerError(
+      response,
+      400,
+      'Only Checkout Sessions with a status in ["open"] can be expired.'
+    );
+    return;
+  }
+  session.status = "expired";
+  answerJSON(response, 200, sessionObject(session));
+};
+
+/** A subscription in the shape Stripe answers it: active, on its one Price. */
+const subscriptionObject = (subscription: Subscription) => ({
+  cancel_at_period_end: false,
+  customer: subscription.customer,
+  id: subscription.id,
+  items: {
+    data: [
+      {
+        current_period_end: subscription.currentPeriodEnd,
+        id: `si_${subscription.id}`,
+        object: "subscription_item",
+        price: { id: subscription.price, object: "price" },
+      },
+    ],
+    object: "list",
+  },
+  livemode: false,
+  metadata: subscription.metadata,
+  object: "subscription",
+  status: "active",
+});
+
+const getSubscription = (
+  id: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const subscription = subscriptions.get(`${secretKeyOf(request)}\n${id}`);
+  if (!subscription) {
+    answerError(
+      response,
+      404,
+      `No such subscription: '${id}'`,
+      "resource_missing"
+    );
+    return;
+  }
+  answerJSON(response, 200, subscriptionObject(subscription));
+};
+
+const createBillingPortalSession = async (
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const form = new URLSearchParams(await readBody(request));
+  const portal: BillingPortalSession = {
+    customer: form.get("customer") ?? "",
+    id: randomId("bps_test_"),
+    returnURL: form.get("return_url") ?? "",
+  };
+  if (!portal.customer || !URL.canParse(portal.returnURL)) {
+    answerError(response, 400, "A customer and a return URL are required.");
+    return;
+  }
+  portals.set(portal.id, portal);
+  answerJSON(response, 200, {
+    customer: portal.customer,
+    id: portal.id,
+    livemode: false,
+    object: "billing_portal.session",
+    return_url: portal.returnURL,
+    url: `${origin}/billing/${portal.id}`,
+  });
+};
+
+/** The end of one period of `price` from now, in Unix seconds. */
+const periodEndOf = (price: Price | undefined): number => {
+  const unit = price?.interval ?? "month";
+  const count = price?.intervalCount ?? 1;
+  return Math.floor(
+    Temporal.Now.zonedDateTimeISO("UTC").add({ [`${unit}s`]: count })
+      .epochMilliseconds / 1000
+  );
+};
+
 /** What Stripe puts in `Stripe-Signature`: a timestamp and its HMAC. */
 const signature = (payload: string, secret: string): string => {
   const timestamp = Math.floor(Temporal.Now.instant().epochMilliseconds / 1000);
@@ -696,10 +908,26 @@ const pay = async (
   response: ServerResponse
 ): Promise<void> => {
   const type = "checkout.session.completed";
+  // A subscription checkout starts its subscription before the event that
+  // names it is delivered, as the server reads it back on receiving it.
+  const paid = { ...session, status: "complete" as const };
+  if (session.mode === "subscription") {
+    paid.customer ||= randomId("cus_test_");
+    paid.subscription = randomId("sub_test_");
+    subscriptions.set(`${session.secretKey}\n${paid.subscription}`, {
+      currentPeriodEnd: periodEndOf(
+        prices.get(`${session.secretKey}\n${session.subscriptionPrice}`)
+      ),
+      customer: paid.customer,
+      id: paid.subscription,
+      metadata: session.subscriptionMetadata,
+      price: session.subscriptionPrice,
+    });
+  }
   const payload = JSON.stringify({
     api_version: session.apiVersion,
     created: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
-    data: { object: sessionObject({ ...session, status: "complete" }) },
+    data: { object: sessionObject(paid) },
     id: randomId("evt_test_"),
     livemode: false,
     object: "event",
@@ -732,13 +960,15 @@ const pay = async (
       return;
     }
   }
-  session.status = "complete";
-  paymentIntents.set(`${session.secretKey}\n${session.paymentIntent}`, {
-    amount: session.amount,
-    currency: session.currency,
-    id: session.paymentIntent,
-    refunded: 0,
-  });
+  Object.assign(session, paid);
+  if (session.mode === "payment") {
+    paymentIntents.set(`${session.secretKey}\n${session.paymentIntent}`, {
+      amount: session.amount,
+      currency: session.currency,
+      id: session.paymentIntent,
+      refunded: 0,
+    });
+  }
   response.writeHead(303, {
     location: session.successURL.replaceAll(
       "{CHECKOUT_SESSION_ID}",
@@ -747,6 +977,14 @@ const pay = async (
   });
   response.end();
 };
+
+/** The page a portal session's `url` names, which leads back to the site. */
+const billingPortalPage = (portal: BillingPortalSession): string =>
+  page(
+    "Billing",
+    `<h1>Billing</h1>
+<a href="${escapeHTML(portal.returnURL)}">Return to the site</a>`
+  );
 
 /** The checkout page a session's `url` names: shown with GET, paid with POST. */
 const handleCheckout = async (
@@ -787,12 +1025,48 @@ type Handler = (
  */
 const apiRoutes = new Map<string, Handler>([
   ["POST /payment-intents", registerPaymentIntent],
+  ["POST /v1/billing_portal/sessions", createBillingPortalSession],
   ["POST /v1/checkout/sessions", createCheckoutSession],
   ["POST /v1/coupons", createCoupon],
   ["POST /v1/prices", createPrice],
   ["POST /v1/refunds", createRefund],
   ["POST /v1/webhook_endpoints", createWebhookEndpoint],
 ]);
+
+/** The page a portal session's `url` names, shown with GET. */
+const showBillingPortal = (
+  id: string,
+  _request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const portal = portals.get(id);
+  if (!portal) {
+    answer(response, 404, "text/plain", "no such billing portal session");
+    return;
+  }
+  answer(response, 200, "text/html; charset=utf-8", billingPortalPage(portal));
+};
+
+/**
+ * The calls that answer a path naming one record, by method and the pattern
+ * that captures its id.
+ */
+const recordRoutes: [
+  string,
+  RegExp,
+  (id: string, request: IncomingMessage, response: ServerResponse) => void,
+][] = [
+  ["GET", /^\/v1\/payment_intents\/(?<id>[^/]+)$/u, getPaymentIntent],
+  ["GET", /^\/v1\/prices\/(?<id>[^/]+)$/u, getPrice],
+  ["GET", /^\/v1\/checkout\/sessions\/(?<id>[^/]+)$/u, getCheckoutSession],
+  [
+    "POST",
+    /^\/v1\/checkout\/sessions\/(?<id>[^/]+)\/expire$/u,
+    expireCheckoutSession,
+  ],
+  ["GET", /^\/v1\/subscriptions\/(?<id>[^/]+)$/u, getSubscription],
+  ["GET", /^\/billing\/(?<id>[^/]+)$/u, showBillingPortal],
+];
 
 const handle = async (
   request: IncomingMessage,
@@ -804,9 +1078,6 @@ const handle = async (
     return;
   }
   const route = apiRoutes.get(`${request.method} ${pathname}`);
-  const intent = /^\/v1\/payment_intents\/(?<id>[^/]+)$/u.exec(pathname)?.groups
-    ?.id;
-  const price = /^\/v1\/prices\/(?<id>[^/]+)$/u.exec(pathname)?.groups?.id;
   if ((route || pathname.startsWith("/v1/")) && !secretKeyOf(request)) {
     answerError(response, 401, "You did not provide an API key.");
     return;
@@ -815,13 +1086,12 @@ const handle = async (
     await route(request, response);
     return;
   }
-  if (request.method === "GET" && intent) {
-    getPaymentIntent(intent, request, response);
-    return;
-  }
-  if (request.method === "GET" && price) {
-    getPrice(price, request, response);
-    return;
+  for (const [method, pattern, answerRecord] of recordRoutes) {
+    const id = pattern.exec(pathname)?.groups?.id;
+    if (id && request.method === method) {
+      answerRecord(id, request, response);
+      return;
+    }
   }
   const checkout = /^\/checkout\/(?<id>[^/]+)$/u.exec(pathname)?.groups?.id;
   if (checkout) {

@@ -4532,7 +4532,8 @@
         "wait_free_recharging_in": "Your next free ticket is ready in {$duration}.",
         "wait_free_excluded": "This is one of the newest episodes, which a free ticket cannot open.",
         "wait_free_guest": "This series is free if you wait: sign in to read this episode with a free ticket.",
-        "wait_free_state_failed": "Your free ticket for this series could not be checked."
+        "wait_free_state_failed": "Your free ticket for this series could not be checked.",
+        "subscribe": "Subscribe"
       },
       "images_empty": "The pages of this episode have not been published yet.",
       "navigation": {
@@ -4691,7 +4692,22 @@
       "recommended_heading": "Recommended",
       "title": "My Page",
       "to_library": "Open purchases",
-      "to_settings": "Open settings"
+      "to_settings": "Open settings",
+      "plan_heading": "Your plan",
+      "plan_error": "Could not show your plan",
+      "plan_failed": "Could not load your plan. Please try again later.",
+      "plan_renews_on": "Renews on {$date}.",
+      "plan_ends_on": "Ends on {$date}. You can keep reading until then.",
+      "plan_past_due": "Your last payment did not go through. Update your payment method under Manage billing to keep reading.",
+      "plan_on_hold": "Your plan is on hold until a payment goes through. Update your payment method under Manage billing.",
+      "plan_incomplete": "Your first payment has not gone through yet.",
+      "plan_ended": "This plan has ended.",
+      "plan_none": "You do not have a plan. A plan lets you read every episode it covers without buying each one.",
+      "to_plans": "See plans",
+      "manage_billing": "Manage billing",
+      "subscription_success": "Thank you for subscribing. Your plan appears here once the payment is confirmed.",
+      "billing_unavailable": "Billing cannot be managed on this site at the moment.",
+      "billing_error": "Could not open billing. Please try again later."
     },
     "nav": {
       "account_menu": "Account menu",
@@ -4756,6 +4772,31 @@
       "fallback_notice": "This page is not published in your language, so it is shown in {$language}.",
       "read_failed": "Could not load the page content. Please try again later.",
       "untitled": "Page"
+    },
+    "plans": {
+      "title": "Subscription plans",
+      "description": "Pay every period and read every episode a plan covers, without buying each one.",
+      "list_error": "Could not show the subscription plans",
+      "list_failed": "Could not load the subscription plans. Please try again later.",
+      "empty": "This site offers no subscription plans right now.",
+      "scope_all": "Covers every work on this site.",
+      "scope_label": "Covers the works of these labels:",
+      "scope_series": "Covers these works:",
+      "scope_none_shown": "None of the works this plan covers is on this site right now.",
+      "subscribe": "Subscribe",
+      "login_to_subscribe": "Sign in to subscribe",
+      "already_subscribed": "You are subscribed to {$plan}.",
+      "to_my_page": "See it on My Page",
+      "not_selling": "This site cannot take subscriptions at the moment.",
+      "checkout_cancelled": "The subscription was cancelled. You have not been charged.",
+      "checkout_unavailable": "This plan cannot be subscribed to at the moment. Choose another plan, or try again later.",
+      "checkout_error": "Could not start the subscription. Please try again later.",
+      "billing": {
+        "day": ".input {$count :integer}\n.match $count\n1 {{{$price} a day}}\n* {{{$price} every {$count} days}}",
+        "week": ".input {$count :integer}\n.match $count\n1 {{{$price} a week}}\n* {{{$price} every {$count} weeks}}",
+        "month": ".input {$count :integer}\n.match $count\n1 {{{$price} a month}}\n* {{{$price} every {$count} months}}",
+        "year": ".input {$count :integer}\n.match $count\n1 {{{$price} a year}}\n* {{{$price} every {$count} years}}"
+      }
     },
     "ranking": {
       "age_gate": {

@@ -241,6 +241,7 @@ services:
         sign-in.localhost
         social-consent.localhost
         social.localhost
+        subs.localhost
         tag-docs.localhost
         team.localhost
         verify.localhost
@@ -279,6 +280,7 @@ services:
         admin.sign-in.localhost
         admin.social-consent.localhost
         admin.social.localhost
+        admin.subs.localhost
         admin.tag-docs.localhost
         admin.team.localhost
         admin.verify.localhost

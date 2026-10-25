@@ -49,7 +49,8 @@ export const registerStripePaymentIntent = async (
  * Make a recurring Price on the account `secretKey` names, billed `amount` in
  * `currency` every `intervalCount` `interval`s, and answer its id, which a
  * subscription plan is saved with as an operator copies it from Stripe's
- * dashboard.
+ * dashboard. `name` names the product it is a Price of, which heads the
+ * checkout page of a plan billed at it.
  */
 export const createStripePrice = async (
   secretKey: string,
@@ -58,6 +59,7 @@ export const createStripePrice = async (
     currency: string;
     interval: "day" | "month" | "week" | "year";
     intervalCount?: number;
+    name?: string;
   }
 ): Promise<string> => {
   const response = await fetch(`${STRIPE_BASE_URL}/v1/prices`, {
@@ -66,6 +68,7 @@ export const createStripePrice = async (
       "recurring[interval]": price.interval,
       "recurring[interval_count]": String(price.intervalCount ?? 1),
       unit_amount: String(price.amount),
+      ...(price.name ? { "product_data[name]": price.name } : {}),
     }),
     headers: { authorization: `Bearer ${secretKey}` },
     method: "POST",

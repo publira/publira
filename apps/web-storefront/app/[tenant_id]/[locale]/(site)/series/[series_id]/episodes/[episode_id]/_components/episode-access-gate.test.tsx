@@ -72,9 +72,13 @@ const props = {
   rentalPrice: 0,
   seriesPublicId: "SERIES_001",
   signedIn: true,
+  subscribable: false,
   tenantId: "TENANT_001",
   timeZone: "UTC",
 };
+
+const subscribeLink = () =>
+  screen.queryByRole("link", { name: "storefront.episode.gate.subscribe" });
 
 describe("EpisodeAccessGate", () => {
   it("Do not display purchase CTA if payment settings are disabled", () => {
@@ -101,6 +105,39 @@ describe("EpisodeAccessGate", () => {
     expect(
       screen.getByRole("button", { name: "storefront.episode.gate.purchase" })
     ).toBeDefined();
+  });
+
+  describe("a plan that opens the episode", () => {
+    it("is offered beside the purchase as a link to the plan page", () => {
+      render(<EpisodeAccessGate {...props} acceptsPayments subscribable />);
+
+      expect(subscribeLink()?.getAttribute("href")).toBe("/plans");
+      expect(
+        screen.getByRole("button", { name: "storefront.episode.gate.purchase" })
+      ).toBeDefined();
+    });
+
+    it("is offered to a guest beside signing in", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          signedIn={false}
+          subscribable
+        />
+      );
+
+      expect(subscribeLink()?.getAttribute("href")).toBe("/plans");
+      expect(
+        screen.getByRole("link", { name: "storefront.episode.gate.login" })
+      ).toBeDefined();
+    });
+
+    it("is not offered where no plan opens the episode", () => {
+      render(<EpisodeAccessGate {...props} acceptsPayments />);
+
+      expect(subscribeLink()).toBeNull();
+    });
   });
 
   describe("an episode sold in the app alone", () => {
