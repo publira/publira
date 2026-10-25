@@ -17,6 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantorigin"
@@ -38,8 +39,8 @@ type subscriptionPlanFields struct {
 
 // subscriptionPlanTargets are the labels or the series one plan opens.
 type subscriptionPlanTargets struct {
-	labelIDs  []string
-	seriesIDs []string
+	labelIDs  []uuid.UUID
+	seriesIDs []uuid.UUID
 }
 
 func (s *apiServer) ListSubscriptionPlans(
@@ -47,6 +48,14 @@ func (s *apiServer) ListSubscriptionPlans(
 	req *publirav1.ListSubscriptionPlansRequest,
 ) (*publirav1.ListSubscriptionPlansResponse, error) {
 	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	surface, err := callingSurface(req.Surface)
+	if err != nil {
+		return nil, err
+	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +70,20 @@ func (s *apiServer) ListSubscriptionPlans(
 	targets, err := s.subscriptionPlanTargets(ctx, tenant.ID, planIDs)
 	if err != nil {
 		return nil, err
+	}
+	labelIDs := make([]uuid.UUID, 0)
+	seriesIDs := make([]uuid.UUID, 0)
+	for _, target := range targets {
+		labelIDs = append(labelIDs, target.labelIDs...)
+		seriesIDs = append(seriesIDs, target.seriesIDs...)
+	}
+	labels, err := s.publishedSubscriptionPlanLabels(ctx, tenant.ID, surface, labelIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list the labels subscription plans open", err, "tenant_id", tenant.ID.String())
+	}
+	series, err := s.publishedSubscriptionPlanSeries(ctx, tenant.ID, surface, readerLocale, seriesIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list the series subscription plans open", err, "tenant_id", tenant.ID.String())
 	}
 	plans := make([]*publirav1.SubscriptionPlan, 0, len(rows))
 	for _, row := range rows {
@@ -77,6 +100,16 @@ func (s *apiServer) ListSubscriptionPlans(
 		}, targets[row.ID])
 		if err != nil {
 			return nil, s.internalError(ctx, "subscription plan holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", row.ID.String())
+		}
+		for _, id := range targets[row.ID].labelIDs {
+			if label, ok := labels[id]; ok {
+				plan.Labels = append(plan.Labels, label)
+			}
+		}
+		for _, id := range targets[row.ID].seriesIDs {
+			if item, ok := series[id]; ok {
+				plan.Series = append(plan.Series, item)
+			}
 		}
 		plans = append(plans, plan)
 	}
@@ -412,14 +445,68 @@ func (s *apiServer) subscriptionPlanTargets(ctx context.Context, tenantID uuid.U
 	for _, row := range rows {
 		target := targets[row.PlanID]
 		if row.LabelID.Valid {
-			target.labelIDs = append(target.labelIDs, row.LabelID.UUID.String())
+			target.labelIDs = append(target.labelIDs, row.LabelID.UUID)
 		}
 		if row.SeriesID.Valid {
-			target.seriesIDs = append(target.seriesIDs, row.SeriesID.UUID.String())
+			target.seriesIDs = append(target.seriesIDs, row.SeriesID.UUID)
 		}
 		targets[row.PlanID] = target
 	}
 	return targets, nil
+}
+
+// publishedSubscriptionPlanLabels reads the labels of ids that have a series
+// published on surface, keyed by id. A plan names a label whatever it holds,
+// and one with nothing a reader could open is left out of what readers see.
+func (s *apiServer) publishedSubscriptionPlanLabels(ctx context.Context, tenantID uuid.UUID, surface string, ids []uuid.UUID) (map[uuid.UUID]*publirav1.PublishedLabel, error) {
+	labels := make(map[uuid.UUID]*publirav1.PublishedLabel, len(ids))
+	if len(ids) == 0 {
+		return labels, nil
+	}
+	rows, err := s.queriesFor(ctx).ListPublishedLabelsByIDs(ctx, dbmodels.ListPublishedLabelsByIDsParams{
+		TenantID: tenantID,
+		Surface:  surface,
+		Ids:      ids,
+	})
+	if err != nil {
+		return nil, err
+	}
+	displays := make([]labelDisplay, 0, len(rows))
+	for _, row := range rows {
+		displays = append(displays, labelDisplay{
+			publicID:               row.PublicID,
+			name:                   row.Name,
+			eyeCatchImageID:        row.EyeCatchImageID,
+			eyeCatchImageUpdatedAt: row.EyeCatchImageUpdatedAt,
+			publishedSeriesCount:   row.PublishedSeriesCount,
+		})
+	}
+	items, err := s.labelItems(ctx, displays)
+	if err != nil {
+		return nil, err
+	}
+	for index, row := range rows {
+		labels[row.ID] = items[index]
+	}
+	return labels, nil
+}
+
+// publishedSubscriptionPlanSeries reads the series of ids published on
+// surface, titled in locale and keyed by id.
+func (s *apiServer) publishedSubscriptionPlanSeries(ctx context.Context, tenantID uuid.UUID, surface, locale string, ids []uuid.UUID) (map[uuid.UUID]*publirattypesv1.Series, error) {
+	series := make(map[uuid.UUID]*publirattypesv1.Series, len(ids))
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, locale, ids)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.publishedSeriesItems(ctx, rows)
+	if err != nil {
+		return nil, err
+	}
+	for index, row := range rows {
+		series[row.ID] = items[index]
+	}
+	return series, nil
 }
 
 func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPlanTargets) (*publirav1.SubscriptionPlan, error) {
@@ -441,8 +528,8 @@ func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPl
 		Interval:      interval,
 		IntervalCount: plan.recurringIntervalCount,
 		Scope:         scope,
-		LabelIds:      targets.labelIDs,
-		SeriesIds:     targets.seriesIDs,
+		LabelIds:      recordIDStrings(targets.labelIDs),
+		SeriesIds:     recordIDStrings(targets.seriesIDs),
 	}, nil
 }
 
@@ -553,4 +640,13 @@ func (s *apiServer) recordSubscription(
 		"status", recorded.Status,
 	)
 	return nil
+}
+
+// recordIDStrings writes primary keys the way the wire carries them.
+func recordIDStrings(ids []uuid.UUID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id.String())
+	}
+	return out
 }

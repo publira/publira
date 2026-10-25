@@ -46,8 +46,16 @@ type SubscriptionPlan struct {
 	// keys. Both are empty on a SUBSCRIPTION_PLAN_SCOPE_ALL plan. They name what
 	// the tenant chose, published or not, so a client shows only the ones its
 	// catalog reads answer.
-	LabelIds      []string `protobuf:"bytes,10,rep,name=label_ids,json=labelIds,proto3" json:"label_ids,omitempty"`
-	SeriesIds     []string `protobuf:"bytes,11,rep,name=series_ids,json=seriesIds,proto3" json:"series_ids,omitempty"`
+	LabelIds  []string `protobuf:"bytes,10,rep,name=label_ids,json=labelIds,proto3" json:"label_ids,omitempty"`
+	SeriesIds []string `protobuf:"bytes,11,rep,name=series_ids,json=seriesIds,proto3" json:"series_ids,omitempty"`
+	// The labels of label_ids and the series of series_ids that the calling
+	// surface may show, in the order the plan names them: a label with no
+	// series published there, and a series that is not, are left out. The
+	// series are titled in the reader's locale. ListSubscriptionPlans fills
+	// them; GetMySubscription, which reports a plan the reader already holds,
+	// leaves them empty.
+	Labels        []*PublishedLabel `protobuf:"bytes,12,rep,name=labels,proto3" json:"labels,omitempty"`
+	Series        []*v1.Series      `protobuf:"bytes,13,rep,name=series,proto3" json:"series,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -159,6 +167,20 @@ func (x *SubscriptionPlan) GetSeriesIds() []string {
 	return nil
 }
 
+func (x *SubscriptionPlan) GetLabels() []*PublishedLabel {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *SubscriptionPlan) GetSeries() []*v1.Series {
+	if x != nil {
+		return x.Series
+	}
+	return nil
+}
+
 // A reader's subscription to one plan, as Stripe last reported it.
 type Subscription struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -252,8 +274,14 @@ func (x *Subscription) GetCreatedAt() string {
 }
 
 type ListSubscriptionPlansRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The client making the read. Unspecified is answered as the web storefront.
+	Surface v1.ClientSurface `protobuf:"varint,2,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale, which every series title in the answer is written
+	// in, else the tenant's default locale's, else the oldest one. Empty means
+	// the tenant's default locale.
+	Locale        string `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -293,6 +321,20 @@ func (x *ListSubscriptionPlansRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
+}
+
+func (x *ListSubscriptionPlansRequest) GetSurface() v1.ClientSurface {
+	if x != nil {
+		return x.Surface
+	}
+	return v1.ClientSurface(0)
+}
+
+func (x *ListSubscriptionPlansRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 // Every published plan of the tenant, in the order the tenant created them. A
@@ -650,7 +692,7 @@ var File_publira_v1_subscription_proto protoreflect.FileDescriptor
 const file_publira_v1_subscription_proto_rawDesc = "" +
 	"\n" +
 	"\x1dpublira/v1/subscription.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"\x9a\x03\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\x1a\x18publira/v1/catalog.proto\"\x80\x04\n" +
 	"\x10SubscriptionPlan\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
@@ -664,7 +706,9 @@ const file_publira_v1_subscription_proto_rawDesc = "" +
 	"\tlabel_ids\x18\n" +
 	" \x03(\tR\blabelIds\x12\x1d\n" +
 	"\n" +
-	"series_ids\x18\v \x03(\tR\tseriesIds\"\x8c\x02\n" +
+	"series_ids\x18\v \x03(\tR\tseriesIds\x122\n" +
+	"\x06labels\x18\f \x03(\v2\x1a.publira.v1.PublishedLabelR\x06labels\x120\n" +
+	"\x06series\x18\r \x03(\v2\x18.publira.types.v1.SeriesR\x06series\"\x8c\x02\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
 	"\x04plan\x18\x02 \x01(\v2\x1c.publira.v1.SubscriptionPlanR\x04plan\x12<\n" +
@@ -672,9 +716,11 @@ const file_publira_v1_subscription_proto_rawDesc = "" +
 	"\x12current_period_end\x18\x04 \x01(\tR\x10currentPeriodEnd\x12/\n" +
 	"\x14cancel_at_period_end\x18\x05 \x01(\bR\x11cancelAtPeriodEnd\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"W\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\xaa\x01\n" +
 	"\x1cListSubscriptionPlansRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"S\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
+	"\asurface\x18\x02 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"S\n" +
 	"\x1dListSubscriptionPlansResponse\x122\n" +
 	"\x05plans\x18\x01 \x03(\v2\x1c.publira.v1.SubscriptionPlanR\x05plans\"t\n" +
 	" StartSubscriptionCheckoutRequest\x127\n" +
@@ -722,33 +768,39 @@ var file_publira_v1_subscription_proto_goTypes = []any{
 	(*CreateBillingPortalSessionResponse)(nil), // 9: publira.v1.CreateBillingPortalSessionResponse
 	(v1.SubscriptionInterval)(0),               // 10: publira.types.v1.SubscriptionInterval
 	(v1.SubscriptionPlanScope)(0),              // 11: publira.types.v1.SubscriptionPlanScope
-	(v1.SubscriptionStatus)(0),                 // 12: publira.types.v1.SubscriptionStatus
-	(*v1.TenantContext)(nil),                   // 13: publira.types.v1.TenantContext
+	(*PublishedLabel)(nil),                     // 12: publira.v1.PublishedLabel
+	(*v1.Series)(nil),                          // 13: publira.types.v1.Series
+	(v1.SubscriptionStatus)(0),                 // 14: publira.types.v1.SubscriptionStatus
+	(*v1.TenantContext)(nil),                   // 15: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                      // 16: publira.types.v1.ClientSurface
 }
 var file_publira_v1_subscription_proto_depIdxs = []int32{
 	10, // 0: publira.v1.SubscriptionPlan.interval:type_name -> publira.types.v1.SubscriptionInterval
 	11, // 1: publira.v1.SubscriptionPlan.scope:type_name -> publira.types.v1.SubscriptionPlanScope
-	0,  // 2: publira.v1.Subscription.plan:type_name -> publira.v1.SubscriptionPlan
-	12, // 3: publira.v1.Subscription.status:type_name -> publira.types.v1.SubscriptionStatus
-	13, // 4: publira.v1.ListSubscriptionPlansRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 5: publira.v1.ListSubscriptionPlansResponse.plans:type_name -> publira.v1.SubscriptionPlan
-	13, // 6: publira.v1.StartSubscriptionCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 7: publira.v1.GetMySubscriptionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 8: publira.v1.GetMySubscriptionResponse.subscription:type_name -> publira.v1.Subscription
-	13, // 9: publira.v1.CreateBillingPortalSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 10: publira.v1.SubscriptionService.ListSubscriptionPlans:input_type -> publira.v1.ListSubscriptionPlansRequest
-	4,  // 11: publira.v1.SubscriptionService.StartSubscriptionCheckout:input_type -> publira.v1.StartSubscriptionCheckoutRequest
-	6,  // 12: publira.v1.SubscriptionService.GetMySubscription:input_type -> publira.v1.GetMySubscriptionRequest
-	8,  // 13: publira.v1.SubscriptionService.CreateBillingPortalSession:input_type -> publira.v1.CreateBillingPortalSessionRequest
-	3,  // 14: publira.v1.SubscriptionService.ListSubscriptionPlans:output_type -> publira.v1.ListSubscriptionPlansResponse
-	5,  // 15: publira.v1.SubscriptionService.StartSubscriptionCheckout:output_type -> publira.v1.StartSubscriptionCheckoutResponse
-	7,  // 16: publira.v1.SubscriptionService.GetMySubscription:output_type -> publira.v1.GetMySubscriptionResponse
-	9,  // 17: publira.v1.SubscriptionService.CreateBillingPortalSession:output_type -> publira.v1.CreateBillingPortalSessionResponse
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	12, // 2: publira.v1.SubscriptionPlan.labels:type_name -> publira.v1.PublishedLabel
+	13, // 3: publira.v1.SubscriptionPlan.series:type_name -> publira.types.v1.Series
+	0,  // 4: publira.v1.Subscription.plan:type_name -> publira.v1.SubscriptionPlan
+	14, // 5: publira.v1.Subscription.status:type_name -> publira.types.v1.SubscriptionStatus
+	15, // 6: publira.v1.ListSubscriptionPlansRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 7: publira.v1.ListSubscriptionPlansRequest.surface:type_name -> publira.types.v1.ClientSurface
+	0,  // 8: publira.v1.ListSubscriptionPlansResponse.plans:type_name -> publira.v1.SubscriptionPlan
+	15, // 9: publira.v1.StartSubscriptionCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 10: publira.v1.GetMySubscriptionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 11: publira.v1.GetMySubscriptionResponse.subscription:type_name -> publira.v1.Subscription
+	15, // 12: publira.v1.CreateBillingPortalSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 13: publira.v1.SubscriptionService.ListSubscriptionPlans:input_type -> publira.v1.ListSubscriptionPlansRequest
+	4,  // 14: publira.v1.SubscriptionService.StartSubscriptionCheckout:input_type -> publira.v1.StartSubscriptionCheckoutRequest
+	6,  // 15: publira.v1.SubscriptionService.GetMySubscription:input_type -> publira.v1.GetMySubscriptionRequest
+	8,  // 16: publira.v1.SubscriptionService.CreateBillingPortalSession:input_type -> publira.v1.CreateBillingPortalSessionRequest
+	3,  // 17: publira.v1.SubscriptionService.ListSubscriptionPlans:output_type -> publira.v1.ListSubscriptionPlansResponse
+	5,  // 18: publira.v1.SubscriptionService.StartSubscriptionCheckout:output_type -> publira.v1.StartSubscriptionCheckoutResponse
+	7,  // 19: publira.v1.SubscriptionService.GetMySubscription:output_type -> publira.v1.GetMySubscriptionResponse
+	9,  // 20: publira.v1.SubscriptionService.CreateBillingPortalSession:output_type -> publira.v1.CreateBillingPortalSessionResponse
+	17, // [17:21] is the sub-list for method output_type
+	13, // [13:17] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_subscription_proto_init() }
@@ -756,6 +808,7 @@ func file_publira_v1_subscription_proto_init() {
 	if File_publira_v1_subscription_proto != nil {
 		return
 	}
+	file_publira_v1_catalog_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

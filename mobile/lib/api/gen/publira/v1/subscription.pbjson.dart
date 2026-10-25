@@ -15,7 +15,8 @@ import 'dart:convert' as $convert;
 import 'dart:core' as $core;
 import 'dart:typed_data' as $typed_data;
 
-import '../types/v1/types.pbjson.dart' as $0;
+import '../types/v1/types.pbjson.dart' as $1;
+import 'catalog.pbjson.dart' as $0;
 
 @$core.Deprecated('Use subscriptionPlanDescriptor instead')
 const SubscriptionPlan$json = {
@@ -46,6 +47,22 @@ const SubscriptionPlan$json = {
     },
     {'1': 'label_ids', '3': 10, '4': 3, '5': 9, '10': 'labelIds'},
     {'1': 'series_ids', '3': 11, '4': 3, '5': 9, '10': 'seriesIds'},
+    {
+      '1': 'labels',
+      '3': 12,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.PublishedLabel',
+      '10': 'labels'
+    },
+    {
+      '1': 'series',
+      '3': 13,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.Series',
+      '10': 'series'
+    },
   ],
 };
 
@@ -58,7 +75,9 @@ final $typed_data.Uint8List subscriptionPlanDescriptor = $convert.base64Decode(
     'Y3JpcHRpb25JbnRlcnZhbFIIaW50ZXJ2YWwSJQoOaW50ZXJ2YWxfY291bnQYCCABKAVSDWludG'
     'VydmFsQ291bnQSPQoFc2NvcGUYCSABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlv'
     'blBsYW5TY29wZVIFc2NvcGUSGwoJbGFiZWxfaWRzGAogAygJUghsYWJlbElkcxIdCgpzZXJpZX'
-    'NfaWRzGAsgAygJUglzZXJpZXNJZHM=');
+    'NfaWRzGAsgAygJUglzZXJpZXNJZHMSMgoGbGFiZWxzGAwgAygLMhoucHVibGlyYS52MS5QdWJs'
+    'aXNoZWRMYWJlbFIGbGFiZWxzEjAKBnNlcmllcxgNIAMoCzIYLnB1YmxpcmEudHlwZXMudjEuU2'
+    'VyaWVzUgZzZXJpZXM=');
 
 @$core.Deprecated('Use subscriptionDescriptor instead')
 const Subscription$json = {
@@ -119,14 +138,24 @@ const ListSubscriptionPlansRequest$json = {
       '6': '.publira.types.v1.TenantContext',
       '10': 'tenant'
     },
+    {
+      '1': 'surface',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.ClientSurface',
+      '10': 'surface'
+    },
+    {'1': 'locale', '3': 3, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
 /// Descriptor for `ListSubscriptionPlansRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List listSubscriptionPlansRequestDescriptor =
-    $convert.base64Decode(
-        'ChxMaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ymxpcm'
-        'EudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+final $typed_data.Uint8List listSubscriptionPlansRequestDescriptor = $convert.base64Decode(
+    'ChxMaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ymxpcm'
+    'EudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EjkKB3N1cmZhY2UYAiABKA4yHy5wdWJs'
+    'aXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2VSB3N1cmZhY2USFgoGbG9jYWxlGAMgASgJUgZsb2'
+    'NhbGU=');
 
 @$core.Deprecated('Use listSubscriptionPlansResponseDescriptor instead')
 const ListSubscriptionPlansResponse$json = {
@@ -292,10 +321,19 @@ const $core.Map<$core.String, $core.dynamic> SubscriptionServiceBase$json = {
 const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
     SubscriptionServiceBase$messageJson = {
   '.publira.v1.ListSubscriptionPlansRequest': ListSubscriptionPlansRequest$json,
-  '.publira.types.v1.TenantContext': $0.TenantContext$json,
+  '.publira.types.v1.TenantContext': $1.TenantContext$json,
   '.publira.v1.ListSubscriptionPlansResponse':
       ListSubscriptionPlansResponse$json,
   '.publira.v1.SubscriptionPlan': SubscriptionPlan$json,
+  '.publira.v1.PublishedLabel': $0.PublishedLabel$json,
+  '.publira.types.v1.SeriesEyeCatchVariant': $1.SeriesEyeCatchVariant$json,
+  '.publira.types.v1.Series': $1.Series$json,
+  '.publira.types.v1.Label': $1.Label$json,
+  '.publira.types.v1.Creator': $1.Creator$json,
+  '.publira.types.v1.CreatorRole': $1.CreatorRole$json,
+  '.publira.types.v1.Genre': $1.Genre$json,
+  '.publira.types.v1.GenreTranslation': $1.GenreTranslation$json,
+  '.publira.types.v1.Tag': $1.Tag$json,
   '.publira.v1.StartSubscriptionCheckoutRequest':
       StartSubscriptionCheckoutRequest$json,
   '.publira.v1.StartSubscriptionCheckoutResponse':

@@ -4,15 +4,17 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { SubscriptionInterval, SubscriptionPlanScope, SubscriptionStatus, TenantContext } from "../types/v1/types_pb";
+import type { ClientSurface, Series, SubscriptionInterval, SubscriptionPlanScope, SubscriptionStatus, TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
+import type { PublishedLabel } from "./catalog_pb";
+import { file_publira_v1_catalog } from "./catalog_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file publira/v1/subscription.proto.
  */
 export const file_publira_v1_subscription: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL3YxL3N1YnNjcmlwdGlvbi5wcm90bxIKcHVibGlyYS52MSKtAgoQU3Vic2NyaXB0aW9uUGxhbhIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIUCgxwcmljZV9hbW91bnQYBSABKAUSEAoIY3VycmVuY3kYBiABKAkSOAoIaW50ZXJ2YWwYByABKA4yJi5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvbkludGVydmFsEhYKDmludGVydmFsX2NvdW50GAggASgFEjYKBXNjb3BlGAkgASgOMicucHVibGlyYS50eXBlcy52MS5TdWJzY3JpcHRpb25QbGFuU2NvcGUSEQoJbGFiZWxfaWRzGAogAygJEhIKCnNlcmllc19pZHMYCyADKAkiygEKDFN1YnNjcmlwdGlvbhIKCgJpZBgBIAEoCRIqCgRwbGFuGAIgASgLMhwucHVibGlyYS52MS5TdWJzY3JpcHRpb25QbGFuEjQKBnN0YXR1cxgDIAEoDjIkLnB1YmxpcmEudHlwZXMudjEuU3Vic2NyaXB0aW9uU3RhdHVzEhoKEmN1cnJlbnRfcGVyaW9kX2VuZBgEIAEoCRIcChRjYW5jZWxfYXRfcGVyaW9kX2VuZBgFIAEoCBISCgpjcmVhdGVkX2F0GAYgASgJIk8KHExpc3RTdWJzY3JpcHRpb25QbGFuc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IkwKHUxpc3RTdWJzY3JpcHRpb25QbGFuc1Jlc3BvbnNlEisKBXBsYW5zGAEgAygLMhwucHVibGlyYS52MS5TdWJzY3JpcHRpb25QbGFuImQKIFN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwbGFuX2lkGAIgASgJIjkKIVN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXNwb25zZRIUCgxjaGVja291dF91cmwYASABKAkiSwoYR2V0TXlTdWJzY3JpcHRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJLChlHZXRNeVN1YnNjcmlwdGlvblJlc3BvbnNlEi4KDHN1YnNjcmlwdGlvbhgBIAEoCzIYLnB1YmxpcmEudjEuU3Vic2NyaXB0aW9uIlQKIUNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiMQoiQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb25SZXNwb25zZRILCgN1cmwYASABKAky5AMKE1N1YnNjcmlwdGlvblNlcnZpY2USbgoVTGlzdFN1YnNjcmlwdGlvblBsYW5zEigucHVibGlyYS52MS5MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0GikucHVibGlyYS52MS5MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXNwb25zZSIAEnoKGVN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXQSLC5wdWJsaXJhLnYxLlN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXF1ZXN0Gi0ucHVibGlyYS52MS5TdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0UmVzcG9uc2UiABJiChFHZXRNeVN1YnNjcmlwdGlvbhIkLnB1YmxpcmEudjEuR2V0TXlTdWJzY3JpcHRpb25SZXF1ZXN0GiUucHVibGlyYS52MS5HZXRNeVN1YnNjcmlwdGlvblJlc3BvbnNlIgASfQoaQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb24SLS5wdWJsaXJhLnYxLkNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVxdWVzdBouLnB1YmxpcmEudjEuQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb25SZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch1wdWJsaXJhL3YxL3N1YnNjcmlwdGlvbi5wcm90bxIKcHVibGlyYS52MSKDAwoQU3Vic2NyaXB0aW9uUGxhbhIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIUCgxwcmljZV9hbW91bnQYBSABKAUSEAoIY3VycmVuY3kYBiABKAkSOAoIaW50ZXJ2YWwYByABKA4yJi5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvbkludGVydmFsEhYKDmludGVydmFsX2NvdW50GAggASgFEjYKBXNjb3BlGAkgASgOMicucHVibGlyYS50eXBlcy52MS5TdWJzY3JpcHRpb25QbGFuU2NvcGUSEQoJbGFiZWxfaWRzGAogAygJEhIKCnNlcmllc19pZHMYCyADKAkSKgoGbGFiZWxzGAwgAygLMhoucHVibGlyYS52MS5QdWJsaXNoZWRMYWJlbBIoCgZzZXJpZXMYDSADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyLKAQoMU3Vic2NyaXB0aW9uEgoKAmlkGAEgASgJEioKBHBsYW4YAiABKAsyHC5wdWJsaXJhLnYxLlN1YnNjcmlwdGlvblBsYW4SNAoGc3RhdHVzGAMgASgOMiQucHVibGlyYS50eXBlcy52MS5TdWJzY3JpcHRpb25TdGF0dXMSGgoSY3VycmVudF9wZXJpb2RfZW5kGAQgASgJEhwKFGNhbmNlbF9hdF9wZXJpb2RfZW5kGAUgASgIEhIKCmNyZWF0ZWRfYXQYBiABKAkikQEKHExpc3RTdWJzY3JpcHRpb25QbGFuc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EjAKB3N1cmZhY2UYAiABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USDgoGbG9jYWxlGAMgASgJIkwKHUxpc3RTdWJzY3JpcHRpb25QbGFuc1Jlc3BvbnNlEisKBXBsYW5zGAEgAygLMhwucHVibGlyYS52MS5TdWJzY3JpcHRpb25QbGFuImQKIFN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwbGFuX2lkGAIgASgJIjkKIVN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXNwb25zZRIUCgxjaGVja291dF91cmwYASABKAkiSwoYR2V0TXlTdWJzY3JpcHRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJLChlHZXRNeVN1YnNjcmlwdGlvblJlc3BvbnNlEi4KDHN1YnNjcmlwdGlvbhgBIAEoCzIYLnB1YmxpcmEudjEuU3Vic2NyaXB0aW9uIlQKIUNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiMQoiQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb25SZXNwb25zZRILCgN1cmwYASABKAky5AMKE1N1YnNjcmlwdGlvblNlcnZpY2USbgoVTGlzdFN1YnNjcmlwdGlvblBsYW5zEigucHVibGlyYS52MS5MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0GikucHVibGlyYS52MS5MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXNwb25zZSIAEnoKGVN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXQSLC5wdWJsaXJhLnYxLlN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXF1ZXN0Gi0ucHVibGlyYS52MS5TdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0UmVzcG9uc2UiABJiChFHZXRNeVN1YnNjcmlwdGlvbhIkLnB1YmxpcmEudjEuR2V0TXlTdWJzY3JpcHRpb25SZXF1ZXN0GiUucHVibGlyYS52MS5HZXRNeVN1YnNjcmlwdGlvblJlc3BvbnNlIgASfQoaQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb24SLS5wdWJsaXJhLnYxLkNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVxdWVzdBouLnB1YmxpcmEudjEuQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb25SZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types, file_publira_v1_catalog]);
 
 /**
  * A subscription plan the tenant has published: a recurring price on its
@@ -92,6 +94,23 @@ export type SubscriptionPlan = Message<"publira.v1.SubscriptionPlan"> & {
    * @generated from field: repeated string series_ids = 11;
    */
   seriesIds: string[];
+
+  /**
+   * The labels of label_ids and the series of series_ids that the calling
+   * surface may show, in the order the plan names them: a label with no
+   * series published there, and a series that is not, are left out. The
+   * series are titled in the reader's locale. ListSubscriptionPlans fills
+   * them; GetMySubscription, which reports a plan the reader already holds,
+   * leaves them empty.
+   *
+   * @generated from field: repeated publira.v1.PublishedLabel labels = 12;
+   */
+  labels: PublishedLabel[];
+
+  /**
+   * @generated from field: repeated publira.types.v1.Series series = 13;
+   */
+  series: Series[];
 };
 
 /**
@@ -165,6 +184,22 @@ export type ListSubscriptionPlansRequest = Message<"publira.v1.ListSubscriptionP
    * @generated from field: publira.types.v1.TenantContext tenant = 1;
    */
   tenant?: TenantContext | undefined;
+
+  /**
+   * The client making the read. Unspecified is answered as the web storefront.
+   *
+   * @generated from field: publira.types.v1.ClientSurface surface = 2;
+   */
+  surface: ClientSurface;
+
+  /**
+   * The reader's locale, which every series title in the answer is written
+   * in, else the tenant's default locale's, else the oldest one. Empty means
+   * the tenant's default locale.
+   *
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
 };
 
 /**
