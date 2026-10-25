@@ -2,8 +2,6 @@
 
 A small chart of one series of figures — a bar per day, a line, or a step per page — drawn as inline SVG beside the table that holds the same figures.
 
-It has no axis ticks, gridlines, or tooltips: the table is where a reader reads the numbers, and the chart shows the shape of the period. Zero is always inside the scale, so a bar starts from nothing, and a negative figure hangs below the baseline in the destructive colour.
-
 ## Usage
 
 ```tsx
