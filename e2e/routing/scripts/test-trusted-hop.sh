@@ -19,11 +19,13 @@ assert_hop_client_address "web-storefront through the trusted hop" localhost / w
 assert_hop_client_address "web-admin through the trusted hop" admin.localhost / web-admin
 assert_hop_client_address "rpc through the trusted hop" localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
 assert_hop_client_address "images through the trusted hop" admin.localhost /images/cover api
+assert_hop_client_address "images on an image host through the trusted hop" pictures.example.net /images/cover api
 
 # The host is outside the trusted range, so its forged headers are replaced as
 # they are on an edge that trusts nothing.
 assert_forwarded_headers "web-storefront from outside the trusted range" GET localhost / web-storefront
 assert_forwarded_headers "rpc from outside the trusted range" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
+assert_forwarded_headers "image host from outside the trusted range" GET pictures.example.net /images/cover api
 
 # Traefik takes its read timeout from the static configuration, which only
 # this pass starts from traefik.yaml; the others start from the Dev

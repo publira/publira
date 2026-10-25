@@ -1,8 +1,8 @@
 ---
 title: Operating on Kubernetes
-description: Add a tenant, keep the consoles' credentials off the tenants' domains, expose the metrics, and upgrade an install that runs on a Kubernetes cluster.
+description: Add a tenant, keep the consoles' credentials off the tenants' domains, serve the images and the public API apart, expose the metrics, and upgrade an install that runs on a Kubernetes cluster.
 published: 2026-10-21
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 These are the changes made to an install once [Kubernetes](./index.md) has brought it into service. Each one changes the resources that page and [The edge on Kubernetes](./1-edge.md) created.
@@ -165,6 +165,183 @@ kubectl run publira-role-check --rm -i --restart=Never --image=curlimages/curl -
 ```
 
 Sign in to the tenant console: it draws the tenant's theme and lists the tags as before, now read from `publira-storefront`.
+
+## Serving the images and the public API apart
+
+The tenants' images and the public API can be reached on host names of their own, each through a load balancer of its own, as [Serving the images and the public API apart](../7-scaling-out.md#serving-the-images-and-the-public-api-apart) describes. On a cluster with a Gateway, each Gateway is a load balancer of its own, so the images get a second Gateway in front of a Deployment of their own, and the public API a host name on the Gateway you have, in front of `publira-storefront`. This builds on [Keeping the consoles' credentials off the tenants' domains](#keeping-the-consoles-credentials-off-the-tenants-domains), which created `publira-storefront`. The names below are examples: `images.comics.example.com` for the tenant's image host, and `api.example.com` for the public API's.
+
+### The images
+
+Run the images on a Deployment of their own, so that their traffic scales apart from the API's. Copy the Deployment and the Service of `publira-storefront` into `publira-images.yaml`, change `publira-storefront` to `publira-images` in their names, their labels, the selector, and the container's name, and keep `secretRef: {name: publira-storefront}`: the two serve the same role, and read the same Secret. Then apply it:
+
+```bash
+kubectl apply -f publira-images.yaml
+kubectl rollout status deployment/publira-images
+```
+
+Give the image hosts a Gateway of their own, with an HTTPS listener per image host, and an HTTPRoute that forwards `/images` on them to `publira-images` and nothing else. A path no rule matches is answered with a `404` by the Gateway itself:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: publira-images
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  gatewayClassName: <your class>
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+    - name: images-comics-example-com
+      protocol: HTTPS
+      port: 443
+      hostname: images.comics.example.com
+      tls:
+        certificateRefs:
+          - name: images-comics-example-com-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: images
+spec:
+  parentRefs:
+    - name: publira-images
+      sectionName: images-comics-example-com
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /images }
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            remove:
+              - traceparent
+              - tracestate
+              - baggage
+              - forwarded
+              - x-forwarded-host
+              - x-forwarded-countryregion
+      backendRefs:
+        - name: publira-images
+          port: 8000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: images-https-redirect
+spec:
+  parentRefs:
+    - name: publira-images
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+```
+
+The filter removes the same headers as on the other routes, as [With a Gateway](./1-edge.md#with-a-gateway) explains. cert-manager answers the ACME challenge for an image host on the new Gateway's `http` listener, so add it to the `parentRefs` of the `letsencrypt` issuer's solver, beside the one [Certificates](./1-edge.md#certificates) gave it:
+
+```yaml
+parentRefs:
+  - name: publira
+    namespace: publira
+    kind: Gateway
+    sectionName: http
+  - name: publira-images
+    namespace: publira
+    kind: Gateway
+    sectionName: http
+```
+
+Point each image host at the new Gateway's address, wait for its certificate, and give it to the tenant, with **Image host** in the Platform Console or `publiractl tenant update --image-domain`, as [An image host](../../3-operations/2-tenants.md#an-image-host) describes. A tenant added later gets a listener on `publira-images` for its image host, and the listener's name in the `parentRefs` of the `images` HTTPRoute.
+
+### The public API
+
+Give the public API a host name of its own on the `publira` Gateway, and an HTTPRoute that forwards the public API on it to `publira-storefront` and nothing else. Add the listener to the Gateway's `listeners`:
+
+```yaml
+- name: api-example-com
+  protocol: HTTPS
+  port: 443
+  hostname: api.example.com
+  tls:
+    certificateRefs:
+      - name: api-example-com-tls
+```
+
+and apply the route:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: public-api
+spec:
+  parentRefs:
+    - name: publira
+      sectionName: api-example-com
+  rules:
+    - matches:
+        - path: { type: RegularExpression, value: '/rpc/publira\.v1\..*' }
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            remove:
+              - traceparent
+              - tracestate
+              - baggage
+              - forwarded
+              - x-forwarded-host
+              - x-forwarded-countryregion
+      backendRefs:
+        - name: publira-storefront
+          port: 8000
+```
+
+The web apps already call `publira-storefront` over the cluster's network, `web-storefront` on `PUBLIRA_GRPC_URL` and `web-admin` on `PUBLIRA_PUBLIC_GRPC_URL` once [Leaving the public API off the consoles' server](#leaving-the-public-api-off-the-consoles-server) is done, which skips the load balancer; a web app that runs outside the cluster names `https://api.example.com/rpc` instead. Build a tenant's mobile app with `PUBLIRA_BASE_URL=https://api.example.com`, once the tenant has an image host, as [The address the app connects to](../../5-mobile-app/2-building.md#the-address-the-app-connects-to) describes. The tenants' domains keep their routes as they are, so an app built against a tenant's domain keeps working.
+
+### With an Ingress
+
+Every Ingress of one class is reached through its controller's Service, which is one load balancer. Give the image hosts a second controller with a class of its own, installed with the values of [With an Ingress](./1-edge.md#with-an-ingress), or keep them on the controller you have, which [A tenant's image host](../4-edge/index.md#a-tenants-image-host) allows as well. Either way, one Ingress routes them, and Traefik answers every other path on them with a `404` of its own, since no rule names one:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: publira-images
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [images.comics.example.com]
+      secretName: images-comics-example-com-tls
+  rules:
+    - host: images.comics.example.com
+      http:
+        paths:
+          - path: /images
+            pathType: Prefix
+            backend:
+              { service: { name: publira-images, port: { number: 8000 } } }
+```
+
+The public API's host is one more Ingress of the same shape on the controller you have, with `api.example.com` for its host and `/rpc/publira.v1.`, `ImplementationSpecific`, to `publira-storefront` for its one path.
+
+### Check the split
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://images.comics.example.com/
+curl -s -X POST -H 'Content-Type: application/json' -d '{}' \
+  https://api.example.com/rpc/publira.v1.TenantService/GetTenant
+curl -s -o /dev/null -w '%{http_code}\n' https://api.example.com/images/
+```
+
+The first answers `404`: an image host serves nothing but images. The second reaches `publira-storefront`, which refuses the empty request with `invalid_argument`. The third answers `404` too: the API's host serves no images. Then open the tenant's site: its images load from `https://images.comics.example.com/images/…`.
 
 ## Metrics
 

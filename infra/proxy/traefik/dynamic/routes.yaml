@@ -11,14 +11,17 @@
 # The file is a Go template the file provider renders when it loads it. The
 # hosts come from the environment of the Traefik process:
 # PUBLIRA_EDGE_SITE_HOSTS, PUBLIRA_EDGE_ADMIN_HOSTS, and
-# PUBLIRA_EDGE_PLATFORM_HOSTS, each a list of host names separated by spaces.
+# PUBLIRA_EDGE_PLATFORM_HOSTS, and the tenants' image hosts,
+# PUBLIRA_EDGE_IMAGE_HOSTS, each a list of host names separated by spaces.
 # A Host matcher names one host, so each list is split below and joined back
 # into one rule per app. An empty list leaves its router out, since Traefik
-# refuses an empty rule; with every list empty, so are /rpc and /images.
+# refuses an empty rule; with the three app lists empty, so is /rpc, and with
+# all four, /images.
 #
 # A host in no list matches no router, so Traefik answers it with its own 404
 # and no backend sees the request. /rpc and /images are routed on the listed
-# hosts alone for the same reason.
+# hosts alone for the same reason. An image host is in the images router
+# alone, so every other path on it, /rpc included, gets the same 404.
 #
 # The rest of /rpc, past the public API's publira.v1 prefix, is answered the
 # same way: the host routers leave it out, and no other router takes it. What
@@ -42,8 +45,10 @@
 {{- $site := regexSplit "\\s+" (env "PUBLIRA_EDGE_SITE_HOSTS") -1 | compact -}}
 {{- $admin := regexSplit "\\s+" (env "PUBLIRA_EDGE_ADMIN_HOSTS") -1 | compact -}}
 {{- $platform := regexSplit "\\s+" (env "PUBLIRA_EDGE_PLATFORM_HOSTS") -1 | compact -}}
+{{- $image := regexSplit "\\s+" (env "PUBLIRA_EDGE_IMAGE_HOSTS") -1 | compact -}}
 {{- $hops := regexSplit "\\s+" (env "PUBLIRA_EDGE_TRUSTED_PROXIES") -1 | compact -}}
-{{- $listed := concat $site $admin $platform }}
+{{- $apps := concat $site $admin $platform }}
+{{- $listed := concat $apps $image }}
 {{- $appPaths := "!PathRegexp(`^/rpc(/.*)?$`)" }}
 http:
   middlewares:
@@ -112,21 +117,23 @@ http:
       service: web-platform
       middlewares: [strip-country-region]
 {{- end }}
+{{- if $apps }}
 
-    # The public API, on every listed host, so priority 105 puts it above the
-    # host routers. The prefix ends at the dot after v1, so that
+    # The public API, on every host an app answers, so priority 105 puts it
+    # above the host routers. The prefix ends at the dot after v1, so that
     # publira.v1.<Service>/<Method> is all it matches. No prefix removal,
     # because the server's own routes carry /rpc.
     rpc:
-      rule: '({{ template "hosts" $listed }}) && PathPrefix(`/rpc/publira.v1.`)'
+      rule: '({{ template "hosts" $apps }}) && PathPrefix(`/rpc/publira.v1.`)'
       priority: 105
       entryPoints: [web]
       service: api
       middlewares: [strip-country-region]
+{{- end }}
 
-    # On every listed host, like the API, and answered by the same process:
-    # the server picks the rules it applies to an image from the host name it
-    # was given. No prefix removal, like the API.
+    # On every listed host, an image host among them, and answered by the
+    # same process as the API: the server picks the rules it applies to an
+    # image from the host name it was given. No prefix removal, like the API.
     images:
       rule: '({{ template "hosts" $listed }}) && PathPrefix(`/images`)'
       priority: 110

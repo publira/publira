@@ -1,6 +1,6 @@
 ---
 title: Tenants
-description: Create a tenant, choose its domain and console host, change them later, and suspend a tenant.
+description: Create a tenant, choose its domain, console host, and image host, change them later, and suspend a tenant.
 published: 2026-10-06
 updated: 2026-10-25
 ---
@@ -15,13 +15,14 @@ Decide these first, since the tenant is served on its host names from the moment
 
 - **Its domain**, the host its public site is served on, such as `comics.example.com`.
 - **Its console host**, the host its staff sign in on. Unless you give it one of its own, it is `admin.` followed by the domain, such as `admin.comics.example.com`.
+- **Its image host**, only if its site's images are to be served on a host name of their own, such as `images.comics.example.com`, as [An image host](#an-image-host) describes. Without one, they are served on its domain.
 - **Its default language**, which its site and console start in. Nothing picks one for it. Its administrators can change it later from the tenant console.
 - **The languages its site offers** readers, the default language among them. Left as it is, the site offers its default language alone. Its administrators can change these later too.
 - **Its first administrator**, and how they get access: an invitation mailed to them, or an account you create with a password. [A tenant's staff](./3-tenant-staff.md) compares the two.
 
-Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. Each host name belongs to one tenant, as its domain or as its console host, never both: the proxy sends a host name to one app, so a name used twice would leave one of the two unreachable. Publira refuses a domain or console host that another tenant already uses as either, the `admin.<domain>` a console is given by default included, and a console host equal to the tenant's own domain. When the `admin.<domain>` a tenant would be given is already taken, give it an admin domain of its own.
+Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. Each host name belongs to one tenant, as its domain, its console host, or its image host, never two of them: the proxy sends a host name to one place, so a name used twice would leave one of the two unreachable. Publira refuses a domain, console host, or image host that another tenant already uses as any of the three, the `admin.<domain>` a console is given by default included, a console host equal to the tenant's own domain, and an image host equal to the tenant's own domain or console host. When the `admin.<domain>` a tenant would be given is already taken, give it an admin domain of its own.
 
-Then make both host names reach the install, in the order [Adding a tenant](../2-deployments/4-edge/index.md#adding-a-tenant) gives: DNS, certificates, and the edge's routing. You can do this before or after creating the tenant, but its staff cannot open the console until it is done.
+Then make its host names reach the install, in the order [Adding a tenant](../2-deployments/4-edge/index.md#adding-a-tenant) gives: DNS, certificates, and the edge's routing. You can do this before or after creating the tenant, but its staff cannot open the console until it is done.
 
 ### A console host on a domain of its own
 
@@ -30,6 +31,16 @@ The console host does not have to be under the tenant's domain: a site on `examp
 Choose it before staff register passkeys: a passkey is bound to the console's host, so moving the console to another host later leaves the passkeys already registered unusable, as [Two-step verification](./12-security/2-two-step-verification.md#tenant-staff) describes.
 
 The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge/1-sample-configurations.md) do not do this for you. That covers the console's pages. Its APIs need no such rule: the console calls them over the private network, and an edge configured as [Only the public API goes through the edge](../2-deployments/4-edge/index.md#only-the-public-api-goes-through-the-edge) describes forwards them on no host.
+
+### An image host
+
+A tenant's site images are served on its domain, through the same edge as its pages. An image host serves them on a host name of their own instead, such as `images.comics.example.com`, which lets them reach Publira through a load balancer or a CDN of their own, apart from the pages and the public API, as [Serving the images and the public API apart](../2-deployments/7-scaling-out.md#serving-the-images-and-the-public-api-apart) describes. A tenant that needs no such thing needs no image host.
+
+Once a tenant has one, the public API gives the addresses of its site's images on that host, and Publira answers that host for the tenant's site images and nothing else: its pages, the API, and the console are not served there. The tenant's site and its mobile app load their images from it; the tenant console keeps loading its images on the console host.
+
+The image host has to reach the install like the tenant's other host names: in DNS, with a certificate, and with `/images` on it routed to `publira server`, as [A tenant's image host](../2-deployments/4-edge/index.md#a-tenants-image-host) describes. The sample configurations route it once it is in `PUBLIRA_EDGE_IMAGE_HOSTS`. Have it ready before you set it, since the site loads its images from it from then on.
+
+Setting, changing, or clearing it later is a move like any other host name's, as [Moving a tenant to another host name](#moving-a-tenant-to-another-host-name) describes: a page the site prepared before the change links its images on the previous host until `publira worker` has told the web apps about the change, so keep the previous host serving until then.
 
 ## Creating a tenant
 
@@ -61,7 +72,7 @@ publiractl tenant create \
   --initial-admin-email owner@comics.example.com
 ```
 
-`--supported-locale` names a language the tenant's site offers, and can be repeated; the default language has to be one of them. Left out, the site offers its default language alone. `--admin-domain` gives the console a host of its own, and `--timezone` an IANA time zone other than the platform's default. `--initial-admin-email` can be repeated, and each address is invited as it would be from the Platform Console.
+`--supported-locale` names a language the tenant's site offers, and can be repeated; the default language has to be one of them. Left out, the site offers its default language alone. `--admin-domain` gives the console a host of its own, `--image-domain` gives the site's images one, and `--timezone` an IANA time zone other than the platform's default. `--initial-admin-email` can be repeated, and each address is invited as it would be from the Platform Console.
 
 ### After creating it
 
@@ -71,7 +82,7 @@ Once an administrator has signed in, the rest of the tenant's setup — its site
 
 ## Changing a tenant
 
-A tenant's name, domain, and console host can be changed after it is created. Its languages and time zone belong to its administrators, who change them from the tenant console. A tenant cannot be deleted.
+A tenant's name, domain, console host, and image host can be changed after it is created. Its languages and time zone belong to its administrators, who change them from the tenant console. A tenant cannot be deleted.
 
 ### From the Platform Console
 
@@ -85,7 +96,7 @@ Open the tenant from **Tenants**. **Profile** changes its **Tenant name**, and *
 publiractl tenant update --tenant comics.example.com --name "Example Comics Ltd."
 ```
 
-`--tenant` names the tenant by its domain or its public ID. Each of `--name`, `--domain`, and `--admin-domain` replaces only that value and keeps the rest, and `--admin-domain ""` moves the console back to `admin.<domain>`. `publiractl tenant show --tenant comics.example.com` prints the tenant as it is now.
+`--tenant` names the tenant by its domain or its public ID. Each of `--name`, `--domain`, `--admin-domain`, and `--image-domain` replaces only that value and keeps the rest, `--admin-domain ""` moves the console back to `admin.<domain>`, and `--image-domain ""` serves the site's images on its domain again. `publiractl tenant show --tenant comics.example.com` prints the tenant as it is now.
 
 ### Moving a tenant to another host name
 

@@ -2,7 +2,7 @@
 title: Sample configurations
 description: The sample Traefik, nginx, and Caddy configurations in the repository that do what the edge has to do, and how to adapt one to an install.
 published: 2026-10-21
-updated: 2026-10-22
+updated: 2026-10-25
 ---
 
 The repository ships three sample configurations of a reverse proxy that route requests and handle their headers, bodies, and timeouts as [What the edge has to do](./index.md#what-the-edge-has-to-do) requires: one each for Traefik, nginx, and Caddy. One requirement stays with the install that runs one: a TLS listener, which the Traefik and nginx samples leave for you to add, and the Caddy one adds once it is given the host names to serve over HTTPS. They are examples, not the definition of the edge. The [Docker Compose](../3-docker-compose.md) install runs the Caddy one, and an install that runs a proxy of its own can start from any of them. An edge built from a managed load balancer, an Ingress, or a Gateway follows those requirements, and needs none of them; [The edge on Kubernetes](../5-kubernetes/1-edge.md) shows a Gateway and an Ingress that do, and [CloudFront in front of ECS](../6-ecs-fargate/1-cloudfront.md) CloudFront in front of an Application Load Balancer.
@@ -17,7 +17,7 @@ Take the files of the one you run from the release you install. The [routing con
 
 ## What each sample does
 
-- **Routing.** Each sample routes the host names in three lists, given as [The host lists](#the-host-lists) describes, and applies the path rules of [Routing](./index.md#routing) on every one of them, answering the rest of `/rpc` with a 404 of its own. A host in none of the lists reaches nothing: the sample answers it with a 404 of its own, on every path. That is the samples' choice, not something Publira requires.
+- **Routing.** Each sample routes the host names in four lists, given as [The host lists](#the-host-lists) describes, and applies the path rules of [Routing](./index.md#routing) on every one of them, answering the rest of `/rpc` with a 404 of its own. On a tenant's image host it forwards `/images` alone, and answers every other path with a 404 of its own, as [A tenant's image host](./index.md#a-tenants-image-host) leaves it to. A host in none of the lists reaches nothing: the sample answers it with a 404 of its own, on every path. That is the samples' choice, not something Publira requires.
 - **The client address.** Traefik sets `X-Forwarded-For` and removes `Forwarded` with the `strip-forwarded` middleware. nginx and Caddy set `Forwarded` to the client address alone and remove `X-Forwarded-For`. Leave `PUBLIRA_FORWARDED_HEADER_ENABLED` enabled behind any of them.
 - **The host.** Every sample passes `Host` on unchanged, and sets `X-Forwarded-Host` and `X-Forwarded-Proto` itself rather than passing on the caller's, except where it trusts a [hop in front of it](#a-hop-in-front-of-the-proxy).
 - **Trace context.** Every sample removes the three headers. Traefik does it with the `strip-trace-context` middleware, which every entry point needs beside `strip-forwarded`.
@@ -47,11 +47,13 @@ The host names come from the proxy's environment, so the routing files need no e
 | `PUBLIRA_EDGE_SITE_HOSTS` | Every tenant's domain | `web-storefront` |
 | `PUBLIRA_EDGE_ADMIN_HOSTS` | Every tenant's console host | `web-admin` |
 | `PUBLIRA_EDGE_PLATFORM_HOSTS` | The Platform Console's host | `web-platform` |
+| `PUBLIRA_EDGE_IMAGE_HOSTS` | Every tenant's image host | `publira server`, on `/images` alone |
 
 ```text
 PUBLIRA_EDGE_SITE_HOSTS=comics.example.com manga.example.org
 PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.example.com studio.manga.example.org
 PUBLIRA_EDGE_PLATFORM_HOSTS=platform.example.com
+PUBLIRA_EDGE_IMAGE_HOSTS=images.comics.example.com
 ```
 
 Each sample reads them in its own way:
@@ -60,9 +62,9 @@ Each sample reads them in its own way:
 - **nginx** takes them through the official nginx image, which fills them into `default.conf.template` when the container starts. Mount the `nginx` directory at `/etc/nginx/templates` rather than `/etc/nginx/conf.d`: the image writes the result over its own `conf.d/default.conf`. Without that image, render the file with `envsubst` yourself, as its first comment says.
 - **Caddy** substitutes them into the Caddyfile when it reads it.
 
-An install that does not run the Platform Console leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty, and can leave the `web-platform` address out of its backend addresses. No routing block is removed for it: every sample is valid with an empty list.
+An install that does not run the Platform Console leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty, and can leave the `web-platform` address out of its backend addresses. `PUBLIRA_EDGE_IMAGE_HOSTS` stays empty while no tenant has an image host, and when the image hosts reach `publira server` through a load balancer of their own rather than through this proxy. No routing block is removed for either: every sample is valid with an empty list.
 
-Each sample reads the lists once, when the proxy starts. When you [add a tenant](./index.md#adding-a-tenant), add its domain to `PUBLIRA_EDGE_SITE_HOSTS` and its console host to `PUBLIRA_EDGE_ADMIN_HOSTS`, and restart the proxy with the new environment; a reload keeps the old lists. A certificate added to nginx or Caddy as files alone still takes a reload: `nginx -s reload`, or `caddy reload --config /etc/caddy/Caddyfile`, neither of which drops a connection in progress. Caddy obtaining its own requests the certificates of the names added to `PUBLIRA_EDGE_TLS_HOSTS` when it restarts with them, and Traefik with an ACME resolver once the routing names them.
+Each sample reads the lists once, when the proxy starts. When you [add a tenant](./index.md#adding-a-tenant), add its domain to `PUBLIRA_EDGE_SITE_HOSTS`, its console host to `PUBLIRA_EDGE_ADMIN_HOSTS`, and its image host, if you give it one, to `PUBLIRA_EDGE_IMAGE_HOSTS`, and restart the proxy with the new environment; a reload keeps the old lists. A certificate added to nginx or Caddy as files alone still takes a reload: `nginx -s reload`, or `caddy reload --config /etc/caddy/Caddyfile`, neither of which drops a connection in progress. Caddy obtaining its own requests the certificates of the names added to `PUBLIRA_EDGE_TLS_HOSTS` when it restarts with them, and Traefik with an ACME resolver once the routing names them.
 
 On the [Docker Compose](../3-docker-compose.md) install, the lists are in `.env`, and `docker compose up -d proxy` recreates the proxy with them, which then obtains the certificates of the new names.
 
@@ -91,10 +93,10 @@ The [Docker Compose](../3-docker-compose.md) install runs the Caddy sample termi
 
 ### Caddy
 
-Set `PUBLIRA_EDGE_TLS_HOSTS` in the environment of the Caddy process to every host name the three lists hold, separated by spaces, and `PUBLIRA_EDGE_ACME_EMAIL` to the contact address its account at the certificate authority is registered with. Caddy then obtains a certificate for each name, renews it, serves it on port 443, and redirects plain HTTP for those names to HTTPS:
+Set `PUBLIRA_EDGE_TLS_HOSTS` in the environment of the Caddy process to every host name the four lists hold, separated by spaces, and `PUBLIRA_EDGE_ACME_EMAIL` to the contact address its account at the certificate authority is registered with. Caddy then obtains a certificate for each name, renews it, serves it on port 443, and redirects plain HTTP for those names to HTTPS:
 
 ```text
-PUBLIRA_EDGE_TLS_HOSTS=comics.example.com admin.comics.example.com platform.example.com
+PUBLIRA_EDGE_TLS_HOSTS=comics.example.com admin.comics.example.com platform.example.com images.comics.example.com
 PUBLIRA_EDGE_ACME_EMAIL=ops@example.com
 ```
 
@@ -104,7 +106,7 @@ For a certificate issued elsewhere, replace `:80 {$PUBLIRA_EDGE_TLS_HOSTS}`, the
 
 ### nginx
 
-In each of the four `server` blocks of `default.conf.template`, change `listen 80` to `listen 443 ssl`, keeping `default_server` on the first block, the one that answers hosts in no list. Then add the certificate, and a server that redirects plain HTTP, at the end of the same file:
+In each of the five `server` blocks of `default.conf.template`, change `listen 80` to `listen 443 ssl`, keeping `default_server` on the first block, the one that answers hosts in no list. Then add the certificate, and a server that redirects plain HTTP, at the end of the same file:
 
 ```nginx
 ssl_certificate     /etc/nginx/tls/fullchain.pem;

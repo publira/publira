@@ -96,6 +96,21 @@ assert_route "images on platform host" GET platform.localhost /images/cover api 
 assert_route "images on admin host" GET admin.localhost /images/cover api /images/cover
 assert_route "images on a site host of no convention" GET reader.example.org /images/x api /images/x
 
+# A tenant's image host serves image delivery and nothing else: no app answers
+# it, so the edge answers every other path itself, the public API and the
+# consoles' namespaces included. Its name decides nothing either, so one named
+# like a console host is an image host all the same.
+assert_route "images on an image host" GET pictures.example.net /images/episodes/EPISODE_001/pages/1 api /images/episodes/EPISODE_001/pages/1
+assert_route "images on an image host named like a console" GET admin.art.example.com /images/cover api /images/cover
+assert_route "images on an image host with port" GET pictures.example.net:3080 /images/cover api /images/cover
+assert_unrouted "rpc on an image host" GET pictures.example.net "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_unrouted "admin namespace on an image host" POST pictures.example.net /rpc/publira.admin.v1.AdminSeriesService/ListSeries
+assert_unrouted "bare /rpc on an image host" GET pictures.example.net /rpc
+assert_unrouted "page on an image host" GET pictures.example.net /
+assert_unrouted "page on an image host named like a console" GET admin.art.example.com /series
+assert_unrouted "api/v1 on an image host" POST pictures.example.net /api/v1/revalidate
+assert_unrouted "api procedure on an image host" GET pictures.example.net "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+
 # An inbound email provider posts a reader's reply with the headers its token or
 # signature travels in, and SendGrid posts the mail with its attachments, up to
 # its own 30 MB limit; web-storefront reads up to 32 MiB of it. Each post has to
@@ -136,6 +151,7 @@ assert_trace_context_stripped "rpc on admin host drops trace context" GET admin.
 assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-storefront /api/v1/revalidate
 assert_trace_context_stripped "images drop trace context" GET localhost /images/cover api /images/cover
 assert_trace_context_stripped "images on admin host drop trace context" GET admin.localhost /images/cover api /images/cover
+assert_trace_context_stripped "images on an image host drop trace context" GET pictures.example.net /images/cover api /images/cover
 
 # The headers the edge sets for the backend, on requests that forge all of
 # them. Tenant resolution reads `Host` and `X-Forwarded-Host`, the CSRF origin
@@ -149,5 +165,6 @@ assert_forwarded_headers "web-platform is given the edge's forwarded headers" GE
 assert_forwarded_headers "rpc is given the edge's forwarded headers" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
 assert_forwarded_headers "images are given the edge's forwarded headers" GET localhost /images/cover api
 assert_forwarded_headers "images on admin host are given the edge's forwarded headers" GET admin.localhost /images/cover api
+assert_forwarded_headers "images on an image host are given the edge's forwarded headers" GET pictures.example.net /images/cover api
 
 routing_log "=== route probes passed ==="

@@ -67,8 +67,9 @@ sed -i -E \
   -e 's/^PUBLIRA_EDGE_SITE_HOSTS=.*/PUBLIRA_EDGE_SITE_HOSTS=comics.example.com manga.example.org/' \
   -e 's/^PUBLIRA_EDGE_ADMIN_HOSTS=.*/PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.example.com/' \
   -e 's/^PUBLIRA_EDGE_PLATFORM_HOSTS=.*/PUBLIRA_EDGE_PLATFORM_HOSTS=platform.example.com/' \
+  -e 's/^PUBLIRA_EDGE_IMAGE_HOSTS=.*/PUBLIRA_EDGE_IMAGE_HOSTS=images.comics.example.com/' \
   "${work}/.env"
-want="comics.example.com manga.example.org admin.comics.example.com platform.example.com"
+want="comics.example.com manga.example.org admin.comics.example.com platform.example.com images.comics.example.com"
 if [ "$(edge_tls_hosts)" != "${want}" ]; then
   echo "${compose_file} gives the proxy PUBLIRA_EDGE_TLS_HOSTS='$(edge_tls_hosts)' with an ACME contact, want '${want}'." >&2
   failed=1

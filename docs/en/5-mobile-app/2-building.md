@@ -2,6 +2,7 @@
 title: Building and signing
 description: Produce a signed Android App Bundle and iOS archive of a tenant's app from its manifest.
 published: 2026-10-06
+updated: 2026-10-25
 ---
 
 A release of the tenant's app is built with one command, `task mobile:build`, once for Android and once for iOS. The command reads the [app manifest](./1-app-manifest.md), checks every input before it starts, and builds the store version of the app from an unmodified checkout. This page goes through the inputs it reads from the environment, then the two builds.
@@ -18,7 +19,7 @@ Export the origin of the tenant's site as `PUBLIRA_BASE_URL`. The app asks it fo
 export PUBLIRA_BASE_URL=https://reader.example.com
 ```
 
-It has to be `https://` and an origin alone, with no path. The build refuses anything else rather than shipping an app that fails only on a reader's phone. It is usually the manifest's `tenant.host`, but the manifest does not decide it: an install can serve the API on another host name.
+It has to be `https://` and an origin alone, with no path. The build refuses anything else rather than shipping an app that fails only on a reader's phone. It is usually the manifest's `tenant.host`, but the manifest does not decide it: an install can serve the API on another host name, as [Serving the images and the public API apart](../2-deployments/7-scaling-out.md#serving-the-images-and-the-public-api-apart) describes. Such a host serves no images, so give the tenant an [image host](../3-operations/2-tenants.md#an-image-host) before you build against it: the app then loads every image from the image host, at the addresses the API gives.
 
 ### Push notifications
 
