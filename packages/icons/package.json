@@ -167,6 +167,10 @@
       "types": "./dist/receipt-icon.d.mts",
       "default": "./dist/receipt-icon.mjs"
     },
+    "./repeat-icon": {
+      "types": "./dist/repeat-icon.d.mts",
+      "default": "./dist/repeat-icon.mjs"
+    },
     "./scroll-text-icon": {
       "types": "./dist/scroll-text-icon.d.mts",
       "default": "./dist/scroll-text-icon.mjs"
