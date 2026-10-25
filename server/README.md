@@ -200,9 +200,9 @@ A tenant sells a subscription plan through a provider that implements `paymentpr
 
 A tenant may sell coins that its readers buy in advance and spend on its episodes once two switches are on: the platform policy's `tenant_coins_allowed`, and the tenant's own `enabled` in `tenant_coin_config`. `AdminCoinService` manages the tenant's side.
 
-- **Settings.** `tenant_coin_config` holds `enabled`, `selling` (apart from it, so a tenant can stop selling packs while readers spend what they hold), what one coin is worth in the minor unit of the tenant's currency (`coin_unit_amount`), how many days a purchased coin lasts (`expiry_days`), and the disclosures a prepaid instrument carries: issuer name, terms URL, contact, and a notice. A CHECK constraint refuses `enabled` while any of them is missing. `UpdateTenantCoinSettings` also requires a name in the tenant's default locale, and refuses turning coins on while the platform forbids them or while neither the tenant's payment provider nor one of its app stores is ready.
-- **Name.** `tenant_coin_name_translations` holds the word readers see, one row per locale, and `tenant_coin_name_for(tenant_id, locale)` picks the one to show the way `series_translation_for` picks a series title.
-- **Packs.** `tenant_coin_packs` holds the coins, bonus coins, and price of each pack. `first_sold_at` marks a pack that has been sold, and from then on the `tenant_coin_packs_keep_sold_terms` trigger refuses changing its price or coins. A pack is retired rather than deleted, so a purchase can always name what was bought.
+- **Settings.** `tenant_coin_config` holds the switches, what one coin is worth, how long a purchased coin lasts, and the disclosures a prepaid instrument carries.
+- **Name.** `tenant_coin_name_translations` holds the word readers see, one row per locale, and `tenant_coin_name_for(tenant_id, locale)` picks the one to show.
+- **Packs.** `tenant_coin_packs` holds the coins, bonus coins, and price of each pack.
 
 ## Contact message replies by email
 
