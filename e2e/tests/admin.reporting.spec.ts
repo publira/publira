@@ -109,13 +109,13 @@ const moveAuditPage = async (
     .toBe(true);
 };
 
-/** The engagement table's row for one episode, by its title cell. */
+/** The read-through table's row for one episode, by its title cell. */
 const readThroughRow = (page: Page, episodeTitle: string): Locator =>
   page.getByRole("row").filter({
     has: page.getByRole("cell", { exact: true, name: episodeTitle }),
   });
 
-/** Every episode row of the engagement table: the ones with a rate cell. */
+/** Every episode row of the read-through table: the ones with a rate cell. */
 const readThroughRows = (page: Page): Locator =>
   page.getByRole("row").filter({ hasText: /\d\.\d%$/u });
 
@@ -170,7 +170,7 @@ const expectedPeriodText = (timeZone: string): string => {
 
 /**
  * The two read-only screens a tenant admin consults: the audit log under
- * `/audit-logs` and the read-through report under `/engagement`. Both are
+ * `/audit-logs` and the read-through report under `/analytics/episodes`. Both are
  * driven by `searchParams`, which is where a bad URL has to degrade to the
  * default view instead of failing.
  *
@@ -484,7 +484,7 @@ test.describe("admin reporting screens", () => {
   test("the read-through report shows the figures for its period", async ({
     page,
   }) => {
-    await signInAsSeedAdmin(page, "/engagement");
+    await signInAsSeedAdmin(page, "/analytics/episodes");
     await expect(
       page.getByRole("heading", { name: "Read-through" }).first()
     ).toBeVisible();
@@ -500,7 +500,7 @@ test.describe("admin reporting screens", () => {
       String(REPORTING_READ_THROUGH.totalCompleteCount)
     );
     await expect(summaryValue(page, "Member views")).toHaveText(
-      String(REPORTING_READ_THROUGH.totalMemberViewCount)
+      REPORTING_READ_THROUGH.totalMemberViewCount.toLocaleString("en")
     );
     await expect(summaryValue(page, "Read-through rate")).toHaveText(
       REPORTING_READ_THROUGH.totalRate
@@ -537,7 +537,7 @@ test.describe("admin reporting screens", () => {
     await signInAsAdmin(
       page,
       BOUNDARY_ADMIN,
-      "/engagement",
+      "/analytics/episodes",
       WEB_ADMIN_OTHER_TENANT_BASE_URL
     );
     await expect(
@@ -554,7 +554,7 @@ test.describe("admin reporting screens", () => {
   test("the read-through report pages through with a cursor", async ({
     page,
   }) => {
-    await signInAsSeedAdmin(page, "/engagement");
+    await signInAsSeedAdmin(page, "/analytics/episodes");
     const { firstPage, secondPage } = REPORTING_READ_THROUGH;
 
     await expect(readThroughRows(page)).toHaveCount(READ_THROUGH_PAGE_SIZE);

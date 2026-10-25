@@ -23,6 +23,10 @@
       "types": "./dist/bell-icon.d.mts",
       "default": "./dist/bell-icon.mjs"
     },
+    "./book-open-icon": {
+      "types": "./dist/book-open-icon.d.mts",
+      "default": "./dist/book-open-icon.mjs"
+    },
     "./building-icon": {
       "types": "./dist/building-icon.d.mts",
       "default": "./dist/building-icon.mjs"
@@ -206,6 +210,10 @@
     "./ticket-icon": {
       "types": "./dist/ticket-icon.d.mts",
       "default": "./dist/ticket-icon.mjs"
+    },
+    "./trending-up-icon": {
+      "types": "./dist/trending-up-icon.d.mts",
+      "default": "./dist/trending-up-icon.mjs"
     },
     "./unfold-horizontal-icon": {
       "types": "./dist/unfold-horizontal-icon.d.mts",

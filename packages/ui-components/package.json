@@ -23,6 +23,10 @@
       "types": "./dist/card/index.d.mts",
       "default": "./dist/card/index.mjs"
     },
+    "./chart": {
+      "types": "./dist/chart/index.d.mts",
+      "default": "./dist/chart/index.mjs"
+    },
     "./checkbox": {
       "types": "./dist/checkbox/index.d.mts",
       "default": "./dist/checkbox/index.mjs"

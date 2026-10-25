@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import * as ActionForm from "./action-form";
 import * as Card from "./card";
+import * as Chart from "./chart";
 import * as Combobox from "./combobox";
 import * as ConfirmDialog from "./confirm-dialog";
 import * as Dialog from "./dialog";
@@ -25,6 +26,7 @@ import * as Toast from "./toast";
 const namespaces = {
   ActionForm,
   Card,
+  Chart,
   Combobox,
   ConfirmDialog,
   Dialog,

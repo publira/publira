@@ -1,6 +1,7 @@
 export { ActivityIcon } from "./activity-icon";
 export { ArchiveIcon } from "./archive-icon";
 export { BellIcon } from "./bell-icon";
+export { BookOpenIcon } from "./book-open-icon";
 export { BuildingIcon } from "./building-icon";
 export { ChartIcon } from "./chart-icon";
 export { CheckIcon } from "./check-icon";
@@ -47,6 +48,7 @@ export { ShareIcon } from "./share-icon";
 export { ShieldUserIcon } from "./shield-user-icon";
 export { TagIcon } from "./tag-icon";
 export { TicketIcon } from "./ticket-icon";
+export { TrendingUpIcon } from "./trending-up-icon";
 export type { IconProps } from "./types";
 export { UnfoldHorizontalIcon } from "./unfold-horizontal-icon";
 export { UserIcon } from "./user-icon";

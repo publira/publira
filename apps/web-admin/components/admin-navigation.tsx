@@ -1,13 +1,14 @@
 import {
   ActivityIcon,
   BellIcon,
-  ChartIcon,
+  BookOpenIcon,
   CoinsIcon,
   CollectionIcon,
   CommentIcon,
   CreditCardIcon,
   DashboardIcon,
   FileTextIcon,
+  HeartIcon,
   IdCardIcon,
   ImageIcon,
   KeyRoundIcon,
@@ -24,6 +25,7 @@ import {
   ShapesIcon,
   TagIcon,
   TicketIcon,
+  TrendingUpIcon,
   UserIcon,
   UsersIcon,
 } from "@publira/icons";
@@ -58,7 +60,9 @@ const hrefs = [
   "/comments",
   "/contact-messages",
   "/access-tickets",
-  "/engagement",
+  "/analytics/revenue",
+  "/analytics/audience",
+  "/analytics/episodes",
   "/royalties",
   "/purchases",
   "/subscription-plans",
@@ -280,25 +284,64 @@ export const AdminNavigation = () => (
     </ConsoleSidebar.NavigationSection>
     <ConsoleSidebar.NavigationSection>
       <ConsoleSidebar.NavigationTitle>
-        <Suspense fallback={<SkeletonLine className="h-3 w-14" />}>
-          <Message message="admin.nav.reports" />
+        <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+          <Message message="admin.nav.analytics" />
         </Suspense>
       </ConsoleSidebar.NavigationTitle>
       <ConsoleSidebar.NavigationItems>
-        <ConsoleSidebar.NavigationItem href="/engagement">
+        <Suspense fallback={null}>
+          <TenantAdminOnly>
+            <ConsoleSidebar.NavigationItem href="/analytics/revenue">
+              <ConsoleSidebar.NavigationItemIcon>
+                <TrendingUpIcon className="size-4" />
+              </ConsoleSidebar.NavigationItemIcon>
+              <ConsoleSidebar.NavigationItemHeading>
+                <ConsoleSidebar.NavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                    <Message message="admin.nav.revenue_label" />
+                  </Suspense>
+                </ConsoleSidebar.NavigationItemLabel>
+              </ConsoleSidebar.NavigationItemHeading>
+            </ConsoleSidebar.NavigationItem>
+          </TenantAdminOnly>
+        </Suspense>
+        <ConsoleSidebar.NavigationItem href="/analytics/audience">
           <ConsoleSidebar.NavigationItemIcon>
-            <ChartIcon className="size-4" />
+            <HeartIcon className="size-4" />
           </ConsoleSidebar.NavigationItemIcon>
           <ConsoleSidebar.NavigationItemHeading>
             <ConsoleSidebar.NavigationItemLabel>
-              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                <Message message="admin.nav.engagement_label" />
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.audience_label" />
               </Suspense>
             </ConsoleSidebar.NavigationItemLabel>
           </ConsoleSidebar.NavigationItemHeading>
         </ConsoleSidebar.NavigationItem>
-        <Suspense fallback={null}>
-          <TenantAdminOnly>
+        <ConsoleSidebar.NavigationItem href="/analytics/episodes">
+          <ConsoleSidebar.NavigationItemIcon>
+            <BookOpenIcon className="size-4" />
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.episodes_label" />
+              </Suspense>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+      </ConsoleSidebar.NavigationItems>
+    </ConsoleSidebar.NavigationSection>
+    {/* Royalties is a tenant admin's alone, so the section title goes with it
+        rather than heading an empty list for anyone else. */}
+    <Suspense fallback={null}>
+      <TenantAdminOnly>
+        <ConsoleSidebar.NavigationSection>
+          <ConsoleSidebar.NavigationTitle>
+            <Suspense fallback={<SkeletonLine className="h-3 w-14" />}>
+              <Message message="admin.nav.reports" />
+            </Suspense>
+          </ConsoleSidebar.NavigationTitle>
+          <ConsoleSidebar.NavigationItems>
             <ConsoleSidebar.NavigationItem href="/royalties">
               <ConsoleSidebar.NavigationItemIcon>
                 <CoinsIcon className="size-4" />
@@ -311,10 +354,10 @@ export const AdminNavigation = () => (
                 </ConsoleSidebar.NavigationItemLabel>
               </ConsoleSidebar.NavigationItemHeading>
             </ConsoleSidebar.NavigationItem>
-          </TenantAdminOnly>
-        </Suspense>
-      </ConsoleSidebar.NavigationItems>
-    </ConsoleSidebar.NavigationSection>
+          </ConsoleSidebar.NavigationItems>
+        </ConsoleSidebar.NavigationSection>
+      </TenantAdminOnly>
+    </Suspense>
     {/* Every entry here is a tenant admin's, so the section title goes with
         them rather than heading an empty list for anyone else. */}
     <Suspense fallback={null}>

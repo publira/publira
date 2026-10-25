@@ -20,6 +20,7 @@ const ADMIN_ONLY_ENTRIES = [
   "Readers",
   "Contact messages",
   "Access tickets",
+  "Revenue",
   "Royalties",
   "Purchases",
   "Subscription plans",
@@ -36,7 +37,8 @@ const ADMIN_ONLY_ENTRIES = [
 const SHARED_ENTRIES = [
   "Series",
   "Comments",
-  "Read-through",
+  "Audience",
+  "Episodes",
   "App links",
   "Branding",
   "Settings",
@@ -48,7 +50,7 @@ const ADMIN_ONLY_NOTICE =
   "Only a tenant administrator can change this setting. You have read-only access.";
 
 const navigationEntry = (page: Page, name: string) =>
-  page.getByRole("link", { exact: true, name });
+  page.getByRole("navigation").getByRole("link", { exact: true, name });
 
 /**
  * The gated entries and the account menu wait on the same read of the
@@ -194,6 +196,7 @@ test.describe("tenant roles in the console", () => {
     await expectNotFound(page, "/integrations/google-tag");
     await expectNotFound(page, "/purchases");
     await expectNotFound(page, "/subscription-plans");
+    await expectNotFound(page, "/analytics/revenue");
   });
 
   test("an administrator is offered every entry", async ({ page }) => {
