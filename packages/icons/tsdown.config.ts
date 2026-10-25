@@ -43,6 +43,7 @@ export default defineConfig({
     "src/pen-line-icon.tsx",
     "src/plus-icon.tsx",
     "src/receipt-icon.tsx",
+    "src/repeat-icon.tsx",
     "src/scroll-text-icon.tsx",
     "src/search-icon.tsx",
     "src/send-icon.tsx",

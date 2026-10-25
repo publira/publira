@@ -26,6 +26,7 @@ const sidebarEntries = [
   "Read-through",
   "Royalties",
   "Purchases",
+  "Subscription plans",
   "Payment methods",
   "Email",
   "Mobile push",

@@ -331,6 +331,17 @@ export const WEB_ADMIN_PURCHASES_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the subscription plans tenant from
+ * `db/seeds/scenarios/650_subscription_plans.sql`. Its suite takes the
+ * tenant's payments through Stripe, which a plan's Price is read through, and
+ * creates and deletes the tenant's plans, so it needs a console of its own.
+ */
+export const WEB_ADMIN_SUBSCRIPTION_PLANS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_SUBSCRIPTION_PLANS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.plans.localhost")
+);
+
+/**
  * Admin console of the rentals tenant from
  * `db/seeds/scenarios/550_episode_rentals.sql`. Its suite takes the tenant's
  * payments through Stripe, which is what lets the storefront sell the
