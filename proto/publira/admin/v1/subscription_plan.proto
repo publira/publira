@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// A subscription plan is a recurring Price on the tenant's Stripe account and
+// what a reader who pays it may read. The storefront lists the published ones
+// through publira.v1.SubscriptionService.ListSubscriptionPlans.
+message AdminSubscriptionPlan {
+  // The plan's primary key, which every RPC below addresses it by.
+  string id = 1;
+  string public_id = 2;
+  string name = 3;
+  // Plain text. Empty when the tenant wrote none.
+  string description = 4;
+  // The id of the recurring Price on the tenant's Stripe account (`price_…`).
+  string stripe_price_id = 5;
+  // What one period costs, in the minor unit of currency, and how often it is
+  // billed, as the Price stated them when the plan was saved. A Price's amount
+  // and interval never change in Stripe, so these stay true of it.
+  int32 price_amount = 6;
+  string currency = 7;
+  publira.types.v1.SubscriptionInterval interval = 8;
+  int32 interval_count = 9;
+  publira.types.v1.SubscriptionPlanScope scope = 10;
+  // The labels or the series the plan opens, by their primary keys, as
+  // SubscriptionPlan.label_ids and series_ids are.
+  repeated string label_ids = 11;
+  repeated string series_ids = 12;
+  // Whether the storefront lists the plan and a reader may start a checkout
+  // of it. Unpublishing a plan ends no subscription to it.
+  bool published = 13;
+  // How many readers hold a subscription to the plan that is trialing,
+  // active, or past due.
+  int32 subscriber_count = 14;
+  string created_at = 15;
+  string updated_at = 16;
+}
+
+message ListSubscriptionPlansRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every plan of the tenant, unpublished ones included, in the order they were
+// created. A tenant holds at most 20, so the list is never paged.
+message ListSubscriptionPlansResponse {
+  repeated AdminSubscriptionPlan plans = 1;
+}
+
+message GetSubscriptionPlanRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string subscription_plan_id = 2;
+}
+
+message GetSubscriptionPlanResponse {
+  AdminSubscriptionPlan plan = 1;
+}
+
+// The fields a plan is saved with, which CreateSubscriptionPlan and
+// UpdateSubscriptionPlan take alike.
+//
+// `name` is required and at most 100 characters, and `description` at most
+// 2000. `stripe_price_id` must name an active Price on the tenant's Stripe
+// account that bills one fixed amount every period: one Stripe does not know,
+// one that is archived, and one that bills once, by tiers, by usage, or at an
+// amount the customer chooses are invalid_argument on that field, and one
+// another plan of the tenant already names is already_exists on it. A tenant
+// that takes no payments through Stripe is failed_precondition, and a Stripe
+// that cannot be reached unavailable.
+//
+// `scope` is required. A SUBSCRIPTION_PLAN_SCOPE_ALL plan names neither
+// labels nor series; a SUBSCRIPTION_PLAN_SCOPE_LABEL plan names one to 100
+// labels of the tenant and no series, and a SUBSCRIPTION_PLAN_SCOPE_SERIES
+// plan one to 100 series and no labels. Anything else is invalid_argument.
+message SubscriptionPlanInput {
+  string name = 1;
+  string description = 2;
+  string stripe_price_id = 3;
+  publira.types.v1.SubscriptionPlanScope scope = 4;
+  repeated string label_ids = 5;
+  repeated string series_ids = 6;
+  bool published = 7;
+}
+
+// A tenant that already holds 20 plans is failed_precondition with the
+// ErrorInfo reason SUBSCRIPTION_PLAN_LIMIT.
+message CreateSubscriptionPlanRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  SubscriptionPlanInput plan = 2;
+}
+
+message CreateSubscriptionPlanResponse {
+  AdminSubscriptionPlan plan = 1;
+}
+
+// Replaces every field of the plan with `plan`. A subscription already started
+// keeps going whatever changes: a new Price does not move it, since Stripe
+// bills it at the Price it was started at, and a narrower scope applies to it
+// from then on.
+message UpdateSubscriptionPlanRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string subscription_plan_id = 2;
+  SubscriptionPlanInput plan = 3;
+}
+
+message UpdateSubscriptionPlanResponse {
+  AdminSubscriptionPlan plan = 1;
+}
+
+// Removes a plan nobody has ever subscribed to. One a subscription names, in
+// whatever state, is failed_precondition with the ErrorInfo reason
+// SUBSCRIPTION_PLAN_IN_USE: the subscription is a record of what the reader
+// paid for. So is one a reader's latest checkout was of, which the reader may
+// still be paying. Unpublish such a plan instead.
+message DeleteSubscriptionPlanRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string subscription_plan_id = 2;
+}
+
+message DeleteSubscriptionPlanResponse {}
+
+service AdminSubscriptionPlanService {
+  // Minimum role: tenant_admin.
+  rpc ListSubscriptionPlans(ListSubscriptionPlansRequest) returns (ListSubscriptionPlansResponse) {}
+  // Minimum role: tenant_admin.
+  rpc GetSubscriptionPlan(GetSubscriptionPlanRequest) returns (GetSubscriptionPlanResponse) {}
+  // Minimum role: tenant_admin.
+  rpc CreateSubscriptionPlan(CreateSubscriptionPlanRequest) returns (CreateSubscriptionPlanResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateSubscriptionPlan(UpdateSubscriptionPlanRequest) returns (UpdateSubscriptionPlanResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteSubscriptionPlan(DeleteSubscriptionPlanRequest) returns (DeleteSubscriptionPlanResponse) {}
+}

@@ -366,6 +366,50 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args:       []any{second.announcementID, first.userID, first.tenantID},
 		},
 		{
+			name:       "subscription_plan_targets.plan_id",
+			constraint: "subscription_plan_targets_tenant_plan_id_fkey",
+			statement:  `INSERT INTO subscription_plan_targets (tenant_id, plan_id, series_id) VALUES ($1, $2, $3)`,
+			args:       []any{first.tenantID, second.subscriptionPlanID, first.seriesID},
+		},
+		{
+			name:       "subscription_plan_targets.label_id",
+			constraint: "subscription_plan_targets_tenant_label_id_fkey",
+			statement:  `INSERT INTO subscription_plan_targets (tenant_id, plan_id, label_id) VALUES ($1, $2, $3)`,
+			args:       []any{first.tenantID, first.subscriptionPlanID, second.labelID},
+		},
+		{
+			name:       "subscription_plan_targets.series_id",
+			constraint: "subscription_plan_targets_tenant_series_id_fkey",
+			statement:  `INSERT INTO subscription_plan_targets (tenant_id, plan_id, series_id) VALUES ($1, $2, $3)`,
+			args:       []any{first.tenantID, first.subscriptionPlanID, second.seriesID},
+		},
+		{
+			name:       "subscriptions.plan_id",
+			constraint: "subscriptions_tenant_plan_id_fkey",
+			statement: `INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status)
+				VALUES ($1, $2, $3, $4, 'cus_fk', 'sub_fk_plan', 'price_fk', 'active')`,
+			args: []any{mustUUID(t), first.tenantID, first.userID, second.subscriptionPlanID},
+		},
+		{
+			name:       "subscriptions.user_id",
+			constraint: "subscriptions_tenant_user_id_fkey",
+			statement: `INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status)
+				VALUES ($1, $2, $3, $4, 'cus_fk', 'sub_fk_user', 'price_fk', 'active')`,
+			args: []any{mustUUID(t), first.tenantID, second.userID, first.subscriptionPlanID},
+		},
+		{
+			name:       "subscription_checkouts.plan_id",
+			constraint: "subscription_checkouts_tenant_plan_id_fkey",
+			statement:  `INSERT INTO subscription_checkouts (tenant_id, user_id, plan_id, stripe_checkout_session_id) VALUES ($1, $2, $3, 'cs_fk_plan')`,
+			args:       []any{first.tenantID, first.userID, second.subscriptionPlanID},
+		},
+		{
+			name:       "subscription_checkouts.user_id",
+			constraint: "subscription_checkouts_tenant_user_id_fkey",
+			statement:  `INSERT INTO subscription_checkouts (tenant_id, user_id, plan_id, stripe_checkout_session_id) VALUES ($1, $2, $3, 'cs_fk_user')`,
+			args:       []any{first.tenantID, second.userID, first.subscriptionPlanID},
+		},
+		{
 			name:       "access_tickets.created_by_user_id",
 			constraint: "access_tickets_tenant_created_by_user_id_fkey",
 			statement:  `UPDATE access_tickets SET created_by_user_id = $2 WHERE id = $1`,
@@ -566,6 +610,7 @@ type foreignKeyTenant struct {
 	notificationID         uuid.UUID
 	announcementID         uuid.UUID
 	accessTicketID         uuid.UUID
+	subscriptionPlanID     uuid.UUID
 }
 
 // seedForeignKeyTenant builds one whole tenant. prefix keeps the public ids
@@ -671,6 +716,12 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 		INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id, created_by_user_id)
 		VALUES ($1, $2, $3, $4, $5, $5)`,
 		seeded.accessTicketID, seeded.tenantID, prefix+"TICKET001", episodeID, seeded.userID)
+
+	seeded.subscriptionPlanID = mustUUID(t)
+	mustExec(t, ctx, db, `
+		INSERT INTO subscription_plans (id, tenant_id, public_id, name, stripe_price_id, price_amount, currency, recurring_interval, recurring_interval_count, scope)
+		VALUES ($1, $2, $3, 'Plan', 'price_monthly', 980, 'JPY', 'month', 1, 'series')`,
+		seeded.subscriptionPlanID, seeded.tenantID, prefix+"PLAN00001")
 
 	return seeded
 }

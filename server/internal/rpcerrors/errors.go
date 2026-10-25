@@ -87,6 +87,12 @@ const (
 	ReasonStorageTestPermission     = "STORAGE_TEST_PERMISSION"
 	ReasonStorageTestTimeout        = "STORAGE_TEST_TIMEOUT"
 	ReasonStorageTestUnknown        = "STORAGE_TEST_UNKNOWN"
+	// ReasonSubscriptionPlanInUse refuses deleting a subscription plan a
+	// subscription names.
+	ReasonSubscriptionPlanInUse = "SUBSCRIPTION_PLAN_IN_USE"
+	// ReasonSubscriptionPlanLimit refuses creating a subscription plan for a
+	// tenant that holds as many as it may.
+	ReasonSubscriptionPlanLimit = "SUBSCRIPTION_PLAN_LIMIT"
 	// ReasonTenantSuspended refuses every request for a tenant the platform
 	// operator has suspended.
 	ReasonTenantSuspended = "TENANT_SUSPENDED"

@@ -686,6 +686,10 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if err := s.createPurchase(ctx, tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
+	case paymentprovider.SubscriptionChanged:
+		if err := s.recordSubscription(ctx, tenant.ID, provider, credentials, event); err != nil {
+			return nil, err
+		}
 	}
 	return &publirav1.ProcessPaymentWebhookResponse{}, nil
 }

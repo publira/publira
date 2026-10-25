@@ -714,3 +714,50 @@ message RetentionPeriods {
   // A weekly ranking snapshot, counted like a daily one.
   int32 weekly_ranking_snapshot_days = 4;
 }
+
+// What a subscription plan opens while it is paid
+// (subscription_plans.scope).
+enum SubscriptionPlanScope {
+  // Never answered by a read. A write naming it is rejected: a plan states
+  // one of the three.
+  SUBSCRIPTION_PLAN_SCOPE_UNSPECIFIED = 0;
+  // Every episode of the tenant. Such a plan names no labels and no series.
+  SUBSCRIPTION_PLAN_SCOPE_ALL = 1;
+  // Every episode of the series of the labels the plan names.
+  SUBSCRIPTION_PLAN_SCOPE_LABEL = 2;
+  // Every episode of the series the plan names.
+  SUBSCRIPTION_PLAN_SCOPE_SERIES = 3;
+}
+
+// The unit a subscription plan's recurring price is billed every so many of,
+// as its Stripe Price states it (subscription_plans.recurring_interval).
+enum SubscriptionInterval {
+  SUBSCRIPTION_INTERVAL_UNSPECIFIED = 0;
+  SUBSCRIPTION_INTERVAL_DAY = 1;
+  SUBSCRIPTION_INTERVAL_WEEK = 2;
+  SUBSCRIPTION_INTERVAL_MONTH = 3;
+  SUBSCRIPTION_INTERVAL_YEAR = 4;
+}
+
+// A subscription's state, as Stripe last reported it (subscriptions.status).
+// Each value is Stripe's own status of the same name.
+enum SubscriptionStatus {
+  SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  // The first payment has not gone through yet, such as one waiting on the
+  // reader's 3-D Secure.
+  SUBSCRIPTION_STATUS_INCOMPLETE = 1;
+  // The first payment never went through, and the subscription was dropped.
+  SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED = 2;
+  SUBSCRIPTION_STATUS_TRIALING = 3;
+  // Paid up.
+  SUBSCRIPTION_STATUS_ACTIVE = 4;
+  // A renewal payment failed, and Stripe is retrying it.
+  SUBSCRIPTION_STATUS_PAST_DUE = 5;
+  // Ended: canceled at once, at the end of its period, or after its retries
+  // ran out.
+  SUBSCRIPTION_STATUS_CANCELED = 6;
+  // Stripe's retries ran out and the tenant's Stripe settings keep the
+  // subscription open, unpaid.
+  SUBSCRIPTION_STATUS_UNPAID = 7;
+  SUBSCRIPTION_STATUS_PAUSED = 8;
+}

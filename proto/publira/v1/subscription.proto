@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+// A subscription plan the tenant has published: a recurring price on its
+// Stripe account, and what a reader who pays it may read.
+message SubscriptionPlan {
+  // The plan's primary key, which StartSubscriptionCheckout addresses it by.
+  string id = 1;
+  string public_id = 2;
+  string name = 3;
+  // Plain text. Empty when the tenant wrote none.
+  string description = 4;
+  // What one period costs, in the minor unit of currency.
+  int32 price_amount = 5;
+  // The ISO 4217 code, in capitals, of the currency the plan bills in.
+  string currency = 6;
+  // The plan bills price_amount every interval_count intervals: a monthly plan
+  // is SUBSCRIPTION_INTERVAL_MONTH and 1.
+  publira.types.v1.SubscriptionInterval interval = 7;
+  int32 interval_count = 8;
+  publira.types.v1.SubscriptionPlanScope scope = 9;
+  // The labels a SUBSCRIPTION_PLAN_SCOPE_LABEL plan opens the series of, and
+  // the series a SUBSCRIPTION_PLAN_SCOPE_SERIES plan opens, by their primary
+  // keys. Both are empty on a SUBSCRIPTION_PLAN_SCOPE_ALL plan. They name what
+  // the tenant chose, published or not, so a client shows only the ones its
+  // catalog reads answer.
+  repeated string label_ids = 10;
+  repeated string series_ids = 11;
+}
+
+// A reader's subscription to one plan, as Stripe last reported it.
+message Subscription {
+  // The subscription's primary key, a UUID.
+  string id = 1;
+  // The plan it bills, published or not: a subscription goes on after the
+  // tenant unpublishes its plan.
+  SubscriptionPlan plan = 2;
+  publira.types.v1.SubscriptionStatus status = 3;
+  // RFC 3339; the end of the period paid for. Empty when Stripe reported none.
+  string current_period_end = 4;
+  // Whether the reader has canceled it, which ends it at current_period_end
+  // rather than renewing it.
+  bool cancel_at_period_end = 5;
+  // RFC 3339; when the subscription was first recorded.
+  string created_at = 6;
+}
+
+message ListSubscriptionPlansRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every published plan of the tenant, in the order the tenant created them. A
+// tenant holds at most 20 plans, so the list is never paged. Needs no session.
+message ListSubscriptionPlansResponse {
+  repeated SubscriptionPlan plans = 1;
+}
+
+// Starts a Stripe Checkout of a published plan, in subscription mode, and
+// answers the URL of Stripe's checkout page. The subscription is recorded by
+// Stripe's webhook alone, and its state follows the webhook from then on.
+//
+// A reader has at most one checkout they could pay. Asking again for the plan
+// of the reader's checkout that is still open answers that checkout's URL;
+// asking for another plan closes it before the new one is started, so a page
+// still showing it can no longer be paid.
+//
+// Signed-in readers only. A plan that is not published is not_found, and a
+// tenant that takes no payments, or takes them through a provider that sells
+// no subscriptions, is failed_precondition. A reader who already holds a
+// subscription that is trialing, active, past due, unpaid, or paused is
+// already_exists, and so is one who has paid a checkout whose subscription
+// Stripe has not reported as ended: one reader holds one subscription, and
+// changing it is what CreateBillingPortalSession is for. Each call spends the
+// reader's allowance for subscription checkouts, and a reader past it is
+// resource_exhausted before anything is asked of Stripe.
+//
+// The reader returns to `/my` on the tenant's site with `subscription=success`
+// in the query, or to `/plans` with `subscription=cancelled`.
+message StartSubscriptionCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string plan_id = 2;
+}
+
+message StartSubscriptionCheckoutResponse {
+  string checkout_url = 1;
+}
+
+message GetMySubscriptionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// The signed-in reader's subscription: the latest one that is not over, or
+// failing that the latest one that is. Unset for a reader who has never
+// subscribed.
+message GetMySubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+// Opens a session of Stripe's customer portal for the signed-in reader, where
+// they change their payment method, see their invoices, and cancel. It answers
+// the URL of the portal, which returns the reader to `/my` on the tenant's
+// site. What the reader changes there reaches the server through Stripe's
+// webhook.
+//
+// A reader who has never subscribed is failed_precondition, and so is a
+// tenant that takes no payments through Stripe.
+message CreateBillingPortalSessionRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message CreateBillingPortalSessionResponse {
+  string url = 1;
+}
+
+service SubscriptionService {
+  rpc ListSubscriptionPlans(ListSubscriptionPlansRequest) returns (ListSubscriptionPlansResponse) {}
+  rpc StartSubscriptionCheckout(StartSubscriptionCheckoutRequest) returns (StartSubscriptionCheckoutResponse) {}
+  rpc GetMySubscription(GetMySubscriptionRequest) returns (GetMySubscriptionResponse) {}
+  rpc CreateBillingPortalSession(CreateBillingPortalSessionRequest) returns (CreateBillingPortalSessionResponse) {}
+}

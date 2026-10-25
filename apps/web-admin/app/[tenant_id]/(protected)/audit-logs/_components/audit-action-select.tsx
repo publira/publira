@@ -345,6 +345,18 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "purchase_refunded",
             },
             {
+              label: t("admin.audit.actions.subscription_plan_created"),
+              value: "subscription_plan_created",
+            },
+            {
+              label: t("admin.audit.actions.subscription_plan_updated"),
+              value: "subscription_plan_updated",
+            },
+            {
+              label: t("admin.audit.actions.subscription_plan_deleted"),
+              value: "subscription_plan_deleted",
+            },
+            {
               label: t("admin.audit.actions.royalty_config_updated"),
               value: "royalty_config_updated",
             },

@@ -1,0 +1,39 @@
+{
+  "id": "evt_1QjN5pLk4f8bA7xYf8Uw1xY4",
+  "object": "event",
+  "api_version": "",
+  "created": 1772409600,
+  "data": {
+    "object": {
+      "id": "in_1QjN5oLk4f8bA7xYuV3wX4yZ",
+      "object": "invoice",
+      "amount_due": 980,
+      "amount_paid": 0,
+      "amount_remaining": 980,
+      "attempt_count": 1,
+      "attempted": true,
+      "billing_reason": "subscription_cycle",
+      "collection_method": "charge_automatically",
+      "currency": "jpy",
+      "customer": "cus_RbC1dE2fG3hI4j",
+      "livemode": false,
+      "next_payment_attempt": 1772668800,
+      "parent": {
+        "quote_details": null,
+        "subscription_details": {
+          "metadata": {},
+          "subscription": "sub_1QgK2lLk4f8bA7xYw3Xy4Za5"
+        },
+        "type": "subscription_details"
+      },
+      "status": "open"
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.payment_failed"
+}
