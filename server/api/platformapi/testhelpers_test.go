@@ -135,7 +135,7 @@ const (
 const testSupportedLocalesRow = "{ja,en,ko,zh-Hans,zh-Hant}"
 
 func integrationTenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale", "supported_locales"}
+	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale", "supported_locales", "image_domain"}
 }
 
 func platformConfigColumns() []string {
@@ -168,11 +168,11 @@ func expectPlatformConfigLookup(mock sqlmock.Sqlmock, defaultTimezone, defaultLo
 
 // expectTenantHosts expects the lock a tenant's host names are claimed under
 // and the read of which of them another tenant serves, answering it with
-// domainTaken and consoleHostTaken.
-func expectTenantHosts(mock sqlmock.Sqlmock, domainTaken, consoleHostTaken bool) {
+// domainTaken, consoleHostTaken, and imageHostTaken.
+func expectTenantHosts(mock sqlmock.Sqlmock, domainTaken, consoleHostTaken, imageHostTaken bool) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.LockTenantHosts)).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantHostsTaken)).
-		WillReturnRows(sqlmock.NewRows([]string{"domain_taken", "console_host_taken"}).AddRow(domainTaken, consoleHostTaken))
+		WillReturnRows(sqlmock.NewRows([]string{"domain_taken", "console_host_taken", "image_host_taken"}).AddRow(domainTaken, consoleHostTaken, imageHostTaken))
 }
 
 func integrationOperatorColumns() []string {

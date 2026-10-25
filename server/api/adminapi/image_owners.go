@@ -276,7 +276,7 @@ func (s *adminServer) ownerImageVariants(ctx context.Context, owner ownerimages.
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list "+owner.Collection+" image variants", err, "tenant_id", tenantID.String())
 	}
-	return protomapper.EyeCatchVariants(owner.Collection, variants), nil
+	return protomapper.EyeCatchVariants(protomapper.HostRelative, owner.Collection, variants), nil
 }
 
 // ownerImageError answers a failure to write an object the way every upload

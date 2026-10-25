@@ -272,6 +272,6 @@ func (s *adminServer) fillEpisodeEyeCatches(ctx context.Context, tenantID uuid.U
 	if err != nil {
 		return s.internalDBError(ctx, "failed to list episode eye catch variants", err, "tenant_id", tenantID.String())
 	}
-	protomapper.SetEpisodeEyeCatches(episodes, rows)
+	protomapper.SetEpisodeEyeCatches(protomapper.HostRelative, episodes, rows)
 	return nil
 }

@@ -96,3 +96,37 @@ func TestCheckEnvAcceptsTheDefaultAndAnOverride(t *testing.T) {
 		}
 	}
 }
+
+func TestImages(t *testing.T) {
+	tests := []struct {
+		name        string
+		scheme      string
+		imageDomain string
+		want        string
+	}{
+		{name: "defaults to https", imageDomain: "images.example", want: "https://images.example"},
+		{name: "drops a saved scheme and trailing slash", imageDomain: " https://images.example/ ", want: "https://images.example"},
+		{name: "takes the scheme from the environment", scheme: "http", imageDomain: "images.localhost", want: "http://images.localhost"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(SchemeEnv, tt.scheme)
+			got, err := Images(dbmodels.Tenant{Domain: "store.example", ImageDomain: sql.NullString{String: tt.imageDomain, Valid: true}})
+			if err != nil {
+				t.Fatalf("Images: %v", err)
+			}
+			if got.String() != tt.want {
+				t.Fatalf("Images = %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestImagesRequiresAnImageDomain(t *testing.T) {
+	t.Setenv(SchemeEnv, "")
+	for _, imageDomain := range []sql.NullString{{}, {String: " / ", Valid: true}} {
+		if _, err := Images(dbmodels.Tenant{Domain: "store.example", ImageDomain: imageDomain}); !errors.Is(err, ErrImageDomainNotConfigured) {
+			t.Fatalf("Images(%+v) error = %v, want %v", imageDomain, err, ErrImageDomainNotConfigured)
+		}
+	}
+}

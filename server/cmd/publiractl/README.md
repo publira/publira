@@ -421,7 +421,7 @@ go -C server run ./cmd/publiractl tenant admin create \
 | --- | --- | --- |
 | `tenant create` | `CreateTenant` | Creates a tenant on `--timezone`, or on the platform's default time zone without it, offering every `--supported-locale`, or its default language alone without one, with the default creator roles, and invites every `--initial-admin-email` |
 | `tenant show` | `GetTenant` | Prints the tenant |
-| `tenant update` | `UpdateTenant` | Replaces the `--name`, `--domain`, or `--admin-domain` it is given and keeps the rest; `--admin-domain ""` goes back to the default console host |
+| `tenant update` | `UpdateTenant` | Replaces the `--name`, `--domain`, `--admin-domain`, or `--image-domain` it is given and keeps the rest; `--admin-domain ""` goes back to the default console host, and `--image-domain ""` serves the storefront images on the domain again |
 | `tenant suspend`, `tenant resume` | `SuspendTenant`, `ResumeTenant` | Stops serving the tenant, and serves it again |
 | `tenant member list` | `ListTenantMembers` | Prints every user holding a console role |
 | `tenant member add` | `AddTenantMember` | Gives a user of the tenant, named by `--user` (public ID) or `--email`, the `--role` |
@@ -440,6 +440,7 @@ go -C server run ./cmd/publiractl tenant admin create \
 | `--name` | The tenant's name. Required |
 | `--domain` | The host the tenant's site is served on. Required, and no other tenant may hold it |
 | `--admin-domain` | The host the tenant's console is served on, when it is not the default one. No other tenant may hold it |
+| `--image-domain` | The host the tenant's storefront images are served on, when they are not served on its domain. The public API then hands out image URLs on it, and image delivery answers it as the tenant's storefront. No other tenant may hold it, and it may not be the tenant's own domain or console host |
 | `--default-locale` | The tenant's language, one of the supported locale codes. Required: nothing picks one for it |
 | `--supported-locale` | A language the tenant's site offers, one of the supported locale codes. Repeat it for several, `--default-locale` among them. Left out, the site offers `--default-locale` alone; the tenant's administrators can change the set from the console afterwards |
 | `--timezone` | The IANA time zone the tenant starts on. Left out, the platform's default time zone; the tenant's administrators can change it from the console afterwards |

@@ -43,7 +43,7 @@ func userIcons(ctx context.Context, q Querier, tenantID uuid.UUID, userIDs []uui
 	if err != nil {
 		return nil, fmt.Errorf("list user icon variants: %w", err)
 	}
-	return protomapper.UserIconsByUserID(rows), nil
+	return protomapper.UserIconsByUserID(protomapper.HostRelative, rows), nil
 }
 
 // adminReaderWithIcon projects one account with the icon it shows, read

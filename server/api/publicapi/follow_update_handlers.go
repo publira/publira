@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -34,6 +35,10 @@ func (s *apiServer) ListMyFollowUpdates(
 	req *publirav1.ListMyFollowUpdatesRequest,
 ) (*publirav1.ListMyFollowUpdatesResponse, error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	if err != nil {
+		return nil, err
+	}
+	images, err := s.imageOrigin(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +73,7 @@ func (s *apiServer) ListMyFollowUpdates(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	seriesByID, err := s.followUpdateSeriesByID(ctx, tenant.ID, surface, readerLocale, rows)
+	seriesByID, err := s.followUpdateSeriesByID(ctx, images, tenant.ID, surface, readerLocale, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +98,7 @@ func (s *apiServer) ListMyFollowUpdates(
 		items = append(items, &publirav1.FollowUpdate{Series: series, Episode: episode})
 		episodes = append(episodes, episode)
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+	if err := s.fillEpisodeEyeCatches(ctx, images, tenant.ID, episodes...); err != nil {
 		return nil, err
 	}
 
@@ -165,6 +170,7 @@ func (s *apiServer) followUpdatePage(
 // names, once each, keyed by the identifier the scan rows carry.
 func (s *apiServer) followUpdateSeriesByID(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID uuid.UUID,
 	surface string,
 	locale string,
@@ -184,7 +190,7 @@ func (s *apiServer) followUpdateSeriesByID(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list follow update series", err, "tenant_id", tenantID.String())
 	}
-	seriesItems, err := s.publishedSeriesItems(ctx, seriesRows)
+	seriesItems, err := s.publishedSeriesItems(ctx, images, seriesRows)
 	if err != nil {
 		return nil, err
 	}

@@ -130,7 +130,7 @@ func TestTenantCreateHelpListsItsFlags(t *testing.T) {
 	if code := run([]string{"tenant", "create", "-h"}, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, want 0\n%s", code, stderr.String())
 	}
-	for _, want := range []string{"Usage: publiractl tenant create [flags]", "--domain", "--admin-domain", "--default-locale", "--supported-locale", "--timezone", "--initial-admin-email"} {
+	for _, want := range []string{"Usage: publiractl tenant create [flags]", "--domain", "--admin-domain", "--image-domain", "--default-locale", "--supported-locale", "--timezone", "--initial-admin-email"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("usage = %q, want %q", stderr.String(), want)
 		}

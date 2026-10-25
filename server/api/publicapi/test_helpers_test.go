@@ -68,7 +68,7 @@ func (p *testStorageProvider) Upload(_ context.Context, req storage.UploadReques
 const testSupportedLocalesRow = "{ja,en,ko,zh-Hans,zh-Hant}"
 
 func publicTenantColumns() []string {
-	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale", "supported_locales"}
+	return []string{"id", "public_id", "domain", "name", "created_at", "status", "admin_domain", "timezone", "default_locale", "supported_locales", "image_domain"}
 }
 
 // episodeNeighbor is one row of the neighbour read GetEpisodeDetail performs
@@ -202,7 +202,7 @@ func expectTenantLookupWithSettings(mock sqlmock.Sqlmock, tenantID uuid.UUID, pu
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, publicID, "tenant.example", "Tenant", now, "active", nil, timezone, defaultLocale, testSupportedLocalesRow))
+			AddRow(tenantID, publicID, "tenant.example", "Tenant", now, "active", nil, timezone, defaultLocale, testSupportedLocalesRow, nil))
 }
 
 // assertSeriesPublicIDs compares a series list against the public ids it should

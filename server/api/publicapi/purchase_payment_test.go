@@ -226,7 +226,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT", "", "Tenant", now, "active", nil, "UTC", "ja", testSupportedLocalesRow))
+			AddRow(tenantID, "TENANT", "", "Tenant", now, "active", nil, "UTC", "ja", testSupportedLocalesRow, nil))
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
 

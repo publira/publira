@@ -32,7 +32,7 @@ func TestPurchaseRevocationMigrationRevokesRefundedPurchases(t *testing.T) {
 	pg.MigrateTo(t, beforePurchaseRevocationVersion)
 	t.Cleanup(func() { pg.MigrateUp(t) })
 
-	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	tenant := pg.SeedTenantOnOlderSchema(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
 	refunded := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0001", Title: "Refunded", Status: testutil.EpisodeStatusPublished, Price: 500})
 	partial := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0002", Title: "Partly refunded", Status: testutil.EpisodeStatusPublished, Price: 500})

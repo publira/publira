@@ -103,6 +103,10 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, search.tenant)
+	if err != nil {
+		return nil, err
+	}
 	readerLocale, err := readerLocaleOf(req.Locale, search.tenant)
 	if err != nil {
 		return nil, err
@@ -135,7 +139,7 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", search.tenant.ID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +157,10 @@ func (s *apiServer) SearchPublishedCreators(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, search.tenant)
+	if err != nil {
+		return nil, err
+	}
 	page, err := s.search.SearchCreators(ctx, search.backend)
 	if err != nil {
 		return nil, s.searchError(ctx, "failed to search published creators", err, search.tenant.ID)
@@ -164,7 +172,7 @@ func (s *apiServer) SearchPublishedCreators(
 
 	items := make([]*publirav1.PublishedCreator, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, publishedCreatorFromListRow(row))
+		items = append(items, publishedCreatorFromListRow(images, row))
 	}
 
 	res := &publirav1.SearchPublishedCreatorsResponse{Creators: items, PreviousToken: page.PreviousToken, NextToken: page.NextToken}
@@ -225,6 +233,10 @@ func (s *apiServer) SearchPublishedLabels(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, search.tenant)
+	if err != nil {
+		return nil, err
+	}
 	page, err := s.search.SearchLabels(ctx, search.backend)
 	if err != nil {
 		return nil, s.searchError(ctx, "failed to search published labels", err, search.tenant.ID)
@@ -233,7 +245,7 @@ func (s *apiServer) SearchPublishedLabels(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published labels", err, "tenant_id", search.tenant.ID.String())
 	}
-	items, err := s.labelItems(ctx, displays)
+	items, err := s.labelItems(ctx, images, displays)
 	if err != nil {
 		return nil, err
 	}

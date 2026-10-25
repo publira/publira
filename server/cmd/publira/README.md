@@ -63,7 +63,7 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 - `PUBLIRA_WEB_SERVICE_TOKEN` (optional, read only where the `admin` or the `platform` role is served. The bearer the web apps call the tenant console's tenant-level reads and the Platform Console's platform-level reads with as themselves rather than as an operator. It is also what the Platform Console's setup screen creates the first operator with, and `CreateInitialUser` is refused without it. Unset, the admin and platform APIs accept operator sessions alone, and no first operator can be created. Logged at startup as `web service token is enabled` or `disabled`; see [Web service credential](../../README.md#web-service-credential))
 - `PUBLIRA_TRUSTED_PROXIES` (optional. The addresses and CIDR ranges, separated by commas or spaces, of the proxies whose `Forwarded` and `X-Forwarded-For` entries are believed when finding the client address the sign-in log and the audit log record and the per-client limits count, and whose rightmost `host=` of `Forwarded`, or else rightmost `X-Forwarded-Host`, names the tenant an image request is for. From any other peer, the tenant is found from `Host` alone. Unset, the loopback, private, and link-local ranges; set, it replaces them. A value that is not an address or a range, or a range covering every address, stops the process at startup. See [The proxies Publira trusts](../../../docs/en/2-deployments/4-edge/index.md#the-proxies-publira-trusts))
 - `PUBLIRA_FORWARDED_HEADER_ENABLED` (optional, `true` when unset. `false` reads the client address from `X-Forwarded-For` alone, and an image request's host from `X-Forwarded-Host` and `Host` alone, for proxies that pass on a `Forwarded` header the caller sent; otherwise `Forwarded` is read ahead of them. A value that is not a boolean stops the process at startup)
-- `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme of every tenant host, set to the value `publira worker` runs with. Here it builds the storefront URL a payment provider returns the browser to)
+- `PUBLIRA_TENANT_URL_SCHEME` (optional, the scheme of every tenant host, set to the value `publira worker` runs with. Here it builds the storefront URL a payment provider returns the browser to, the origin the public API roots a tenant's image URLs at when the tenant has an image host, and the storefront origin that host allows)
 - `PUBLIRA_STRIPE_API_URL` (optional, and unset in every deployment. Replaces the origin of Stripe's API for checkout and refunds, which is how the E2E stack has them call its stand-in for Stripe; `publira worker` reads it too. Read only where the `storefront` or the `admin` role is served; a value that is not an absolute `http` or `https` URL stops the process at startup)
 - `PUBLIRA_TRACING_ENABLED` (optional, disabled by default. Enables OpenTelemetry tracing)
 - `PUBLIRA_METRICS_ENABLED` (optional, disabled by default. Enables OpenTelemetry metrics, the audit log's among them; see [Metrics](../../README.md#metrics-opentelemetry))
@@ -83,7 +83,7 @@ These internal URLs are private network addresses, not the ones browsers use: th
 
 ### Image delivery
 
-After checking permissions, the image routes convert images to WebP / AVIF with Manael, resize them, cache the converted result, and return it. Conversion follows the request's `Accept` (`image/webp` / `image/avif`) and the `w` / `h` / `fit` / `q` query parameters. The key of the intermediate cache is derived from the same inputs, so one converted rendition is shared by both host names; encryption is applied to the response afterwards and never to what is cached. On a hit the response header is `X-Publira-Image-Cache: hit`, and on a miss it is `miss`.
+After checking permissions, the image routes convert images to WebP / AVIF with Manael, resize them, cache the converted result, and return it. Conversion follows the request's `Accept` (`image/webp` / `image/avif`) and the `w` / `h` / `fit` / `q` query parameters. The key of the intermediate cache is derived from the same inputs, so one converted rendition is shared by every host name of a tenant; encryption is applied to the response afterwards and never to what is cached. On a hit the response header is `X-Publira-Image-Cache: hit`, and on a miss it is `miss`.
 
 #### Authorization for episode body images
 
@@ -121,7 +121,7 @@ serves the named API surfaces alone. A role is named the way the web app that co
 
 | `--role` | Registers under `/rpc` | Image delivery on `/images` | Opens | Reads |
 | --- | --- | --- | --- | --- |
-| `storefront` | `publira.v1` | Storefront hosts, as `publira_public` | `PUBLIRA_PUBLIC_DB_URL`, and `PUBLIRA_PUBLIC_DB_REPLICA_URL` when it is set | `PUBLIRA_IMAGE_CACHE_TTL` |
+| `storefront` | `publira.v1` | Storefront hosts and image hosts, as `publira_public` | `PUBLIRA_PUBLIC_DB_URL`, and `PUBLIRA_PUBLIC_DB_REPLICA_URL` when it is set | `PUBLIRA_IMAGE_CACHE_TTL` |
 | `admin` | `publira.admin.v1` | Console hosts, as `publira_admin`, staff preview included | `PUBLIRA_ADMIN_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN`, `PUBLIRA_IMAGE_CACHE_TTL` |
 | `platform` | `publira.platform.v1` | None | `PUBLIRA_PLATFORM_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN` |
 

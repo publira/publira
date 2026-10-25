@@ -141,6 +141,10 @@ func (s *apiServer) ListMyEpisodeReads(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -180,7 +184,7 @@ func (s *apiServer) ListMyEpisodeReads(
 		}
 		items = append(items, item)
 	}
-	if err := s.fillEpisodeReadEyeCatches(ctx, tenant.ID, rows, items); err != nil {
+	if err := s.fillEpisodeReadEyeCatches(ctx, images, tenant.ID, rows, items); err != nil {
 		return nil, err
 	}
 
@@ -255,6 +259,7 @@ func (s *apiServer) episodeReadPage(
 // cards when their variants are unavailable.
 func (s *apiServer) fillEpisodeReadEyeCatches(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID uuid.UUID,
 	rows []dbmodels.ListMyEpisodeReadsDescRow,
 	items []*publirav1.MyEpisodeRead,
@@ -271,7 +276,7 @@ func (s *apiServer) fillEpisodeReadEyeCatches(
 		seen[row.SeriesEyeCatchImageID.UUID] = struct{}{}
 		imageIDs = append(imageIDs, row.SeriesEyeCatchImageID.UUID)
 	}
-	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, images, imageIDs)
 	if err != nil {
 		slog.WarnContext(ctx, "eye catch variants unavailable", "error", err)
 	} else {
@@ -286,7 +291,7 @@ func (s *apiServer) fillEpisodeReadEyeCatches(
 	for _, item := range items {
 		episodes = append(episodes, item.Episode)
 	}
-	return s.fillEpisodeEyeCatches(ctx, tenantID, episodes...)
+	return s.fillEpisodeEyeCatches(ctx, images, tenantID, episodes...)
 }
 
 // myEpisodeReadFromRow carries the series' age rating so that a client can

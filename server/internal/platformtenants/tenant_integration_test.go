@@ -103,6 +103,28 @@ func TestUpdateChangesOnlyTheFieldsItIsGiven(t *testing.T) {
 		t.Fatalf("after clearing = %+v, want the admin domain unset and the name kept", tenant)
 	}
 
+	tenant, err = update(UpdateParams{ImageDomain: ptr(" images.tenant-a.example.com ")})
+	if err != nil {
+		t.Fatalf("set image domain: %v", err)
+	}
+	if tenant.ImageDomain.String != "images.tenant-a.example.com" || tenant.Name != "Renamed" {
+		t.Fatalf("after setting the image domain = %+v, want it stored and the name kept", tenant)
+	}
+	tenant, err = update(UpdateParams{Name: ptr("Renamed again")})
+	if err != nil {
+		t.Fatalf("rename again: %v", err)
+	}
+	if tenant.ImageDomain.String != "images.tenant-a.example.com" {
+		t.Fatalf("after a rename = %+v, want the image domain kept", tenant)
+	}
+	tenant, err = update(UpdateParams{ImageDomain: ptr("")})
+	if err != nil {
+		t.Fatalf("clear image domain: %v", err)
+	}
+	if tenant.ImageDomain.Valid || tenant.Name != "Renamed again" {
+		t.Fatalf("after clearing = %+v, want the image domain unset and the name kept", tenant)
+	}
+
 	if _, err := (UpdateParams{ID: tenantID}).Validate(); !errors.Is(err, ErrNoChange) {
 		t.Fatalf("nothing to change: err = %v, want ErrNoChange", err)
 	}
@@ -120,7 +142,7 @@ func TestUpdateChangesOnlyTheFieldsItIsGiven(t *testing.T) {
 			updates++
 		}
 	}
-	if updates != 2 {
+	if updates != 5 {
 		t.Fatalf("tenant_info_updated entries = %d, want one per committed update", updates)
 	}
 }
@@ -129,7 +151,7 @@ func TestUpdateRefusesAHostAnotherTenantServes(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	for _, p := range []CreateParams{
-		{Name: "Stored", Domain: "stored.example.com", AdminDomain: "console.stored.example.com", DefaultLocale: "en"},
+		{Name: "Stored", Domain: "stored.example.com", AdminDomain: "console.stored.example.com", ImageDomain: "images.stored.example.com", DefaultLocale: "en"},
 		{Name: "Implied", Domain: "implied.example.com", DefaultLocale: "en"},
 		// Domains that are the admin.{domain} of a name no tenant has yet.
 		{Name: "Prefixed", Domain: "admin.shop.example.com", DefaultLocale: "en"},
@@ -172,6 +194,14 @@ func TestUpdateRefusesAHostAnotherTenantServes(t *testing.T) {
 		{name: "admin domain equal to its own domain", params: UpdateParams{AdminDomain: ptr("target.example.com")}, field: FieldAdminDomain},
 		{name: "clearing the admin domain onto a domain", params: UpdateParams{AdminDomain: ptr("")}, field: FieldAdminDomain},
 		{name: "a domain whose implied console host is a domain", params: UpdateParams{Domain: ptr("shop.example.com"), AdminDomain: ptr("")}, field: FieldAdminDomain},
+		{name: "domain equal to an image host", params: UpdateParams{Domain: ptr("images.stored.example.com")}, field: FieldDomain},
+		{name: "admin domain equal to an image host", params: UpdateParams{AdminDomain: ptr("images.stored.example.com")}, field: FieldAdminDomain},
+		{name: "image domain equal to an image host", params: UpdateParams{ImageDomain: ptr("images.stored.example.com")}, field: FieldImageDomain},
+		{name: "image domain equal to a domain", params: UpdateParams{ImageDomain: ptr("implied.example.com")}, field: FieldImageDomain},
+		{name: "image domain equal to a console host", params: UpdateParams{ImageDomain: ptr("console.stored.example.com")}, field: FieldImageDomain},
+		{name: "image domain equal to its own domain", params: UpdateParams{ImageDomain: ptr("target.example.com")}, field: FieldImageDomain},
+		{name: "image domain equal to its own console host", params: UpdateParams{ImageDomain: ptr("console.target.example.com")}, field: FieldImageDomain},
+		{name: "a domain moved onto its own image host", params: UpdateParams{Domain: ptr("images.target.example.com"), ImageDomain: ptr("images.target.example.com")}, field: FieldImageDomain},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := update(tc.params)

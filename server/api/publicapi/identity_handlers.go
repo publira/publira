@@ -200,7 +200,7 @@ func (s *apiServer) LoginWithIdToken(
 	if err != nil {
 		return fail(user.PublicID, "token_issue_failed", err)
 	}
-	account, err := s.ownAccountWithIcon(ctx, txq, tenant.ID, user, role)
+	account, err := s.ownAccountWithIcon(ctx, txq, tenant, user, role)
 	if err != nil {
 		return fail(user.PublicID, "icon_lookup_failed", err)
 	}

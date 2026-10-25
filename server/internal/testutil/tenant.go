@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/creatorroles"
@@ -61,18 +62,41 @@ func (e *PostgresEnv) SeedTenant(t *testing.T, publicID, domain, name string) Te
 }
 
 // SeedTenantOnOlderSchema is [PostgresEnv.SeedTenant] for a test that migrated
-// back past tenants.supported_locales. The generated CreateTenant names every
-// column tenants has on the newest schema, so the row is inserted by hand with
-// the columns it has had since the initial schema instead.
+// back past a column tenants gained later, such as supported_locales or
+// image_domain. The generated CreateTenant names every column tenants has on
+// the newest schema, so the row is inserted by hand with the columns it has had
+// since the initial schema instead, and with every locale in supported_locales,
+// as SeedTenant writes it, on a schema that already has that column.
 func (e *PostgresEnv) SeedTenantOnOlderSchema(t *testing.T, publicID, domain, name string) Tenant {
 	t.Helper()
 	return e.seedTenant(t, publicID, domain, name, func(ctx context.Context, tx *sql.Tx, params dbmodels.CreateTenantParams) (dbmodels.Tenant, error) {
 		tenant := dbmodels.Tenant{ID: params.ID, PublicID: params.PublicID, Domain: params.Domain, AdminDomain: params.AdminDomain, Name: params.Name}
-		err := tx.QueryRowContext(ctx, `
+		var hasSupportedLocales bool
+		if err := tx.QueryRowContext(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_schema = 'public' AND table_name = 'tenants' AND column_name = 'supported_locales'
+			)
+		`).Scan(&hasSupportedLocales); err != nil {
+			return tenant, err
+		}
+		insert := `
 			INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale)
 			VALUES ($1, $2, $3, $4, $5, 'active', $6, $7)
 			RETURNING timezone, default_locale
-		`, params.ID, params.PublicID, params.Domain, params.AdminDomain, params.Name, params.Timezone, params.DefaultLocale).Scan(&tenant.Timezone, &tenant.DefaultLocale)
+		`
+		if hasSupportedLocales {
+			insert = `
+				INSERT INTO tenants (id, public_id, domain, admin_domain, name, status, timezone, default_locale, supported_locales)
+				VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8::text[])
+				RETURNING timezone, default_locale
+			`
+		}
+		args := []any{params.ID, params.PublicID, params.Domain, params.AdminDomain, params.Name, params.Timezone, params.DefaultLocale}
+		if hasSupportedLocales {
+			args = append(args, pq.Array(locale.Supported))
+		}
+		err := tx.QueryRowContext(ctx, insert, args...).Scan(&tenant.Timezone, &tenant.DefaultLocale)
 		return tenant, err
 	})
 }

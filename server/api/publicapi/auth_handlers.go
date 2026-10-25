@@ -225,7 +225,7 @@ func (s *apiServer) Login(
 		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
 		return nil, err
 	}
-	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, user, role)
+	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant, user, role)
 	if err != nil {
 		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "icon_lookup_failed")
 		return nil, err
@@ -1286,7 +1286,7 @@ func (s *apiServer) GetMe(
 	if err != nil {
 		return nil, err
 	}
-	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, user, role)
+	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant, user, role)
 	if err != nil {
 		return nil, err
 	}
@@ -1404,7 +1404,7 @@ func (s *apiServer) UpdateMe(
 		outcome = "name_and_birth_date_updated"
 	}
 	auth.AuditEvent(ctx, "update_me", "success", tenant.PublicID, user.PublicID, outcome)
-	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, updated, role)
+	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant, updated, role)
 	if err != nil {
 		return nil, err
 	}

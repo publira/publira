@@ -109,7 +109,11 @@ func (s *apiServer) GetTenant(
 	themeRow, err := queries.GetTenantThemeByTenantID(ctx, tenant.ID)
 	switch {
 	case err == nil:
-		iconVariants, logoVariants, signInVariants, err := tenantBrandingImageVariants(ctx, queries, themeRow)
+		images, err := s.imageOrigin(ctx, tenant)
+		if err != nil {
+			return nil, err
+		}
+		iconVariants, logoVariants, signInVariants, err := tenantBrandingImageVariants(ctx, queries, images, themeRow)
 		if err != nil {
 			return nil, s.internalError(ctx, "failed to read the tenant branding image variants", err, "tenant_id", tenant.ID.String())
 		}
@@ -275,6 +279,7 @@ func (s *apiServer) storeAcceptsPayments(ctx context.Context, tenantID uuid.UUID
 func tenantBrandingImageVariants(
 	ctx context.Context,
 	queries Querier,
+	images protomapper.ImageOrigin,
 	row dbmodels.GetTenantThemeByTenantIDRow,
 ) (iconVariants, logoVariants, signInVariants []*publirattypesv1.TenantImageVariant, err error) {
 	imageIDs := make([]uuid.UUID, 0, 3)
@@ -291,7 +296,7 @@ func tenantBrandingImageVariants(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	byImageID := protomapper.TenantImageVariantsByImageID(variantRows)
+	byImageID := protomapper.TenantImageVariantsByImageID(images, variantRows)
 
 	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID], byImageID[row.SignInImageID.UUID], nil
 }

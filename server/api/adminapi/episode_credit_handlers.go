@@ -43,7 +43,7 @@ func (s *adminServer) ListEpisodeCredits(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode credits", err, "episode_id", episode.ID.String())
 	}
-	credits := protomapper.EpisodeCreditsByEpisodeID(rows)
+	credits := protomapper.EpisodeCreditsByEpisodeID(protomapper.HostRelative, rows)
 	return &publiraadminv1.ListEpisodeCreditsResponse{
 		Creators:       credits[episode.ID],
 		CreatorCredits: episodeCreatorCredits(rows),
@@ -179,7 +179,7 @@ func (s *adminServer) ReplaceEpisodeCredits(
 	}
 
 	return &publiraadminv1.ReplaceEpisodeCreditsResponse{
-		Creators: protomapper.EpisodeCreditsByEpisodeID(written)[episode.ID],
+		Creators: protomapper.EpisodeCreditsByEpisodeID(protomapper.HostRelative, written)[episode.ID],
 	}, nil
 }
 

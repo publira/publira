@@ -40,6 +40,7 @@ const (
 	FieldName               = "name"
 	FieldDomain             = "domain"
 	FieldAdminDomain        = "admin_domain"
+	FieldImageDomain        = "image_domain"
 	FieldDefaultLocale      = "default_locale"
 	FieldSupportedLocales   = "supported_locales"
 	FieldTimezone           = "timezone"
@@ -54,9 +55,12 @@ var (
 
 // CreateParams is a tenant as the operator asked for it.
 type CreateParams struct {
-	Name          string
-	Domain        string
-	AdminDomain   string
+	Name        string
+	Domain      string
+	AdminDomain string
+	// ImageDomain is the host the tenant's storefront images are served on.
+	// Left empty, they are served on Domain.
+	ImageDomain   string
 	DefaultLocale string
 	// SupportedLocales are the locales the tenant's site offers. Left empty,
 	// the tenant offers DefaultLocale alone.
@@ -75,6 +79,7 @@ type Creation struct {
 	name               string
 	domain             string
 	adminDomain        sql.NullString
+	imageDomain        sql.NullString
 	defaultLocale      string
 	supportedLocales   []string
 	timezone           string
@@ -96,6 +101,9 @@ func (p CreateParams) Validate() (Creation, error) {
 	}
 	if adminDomain := strings.TrimSpace(p.AdminDomain); adminDomain != "" {
 		c.adminDomain = sql.NullString{String: adminDomain, Valid: true}
+	}
+	if imageDomain := strings.TrimSpace(p.ImageDomain); imageDomain != "" {
+		c.imageDomain = sql.NullString{String: imageDomain, Valid: true}
 	}
 	defaultLocale, err := locale.Normalize(p.DefaultLocale)
 	if err != nil {
@@ -155,9 +163,9 @@ type Created struct {
 // administrator, and the audit entries filed under actor. The caller commits,
 // so a tenant reaches the database with all of it or not at all.
 //
-// A domain or admin domain another tenant serves, as its domain or as its
-// console host, is refused with a [*fielderr.Conflict]; anything else is a
-// failure of the database.
+// A domain, admin domain, or image domain another tenant serves, as its
+// domain, its console host, or its image host, is refused with a
+// [*fielderr.Conflict]; anything else is a failure of the database.
 func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, c Creation) (Created, error) {
 	q := dbmodels.New(tx)
 
@@ -175,7 +183,7 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	if err := lockHosts(ctx, q); err != nil {
 		return Created{}, err
 	}
-	if err := checkHosts(ctx, q, tenantID, c.domain, c.adminDomain); err != nil {
+	if err := checkHosts(ctx, q, tenantID, c.domain, c.adminDomain, c.imageDomain); err != nil {
 		return Created{}, err
 	}
 
@@ -185,6 +193,7 @@ func Create(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 			PublicID:         publicID,
 			Domain:           c.domain,
 			AdminDomain:      c.adminDomain,
+			ImageDomain:      c.imageDomain,
 			Name:             c.name,
 			Timezone:         timezone,
 			DefaultLocale:    c.defaultLocale,
@@ -230,6 +239,8 @@ func uniqueViolationField(err error) string {
 		return FieldDomain
 	case "tenants_admin_domain_key":
 		return FieldAdminDomain
+	case "tenants_image_domain_key":
+		return FieldImageDomain
 	default:
 		return ""
 	}

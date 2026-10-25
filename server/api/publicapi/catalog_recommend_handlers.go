@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/contentranking"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
@@ -233,6 +234,10 @@ func (s *apiServer) ListRecommendedSeries(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -247,7 +252,7 @@ func (s *apiServer) ListRecommendedSeries(
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, readerLocale, limit, cursor)
+	res, err := s.tenantRecommendedSeriesPage(ctx, images, tenant.ID, surface, readerLocale, limit, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -261,6 +266,7 @@ func (s *apiServer) ListRecommendedSeries(
 // a reader without features this exact page under tokens of its own.
 func (s *apiServer) tenantRecommendedSeriesPage(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID uuid.UUID,
 	surface string,
 	locale string,
@@ -307,7 +313,7 @@ func (s *apiServer) tenantRecommendedSeriesPage(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenantID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, err
 	}

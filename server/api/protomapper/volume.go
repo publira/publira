@@ -14,13 +14,13 @@ const VolumeCoverCollection = "volume-covers"
 // VolumeCoverVariants groups the rows ListVolumeCoverImageVariantsByImageIDs
 // read by the cover each belongs to, in the shape a series eye-catch is
 // answered in.
-func VolumeCoverVariants(rows []dbmodels.ListVolumeCoverImageVariantsByImageIDsRow) map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant {
+func VolumeCoverVariants(origin ImageOrigin, rows []dbmodels.ListVolumeCoverImageVariantsByImageIDsRow) map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant {
 	variants := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant)
 	for _, row := range rows {
 		variants[row.VolumeCoverImageID] = append(variants[row.VolumeCoverImageID], &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           EyeCatchVariantURL(VolumeCoverCollection, row.VolumeCoverImageID, row.VariantType, row.Width, row.ID),
+			Url:           EyeCatchVariantURL(origin, VolumeCoverCollection, row.VolumeCoverImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,

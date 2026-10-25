@@ -185,7 +185,7 @@ func (s *adminServer) ListReaderIconPresets(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list reader icon presets", err, "tenant_id", tenant.ID.String())
 	}
-	return &publiraadminv1.ListReaderIconPresetsResponse{Presets: protomapper.ReaderIconPresets(rows)}, nil
+	return &publiraadminv1.ListReaderIconPresetsResponse{Presets: protomapper.ReaderIconPresets(protomapper.HostRelative, rows)}, nil
 }
 
 // UploadReaderIconPreset adds one preset to the tenant's set. It is offered to
@@ -239,7 +239,7 @@ func (s *adminServer) UploadReaderIconPreset(
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to list reader icon presets", err, "tenant_id", tenant.ID.String())
 		}
-		for _, stored := range protomapper.ReaderIconPresets(rows) {
+		for _, stored := range protomapper.ReaderIconPresets(protomapper.HostRelative, rows) {
 			if stored.Id == presetID.String() {
 				preset = stored
 			}

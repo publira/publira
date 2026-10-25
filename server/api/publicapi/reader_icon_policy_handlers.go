@@ -19,6 +19,10 @@ func (s *apiServer) GetTenantReaderIconPolicy(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 
 	queries := s.queriesFor(ctx)
 	stored, err := s.readerIconPolicy(ctx, queries, tenant.ID)
@@ -36,7 +40,7 @@ func (s *apiServer) GetTenantReaderIconPolicy(
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to list reader icon presets", err, "tenant_id", tenant.ID.String())
 		}
-		presets = protomapper.ReaderIconPresets(rows)
+		presets = protomapper.ReaderIconPresets(images, rows)
 	}
 
 	return &publirav1.GetTenantReaderIconPolicyResponse{

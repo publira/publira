@@ -909,7 +909,7 @@ func (s *adminServer) ListEpisodeImages(
 
 	images := make([]*publirattypesv1.EpisodeImage, 0, len(rows))
 	for _, row := range rows {
-		images = append(images, protomapper.EpisodeImageFromEpisodeImage(row))
+		images = append(images, protomapper.EpisodeImageFromEpisodeImage(protomapper.HostRelative, row))
 	}
 	if err := s.attachAdminMediaToken(ctx, tenant.ID, episode.ID, images); err != nil {
 		return nil, err
@@ -996,7 +996,7 @@ func (s *adminServer) ReorderEpisodeImages(
 	}
 	images := make([]*publirattypesv1.EpisodeImage, 0, len(updatedRows))
 	for _, row := range updatedRows {
-		images = append(images, protomapper.EpisodeImageFromEpisodeImage(row))
+		images = append(images, protomapper.EpisodeImageFromEpisodeImage(protomapper.HostRelative, row))
 	}
 	if err := s.attachAdminMediaToken(ctx, tenant.ID, episode.ID, images); err != nil {
 		return nil, err
@@ -1140,7 +1140,7 @@ func (s *adminServer) episodeImages(ctx context.Context, tenantID, episodeID uui
 	}
 	images := make([]*publirattypesv1.EpisodeImage, 0, len(rows))
 	for _, row := range rows {
-		images = append(images, protomapper.EpisodeImageFromEpisodeImage(row))
+		images = append(images, protomapper.EpisodeImageFromEpisodeImage(protomapper.HostRelative, row))
 	}
 	if err := s.attachAdminMediaToken(ctx, tenantID, episodeID, images); err != nil {
 		return nil, err

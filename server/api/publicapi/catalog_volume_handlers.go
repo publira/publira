@@ -19,6 +19,7 @@ import (
 // shows.
 func (s *apiServer) seriesVolumes(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID, seriesID uuid.UUID,
 	surface string,
 	episodes []*publirattypesv1.Episode,
@@ -60,7 +61,7 @@ func (s *apiServer) seriesVolumes(
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to list the covers of the series' volumes", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())
 		}
-		covers = protomapper.VolumeCoverVariants(coverRows)
+		covers = protomapper.VolumeCoverVariants(images, coverRows)
 	}
 
 	listed := make(map[string]struct{}, len(episodes))

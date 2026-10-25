@@ -1118,6 +1118,9 @@ type Querier interface {
 	// host names.
 	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
+	// Return the first tenant whose image_domain matches, keeping the order of the
+	// candidate host names.
+	GetTenantByImageDomains(ctx context.Context, domains []string) (Tenant, error)
 	GetTenantByPublicID(ctx context.Context, publicID string) (Tenant, error)
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
@@ -1141,10 +1144,11 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as Google
 	// sign-in disabled.
 	GetTenantGoogleSignInConfig(ctx context.Context, tenantID uuid.UUID) (TenantGoogleSignInConfig, error)
-	// Whether a tenant other than id already serves the domain or the console host
-	// as either of its own: its domain, or its console host, which is its
-	// admin_domain or else admin.{domain}. Take LockTenantHosts first, in a
-	// statement of its own, so this sees every write that held it before.
+	// Whether a tenant other than id already serves the domain, the console host,
+	// or the image host as any of its own: its domain, its console host, which is
+	// its admin_domain or else admin.{domain}, or its image_domain. A NULL
+	// image_host is taken by no one. Take LockTenantHosts first, in a statement of
+	// its own, so this sees every write that held it before.
 	GetTenantHostsTaken(ctx context.Context, arg GetTenantHostsTakenParams) (GetTenantHostsTakenRow, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg GetTenantImageVariantByTypeForTenantParams) (GetTenantImageVariantByTypeForTenantRow, error)
 	// A tenant's inbound email settings. Only internal/inboundemail calls these:
@@ -2995,9 +2999,10 @@ type Querier interface {
 	// still see the pre-wait row.
 	LockTenantForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Serializes, for the rest of the transaction, the writes that decide which
-	// tenant a host name belongs to. The unique constraints keep two domains or two
-	// stored admin domains apart, but none of them can see a domain equal to
-	// another tenant's console host, so two writes that each pass
+	// tenant a host name belongs to. The unique constraints keep two domains, two
+	// stored admin domains, or two image domains apart, but none of them can see a
+	// domain equal to another tenant's console host or image host, so two writes
+	// that each pass
 	// GetTenantHostsTaken would otherwise both commit.
 	LockTenantHosts(ctx context.Context) error
 	LockTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)

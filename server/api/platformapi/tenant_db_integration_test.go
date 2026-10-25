@@ -275,6 +275,49 @@ func TestDBUpdateTenantChangesOnlyTheFieldsTheRequestCarries(t *testing.T) {
 	if got := moved.Tenant; got.Name != "Renamed Tenant" || got.Domain != "moved.example.com" || got.AdminDomain != "" {
 		t.Fatalf("after a move = %q %q %q, want the same name, the new domain, and no admin domain", got.Name, got.Domain, got.AdminDomain)
 	}
+
+	withImages, err := client.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{
+		TenantId:    tenantID,
+		ImageDomain: new("images.moved.example.com"),
+	})
+	if err != nil {
+		t.Fatalf("UpdateTenant image domain: %v", err)
+	}
+	if got := withImages.Tenant; got.Domain != "moved.example.com" || got.ImageDomain != "images.moved.example.com" {
+		t.Fatalf("after setting the image domain = %q %q, want the same domain and the image domain", got.Domain, got.ImageDomain)
+	}
+
+	renamedAgain, err := client.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{
+		TenantId: tenantID,
+		Name:     new("Renamed Again"),
+	})
+	if err != nil {
+		t.Fatalf("UpdateTenant name again: %v", err)
+	}
+	if got := renamedAgain.Tenant; got.ImageDomain != "images.moved.example.com" {
+		t.Fatalf("after a rename the image domain = %q, want it kept", got.ImageDomain)
+	}
+
+	cleared, err := client.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{
+		TenantId:    tenantID,
+		ImageDomain: new(""),
+	})
+	if err != nil {
+		t.Fatalf("UpdateTenant clear image domain: %v", err)
+	}
+	if got := cleared.Tenant; got.ImageDomain != "" || got.Name != "Renamed Again" {
+		t.Fatalf("after clearing = %q %q, want no image domain and the same name", got.Name, got.ImageDomain)
+	}
+
+	// The tenant's own domain is not an image host it may take.
+	_, err = client.UpdateTenant(ctx, &publirasplatformv1.UpdateTenantRequest{
+		TenantId:    tenantID,
+		ImageDomain: new("moved.example.com"),
+	})
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("UpdateTenant with its own domain as the image domain: code = %v, want already_exists", connect.CodeOf(err))
+	}
+	assertFieldViolation(t, err, "image_domain")
 }
 
 func TestDBCreateTenantRejectsEmptyDomain(t *testing.T) {

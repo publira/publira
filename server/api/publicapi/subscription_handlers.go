@@ -59,6 +59,10 @@ func (s *apiServer) ListSubscriptionPlans(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.queriesFor(ctx).ListPublishedSubscriptionPlansForTenant(ctx, tenant.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published subscription plans", err, "tenant_id", tenant.ID.String())
@@ -77,11 +81,11 @@ func (s *apiServer) ListSubscriptionPlans(
 		labelIDs = append(labelIDs, target.labelIDs...)
 		seriesIDs = append(seriesIDs, target.seriesIDs...)
 	}
-	labels, err := s.publishedSubscriptionPlanLabels(ctx, tenant.ID, surface, labelIDs)
+	labels, err := s.publishedSubscriptionPlanLabels(ctx, images, tenant.ID, surface, labelIDs)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list the labels subscription plans open", err, "tenant_id", tenant.ID.String())
 	}
-	series, err := s.publishedSubscriptionPlanSeries(ctx, tenant.ID, surface, readerLocale, seriesIDs)
+	series, err := s.publishedSubscriptionPlanSeries(ctx, images, tenant.ID, surface, readerLocale, seriesIDs)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list the series subscription plans open", err, "tenant_id", tenant.ID.String())
 	}
@@ -458,7 +462,7 @@ func (s *apiServer) subscriptionPlanTargets(ctx context.Context, tenantID uuid.U
 // publishedSubscriptionPlanLabels reads the labels of ids that have a series
 // published on surface, keyed by id. A plan names a label whatever it holds,
 // and one with nothing a reader could open is left out of what readers see.
-func (s *apiServer) publishedSubscriptionPlanLabels(ctx context.Context, tenantID uuid.UUID, surface string, ids []uuid.UUID) (map[uuid.UUID]*publirav1.PublishedLabel, error) {
+func (s *apiServer) publishedSubscriptionPlanLabels(ctx context.Context, images protomapper.ImageOrigin, tenantID uuid.UUID, surface string, ids []uuid.UUID) (map[uuid.UUID]*publirav1.PublishedLabel, error) {
 	labels := make(map[uuid.UUID]*publirav1.PublishedLabel, len(ids))
 	if len(ids) == 0 {
 		return labels, nil
@@ -481,7 +485,7 @@ func (s *apiServer) publishedSubscriptionPlanLabels(ctx context.Context, tenantI
 			publishedSeriesCount:   row.PublishedSeriesCount,
 		})
 	}
-	items, err := s.labelItems(ctx, displays)
+	items, err := s.labelItems(ctx, images, displays)
 	if err != nil {
 		return nil, err
 	}
@@ -493,13 +497,13 @@ func (s *apiServer) publishedSubscriptionPlanLabels(ctx context.Context, tenantI
 
 // publishedSubscriptionPlanSeries reads the series of ids published on
 // surface, titled in locale and keyed by id.
-func (s *apiServer) publishedSubscriptionPlanSeries(ctx context.Context, tenantID uuid.UUID, surface, locale string, ids []uuid.UUID) (map[uuid.UUID]*publirattypesv1.Series, error) {
+func (s *apiServer) publishedSubscriptionPlanSeries(ctx context.Context, images protomapper.ImageOrigin, tenantID uuid.UUID, surface, locale string, ids []uuid.UUID) (map[uuid.UUID]*publirattypesv1.Series, error) {
 	series := make(map[uuid.UUID]*publirattypesv1.Series, len(ids))
 	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, locale, ids)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, err
 	}

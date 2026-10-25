@@ -215,6 +215,10 @@ func (s *apiServer) ListMyRecentSeries(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -256,7 +260,7 @@ func (s *apiServer) ListMyRecentSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
-	seriesItems, err := s.publishedSeriesItems(ctx, seriesRows)
+	seriesItems, err := s.publishedSeriesItems(ctx, images, seriesRows)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +271,7 @@ func (s *apiServer) ListMyRecentSeries(
 		items = append(items, item)
 		episodes = append(episodes, item.Episode)
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+	if err := s.fillEpisodeEyeCatches(ctx, images, tenant.ID, episodes...); err != nil {
 		return nil, err
 	}
 

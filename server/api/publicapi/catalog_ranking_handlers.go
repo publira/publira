@@ -460,6 +460,10 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -555,7 +559,7 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list ranked series", err, "tenant_id", tenant.ID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, err
 	}

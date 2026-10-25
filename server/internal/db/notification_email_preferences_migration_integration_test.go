@@ -31,7 +31,7 @@ func TestNotificationEmailPreferencesMigrationKeepsEmailOffForReadersWhoTurnedIt
 	defer cancel()
 	db := pg.DB
 
-	tenant := pg.SeedTenant(t, "TENANTM", "tenant-m.example.com", "Tenant M")
+	tenant := pg.SeedTenantOnOlderSchema(t, "TENANTM", "tenant-m.example.com", "Tenant M")
 	declined := pg.SeedEndUser(t, tenant.ID, "READEROFF01", "off@example.com", "Reader Off")
 	accepted := pg.SeedEndUser(t, tenant.ID, "READERON001", "on@example.com", "Reader On")
 	mustExec(t, ctx, db, `

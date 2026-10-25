@@ -292,28 +292,30 @@ func (s *apiServer) activeSeriesRowsInOrder(
 }
 
 type creatorJSON struct {
-	ID                     string `json:"id"`
-	PublicID               string `json:"public_id"`
-	Name                   string `json:"name"`
-	RolePublicID           string `json:"role_public_id"`
-	RoleName               string `json:"role_name"`
-	ProfileText            string `json:"profile_text"`
-	IconImageURL           string `json:"icon_image_url"`
-	IconImageFileSizeBytes int64  `json:"icon_image_file_size_bytes"`
-	IconImageUpdatedAt     string `json:"icon_image_updated_at"`
+	ID                     string     `json:"id"`
+	PublicID               string     `json:"public_id"`
+	Name                   string     `json:"name"`
+	RolePublicID           string     `json:"role_public_id"`
+	RoleName               string     `json:"role_name"`
+	ProfileText            string     `json:"profile_text"`
+	IconImageID            *uuid.UUID `json:"icon_image_id"`
+	IconImageFileSizeBytes int64      `json:"icon_image_file_size_bytes"`
+	IconImageUpdatedAt     string     `json:"icon_image_updated_at"`
 }
 
 // creatorFromJSON rebuilds one credit of a series row. The credits arrive
 // already in role priority order, so nothing here reorders them.
-func creatorFromJSON(creator creatorJSON) *publirattypesv1.Creator {
+func creatorFromJSON(images protomapper.ImageOrigin, creator creatorJSON) *publirattypesv1.Creator {
 	mapped := &publirattypesv1.Creator{
 		Id:                     creator.ID,
 		PublicId:               creator.PublicID,
 		Name:                   creator.Name,
 		ProfileText:            creator.ProfileText,
-		IconImageUrl:           creator.IconImageURL,
 		IconImageFileSizeBytes: creator.IconImageFileSizeBytes,
 		IconImageUpdatedAt:     creator.IconImageUpdatedAt,
+	}
+	if creator.IconImageID != nil {
+		mapped.IconImageUrl = protomapper.CreatorIconURL(images, *creator.IconImageID)
 	}
 	// A credit written before roles existed carries none: the aggregate reads
 	// null for both columns, and the field stays unset rather than naming an
@@ -393,7 +395,7 @@ type episodeJSON struct {
 	CampaignEndsAt *time.Time `json:"campaign_ends_at"`
 }
 
-func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
+func publishedSeriesFromRow(images protomapper.ImageOrigin, row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
 	item := &publirattypesv1.Series{
 		Id:               row.ID.String(),
 		PublicId:         row.PublicID,
@@ -428,7 +430,7 @@ func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattyp
 	}
 	item.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
-		item.Creators = append(item.Creators, creatorFromJSON(creator))
+		item.Creators = append(item.Creators, creatorFromJSON(images, creator))
 	}
 	genres, err := seriesGenresFromJSON(row.Genres)
 	if err != nil {
@@ -464,12 +466,13 @@ func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattyp
 
 func (s *apiServer) publishedSeriesItems(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	rows []dbmodels.ListActiveSeriesByIDsRow,
 ) ([]*publirattypesv1.Series, error) {
 	items := make([]*publirattypesv1.Series, 0, len(rows))
 	imageIDs := make([]uuid.UUID, 0)
 	for _, row := range rows {
-		item, err := publishedSeriesFromRow(row)
+		item, err := publishedSeriesFromRow(images, row)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 		}
@@ -482,7 +485,7 @@ func (s *apiServer) publishedSeriesItems(
 		return items, nil
 	}
 
-	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, images, imageIDs)
 	if err != nil {
 		// Variants decorate the series; the page itself is still usable.
 		slog.WarnContext(ctx, "eye catch variants unavailable", "error", err)
@@ -498,13 +501,13 @@ func (s *apiServer) publishedSeriesItems(
 	return items, nil
 }
 
-func mapSeriesEyeCatchVariants(seriesImageID uuid.UUID, rows []dbmodels.ListSeriesImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
+func mapSeriesEyeCatchVariants(images protomapper.ImageOrigin, seriesImageID uuid.UUID, rows []dbmodels.ListSeriesImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
 	items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
 			Label:         row.Label,
 			VariantType:   row.VariantType,
-			Url:           protomapper.EyeCatchVariantURL("series", seriesImageID, row.VariantType, row.Width, row.ID),
+			Url:           protomapper.EyeCatchVariantURL(images, "series", seriesImageID, row.VariantType, row.Width, row.ID),
 			ContentType:   row.ContentType,
 			Width:         row.Width,
 			Height:        row.Height,
@@ -516,6 +519,7 @@ func mapSeriesEyeCatchVariants(seriesImageID uuid.UUID, rows []dbmodels.ListSeri
 
 func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	imageIDs []uuid.UUID,
 ) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
 	if len(imageIDs) == 0 {
@@ -534,7 +538,7 @@ func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 
 	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
 	for imageID, variants := range byImageID {
-		mapped[imageID] = mapSeriesEyeCatchVariants(imageID, variants)
+		mapped[imageID] = mapSeriesEyeCatchVariants(images, imageID, variants)
 	}
 
 	return mapped, nil
@@ -544,7 +548,7 @@ func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 // statement for all of them. An episode without one keeps both fields empty,
 // and the client draws its series' eye-catch in its place — which is also
 // what a failed read leaves, so it is logged rather than failing the page.
-func (s *apiServer) fillEpisodeEyeCatches(ctx context.Context, tenantID uuid.UUID, episodes ...*publirattypesv1.Episode) error {
+func (s *apiServer) fillEpisodeEyeCatches(ctx context.Context, images protomapper.ImageOrigin, tenantID uuid.UUID, episodes ...*publirattypesv1.Episode) error {
 	if len(episodes) == 0 {
 		return nil
 	}
@@ -560,7 +564,7 @@ func (s *apiServer) fillEpisodeEyeCatches(ctx context.Context, tenantID uuid.UUI
 		slog.WarnContext(ctx, "episode eye catch variants unavailable", "error", err, "tenant_id", tenantID.String())
 		return nil
 	}
-	protomapper.SetEpisodeEyeCatches(episodes, rows)
+	protomapper.SetEpisodeEyeCatches(images, episodes, rows)
 	return nil
 }
 
@@ -613,7 +617,7 @@ func labelPageFromAsc(row dbmodels.ListPublishedLabelsAscRow) labelPageRow {
 // labelItems maps label rows to the wire type and attaches every eye catch in
 // one further query, so a page of labels costs two round trips whatever
 // ordered it.
-func (s *apiServer) labelItems(ctx context.Context, rows []labelDisplay) ([]*publirav1.PublishedLabel, error) {
+func (s *apiServer) labelItems(ctx context.Context, images protomapper.ImageOrigin, rows []labelDisplay) ([]*publirav1.PublishedLabel, error) {
 	items := make([]*publirav1.PublishedLabel, 0, len(rows))
 	imageIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
@@ -634,7 +638,7 @@ func (s *apiServer) labelItems(ctx context.Context, rows []labelDisplay) ([]*pub
 		return items, nil
 	}
 
-	variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, images, imageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -715,6 +719,10 @@ func (s *apiServer) ListPublishedLabels(
 	if err != nil {
 		return nil, err
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	surface, err := callingSurface(req.Surface)
 	if err != nil {
 		return nil, err
@@ -745,7 +753,7 @@ func (s *apiServer) ListPublishedLabels(
 	for _, row := range rows {
 		displays = append(displays, row.labelDisplay)
 	}
-	items, err := s.labelItems(ctx, displays)
+	items, err := s.labelItems(ctx, images, displays)
 	if err != nil {
 		return nil, err
 	}
@@ -781,6 +789,10 @@ func (s *apiServer) ListPublishedSeries(
 	req *publirav1.ListPublishedSeriesRequest,
 ) (*publirav1.ListPublishedSeriesResponse, error) {
 	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	images, err := s.imageOrigin(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -836,7 +848,7 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
-	items, err := s.publishedSeriesItems(ctx, rows)
+	items, err := s.publishedSeriesItems(ctx, images, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -872,6 +884,10 @@ func (s *apiServer) GetSeriesDetail(
 	req *publirav1.GetSeriesDetailRequest,
 ) (*publirav1.GetSeriesDetailResponse, error) {
 	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	images, err := s.imageOrigin(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -983,7 +999,7 @@ func (s *apiServer) GetSeriesDetail(
 		res.Series.Label = label
 	}
 	if row.EyeCatchImageID.Valid {
-		variants, err := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		variants, err := s.seriesEyeCatchVariantsByImageIDs(ctx, images, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if err == nil && len(variants) > 0 {
 			if imageVariants, ok := variants[row.EyeCatchImageID.UUID]; ok {
 				res.Series.EyeCatchImageVariants = imageVariants
@@ -993,7 +1009,7 @@ func (s *apiServer) GetSeriesDetail(
 
 	res.Series.Creators = make([]*publirattypesv1.Creator, 0, len(creators))
 	for _, creator := range creators {
-		res.Series.Creators = append(res.Series.Creators, creatorFromJSON(creator))
+		res.Series.Creators = append(res.Series.Creators, creatorFromJSON(images, creator))
 	}
 	for _, episode := range episodes {
 		item := &publirattypesv1.Episode{
@@ -1044,10 +1060,10 @@ func (s *apiServer) GetSeriesDetail(
 		}
 		res.WaitFree = waitFreeRuleFor(waitFree, episodeIDs)
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, res.Episodes...); err != nil {
+	if err := s.fillEpisodeEyeCatches(ctx, images, tenant.ID, res.Episodes...); err != nil {
 		return nil, err
 	}
-	if res.Volumes, err = s.seriesVolumes(ctx, tenant.ID, row.ID, surface, res.Episodes); err != nil {
+	if res.Volumes, err = s.seriesVolumes(ctx, images, tenant.ID, row.ID, surface, res.Episodes); err != nil {
 		return nil, err
 	}
 
@@ -1059,6 +1075,10 @@ func (s *apiServer) GetEpisodeDetail(
 	req *publirav1.GetEpisodeDetailRequest,
 ) (*publirav1.GetEpisodeDetailResponse, error) {
 	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	images, err := s.imageOrigin(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -1194,7 +1214,7 @@ func (s *apiServer) GetEpisodeDetail(
 	if row.SeriesEyeCatchImageID.Valid {
 		// The artwork only decorates the neighbour links; the helper has logged
 		// a failed lookup, and the episode is answered without it.
-		variants, variantsErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.SeriesEyeCatchImageID.UUID})
+		variants, variantsErr := s.seriesEyeCatchVariantsByImageIDs(ctx, images, []uuid.UUID{row.SeriesEyeCatchImageID.UUID})
 		if variantsErr == nil {
 			series.EyeCatchImageVariants = variants[row.SeriesEyeCatchImageID.UUID]
 		}
@@ -1219,7 +1239,7 @@ func (s *apiServer) GetEpisodeDetail(
 	if hasNextFree {
 		episodeIDs = append(episodeIDs, nextFreeRow.ID)
 	}
-	creditsByEpisodeID, err := s.episodeCreditsByEpisodeIDs(ctx, tenant.ID, episodeIDs)
+	creditsByEpisodeID, err := s.episodeCreditsByEpisodeIDs(ctx, images, tenant.ID, episodeIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -1263,13 +1283,13 @@ func (s *apiServer) GetEpisodeDetail(
 	}
 	res.FreeUntil = episode.FreeUntil
 	if includeImages {
-		images, listErr := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
+		pages, listErr := s.queriesFor(ctx).ListEpisodeImagesByEpisodeID(ctx, row.ID)
 		if listErr != nil {
 			return nil, s.internalDBError(ctx, "failed to list episode images", listErr, "tenant_id", tenant.ID.String(), "episode_public_id", req.PublicId)
 		}
-		res.Images = make([]*publirattypesv1.EpisodeImage, 0, len(images))
-		for _, image := range images {
-			mapped := protomapper.EpisodeImageFromEpisodeImage(image)
+		res.Images = make([]*publirattypesv1.EpisodeImage, 0, len(pages))
+		for _, page := range pages {
+			mapped := protomapper.EpisodeImageFromEpisodeImage(images, page)
 			mapped.ImageUrl = auth.WithMediaTokenQuery(mapped.ImageUrl, mediaToken)
 			res.Images = append(res.Images, mapped)
 		}
@@ -1287,10 +1307,10 @@ func (s *apiServer) GetEpisodeDetail(
 		}
 		res.PreviewImages = make([]*publirattypesv1.EpisodeImage, 0, len(previews))
 		for _, preview := range previews {
-			res.PreviewImages = append(res.PreviewImages, protomapper.EpisodePreviewImageFromRow(preview))
+			res.PreviewImages = append(res.PreviewImages, protomapper.EpisodePreviewImageFromRow(images, preview))
 		}
 	}
-	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episode); err != nil {
+	if err := s.fillEpisodeEyeCatches(ctx, images, tenant.ID, episode); err != nil {
 		return nil, err
 	}
 
@@ -1438,6 +1458,7 @@ func episodeNeighborsFromRows(
 // writes and what an edit on the episode changes.
 func (s *apiServer) episodeCreditsByEpisodeIDs(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	tenantID uuid.UUID,
 	episodeIDs []uuid.UUID,
 ) (map[uuid.UUID][]*publirattypesv1.Creator, error) {
@@ -1448,13 +1469,14 @@ func (s *apiServer) episodeCreditsByEpisodeIDs(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode credits", err, "tenant_id", tenantID.String())
 	}
-	return protomapper.EpisodeCreditsByEpisodeID(rows), nil
+	return protomapper.EpisodeCreditsByEpisodeID(images, rows), nil
 }
 
 // labelEyeCatchVariantsByImageIDs fetches the variants of the given label
 // images.
 func (s *apiServer) labelEyeCatchVariantsByImageIDs(
 	ctx context.Context,
+	images protomapper.ImageOrigin,
 	imageIDs []uuid.UUID,
 ) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
 	if len(imageIDs) == 0 {
@@ -1478,7 +1500,7 @@ func (s *apiServer) labelEyeCatchVariantsByImageIDs(
 			items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
 				Label:         row.Label,
 				VariantType:   row.VariantType,
-				Url:           protomapper.EyeCatchVariantURL("labels", imageID, row.VariantType, row.Width, row.ID),
+				Url:           protomapper.EyeCatchVariantURL(images, "labels", imageID, row.VariantType, row.Width, row.ID),
 				ContentType:   row.ContentType,
 				Width:         row.Width,
 				Height:        row.Height,

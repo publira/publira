@@ -26,29 +26,33 @@ import (
 const uploadMyIconReadMaxBytes = (imageproc.UserIconMaxBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
 
 // userIcons reads the icons the given accounts elect now, uploads and presets
-// alike, keyed by account. An account that shows none is absent, and so
-// answers the zero icon.
-func (s *apiServer) userIcons(ctx context.Context, q Querier, tenantID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID]protomapper.UserIcon, error) {
+// alike, keyed by account, on the tenant's image origin. An account that shows
+// none is absent, and so answers the zero icon.
+func (s *apiServer) userIcons(ctx context.Context, q Querier, tenant dbmodels.Tenant, userIDs []uuid.UUID) (map[uuid.UUID]protomapper.UserIcon, error) {
 	if len(userIDs) == 0 {
 		return nil, nil
 	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := q.ListUserIconVariantsByUserIDs(ctx, dbmodels.ListUserIconVariantsByUserIDsParams{
-		TenantID: tenantID,
+		TenantID: tenant.ID,
 		UserIds:  userIDs,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list user icon variants", err, "tenant_id", tenantID.String())
+		return nil, s.internalDBError(ctx, "failed to list user icon variants", err, "tenant_id", tenant.ID.String())
 	}
-	return protomapper.UserIconsByUserID(rows), nil
+	return protomapper.UserIconsByUserID(images, rows), nil
 }
 
 // ownAccountWithIcon is ownAccount with the icon the account elects, read
 // through q so a handler inside a transaction sees the icon it has just
 // stored.
-func (s *apiServer) ownAccountWithIcon(ctx context.Context, q Querier, tenantID uuid.UUID, user dbmodels.User, role string) (*publirattypesv1.User, error) {
+func (s *apiServer) ownAccountWithIcon(ctx context.Context, q Querier, tenant dbmodels.Tenant, user dbmodels.User, role string) (*publirattypesv1.User, error) {
 	var icon protomapper.UserIcon
 	if user.IconImageID.Valid || user.IconPresetID.Valid {
-		icons, err := s.userIcons(ctx, q, tenantID, []uuid.UUID{user.ID})
+		icons, err := s.userIcons(ctx, q, tenant, []uuid.UUID{user.ID})
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +177,7 @@ func (s *apiServer) changeMyIcon(ctx context.Context, tenantCtx *publirattypesv1
 	}
 	clearing := change.upload == nil && !change.presetID.Valid
 	if clearing && !user.IconImageID.Valid && !user.IconPresetID.Valid {
-		return s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, user, role)
+		return s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant, user, role)
 	}
 	if err := s.chargeReaderAction(ctx, actionChangeIcon, tenant.ID, user.ID); err != nil {
 		return nil, err
@@ -232,7 +236,7 @@ func (s *apiServer) changeMyIcon(ctx context.Context, tenantCtx *publirattypesv1
 
 	// The variants of an icon just stored are visible only inside the
 	// transaction until it commits, and the response carries them.
-	account, err := s.ownAccountWithIcon(ctx, txq, tenant.ID, user, role)
+	account, err := s.ownAccountWithIcon(ctx, txq, tenant, user, role)
 	if err != nil {
 		return nil, err
 	}

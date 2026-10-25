@@ -26,7 +26,7 @@ func TestGetTenantByDomainReturnsDefaultLocale(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "en", "{zh-Hant,en,ja}"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "en", "{zh-Hant,en,ja}", nil))
 
 	client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
@@ -56,7 +56,7 @@ func TestGetTenantByDomainFailsOnAnUnusableStoredSupportedLocale(t *testing.T) {
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 		WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "ja", "{ja,fr}"))
+			AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", "ja", "{ja,fr}", nil))
 
 	client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	_, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{
@@ -89,7 +89,7 @@ func TestGetTenantByDomainFailsOnAnUnusableStoredLocale(t *testing.T) {
 
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByDomains)).
 				WillReturnRows(sqlmock.NewRows(publicTenantColumns()).
-					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", tt.stored, testSupportedLocalesRow))
+					AddRow(tenantID, "TENANT001", "tenant.example.com", "Tenant", now, "active", nil, "UTC", tt.stored, testSupportedLocalesRow, nil))
 
 			client := publirav1connect.NewDomainServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 			_, err := client.GetTenantByDomain(context.Background(), &publirav1.GetTenantByDomainRequest{

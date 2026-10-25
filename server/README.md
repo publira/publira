@@ -320,6 +320,8 @@ The preview of a withheld body, `GET /images/episodes/{media_id}/preview`, is no
 | `X-Publira-Image-Content-Type` | The MIME type after decryption (`image/webp` / `image/avif`, and so on) |
 | `X-Publira-Image-Key-Id` | An opaque identifier for the converted rendition |
 
+A tenant's image host answers as its storefront, but on an origin other than the storefront's pages, so every response there also carries `Access-Control-Allow-Origin` naming the storefront's origin and `Access-Control-Expose-Headers` naming the three headers above, which a cross-origin `fetch()` cannot read otherwise. The storefront's own domain and the console host carry neither.
+
 `xor-hmac-sha256-v1` takes the JWT string as the HMAC key, computes HMAC-SHA-256 over `"publira:image:xor-hmac-sha256:v1\\0" + sub + "\\0" + key-id`, and uses that output as the HMAC key. It then XORs the body with a 32-byte stream produced by HMAC-SHA-256 over the 8-byte big-endian block number. The client performs the same steps with the `t` in the URL (or the Bearer JWT it sent), the JWT's `sub`, and the headers above.
 
 Which JWT a body is bound to depends on which rule let the request through:
@@ -673,7 +675,7 @@ The reverse proxy forwards `/images` and the public API's `/rpc/publira.v1.…` 
 
 ## Database users
 
-Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `publira server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection; an image is answered on the `publira_public` pool on a storefront host and on the `publira_admin` pool on a console host.
+Each namespace connects with its own dedicated PostgreSQL login user, which keeps privileges minimal. `publira server` holds one pool per login and picks the pool by the namespace the procedure path names, so the three never share a connection; an image is answered on the `publira_public` pool on a storefront host or an image host and on the `publira_admin` pool on a console host.
 
 | Namespace or process | DB user | Environment variable | Local default |
 | --- | --- | --- | --- |

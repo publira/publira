@@ -770,7 +770,7 @@ func TestGetLabelReturnsEyeCatchVariants(t *testing.T) {
 		t.Fatalf("eye_catch_image_variants count = %d, want 1", got)
 	}
 	variant := resp.Label.EyeCatchImageVariants[0]
-	if variant.Url != protomapper.EyeCatchVariantURL("labels", imageID, "square", 512, variantID) {
+	if variant.Url != protomapper.EyeCatchVariantURL(protomapper.HostRelative, "labels", imageID, "square", 512, variantID) {
 		t.Fatalf("eye_catch_image_variants url = %q, want the row's delivery url", variant.Url)
 	}
 	if variant.Label != "md" || variant.VariantType != "square" {
