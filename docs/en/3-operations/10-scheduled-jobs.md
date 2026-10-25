@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -78,7 +78,7 @@ These jobs have no `publiractl job` command, and need none: each acts on every t
 The statistics, rankings, series ratings, and recommendations are built from the reading activity once each day is over, in the tenant's own time zone. Four jobs do it, one after the other, as one chain:
 
 1. **Reading projection** (`project-episode-reads`) files every finished read as an analytics event.
-2. **Daily statistics** (`aggregate-content-stats`) rebuilds each finished day's views, completed reads, purchases, ratings, favourites, and comments per series and episode. The series ratings the storefront shows are computed from them.
+2. **Daily statistics** (`aggregate-content-stats`) rebuilds each finished day's views, completed reads, purchases, ratings, favourites, and comments per series and episode, and how far into each episode its readers got. The series ratings the storefront shows are computed from them.
 3. **Rankings** (`aggregate-rankings`) rebuilds the daily and weekly leaderboards the storefront's **Ranking** pages show.
 4. **Recommendations** (`build-recommend-features`) rebuilds the snapshot each reader's recommendations are drawn from.
 

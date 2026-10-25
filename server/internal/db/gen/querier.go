@@ -736,6 +736,12 @@ type Querier interface {
 	// publish or price gate.
 	GetEpisodeImageByIDForTenant(ctx context.Context, arg GetEpisodeImageByIDForTenantParams) (GetEpisodeImageByIDForTenantRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg GetEpisodeImagePublicAccessByIDForTenantParams) (GetEpisodeImagePublicAccessByIDForTenantRow, error)
+	// The console's drop-off report: how far into one episode its readers got over
+	// a period of the tenant's days, from the episode_page_reach_stats rows
+	// aggregate-content-stats rebuilds. Those rows are already tenant days, so the
+	// period is a range of stat_date and needs no zone.
+	// The episode a report names, and the pages it has now.
+	GetEpisodePageCountByPublicID(ctx context.Context, arg GetEpisodePageCountByPublicIDParams) (GetEpisodePageCountByPublicIDRow, error)
 	// One page's preview source: the smallest stored rendition of a page that is
 	// among the first `page_count` of its episode. A later page is no row at all,
 	// so the preview route cannot be walked through a whole body. Pages are
@@ -1796,6 +1802,12 @@ type Querier interface {
 	ListEpisodeFreeWindowsBySeriesForTenantDesc(ctx context.Context, arg ListEpisodeFreeWindowsBySeriesForTenantDescParams) ([]ListEpisodeFreeWindowsBySeriesForTenantDescRow, error)
 	ListEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) ([]ListEpisodeImagesByEpisodeIDRow, error)
 	ListEpisodeImagesByEpisodePublicIDForTenant(ctx context.Context, arg ListEpisodeImagesByEpisodePublicIDForTenantParams) ([]ListEpisodeImagesByEpisodePublicIDForTenantRow, error)
+	// Every page from the first through the episode's last, page_count - 1, or
+	// through the furthest page reached in the period if that is further, so a
+	// chart of it has no gap to fill. A day's rows already reach from page 0 to
+	// that day's furthest page, so summing them over the period is the readers of
+	// every day of it who reached the page.
+	ListEpisodePageReach(ctx context.Context, arg ListEpisodePageReachParams) ([]ListEpisodePageReachRow, error)
 	// The opening pages of an episode's body, as the preview of a body the reader
 	// may not open offers them: the first `page_count` pages in reading order,
 	// each with the size of its smallest stored rendition, which is the one

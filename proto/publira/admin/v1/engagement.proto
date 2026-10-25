@@ -272,6 +272,48 @@ message GetAudienceStatsResponse {
   string next_token = 7;
 }
 
+// How many of an episode's readers reached one of its pages.
+message EpisodePageReach {
+  // Zero-based, so the episode's last page is page_count - 1.
+  int32 page_index = 1;
+  // Readers who stopped at this page or after it. Those who left at it are
+  // this count less the next page's, and at the last page this count.
+  int64 reader_count = 2;
+}
+
+message GetEpisodeDropOffRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The episode to report. One the tenant does not have is not_found.
+  string episode_public_id = 2;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone: the first no later than the last, and covering at most 366 days.
+  // Both are required.
+  string start_date = 3;
+  string end_date = 4;
+}
+
+message GetEpisodeDropOffResponse {
+  // Every page from the first through the episode's last, and through the
+  // furthest page a reader reached if that is further, in page order. Empty
+  // for an episode with no pages that no reader reached.
+  //
+  // A reader is counted on the day their saved position was last moved, at
+  // the page it holds, as the day stood when the daily aggregates were
+  // rebuilt for it. A reader who moved on several days of the period is
+  // counted once on each, at the page they stopped at that day. Today, and a
+  // day still waiting for its rebuild, counts no reader yet.
+  repeated EpisodePageReach pages = 1;
+  // The pages the episode has now. A page past them was reached before the
+  // episode lost pages.
+  int32 page_count = 2;
+  // The period the request asked for, echoed back.
+  string start_date = 3;
+  string end_date = 4;
+  // The IANA time zone the dates are the tenant's days in. It is the tenant's
+  // resolved zone: the counting and the wording come from the same read.
+  string time_zone = 5;
+}
+
 service AdminEngagementService {
   // Minimum role: tenant_auditor.
   rpc ListEpisodeReadThrough(ListEpisodeReadThroughRequest) returns (ListEpisodeReadThroughResponse) {}
@@ -286,4 +328,9 @@ service AdminEngagementService {
   //
   // Minimum role: tenant_auditor.
   rpc GetAudienceStats(GetAudienceStatsRequest) returns (GetAudienceStatsResponse) {}
+  // How far into one episode its readers got over a period of the tenant's
+  // days, page by page, which shows the page at which they leave it.
+  //
+  // Minimum role: tenant_auditor.
+  rpc GetEpisodeDropOff(GetEpisodeDropOffRequest) returns (GetEpisodeDropOffResponse) {}
 }

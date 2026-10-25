@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_episode_reading_positions_tenant_updated_at;
