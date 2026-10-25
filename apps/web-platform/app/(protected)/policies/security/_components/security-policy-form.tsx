@@ -175,6 +175,25 @@ export const SecurityPolicyForm = ({
             </Suspense>
           </PolicyLimitField>
         </div>
+        <Field.Root>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              defaultChecked={values.tenantCoinsAllowed}
+              disabled={Boolean(loadErrorMessage)}
+              name="tenant_coins_allowed"
+            />
+            <Field.Label>
+              <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+                <Message message="platform.policy.security.tenant_coins_allowed" />
+              </Suspense>
+            </Field.Label>
+          </div>
+          <Field.Description>
+            <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
+              <Message message="platform.policy.security.tenant_coins_allowed_help" />
+            </Suspense>
+          </Field.Description>
+        </Field.Root>
         <Field.Root className="flex items-center gap-2">
           <Checkbox
             defaultChecked={values.mfaRequiredForPlatformOperator}

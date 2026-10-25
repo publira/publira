@@ -74,6 +74,7 @@ export const updatePlatformSecurityPolicyAction = async (
           perDay: data.storePurchaseConfirmationPerDay,
           perMinute: data.storePurchaseConfirmationPerMinute,
         },
+        tenantCoinsAllowed: data.tenantCoinsAllowed,
         waitFreeTicketUse: {
           perDay: data.waitFreeTicketUsePerDay,
           perMinute: data.waitFreeTicketUsePerMinute,

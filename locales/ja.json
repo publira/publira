@@ -5932,6 +5932,8 @@
         "mfa_required": "テナント管理者に多要素認証を必須にする",
         "mfa_required_for_platform_operator": "Platform Consoleのすべてのオペレーターに2段階認証を必須にする",
         "mfa_required_for_platform_operator_unavailable": "サーバーが認証アプリの秘密鍵を暗号化できる状態になるまで、オペレーターに2段階認証を必須にすることはできません。先にpublira serverにPUBLIRA_SECRET_ENCRYPTION_KEYSを設定してください。",
+        "tenant_coins_allowed": "テナントにコインの発行を許可する",
+        "tenant_coins_allowed_help": "各テナントが、読者が前払いで購入して自テナントのエピソードに使うコインを販売できるようにします。テナントが自らコインを有効にするまで、読者に見える変化はありません。",
         "disposable_email_domains_url": "使い捨てメールドメインリストのURL",
         "disposable_email_domains_url_help": "1行に1ドメインを記載したリストで、1時間ごとに読み直します。空欄にするとリストを使いません。",
         "disposable_email_domains_url_invalid": "使い捨てメールドメインリストにはhttpまたはhttpsのURLを入力するか、空欄にしてください。",

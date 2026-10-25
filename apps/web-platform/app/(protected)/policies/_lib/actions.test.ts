@@ -38,7 +38,7 @@ vi.mock("#lib/platform-mfa", () => ({
   PLATFORM_MFA_STATUS_CACHE_TAG: "platform-mfa-status",
 }));
 
-const securityForm = (): FormData => {
+const securityForm = (extra: Record<string, string> = {}): FormData => {
   const data = new FormData();
   for (const [name, value] of Object.entries({
     disposable_email_domains_url: "",
@@ -58,6 +58,7 @@ const securityForm = (): FormData => {
     store_purchase_confirmation_per_minute: "10",
     wait_free_ticket_use_per_day: "100",
     wait_free_ticket_use_per_minute: "10",
+    ...extra,
   })) {
     data.set(name, value);
   }
@@ -92,6 +93,30 @@ describe("updatePlatformSecurityPolicyAction", () => {
     expect(mockUpdateTag).toHaveBeenCalledWith(platformPolicyCacheTag);
     expect(mockUpdateTag).toHaveBeenCalledWith(platformAuditLogsCacheTag);
     expect(mockUpdateTag).toHaveBeenCalledWith("platform-mfa-status");
+  });
+
+  // An unticked checkbox submits nothing, which has to save the allowance off
+  // rather than leave it as stored.
+  it("saves the tenant coin allowance as the checkbox is", async () => {
+    mockUpdatePlatformSecurityPolicy.mockResolvedValue({ ok: true });
+    const { updatePlatformSecurityPolicyAction } = await import("./actions");
+
+    await updatePlatformSecurityPolicyAction(
+      null,
+      securityForm({ tenant_coins_allowed: "on" })
+    );
+    expect(mockUpdatePlatformSecurityPolicy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tenantCoinsAllowed: true }),
+      3n,
+      "en"
+    );
+
+    await updatePlatformSecurityPolicyAction(null, securityForm());
+    expect(mockUpdatePlatformSecurityPolicy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tenantCoinsAllowed: false }),
+      3n,
+      "en"
+    );
   });
 
   it("clears nothing when the save is refused", async () => {

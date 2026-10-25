@@ -28,6 +28,7 @@ const emptyValues: PlatformSecurityPolicy = {
   mfaRequiredForTenantAdmin: false,
   passwordVerification: { perDay: 1, perMinute: 1 },
   storePurchaseConfirmation: { perDay: 1, perMinute: 1 },
+  tenantCoinsAllowed: false,
   waitFreeTicketUse: { perDay: 1, perMinute: 1 },
 };
 

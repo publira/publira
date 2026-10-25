@@ -16,7 +16,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | Group | Platform Console | `publiractl` |
 | --- | --- | --- |
 | The default language, time zone, and currency | **General**, under **Platform** | `platform set`, `platform show` |
-| Two-step verification, the sign-in, password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
+| Two-step verification, whether tenants may issue coins, the sign-in, password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
 | The comment, report, rating, contact, viewer, and notification settings limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
@@ -70,11 +70,13 @@ It covers every role, **Auditor** included, since every operator can read every 
 
 ### Coins issued by tenants
 
-`publiractl policy set --tenant-coins-allowed` lets tenants issue coins: a balance a tenant's readers buy in advance and spend on that tenant's episodes. It is off until someone turns it on, both on a new install and on one upgraded from a release that did not have it.
+**Allow tenants to issue coins** (`--tenant-coins-allowed`) lets tenants issue coins: a balance a tenant's readers buy in advance and spend on that tenant's episodes. It is off until someone turns it on, both on a new install and on one upgraded from a release that did not have it.
+
+![The Allow tenants to issue coins checkbox on Security, with the line under it.](./platform-policies-tenant-coins.png)
 
 Coins are a stored-value instrument, so laws on prepaid payment instruments, electronic money, money transmission, or gift cards may reach them, depending on where you and each tenant are. In some jurisdictions the platform that runs the install, rather than the tenant that sells the coins, is the party those laws look at. Leave it off unless you have established that letting tenants issue coins does not make you the issuer, or have done what being one requires.
 
-Turning it on changes nothing a reader sees: a tenant still has to turn coins on for itself. Turning it off with `--tenant-coins-allowed=false` stops every tenant at once, whatever its own setting: no tenant sells coins and no reader spends them, and every reader keeps their balance. Turning it on again gives each tenant back the setting it had saved.
+Turning it on changes nothing a reader sees: a tenant still has to turn coins on for itself. Turning it off, by clearing the checkbox or with `--tenant-coins-allowed=false`, stops every tenant at once, whatever its own setting: no tenant sells coins and no reader spends them, and every reader keeps their balance. Turning it on again gives each tenant back the setting it had saved.
 
 ### Rate limits
 

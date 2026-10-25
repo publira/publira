@@ -247,6 +247,21 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      test("allowing tenants to issue coins", async ({ page }) => {
+        await openScreen(page, locale, "/policies/security");
+
+        await expectDocsScreenshot(page, {
+          element: docsField(
+            page.getByRole("checkbox", {
+              name: t("platform.policy.security.tenant_coins_allowed"),
+            })
+          ),
+          locale,
+          page: "operations/platform-policies",
+          subject: "tenant-coins",
+        });
+      });
+
       test("the rate limits on Security", async ({ page }) => {
         await openScreen(page, locale, "/policies/security");
 

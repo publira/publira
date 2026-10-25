@@ -143,6 +143,10 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "store_purchase_confirmation_per_minute",
   },
+  tenantCoinsAllowed: {
+    kind: "value",
+    name: "tenant_coins_allowed",
+  },
   waitFreeTicketUsePerDay: {
     kind: "value",
     name: "wait_free_ticket_use_per_day",
@@ -202,6 +206,7 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
       storePurchaseConfirmationPerDay: limitSchema(t, storePurchase),
       storePurchaseConfirmationPerMinute: limitSchema(t, storePurchase),
+      tenantCoinsAllowed: z.preprocess((value) => value === "on", z.boolean()),
       waitFreeTicketUsePerDay: limitSchema(t, waitFreeTicketUse),
       waitFreeTicketUsePerMinute: limitSchema(t, waitFreeTicketUse),
     })
