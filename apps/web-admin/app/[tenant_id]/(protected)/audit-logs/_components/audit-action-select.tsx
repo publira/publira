@@ -357,6 +357,22 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "subscription_plan_deleted",
             },
             {
+              label: t("admin.audit.actions.coin_settings_updated"),
+              value: "coin_settings_updated",
+            },
+            {
+              label: t("admin.audit.actions.coin_pack_created"),
+              value: "coin_pack_created",
+            },
+            {
+              label: t("admin.audit.actions.coin_pack_updated"),
+              value: "coin_pack_updated",
+            },
+            {
+              label: t("admin.audit.actions.coin_pack_retired"),
+              value: "coin_pack_retired",
+            },
+            {
               label: t("admin.audit.actions.royalty_config_updated"),
               value: "royalty_config_updated",
             },

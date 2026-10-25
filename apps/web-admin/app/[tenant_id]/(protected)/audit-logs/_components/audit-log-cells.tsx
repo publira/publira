@@ -352,6 +352,27 @@ const subscriptionPlanActionName = (action: string) => {
   }
 };
 
+/** An action on the tenant's coin settings or its coin packs. */
+const coinActionName = (action: string) => {
+  switch (action) {
+    case "coin_settings_updated": {
+      return <Message message="admin.audit.actions.coin_settings_updated" />;
+    }
+    case "coin_pack_created": {
+      return <Message message="admin.audit.actions.coin_pack_created" />;
+    }
+    case "coin_pack_updated": {
+      return <Message message="admin.audit.actions.coin_pack_updated" />;
+    }
+    case "coin_pack_retired": {
+      return <Message message="admin.audit.actions.coin_pack_retired" />;
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on readers, access tickets, royalties, or members. */
 const readerActionName = (action: string) => {
   switch (action) {
@@ -654,6 +675,7 @@ const actionName = (action: string) =>
   readerActionName(action) ??
   purchaseActionName(action) ??
   subscriptionPlanActionName(action) ??
+  coinActionName(action) ??
   settingsActionName(action) ??
   brandingActionName(action) ??
   integrationActionName(action) ??
@@ -802,11 +824,17 @@ const settingTargetName = (targetType: string) => {
 };
 
 /**
- * The name of an integration, subscription plan, royalty, or account target
- * type.
+ * The name of an integration, subscription plan, coin, royalty, or account
+ * target type.
  */
 const tenantTargetName = (targetType: string) => {
   switch (targetType) {
+    case "coin_pack": {
+      return <Message message="admin.audit.targets.coin_pack" />;
+    }
+    case "coin_settings": {
+      return <Message message="admin.audit.targets.coin_settings" />;
+    }
     case "fcm_config": {
       return <Message message="admin.audit.targets.fcm_config" />;
     }
