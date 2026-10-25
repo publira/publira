@@ -105,7 +105,6 @@ IMAGES_TG=$(target_group publira-images 8000)
 aws servicediscovery create-service --name publira-images --namespace-id "$NAMESPACE" \
   --dns-config 'RoutingPolicy=MULTIVALUE,DnsRecords=[{Type=A,TTL=10}]' \
   --health-check-custom-config FailureThreshold=1 > /dev/null
-service publira-images "$SERVER_SG" 8000 "$IMAGES_TG"
 ```
 
 Request a certificate naming the image hosts, in the load balancer's Region and in `us-east-1`, as in [Create the load balancer](./index.md#5-create-the-load-balancer), and validate it. Then create a second internal load balancer with the first load balancer's security group, which CloudFront's VPC origins and the `publira-server` security group already admit, and an HTTPS listener whose one rule forwards `/images` to the new service and answers everything else with a `404`:
@@ -122,6 +121,12 @@ IMAGES_LISTENER=$(aws elbv2 create-listener --load-balancer-arn "$IMAGES_ALB" --
 aws elbv2 create-rule --listener-arn "$IMAGES_LISTENER" --priority 1000 \
   --conditions "[$(path_is '["/images*"]')]" \
   --actions "Type=forward,TargetGroupArn=$IMAGES_TG" > /dev/null
+```
+
+The rule is what attaches the target group to a load balancer, and ECS refuses a service whose target group has none, so create the service only now:
+
+```bash
+service publira-images "$SERVER_SG" 8000 "$IMAGES_TG"
 ```
 
 Put CloudFront in front of it the way [CloudFront in front of ECS](./1-cloudfront.md) put it in front of the first: a VPC origin for `$IMAGES_ALB`, created as in [The VPC origin](./1-cloudfront.md#the-vpc-origin), and a distribution from the `distribution.json` of [The distribution](./1-cloudfront.md#the-distribution) with the image hosts in `Aliases`, their `us-east-1` certificate in `ViewerCertificate`, the new load balancer's DNS name and the new VPC origin's ID in `Origins`, and a `CallerReference` of its own. The function and the `publira-images` cache policy are the ones the first distribution uses, and its `/images*` behaviour caches the images as it does there. `publira-images.json` carries the `PUBLIRA_TRUSTED_PROXIES` of [The client address](./1-cloudfront.md#the-client-address), which covers this distribution and this load balancer as well.
