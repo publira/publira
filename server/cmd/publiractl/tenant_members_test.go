@@ -10,6 +10,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -92,6 +93,15 @@ func TestTenantShowUpdateSuspendAndResume(t *testing.T) {
 	}
 	if got := platformActions(t, pg); got != "tenant_info_updated,tenant_info_updated,tenant_info_updated,tenant_info_updated,tenant_suspended,tenant_resumed" {
 		t.Fatalf("audit actions = %s", got)
+	}
+	// Each update that moved a host owes the storefront a drop; the rename
+	// alone owes none.
+	var drops int
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2`, tenant.ID, outbox.EventTypeNextCacheRevalidation).Scan(&drops); err != nil {
+		t.Fatalf("count outbox_events: %v", err)
+	}
+	if drops != 3 {
+		t.Fatalf("cache invalidations recorded = %d, want 3", drops)
 	}
 }
 

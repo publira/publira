@@ -2,7 +2,7 @@
 title: Tenants
 description: Create a tenant, choose its domain and console host, change them later, and suspend a tenant.
 published: 2026-10-06
-updated: 2026-10-16
+updated: 2026-10-25
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
@@ -88,7 +88,9 @@ publiractl tenant update --tenant comics.example.com --name "Example Comics Ltd.
 
 ### Moving a tenant to another host name
 
-Each web app keeps the host names it has looked up for up to five minutes, so a new domain or console host takes that long to answer everywhere, and the old one keeps answering until then. Follow the order in [Adding a tenant](../2-deployments/4-edge/index.md#adding-a-tenant): put the new name in DNS, the certificates, and the routing before the change, and take the old one out once the change has taken effect. A tenant with no admin domain of its own has its console on `admin.<domain>`, so moving its domain moves its console too, and both new names have to be ready.
+The site stops answering on its old domain, and its pages link to the new one, as soon as `publira worker` has told the web apps about the change; a worker without `PUBLIRA_REVALIDATE_TOKEN` cannot, as [The outbox](./10-scheduled-jobs.md#the-outbox-mail-push-and-cache-revalidation) describes, and the old domain then keeps answering for up to five minutes. The new domain answers at once, unless someone opened it before the change: the site remembers a host name that belonged to no tenant for up to five minutes. The console keeps every host name it has looked up for up to five minutes, so a new console host takes that long to answer, and the old one keeps answering until then.
+
+Follow the order in [Adding a tenant](../2-deployments/4-edge/index.md#adding-a-tenant): put the new name in DNS, the certificates, and the routing before the change, and take the old one out once the change has taken effect. A tenant with no admin domain of its own has its console on `admin.<domain>`, so moving its domain moves its console too, and both new names have to be ready.
 
 Moving the domain also moves everything built on it:
 

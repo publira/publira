@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -14,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/tenantstatus"
 )
 
@@ -156,6 +158,11 @@ func (p UpdateParams) Validate() (Change, error) {
 // host, or its image host, is refused with a [*fielderr.Conflict], and so is a
 // change that moves the console host it implies onto one: clearing the admin
 // domain, or a domain whose admin.{domain} is taken.
+//
+// A change that moves any of the tenant's hosts also records in tx, through
+// [revalidate.RecordDeferred], the drop of the storefront entries built from
+// them, for the worker to send: publiractl makes this write as well as the
+// Platform API, and holds no requester to send it with.
 func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog.PlatformActor, c Change) (dbmodels.Tenant, error) {
 	q := dbmodels.New(tx)
 	params := dbmodels.UpdateTenantInfoParams{ID: c.id}
@@ -166,13 +173,11 @@ func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 	if err := lockHosts(ctx, q); err != nil {
 		return dbmodels.Tenant{}, err
 	}
-	if c.name == nil || c.domain == nil || c.adminDomain == nil || c.imageDomain == nil {
-		current, err := found(q.GetTenantByID(ctx, c.id))
-		if err != nil {
-			return dbmodels.Tenant{}, err
-		}
-		params.Name, params.Domain, params.AdminDomain, params.ImageDomain = current.Name, current.Domain, current.AdminDomain, current.ImageDomain
+	current, err := found(q.GetTenantByID(ctx, c.id))
+	if err != nil {
+		return dbmodels.Tenant{}, err
 	}
+	params.Name, params.Domain, params.AdminDomain, params.ImageDomain = current.Name, current.Domain, current.AdminDomain, current.ImageDomain
 	if c.name != nil {
 		params.Name = *c.name
 	}
@@ -198,6 +203,11 @@ func Update(ctx context.Context, tx *sql.Tx, logger *slog.Logger, actor auditlog
 			return dbmodels.Tenant{}, &fielderr.Conflict{Field: field}
 		}
 		return found(tenant, err)
+	}
+	if hostsMoved(current, tenant) {
+		if err := revalidate.RecordDeferred(ctx, q, tenant.ID, hostCacheTags(tenant.ID), time.Now()); err != nil {
+			return dbmodels.Tenant{}, err
+		}
 	}
 	if err := writeTenantEntry(ctx, q, logger, actor, "tenant_info_updated", tenant); err != nil {
 		return dbmodels.Tenant{}, err

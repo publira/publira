@@ -3,8 +3,10 @@ package platformtenants
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tenantstatus"
 	"github.com/publira/publira/server/internal/testutil"
@@ -290,6 +293,110 @@ func TestRenameKeepsTheHostsAConcurrentUpdateWrites(t *testing.T) {
 	}
 	if tenant.Name != "Renamed" || tenant.Domain != "moved.example.com" {
 		t.Fatalf("tenant = %q on %q, want the rename on the moved domain", tenant.Name, tenant.Domain)
+	}
+}
+
+// storefrontDrops reads the tags of every cache invalidation recorded for
+// tenantID, oldest first.
+func storefrontDrops(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID) [][]string {
+	t.Helper()
+	rows, err := pg.DB.QueryContext(context.Background(), `
+		SELECT payload FROM outbox_events
+		WHERE tenant_id = $1 AND event_type = $2
+		ORDER BY id`, tenantID, outbox.EventTypeNextCacheRevalidation)
+	if err != nil {
+		t.Fatalf("read outbox_events: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var drops [][]string
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatalf("scan outbox_events: %v", err)
+		}
+		var payload outbox.NextCacheRevalidationPayload
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			t.Fatalf("decode payload %s: %v", raw, err)
+		}
+		drops = append(drops, payload.Tags)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read outbox_events: %v", err)
+	}
+	return drops
+}
+
+func TestHostChangesRecordTheStorefrontDrop(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	seeded := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
+	update := func(p UpdateParams) {
+		t.Helper()
+		p.ID = seeded.ID
+		c, err := p.Validate()
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+			_, err := Update(context.Background(), tx, nil, auditlog.SystemPlatformActor, c)
+			return err
+		}); err != nil {
+			t.Fatalf("Update: %v", err)
+		}
+	}
+	want := slices.Sorted(slices.Values(hostCacheTags(seeded.ID)))
+
+	steps := []struct {
+		name   string
+		params UpdateParams
+		drops  bool
+	}{
+		{name: "rename", params: UpdateParams{Name: ptr("Renamed")}},
+		{name: "set the image domain", params: UpdateParams{ImageDomain: ptr("images.tenant-a.example.com")}, drops: true},
+		{name: "change the image domain", params: UpdateParams{ImageDomain: ptr("img.tenant-a.example.com")}, drops: true},
+		{name: "clear the image domain", params: UpdateParams{ImageDomain: ptr("")}, drops: true},
+		{name: "move the domain", params: UpdateParams{Domain: ptr("moved.example.com")}, drops: true},
+		{name: "set the admin domain", params: UpdateParams{AdminDomain: ptr("console.example.net")}, drops: true},
+		{name: "clear the admin domain", params: UpdateParams{AdminDomain: ptr("")}, drops: true},
+		{name: "write the hosts the tenant has", params: UpdateParams{Name: ptr("Renamed again"), Domain: ptr("moved.example.com"), AdminDomain: ptr("")}},
+	}
+	recorded := 0
+	for _, step := range steps {
+		update(step.params)
+		drops := storefrontDrops(t, pg, seeded.ID)
+		if !step.drops {
+			if len(drops) != recorded {
+				t.Fatalf("%s: %d drops recorded, want none", step.name, len(drops)-recorded)
+			}
+			continue
+		}
+		if len(drops) != recorded+1 {
+			t.Fatalf("%s: %d drops recorded, want one", step.name, len(drops)-recorded)
+		}
+		recorded++
+		if got := slices.Sorted(slices.Values(drops[recorded-1])); !slices.Equal(got, want) {
+			t.Fatalf("%s: tags = %v, want %v", step.name, got, want)
+		}
+	}
+
+	// The drop is recorded in the update's transaction, so a rollback takes
+	// it with the move.
+	c, err := UpdateParams{ID: seeded.ID, Domain: ptr("rolled-back.example.com")}.Validate()
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	tx, err := pg.OpenPlatformDB(t).BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	if _, err := Update(context.Background(), tx, nil, auditlog.SystemPlatformActor, c); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+	if drops := storefrontDrops(t, pg, seeded.ID); len(drops) != recorded {
+		t.Fatalf("after a rollback: %d drops, want %d", len(drops), recorded)
 	}
 }
 
