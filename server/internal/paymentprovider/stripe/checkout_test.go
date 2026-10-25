@@ -109,3 +109,48 @@ func TestStartCheckoutSellsOneLineWithoutADiscount(t *testing.T) {
 		t.Fatalf("session = %v, want promotion codes allowed", session)
 	}
 }
+
+// A checkout of a pack carries what it grants to the notification that
+// confirms it, and takes no promotion code: the coins are worth what was paid
+// for them, and a code would grant them for less.
+func TestStartCheckoutOfACoinPackTakesNoPromotionCode(t *testing.T) {
+	api := stripetest.NewAPI(t)
+	purchase := paymentprovider.Purchase{
+		TenantID:       uuid.New(),
+		ReaderID:       uuid.New(),
+		CoinPackID:     uuid.New(),
+		Coins:          1000,
+		BonusCoins:     100,
+		CoinExpiryDays: 180,
+		Kind:           paymentprovider.KindPurchase,
+		Price:          1000,
+		Currency:       "JPY",
+	}
+	if _, err := stripe.New(stripe.WithAPIURL(api.URL())).StartCheckout(t.Context(), checkoutCredentials, paymentprovider.CheckoutRequest{
+		Purchase:       purchase,
+		LineItemName:   "1,100 Points (including 100 bonus)",
+		SuccessURL:     "https://store.example/my/coins?checkout=success&coin_pack=PACK01",
+		CancelURL:      "https://store.example/my/coins?checkout=cancelled&coin_pack=PACK01",
+		IdempotencyKey: "coin-pack-checkout:key",
+	}); err != nil {
+		t.Fatalf("StartCheckout: %v", err)
+	}
+	session := api.CheckoutSessions()[0].Form
+	if session.Has("allow_promotion_codes") || session.Has("discounts[0][coupon]") {
+		t.Fatalf("session = %v, want neither a promotion code nor a discount", session)
+	}
+	for key, want := range map[string]string{
+		"metadata[coin_pack_id]":     purchase.CoinPackID.String(),
+		"metadata[coins]":            "1000",
+		"metadata[bonus_coins]":      "100",
+		"metadata[coin_expiry_days]": "180",
+		"metadata[price]":            "1000",
+	} {
+		if got := session.Get(key); got != want {
+			t.Fatalf("%s = %q, want %q", key, got, want)
+		}
+	}
+	if session.Has("metadata[episode_id]") {
+		t.Fatalf("metadata = %v, want no episode", session)
+	}
+}

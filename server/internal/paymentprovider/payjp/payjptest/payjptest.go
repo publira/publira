@@ -417,7 +417,7 @@ func PurchaseMetadata(purchase paymentprovider.Purchase) map[string]any {
 		payjp.MetadataUserID:   purchase.ReaderID.String(),
 		payjp.MetadataPrice:    strconv.FormatInt(int64(purchase.Price), 10),
 	}
-	// Each of the three is written when it is set, so a purchase naming two
+	// Each of the four is written when it is set, so a purchase naming two
 	// stands for a checkout the provider would have to refuse.
 	if purchase.EpisodeID != uuid.Nil {
 		metadata[payjp.MetadataEpisodeID] = purchase.EpisodeID.String()
@@ -427,6 +427,12 @@ func PurchaseMetadata(purchase paymentprovider.Purchase) map[string]any {
 	}
 	if purchase.SeriesBundleID != uuid.Nil {
 		metadata[payjp.MetadataSeriesBundleID] = purchase.SeriesBundleID.String()
+	}
+	if purchase.CoinPackID != uuid.Nil {
+		metadata[payjp.MetadataCoinPackID] = purchase.CoinPackID.String()
+		metadata[payjp.MetadataCoins] = strconv.FormatInt(int64(purchase.Coins), 10)
+		metadata[payjp.MetadataBonusCoins] = strconv.FormatInt(int64(purchase.BonusCoins), 10)
+		metadata[payjp.MetadataCoinExpiryDays] = strconv.FormatInt(int64(purchase.CoinExpiryDays), 10)
 	}
 	if purchase.ReadingPeriodHours > 0 {
 		metadata[payjp.MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)

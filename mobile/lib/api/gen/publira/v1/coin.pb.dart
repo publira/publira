@@ -529,6 +529,7 @@ class CoinBalance extends $pb.GeneratedMessage {
     $core.String? coinName,
     $core.String? nearestExpiryAt,
     $fixnum.Int64? nearestExpiryCoins,
+    $fixnum.Int64? shortfallCoins,
   }) {
     final result = CoinBalance._();
     if (coins != null) result.coins = coins;
@@ -536,6 +537,7 @@ class CoinBalance extends $pb.GeneratedMessage {
     if (nearestExpiryAt != null) result.nearestExpiryAt = nearestExpiryAt;
     if (nearestExpiryCoins != null)
       result.nearestExpiryCoins = nearestExpiryCoins;
+    if (shortfallCoins != null) result.shortfallCoins = shortfallCoins;
     return result;
   }
 
@@ -556,6 +558,7 @@ class CoinBalance extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'coinName')
     ..aOS(3, _omitFieldNames ? '' : 'nearestExpiryAt')
     ..aInt64(4, _omitFieldNames ? '' : 'nearestExpiryCoins')
+    ..aInt64(5, _omitFieldNames ? '' : 'shortfallCoins')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -620,6 +623,19 @@ class CoinBalance extends $pb.GeneratedMessage {
   $core.bool hasNearestExpiryCoins() => $_has(3);
   @$pb.TagNumber(4)
   void clearNearestExpiryCoins() => $_clearField(4);
+
+  /// The coins the reader owes: coins of a pack that had been spent before the
+  /// pack was refunded or disputed. They are taken out of the reader's next
+  /// grant as it is made, before any coin of it can be spent, and coins is
+  /// never reduced for them. 0 while the reader owes nothing.
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get shortfallCoins => $_getI64(4);
+  @$pb.TagNumber(5)
+  set shortfallCoins($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasShortfallCoins() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearShortfallCoins() => $_clearField(5);
 }
 
 /// Answers the signed-in reader's balance.
@@ -885,7 +901,9 @@ class CoinTransaction extends $pb.GeneratedMessage {
   /// purchase, titled in the request's locale. The episode carries the id, the
   /// public_id, the title, the locale, and the order_index, and the series the
   /// id, the public_id, the title, and the locale. Both are left out for an
-  /// episode the calling surface may not show; the purchase is not.
+  /// episode the calling surface may not show; the purchase is not. On a
+  /// grant, a revocation, an expiry, a shortfall, or a settlement of coins a
+  /// pack granted: the purchase of that pack, and no episode or series.
   @$pb.TagNumber(6)
   $core.String get purchaseId => $_getSZ(5);
   @$pb.TagNumber(6)
@@ -1395,12 +1413,200 @@ class PayEpisodeWithCoinsResponse extends $pb.GeneratedMessage {
   CoinBalance ensureBalance() => $_ensure(1);
 }
 
-/// A tenant's coins: what they are, how many a reader holds, and spending them
-/// on an episode. Every RPC here is failed_precondition with the ErrorInfo
-/// reason COINS_UNAVAILABLE while the platform does not allow tenant coins or
-/// the tenant has not turned its coins on, and a client answered that shows
-/// nothing about coins. GetCoinSettings takes optional authentication; the
-/// others answer the signed-in reader alone.
+/// Opens a checkout of a pack through the tenant's payment provider, on the
+/// web, for the signed-in reader, and answers the URL to send them to. The
+/// checkout carries the pack's price, its coins and bonus coins, and the
+/// tenant's expiry_days as they are now, and the purchase grants on those
+/// terms once the provider's notification confirms the payment; coming back
+/// from the checkout page grants nothing by itself. The coins expire
+/// expiry_days after the purchase is recorded.
+///
+/// The app buys a pack through its store instead (StartStorePurchase with
+/// coin_pack_id), as Apple and Google require, so this takes no client.
+///
+/// A pack that is not on sale, retired, or another tenant's is not_found. A
+/// tenant that is not selling packs, one with no enabled payment provider, and
+/// one whose site has no domain are failed_precondition.
+class StartCoinPackCheckoutRequest extends $pb.GeneratedMessage {
+  factory StartCoinPackCheckoutRequest({
+    $0.TenantContext? tenant,
+    $core.String? coinPackId,
+    $core.String? returnEpisodeId,
+    $core.String? locale,
+  }) {
+    final result = StartCoinPackCheckoutRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (coinPackId != null) result.coinPackId = coinPackId;
+    if (returnEpisodeId != null) result.returnEpisodeId = returnEpisodeId;
+    if (locale != null) result.locale = locale;
+    return result;
+  }
+
+  StartCoinPackCheckoutRequest._();
+
+  factory StartCoinPackCheckoutRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartCoinPackCheckoutRequest()..mergeFromBuffer(data, registry);
+  factory StartCoinPackCheckoutRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartCoinPackCheckoutRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartCoinPackCheckoutRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartCoinPackCheckoutRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'coinPackId')
+    ..aOS(3, _omitFieldNames ? '' : 'returnEpisodeId')
+    ..aOS(4, _omitFieldNames ? '' : 'locale')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartCoinPackCheckoutRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartCoinPackCheckoutRequest copyWith(
+          void Function(StartCoinPackCheckoutRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StartCoinPackCheckoutRequest))
+          as StartCoinPackCheckoutRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartCoinPackCheckoutRequest() / StartCoinPackCheckoutRequest.new instead')
+  static StartCoinPackCheckoutRequest create() =>
+      StartCoinPackCheckoutRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartCoinPackCheckoutRequest._();
+  @$core.override
+  StartCoinPackCheckoutRequest createEmptyInstance() =>
+      StartCoinPackCheckoutRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StartCoinPackCheckoutRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartCoinPackCheckoutRequest>(
+          StartCoinPackCheckoutRequest.$_createMessage);
+  static StartCoinPackCheckoutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The pack to buy (CoinPack.id). Required.
+  @$pb.TagNumber(2)
+  $core.String get coinPackId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set coinPackId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCoinPackId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCoinPackId() => $_clearField(2);
+
+  /// An episode to send the reader back to once the checkout is over, the one
+  /// they were short of coins for, with `checkout` (`success` or `cancelled`)
+  /// and `coin_pack` (the pack's public_id) in the query. One the storefront
+  /// may not show is invalid_argument with a field violation on
+  /// return_episode_id. Empty sends them to `/my/coins` on the tenant's site,
+  /// with the same query.
+  @$pb.TagNumber(3)
+  $core.String get returnEpisodeId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set returnEpisodeId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReturnEpisodeId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReturnEpisodeId() => $_clearField(3);
+
+  /// The reader's locale, which the checkout page names the pack and the
+  /// tenant's coin in. Empty means the tenant's default locale.
+  @$pb.TagNumber(4)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocale() => $_clearField(4);
+}
+
+class StartCoinPackCheckoutResponse extends $pb.GeneratedMessage {
+  factory StartCoinPackCheckoutResponse({
+    $core.String? checkoutUrl,
+  }) {
+    final result = StartCoinPackCheckoutResponse._();
+    if (checkoutUrl != null) result.checkoutUrl = checkoutUrl;
+    return result;
+  }
+
+  StartCoinPackCheckoutResponse._();
+
+  factory StartCoinPackCheckoutResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartCoinPackCheckoutResponse()..mergeFromBuffer(data, registry);
+  factory StartCoinPackCheckoutResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartCoinPackCheckoutResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartCoinPackCheckoutResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartCoinPackCheckoutResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'checkoutUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartCoinPackCheckoutResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartCoinPackCheckoutResponse copyWith(
+          void Function(StartCoinPackCheckoutResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StartCoinPackCheckoutResponse))
+          as StartCoinPackCheckoutResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartCoinPackCheckoutResponse() / StartCoinPackCheckoutResponse.new instead')
+  static StartCoinPackCheckoutResponse create() =>
+      StartCoinPackCheckoutResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartCoinPackCheckoutResponse._();
+  @$core.override
+  StartCoinPackCheckoutResponse createEmptyInstance() =>
+      StartCoinPackCheckoutResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StartCoinPackCheckoutResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartCoinPackCheckoutResponse>(
+          StartCoinPackCheckoutResponse.$_createMessage);
+  static StartCoinPackCheckoutResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get checkoutUrl => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set checkoutUrl($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCheckoutUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCheckoutUrl() => $_clearField(1);
+}
+
+/// A tenant's coins: what they are, how many a reader holds, buying them, and
+/// spending them on an episode. Every RPC here is failed_precondition with the
+/// ErrorInfo reason COINS_UNAVAILABLE while the platform does not allow tenant
+/// coins or the tenant has not turned its coins on, and a client answered that
+/// shows nothing about coins. GetCoinSettings takes optional authentication;
+/// the others answer the signed-in reader alone.
 class CoinServiceApi {
   final $pb.RpcClient _client;
 
@@ -1422,6 +1628,10 @@ class CoinServiceApi {
           $pb.ClientContext? ctx, PayEpisodeWithCoinsRequest request) =>
       _client.invoke<PayEpisodeWithCoinsResponse>(ctx, 'CoinService',
           'PayEpisodeWithCoins', request, PayEpisodeWithCoinsResponse());
+  $async.Future<StartCoinPackCheckoutResponse> startCoinPackCheckout(
+          $pb.ClientContext? ctx, StartCoinPackCheckoutRequest request) =>
+      _client.invoke<StartCoinPackCheckoutResponse>(ctx, 'CoinService',
+          'StartCoinPackCheckout', request, StartCoinPackCheckoutResponse());
 }
 
 const $core.bool _omitFieldNames =

@@ -138,6 +138,14 @@ type CoinGrant struct {
 	ExpiresAt      time.Time     `json:"expires_at"`
 	GrantedAt      time.Time     `json:"granted_at"`
 	UpdatedAt      time.Time     `json:"updated_at"`
+	RevokedAt      sql.NullTime  `json:"revoked_at"`
+}
+
+type CoinPackPurchase struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	PurchaseID uuid.UUID `json:"purchase_id"`
+	Coins      int32     `json:"coins"`
+	BonusCoins int32     `json:"bonus_coins"`
 }
 
 type CoinSpendAllocation struct {
@@ -543,6 +551,15 @@ type ExpiredCheckout struct {
 	TenantID           uuid.UUID `json:"tenant_id"`
 	UserID             uuid.UUID `json:"user_id"`
 	EpisodeID          uuid.UUID `json:"episode_id"`
+	Provider           string    `json:"provider"`
+	ProviderCheckoutID string    `json:"provider_checkout_id"`
+	ExpiredAt          time.Time `json:"expired_at"`
+}
+
+type ExpiredCoinPackCheckout struct {
+	TenantID           uuid.UUID `json:"tenant_id"`
+	UserID             uuid.UUID `json:"user_id"`
+	CoinPackID         uuid.UUID `json:"coin_pack_id"`
 	Provider           string    `json:"provider"`
 	ProviderCheckoutID string    `json:"provider_checkout_id"`
 	ExpiredAt          time.Time `json:"expired_at"`
@@ -1001,6 +1018,7 @@ type Purchase struct {
 	VolumeID                uuid.NullUUID  `json:"volume_id"`
 	SeriesBundleID          uuid.NullUUID  `json:"series_bundle_id"`
 	ProviderPromotionCodeID sql.NullString `json:"provider_promotion_code_id"`
+	CoinPackID              uuid.NullUUID  `json:"coin_pack_id"`
 }
 
 type PurchaseEpisodePart struct {
@@ -1294,13 +1312,17 @@ type StorePurchaseIntent struct {
 	ID                 uuid.UUID     `json:"id"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
 	UserID             uuid.UUID     `json:"user_id"`
-	EpisodeID          uuid.UUID     `json:"episode_id"`
+	EpisodeID          uuid.NullUUID `json:"episode_id"`
 	Price              int32         `json:"price"`
 	ProductID          string        `json:"product_id"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
 	CreatedAt          time.Time     `json:"created_at"`
 	ConsumedAt         sql.NullTime  `json:"consumed_at"`
 	Currency           string        `json:"currency"`
+	CoinPackID         uuid.NullUUID `json:"coin_pack_id"`
+	Coins              sql.NullInt32 `json:"coins"`
+	BonusCoins         sql.NullInt32 `json:"bonus_coins"`
+	CoinExpiryDays     sql.NullInt32 `json:"coin_expiry_days"`
 }
 
 type Subscription struct {

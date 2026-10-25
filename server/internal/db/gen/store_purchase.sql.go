@@ -25,7 +25,7 @@ WHERE r.tenant_id = p.tenant_id
     AND r.store_transaction_id = p.store_transaction_id
     AND p.tenant_id = $1
     AND p.id = $2
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id
 `
 
 type ApplyUnappliedStoreRefundToPurchaseParams struct {
@@ -64,6 +64,7 @@ func (q *Queries) ApplyUnappliedStoreRefundToPurchase(ctx context.Context, arg A
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -113,7 +114,7 @@ VALUES (
     $10
 )
 ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 `
 
 type CreateStorePurchaseParams struct {
@@ -170,6 +171,7 @@ func (q *Queries) CreateStorePurchase(ctx context.Context, arg CreateStorePurcha
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -186,22 +188,34 @@ SELECT p.id,
     COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
-    et.locale AS episode_title_locale,
+    -- Empty on a purchase of a pack, which is of no episode: sqlc reads the
+    -- columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(et.locale, '')::text AS episode_title_locale,
     e.order_index AS episode_order_index,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title,
-    str.locale AS series_title_locale
+    COALESCE(str.title, '')::text AS series_title,
+    COALESCE(str.locale, '')::text AS series_title_locale
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id AND ct.purchase_id = p.id
-    JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
-    JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
-    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, $1::text) et ON TRUE
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id AND cpp.purchase_id = p.id
+    LEFT JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
+    LEFT JOIN LATERAL series_translation_for(s.id, $1::text) str ON TRUE
 WHERE p.tenant_id = $2
     AND p.user_id = $3::uuid
     AND p.id = $4
+    AND (
+        p.episode_id IS NOT NULL
+        OR p.coin_pack_id IS NOT NULL
+    )
 `
 
 type GetMyPurchaseParams struct {
@@ -212,26 +226,31 @@ type GetMyPurchaseParams struct {
 }
 
 type GetMyPurchaseRow struct {
-	ID                 uuid.UUID    `json:"id"`
-	Kind               string       `json:"kind"`
-	PriceAtPurchase    int32        `json:"price_at_purchase"`
-	Currency           string       `json:"currency"`
-	ExpiresAt          sql.NullTime `json:"expires_at"`
-	RevokedAt          sql.NullTime `json:"revoked_at"`
-	PurchasedAt        time.Time    `json:"purchased_at"`
-	CoinsSpent         int32        `json:"coins_spent"`
-	EpisodeID          uuid.UUID    `json:"episode_id"`
-	EpisodePublicID    string       `json:"episode_public_id"`
-	EpisodeTitle       string       `json:"episode_title"`
-	EpisodeTitleLocale string       `json:"episode_title_locale"`
-	EpisodeOrderIndex  int32        `json:"episode_order_index"`
-	SeriesID           uuid.UUID    `json:"series_id"`
-	SeriesPublicID     string       `json:"series_public_id"`
-	SeriesTitle        string       `json:"series_title"`
-	SeriesTitleLocale  string       `json:"series_title_locale"`
+	ID                 uuid.UUID      `json:"id"`
+	Kind               string         `json:"kind"`
+	PriceAtPurchase    int32          `json:"price_at_purchase"`
+	Currency           string         `json:"currency"`
+	ExpiresAt          sql.NullTime   `json:"expires_at"`
+	RevokedAt          sql.NullTime   `json:"revoked_at"`
+	PurchasedAt        time.Time      `json:"purchased_at"`
+	CoinsSpent         int32          `json:"coins_spent"`
+	EpisodeID          uuid.NullUUID  `json:"episode_id"`
+	EpisodePublicID    sql.NullString `json:"episode_public_id"`
+	EpisodeTitle       string         `json:"episode_title"`
+	EpisodeTitleLocale string         `json:"episode_title_locale"`
+	EpisodeOrderIndex  sql.NullInt32  `json:"episode_order_index"`
+	CoinPackID         uuid.NullUUID  `json:"coin_pack_id"`
+	CoinPackPublicID   sql.NullString `json:"coin_pack_public_id"`
+	CoinPackCoins      sql.NullInt32  `json:"coin_pack_coins"`
+	CoinPackBonusCoins sql.NullInt32  `json:"coin_pack_bonus_coins"`
+	SeriesID           uuid.NullUUID  `json:"series_id"`
+	SeriesPublicID     sql.NullString `json:"series_public_id"`
+	SeriesTitle        string         `json:"series_title"`
+	SeriesTitleLocale  string         `json:"series_title_locale"`
 }
 
-// One purchase of the reader's, shaped as the library lists it.
+// One purchase of the reader's, an episode's or a pack's, shaped as the
+// library lists it.
 func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (GetMyPurchaseRow, error) {
 	row := q.db.QueryRowContext(ctx, GetMyPurchase,
 		arg.Locale,
@@ -254,6 +273,10 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 		&i.EpisodeTitle,
 		&i.EpisodeTitleLocale,
 		&i.EpisodeOrderIndex,
+		&i.CoinPackID,
+		&i.CoinPackPublicID,
+		&i.CoinPackCoins,
+		&i.CoinPackBonusCoins,
 		&i.SeriesID,
 		&i.SeriesPublicID,
 		&i.SeriesTitle,
@@ -263,7 +286,7 @@ func (q *Queries) GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (G
 }
 
 const GetStorePurchaseByTransaction = `-- name: GetStorePurchaseByTransaction :one
-SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
+SELECT id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 FROM purchases
 WHERE tenant_id = $1
     AND store = $2::text
@@ -304,6 +327,7 @@ func (q *Queries) GetStorePurchaseByTransaction(ctx context.Context, arg GetStor
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -336,7 +360,7 @@ func (q *Queries) HoldUnappliedStoreRefund(ctx context.Context, arg HoldUnapplie
 }
 
 const LockStorePurchaseIntent = `-- name: LockStorePurchaseIntent :one
-SELECT id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency
+SELECT id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days
 FROM store_purchase_intents
 WHERE tenant_id = $1
     AND id = $2
@@ -365,6 +389,10 @@ func (q *Queries) LockStorePurchaseIntent(ctx context.Context, arg LockStorePurc
 		&i.CreatedAt,
 		&i.ConsumedAt,
 		&i.Currency,
+		&i.CoinPackID,
+		&i.Coins,
+		&i.BonusCoins,
+		&i.CoinExpiryDays,
 	)
 	return i, err
 }
@@ -395,6 +423,87 @@ func (q *Queries) LockStoreTransaction(ctx context.Context, arg LockStoreTransac
 	return err
 }
 
+const OpenStoreCoinPackPurchaseIntent = `-- name: OpenStoreCoinPackPurchaseIntent :one
+INSERT INTO store_purchase_intents (
+    id,
+    tenant_id,
+    user_id,
+    coin_pack_id,
+    price,
+    product_id,
+    currency,
+    coins,
+    bonus_coins,
+    coin_expiry_days
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4::uuid,
+    $5,
+    $6,
+    $7,
+    $8::integer,
+    $9::integer,
+    $10::integer
+)
+ON CONFLICT (tenant_id, user_id, coin_pack_id, product_id) WHERE consumed_at IS NULL AND coin_pack_id IS NOT NULL DO
+UPDATE
+SET product_id = EXCLUDED.product_id
+RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days
+`
+
+type OpenStoreCoinPackPurchaseIntentParams struct {
+	ID             uuid.UUID `json:"id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	CoinPackID     uuid.UUID `json:"coin_pack_id"`
+	Price          int32     `json:"price"`
+	ProductID      string    `json:"product_id"`
+	Currency       string    `json:"currency"`
+	Coins          int32     `json:"coins"`
+	BonusCoins     int32     `json:"bonus_coins"`
+	CoinExpiryDays int32     `json:"coin_expiry_days"`
+}
+
+// Opens the reader's intent to buy a pack as a store product, or answers the
+// one already open for the same pack and product, as
+// OpenStorePurchaseIntent does for an episode, with the terms it was first
+// opened on.
+func (q *Queries) OpenStoreCoinPackPurchaseIntent(ctx context.Context, arg OpenStoreCoinPackPurchaseIntentParams) (StorePurchaseIntent, error) {
+	row := q.db.QueryRowContext(ctx, OpenStoreCoinPackPurchaseIntent,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.CoinPackID,
+		arg.Price,
+		arg.ProductID,
+		arg.Currency,
+		arg.Coins,
+		arg.BonusCoins,
+		arg.CoinExpiryDays,
+	)
+	var i StorePurchaseIntent
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.UserID,
+		&i.EpisodeID,
+		&i.Price,
+		&i.ProductID,
+		&i.ReadingPeriodHours,
+		&i.CreatedAt,
+		&i.ConsumedAt,
+		&i.Currency,
+		&i.CoinPackID,
+		&i.Coins,
+		&i.BonusCoins,
+		&i.CoinExpiryDays,
+	)
+	return i, err
+}
+
 const OpenStorePurchaseIntent = `-- name: OpenStorePurchaseIntent :one
 INSERT INTO store_purchase_intents (
     id,
@@ -410,7 +519,7 @@ VALUES (
     $1,
     $2,
     $3,
-    $4,
+    $4::uuid,
     $5,
     $6,
     $7,
@@ -419,7 +528,7 @@ VALUES (
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
 UPDATE
 SET product_id = EXCLUDED.product_id
-RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency
+RETURNING id, tenant_id, user_id, episode_id, price, product_id, reading_period_hours, created_at, consumed_at, currency, coin_pack_id, coins, bonus_coins, coin_expiry_days
 `
 
 type OpenStorePurchaseIntentParams struct {
@@ -460,6 +569,10 @@ func (q *Queries) OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurc
 		&i.CreatedAt,
 		&i.ConsumedAt,
 		&i.Currency,
+		&i.CoinPackID,
+		&i.Coins,
+		&i.BonusCoins,
+		&i.CoinExpiryDays,
 	)
 	return i, err
 }
@@ -473,7 +586,7 @@ SET refunded_amount = price_at_purchase,
 WHERE tenant_id = $1
     AND store = $2::text
     AND store_transaction_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 `
 
 type RecordStoreRefundOnPurchaseParams struct {
@@ -515,6 +628,7 @@ func (q *Queries) RecordStoreRefundOnPurchase(ctx context.Context, arg RecordSto
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }

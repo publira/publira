@@ -17,13 +17,47 @@ VALUES (
     sqlc.arg('id'),
     sqlc.arg('tenant_id'),
     sqlc.arg('user_id'),
-    sqlc.arg('episode_id'),
+    sqlc.arg('episode_id')::uuid,
     sqlc.arg('price'),
     sqlc.arg('product_id'),
     sqlc.narg('reading_period_hours'),
     sqlc.arg('currency')
 )
 ON CONFLICT (tenant_id, user_id, episode_id, product_id) WHERE consumed_at IS NULL DO
+UPDATE
+SET product_id = EXCLUDED.product_id
+RETURNING *;
+
+-- name: OpenStoreCoinPackPurchaseIntent :one
+-- Opens the reader's intent to buy a pack as a store product, or answers the
+-- one already open for the same pack and product, as
+-- OpenStorePurchaseIntent does for an episode, with the terms it was first
+-- opened on.
+INSERT INTO store_purchase_intents (
+    id,
+    tenant_id,
+    user_id,
+    coin_pack_id,
+    price,
+    product_id,
+    currency,
+    coins,
+    bonus_coins,
+    coin_expiry_days
+)
+VALUES (
+    sqlc.arg('id'),
+    sqlc.arg('tenant_id'),
+    sqlc.arg('user_id'),
+    sqlc.arg('coin_pack_id')::uuid,
+    sqlc.arg('price'),
+    sqlc.arg('product_id'),
+    sqlc.arg('currency'),
+    sqlc.arg('coins')::integer,
+    sqlc.arg('bonus_coins')::integer,
+    sqlc.arg('coin_expiry_days')::integer
+)
+ON CONFLICT (tenant_id, user_id, coin_pack_id, product_id) WHERE consumed_at IS NULL AND coin_pack_id IS NOT NULL DO
 UPDATE
 SET product_id = EXCLUDED.product_id
 RETURNING *;
@@ -84,7 +118,8 @@ ON CONFLICT (tenant_id, store, store_transaction_id) DO NOTHING
 RETURNING *;
 
 -- name: GetMyPurchase :one
--- One purchase of the reader's, shaped as the library lists it.
+-- One purchase of the reader's, an episode's or a pack's, shaped as the
+-- library lists it.
 SELECT p.id,
     p.kind,
     p.price_at_purchase,
@@ -96,22 +131,34 @@ SELECT p.id,
     COALESCE(ct.coins, 0)::integer AS coins_spent,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
-    et.locale AS episode_title_locale,
+    -- Empty on a purchase of a pack, which is of no episode: sqlc reads the
+    -- columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(et.locale, '')::text AS episode_title_locale,
     e.order_index AS episode_order_index,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title,
-    str.locale AS series_title_locale
+    COALESCE(str.title, '')::text AS series_title,
+    COALESCE(str.locale, '')::text AS series_title_locale
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id AND ct.purchase_id = p.id
-    JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
-    JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
-    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id AND cpp.purchase_id = p.id
+    LEFT JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
+    LEFT JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str ON TRUE
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.user_id = sqlc.arg('user_id')::uuid
-    AND p.id = sqlc.arg('id');
+    AND p.id = sqlc.arg('id')
+    AND (
+        p.episode_id IS NOT NULL
+        OR p.coin_pack_id IS NOT NULL
+    );
 
 -- name: RecordStoreRefundOnPurchase :one
 -- Records a store's refund on the purchase of the transaction it names. A

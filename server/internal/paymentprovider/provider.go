@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"slices"
 
@@ -161,10 +162,35 @@ func CheckSeriesBundleSale(kind Kind, readingPeriodHours int64) error {
 	return nil
 }
 
-// Purchase names what a completed checkout sells: one episode, one volume, or
-// one series bundle, so exactly one of EpisodeID, VolumeID, and
-// SeriesBundleID is set and the others are [uuid.Nil]. The provider carries it
-// from [CheckoutRequest] to the notification that confirms it.
+// CheckCoinPackSale refuses the terms a checkout of a pack of coins cannot
+// carry, as [CheckVolumeSale] does for a volume. A pack is bought once and for
+// good, and what it grants, coins and bonus coins that expire expiryDays after
+// the purchase, has to be a grant the ledger can hold.
+func CheckCoinPackSale(kind Kind, readingPeriodHours int64, coins, bonusCoins, expiryDays int64) error {
+	if kind != KindPurchase {
+		return errors.New("a coin pack is never rented")
+	}
+	if readingPeriodHours != 0 {
+		return errors.New("a coin pack names no reading period")
+	}
+	if coins < 1 || bonusCoins < 0 || coins+bonusCoins > math.MaxInt32 {
+		return errors.New("a coin pack grants at least one coin and no more than an int32 holds")
+	}
+	if expiryDays < 1 || expiryDays > MaxCoinExpiryDays {
+		return fmt.Errorf("a coin pack's coins expire 1 to %d days after the purchase", MaxCoinExpiryDays)
+	}
+	return nil
+}
+
+// MaxCoinExpiryDays is the longest a tenant's coins may last, which
+// tenant_coin_config caps expiry_days at.
+const MaxCoinExpiryDays = 36500
+
+// Purchase names what a completed checkout sells: one episode, one volume,
+// one series bundle, or one pack of coins, so exactly one of EpisodeID,
+// VolumeID, SeriesBundleID, and CoinPackID is set and the others are
+// [uuid.Nil]. The provider carries it from [CheckoutRequest] to the
+// notification that confirms it.
 type Purchase struct {
 	TenantID  uuid.UUID
 	ReaderID  uuid.UUID
@@ -175,12 +201,21 @@ type Purchase struct {
 	// idempotency key is made from while it is zero, so a checkout of an
 	// episode or a volume keeps the key it had before bundles existed.
 	SeriesBundleID uuid.UUID `json:",omitzero"`
+	// CoinPackID names the pack a checkout of coins sells, and Coins,
+	// BonusCoins, and CoinExpiryDays what it grants: the pack's coins and bonus
+	// coins and the tenant's expiry_days as the checkout was started on them.
+	// Each is left out of the encoding an idempotency key is made from while it
+	// is zero, as SeriesBundleID is.
+	CoinPackID     uuid.UUID `json:",omitzero"`
+	Coins          int32     `json:",omitzero"`
+	BonusCoins     int32     `json:",omitzero"`
+	CoinExpiryDays int32     `json:",omitzero"`
 	// Kind is which of the episode's sales the checkout is for, and always
-	// [KindPurchase] for a volume and a series bundle.
+	// [KindPurchase] for a volume, a series bundle, and a pack.
 	Kind Kind
-	// Price is the episode's or the volume's price at the time of checkout,
-	// or what a series bundle charges once its discount is taken off, in the
-	// minor unit of Currency.
+	// Price is the episode's, the volume's, or the pack's price at the time of
+	// checkout, or what a series bundle charges once its discount is taken
+	// off, in the minor unit of Currency.
 	Price int32
 	// Currency is the ISO 4217 code, in capitals, of the tenant currency the
 	// checkout charges in. A provider reads it back from the payment it
@@ -189,7 +224,7 @@ type Purchase struct {
 	Currency string
 	// ReadingPeriodHours limits how long the purchase opens the episode; zero
 	// means it does not expire. A rental carries its rental period here, and
-	// a volume and a series bundle always zero.
+	// a volume, a series bundle, and a pack always zero.
 	ReadingPeriodHours int32
 }
 
@@ -215,12 +250,13 @@ type Discount struct {
 	Amount int32
 }
 
-// CheckoutRequest starts one reader's checkout of one episode, one volume, or
-// one series bundle.
+// CheckoutRequest starts one reader's checkout of one episode, one volume, one
+// series bundle, or one pack of coins.
 type CheckoutRequest struct {
 	Purchase Purchase
 	// LineItemName is what the checkout names the sale: the episode's title,
-	// and for a rental the period it is rented for besides, or the volume's.
+	// and for a rental the period it is rented for besides, the volume's, or
+	// the coins a pack grants under the tenant's word for them.
 	// A checkout of a series bundle names its sale by LineItems instead.
 	LineItemName string
 	// LineItems are the lines of a checkout of a series bundle, in its order.

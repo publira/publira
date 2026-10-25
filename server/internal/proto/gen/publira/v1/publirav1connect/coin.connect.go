@@ -35,6 +35,9 @@ const (
 	// CoinServicePayEpisodeWithCoinsProcedure is the procedure name of the CoinService's
 	// PayEpisodeWithCoins RPC.
 	CoinServicePayEpisodeWithCoinsProcedure = "/publira.v1.CoinService/PayEpisodeWithCoins"
+	// CoinServiceStartCoinPackCheckoutProcedure is the procedure name of the CoinService's
+	// StartCoinPackCheckout RPC.
+	CoinServiceStartCoinPackCheckoutProcedure = "/publira.v1.CoinService/StartCoinPackCheckout"
 )
 
 var (
@@ -66,6 +69,13 @@ var (
 			Procedure:  CoinServicePayEpisodeWithCoinsProcedure,
 		}
 	})
+	coinServiceStartCoinPackCheckoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_coin_proto.Services().ByName("CoinService").Methods().ByName("StartCoinPackCheckout"),
+			Procedure:  CoinServiceStartCoinPackCheckoutProcedure,
+		}
+	})
 )
 
 // CoinServiceClient is a client for the publira.v1.CoinService service.
@@ -74,6 +84,7 @@ type CoinServiceClient interface {
 	GetCoinBalance(context.Context, *v1.GetCoinBalanceRequest) (*v1.GetCoinBalanceResponse, error)
 	ListCoinTransactions(context.Context, *v1.ListCoinTransactionsRequest) (*v1.ListCoinTransactionsResponse, error)
 	PayEpisodeWithCoins(context.Context, *v1.PayEpisodeWithCoinsRequest) (*v1.PayEpisodeWithCoinsResponse, error)
+	StartCoinPackCheckout(context.Context, *v1.StartCoinPackCheckoutRequest) (*v1.StartCoinPackCheckoutResponse, error)
 }
 
 // NewCoinServiceClient constructs a client for the publira.v1.CoinService service. Multiple service
@@ -88,6 +99,7 @@ type CoinServiceHandler interface {
 	GetCoinBalance(context.Context, *v1.GetCoinBalanceRequest) (*v1.GetCoinBalanceResponse, error)
 	ListCoinTransactions(context.Context, *v1.ListCoinTransactionsRequest) (*v1.ListCoinTransactionsResponse, error)
 	PayEpisodeWithCoins(context.Context, *v1.PayEpisodeWithCoinsRequest) (*v1.PayEpisodeWithCoinsResponse, error)
+	StartCoinPackCheckout(context.Context, *v1.StartCoinPackCheckoutRequest) (*v1.StartCoinPackCheckoutResponse, error)
 }
 
 // RegisterCoinServiceHandler registers svc as the publira.v1.CoinService implementation on server.
@@ -98,6 +110,7 @@ func RegisterCoinServiceHandler(server *connect.Server, svc CoinServiceHandler) 
 		connect.Method{Spec: coinServiceGetCoinBalanceSpec(), Handler: adapter.getCoinBalance},
 		connect.Method{Spec: coinServiceListCoinTransactionsSpec(), Handler: adapter.listCoinTransactions},
 		connect.Method{Spec: coinServicePayEpisodeWithCoinsSpec(), Handler: adapter.payEpisodeWithCoins},
+		connect.Method{Spec: coinServiceStartCoinPackCheckoutSpec(), Handler: adapter.startCoinPackCheckout},
 	)
 }
 
@@ -118,6 +131,10 @@ func (UnimplementedCoinServiceHandler) ListCoinTransactions(context.Context, *v1
 
 func (UnimplementedCoinServiceHandler) PayEpisodeWithCoins(context.Context, *v1.PayEpisodeWithCoinsRequest) (*v1.PayEpisodeWithCoinsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CoinService.PayEpisodeWithCoins is not implemented")
+}
+
+func (UnimplementedCoinServiceHandler) StartCoinPackCheckout(context.Context, *v1.StartCoinPackCheckoutRequest) (*v1.StartCoinPackCheckoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CoinService.StartCoinPackCheckout is not implemented")
 }
 
 type coinServiceClient struct {
@@ -151,6 +168,14 @@ func (c *coinServiceClient) ListCoinTransactions(ctx context.Context, req *v1.Li
 func (c *coinServiceClient) PayEpisodeWithCoins(ctx context.Context, req *v1.PayEpisodeWithCoinsRequest) (*v1.PayEpisodeWithCoinsResponse, error) {
 	var res v1.PayEpisodeWithCoinsResponse
 	if err := c.client.CallUnary(ctx, coinServicePayEpisodeWithCoinsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *coinServiceClient) StartCoinPackCheckout(ctx context.Context, req *v1.StartCoinPackCheckoutRequest) (*v1.StartCoinPackCheckoutResponse, error) {
+	var res v1.StartCoinPackCheckoutResponse
+	if err := c.client.CallUnary(ctx, coinServiceStartCoinPackCheckoutSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -200,6 +225,18 @@ func (h coinServiceHandler) payEpisodeWithCoins(ctx context.Context, _ connect.S
 		return err
 	}
 	res, err := h.svc.PayEpisodeWithCoins(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h coinServiceHandler) startCoinPackCheckout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartCoinPackCheckoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartCoinPackCheckout(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -36,6 +36,12 @@ const (
 	// Coins that lapsed unspent once their grant expired. They are never
 	// restored.
 	CoinTransactionKind_COIN_TRANSACTION_KIND_EXPIRY CoinTransactionKind = 4
+	// Coins of a refunded or disputed pack that had already been spent, which
+	// the reader now owes. It moves no coins: what it records is taken out of
+	// the reader's next grants, each as a COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT.
+	CoinTransactionKind_COIN_TRANSACTION_KIND_SHORTFALL CoinTransactionKind = 5
+	// Coins taken out of a grant as it was made, to pay what the reader owed.
+	CoinTransactionKind_COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT CoinTransactionKind = 6
 )
 
 // Enum value maps for CoinTransactionKind.
@@ -46,13 +52,17 @@ var (
 		2: "COIN_TRANSACTION_KIND_SPEND",
 		3: "COIN_TRANSACTION_KIND_REVOCATION",
 		4: "COIN_TRANSACTION_KIND_EXPIRY",
+		5: "COIN_TRANSACTION_KIND_SHORTFALL",
+		6: "COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT",
 	}
 	CoinTransactionKind_value = map[string]int32{
-		"COIN_TRANSACTION_KIND_UNSPECIFIED": 0,
-		"COIN_TRANSACTION_KIND_GRANT":       1,
-		"COIN_TRANSACTION_KIND_SPEND":       2,
-		"COIN_TRANSACTION_KIND_REVOCATION":  3,
-		"COIN_TRANSACTION_KIND_EXPIRY":      4,
+		"COIN_TRANSACTION_KIND_UNSPECIFIED":          0,
+		"COIN_TRANSACTION_KIND_GRANT":                1,
+		"COIN_TRANSACTION_KIND_SPEND":                2,
+		"COIN_TRANSACTION_KIND_REVOCATION":           3,
+		"COIN_TRANSACTION_KIND_EXPIRY":               4,
+		"COIN_TRANSACTION_KIND_SHORTFALL":            5,
+		"COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT": 6,
 	}
 )
 
@@ -462,8 +472,13 @@ type CoinBalance struct {
 	// balance expire then. Empty and 0 while the balance is 0.
 	NearestExpiryAt    string `protobuf:"bytes,3,opt,name=nearest_expiry_at,json=nearestExpiryAt,proto3" json:"nearest_expiry_at,omitempty"`
 	NearestExpiryCoins int64  `protobuf:"varint,4,opt,name=nearest_expiry_coins,json=nearestExpiryCoins,proto3" json:"nearest_expiry_coins,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The coins the reader owes: coins of a pack that had been spent before the
+	// pack was refunded or disputed. They are taken out of the reader's next
+	// grant as it is made, before any coin of it can be spent, and coins is
+	// never reduced for them. 0 while the reader owes nothing.
+	ShortfallCoins int64 `protobuf:"varint,5,opt,name=shortfall_coins,json=shortfallCoins,proto3" json:"shortfall_coins,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CoinBalance) Reset() {
@@ -520,6 +535,13 @@ func (x *CoinBalance) GetNearestExpiryAt() string {
 func (x *CoinBalance) GetNearestExpiryCoins() int64 {
 	if x != nil {
 		return x.NearestExpiryCoins
+	}
+	return 0
+}
+
+func (x *CoinBalance) GetShortfallCoins() int64 {
+	if x != nil {
+		return x.ShortfallCoins
 	}
 	return 0
 }
@@ -638,7 +660,9 @@ type CoinTransaction struct {
 	// purchase, titled in the request's locale. The episode carries the id, the
 	// public_id, the title, the locale, and the order_index, and the series the
 	// id, the public_id, the title, and the locale. Both are left out for an
-	// episode the calling surface may not show; the purchase is not.
+	// episode the calling surface may not show; the purchase is not. On a
+	// grant, a revocation, an expiry, a shortfall, or a settlement of coins a
+	// pack granted: the purchase of that pack, and no episode or series.
 	PurchaseId    string      `protobuf:"bytes,6,opt,name=purchase_id,json=purchaseId,proto3" json:"purchase_id,omitempty"`
 	Episode       *v1.Episode `protobuf:"bytes,7,opt,name=episode,proto3" json:"episode,omitempty"`
 	Series        *v1.Series  `protobuf:"bytes,8,opt,name=series,proto3" json:"series,omitempty"`
@@ -1068,6 +1092,141 @@ func (x *PayEpisodeWithCoinsResponse) GetBalance() *CoinBalance {
 	return nil
 }
 
+// Opens a checkout of a pack through the tenant's payment provider, on the
+// web, for the signed-in reader, and answers the URL to send them to. The
+// checkout carries the pack's price, its coins and bonus coins, and the
+// tenant's expiry_days as they are now, and the purchase grants on those
+// terms once the provider's notification confirms the payment; coming back
+// from the checkout page grants nothing by itself. The coins expire
+// expiry_days after the purchase is recorded.
+//
+// The app buys a pack through its store instead (StartStorePurchase with
+// coin_pack_id), as Apple and Google require, so this takes no client.
+//
+// A pack that is not on sale, retired, or another tenant's is not_found. A
+// tenant that is not selling packs, one with no enabled payment provider, and
+// one whose site has no domain are failed_precondition.
+type StartCoinPackCheckoutRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The pack to buy (CoinPack.id). Required.
+	CoinPackId string `protobuf:"bytes,2,opt,name=coin_pack_id,json=coinPackId,proto3" json:"coin_pack_id,omitempty"`
+	// An episode to send the reader back to once the checkout is over, the one
+	// they were short of coins for, with `checkout` (`success` or `cancelled`)
+	// and `coin_pack` (the pack's public_id) in the query. One the storefront
+	// may not show is invalid_argument with a field violation on
+	// return_episode_id. Empty sends them to `/my/coins` on the tenant's site,
+	// with the same query.
+	ReturnEpisodeId string `protobuf:"bytes,3,opt,name=return_episode_id,json=returnEpisodeId,proto3" json:"return_episode_id,omitempty"`
+	// The reader's locale, which the checkout page names the pack and the
+	// tenant's coin in. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartCoinPackCheckoutRequest) Reset() {
+	*x = StartCoinPackCheckoutRequest{}
+	mi := &file_publira_v1_coin_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartCoinPackCheckoutRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartCoinPackCheckoutRequest) ProtoMessage() {}
+
+func (x *StartCoinPackCheckoutRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_coin_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartCoinPackCheckoutRequest.ProtoReflect.Descriptor instead.
+func (*StartCoinPackCheckoutRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_coin_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *StartCoinPackCheckoutRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *StartCoinPackCheckoutRequest) GetCoinPackId() string {
+	if x != nil {
+		return x.CoinPackId
+	}
+	return ""
+}
+
+func (x *StartCoinPackCheckoutRequest) GetReturnEpisodeId() string {
+	if x != nil {
+		return x.ReturnEpisodeId
+	}
+	return ""
+}
+
+func (x *StartCoinPackCheckoutRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+type StartCoinPackCheckoutResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CheckoutUrl   string                 `protobuf:"bytes,1,opt,name=checkout_url,json=checkoutUrl,proto3" json:"checkout_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartCoinPackCheckoutResponse) Reset() {
+	*x = StartCoinPackCheckoutResponse{}
+	mi := &file_publira_v1_coin_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartCoinPackCheckoutResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartCoinPackCheckoutResponse) ProtoMessage() {}
+
+func (x *StartCoinPackCheckoutResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_coin_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartCoinPackCheckoutResponse.ProtoReflect.Descriptor instead.
+func (*StartCoinPackCheckoutResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_coin_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *StartCoinPackCheckoutResponse) GetCheckoutUrl() string {
+	if x != nil {
+		return x.CheckoutUrl
+	}
+	return ""
+}
+
 var File_publira_v1_coin_proto protoreflect.FileDescriptor
 
 const file_publira_v1_coin_proto_rawDesc = "" +
@@ -1101,12 +1260,13 @@ const file_publira_v1_coin_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06locale\x18\x02 \x01(\tR\x06locale\"O\n" +
 	"\x17GetCoinSettingsResponse\x124\n" +
-	"\bsettings\x18\x01 \x01(\v2\x18.publira.v1.CoinSettingsR\bsettings\"\x9e\x01\n" +
+	"\bsettings\x18\x01 \x01(\v2\x18.publira.v1.CoinSettingsR\bsettings\"\xc7\x01\n" +
 	"\vCoinBalance\x12\x14\n" +
 	"\x05coins\x18\x01 \x01(\x03R\x05coins\x12\x1b\n" +
 	"\tcoin_name\x18\x02 \x01(\tR\bcoinName\x12*\n" +
 	"\x11nearest_expiry_at\x18\x03 \x01(\tR\x0fnearestExpiryAt\x120\n" +
-	"\x14nearest_expiry_coins\x18\x04 \x01(\x03R\x12nearestExpiryCoins\"h\n" +
+	"\x14nearest_expiry_coins\x18\x04 \x01(\x03R\x12nearestExpiryCoins\x12'\n" +
+	"\x0fshortfall_coins\x18\x05 \x01(\x03R\x0eshortfallCoins\"h\n" +
 	"\x15GetCoinBalanceRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06locale\x18\x02 \x01(\tR\x06locale\"K\n" +
@@ -1147,18 +1307,29 @@ const file_publira_v1_coin_proto_rawDesc = "" +
 	"\x06locale\x18\a \x01(\tR\x06locale\"\x84\x01\n" +
 	"\x1bPayEpisodeWithCoinsResponse\x122\n" +
 	"\bpurchase\x18\x01 \x01(\v2\x16.publira.v1.MyPurchaseR\bpurchase\x121\n" +
-	"\abalance\x18\x02 \x01(\v2\x17.publira.v1.CoinBalanceR\abalance*\xc6\x01\n" +
+	"\abalance\x18\x02 \x01(\v2\x17.publira.v1.CoinBalanceR\abalance\"\xbd\x01\n" +
+	"\x1cStartCoinPackCheckoutRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12 \n" +
+	"\fcoin_pack_id\x18\x02 \x01(\tR\n" +
+	"coinPackId\x12*\n" +
+	"\x11return_episode_id\x18\x03 \x01(\tR\x0freturnEpisodeId\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"B\n" +
+	"\x1dStartCoinPackCheckoutResponse\x12!\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl*\x9b\x02\n" +
 	"\x13CoinTransactionKind\x12%\n" +
 	"!COIN_TRANSACTION_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bCOIN_TRANSACTION_KIND_GRANT\x10\x01\x12\x1f\n" +
 	"\x1bCOIN_TRANSACTION_KIND_SPEND\x10\x02\x12$\n" +
 	" COIN_TRANSACTION_KIND_REVOCATION\x10\x03\x12 \n" +
-	"\x1cCOIN_TRANSACTION_KIND_EXPIRY\x10\x042\x9d\x03\n" +
+	"\x1cCOIN_TRANSACTION_KIND_EXPIRY\x10\x04\x12#\n" +
+	"\x1fCOIN_TRANSACTION_KIND_SHORTFALL\x10\x05\x12.\n" +
+	"*COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT\x10\x062\x8d\x04\n" +
 	"\vCoinService\x12\\\n" +
 	"\x0fGetCoinSettings\x12\".publira.v1.GetCoinSettingsRequest\x1a#.publira.v1.GetCoinSettingsResponse\"\x00\x12Y\n" +
 	"\x0eGetCoinBalance\x12!.publira.v1.GetCoinBalanceRequest\x1a\".publira.v1.GetCoinBalanceResponse\"\x00\x12k\n" +
 	"\x14ListCoinTransactions\x12'.publira.v1.ListCoinTransactionsRequest\x1a(.publira.v1.ListCoinTransactionsResponse\"\x00\x12h\n" +
-	"\x13PayEpisodeWithCoins\x12&.publira.v1.PayEpisodeWithCoinsRequest\x1a'.publira.v1.PayEpisodeWithCoinsResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x13PayEpisodeWithCoins\x12&.publira.v1.PayEpisodeWithCoinsRequest\x1a'.publira.v1.PayEpisodeWithCoinsResponse\"\x00\x12n\n" +
+	"\x15StartCoinPackCheckout\x12(.publira.v1.StartCoinPackCheckoutRequest\x1a).publira.v1.StartCoinPackCheckoutResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_coin_proto_rawDescOnce sync.Once
@@ -1173,60 +1344,65 @@ func file_publira_v1_coin_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_v1_coin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_publira_v1_coin_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_publira_v1_coin_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_publira_v1_coin_proto_goTypes = []any{
-	(CoinTransactionKind)(0),             // 0: publira.v1.CoinTransactionKind
-	(*CoinDisclosures)(nil),              // 1: publira.v1.CoinDisclosures
-	(*CoinPack)(nil),                     // 2: publira.v1.CoinPack
-	(*CoinSettings)(nil),                 // 3: publira.v1.CoinSettings
-	(*GetCoinSettingsRequest)(nil),       // 4: publira.v1.GetCoinSettingsRequest
-	(*GetCoinSettingsResponse)(nil),      // 5: publira.v1.GetCoinSettingsResponse
-	(*CoinBalance)(nil),                  // 6: publira.v1.CoinBalance
-	(*GetCoinBalanceRequest)(nil),        // 7: publira.v1.GetCoinBalanceRequest
-	(*GetCoinBalanceResponse)(nil),       // 8: publira.v1.GetCoinBalanceResponse
-	(*CoinTransaction)(nil),              // 9: publira.v1.CoinTransaction
-	(*ListCoinTransactionsRequest)(nil),  // 10: publira.v1.ListCoinTransactionsRequest
-	(*ListCoinTransactionsResponse)(nil), // 11: publira.v1.ListCoinTransactionsResponse
-	(*PayEpisodeWithCoinsRequest)(nil),   // 12: publira.v1.PayEpisodeWithCoinsRequest
-	(*PayEpisodeWithCoinsResponse)(nil),  // 13: publira.v1.PayEpisodeWithCoinsResponse
-	(*v1.TenantContext)(nil),             // 14: publira.types.v1.TenantContext
-	(*v1.Episode)(nil),                   // 15: publira.types.v1.Episode
-	(*v1.Series)(nil),                    // 16: publira.types.v1.Series
-	(v1.ClientSurface)(0),                // 17: publira.types.v1.ClientSurface
-	(v1.PurchaseKind)(0),                 // 18: publira.types.v1.PurchaseKind
-	(*MyPurchase)(nil),                   // 19: publira.v1.MyPurchase
+	(CoinTransactionKind)(0),              // 0: publira.v1.CoinTransactionKind
+	(*CoinDisclosures)(nil),               // 1: publira.v1.CoinDisclosures
+	(*CoinPack)(nil),                      // 2: publira.v1.CoinPack
+	(*CoinSettings)(nil),                  // 3: publira.v1.CoinSettings
+	(*GetCoinSettingsRequest)(nil),        // 4: publira.v1.GetCoinSettingsRequest
+	(*GetCoinSettingsResponse)(nil),       // 5: publira.v1.GetCoinSettingsResponse
+	(*CoinBalance)(nil),                   // 6: publira.v1.CoinBalance
+	(*GetCoinBalanceRequest)(nil),         // 7: publira.v1.GetCoinBalanceRequest
+	(*GetCoinBalanceResponse)(nil),        // 8: publira.v1.GetCoinBalanceResponse
+	(*CoinTransaction)(nil),               // 9: publira.v1.CoinTransaction
+	(*ListCoinTransactionsRequest)(nil),   // 10: publira.v1.ListCoinTransactionsRequest
+	(*ListCoinTransactionsResponse)(nil),  // 11: publira.v1.ListCoinTransactionsResponse
+	(*PayEpisodeWithCoinsRequest)(nil),    // 12: publira.v1.PayEpisodeWithCoinsRequest
+	(*PayEpisodeWithCoinsResponse)(nil),   // 13: publira.v1.PayEpisodeWithCoinsResponse
+	(*StartCoinPackCheckoutRequest)(nil),  // 14: publira.v1.StartCoinPackCheckoutRequest
+	(*StartCoinPackCheckoutResponse)(nil), // 15: publira.v1.StartCoinPackCheckoutResponse
+	(*v1.TenantContext)(nil),              // 16: publira.types.v1.TenantContext
+	(*v1.Episode)(nil),                    // 17: publira.types.v1.Episode
+	(*v1.Series)(nil),                     // 18: publira.types.v1.Series
+	(v1.ClientSurface)(0),                 // 19: publira.types.v1.ClientSurface
+	(v1.PurchaseKind)(0),                  // 20: publira.types.v1.PurchaseKind
+	(*MyPurchase)(nil),                    // 21: publira.v1.MyPurchase
 }
 var file_publira_v1_coin_proto_depIdxs = []int32{
 	2,  // 0: publira.v1.CoinSettings.packs:type_name -> publira.v1.CoinPack
 	1,  // 1: publira.v1.CoinSettings.disclosures:type_name -> publira.v1.CoinDisclosures
-	14, // 2: publira.v1.GetCoinSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 2: publira.v1.GetCoinSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,  // 3: publira.v1.GetCoinSettingsResponse.settings:type_name -> publira.v1.CoinSettings
-	14, // 4: publira.v1.GetCoinBalanceRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 4: publira.v1.GetCoinBalanceRequest.tenant:type_name -> publira.types.v1.TenantContext
 	6,  // 5: publira.v1.GetCoinBalanceResponse.balance:type_name -> publira.v1.CoinBalance
 	0,  // 6: publira.v1.CoinTransaction.kind:type_name -> publira.v1.CoinTransactionKind
-	15, // 7: publira.v1.CoinTransaction.episode:type_name -> publira.types.v1.Episode
-	16, // 8: publira.v1.CoinTransaction.series:type_name -> publira.types.v1.Series
-	14, // 9: publira.v1.ListCoinTransactionsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	17, // 10: publira.v1.ListCoinTransactionsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	17, // 7: publira.v1.CoinTransaction.episode:type_name -> publira.types.v1.Episode
+	18, // 8: publira.v1.CoinTransaction.series:type_name -> publira.types.v1.Series
+	16, // 9: publira.v1.ListCoinTransactionsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 10: publira.v1.ListCoinTransactionsRequest.surface:type_name -> publira.types.v1.ClientSurface
 	9,  // 11: publira.v1.ListCoinTransactionsResponse.transactions:type_name -> publira.v1.CoinTransaction
-	14, // 12: publira.v1.PayEpisodeWithCoinsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 13: publira.v1.PayEpisodeWithCoinsRequest.kind:type_name -> publira.types.v1.PurchaseKind
-	17, // 14: publira.v1.PayEpisodeWithCoinsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	19, // 15: publira.v1.PayEpisodeWithCoinsResponse.purchase:type_name -> publira.v1.MyPurchase
+	16, // 12: publira.v1.PayEpisodeWithCoinsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 13: publira.v1.PayEpisodeWithCoinsRequest.kind:type_name -> publira.types.v1.PurchaseKind
+	19, // 14: publira.v1.PayEpisodeWithCoinsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	21, // 15: publira.v1.PayEpisodeWithCoinsResponse.purchase:type_name -> publira.v1.MyPurchase
 	6,  // 16: publira.v1.PayEpisodeWithCoinsResponse.balance:type_name -> publira.v1.CoinBalance
-	4,  // 17: publira.v1.CoinService.GetCoinSettings:input_type -> publira.v1.GetCoinSettingsRequest
-	7,  // 18: publira.v1.CoinService.GetCoinBalance:input_type -> publira.v1.GetCoinBalanceRequest
-	10, // 19: publira.v1.CoinService.ListCoinTransactions:input_type -> publira.v1.ListCoinTransactionsRequest
-	12, // 20: publira.v1.CoinService.PayEpisodeWithCoins:input_type -> publira.v1.PayEpisodeWithCoinsRequest
-	5,  // 21: publira.v1.CoinService.GetCoinSettings:output_type -> publira.v1.GetCoinSettingsResponse
-	8,  // 22: publira.v1.CoinService.GetCoinBalance:output_type -> publira.v1.GetCoinBalanceResponse
-	11, // 23: publira.v1.CoinService.ListCoinTransactions:output_type -> publira.v1.ListCoinTransactionsResponse
-	13, // 24: publira.v1.CoinService.PayEpisodeWithCoins:output_type -> publira.v1.PayEpisodeWithCoinsResponse
-	21, // [21:25] is the sub-list for method output_type
-	17, // [17:21] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	16, // 17: publira.v1.StartCoinPackCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	4,  // 18: publira.v1.CoinService.GetCoinSettings:input_type -> publira.v1.GetCoinSettingsRequest
+	7,  // 19: publira.v1.CoinService.GetCoinBalance:input_type -> publira.v1.GetCoinBalanceRequest
+	10, // 20: publira.v1.CoinService.ListCoinTransactions:input_type -> publira.v1.ListCoinTransactionsRequest
+	12, // 21: publira.v1.CoinService.PayEpisodeWithCoins:input_type -> publira.v1.PayEpisodeWithCoinsRequest
+	14, // 22: publira.v1.CoinService.StartCoinPackCheckout:input_type -> publira.v1.StartCoinPackCheckoutRequest
+	5,  // 23: publira.v1.CoinService.GetCoinSettings:output_type -> publira.v1.GetCoinSettingsResponse
+	8,  // 24: publira.v1.CoinService.GetCoinBalance:output_type -> publira.v1.GetCoinBalanceResponse
+	11, // 25: publira.v1.CoinService.ListCoinTransactions:output_type -> publira.v1.ListCoinTransactionsResponse
+	13, // 26: publira.v1.CoinService.PayEpisodeWithCoins:output_type -> publira.v1.PayEpisodeWithCoinsResponse
+	15, // 27: publira.v1.CoinService.StartCoinPackCheckout:output_type -> publira.v1.StartCoinPackCheckoutResponse
+	23, // [23:28] is the sub-list for method output_type
+	18, // [18:23] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_coin_proto_init() }
@@ -1241,7 +1417,7 @@ func file_publira_v1_coin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_coin_proto_rawDesc), len(file_publira_v1_coin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

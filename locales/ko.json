@@ -97,6 +97,9 @@
     "purchase_receipt": {
       "action": "구매 목록 열기",
       "amount": "구매 가격: {$amount} ({$currency})",
+      "coin_pack": "{$coin_name}: {$count :integer}",
+      "coin_pack_bonus": "{$coin_name}: {$count :integer} (보너스 {$bonus :integer} 포함)",
+      "coins_expire_at": "사용 기한: {$expires_at}",
       "episode": "에피소드: {$episode_title}",
       "expires_at": "만료일: {$expires_at}",
       "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
@@ -247,6 +250,8 @@
   },
   "checkout": {
     "bundle_discount": "묶음 할인 ({$percent :integer}%)",
+    "coin_pack_line_item": "{$count :integer} {$coin_name}",
+    "coin_pack_line_item_bonus": "{$count :integer} {$coin_name} (보너스 {$bonus :integer} 포함)",
     "rental_line_item": "{$episode_title} (대여, {$hours :integer}시간)"
   },
   "errors": {

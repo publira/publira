@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { SeriesBundle, TenantContext } from "../../types/v1/types_pb";
+import type { PurchasedCoinPack, SeriesBundle, TenantContext } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,14 +12,15 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/purchase.proto.
  */
 export const file_publira_admin_v1_purchase: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL2FkbWluL3YxL3B1cmNoYXNlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIucECg1BZG1pblB1cmNoYXNlEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAUgASgJEhQKDHNlcmllc190aXRsZRgGIAEoCRIYChByZWFkZXJfcHVibGljX2lkGAcgASgJEhMKC3JlYWRlcl9uYW1lGAggASgJEhQKDHJlYWRlcl9lbWFpbBgJIAEoCRINCgVwcmljZRgKIAEoAxIQCghjdXJyZW5jeRgLIAEoCRIUCgxwdXJjaGFzZWRfYXQYDCABKAkSEgoKZXhwaXJlc19hdBgNIAEoCRIQCghwcm92aWRlchgOIAEoCRINCgVzdG9yZRgPIAEoCRIMCgR0ZXN0GBAgASgIEhcKD3JlZnVuZGVkX2Ftb3VudBgRIAEoAxITCgtyZWZ1bmRlZF9hdBgSIAEoCRISCgpyZXZva2VkX2F0GBMgASgJEkUKEXJldm9jYXRpb25fcmVhc29uGBQgASgOMioucHVibGlyYS5hZG1pbi52MS5QdXJjaGFzZVJldm9jYXRpb25SZWFzb24SEgoKcmVmdW5kYWJsZRgVIAEoCBIRCgl2b2x1bWVfaWQYFiABKAkSGAoQdm9sdW1lX3B1YmxpY19pZBgXIAEoCRIUCgx2b2x1bWVfdGl0bGUYGCABKAkSNQoNc2VyaWVzX2J1bmRsZRgZIAEoCzIeLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzQnVuZGxlIt4BChRMaXN0UHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgFIAEoCRIUCgxyZWFkZXJfZW1haWwYBiABKAkSFgoOcHVyY2hhc2VkX2Zyb20YByABKAkSFAoMcHVyY2hhc2VkX3RvGAggASgJIncKFUxpc3RQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ+ChpMaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcmVhZGVyX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIn0KG0xpc3RSZWFkZXJQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJaChJHZXRQdXJjaGFzZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhMKC3B1cmNoYXNlX2lkGAIgASgJIkgKE0dldFB1cmNoYXNlUmVzcG9uc2USMQoIcHVyY2hhc2UYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2UibQoVUmVmdW5kUHVyY2hhc2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBITCgtwdXJjaGFzZV9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSwoWUmVmdW5kUHVyY2hhc2VSZXNwb25zZRIxCghwdXJjaGFzZRgBIAEoCzIfLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5QdXJjaGFzZSq7AQoYUHVyY2hhc2VSZXZvY2F0aW9uUmVhc29uEioKJlBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1VOU1BFQ0lGSUVEEAASJQohUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fUkVGVU5EEAESJgoiUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fRElTUFVURRACEiQKIFBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1NUQUZGEAMytQMKFEFkbWluUHVyY2hhc2VTZXJ2aWNlEmIKDUxpc3RQdXJjaGFzZXMSJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RQdXJjaGFzZXNSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5MaXN0UHVyY2hhc2VzUmVzcG9uc2UiABJ0ChNMaXN0UmVhZGVyUHVyY2hhc2VzEiwucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlclB1cmNoYXNlc1Jlc3BvbnNlIgASXAoLR2V0UHVyY2hhc2USJC5wdWJsaXJhLmFkbWluLnYxLkdldFB1cmNoYXNlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuR2V0UHVyY2hhc2VSZXNwb25zZSIAEmUKDlJlZnVuZFB1cmNoYXNlEicucHVibGlyYS5hZG1pbi52MS5SZWZ1bmRQdXJjaGFzZVJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLlJlZnVuZFB1cmNoYXNlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch9wdWJsaXJhL2FkbWluL3YxL3B1cmNoYXNlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIrIFCg1BZG1pblB1cmNoYXNlEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAUgASgJEhQKDHNlcmllc190aXRsZRgGIAEoCRIYChByZWFkZXJfcHVibGljX2lkGAcgASgJEhMKC3JlYWRlcl9uYW1lGAggASgJEhQKDHJlYWRlcl9lbWFpbBgJIAEoCRINCgVwcmljZRgKIAEoAxIQCghjdXJyZW5jeRgLIAEoCRIUCgxwdXJjaGFzZWRfYXQYDCABKAkSEgoKZXhwaXJlc19hdBgNIAEoCRIQCghwcm92aWRlchgOIAEoCRINCgVzdG9yZRgPIAEoCRIMCgR0ZXN0GBAgASgIEhcKD3JlZnVuZGVkX2Ftb3VudBgRIAEoAxITCgtyZWZ1bmRlZF9hdBgSIAEoCRISCgpyZXZva2VkX2F0GBMgASgJEkUKEXJldm9jYXRpb25fcmVhc29uGBQgASgOMioucHVibGlyYS5hZG1pbi52MS5QdXJjaGFzZVJldm9jYXRpb25SZWFzb24SEgoKcmVmdW5kYWJsZRgVIAEoCBIRCgl2b2x1bWVfaWQYFiABKAkSGAoQdm9sdW1lX3B1YmxpY19pZBgXIAEoCRIUCgx2b2x1bWVfdGl0bGUYGCABKAkSNQoNc2VyaWVzX2J1bmRsZRgZIAEoCzIeLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzQnVuZGxlEjYKCWNvaW5fcGFjaxgaIAEoCzIjLnB1YmxpcmEudHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2sSEQoJY29pbl9uYW1lGBsgASgJIt4BChRMaXN0UHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgFIAEoCRIUCgxyZWFkZXJfZW1haWwYBiABKAkSFgoOcHVyY2hhc2VkX2Zyb20YByABKAkSFAoMcHVyY2hhc2VkX3RvGAggASgJIncKFUxpc3RQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ+ChpMaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcmVhZGVyX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIn0KG0xpc3RSZWFkZXJQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJaChJHZXRQdXJjaGFzZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhMKC3B1cmNoYXNlX2lkGAIgASgJIkgKE0dldFB1cmNoYXNlUmVzcG9uc2USMQoIcHVyY2hhc2UYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2UibQoVUmVmdW5kUHVyY2hhc2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBITCgtwdXJjaGFzZV9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSwoWUmVmdW5kUHVyY2hhc2VSZXNwb25zZRIxCghwdXJjaGFzZRgBIAEoCzIfLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5QdXJjaGFzZSq7AQoYUHVyY2hhc2VSZXZvY2F0aW9uUmVhc29uEioKJlBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1VOU1BFQ0lGSUVEEAASJQohUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fUkVGVU5EEAESJgoiUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fRElTUFVURRACEiQKIFBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1NUQUZGEAMytQMKFEFkbWluUHVyY2hhc2VTZXJ2aWNlEmIKDUxpc3RQdXJjaGFzZXMSJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RQdXJjaGFzZXNSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5MaXN0UHVyY2hhc2VzUmVzcG9uc2UiABJ0ChNMaXN0UmVhZGVyUHVyY2hhc2VzEiwucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlclB1cmNoYXNlc1Jlc3BvbnNlIgASXAoLR2V0UHVyY2hhc2USJC5wdWJsaXJhLmFkbWluLnYxLkdldFB1cmNoYXNlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuR2V0UHVyY2hhc2VSZXNwb25zZSIAEmUKDlJlZnVuZFB1cmNoYXNlEicucHVibGlyYS5hZG1pbi52MS5SZWZ1bmRQdXJjaGFzZVJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLlJlZnVuZFB1cmNoYXNlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
- * A reader's purchase of one episode, of one volume, or of the rest of a
- * series, as tenant staff see it. The episode fields are set on a purchase of
- * an episode, the volume fields on a purchase of a volume, and series_bundle
- * on a purchase of the rest of a series, never two of them; the series fields
- * name the series of any of them.
+ * A reader's purchase of one episode, of one volume, of the rest of a series,
+ * or of a pack of the tenant's coins, as tenant staff see it. The episode
+ * fields are set on a purchase of an episode, the volume fields on a purchase
+ * of a volume, series_bundle on a purchase of the rest of a series, and
+ * coin_pack on a purchase of a pack, never two of them; the series fields name
+ * the series of any of the first three.
  *
  * @generated from message publira.admin.v1.AdminPurchase
  */
@@ -47,6 +48,8 @@ export type AdminPurchase = Message<"publira.admin.v1.AdminPurchase"> & {
   episodeTitle: string;
 
   /**
+   * Empty on a purchase of a pack of coins, which is of no series.
+   *
    * @generated from field: string series_public_id = 5;
    */
   seriesPublicId: string;
@@ -184,6 +187,23 @@ export type AdminPurchase = Message<"publira.admin.v1.AdminPurchase"> & {
    * @generated from field: publira.types.v1.SeriesBundle series_bundle = 25;
    */
   seriesBundle?: SeriesBundle | undefined;
+
+  /**
+   * The pack of coins bought, set on a purchase of one, which names no
+   * episode, volume, or series. Its coins are revoked once the purchase is
+   * refunded in full or disputed.
+   *
+   * @generated from field: publira.types.v1.PurchasedCoinPack coin_pack = 26;
+   */
+  coinPack?: PurchasedCoinPack | undefined;
+
+  /**
+   * The tenant's word for its coins in the tenant's default locale, set
+   * beside coin_pack.
+   *
+   * @generated from field: string coin_name = 27;
+   */
+  coinName: string;
 };
 
 /**
@@ -553,6 +573,11 @@ export const AdminPurchaseService: GenService<{
    * longer has enabled are failed_precondition, as is a refund the provider
    * refuses. An empty reason is invalid_argument with a field violation on
    * reason.
+   *
+   * A purchase of a pack of coins is refunded the same way. Its coins are
+   * taken back once the provider reports the refund in full rather than when
+   * staff ask, so a refund the provider refuses leaves the reader's coins as
+   * they were.
    *
    * Minimum role: tenant_admin.
    *

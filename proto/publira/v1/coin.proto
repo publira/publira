@@ -80,6 +80,11 @@ message CoinBalance {
   // balance expire then. Empty and 0 while the balance is 0.
   string nearest_expiry_at = 3;
   int64 nearest_expiry_coins = 4;
+  // The coins the reader owes: coins of a pack that had been spent before the
+  // pack was refunded or disputed. They are taken out of the reader's next
+  // grant as it is made, before any coin of it can be spent, and coins is
+  // never reduced for them. 0 while the reader owes nothing.
+  int64 shortfall_coins = 5;
 }
 
 // Answers the signed-in reader's balance.
@@ -106,6 +111,12 @@ enum CoinTransactionKind {
   // Coins that lapsed unspent once their grant expired. They are never
   // restored.
   COIN_TRANSACTION_KIND_EXPIRY = 4;
+  // Coins of a refunded or disputed pack that had already been spent, which
+  // the reader now owes. It moves no coins: what it records is taken out of
+  // the reader's next grants, each as a COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT.
+  COIN_TRANSACTION_KIND_SHORTFALL = 5;
+  // Coins taken out of a grant as it was made, to pay what the reader owed.
+  COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT = 6;
 }
 
 // One entry of a reader's coin history.
@@ -122,7 +133,9 @@ message CoinTransaction {
   // purchase, titled in the request's locale. The episode carries the id, the
   // public_id, the title, the locale, and the order_index, and the series the
   // id, the public_id, the title, and the locale. Both are left out for an
-  // episode the calling surface may not show; the purchase is not.
+  // episode the calling surface may not show; the purchase is not. On a
+  // grant, a revocation, an expiry, a shortfall, or a settlement of coins a
+  // pack granted: the purchase of that pack, and no episode or series.
   string purchase_id = 6;
   publira.types.v1.Episode episode = 7;
   publira.types.v1.Series series = 8;
@@ -206,15 +219,50 @@ message PayEpisodeWithCoinsResponse {
   CoinBalance balance = 2;
 }
 
-// A tenant's coins: what they are, how many a reader holds, and spending them
-// on an episode. Every RPC here is failed_precondition with the ErrorInfo
-// reason COINS_UNAVAILABLE while the platform does not allow tenant coins or
-// the tenant has not turned its coins on, and a client answered that shows
-// nothing about coins. GetCoinSettings takes optional authentication; the
-// others answer the signed-in reader alone.
+// Opens a checkout of a pack through the tenant's payment provider, on the
+// web, for the signed-in reader, and answers the URL to send them to. The
+// checkout carries the pack's price, its coins and bonus coins, and the
+// tenant's expiry_days as they are now, and the purchase grants on those
+// terms once the provider's notification confirms the payment; coming back
+// from the checkout page grants nothing by itself. The coins expire
+// expiry_days after the purchase is recorded.
+//
+// The app buys a pack through its store instead (StartStorePurchase with
+// coin_pack_id), as Apple and Google require, so this takes no client.
+//
+// A pack that is not on sale, retired, or another tenant's is not_found. A
+// tenant that is not selling packs, one with no enabled payment provider, and
+// one whose site has no domain are failed_precondition.
+message StartCoinPackCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The pack to buy (CoinPack.id). Required.
+  string coin_pack_id = 2;
+  // An episode to send the reader back to once the checkout is over, the one
+  // they were short of coins for, with `checkout` (`success` or `cancelled`)
+  // and `coin_pack` (the pack's public_id) in the query. One the storefront
+  // may not show is invalid_argument with a field violation on
+  // return_episode_id. Empty sends them to `/my/coins` on the tenant's site,
+  // with the same query.
+  string return_episode_id = 3;
+  // The reader's locale, which the checkout page names the pack and the
+  // tenant's coin in. Empty means the tenant's default locale.
+  string locale = 4;
+}
+
+message StartCoinPackCheckoutResponse {
+  string checkout_url = 1;
+}
+
+// A tenant's coins: what they are, how many a reader holds, buying them, and
+// spending them on an episode. Every RPC here is failed_precondition with the
+// ErrorInfo reason COINS_UNAVAILABLE while the platform does not allow tenant
+// coins or the tenant has not turned its coins on, and a client answered that
+// shows nothing about coins. GetCoinSettings takes optional authentication;
+// the others answer the signed-in reader alone.
 service CoinService {
   rpc GetCoinSettings(GetCoinSettingsRequest) returns (GetCoinSettingsResponse) {}
   rpc GetCoinBalance(GetCoinBalanceRequest) returns (GetCoinBalanceResponse) {}
   rpc ListCoinTransactions(ListCoinTransactionsRequest) returns (ListCoinTransactionsResponse) {}
   rpc PayEpisodeWithCoins(PayEpisodeWithCoinsRequest) returns (PayEpisodeWithCoinsResponse) {}
+  rpc StartCoinPackCheckout(StartCoinPackCheckoutRequest) returns (StartCoinPackCheckoutResponse) {}
 }

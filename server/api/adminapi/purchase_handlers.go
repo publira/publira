@@ -79,6 +79,15 @@ func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentse
 			DiscountPercent: row.SeriesBundleDiscountPercent.Int32,
 		}
 	}
+	var coinPack *publirattypesv1.PurchasedCoinPack
+	if row.CoinPackID.Valid {
+		coinPack = &publirattypesv1.PurchasedCoinPack{
+			Id:         row.CoinPackID.UUID.String(),
+			PublicId:   row.CoinPackPublicID.String,
+			Coins:      row.CoinPackCoins.Int32,
+			BonusCoins: row.CoinPackBonusCoins.Int32,
+		}
+	}
 	return &publiraadminv1.AdminPurchase{
 		Id:               row.ID.String(),
 		EpisodeId:        nullUUIDString(row.EpisodeID),
@@ -88,7 +97,9 @@ func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentse
 		VolumePublicId:   formatOptionalString(row.VolumePublicID),
 		VolumeTitle:      formatOptionalString(row.VolumeTitle),
 		SeriesBundle:     seriesBundle,
-		SeriesPublicId:   row.SeriesPublicID,
+		CoinPack:         coinPack,
+		CoinName:         row.CoinName,
+		SeriesPublicId:   formatOptionalString(row.SeriesPublicID),
 		SeriesTitle:      row.SeriesTitle,
 		ReaderPublicId:   formatOptionalString(row.ReaderPublicID),
 		ReaderName:       formatOptionalString(row.ReaderName),

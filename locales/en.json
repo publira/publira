@@ -97,6 +97,9 @@
     "purchase_receipt": {
       "action": "Open your purchases",
       "amount": "Price paid: {$amount} ({$currency})",
+      "coin_pack": "{$coin_name}: {$count :integer}",
+      "coin_pack_bonus": "{$coin_name}: {$count :integer} (including {$bonus :integer} bonus)",
+      "coins_expire_at": "Spendable until: {$expires_at}",
       "episode": "Episode: {$episode_title}",
       "expires_at": "Readable until: {$expires_at}",
       "fallback_link": "If the button does not work, paste this URL into your browser.",
@@ -247,6 +250,8 @@
   },
   "checkout": {
     "bundle_discount": "Bundle discount ({$percent :integer}%)",
+    "coin_pack_line_item": "{$count :integer} {$coin_name}",
+    "coin_pack_line_item_bonus": "{$count :integer} {$coin_name} (including {$bonus :integer} bonus)",
     "rental_line_item": ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}"
   },
   "errors": {

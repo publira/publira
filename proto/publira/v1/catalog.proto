@@ -1792,6 +1792,8 @@ message StartSeriesRemainderCheckoutResponse {
 message MyPurchase {
   string id = 1;
   publira.types.v1.Episode episode = 2;
+  // The series of the episode, the volume, or the rest of a series bought.
+  // Unset on a purchase of a pack of coins, which is of no series.
   publira.types.v1.Series series = 3;
   // What the reader paid, in the minor unit of currency.
   int32 price_at_purchase = 4;
@@ -1830,11 +1832,19 @@ message MyPurchase {
   // episode reads report it.
   publira.types.v1.SeriesBundle series_bundle = 14;
   // Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
-  // coins spent, and the tenant's word for its coins in the request's locale.
-  // Such a purchase took no payment, so its price_at_purchase is 0. Both are 0
-  // and empty on every other purchase.
+  // coins spent. Such a purchase took no payment, so its price_at_purchase is
+  // 0. It is 0 on every other purchase.
   int32 coins_spent = 15;
+  // The tenant's word for its coins in the request's locale, set on a
+  // purchase paid with coins and on a purchase of a pack, and empty on every
+  // other purchase.
   string coin_name = 16;
+  // The pack bought, set on a purchase of a pack of the tenant's coins
+  // (CoinService.StartCoinPackCheckout, or a store purchase of the pack). Such
+  // a purchase is always PURCHASE_KIND_PURCHASE, has no expires_at, and is
+  // active until it is refunded or disputed: its coins expire on their own,
+  // as CoinBalance reports. A purchase of a pack is listed on every surface.
+  publira.types.v1.PurchasedCoinPack coin_pack = 17;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1885,9 +1895,10 @@ enum InAppPurchaseStore {
 // for a tenant whose app sells through the store. The app buys `product_id`
 // with `intent_id` as the transaction's account token (`appAccountToken` on
 // iOS, `obfuscatedAccountId` on Android), which is how ConfirmStorePurchase
-// learns which episode the transaction pays for. The intent keeps the price and
-// the reading period the episode is sold with at this moment, and the purchase
-// is recorded on those terms.
+// learns what the transaction pays for. The intent keeps the terms the
+// episode or the pack is sold on at this moment, and the purchase is recorded
+// on those terms: the price and the reading period of an episode, and the
+// coins, the bonus coins, and the tenant's expiry_days of a pack.
 //
 // Signed-in readers only. An episode the app may not show is not_found; one it
 // may not sell, a free one, a tenant whose app does not sell through the
@@ -1896,6 +1907,14 @@ enum InAppPurchaseStore {
 // a creator the reader's account is linked to is permission_denied with the
 // ErrorInfo reason READER_CREDITED_ON_EPISODE. Asking again for the same
 // episode at the same price answers the same intent.
+//
+// A pack is refused as CoinService.StartCoinPackCheckout refuses one:
+// failed_precondition with the ErrorInfo reason COINS_UNAVAILABLE while the
+// platform does not allow tenant coins or the tenant's coins are off,
+// failed_precondition while the tenant is not selling packs, and not_found for
+// a pack that is not on sale. Asking again for the same pack answers the same
+// intent until a purchase consumes it, since a pack is bought again and
+// again.
 message StartStorePurchaseRequest {
   publira.types.v1.TenantContext tenant = 1;
   // 2 held `episode_public_id`, replaced by `episode_id`.
@@ -1903,12 +1922,16 @@ message StartStorePurchaseRequest {
   reserved "episode_public_id";
   // The store the app is about to charge through. Required.
   InAppPurchaseStore store = 3;
+  // What to buy: exactly one of an episode and a pack of the tenant's coins
+  // (CoinPack.id).
   string episode_id = 4;
+  string coin_pack_id = 5;
 }
 
 message StartStorePurchaseResponse {
   string intent_id = 1;
-  // The store product the episode's price is sold as, such as `episode_300`.
+  // The store product the episode's price is sold as, such as `episode_300`,
+  // or the pack, `coins_` followed by the pack's public_id.
   string product_id = 2;
 }
 

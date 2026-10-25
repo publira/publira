@@ -3511,6 +3511,79 @@ func (x *SeriesBundle) GetDiscountPercent() int32 {
 	return 0
 }
 
+// A pack of the tenant's coins as a purchase bought it: the coins and the bonus
+// coins the reader was shown when the checkout or the store's payment sheet
+// opened, which are what the purchase granted however the pack has changed
+// since.
+type PurchasedCoinPack struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The pack's primary key, a UUID.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PublicId      string `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Coins         int32  `protobuf:"varint,3,opt,name=coins,proto3" json:"coins,omitempty"`
+	BonusCoins    int32  `protobuf:"varint,4,opt,name=bonus_coins,json=bonusCoins,proto3" json:"bonus_coins,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PurchasedCoinPack) Reset() {
+	*x = PurchasedCoinPack{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PurchasedCoinPack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PurchasedCoinPack) ProtoMessage() {}
+
+func (x *PurchasedCoinPack) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PurchasedCoinPack.ProtoReflect.Descriptor instead.
+func (*PurchasedCoinPack) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *PurchasedCoinPack) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PurchasedCoinPack) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *PurchasedCoinPack) GetCoins() int32 {
+	if x != nil {
+		return x.Coins
+	}
+	return 0
+}
+
+func (x *PurchasedCoinPack) GetBonusCoins() int32 {
+	if x != nil {
+		return x.BonusCoins
+	}
+	return 0
+}
+
 // An icon the tenant provides for its readers to pick. A reader's account
 // that shows it carries the same variants in User.icon_image_variants.
 type ReaderIconPreset struct {
@@ -3525,7 +3598,7 @@ type ReaderIconPreset struct {
 
 func (x *ReaderIconPreset) Reset() {
 	*x = ReaderIconPreset{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[22]
+	mi := &file_publira_types_v1_types_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3537,7 +3610,7 @@ func (x *ReaderIconPreset) String() string {
 func (*ReaderIconPreset) ProtoMessage() {}
 
 func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[22]
+	mi := &file_publira_types_v1_types_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3550,7 +3623,7 @@ func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReaderIconPreset.ProtoReflect.Descriptor instead.
 func (*ReaderIconPreset) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{22}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ReaderIconPreset) GetId() string {
@@ -3597,7 +3670,7 @@ type RetentionPeriods struct {
 
 func (x *RetentionPeriods) Reset() {
 	*x = RetentionPeriods{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	mi := &file_publira_types_v1_types_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3609,7 +3682,7 @@ func (x *RetentionPeriods) String() string {
 func (*RetentionPeriods) ProtoMessage() {}
 
 func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	mi := &file_publira_types_v1_types_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3622,7 +3695,7 @@ func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetentionPeriods.ProtoReflect.Descriptor instead.
 func (*RetentionPeriods) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{23}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RetentionPeriods) GetWithdrawnCommentDays() int32 {
@@ -3898,7 +3971,13 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\fSeriesBundle\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
 	"\repisode_count\x18\x02 \x01(\x05R\fepisodeCount\x12)\n" +
-	"\x10discount_percent\x18\x03 \x01(\x05R\x0fdiscountPercent\"\x80\x01\n" +
+	"\x10discount_percent\x18\x03 \x01(\x05R\x0fdiscountPercent\"w\n" +
+	"\x11PurchasedCoinPack\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
+	"\x05coins\x18\x03 \x01(\x05R\x05coins\x12\x1f\n" +
+	"\vbonus_coins\x18\x04 \x01(\x05R\n" +
+	"bonusCoins\"\x80\x01\n" +
 	"\x10ReaderIconPreset\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -3999,7 +4078,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 15)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
 	(SeriesStatus)(0),             // 1: publira.types.v1.SeriesStatus
@@ -4038,8 +4117,9 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*PageVersion)(nil),           // 34: publira.types.v1.PageVersion
 	(*Volume)(nil),                // 35: publira.types.v1.Volume
 	(*SeriesBundle)(nil),          // 36: publira.types.v1.SeriesBundle
-	(*ReaderIconPreset)(nil),      // 37: publira.types.v1.ReaderIconPreset
-	(*RetentionPeriods)(nil),      // 38: publira.types.v1.RetentionPeriods
+	(*PurchasedCoinPack)(nil),     // 37: publira.types.v1.PurchasedCoinPack
+	(*ReaderIconPreset)(nil),      // 38: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 39: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	17, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
@@ -4084,7 +4164,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      15,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

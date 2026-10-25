@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/api/protomapper"
+	"github.com/publira/publira/server/internal/coinledger"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/outbox"
@@ -226,8 +227,8 @@ func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (str
 	})
 }
 
-// checkoutIdempotencyKey names one reader's checkout of one episode, or of one
-// volume, by everything the request sends, so a retried request reuses the provider's
+// checkoutIdempotencyKey names one reader's checkout of one episode, of one
+// volume, or of one pack, by everything the request sends, so a retried request reuses the provider's
 // checkout. A provider refuses a key it has seen sent with other parameters, or
 // answers with the checkout it made for them, and any of those parameters can
 // change between two attempts of the same reader: an editor can change the
@@ -256,6 +257,9 @@ func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckout
 		return "", err
 	}
 	purchase := req.Purchase
+	if purchase.CoinPackID != uuid.Nil {
+		return fmt.Sprintf("coin-pack-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.CoinPackID, sum), nil
+	}
 	if purchase.VolumeID != uuid.Nil {
 		return fmt.Sprintf("volume-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.VolumeID, sum), nil
 	}
@@ -340,10 +344,18 @@ type purchasePageRow struct {
 	// bundle bought, and are zero on any other purchase.
 	seriesBundleEpisodeCount    int32
 	seriesBundleDiscountPercent int32
-	seriesID                    uuid.UUID
-	seriesPublicID              string
-	seriesTitle                 string
-	seriesLocale                string
+	coinPackID                  uuid.NullUUID
+	// coinPackPublicID, coinPackCoins, and coinPackBonusCoins describe the
+	// pack bought as the reader was shown it, and are zero on any other
+	// purchase.
+	coinPackPublicID   string
+	coinPackCoins      int32
+	coinPackBonusCoins int32
+	// seriesID is NULL on a purchase of a pack, which is of no series.
+	seriesID       uuid.NullUUID
+	seriesPublicID string
+	seriesTitle    string
+	seriesLocale   string
 }
 
 func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageRow {
@@ -372,8 +384,12 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			seriesBundleID:              row.SeriesBundleID,
 			seriesBundleEpisodeCount:    row.SeriesBundleEpisodeCount,
 			seriesBundleDiscountPercent: row.SeriesBundleDiscountPercent.Int32,
+			coinPackID:                  row.CoinPackID,
+			coinPackPublicID:            row.CoinPackPublicID.String,
+			coinPackCoins:               row.CoinPackCoins.Int32,
+			coinPackBonusCoins:          row.CoinPackBonusCoins.Int32,
 			seriesID:                    row.SeriesID,
-			seriesPublicID:              row.SeriesPublicID,
+			seriesPublicID:              row.SeriesPublicID.String,
 			seriesTitle:                 row.SeriesTitle,
 			seriesLocale:                row.SeriesTitleLocale,
 		})
@@ -407,8 +423,12 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			seriesBundleID:              row.SeriesBundleID,
 			seriesBundleEpisodeCount:    row.SeriesBundleEpisodeCount,
 			seriesBundleDiscountPercent: row.SeriesBundleDiscountPercent.Int32,
+			coinPackID:                  row.CoinPackID,
+			coinPackPublicID:            row.CoinPackPublicID.String,
+			coinPackCoins:               row.CoinPackCoins.Int32,
+			coinPackBonusCoins:          row.CoinPackBonusCoins.Int32,
 			seriesID:                    row.SeriesID,
-			seriesPublicID:              row.SeriesPublicID,
+			seriesPublicID:              row.SeriesPublicID.String,
 			seriesTitle:                 row.SeriesTitle,
 			seriesLocale:                row.SeriesTitleLocale,
 		})
@@ -453,7 +473,7 @@ func (s *apiServer) purchasePage(
 
 // purchaseItemFromRow maps one purchase of the reader's library. coinName is
 // the tenant's word for its coins in the reader's locale, which a purchase
-// paid with coins is answered with.
+// paid with coins and a purchase of a pack are answered with.
 func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*publirav1.MyPurchase, error) {
 	kind, err := protomapper.PurchaseKindFromStored(row.kind)
 	if err != nil {
@@ -488,19 +508,28 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 		RefundedAt:      refundedAt,
 		RevokedAt:       revokedAt,
 		CoinsSpent:      row.coinsSpent,
-		Series: &publirattypesv1.Series{
-			Id:       row.seriesID.String(),
+	}
+	if row.seriesID.Valid {
+		item.Series = &publirattypesv1.Series{
+			Id:       row.seriesID.UUID.String(),
 			PublicId: row.seriesPublicID,
 			Title:    row.seriesTitle,
 			Locale:   row.seriesLocale,
-		},
+		}
 	}
-	if row.coinsSpent > 0 {
+	if namesCoins(row) {
 		item.CoinName = coinName
 	}
-	// A purchase is of an episode, a volume, or the rest of a series, and the
-	// library names whichever it bought.
+	// A purchase is of an episode, a volume, the rest of a series, or a pack
+	// of coins, and the library names whichever it bought.
 	switch {
+	case row.coinPackID.Valid:
+		item.CoinPack = &publirattypesv1.PurchasedCoinPack{
+			Id:         row.coinPackID.UUID.String(),
+			PublicId:   row.coinPackPublicID,
+			Coins:      row.coinPackCoins,
+			BonusCoins: row.coinPackBonusCoins,
+		}
 	case row.volumeID.Valid:
 		item.Volume = &publirattypesv1.Volume{
 			Id:         row.volumeID.UUID.String(),
@@ -524,6 +553,12 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 		}
 	}
 	return item, nil
+}
+
+// namesCoins reports whether a purchase is answered with the tenant's word for
+// its coins: one paid with coins, or one of a pack.
+func namesCoins(row purchasePageRow) bool {
+	return row.coinsSpent > 0 || row.coinPackID.Valid
 }
 
 func (s *apiServer) ListMyPurchases(
@@ -563,9 +598,9 @@ func (s *apiServer) ListMyPurchases(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 	// The coins are named only on a page that holds a purchase paid with
-	// them, so a library that holds none reads nothing about coins.
+	// them or of them, so a library that holds none reads nothing about coins.
 	var coinName string
-	if slices.ContainsFunc(rows, func(row purchasePageRow) bool { return row.coinsSpent > 0 }) {
+	if slices.ContainsFunc(rows, namesCoins) {
 		if coinName, err = s.coinNameFor(ctx, tenant.ID, readerLocale); err != nil {
 			return nil, err
 		}
@@ -716,9 +751,18 @@ func (s *apiServer) ProcessPaymentWebhook(
 }
 
 // recordExpiredCheckout records the checkout the provider reports expired as
-// the reader's latest on what it would have sold: the episode, the volume, or
-// the rest of the series.
+// the reader's latest on what it would have sold: the episode, the volume, the
+// rest of the series, or the pack.
 func (s *apiServer) recordExpiredCheckout(ctx context.Context, tenantID uuid.UUID, providerID string, event paymentprovider.CheckoutExpired) error {
+	if event.Purchase.CoinPackID != uuid.Nil {
+		return s.queriesFor(ctx).RecordExpiredCoinPackCheckout(ctx, dbmodels.RecordExpiredCoinPackCheckoutParams{
+			TenantID:           tenantID,
+			UserID:             event.Purchase.ReaderID,
+			CoinPackID:         event.Purchase.CoinPackID,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+		})
+	}
 	if event.Purchase.SeriesBundleID != uuid.Nil {
 		return s.queriesFor(ctx).RecordExpiredSeriesBundleCheckout(ctx, dbmodels.RecordExpiredSeriesBundleCheckoutParams{
 			Provider:           providerID,
@@ -823,6 +867,11 @@ func (s *apiServer) recordRefund(
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
 	)
+	// A pack refunded in part keeps its coins: they are what the reader still
+	// pays for. Refunded in full, it grants nothing more.
+	if purchase.RefundedAt.Valid {
+		return s.revokeCoinPackGrant(ctx, purchase)
+	}
 	return nil
 }
 
@@ -892,6 +941,17 @@ func (s *apiServer) recordFailedRefund(
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"revoked", purchase.RevokedAt.Valid,
 	)
+	// The coins a pack's refund took back stay taken back: the reader may have
+	// bought another pack since, which paid the shortfall the refund left, and
+	// giving the coins back would count those coins twice. The warning is what
+	// tells staff the reader paid for coins they no longer hold.
+	if purchase.CoinPackID.Valid && !purchase.RevokedAt.Valid {
+		s.logger.WarnContext(ctx, "a failed refund reopened a pack purchase whose coins were taken back",
+			"tenant_id", tenantID,
+			"event_id", event.ID,
+			"purchase_id", purchase.ID,
+		)
+	}
 	return nil
 }
 
@@ -933,7 +993,9 @@ func (s *apiServer) recordDispute(
 		"purchase_id", purchase.ID,
 		"revocation_reason", purchase.RevocationReason.String,
 	)
-	return nil
+	// A dispute closes a pack's coins at once, as it closes an episode: the
+	// reader's bank holds the money, whatever the dispute later decides.
+	return s.revokeCoinPackGrant(ctx, purchase)
 }
 
 // recordLostDispute writes down that the reader's bank returned the money of a
@@ -976,13 +1038,52 @@ func (s *apiServer) recordLostDispute(
 		"purchase_id", purchase.ID,
 		"revocation_reason", purchase.RevocationReason.String,
 	)
+	return s.revokeCoinPackGrant(ctx, purchase)
+}
+
+// revokeCoinPackGrant closes the coins a pack purchase granted, in a
+// transaction of its own, once a refund in full or a dispute has been recorded
+// on the purchase. Any other purchase grants no coins and is left alone. A
+// failure leaves the refund or the dispute recorded and the coins in place,
+// and the provider's retry of the notification closes them: both writes are
+// repeatable.
+func (s *apiServer) revokeCoinPackGrant(ctx context.Context, purchase dbmodels.Purchase) error {
+	if !purchase.CoinPackID.Valid {
+		return nil
+	}
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin the revocation of a pack's coins", err, "tenant_id", purchase.TenantID.String(), "purchase_id", purchase.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	revocation, err := coinledger.RevokePackGrant(ctx, dbmodels.New(tx), purchase.TenantID, purchase.ID)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to revoke a pack's coins", err, "tenant_id", purchase.TenantID.String(), "purchase_id", purchase.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit the revocation of a pack's coins", err, "tenant_id", purchase.TenantID.String(), "purchase_id", purchase.ID.String())
+	}
+	s.logRevokedCoins(ctx, purchase, revocation)
 	return nil
 }
 
+func (s *apiServer) logRevokedCoins(ctx context.Context, purchase dbmodels.Purchase, revocation coinledger.Revocation) {
+	if !revocation.Closed {
+		return
+	}
+	s.logger.InfoContext(ctx, "revoked the coins of a pack purchase",
+		"tenant_id", purchase.TenantID,
+		"purchase_id", purchase.ID,
+		"revoked_coins", revocation.Revoked,
+		"shortfall_coins", revocation.Shortfall,
+	)
+}
+
 // createPurchase records the purchase a completed checkout paid for, of an
-// episode, a volume, or the rest of a series, and everything that follows
-// from it, in one transaction: the refund or the
-// dispute that may have overtaken it, its engagement event, and the receipt the reader is owed.
+// episode, a volume, the rest of a series, or a pack of coins, and everything
+// that follows from it, in one transaction: the coins of a pack, the refund or
+// the dispute that may have overtaken it, its engagement event, and the
+// receipt the reader is owed.
 // A delivery that fails partway therefore leaves nothing behind, and the
 // provider's retry starts again from the purchase.
 func (s *apiServer) createPurchase(
@@ -1016,6 +1117,19 @@ func (s *apiServer) createPurchase(
 	// already recorded inserts nothing here and queues no second receipt.
 	var created dbmodels.Purchase
 	switch {
+	case purchase.CoinPackID != uuid.Nil:
+		created, err = queries.CreatePurchaseFromProviderCoinPackCheckout(ctx, dbmodels.CreatePurchaseFromProviderCoinPackCheckoutParams{
+			ID:                 uuid.New(),
+			TenantID:           tenantID,
+			UserID:             purchase.ReaderID,
+			CoinPackID:         purchase.CoinPackID,
+			PriceAtPurchase:    event.AmountPaid,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+			ProviderPaymentID:  paymentID,
+			IsTest:             event.Test,
+			Currency:           purchase.Currency,
+		})
 	case purchase.SeriesBundleID != uuid.Nil:
 		created, err = queries.CreatePurchaseFromProviderSeriesBundleCheckout(ctx, dbmodels.CreatePurchaseFromProviderSeriesBundleCheckoutParams{
 			ID:                      uuid.New(),
@@ -1076,6 +1190,18 @@ func (s *apiServer) createPurchase(
 				PurchaseID: created.ID,
 			}); err != nil {
 				return fmt.Errorf("record the episodes of the volume purchase: %w", err)
+			}
+		}
+		// The coins are granted on the terms the checkout was started on, which
+		// it carried to here, however the pack or the tenant's expiry has
+		// changed since.
+		if created.CoinPackID.Valid {
+			if err := recordCoinPackSale(ctx, queries, created, coinPackTerms{
+				coins:      purchase.Coins,
+				bonusCoins: purchase.BonusCoins,
+				expiryDays: purchase.CoinExpiryDays,
+			}); err != nil {
+				return err
 			}
 		}
 		if err := enqueuePurchaseReceipt(ctx, queries, tenantID, created.ID); err != nil {
@@ -1155,6 +1281,13 @@ func (s *apiServer) applyHeldRefund(
 	}); err != nil {
 		return fmt.Errorf("release held refund: %w", err)
 	}
+	if purchase.CoinPackID.Valid && purchase.RefundedAt.Valid {
+		revocation, err := coinledger.RevokePackGrant(ctx, queries, tenantID, purchase.ID)
+		if err != nil {
+			return fmt.Errorf("revoke the coins of a refunded pack: %w", err)
+		}
+		s.logRevokedCoins(ctx, purchase, revocation)
+	}
 	s.logger.InfoContext(ctx, "applied a refund that arrived before its purchase",
 		"tenant_id", tenantID,
 		"purchase_id", purchase.ID,
@@ -1191,6 +1324,13 @@ func (s *apiServer) applyHeldDispute(
 		ProviderPaymentID: paymentID,
 	}); err != nil {
 		return fmt.Errorf("release held dispute: %w", err)
+	}
+	if purchase.CoinPackID.Valid {
+		revocation, err := coinledger.RevokePackGrant(ctx, queries, tenantID, purchase.ID)
+		if err != nil {
+			return fmt.Errorf("revoke the coins of a disputed pack: %w", err)
+		}
+		s.logRevokedCoins(ctx, purchase, revocation)
 	}
 	s.logger.InfoContext(ctx, "revoked a purchase for a dispute that arrived before it",
 		"tenant_id", tenantID,

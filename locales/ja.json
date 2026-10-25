@@ -97,6 +97,9 @@
     "purchase_receipt": {
       "action": "購入済み一覧を開く",
       "amount": "購入価格: {$amount}（{$currency}）",
+      "coin_pack": "{$coin_name}: {$count :integer}",
+      "coin_pack_bonus": "{$coin_name}: {$count :integer}（うちボーナス{$bonus :integer}）",
+      "coins_expire_at": "利用期限: {$expires_at}",
       "episode": "エピソード: {$episode_title}",
       "expires_at": "有効期限: {$expires_at}",
       "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
@@ -247,6 +250,8 @@
   },
   "checkout": {
     "bundle_discount": "まとめ買い割引（{$percent :integer}%）",
+    "coin_pack_line_item": "{$count :integer}{$coin_name}",
+    "coin_pack_line_item_bonus": "{$count :integer}{$coin_name}（うちボーナス{$bonus :integer}）",
     "rental_line_item": "{$episode_title}（レンタル・{$hours :integer}時間）"
   },
   "errors": {

@@ -282,6 +282,61 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	coinPack := func(id string) Checkout {
+		pack := checkout
+		pack.CheckoutID = id
+		pack.Purchase.EpisodeID = uuid.Nil
+		pack.Purchase.CoinPackID = uuid.New()
+		pack.Purchase.Coins = 1000
+		pack.Purchase.BonusCoins = 100
+		pack.Purchase.CoinExpiryDays = 180
+		pack.Purchase.Price = 1000
+		pack.Purchase.ReadingPeriodHours = 0
+		return pack
+	}
+
+	t.Run("a coin pack checkout names its pack and what it grants", func(t *testing.T) {
+		pack := coinPack("checkout_contract_coin_pack")
+		payload, headers := fixture.CheckoutCompleted(t, credentials, pack)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase != pack.Purchase {
+			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, pack.Purchase)
+		}
+	})
+
+	t.Run("a checkout that names both an episode and a coin pack is malformed", func(t *testing.T) {
+		both := coinPack("checkout_contract_episode_and_coin_pack")
+		both.Purchase.EpisodeID = uuid.New()
+		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("a coin pack checkout that grants nothing or never expires is malformed", func(t *testing.T) {
+		for _, malformed := range []func(*Checkout){
+			func(c *Checkout) { c.Purchase.Coins = 0 },
+			func(c *Checkout) { c.Purchase.BonusCoins = -1 },
+			func(c *Checkout) { c.Purchase.CoinExpiryDays = 0 },
+			func(c *Checkout) { c.Purchase.CoinExpiryDays = paymentprovider.MaxCoinExpiryDays + 1 },
+			func(c *Checkout) { c.Purchase.ReadingPeriodHours = 24 },
+		} {
+			pack := coinPack("checkout_contract_malformed_coin_pack")
+			malformed(&pack)
+			payload, headers := fixture.CheckoutCompleted(t, credentials, pack)
+			if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+				t.Fatalf("ParseNotification(%+v) error = %v, want ErrMalformedNotification", pack.Purchase, err)
+			}
+		}
+	})
+
 	t.Run("a checkout that names no kind sold the permanent copy", func(t *testing.T) {
 		unnamed := checkout
 		unnamed.CheckoutID = "checkout_contract_unnamed"

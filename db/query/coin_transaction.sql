@@ -89,7 +89,9 @@ SELECT ct.id,
     ct.coins,
     ct.created_at,
     g.expires_at AS grant_expires_at,
-    ct.purchase_id,
+    -- A spend names the purchase it paid for, and an entry about a grant the
+    -- pack purchase that made the grant.
+    COALESCE(ct.purchase_id, g.purchase_id) AS purchase_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.order_index AS episode_order_index,
@@ -149,7 +151,9 @@ SELECT ct.id,
     ct.coins,
     ct.created_at,
     g.expires_at AS grant_expires_at,
-    ct.purchase_id,
+    -- A spend names the purchase it paid for, and an entry about a grant the
+    -- pack purchase that made the grant.
+    COALESCE(ct.purchase_id, g.purchase_id) AS purchase_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.order_index AS episode_order_index,
@@ -198,3 +202,48 @@ WHERE ct.tenant_id = sqlc.arg('tenant_id')
 ORDER BY ct.created_at ASC,
     ct.id ASC
 LIMIT sqlc.arg('limit');
+
+-- name: CreateCoinGrantTransaction :exec
+-- Records an entry of the reader's history that is about one grant: the grant
+-- itself, its revocation, the shortfall its revocation left, or the coins of
+-- it a shortfall took. A grant has one entry of each kind, so recording one
+-- again is a no-op.
+INSERT INTO coin_transactions (
+        id,
+        tenant_id,
+        user_id,
+        kind,
+        coins,
+        grant_id
+    )
+VALUES (
+        sqlc.arg('id'),
+        sqlc.arg('tenant_id'),
+        sqlc.narg('user_id')::uuid,
+        sqlc.arg('kind')::text,
+        sqlc.arg('coins'),
+        sqlc.arg('grant_id')::uuid
+    ) ON CONFLICT (grant_id, kind) DO NOTHING;
+
+-- name: GetExpiredCoinsOfGrant :one
+-- The coins of a grant the expiry job recorded lapsed, 0 while it has
+-- recorded none.
+SELECT COALESCE(SUM(coins), 0)::integer
+FROM coin_transactions
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND grant_id = sqlc.arg('grant_id')::uuid
+    AND kind = 'expiry';
+
+-- name: GetCoinShortfallOfUser :one
+-- What the reader owes: the coins of every closed grant that had been spent,
+-- less what later grants have paid of them.
+SELECT COALESCE(SUM(
+            CASE
+                WHEN kind = 'shortfall' THEN coins
+                ELSE -coins
+            END
+        ), 0)::bigint
+FROM coin_transactions
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND user_id = sqlc.arg('user_id')::uuid
+    AND kind IN ('shortfall', 'shortfall_settlement');

@@ -97,6 +97,9 @@
     "purchase_receipt": {
       "action": "查看已購買",
       "amount": "支付金額：{$amount}（{$currency}）",
+      "coin_pack": "{$coin_name}：{$count :integer}",
+      "coin_pack_bonus": "{$coin_name}：{$count :integer}（含贈送{$bonus :integer}）",
+      "coins_expire_at": "使用期限至：{$expires_at}",
       "episode": "章節：{$episode_title}",
       "expires_at": "有效期至：{$expires_at}",
       "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
@@ -247,6 +250,8 @@
   },
   "checkout": {
     "bundle_discount": "打包優惠（{$percent :integer}%）",
+    "coin_pack_line_item": "{$count :integer}{$coin_name}",
+    "coin_pack_line_item_bonus": "{$count :integer}{$coin_name}（含贈送{$bonus :integer}）",
     "rental_line_item": "{$episode_title}（租借，{$hours :integer}小時）"
   },
   "errors": {

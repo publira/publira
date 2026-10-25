@@ -3433,6 +3433,105 @@ class SeriesBundle extends $pb.GeneratedMessage {
   void clearDiscountPercent() => $_clearField(3);
 }
 
+/// A pack of the tenant's coins as a purchase bought it: the coins and the bonus
+/// coins the reader was shown when the checkout or the store's payment sheet
+/// opened, which are what the purchase granted however the pack has changed
+/// since.
+class PurchasedCoinPack extends $pb.GeneratedMessage {
+  factory PurchasedCoinPack({
+    $core.String? id,
+    $core.String? publicId,
+    $core.int? coins,
+    $core.int? bonusCoins,
+  }) {
+    final result = PurchasedCoinPack._();
+    if (id != null) result.id = id;
+    if (publicId != null) result.publicId = publicId;
+    if (coins != null) result.coins = coins;
+    if (bonusCoins != null) result.bonusCoins = bonusCoins;
+    return result;
+  }
+
+  PurchasedCoinPack._();
+
+  factory PurchasedCoinPack.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PurchasedCoinPack()..mergeFromBuffer(data, registry);
+  factory PurchasedCoinPack.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PurchasedCoinPack()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PurchasedCoinPack',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: PurchasedCoinPack.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'publicId')
+    ..aI(3, _omitFieldNames ? '' : 'coins')
+    ..aI(4, _omitFieldNames ? '' : 'bonusCoins')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PurchasedCoinPack clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PurchasedCoinPack copyWith(void Function(PurchasedCoinPack) updates) =>
+      super.copyWith((message) => updates(message as PurchasedCoinPack))
+          as PurchasedCoinPack;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PurchasedCoinPack() / PurchasedCoinPack.new instead')
+  static PurchasedCoinPack create() => PurchasedCoinPack._();
+  static $pb.GeneratedMessage $_createMessage() => PurchasedCoinPack._();
+  @$core.override
+  PurchasedCoinPack createEmptyInstance() => PurchasedCoinPack._();
+  @$core.pragma('dart2js:noInline')
+  static PurchasedCoinPack getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PurchasedCoinPack>(
+          PurchasedCoinPack.$_createMessage);
+  static PurchasedCoinPack? _defaultInstance;
+
+  /// The pack's primary key, a UUID.
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get publicId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set publicId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPublicId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPublicId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get coins => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set coins($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCoins() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCoins() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get bonusCoins => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set bonusCoins($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBonusCoins() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBonusCoins() => $_clearField(4);
+}
+
 /// An icon the tenant provides for its readers to pick. A reader's account
 /// that shows it carries the same variants in User.icon_image_variants.
 class ReaderIconPreset extends $pb.GeneratedMessage {

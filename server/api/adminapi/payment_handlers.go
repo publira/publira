@@ -356,13 +356,27 @@ func (s *adminServer) ListTenantStoreProducts(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read the tenant currency", err, "tenant_id", tenant.ID.String())
 	}
-	products := make([]*publiraadminv1.TenantStoreProduct, 0, len(rows))
+	// Every pack the tenant has not retired is a product too, on sale or not,
+	// so its product can be created before it goes on sale.
+	packs, err := s.queriesFor(ctx).ListCoinPacksForTenant(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list the tenant's coin packs", err, "tenant_id", tenant.ID.String())
+	}
+	products := make([]*publiraadminv1.TenantStoreProduct, 0, len(rows)+len(packs))
 	for _, row := range rows {
 		products = append(products, &publiraadminv1.TenantStoreProduct{
 			ProductId:    storeproduct.ProductID(row.Price),
 			Price:        row.Price,
 			EpisodeCount: row.EpisodeCount,
 			Currency:     currency,
+		})
+	}
+	for _, pack := range packs {
+		products = append(products, &publiraadminv1.TenantStoreProduct{
+			ProductId: storeproduct.CoinPackProductID(pack.PublicID),
+			Price:     pack.Price,
+			Currency:  currency,
+			CoinPack:  coinPackToProto(pack, currency),
 		})
 	}
 	return &publiraadminv1.ListTenantStoreProductsResponse{Products: products}, nil

@@ -9777,6 +9777,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     $0.SeriesBundle? seriesBundle,
     $core.int? coinsSpent,
     $core.String? coinName,
+    $0.PurchasedCoinPack? coinPack,
   }) {
     final result = MyPurchase._();
     if (id != null) result.id = id;
@@ -9795,6 +9796,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     if (seriesBundle != null) result.seriesBundle = seriesBundle;
     if (coinsSpent != null) result.coinsSpent = coinsSpent;
     if (coinName != null) result.coinName = coinName;
+    if (coinPack != null) result.coinPack = coinPack;
     return result;
   }
 
@@ -9832,6 +9834,8 @@ class MyPurchase extends $pb.GeneratedMessage {
         subBuilder: $0.SeriesBundle.$_createMessage)
     ..aI(15, _omitFieldNames ? '' : 'coinsSpent')
     ..aOS(16, _omitFieldNames ? '' : 'coinName')
+    ..aOM<$0.PurchasedCoinPack>(17, _omitFieldNames ? '' : 'coinPack',
+        subBuilder: $0.PurchasedCoinPack.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9874,6 +9878,8 @@ class MyPurchase extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   $0.Episode ensureEpisode() => $_ensure(1);
 
+  /// The series of the episode, the volume, or the rest of a series bought.
+  /// Unset on a purchase of a pack of coins, which is of no series.
   @$pb.TagNumber(3)
   $0.Series get series => $_getN(2);
   @$pb.TagNumber(3)
@@ -10014,9 +10020,8 @@ class MyPurchase extends $pb.GeneratedMessage {
   $0.SeriesBundle ensureSeriesBundle() => $_ensure(13);
 
   /// Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
-  /// coins spent, and the tenant's word for its coins in the request's locale.
-  /// Such a purchase took no payment, so its price_at_purchase is 0. Both are 0
-  /// and empty on every other purchase.
+  /// coins spent. Such a purchase took no payment, so its price_at_purchase is
+  /// 0. It is 0 on every other purchase.
   @$pb.TagNumber(15)
   $core.int get coinsSpent => $_getIZ(14);
   @$pb.TagNumber(15)
@@ -10026,6 +10031,9 @@ class MyPurchase extends $pb.GeneratedMessage {
   @$pb.TagNumber(15)
   void clearCoinsSpent() => $_clearField(15);
 
+  /// The tenant's word for its coins in the request's locale, set on a
+  /// purchase paid with coins and on a purchase of a pack, and empty on every
+  /// other purchase.
   @$pb.TagNumber(16)
   $core.String get coinName => $_getSZ(15);
   @$pb.TagNumber(16)
@@ -10034,6 +10042,22 @@ class MyPurchase extends $pb.GeneratedMessage {
   $core.bool hasCoinName() => $_has(15);
   @$pb.TagNumber(16)
   void clearCoinName() => $_clearField(16);
+
+  /// The pack bought, set on a purchase of a pack of the tenant's coins
+  /// (CoinService.StartCoinPackCheckout, or a store purchase of the pack). Such
+  /// a purchase is always PURCHASE_KIND_PURCHASE, has no expires_at, and is
+  /// active until it is refunded or disputed: its coins expire on their own,
+  /// as CoinBalance reports. A purchase of a pack is listed on every surface.
+  @$pb.TagNumber(17)
+  $0.PurchasedCoinPack get coinPack => $_getN(16);
+  @$pb.TagNumber(17)
+  set coinPack($0.PurchasedCoinPack value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasCoinPack() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearCoinPack() => $_clearField(17);
+  @$pb.TagNumber(17)
+  $0.PurchasedCoinPack ensureCoinPack() => $_ensure(16);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.
@@ -10391,9 +10415,10 @@ class ProcessPaymentWebhookResponse extends $pb.GeneratedMessage {
 /// for a tenant whose app sells through the store. The app buys `product_id`
 /// with `intent_id` as the transaction's account token (`appAccountToken` on
 /// iOS, `obfuscatedAccountId` on Android), which is how ConfirmStorePurchase
-/// learns which episode the transaction pays for. The intent keeps the price and
-/// the reading period the episode is sold with at this moment, and the purchase
-/// is recorded on those terms.
+/// learns what the transaction pays for. The intent keeps the terms the
+/// episode or the pack is sold on at this moment, and the purchase is recorded
+/// on those terms: the price and the reading period of an episode, and the
+/// coins, the bonus coins, and the tenant's expiry_days of a pack.
 ///
 /// Signed-in readers only. An episode the app may not show is not_found; one it
 /// may not sell, a free one, a tenant whose app does not sell through the
@@ -10402,16 +10427,26 @@ class ProcessPaymentWebhookResponse extends $pb.GeneratedMessage {
 /// a creator the reader's account is linked to is permission_denied with the
 /// ErrorInfo reason READER_CREDITED_ON_EPISODE. Asking again for the same
 /// episode at the same price answers the same intent.
+///
+/// A pack is refused as CoinService.StartCoinPackCheckout refuses one:
+/// failed_precondition with the ErrorInfo reason COINS_UNAVAILABLE while the
+/// platform does not allow tenant coins or the tenant's coins are off,
+/// failed_precondition while the tenant is not selling packs, and not_found for
+/// a pack that is not on sale. Asking again for the same pack answers the same
+/// intent until a purchase consumes it, since a pack is bought again and
+/// again.
 class StartStorePurchaseRequest extends $pb.GeneratedMessage {
   factory StartStorePurchaseRequest({
     $0.TenantContext? tenant,
     InAppPurchaseStore? store,
     $core.String? episodeId,
+    $core.String? coinPackId,
   }) {
     final result = StartStorePurchaseRequest._();
     if (tenant != null) result.tenant = tenant;
     if (store != null) result.store = store;
     if (episodeId != null) result.episodeId = episodeId;
+    if (coinPackId != null) result.coinPackId = coinPackId;
     return result;
   }
 
@@ -10433,6 +10468,7 @@ class StartStorePurchaseRequest extends $pb.GeneratedMessage {
     ..aE<InAppPurchaseStore>(3, _omitFieldNames ? '' : 'store',
         enumValues: InAppPurchaseStore.values)
     ..aOS(4, _omitFieldNames ? '' : 'episodeId')
+    ..aOS(5, _omitFieldNames ? '' : 'coinPackId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10482,6 +10518,8 @@ class StartStorePurchaseRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   void clearStore() => $_clearField(3);
 
+  /// What to buy: exactly one of an episode and a pack of the tenant's coins
+  /// (CoinPack.id).
   @$pb.TagNumber(4)
   $core.String get episodeId => $_getSZ(2);
   @$pb.TagNumber(4)
@@ -10490,6 +10528,15 @@ class StartStorePurchaseRequest extends $pb.GeneratedMessage {
   $core.bool hasEpisodeId() => $_has(2);
   @$pb.TagNumber(4)
   void clearEpisodeId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get coinPackId => $_getSZ(3);
+  @$pb.TagNumber(5)
+  set coinPackId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCoinPackId() => $_has(3);
+  @$pb.TagNumber(5)
+  void clearCoinPackId() => $_clearField(5);
 }
 
 class StartStorePurchaseResponse extends $pb.GeneratedMessage {
@@ -10556,7 +10603,8 @@ class StartStorePurchaseResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearIntentId() => $_clearField(1);
 
-  /// The store product the episode's price is sold as, such as `episode_300`.
+  /// The store product the episode's price is sold as, such as `episode_300`,
+  /// or the pack, `coins_` followed by the pack's public_id.
   @$pb.TagNumber(2)
   $core.String get productId => $_getSZ(1);
   @$pb.TagNumber(2)

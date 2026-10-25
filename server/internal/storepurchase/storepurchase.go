@@ -1,6 +1,7 @@
 // Package storepurchase holds what the public API and the worker share about a
 // purchase made through the App Store or Google Play: the values of
-// purchases.store, and how a store's refund lands on the purchase it reverses.
+// purchases.store, and how a store's refund lands on the purchase it reverses,
+// the coins a refunded pack granted included.
 package storepurchase
 
 import (
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/coinledger"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
@@ -22,6 +24,7 @@ const (
 
 // RefundQuerier is the persistence a refund needs.
 type RefundQuerier interface {
+	coinledger.Querier
 	LockStoreTransaction(ctx context.Context, arg dbmodels.LockStoreTransactionParams) error
 	RecordStoreRefundOnPurchase(ctx context.Context, arg dbmodels.RecordStoreRefundOnPurchaseParams) (dbmodels.Purchase, error)
 	HoldUnappliedStoreRefund(ctx context.Context, arg dbmodels.HoldUnappliedStoreRefundParams) error
@@ -53,13 +56,13 @@ func RecordRefund(ctx context.Context, q RefundQuerier, tenantID uuid.UUID, stor
 	if err := LockTransaction(ctx, q, tenantID, store, transactionID); err != nil {
 		return false, err
 	}
-	_, err := q.RecordStoreRefundOnPurchase(ctx, dbmodels.RecordStoreRefundOnPurchaseParams{
+	purchase, err := q.RecordStoreRefundOnPurchase(ctx, dbmodels.RecordStoreRefundOnPurchaseParams{
 		TenantID:           tenantID,
 		Store:              store,
 		StoreTransactionID: transactionID,
 	})
 	if err == nil {
-		return true, nil
+		return true, revokeCoins(ctx, q, purchase)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return false, fmt.Errorf("record store refund: %w", err)
@@ -79,7 +82,7 @@ func RecordRefund(ctx context.Context, q RefundQuerier, tenantID uuid.UUID, stor
 // caller runs it in the transaction that records the purchase, after
 // [LockTransaction].
 func ApplyHeldRefund(ctx context.Context, q RefundQuerier, tenantID, purchaseID uuid.UUID, store, transactionID string) (bool, error) {
-	_, err := q.ApplyUnappliedStoreRefundToPurchase(ctx, dbmodels.ApplyUnappliedStoreRefundToPurchaseParams{
+	purchase, err := q.ApplyUnappliedStoreRefundToPurchase(ctx, dbmodels.ApplyUnappliedStoreRefundToPurchaseParams{
 		TenantID:   tenantID,
 		PurchaseID: purchaseID,
 	})
@@ -89,6 +92,9 @@ func ApplyHeldRefund(ctx context.Context, q RefundQuerier, tenantID, purchaseID 
 	if err != nil {
 		return false, fmt.Errorf("apply held store refund: %w", err)
 	}
+	if err := revokeCoins(ctx, q, purchase); err != nil {
+		return false, err
+	}
 	if err := q.ReleaseUnappliedStoreRefund(ctx, dbmodels.ReleaseUnappliedStoreRefundParams{
 		TenantID:           tenantID,
 		Store:              store,
@@ -97,4 +103,16 @@ func ApplyHeldRefund(ctx context.Context, q RefundQuerier, tenantID, purchaseID 
 		return false, fmt.Errorf("release held store refund: %w", err)
 	}
 	return true, nil
+}
+
+// revokeCoins takes back the coins of a pack a store has refunded. A store
+// refunds a consumable in full, so every refund of a pack closes its grant.
+func revokeCoins(ctx context.Context, q RefundQuerier, purchase dbmodels.Purchase) error {
+	if !purchase.CoinPackID.Valid {
+		return nil
+	}
+	if _, err := coinledger.RevokePackGrant(ctx, q, purchase.TenantID, purchase.ID); err != nil {
+		return fmt.Errorf("revoke the coins of a refunded pack: %w", err)
+	}
+	return nil
 }

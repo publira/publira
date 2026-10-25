@@ -55,6 +55,10 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			nil,
 			nil,
 			int32(0),
+			nil,
+			nil,
+			nil,
+			nil,
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
@@ -123,6 +127,10 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 			nil,
 			nil,
 			int32(0),
+			nil,
+			nil,
+			nil,
+			nil,
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
@@ -187,6 +195,10 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 			nil,
 			nil,
 			int32(0),
+			nil,
+			nil,
+			nil,
+			nil,
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
@@ -248,6 +260,10 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 			nil,
 			nil,
 			int32(0),
+			nil,
+			nil,
+			nil,
+			nil,
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
@@ -483,7 +499,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "series_id", "series_public_id", "series_title", "series_title_locale",
+		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "coins_spent", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "volume_id", "volume_public_id", "volume_title", "volume_order_index", "series_bundle_id", "series_bundle_discount_percent", "series_bundle_episode_count", "coin_pack_id", "coin_pack_public_id", "coin_pack_coins", "coin_pack_bonus_coins", "series_id", "series_public_id", "series_title", "series_title_locale",
 	})
 }
 
@@ -511,6 +527,10 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		nil,
 		nil,
 		int32(0),
+		nil,
+		nil,
+		nil,
+		nil,
 		uuid.Must(uuid.NewV7()),
 		"SERIES001",
 		"Series title",

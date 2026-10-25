@@ -130,6 +130,8 @@ type Querier interface {
 	// policy that no longer allows one, answering the accounts it changed. The
 	// images are left for the orphan sweep.
 	ClearUploadedReaderIcons(ctx context.Context, tenantID uuid.NullUUID) ([]uuid.UUID, error)
+	// Takes back what a grant has left and records it closed.
+	CloseCoinGrant(ctx context.Context, arg CloseCoinGrantParams) error
 	ConsumeStorePurchaseIntent(ctx context.Context, arg ConsumeStorePurchaseIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
@@ -214,7 +216,15 @@ type Querier interface {
 	CreateCampaignBanner(ctx context.Context, arg CreateCampaignBannerParams) (CreateCampaignBannerRow, error)
 	CreateCampaignBannerImage(ctx context.Context, arg CreateCampaignBannerImageParams) (CampaignBannerImage, error)
 	CreateCampaignBannerImageVariant(ctx context.Context, arg CreateCampaignBannerImageVariantParams) (CampaignBannerImageVariant, error)
+	// Records an entry of the reader's history that is about one grant: the grant
+	// itself, its revocation, the shortfall its revocation left, or the coins of
+	// it a shortfall took. A grant has one entry of each kind, so recording one
+	// again is a no-op.
+	CreateCoinGrantTransaction(ctx context.Context, arg CreateCoinGrantTransactionParams) error
 	CreateCoinPack(ctx context.Context, arg CreateCoinPackParams) (TenantCoinPack, error)
+	// Writes down the pack a purchase just recorded bought, as the reader was
+	// shown it.
+	CreateCoinPackPurchase(ctx context.Context, arg CreateCoinPackPurchaseParams) error
 	CreateCoinSpend(ctx context.Context, arg CreateCoinSpendParams) error
 	CreateCoinSpendAllocation(ctx context.Context, arg CreateCoinSpendAllocationParams) error
 	// Messages readers send the tenant through the contact form, and the staff
@@ -340,6 +350,10 @@ type Querier interface {
 	// connection reads no row and would list every notification it filed, which
 	// is why the reader-facing types are filed by the worker.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
+	// Grants the reader the coins a pack purchase bought, less what a shortfall
+	// took of them as they were granted. A purchase grants once, so a grant made
+	// already is no row.
+	CreatePackCoinGrant(ctx context.Context, arg CreatePackCoinGrantParams) (uuid.UUID, error)
 	// The caller creates the page's default-locale translation in the same
 	// transaction, so no page is ever stored without one.
 	CreatePage(ctx context.Context, arg CreatePageParams) (Page, error)
@@ -356,6 +370,11 @@ type Querier interface {
 	// a sale to report and to match a refund against. A redelivery of the same
 	// checkout is no row.
 	CreatePurchaseFromProviderCheckout(ctx context.Context, arg CreatePurchaseFromProviderCheckoutParams) (Purchase, error)
+	// Records the purchase of a pack a completed checkout paid for, by the rules
+	// CreatePurchaseFromProviderCheckout records an episode's: every paid checkout
+	// is a purchase of its own, and a redelivery of the same checkout is no row. A
+	// pack is never rented and never expires; its coins do, by their grant.
+	CreatePurchaseFromProviderCoinPackCheckout(ctx context.Context, arg CreatePurchaseFromProviderCoinPackCheckoutParams) (Purchase, error)
 	// Records the purchase of a bundle a completed checkout paid for, by the rules
 	// CreatePurchaseFromProviderCheckout records an episode's: every paid checkout
 	// is a purchase of its own, and a redelivery of the same checkout is no row.
@@ -418,6 +437,10 @@ type Querier interface {
 	// preferences, and listed. The conflict target needs SELECT on the row, so only
 	// the roles that reach every tenant's rows run this.
 	CreateStaffNotification(ctx context.Context, arg CreateStaffNotificationParams) error
+	// Records a verified store transaction for a pack, as CreateStorePurchase
+	// records one for an episode. A second insert of the same transaction is no
+	// row and the caller reads the first.
+	CreateStoreCoinPackPurchase(ctx context.Context, arg CreateStoreCoinPackPurchaseParams) (Purchase, error)
 	// Records a verified store transaction. A transaction is sold once, so a
 	// second insert of the same one is no row and the caller reads the first.
 	CreateStorePurchase(ctx context.Context, arg CreateStorePurchaseParams) (Purchase, error)
@@ -697,6 +720,15 @@ type Querier interface {
 	// snapshot misses commits after this instant, and the outbox event that write
 	// queued is read later still, under a higher version.
 	GetCatalogIndexSnapshotTime(ctx context.Context) (time.Time, error)
+	// The grant a pack purchase made, and the reader it was made to, which a
+	// revocation locks before it locks the grant.
+	GetCoinGrantOfPurchase(ctx context.Context, arg GetCoinGrantOfPurchaseParams) (GetCoinGrantOfPurchaseRow, error)
+	// The episode a checkout of a pack sends the reader back to, the one they
+	// were short of coins for, which has to be one the calling surface shows.
+	GetCoinPackCheckoutReturnEpisode(ctx context.Context, arg GetCoinPackCheckoutReturnEpisodeParams) (GetCoinPackCheckoutReturnEpisodeRow, error)
+	// What the reader owes: the coins of every closed grant that had been spent,
+	// less what later grants have paid of them.
+	GetCoinShortfallOfUser(ctx context.Context, arg GetCoinShortfallOfUserParams) (int64, error)
 	// The spend a reader's client already sent with the key, and what it paid for.
 	GetCoinSpendByIdempotencyKey(ctx context.Context, arg GetCoinSpendByIdempotencyKeyParams) (GetCoinSpendByIdempotencyKeyRow, error)
 	// The account a message may be assigned to: an active tenant_admin of the
@@ -817,6 +849,10 @@ type Querier interface {
 	// The checkout the reader last let expire on the episode, which the next
 	// checkout's idempotency key names. No row is a reader who has let none expire.
 	GetExpiredCheckoutID(ctx context.Context, arg GetExpiredCheckoutIDParams) (string, error)
+	GetExpiredCoinPackCheckoutID(ctx context.Context, arg GetExpiredCoinPackCheckoutIDParams) (string, error)
+	// The coins of a grant the expiry job recorded lapsed, 0 while it has
+	// recorded none.
+	GetExpiredCoinsOfGrant(ctx context.Context, arg GetExpiredCoinsOfGrantParams) (int32, error)
 	// The checkout the reader last let expire on the rest of the series, which
 	// the next checkout's idempotency key names, as GetExpiredCheckoutID does for
 	// an episode.
@@ -840,6 +876,11 @@ type Querier interface {
 	// the next checkout's idempotency key names. No row is a reader who has paid
 	// for none.
 	GetLastPaidCheckoutID(ctx context.Context, arg GetLastPaidCheckoutIDParams) (string, error)
+	// The provider checkout of the reader's latest purchase of the pack, which the
+	// next checkout's idempotency key names, as GetLastPaidCheckoutID does for an
+	// episode. A pack is bought again and again, so without it a second purchase
+	// of the same pack would be answered with the checkout of the first.
+	GetLastPaidCoinPackCheckoutID(ctx context.Context, arg GetLastPaidCoinPackCheckoutIDParams) (string, error)
 	// The provider checkout of the reader's latest purchase of the rest of the
 	// series, which the next checkout's idempotency key names, as
 	// GetLastPaidCheckoutID does for an episode.
@@ -880,7 +921,8 @@ type Querier interface {
 	// access the save is: an episode they may no longer open has no position to
 	// resume, and answering with one would tell them the row is still there.
 	GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpisodeReadingPositionParams) (GetMyEpisodeReadingPositionRow, error)
-	// One purchase of the reader's, shaped as the library lists it.
+	// One purchase of the reader's, an episode's or a pack's, shaped as the
+	// library lists it.
 	GetMyPurchase(ctx context.Context, arg GetMyPurchaseParams) (GetMyPurchaseRow, error)
 	// What this reader's own reactions say about the series: the mean of the scores
 	// they gave, over the episodes they reacted to and no others. A reader who
@@ -1003,6 +1045,10 @@ type Querier interface {
 	// granted only the columns named here. No rows while Web Push is not
 	// configured, so the key is never offered before a push could be signed.
 	GetPublishedWebPushPublicKey(ctx context.Context) (string, error)
+	// A pack the tenant has on sale now, which a checkout or a store purchase
+	// intent sells at the terms read here. A pack taken off sale or retired is no
+	// row, and so is one of another tenant.
+	GetPurchasableCoinPackForTenant(ctx context.Context, arg GetPurchasableCoinPackForTenantParams) (GetPurchasableCoinPackForTenantRow, error)
 	GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error)
 	// A volume on sale on the calling surface: published, every one of its
 	// episodes sold there, and holding at least one episode the surface lists,
@@ -2075,7 +2121,8 @@ type Querier interface {
 	ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowUpdatesDescParams) ([]ListMyFollowUpdatesDescRow, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
 	// The reader's library, newest purchase first: each purchase of an episode,
-	// and each purchase of a volume or of a series bundle as one row of its own.
+	// and each purchase of a volume, of a series bundle, or of a pack of coins as
+	// one row of its own.
 	// Publication is not re-checked, so a purchase outlives the episode or the
 	// volume being taken down, but the calling surface is: an episode that surface
 	// may not show, or a volume or a bundle of a series it may not show, is left
@@ -2432,8 +2479,8 @@ type Querier interface {
 	// proto/README.md.
 	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
 	// What the console shows of each purchase named, in no particular order: the
-	// episode bought, the volume, or the series bundle, and the series of any of
-	// them. The
+	// episode bought, the volume, the series bundle, or the pack of coins, and the
+	// series of any of the first three. The
 	// buyer is joined within the tenant, so the purchase of a reader who has since
 	// deleted their account, which keeps no user, answers no buyer rather than no
 	// row.
@@ -2907,6 +2954,9 @@ type Querier interface {
 	// The lock is taken on the inbox rather than on a row, so it holds before any
 	// account has it.
 	LockCanonicalEmailForTenant(ctx context.Context, arg LockCanonicalEmailForTenantParams) error
+	// A grant as a revocation reads it, locked against a spend drawing on it and
+	// the expiry job zeroing it.
+	LockCoinGrant(ctx context.Context, arg LockCoinGrantParams) (LockCoinGrantRow, error)
 	// A pack the tenant has not retired, locked for the write that follows.
 	LockCoinPackForTenant(ctx context.Context, arg LockCoinPackForTenantParams) (TenantCoinPack, error)
 	// Serializes, for the rest of the caller's transaction, the spends of one
@@ -3206,6 +3256,10 @@ type Querier interface {
 	// The marks re-check the instant, so a banner rescheduled ahead between the
 	// listing and the mark keeps its drop owed.
 	MarkCampaignBannerStartRevalidated(ctx context.Context, id uuid.UUID) error
+	// Records the first sale of a pack, from which on its price and coins are
+	// what a purchase of it bought and never change. A pack sold before keeps the
+	// instant of its first sale.
+	MarkCoinPackSold(ctx context.Context, arg MarkCoinPackSoldParams) error
 	MarkEpisodeCampaignPriceEndRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeCampaignPriceStartRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
@@ -3309,6 +3363,11 @@ type Querier interface {
 	// scheduled by hand it was waiting behind has been deleted. The start it moves
 	// to is a new boundary, so it is owed again.
 	MoveSeriesFreeAfterWindowStart(ctx context.Context, arg MoveSeriesFreeAfterWindowStartParams) (MoveSeriesFreeAfterWindowStartRow, error)
+	// Opens the reader's intent to buy a pack as a store product, or answers the
+	// one already open for the same pack and product, as
+	// OpenStorePurchaseIntent does for an episode, with the terms it was first
+	// opened on.
+	OpenStoreCoinPackPurchaseIntent(ctx context.Context, arg OpenStoreCoinPackPurchaseIntentParams) (StorePurchaseIntent, error)
 	// Opens the reader's intent to buy an episode as a store product, or answers
 	// the one already open for the same episode and product, so asking again adds
 	// no row. The no-op update is what makes the existing row come back, with the
@@ -3446,6 +3505,10 @@ type Querier interface {
 	// nothing the idempotency key reads. A reader or an episode deleted since the
 	// checkout started records nothing, since there is no next checkout to key.
 	RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error
+	// Records the checkout the provider reports expired as the reader's latest on
+	// the pack, as RecordExpiredCheckout does for an episode. A reader or a pack
+	// deleted since the checkout started records nothing.
+	RecordExpiredCoinPackCheckout(ctx context.Context, arg RecordExpiredCoinPackCheckoutParams) error
 	// Records the checkout the provider reports expired on the bundle it would
 	// have sold, which makes it the reader's latest expired checkout of the
 	// series' rest. A repeated delivery names the checkout already recorded and

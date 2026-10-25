@@ -307,6 +307,10 @@ var emailCopyCases = []struct {
 				"tenant_name":                 "Aoto Press",
 				"volume_title":                "",
 				"series_bundle_episode_count": int64(0),
+				"coin_pack_coins":             int64(0),
+				"coin_pack_bonus_coins":       int64(0),
+				"coin_name":                   "",
+				"coins_expire_at":             "",
 			},
 		},
 	},
@@ -327,6 +331,10 @@ var emailCopyCases = []struct {
 				"tenant_name":                 "Aoto Press",
 				"volume_title":                "",
 				"series_bundle_episode_count": int64(0),
+				"coin_pack_coins":             int64(0),
+				"coin_pack_bonus_coins":       int64(0),
+				"coin_name":                   "",
+				"coins_expire_at":             "",
 			},
 		},
 	},
@@ -347,6 +355,10 @@ var emailCopyCases = []struct {
 				"tenant_name":                 "Aoto Press",
 				"volume_title":                "",
 				"series_bundle_episode_count": int64(0),
+				"coin_pack_coins":             int64(0),
+				"coin_pack_bonus_coins":       int64(0),
+				"coin_name":                   "",
+				"coins_expire_at":             "",
 			},
 		},
 	},
@@ -367,6 +379,10 @@ var emailCopyCases = []struct {
 				"tenant_name":                 "Aoto Press",
 				"volume_title":                "Volume 1",
 				"series_bundle_episode_count": int64(0),
+				"coin_pack_coins":             int64(0),
+				"coin_pack_bonus_coins":       int64(0),
+				"coin_name":                   "",
+				"coins_expire_at":             "",
 			},
 		},
 	},
@@ -387,6 +403,10 @@ var emailCopyCases = []struct {
 				"tenant_name":                 "Aoto Press",
 				"volume_title":                "",
 				"series_bundle_episode_count": int64(12),
+				"coin_pack_coins":             int64(0),
+				"coin_pack_bonus_coins":       int64(0),
+				"coin_name":                   "",
+				"coins_expire_at":             "",
 			},
 		},
 	},
@@ -573,7 +593,12 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 		episodeTitle string
 		volumeTitle  string
 		bundleCount  int64
-		wantText     string
+		// coins, bonusCoins, coinName, and coinsExpireAt describe a pack.
+		coins         int64
+		bonusCoins    int64
+		coinName      string
+		coinsExpireAt string
+		wantText      string
 	}{
 		{
 			name:         "in English with a reading period",
@@ -669,6 +694,43 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
 				"このメールはAoto Pressから送信されています。",
 		},
+		{
+			name:          "in English for a pack with bonus coins",
+			locale:        "en",
+			amount:        1000,
+			currency:      "JPY",
+			coins:         1000,
+			bonusCoins:    100,
+			coinName:      "Points",
+			coinsExpireAt: "2030-07-14T12:00:00Z",
+			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
+				"Here is the receipt for your purchase on Aoto Press.\n\n" +
+				"Points: 1,100 (including 100 bonus)\n\n" +
+				"Price paid: ¥1,000 (JPY)\n\n" +
+				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Spendable until: Jul 14, 2030, 9:00\u202fPM\n\n" +
+				"Open your purchases https://reader.example.test/my/library\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:          "in Japanese for a pack",
+			locale:        "ja",
+			amount:        500,
+			currency:      "JPY",
+			coins:         500,
+			coinName:      "ポイント",
+			coinsExpireAt: "2030-07-14T12:00:00Z",
+			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
+				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
+				"ポイント: 500\n\n" +
+				"購入価格: ￥500（JPY）\n\n" +
+				"購入日時: 2030/01/15 21:00\n\n" +
+				"利用期限: 2030/07/14 21:00\n\n" +
+				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			email, err := emailCopy(emailrenderer.Request{
@@ -686,6 +748,10 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 					"tenant_name":                 "Aoto Press",
 					"volume_title":                testCase.volumeTitle,
 					"series_bundle_episode_count": testCase.bundleCount,
+					"coin_pack_coins":             testCase.coins,
+					"coin_pack_bonus_coins":       testCase.bonusCoins,
+					"coin_name":                   testCase.coinName,
+					"coins_expire_at":             testCase.coinsExpireAt,
 				},
 				TimeZone: "Asia/Tokyo",
 			})

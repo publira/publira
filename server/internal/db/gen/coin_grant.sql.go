@@ -7,10 +7,31 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+const CloseCoinGrant = `-- name: CloseCoinGrant :exec
+UPDATE coin_grants
+SET remaining_coins = 0,
+    revoked_at = NOW(),
+    updated_at = NOW()
+WHERE tenant_id = $1
+    AND id = $2
+`
+
+type CloseCoinGrantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// Takes back what a grant has left and records it closed.
+func (q *Queries) CloseCoinGrant(ctx context.Context, arg CloseCoinGrantParams) error {
+	_, err := q.db.ExecContext(ctx, CloseCoinGrant, arg.TenantID, arg.ID)
+	return err
+}
 
 const CountReadersHoldingCoins = `-- name: CountReadersHoldingCoins :one
 SELECT COUNT(DISTINCT user_id)::integer
@@ -28,6 +49,58 @@ func (q *Queries) CountReadersHoldingCoins(ctx context.Context, tenantID uuid.UU
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const CreatePackCoinGrant = `-- name: CreatePackCoinGrant :one
+INSERT INTO coin_grants (
+        id,
+        tenant_id,
+        user_id,
+        source,
+        purchase_id,
+        coins,
+        remaining_coins,
+        expires_at
+    )
+VALUES (
+        $1,
+        $2,
+        $3::uuid,
+        'pack_purchase',
+        $4::uuid,
+        $5,
+        $6,
+        $7
+    ) ON CONFLICT (tenant_id, purchase_id) DO NOTHING
+RETURNING id
+`
+
+type CreatePackCoinGrantParams struct {
+	ID             uuid.UUID `json:"id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	PurchaseID     uuid.UUID `json:"purchase_id"`
+	Coins          int32     `json:"coins"`
+	RemainingCoins int32     `json:"remaining_coins"`
+	ExpiresAt      time.Time `json:"expires_at"`
+}
+
+// Grants the reader the coins a pack purchase bought, less what a shortfall
+// took of them as they were granted. A purchase grants once, so a grant made
+// already is no row.
+func (q *Queries) CreatePackCoinGrant(ctx context.Context, arg CreatePackCoinGrantParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, CreatePackCoinGrant,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.PurchaseID,
+		arg.Coins,
+		arg.RemainingCoins,
+		arg.ExpiresAt,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const DrawCoinGrant = `-- name: DrawCoinGrant :exec
@@ -128,6 +201,33 @@ func (q *Queries) ExpireLapsedCoinGrants(ctx context.Context, batch int32) ([]Ex
 	return items, nil
 }
 
+const GetCoinGrantOfPurchase = `-- name: GetCoinGrantOfPurchase :one
+SELECT id,
+    user_id
+FROM coin_grants
+WHERE tenant_id = $1
+    AND purchase_id = $2::uuid
+`
+
+type GetCoinGrantOfPurchaseParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	PurchaseID uuid.UUID `json:"purchase_id"`
+}
+
+type GetCoinGrantOfPurchaseRow struct {
+	ID     uuid.UUID     `json:"id"`
+	UserID uuid.NullUUID `json:"user_id"`
+}
+
+// The grant a pack purchase made, and the reader it was made to, which a
+// revocation locks before it locks the grant.
+func (q *Queries) GetCoinGrantOfPurchase(ctx context.Context, arg GetCoinGrantOfPurchaseParams) (GetCoinGrantOfPurchaseRow, error) {
+	row := q.db.QueryRowContext(ctx, GetCoinGrantOfPurchase, arg.TenantID, arg.PurchaseID)
+	var i GetCoinGrantOfPurchaseRow
+	err := row.Scan(&i.ID, &i.UserID)
+	return i, err
+}
+
 const ListUnspentCoinsForUser = `-- name: ListUnspentCoinsForUser :many
 SELECT expires_at,
     SUM(remaining_coins)::bigint AS coins
@@ -175,6 +275,43 @@ func (q *Queries) ListUnspentCoinsForUser(ctx context.Context, arg ListUnspentCo
 		return nil, err
 	}
 	return items, nil
+}
+
+const LockCoinGrant = `-- name: LockCoinGrant :one
+SELECT id,
+    coins,
+    remaining_coins,
+    revoked_at
+FROM coin_grants
+WHERE tenant_id = $1
+    AND id = $2
+FOR UPDATE
+`
+
+type LockCoinGrantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type LockCoinGrantRow struct {
+	ID             uuid.UUID    `json:"id"`
+	Coins          int32        `json:"coins"`
+	RemainingCoins int32        `json:"remaining_coins"`
+	RevokedAt      sql.NullTime `json:"revoked_at"`
+}
+
+// A grant as a revocation reads it, locked against a spend drawing on it and
+// the expiry job zeroing it.
+func (q *Queries) LockCoinGrant(ctx context.Context, arg LockCoinGrantParams) (LockCoinGrantRow, error) {
+	row := q.db.QueryRowContext(ctx, LockCoinGrant, arg.TenantID, arg.ID)
+	var i LockCoinGrantRow
+	err := row.Scan(
+		&i.ID,
+		&i.Coins,
+		&i.RemainingCoins,
+		&i.RevokedAt,
+	)
+	return i, err
 }
 
 const LockUnspentCoinGrantsForUser = `-- name: LockUnspentCoinGrantsForUser :many
