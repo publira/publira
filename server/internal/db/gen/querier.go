@@ -614,6 +614,25 @@ type Querier interface {
 	// for the locale asked for. A row owned by another tenant comes back as no
 	// rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
+	// The console's audience statistics: how a tenant's series were followed,
+	// read, and reacted to over a period of its own days.
+	//
+	// The period runs from the tenant's midnight of start_date to its midnight
+	// after end_date in time_zone. series_id narrows every query to one series, and
+	// NULL leaves the whole tenant.
+	//
+	// Followers come from series_follower_counts and series_follow_changes, which
+	// the triggers on series_follows keep, so a follow made a moment ago is in
+	// them. The number of followers at the end of a day is the tally less every
+	// change after that day, which is why each query reads the changes from the
+	// start of the period to now rather than to its end.
+	//
+	// Views, completed reads, and reactions are the series rows of
+	// content_daily_stats, which already roll up every episode of the series and
+	// reach a day once aggregate-content-stats has rebuilt it. A reaction is one
+	// press that added points to a reader's score of an episode, which is
+	// rating_count there, and the points it added are rating_sum.
+	GetAudienceTotals(ctx context.Context, arg GetAudienceTotalsParams) (GetAudienceTotalsRow, error)
 	GetCampaignBannerByIDForTenant(ctx context.Context, arg GetCampaignBannerByIDForTenantParams) (GetCampaignBannerByIDForTenantRow, error)
 	GetCampaignBannerImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetCampaignBannerImageVariantByTypeAndWidthForTenantParams) (GetCampaignBannerImageVariantByTypeAndWidthForTenantRow, error)
 	// What the OpenSearch catalog index is written from: the outbox handler reads
@@ -1056,39 +1075,8 @@ type Querier interface {
 	// signed-in cohort content_daily_stats already measures complete_count and
 	// member_view_count over — a reaction needs a session, and a completed read is
 	// recorded for a member — so the rate they form compares like with like.
-	// The series' figure and the readers behind it.
-	//
-	// The rate is the reaction points the series collected over the reads its
-	// episodes were finished on, which is what keeps a hundred-episode work from
-	// outranking a five-episode one on volume and a widely read one from
-	// outranking a beloved one. Both totals come from the series rows of
-	// content_daily_stats, which already roll up every episode of the series.
-	//
-	// The rate alone would put a series two readers finished and both reacted to at
-	// the top of every list, so it is pulled towards the tenant's own mean by a
-	// fixed number of imagined reads: with few reads behind it the figure is
-	// mostly the tenant's, and it becomes the series' own as real reads outweigh
-	// them. Twenty is roughly where a tenant's catalogue stops being the better
-	// estimate of a series nobody has finished yet.
-	//
-	// The tenant's mean comes from tenant_rating_totals rather than from a sum
-	// taken here. Its inputs are every series row the tenant has for every day it
-	// has ever had, and those rows are never purged, so summing them per request
-	// would put a scan that grows with the tenant's whole history on the series
-	// page. aggregate-content-stats leaves the totals behind on the run that
-	// changes them, which is the only time they move.
-	//
-	// The result is then held to the 1-5 scale the reaction is given on. It can
-	// fall below 1 on its own, because a reader who finishes an episode without
-	// reacting counts in the divisor and gives no points, and a figure under the
-	// bottom of the scale it is drawn on would be read as a score no reader can
-	// give.
-	//
-	// rating_count is the readers, not the divisor: a reader counts once for the
-	// series however many of its episodes they reacted to. It is reported together
-	// with the figure and not before it, so the two always describe the same
-	// reactions — a reaction given today reaches the aggregates with the next run,
-	// and a series shows nothing at all until it does.
+	// The series' figure and the readers behind it. How the figure is formed is
+	// the series_rating function's to say.
 	GetSeriesRating(ctx context.Context, arg GetSeriesRatingParams) (GetSeriesRatingRow, error)
 	// One series' wait-for-free rule. No row means the rule was never configured,
 	// which the caller answers with the column defaults: off.
@@ -1574,6 +1562,10 @@ type Querier interface {
 	// announcement_translation_for's fallback.
 	// cursor rules: proto/README.md.
 	ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnnouncementsForUserDescParams) ([]ListAnnouncementsForUserDescRow, error)
+	// Every day of the period in order, a quiet day included, so a chart of it has
+	// no gap to fill. The days are generated as timestamps without a zone, so the
+	// session's own zone cannot move one onto the day before.
+	ListAudienceByDay(ctx context.Context, arg ListAudienceByDayParams) ([]ListAudienceByDayRow, error)
 	ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error)
 	// Admin ListAuditLogs is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so the index can be scanned in reverse. The handler flips
@@ -2555,6 +2547,18 @@ type Querier interface {
 	// Newest month first. The period is unique per tenant, so it alone is the
 	// keyset.
 	ListRoyaltyStatementsDesc(ctx context.Context, arg ListRoyaltyStatementsDescParams) ([]ListRoyaltyStatementsDescRow, error)
+	// ListSeriesAudienceDesc walked the other way, to build a previous page. The
+	// order it describes is the same one.
+	ListSeriesAudienceAsc(ctx context.Context, arg ListSeriesAudienceAscParams) ([]ListSeriesAudienceAscRow, error)
+	// Every series of the tenant, the most followed at the end of the period first.
+	// A series nobody follows and nobody read is a row too, at the bottom, so the
+	// report is the catalogue rather than the part of it that moved.
+	//
+	// The rating is the series' figure now, the one its page shows, rather than one
+	// of the period: it is formed over every reaction the series ever collected,
+	// and is read only for the rows of the page, after the limit, because each one
+	// reads the series' whole history in content_daily_stats.
+	ListSeriesAudienceDesc(ctx context.Context, arg ListSeriesAudienceDescParams) ([]ListSeriesAudienceDescRow, error)
 	ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTenantAscParams) ([]ListSeriesByTenantAscRow, error)
 	// Admin ListSeries is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so idx_series_tenant_created_at can be scanned in

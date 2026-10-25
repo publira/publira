@@ -160,6 +160,118 @@ message GetRevenueStatsResponse {
   string next_token = 8;
 }
 
+// How GetAudienceStatsRequest cuts its period into rows.
+enum AudienceGroupBy {
+  AUDIENCE_GROUP_BY_UNSPECIFIED = 0;
+  // One row per day of the period, the tenant's own days, a quiet day
+  // included.
+  AUDIENCE_GROUP_BY_DAY = 1;
+  // One row per series of the tenant, every series included.
+  AUDIENCE_GROUP_BY_SERIES = 2;
+}
+
+// How one row of an audience report was followed, read, and reacted to.
+//
+// Followers are counted from every follow made and ended, so a follow made a
+// moment ago is already in them. A follow ends when the reader takes it back
+// and when their account is deleted. A follow that ended before the server
+// began recording them is in no figure, and one standing then is counted from
+// the day it was made.
+//
+// Views, completed reads, and reactions reach a day once the daily aggregates
+// have been rebuilt for it, so today, and a day still waiting for its rebuild,
+// counts none of them yet. A reaction is one press of an episode's reaction
+// control that added to the reader's score, and reaction_points are what those
+// presses added: a tenant whose readers react with a single press records 5
+// points a reaction.
+message AudienceStatsRow {
+  // The tenant day (YYYY-MM-DD) of an AUDIENCE_GROUP_BY_DAY row. Empty
+  // otherwise.
+  string date = 1;
+  // The series of an AUDIENCE_GROUP_BY_SERIES row, under its title in the
+  // tenant's default locale. Empty for a day.
+  string series_public_id = 2;
+  string series_title = 3;
+  // Readers following at the end of the row's day, or, for a series, at the
+  // end of the period.
+  int64 follower_count = 4;
+  // Follows made during the row's day, or the period for a series.
+  int64 followed_count = 5;
+  // Follows that ended during it.
+  int64 unfollowed_count = 6;
+  // Views of the series page and of its episodes, every reader's, a signed-out
+  // one's included.
+  int64 view_count = 7;
+  // Members who finished one of its episodes for the first time.
+  int64 complete_count = 8;
+  int64 reaction_count = 9;
+  int64 reaction_points = 10;
+  // The rating an AUDIENCE_GROUP_BY_SERIES row's series stands at now, the
+  // figure its page shows: rating_average on the 1-5 scale to one decimal,
+  // and rating_count the readers who reacted to any of its episodes. It is
+  // formed over every reaction the series has collected rather than the
+  // period's. Both are 0 for a series no reader has reacted to yet, and for a
+  // day.
+  double rating_average = 11;
+  int64 rating_count = 12;
+}
+
+// The same figures over the whole period.
+message AudienceStatsTotals {
+  // Readers following at the end of the period.
+  int64 follower_count = 1;
+  int64 followed_count = 2;
+  int64 unfollowed_count = 3;
+  int64 view_count = 4;
+  int64 complete_count = 5;
+  int64 reaction_count = 6;
+  int64 reaction_points = 7;
+}
+
+message GetAudienceStatsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone: the first no later than the last, and covering at most 366 days.
+  // Both are required.
+  string start_date = 2;
+  string end_date = 3;
+  // AUDIENCE_GROUP_BY_UNSPECIFIED is refused.
+  AudienceGroupBy group_by = 4;
+  // Narrows every row and the totals to one series. Empty reports the whole
+  // tenant. A series the tenant does not have is not_found.
+  string series_public_id = 5;
+  // Cursor pagination of an AUDIENCE_GROUP_BY_SERIES report. Field shape and
+  // token rules: proto/README.md. An AUDIENCE_GROUP_BY_DAY report holds one
+  // row per day of a period no longer than 366 days, answers all of them at
+  // once, and ignores both fields.
+  //
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 6;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // is bound to the period and the series it was issued for.
+  string token = 7;
+}
+
+message GetAudienceStatsResponse {
+  // A day report in date order. A series report ordered by follower_count,
+  // highest first.
+  repeated AudienceStatsRow rows = 1;
+  // The period the request asked for, echoed back.
+  string start_date = 2;
+  string end_date = 3;
+  // The IANA time zone the dates are the tenant's days in. It is the tenant's
+  // resolved zone: the counting and the wording come from the same read.
+  string time_zone = 4;
+  // The figures over the whole period. They stay the same on every page.
+  AudienceStatsTotals totals = 5;
+  // Token for the previous page. Empty on the first page, and always for a
+  // day report.
+  string previous_token = 6;
+  // Token for the next page. Empty on the last page, and always for a day
+  // report.
+  string next_token = 7;
+}
+
 service AdminEngagementService {
   // Minimum role: tenant_auditor.
   rpc ListEpisodeReadThrough(ListEpisodeReadThroughRequest) returns (ListEpisodeReadThroughResponse) {}
@@ -169,4 +281,9 @@ service AdminEngagementService {
   //
   // Minimum role: tenant_admin.
   rpc GetRevenueStats(GetRevenueStatsRequest) returns (GetRevenueStatsResponse) {}
+  // How a tenant's series were followed, read, and reacted to over a period of
+  // its days, by day or by series, with the rating each series stands at.
+  //
+  // Minimum role: tenant_auditor.
+  rpc GetAudienceStats(GetAudienceStatsRequest) returns (GetAudienceStatsResponse) {}
 }

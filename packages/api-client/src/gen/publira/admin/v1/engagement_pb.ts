@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/engagement.proto.
  */
 export const file_publira_admin_v1_engagement: GenFile = /*@__PURE__*/
-  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAki3AEKD1JldmVudWVTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEhUKDWVwaXNvZGVfdGl0bGUYBSABKAkSFgoOcHVyY2hhc2VfY291bnQYBiABKAMSFAoMZ3Jvc3NfYW1vdW50GAcgASgDEhcKD3JlZnVuZGVkX2Ftb3VudBgIIAEoAxISCgpuZXRfYW1vdW50GAkgASgDIm8KElJldmVudWVTdGF0c1RvdGFscxIWCg5wdXJjaGFzZV9jb3VudBgBIAEoAxIUCgxncm9zc19hbW91bnQYAiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAMgASgDEhIKCm5ldF9hbW91bnQYBCABKAMiwQEKFkdldFJldmVudWVTdGF0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSMgoIZ3JvdXBfYnkYBCABKA4yIC5wdWJsaXJhLmFkbWluLnYxLlJldmVudWVHcm91cEJ5Eg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJIvcBChdHZXRSZXZlbnVlU3RhdHNSZXNwb25zZRIvCgRyb3dzGAEgAygLMiEucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSEAoIY3VycmVuY3kYBSABKAkSNAoGdG90YWxzGAYgASgLMiQucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNUb3RhbHMSFgoOcHJldmlvdXNfdG9rZW4YByABKAkSEgoKbmV4dF90b2tlbhgIIAEoCSqHAQoOUmV2ZW51ZUdyb3VwQnkSIAocUkVWRU5VRV9HUk9VUF9CWV9VTlNQRUNJRklFRBAAEhgKFFJFVkVOVUVfR1JPVVBfQllfREFZEAESGwoXUkVWRU5VRV9HUk9VUF9CWV9TRVJJRVMQAhIcChhSRVZFTlVFX0dST1VQX0JZX0VQSVNPREUQAzKBAgoWQWRtaW5FbmdhZ2VtZW50U2VydmljZRJ9ChZMaXN0RXBpc29kZVJlYWRUaHJvdWdoEi8ucHVibGlyYS5hZG1pbi52MS5MaXN0RXBpc29kZVJlYWRUaHJvdWdoUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlIgASaAoPR2V0UmV2ZW51ZVN0YXRzEigucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAki3AEKD1JldmVudWVTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEhUKDWVwaXNvZGVfdGl0bGUYBSABKAkSFgoOcHVyY2hhc2VfY291bnQYBiABKAMSFAoMZ3Jvc3NfYW1vdW50GAcgASgDEhcKD3JlZnVuZGVkX2Ftb3VudBgIIAEoAxISCgpuZXRfYW1vdW50GAkgASgDIm8KElJldmVudWVTdGF0c1RvdGFscxIWCg5wdXJjaGFzZV9jb3VudBgBIAEoAxIUCgxncm9zc19hbW91bnQYAiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAMgASgDEhIKCm5ldF9hbW91bnQYBCABKAMiwQEKFkdldFJldmVudWVTdGF0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSMgoIZ3JvdXBfYnkYBCABKA4yIC5wdWJsaXJhLmFkbWluLnYxLlJldmVudWVHcm91cEJ5Eg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJIvcBChdHZXRSZXZlbnVlU3RhdHNSZXNwb25zZRIvCgRyb3dzGAEgAygLMiEucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSEAoIY3VycmVuY3kYBSABKAkSNAoGdG90YWxzGAYgASgLMiQucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNUb3RhbHMSFgoOcHJldmlvdXNfdG9rZW4YByABKAkSEgoKbmV4dF90b2tlbhgIIAEoCSKlAgoQQXVkaWVuY2VTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhYKDmZvbGxvd2VyX2NvdW50GAQgASgDEhYKDmZvbGxvd2VkX2NvdW50GAUgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYBiABKAMSEgoKdmlld19jb3VudBgHIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgIIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgJIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYCiABKAMSFgoOcmF0aW5nX2F2ZXJhZ2UYCyABKAESFAoMcmF0aW5nX2NvdW50GAwgASgDIrwBChNBdWRpZW5jZVN0YXRzVG90YWxzEhYKDmZvbGxvd2VyX2NvdW50GAEgASgDEhYKDmZvbGxvd2VkX2NvdW50GAIgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYAyABKAMSEgoKdmlld19jb3VudBgEIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgFIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgGIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYByABKAMi3QEKF0dldEF1ZGllbmNlU3RhdHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzdGFydF9kYXRlGAIgASgJEhAKCGVuZF9kYXRlGAMgASgJEjMKCGdyb3VwX2J5GAQgASgOMiEucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZUdyb3VwQnkSGAoQc2VyaWVzX3B1YmxpY19pZBgFIAEoCRINCgVsaW1pdBgGIAEoBRINCgV0b2tlbhgHIAEoCSLoAQoYR2V0QXVkaWVuY2VTdGF0c1Jlc3BvbnNlEjAKBHJvd3MYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLkF1ZGllbmNlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSNQoGdG90YWxzGAUgASgLMiUucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZVN0YXRzVG90YWxzEhYKDnByZXZpb3VzX3Rva2VuGAYgASgJEhIKCm5leHRfdG9rZW4YByABKAkqhwEKDlJldmVudWVHcm91cEJ5EiAKHFJFVkVOVUVfR1JPVVBfQllfVU5TUEVDSUZJRUQQABIYChRSRVZFTlVFX0dST1VQX0JZX0RBWRABEhsKF1JFVkVOVUVfR1JPVVBfQllfU0VSSUVTEAISHAoYUkVWRU5VRV9HUk9VUF9CWV9FUElTT0RFEAMqbQoPQXVkaWVuY2VHcm91cEJ5EiEKHUFVRElFTkNFX0dST1VQX0JZX1VOU1BFQ0lGSUVEEAASGQoVQVVESUVOQ0VfR1JPVVBfQllfREFZEAESHAoYQVVESUVOQ0VfR1JPVVBfQllfU0VSSUVTEAIy7gIKFkFkbWluRW5nYWdlbWVudFNlcnZpY2USfQoWTGlzdEVwaXNvZGVSZWFkVGhyb3VnaBIvLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXNwb25zZSIAEmgKD0dldFJldmVudWVTdGF0cxIoLnB1YmxpcmEuYWRtaW4udjEuR2V0UmV2ZW51ZVN0YXRzUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuR2V0UmV2ZW51ZVN0YXRzUmVzcG9uc2UiABJrChBHZXRBdWRpZW5jZVN0YXRzEikucHVibGlyYS5hZG1pbi52MS5HZXRBdWRpZW5jZVN0YXRzUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuR2V0QXVkaWVuY2VTdGF0c1Jlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * One episode's read-through over the reported period.
@@ -428,6 +428,298 @@ export const GetRevenueStatsResponseSchema: GenMessage<GetRevenueStatsResponse> 
   messageDesc(file_publira_admin_v1_engagement, 6);
 
 /**
+ * How one row of an audience report was followed, read, and reacted to.
+ *
+ * Followers are counted from every follow made and ended, so a follow made a
+ * moment ago is already in them. A follow ends when the reader takes it back
+ * and when their account is deleted. A follow that ended before the server
+ * began recording them is in no figure, and one standing then is counted from
+ * the day it was made.
+ *
+ * Views, completed reads, and reactions reach a day once the daily aggregates
+ * have been rebuilt for it, so today, and a day still waiting for its rebuild,
+ * counts none of them yet. A reaction is one press of an episode's reaction
+ * control that added to the reader's score, and reaction_points are what those
+ * presses added: a tenant whose readers react with a single press records 5
+ * points a reaction.
+ *
+ * @generated from message publira.admin.v1.AudienceStatsRow
+ */
+export type AudienceStatsRow = Message<"publira.admin.v1.AudienceStatsRow"> & {
+  /**
+   * The tenant day (YYYY-MM-DD) of an AUDIENCE_GROUP_BY_DAY row. Empty
+   * otherwise.
+   *
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * The series of an AUDIENCE_GROUP_BY_SERIES row, under its title in the
+   * tenant's default locale. Empty for a day.
+   *
+   * @generated from field: string series_public_id = 2;
+   */
+  seriesPublicId: string;
+
+  /**
+   * @generated from field: string series_title = 3;
+   */
+  seriesTitle: string;
+
+  /**
+   * Readers following at the end of the row's day, or, for a series, at the
+   * end of the period.
+   *
+   * @generated from field: int64 follower_count = 4;
+   */
+  followerCount: bigint;
+
+  /**
+   * Follows made during the row's day, or the period for a series.
+   *
+   * @generated from field: int64 followed_count = 5;
+   */
+  followedCount: bigint;
+
+  /**
+   * Follows that ended during it.
+   *
+   * @generated from field: int64 unfollowed_count = 6;
+   */
+  unfollowedCount: bigint;
+
+  /**
+   * Views of the series page and of its episodes, every reader's, a signed-out
+   * one's included.
+   *
+   * @generated from field: int64 view_count = 7;
+   */
+  viewCount: bigint;
+
+  /**
+   * Members who finished one of its episodes for the first time.
+   *
+   * @generated from field: int64 complete_count = 8;
+   */
+  completeCount: bigint;
+
+  /**
+   * @generated from field: int64 reaction_count = 9;
+   */
+  reactionCount: bigint;
+
+  /**
+   * @generated from field: int64 reaction_points = 10;
+   */
+  reactionPoints: bigint;
+
+  /**
+   * The rating an AUDIENCE_GROUP_BY_SERIES row's series stands at now, the
+   * figure its page shows: rating_average on the 1-5 scale to one decimal,
+   * and rating_count the readers who reacted to any of its episodes. It is
+   * formed over every reaction the series has collected rather than the
+   * period's. Both are 0 for a series no reader has reacted to yet, and for a
+   * day.
+   *
+   * @generated from field: double rating_average = 11;
+   */
+  ratingAverage: number;
+
+  /**
+   * @generated from field: int64 rating_count = 12;
+   */
+  ratingCount: bigint;
+};
+
+/**
+ * Describes the message publira.admin.v1.AudienceStatsRow.
+ * Use `create(AudienceStatsRowSchema)` to create a new message.
+ */
+export const AudienceStatsRowSchema: GenMessage<AudienceStatsRow> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 7);
+
+/**
+ * The same figures over the whole period.
+ *
+ * @generated from message publira.admin.v1.AudienceStatsTotals
+ */
+export type AudienceStatsTotals = Message<"publira.admin.v1.AudienceStatsTotals"> & {
+  /**
+   * Readers following at the end of the period.
+   *
+   * @generated from field: int64 follower_count = 1;
+   */
+  followerCount: bigint;
+
+  /**
+   * @generated from field: int64 followed_count = 2;
+   */
+  followedCount: bigint;
+
+  /**
+   * @generated from field: int64 unfollowed_count = 3;
+   */
+  unfollowedCount: bigint;
+
+  /**
+   * @generated from field: int64 view_count = 4;
+   */
+  viewCount: bigint;
+
+  /**
+   * @generated from field: int64 complete_count = 5;
+   */
+  completeCount: bigint;
+
+  /**
+   * @generated from field: int64 reaction_count = 6;
+   */
+  reactionCount: bigint;
+
+  /**
+   * @generated from field: int64 reaction_points = 7;
+   */
+  reactionPoints: bigint;
+};
+
+/**
+ * Describes the message publira.admin.v1.AudienceStatsTotals.
+ * Use `create(AudienceStatsTotalsSchema)` to create a new message.
+ */
+export const AudienceStatsTotalsSchema: GenMessage<AudienceStatsTotals> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 8);
+
+/**
+ * @generated from message publira.admin.v1.GetAudienceStatsRequest
+ */
+export type GetAudienceStatsRequest = Message<"publira.admin.v1.GetAudienceStatsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+   * zone: the first no later than the last, and covering at most 366 days.
+   * Both are required.
+   *
+   * @generated from field: string start_date = 2;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 3;
+   */
+  endDate: string;
+
+  /**
+   * AUDIENCE_GROUP_BY_UNSPECIFIED is refused.
+   *
+   * @generated from field: publira.admin.v1.AudienceGroupBy group_by = 4;
+   */
+  groupBy: AudienceGroupBy;
+
+  /**
+   * Narrows every row and the totals to one series. Empty reports the whole
+   * tenant. A series the tenant does not have is not_found.
+   *
+   * @generated from field: string series_public_id = 5;
+   */
+  seriesPublicId: string;
+
+  /**
+   * Cursor pagination of an AUDIENCE_GROUP_BY_SERIES report. Field shape and
+   * token rules: proto/README.md. An AUDIENCE_GROUP_BY_DAY report holds one
+   * row per day of a period no longer than 366 days, answers all of them at
+   * once, and ignores both fields.
+   *
+   * Max items in one page. <= 0 or > 100 falls back to 20.
+   *
+   * @generated from field: int32 limit = 6;
+   */
+  limit: number;
+
+  /**
+   * Opaque token from a previous response. Empty for the first page. A token
+   * is bound to the period and the series it was issued for.
+   *
+   * @generated from field: string token = 7;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetAudienceStatsRequest.
+ * Use `create(GetAudienceStatsRequestSchema)` to create a new message.
+ */
+export const GetAudienceStatsRequestSchema: GenMessage<GetAudienceStatsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 9);
+
+/**
+ * @generated from message publira.admin.v1.GetAudienceStatsResponse
+ */
+export type GetAudienceStatsResponse = Message<"publira.admin.v1.GetAudienceStatsResponse"> & {
+  /**
+   * A day report in date order. A series report ordered by follower_count,
+   * highest first.
+   *
+   * @generated from field: repeated publira.admin.v1.AudienceStatsRow rows = 1;
+   */
+  rows: AudienceStatsRow[];
+
+  /**
+   * The period the request asked for, echoed back.
+   *
+   * @generated from field: string start_date = 2;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 3;
+   */
+  endDate: string;
+
+  /**
+   * The IANA time zone the dates are the tenant's days in. It is the tenant's
+   * resolved zone: the counting and the wording come from the same read.
+   *
+   * @generated from field: string time_zone = 4;
+   */
+  timeZone: string;
+
+  /**
+   * The figures over the whole period. They stay the same on every page.
+   *
+   * @generated from field: publira.admin.v1.AudienceStatsTotals totals = 5;
+   */
+  totals?: AudienceStatsTotals | undefined;
+
+  /**
+   * Token for the previous page. Empty on the first page, and always for a
+   * day report.
+   *
+   * @generated from field: string previous_token = 6;
+   */
+  previousToken: string;
+
+  /**
+   * Token for the next page. Empty on the last page, and always for a day
+   * report.
+   *
+   * @generated from field: string next_token = 7;
+   */
+  nextToken: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetAudienceStatsResponse.
+ * Use `create(GetAudienceStatsResponseSchema)` to create a new message.
+ */
+export const GetAudienceStatsResponseSchema: GenMessage<GetAudienceStatsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 10);
+
+/**
  * How GetRevenueStatsRequest cuts its period into rows.
  *
  * @generated from enum publira.admin.v1.RevenueGroupBy
@@ -468,6 +760,39 @@ export const RevenueGroupBySchema: GenEnum<RevenueGroupBy> = /*@__PURE__*/
   enumDesc(file_publira_admin_v1_engagement, 0);
 
 /**
+ * How GetAudienceStatsRequest cuts its period into rows.
+ *
+ * @generated from enum publira.admin.v1.AudienceGroupBy
+ */
+export enum AudienceGroupBy {
+  /**
+   * @generated from enum value: AUDIENCE_GROUP_BY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * One row per day of the period, the tenant's own days, a quiet day
+   * included.
+   *
+   * @generated from enum value: AUDIENCE_GROUP_BY_DAY = 1;
+   */
+  DAY = 1,
+
+  /**
+   * One row per series of the tenant, every series included.
+   *
+   * @generated from enum value: AUDIENCE_GROUP_BY_SERIES = 2;
+   */
+  SERIES = 2,
+}
+
+/**
+ * Describes the enum publira.admin.v1.AudienceGroupBy.
+ */
+export const AudienceGroupBySchema: GenEnum<AudienceGroupBy> = /*@__PURE__*/
+  enumDesc(file_publira_admin_v1_engagement, 1);
+
+/**
  * @generated from service publira.admin.v1.AdminEngagementService
  */
 export const AdminEngagementService: GenService<{
@@ -494,6 +819,19 @@ export const AdminEngagementService: GenService<{
     methodKind: "unary";
     input: typeof GetRevenueStatsRequestSchema;
     output: typeof GetRevenueStatsResponseSchema;
+  },
+  /**
+   * How a tenant's series were followed, read, and reacted to over a period of
+   * its days, by day or by series, with the rating each series stands at.
+   *
+   * Minimum role: tenant_auditor.
+   *
+   * @generated from rpc publira.admin.v1.AdminEngagementService.GetAudienceStats
+   */
+  getAudienceStats: {
+    methodKind: "unary";
+    input: typeof GetAudienceStatsRequestSchema;
+    output: typeof GetAudienceStatsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_engagement, 0);

@@ -98,7 +98,7 @@ None of them is a superuser or carries `BYPASSRLS`, and nothing in `baseline/` n
 
 `publira_ticker` is the only one of them without the blanket table grants the others share. Its jobs touch a known set of catalog, follow, and recipient tables, so the seed names those tables one by one.
 
-The same file takes the blanket grants back from two families of table — every `platform_*` relation, from the tenant-scoped and worker roles, and the writes on `episode_rating_counts` and `series_rating_counts`, from `publira_admin` and `publira_public`.
+The same file takes the blanket grants back from two families of table — every `platform_*` relation, from the tenant-scoped and worker roles, and the writes on `episode_rating_counts`, `series_rating_counts`, `series_follower_counts`, and `series_follow_changes`, from `publira_admin` and `publira_public`.
 
 A table a migration creates reaches no app role, and its rows no member of `publira_rls_bypass`, until `baseline/` runs again and the grants, their corrections, and the policy reach it together. `publiractl db roles` runs right after `publiractl db migrate` on every upgrade, and `task db:migrate` and `task db:rollback` apply `prod.sql` after the migrations for the same reason.
 
