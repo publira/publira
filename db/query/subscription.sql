@@ -11,6 +11,7 @@ INSERT INTO subscriptions (
         plan_id,
         stripe_customer_id,
         stripe_subscription_id,
+        stripe_price_id,
         status,
         current_period_end,
         cancel_at_period_end
@@ -27,6 +28,7 @@ VALUES (
         sqlc.arg('plan_id'),
         sqlc.arg('stripe_customer_id'),
         sqlc.arg('stripe_subscription_id'),
+        sqlc.arg('stripe_price_id'),
         sqlc.arg('status'),
         sqlc.narg('current_period_end'),
         sqlc.arg('cancel_at_period_end')
@@ -34,6 +36,7 @@ VALUES (
 UPDATE
 SET plan_id = EXCLUDED.plan_id,
     stripe_customer_id = EXCLUDED.stripe_customer_id,
+    stripe_price_id = EXCLUDED.stripe_price_id,
     status = EXCLUDED.status,
     current_period_end = EXCLUDED.current_period_end,
     cancel_at_period_end = EXCLUDED.cancel_at_period_end,

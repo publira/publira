@@ -196,6 +196,7 @@ INSERT INTO subscriptions (
         plan_id,
         stripe_customer_id,
         stripe_subscription_id,
+        stripe_price_id,
         status,
         current_period_end,
         cancel_at_period_end
@@ -214,11 +215,13 @@ VALUES (
         $6,
         $7,
         $8,
-        $9
+        $9,
+        $10
     ) ON CONFLICT (tenant_id, stripe_subscription_id) DO
 UPDATE
 SET plan_id = EXCLUDED.plan_id,
     stripe_customer_id = EXCLUDED.stripe_customer_id,
+    stripe_price_id = EXCLUDED.stripe_price_id,
     status = EXCLUDED.status,
     current_period_end = EXCLUDED.current_period_end,
     cancel_at_period_end = EXCLUDED.cancel_at_period_end,
@@ -236,6 +239,7 @@ type RecordSubscriptionFromStripeParams struct {
 	PlanID               uuid.UUID    `json:"plan_id"`
 	StripeCustomerID     string       `json:"stripe_customer_id"`
 	StripeSubscriptionID string       `json:"stripe_subscription_id"`
+	StripePriceID        string       `json:"stripe_price_id"`
 	Status               string       `json:"status"`
 	CurrentPeriodEnd     sql.NullTime `json:"current_period_end"`
 	CancelAtPeriodEnd    bool         `json:"cancel_at_period_end"`
@@ -261,6 +265,7 @@ func (q *Queries) RecordSubscriptionFromStripe(ctx context.Context, arg RecordSu
 		arg.PlanID,
 		arg.StripeCustomerID,
 		arg.StripeSubscriptionID,
+		arg.StripePriceID,
 		arg.Status,
 		arg.CurrentPeriodEnd,
 		arg.CancelAtPeriodEnd,

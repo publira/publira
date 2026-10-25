@@ -376,9 +376,10 @@ WHERE sp.tenant_id = $2
         OR sp.id = $4
     )
 ORDER BY CASE
-        WHEN sp.stripe_price_id = $3 THEN 0
-        WHEN s.id IS NOT NULL THEN 1
-        ELSE 2
+        WHEN s.stripe_price_id = $3 THEN 0
+        WHEN sp.stripe_price_id = $3 THEN 1
+        WHEN s.id IS NOT NULL THEN 2
+        ELSE 3
     END
 LIMIT 1
 `
@@ -390,10 +391,12 @@ type GetSubscriptionPlanForSubscriptionForTenantParams struct {
 	PlanID               uuid.UUID `json:"plan_id"`
 }
 
-// The plan a subscription is recorded on: the one billed at the Price Stripe
-// reports, which follows a reader who changed their Price in the billing
-// portal; else the one it is already recorded on, which keeps it where it is
-// when its plan has since been given another Price; else, for one not
+// The plan a subscription is recorded on: the one it is already recorded on
+// while it is billed at the Price it was recorded at, which keeps it there
+// when staff hand that Price to another plan; else the one billed at the Price
+// Stripe reports, which follows a reader who changed their Price in the
+// billing portal; else the one it is already recorded on, which keeps it where
+// it is when its plan has since been given another Price; else, for one not
 // recorded yet, the one its checkout named.
 func (q *Queries) GetSubscriptionPlanForSubscriptionForTenant(ctx context.Context, arg GetSubscriptionPlanForSubscriptionForTenantParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, GetSubscriptionPlanForSubscriptionForTenant,

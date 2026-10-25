@@ -81,6 +81,7 @@ func (e *PostgresEnv) SeedSubscriptionPlan(t *testing.T, tenantID uuid.UUID, see
 type SubscriptionSeed struct {
 	StripeSubscriptionID string
 	StripeCustomerID     string
+	StripePriceID        string
 	Status               string
 	CurrentPeriodEnd     time.Time
 }
@@ -101,11 +102,12 @@ func (e *PostgresEnv) SeedSubscription(t *testing.T, tenantID, userID, planID uu
 	defer cancel()
 
 	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, status, current_period_end)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_end)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`, id, tenantID, userID, planID,
 		defaultIfEmpty(seed.StripeCustomerID, "cus_"+id.String()),
 		defaultIfEmpty(seed.StripeSubscriptionID, "sub_"+id.String()),
+		defaultIfEmpty(seed.StripePriceID, "price_"+id.String()),
 		defaultIfEmpty(seed.Status, "active"),
 		periodEnd,
 	); err != nil {

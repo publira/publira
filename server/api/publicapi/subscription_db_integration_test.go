@@ -374,6 +374,19 @@ func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testi
 	if got := f.mySubscription(t); got.GetPlan().GetId() != yearly.ID.String() {
 		t.Fatalf("subscription plan after the price changed = %s, want it kept on the yearly plan", got.GetPlan().GetId())
 	}
+	// Staff then hand the old Price to the monthly plan. The reader is still
+	// billed at the Price the subscription was recorded at, so it stays on the
+	// yearly plan rather than following the Price to its new plan.
+	if _, err := f.pg.DB.ExecContext(context.Background(), "UPDATE subscription_plans SET stripe_price_id = 'price_yearly' WHERE id = $1", monthly.ID); err != nil {
+		t.Fatalf("hand the old price to the monthly plan: %v", err)
+	}
+	payload, headers = f.stripe.SubscriptionUpdated(t, f.credentials, subscription)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the update after the price moved: %v", err)
+	}
+	if got := f.mySubscription(t); got.GetPlan().GetId() != yearly.ID.String() {
+		t.Fatalf("subscription plan after the price moved = %s, want it kept on the yearly plan", got.GetPlan().GetId())
+	}
 	// A subscription with no current period recorded is answered without one.
 	if got := f.mySubscription(t); got.CurrentPeriodEnd != "" {
 		t.Fatalf("current period end = %q, want none", got.CurrentPeriodEnd)

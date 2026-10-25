@@ -87,10 +87,12 @@ WHERE tenant_id = $1
 LIMIT 1;
 
 -- name: GetSubscriptionPlanForSubscriptionForTenant :one
--- The plan a subscription is recorded on: the one billed at the Price Stripe
--- reports, which follows a reader who changed their Price in the billing
--- portal; else the one it is already recorded on, which keeps it where it is
--- when its plan has since been given another Price; else, for one not
+-- The plan a subscription is recorded on: the one it is already recorded on
+-- while it is billed at the Price it was recorded at, which keeps it there
+-- when staff hand that Price to another plan; else the one billed at the Price
+-- Stripe reports, which follows a reader who changed their Price in the
+-- billing portal; else the one it is already recorded on, which keeps it where
+-- it is when its plan has since been given another Price; else, for one not
 -- recorded yet, the one its checkout named.
 SELECT sp.id
 FROM subscription_plans sp
@@ -104,9 +106,10 @@ WHERE sp.tenant_id = sqlc.arg('tenant_id')
         OR sp.id = sqlc.arg('plan_id')
     )
 ORDER BY CASE
-        WHEN sp.stripe_price_id = sqlc.arg('stripe_price_id') THEN 0
-        WHEN s.id IS NOT NULL THEN 1
-        ELSE 2
+        WHEN s.stripe_price_id = sqlc.arg('stripe_price_id') THEN 0
+        WHEN sp.stripe_price_id = sqlc.arg('stripe_price_id') THEN 1
+        WHEN s.id IS NOT NULL THEN 2
+        ELSE 3
     END
 LIMIT 1;
 

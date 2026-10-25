@@ -145,6 +145,7 @@ CREATE TABLE subscriptions (
     plan_id uuid NOT NULL,
     stripe_customer_id text NOT NULL,
     stripe_subscription_id text NOT NULL,
+    stripe_price_id text NOT NULL,
     status text NOT NULL,
     current_period_end timestamp with time zone,
     cancel_at_period_end boolean DEFAULT false NOT NULL,
@@ -152,7 +153,8 @@ CREATE TABLE subscriptions (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT subscriptions_status_check CHECK ((status = ANY (ARRAY['incomplete'::text, 'incomplete_expired'::text, 'trialing'::text, 'active'::text, 'past_due'::text, 'canceled'::text, 'unpaid'::text, 'paused'::text]))),
     CONSTRAINT subscriptions_stripe_customer_id_check CHECK ((char_length(stripe_customer_id) >= 1)),
-    CONSTRAINT subscriptions_stripe_subscription_id_check CHECK ((char_length(stripe_subscription_id) >= 1))
+    CONSTRAINT subscriptions_stripe_subscription_id_check CHECK ((char_length(stripe_subscription_id) >= 1)),
+    CONSTRAINT subscriptions_stripe_price_id_check CHECK ((char_length(stripe_price_id) >= 1))
 );
 
 -- CONSTRAINT: subscriptions subscriptions_pkey

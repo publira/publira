@@ -386,15 +386,15 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 		{
 			name:       "subscriptions.plan_id",
 			constraint: "subscriptions_tenant_plan_id_fkey",
-			statement: `INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, status)
-				VALUES ($1, $2, $3, $4, 'cus_fk', 'sub_fk_plan', 'active')`,
+			statement: `INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status)
+				VALUES ($1, $2, $3, $4, 'cus_fk', 'sub_fk_plan', 'price_fk', 'active')`,
 			args: []any{mustUUID(t), first.tenantID, first.userID, second.subscriptionPlanID},
 		},
 		{
 			name:       "subscriptions.user_id",
 			constraint: "subscriptions_tenant_user_id_fkey",
-			statement: `INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, status)
-				VALUES ($1, $2, $3, $4, 'cus_fk', 'sub_fk_user', 'active')`,
+			statement: `INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status)
+				VALUES ($1, $2, $3, $4, 'cus_fk', 'sub_fk_user', 'price_fk', 'active')`,
 			args: []any{mustUUID(t), first.tenantID, second.userID, first.subscriptionPlanID},
 		},
 		{

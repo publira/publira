@@ -1212,6 +1212,7 @@ type Subscription struct {
 	PlanID               uuid.UUID     `json:"plan_id"`
 	StripeCustomerID     string        `json:"stripe_customer_id"`
 	StripeSubscriptionID string        `json:"stripe_subscription_id"`
+	StripePriceID        string        `json:"stripe_price_id"`
 	Status               string        `json:"status"`
 	CurrentPeriodEnd     sql.NullTime  `json:"current_period_end"`
 	CancelAtPeriodEnd    bool          `json:"cancel_at_period_end"`
