@@ -197,7 +197,7 @@ Environment variables:
 
 ## policy
 
-Changes the platform policy: the tenant-admin and platform-operator MFA requirements, the step-up password limit, the sign-in limits, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
+Changes the platform policy: the tenant-admin and platform-operator MFA requirements, whether tenants may issue coins, the step-up password limit, the sign-in limits, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -216,6 +216,7 @@ go -C server run ./cmd/publiractl policy show
 | --- | --- | --- |
 | `--mfa-required-for-tenant-admin` | Refuses a tenant administrator with no authenticator a session on a password alone. `=false` stops refusing | Off |
 | `--mfa-required-for-platform-operator` | Holds a Platform Console operator with no authenticator at enrollment instead of giving it a session on a password alone, whatever its role. `=false` stops holding | Off |
+| `--tenant-coins-allowed` | Lets tenants issue coins that readers buy in advance and spend on episodes. `=false` stops every tenant's coins from being sold or spent and keeps every balance | Off |
 | `--password-verification-per-minute`, `--password-verification-per-day` | How often one account's password may be verified by the RPCs that ask for it on top of the session | 5, 50 |
 | `--store-purchase-confirmation-per-minute`, `--store-purchase-confirmation-per-day` | How many store transactions one reader may hand the server to verify | 10, 100 |
 | `--wait-free-ticket-use-per-minute`, `--wait-free-ticket-use-per-day` | How many times one reader may ask to spend a wait-for-free ticket | 10, 100 |

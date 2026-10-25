@@ -764,6 +764,7 @@ type PlatformPolicyConfig struct {
 	NotificationSettingsLimitPerDay       int32     `json:"notification_settings_limit_per_day"`
 	SubscriptionCheckoutLimitPerMinute    int32     `json:"subscription_checkout_limit_per_minute"`
 	SubscriptionCheckoutLimitPerDay       int32     `json:"subscription_checkout_limit_per_day"`
+	TenantCoinsAllowed                    bool      `json:"tenant_coins_allowed"`
 }
 
 type PlatformRetentionConfig struct {

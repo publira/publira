@@ -70,6 +70,9 @@ func TestPolicyShowPrintsTheBuiltInDefaultsWhenNothingIsSaved(t *testing.T) {
 	if got := showLine(t, show, "  Duplicate comment window"); got != "10 minutes" {
 		t.Fatalf("show's duplicate comment window = %q, want the built-in 10 minutes", got)
 	}
+	if got := showLine(t, show, "Tenants may issue coins"); got != "no" {
+		t.Fatalf("show's tenant coin allowance = %q, want the built-in no", got)
+	}
 	if strings.Contains(show, "Revision:") {
 		t.Fatalf("show printed a revision with nothing saved:\n%s", show)
 	}
@@ -82,7 +85,7 @@ func TestPolicySetReachesARunningServer(t *testing.T) {
 	ctx := context.Background()
 	server := platformpolicy.NewResolver(dbmodels.New(pg.OpenPublicDB(t)), 0, slog.Default())
 
-	got := mustPolicyCommand(t, "set", "--comment-post-per-minute", "3", "--mfa-required-for-tenant-admin", "--mfa-required-for-platform-operator")
+	got := mustPolicyCommand(t, "set", "--comment-post-per-minute", "3", "--mfa-required-for-tenant-admin", "--mfa-required-for-platform-operator", "--tenant-coins-allowed")
 	if want := "Saved the platform policy, revision 1. Running servers apply it within 10s.\n"; got != want {
 		t.Fatalf("set = %q, want %q", got, want)
 	}
@@ -90,15 +93,17 @@ func TestPolicySetReachesARunningServer(t *testing.T) {
 	want.Community.CommentPost.PerMinute = 3
 	want.MFARequiredForTenantAdmin = true
 	want.MFARequiredForPlatformOperator = true
+	want.TenantCoinsAllowed = true
 	if got, err := server.Policy(ctx); err != nil || got != want {
 		t.Fatalf("the server's policy after set = %+v, %v; want %+v", got, err, want)
 	}
 
 	// A flag not given keeps what the last save stored rather than the
 	// built-in default.
-	mustPolicyCommand(t, "set", "--comment-post-per-day", "40", "--mfa-required-for-tenant-admin=false")
+	mustPolicyCommand(t, "set", "--comment-post-per-day", "40", "--mfa-required-for-tenant-admin=false", "--tenant-coins-allowed=false")
 	want.Community.CommentPost.PerDay = 40
 	want.MFARequiredForTenantAdmin = false
+	want.TenantCoinsAllowed = false
 	if got, err := server.Policy(ctx); err != nil || got != want {
 		t.Fatalf("the server's policy after a second set = %+v, %v; want %+v", got, err, want)
 	}
@@ -112,6 +117,9 @@ func TestPolicySetReachesARunningServer(t *testing.T) {
 	}
 	if got := showLine(t, show, "MFA required for platform operators"); got != "yes" {
 		t.Fatalf("show's platform operator MFA = %q, want the yes the first set stored", got)
+	}
+	if got := showLine(t, show, "Tenants may issue coins"); got != "no" {
+		t.Fatalf("show's tenant coin allowance = %q, want the no the second set stored", got)
 	}
 	if got := showLine(t, show, "Revision"); got != "2" {
 		t.Fatalf("show's revision = %q, want 2", got)
@@ -215,7 +223,7 @@ func messageLeaves(md protoreflect.MessageDescriptor, prefix string) []string {
 // A field added to the policy is one publiractl policy set has to be able to
 // change as well.
 func TestPolicyFlagsCoverEveryPolicyField(t *testing.T) {
-	flags := map[string]bool{"mfa_required_for_tenant_admin": true, "mfa_required_for_platform_operator": true, platformpolicy.FieldDisposableEmailDomainsURL: true}
+	flags := map[string]bool{"mfa_required_for_tenant_admin": true, "mfa_required_for_platform_operator": true, "tenant_coins_allowed": true, platformpolicy.FieldDisposableEmailDomainsURL: true}
 	for _, field := range policyFlags {
 		flags[field.field] = true
 	}

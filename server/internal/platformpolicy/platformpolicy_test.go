@@ -195,6 +195,7 @@ func rowFromParams(params dbmodels.UpdatePlatformPolicyConfigParams) dbmodels.Pl
 		LoginSourceLimitPerHour:               params.LoginSourceLimitPerHour,
 		LoginSourceLimitPerDay:                params.LoginSourceLimitPerDay,
 		DisposableEmailDomainsUrl:             params.DisposableEmailDomainsUrl,
+		TenantCoinsAllowed:                    params.TenantCoinsAllowed,
 	}
 }
 

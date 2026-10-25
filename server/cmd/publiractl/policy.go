@@ -50,8 +50,9 @@ func hourDayFlags(field, flag, what string, community bool, limit func(*policySe
 }
 
 // policyFlags are the numeric fields of the PlatformPolicy message. The others
-// are --mfa-required-for-tenant-admin and --mfa-required-for-platform-operator,
-// booleans, and --disposable-email-domains-url, a URL.
+// are --mfa-required-for-tenant-admin, --mfa-required-for-platform-operator
+// and --tenant-coins-allowed, booleans, and --disposable-email-domains-url, a
+// URL.
 var policyFlags = slices.Concat(
 	minuteDayFlags("password_verification", "password-verification", "password verifications of one account", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PasswordVerification }),
@@ -124,6 +125,16 @@ func setupPolicySet(f *commandFlags) func(context.Context, *commandEnv) error {
 			flags.edit(func(p *policySettings) { p.MFARequiredForPlatformOperator = required })
 			return nil
 		})
+	f.BoolFunc("tenant-coins-allowed",
+		"let tenants issue coins that readers buy in advance and spend on episodes; =false stops every tenant's coins from being sold or spent, keeping balances",
+		func(v string) error {
+			allowed, err := strconv.ParseBool(v)
+			if err != nil {
+				return err
+			}
+			flags.edit(func(p *policySettings) { p.TenantCoinsAllowed = allowed })
+			return nil
+		})
 	flags.flags[platformpolicy.FieldDisposableEmailDomainsURL] = "--disposable-email-domains-url"
 	f.Func("disposable-email-domains-url",
 		"the http or https `URL` the list of disposable email domains is read from, one domain per line; an empty value leaves no list",
@@ -178,6 +189,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		var b strings.Builder
 		fmt.Fprintf(&b, "MFA required for tenant administrators:\t%s\n", yesNo(p.MFARequiredForTenantAdmin))
 		fmt.Fprintf(&b, "MFA required for platform operators:\t%s\n", yesNo(p.MFARequiredForPlatformOperator))
+		fmt.Fprintf(&b, "Tenants may issue coins:\t%s\n", yesNo(p.TenantCoinsAllowed))
 		fmt.Fprintf(&b, "Password verifications:\t%s\n", perMinute(p.PasswordVerification))
 		fmt.Fprintf(&b, "In-app purchase confirmations per reader:\t%s\n", perMinute(p.StorePurchaseConfirmation))
 		fmt.Fprintf(&b, "Wait-for-free ticket uses per reader:\t%s\n", perMinute(p.WaitFreeTicketUse))

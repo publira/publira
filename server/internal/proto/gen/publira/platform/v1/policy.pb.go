@@ -343,8 +343,17 @@ type PlatformPolicy struct {
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.
 	SubscriptionCheckout *MinuteDayLimit `protobuf:"bytes,17,opt,name=subscription_checkout,json=subscriptionCheckout,proto3" json:"subscription_checkout,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Whether a tenant may issue coins. Coins are a stored-value instrument,
+	// and in some jurisdictions the platform rather than the tenant is the
+	// issuer the law looks at, so it is off until an operator turns it on.
+	// While it is off, no tenant's coins are sold or spent, whatever the
+	// tenant's own setting says, and every balance is kept.
+	//
+	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+	// when a request leaves it unset.
+	TenantCoinsAllowed *bool `protobuf:"varint,18,opt,name=tenant_coins_allowed,json=tenantCoinsAllowed,proto3,oneof" json:"tenant_coins_allowed,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *PlatformPolicy) Reset() {
@@ -494,6 +503,13 @@ func (x *PlatformPolicy) GetSubscriptionCheckout() *MinuteDayLimit {
 		return x.SubscriptionCheckout
 	}
 	return nil
+}
+
+func (x *PlatformPolicy) GetTenantCoinsAllowed() bool {
+	if x != nil && x.TenantCoinsAllowed != nil {
+		return *x.TenantCoinsAllowed
+	}
+	return false
 }
 
 type GetPlatformPolicyRequest struct {
@@ -920,7 +936,7 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x1bcontact_message_per_account\x18\x05 \x01(\v2!.publira.platform.v1.HourDayLimitR\x18contactMessagePerAccount\x12^\n" +
 	"\x1acontact_message_per_client\x18\x06 \x01(\v2!.publira.platform.v1.HourDayLimitR\x17contactMessagePerClient\x12R\n" +
 	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\x12X\n" +
-	"\x15notification_settings\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14notificationSettings\"\xe2\v\n" +
+	"\x15notification_settings\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14notificationSettings\"\xb2\f\n" +
 	"\x0ePlatformPolicy\x12@\n" +
 	"\x1dmfa_required_for_tenant_admin\x18\x01 \x01(\bR\x19mfaRequiredForTenantAdmin\x12X\n" +
 	"\x15password_verification\x18\x02 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14passwordVerification\x12\\\n" +
@@ -940,8 +956,10 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"iconChange\x12=\n" +
 	"\apasskey\x18\x0f \x01(\v2#.publira.platform.v1.MinuteDayLimitR\apasskey\x12_\n" +
 	"\x19series_remainder_checkout\x18\x10 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x17seriesRemainderCheckout\x12X\n" +
-	"\x15subscription_checkout\x18\x11 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14subscriptionCheckoutB%\n" +
-	"#_mfa_required_for_platform_operator\"\x1a\n" +
+	"\x15subscription_checkout\x18\x11 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14subscriptionCheckout\x125\n" +
+	"\x14tenant_coins_allowed\x18\x12 \x01(\bH\x01R\x12tenantCoinsAllowed\x88\x01\x01B%\n" +
+	"#_mfa_required_for_platform_operatorB\x17\n" +
+	"\x15_tenant_coins_allowed\"\x1a\n" +
 	"\x18GetPlatformPolicyRequest\"t\n" +
 	"\x19GetPlatformPolicyResponse\x12;\n" +
 	"\x06policy\x18\x01 \x01(\v2#.publira.platform.v1.PlatformPolicyR\x06policy\x12\x1a\n" +

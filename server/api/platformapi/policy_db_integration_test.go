@@ -68,6 +68,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
+	policy.TenantCoinsAllowed = true
 	return policy
 }
 
@@ -536,6 +537,99 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedOperatorMfaRequirement(t *testing.T
 	third := saveWithout(t, want, second.Revision)
 	if got := platformPolicyFromProto(third.Policy); got != want {
 		t.Fatalf("save without the requirement = %+v, want %+v keeping the stored one", got, want)
+	}
+}
+
+// The tenant coin allowance reached the policy after the console screens that
+// save it, so a save that leaves it out keeps what is stored rather than
+// stopping every tenant's coins behind the back of the operator who allowed
+// them.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedTenantCoinAllowance(t *testing.T) {
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.TenantCoinsAllowed = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without the tenant coin allowance: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.TenantCoinsAllowed = false
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the allowance off by default", got, want)
+	}
+
+	want.TenantCoinsAllowed = true
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with the tenant coin allowance: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the allowance = %+v, want %+v keeping the stored one", got, want)
+	}
+
+	want.TenantCoinsAllowed = false
+	if _, err := updatePolicy(t, client, operator, want, third.Revision); err != nil {
+		t.Fatalf("UpdatePlatformPolicy withdrawing the tenant coin allowance: %v", err)
+	}
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy after withdrawing the allowance = %+v, want %+v", got, want)
+	}
+}
+
+// The previous release's insert does not name tenant_coins_allowed, so a row
+// it writes while this release's schema is in place reads the allowance as
+// off.
+func TestDBPlatformPolicyRowWrittenWithoutTheTenantCoinAllowanceReadsItOff(t *testing.T) {
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	tx, err := pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	var columns string
+	if err := tx.QueryRowContext(ctx, `
+		SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position)
+		FROM information_schema.columns
+		WHERE table_schema = current_schema()
+		  AND table_name = 'platform_policy_config'
+		  AND column_name <> 'tenant_coins_allowed'`).Scan(&columns); err != nil {
+		t.Fatalf("read the policy columns: %v", err)
+	}
+	for _, statement := range []string{
+		`CREATE TEMPORARY TABLE saved_policy ON COMMIT DROP AS SELECT * FROM platform_policy_config`,
+		`DELETE FROM platform_policy_config`,
+		`INSERT INTO platform_policy_config (` + columns + `) SELECT ` + columns + ` FROM saved_policy`,
+	} {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			t.Fatalf("%s: %v", statement, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	want := tightenedPolicy()
+	want.TenantCoinsAllowed = false
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy = %+v, want %+v with the allowance off", got, want)
 	}
 }
 

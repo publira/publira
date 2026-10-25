@@ -25,6 +25,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 	return &publirasplatformv1.PlatformPolicy{
 		MfaRequiredForTenantAdmin:      policy.MFARequiredForTenantAdmin,
 		MfaRequiredForPlatformOperator: &policy.MFARequiredForPlatformOperator,
+		TenantCoinsAllowed:             &policy.TenantCoinsAllowed,
 		PasswordVerification:           minuteDayToProto(policy.PasswordVerification),
 		StorePurchaseConfirmation:      minuteDayToProto(policy.StorePurchaseConfirmation),
 		WaitFreeTicketUse:              minuteDayToProto(policy.WaitFreeTicketUse),
@@ -67,6 +68,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 	return platformpolicy.Policy{
 		MFARequiredForTenantAdmin:      policy.GetMfaRequiredForTenantAdmin(),
 		MFARequiredForPlatformOperator: policy.GetMfaRequiredForPlatformOperator(),
+		TenantCoinsAllowed:             policy.GetTenantCoinsAllowed(),
 		PasswordVerification:           minuteDayFromProto(policy.GetPasswordVerification()),
 		StorePurchaseConfirmation:      minuteDayFromProto(policy.GetStorePurchaseConfirmation()),
 		WaitFreeTicketUse:              minuteDayFromProto(policy.GetWaitFreeTicketUse()),
@@ -134,7 +136,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	}
 	// wait_free_ticket_use, legal_page_agreement, identity_link, icon_change,
 	// passkey, series_remainder_checkout, subscription_checkout, the login limits, the notification
-	// settings limit and the operator MFA requirement reached the policy after the console screens
+	// settings limit, the operator MFA requirement and the tenant coin allowance reached the policy after the console screens
 	// that save it, and those are deployed apart from this server, so a
 	// request that leaves one out keeps what is stored rather than being
 	// refused or switching the requirement off. The stored value is read here and the save is held to
@@ -151,7 +153,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// be saved while it is being switched off.
 	requested := req.GetPolicy()
 	enablesOperatorMfaWithoutSecrets := requested.GetMfaRequiredForPlatformOperator() && s.encryptor == nil
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.MfaRequiredForPlatformOperator == nil || enablesOperatorMfaWithoutSecrets {
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -195,6 +197,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		}
 		if requested.MfaRequiredForPlatformOperator == nil {
 			params.Policy.MFARequiredForPlatformOperator = stored.MFARequiredForPlatformOperator
+		}
+		if requested.TenantCoinsAllowed == nil {
+			params.Policy.TenantCoinsAllowed = stored.TenantCoinsAllowed
 		}
 	}
 	if err := params.Validate(); err != nil {

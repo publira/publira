@@ -108,6 +108,10 @@ type Policy struct {
 	// DisposableEmailDomainsURL is where the list of disposable email domains
 	// is read from. Empty means there is no list: none ships with the server.
 	DisposableEmailDomainsURL string
+	// TenantCoinsAllowed lets a tenant issue coins. While it is false no
+	// tenant's coins are sold or spent, whatever the tenant's own setting
+	// says, and every balance is kept.
+	TenantCoinsAllowed bool
 }
 
 // FieldDuplicateCommentWindow is the one field of the PlatformPolicy message
@@ -159,6 +163,7 @@ func Defaults() Policy {
 		SubscriptionCheckout:      MinuteDay{PerMinute: 10, PerDay: 50},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
+		TenantCoinsAllowed:        false,
 	}
 }
 
@@ -260,6 +265,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
+		TenantCoinsAllowed:        config.TenantCoinsAllowed,
 	}
 }
 
@@ -313,6 +319,7 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		LoginSourceLimitPerHour:               int32(policy.LoginAttemptsPerSource.PerHour),
 		LoginSourceLimitPerDay:                int32(policy.LoginAttemptsPerSource.PerDay),
 		DisposableEmailDomainsUrl:             policy.DisposableEmailDomainsURL,
+		TenantCoinsAllowed:                    policy.TenantCoinsAllowed,
 	}
 }
 
