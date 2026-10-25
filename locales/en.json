@@ -4022,6 +4022,9 @@
           "share": "Share of readers",
           "left": "Left here"
         }
+      },
+      "export": {
+        "button": "Download CSV"
       }
     },
     "royalties": {

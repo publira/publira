@@ -1,6 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import * as ConsolePage from "@publira/layouts/admin/console-page";
 import * as ConsoleSection from "@publira/layouts/admin/console-section";
+import { LinkButton } from "@publira/ui-components/button";
 import * as Chart from "@publira/ui-components/chart";
 import * as FigureLine from "@publira/ui-components/figure-line";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -22,7 +23,7 @@ import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
-import { getRevenueStats } from "#lib/engagement";
+import { getRevenueStats, statsCsvPath } from "#lib/engagement";
 import type { RevenueGroup, RevenueStatsItem } from "#lib/engagement";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -466,6 +467,15 @@ const RevenueContent = async ({
                 </Suspense>
               </GroupNav.Link>
             </GroupNav.Root>
+            <LinkButton
+              href={statsCsvPath({ group, kind: "revenue" }, dates)}
+              size="sm"
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.analytics.export.button" />
+              </Suspense>
+            </LinkButton>
           </ConsoleSection.Actions>
         </ConsoleSection.Header>
         {rows.ok ? (

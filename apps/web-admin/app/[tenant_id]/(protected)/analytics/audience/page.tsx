@@ -1,6 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import * as ConsolePage from "@publira/layouts/admin/console-page";
 import * as ConsoleSection from "@publira/layouts/admin/console-section";
+import { LinkButton } from "@publira/ui-components/button";
 import * as Chart from "@publira/ui-components/chart";
 import * as FigureLine from "@publira/ui-components/figure-line";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -14,8 +15,9 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantAdminOnly } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getAudienceStats } from "#lib/engagement";
+import { getAudienceStats, statsCsvPath } from "#lib/engagement";
 import type { AudienceGroup, AudienceStatsItem } from "#lib/engagement";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -476,6 +478,18 @@ const AudienceContent = async ({
                 </Suspense>
               </GroupNav.Link>
             </GroupNav.Root>
+            {/* The export is a tenant admin's, whichever report it writes. */}
+            <TenantAdminOnly>
+              <LinkButton
+                href={statsCsvPath({ group, kind: "audience" }, dates)}
+                size="sm"
+                variant="outline"
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.analytics.export.button" />
+                </Suspense>
+              </LinkButton>
+            </TenantAdminOnly>
           </ConsoleSection.Actions>
         </ConsoleSection.Header>
         {rows.ok ? (

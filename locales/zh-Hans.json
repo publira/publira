@@ -4022,6 +4022,9 @@
           "share": "占读者的比例",
           "left": "在此离开"
         }
+      },
+      "export": {
+        "button": "下载CSV"
       }
     },
     "royalties": {

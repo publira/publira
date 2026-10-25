@@ -21,8 +21,9 @@ import { z } from "zod";
 
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
+import { TenantAdminOnly } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
-import { getEpisodeDropOff } from "#lib/engagement";
+import { getEpisodeDropOff, statsCsvPath } from "#lib/engagement";
 import { getEpisode } from "#lib/episode";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -346,6 +347,27 @@ const DropOffContent = async ({ params, searchParams }: DropOffPageProps) => {
               </Suspense>
             </ConsoleSection.Title>
           </ConsoleSection.Heading>
+          {/* The export is a tenant admin's, whichever report it writes. */}
+          <TenantAdminOnly>
+            <ConsoleSection.Actions>
+              <LinkButton
+                href={statsCsvPath(
+                  {
+                    episodePublicId: episode_id,
+                    kind: "drop_off",
+                    seriesPublicId: series_id,
+                  },
+                  { end: period.end, start: period.start }
+                )}
+                size="sm"
+                variant="outline"
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                  <Message message="admin.analytics.export.button" />
+                </Suspense>
+              </LinkButton>
+            </ConsoleSection.Actions>
+          </TenantAdminOnly>
         </ConsoleSection.Header>
         <Table.Root>
           <Table.Header>

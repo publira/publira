@@ -1,6 +1,7 @@
 import {
   AudienceGroupBy,
   RevenueGroupBy,
+  StatsExportKind,
 } from "@publira/api-client/admin/engagement";
 import type {
   AudienceStatsRow,
@@ -12,7 +13,9 @@ import type {
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  Code,
   isMissingResourceRpcError,
+  isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
@@ -22,6 +25,7 @@ import { apiClient, withSessionHeaders } from "./api";
 import { cursorPageRequest } from "./cursor-page";
 import type { CursorPageOptions } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import { buildQueryString } from "./query-string";
 import { getAccessToken } from "./session";
 
 export interface EpisodeReadThroughItem {
@@ -598,5 +602,120 @@ export const getEpisodeDropOff = async (
       t("admin.analytics.drop_off.load_failed"),
       locale
     );
+  }
+};
+
+/** The report a CSV download writes: one of the screens, as its table shows it. */
+export type StatsExportReport =
+  | { kind: "audience"; group: AudienceGroup }
+  | { kind: "drop_off"; seriesPublicId: string; episodePublicId: string }
+  | { kind: "revenue"; group: RevenueGroup };
+
+export type ExportStatsResult =
+  | { ok: true; csv: Uint8Array<ArrayBuffer> }
+  | { ok: false; reason: "missing" | "signedOut" };
+
+const revenueExportKind: Record<RevenueGroup, StatsExportKind> = {
+  day: StatsExportKind.REVENUE_BY_DAY,
+  episode: StatsExportKind.REVENUE_BY_EPISODE,
+  series: StatsExportKind.REVENUE_BY_SERIES,
+};
+
+const audienceExportKind: Record<AudienceGroup, StatsExportKind> = {
+  day: StatsExportKind.AUDIENCE_BY_DAY,
+  series: StatsExportKind.AUDIENCE_BY_SERIES,
+};
+
+const statsExportFields = (
+  report: StatsExportReport
+): { kind: StatsExportKind; episodePublicId?: string } => {
+  switch (report.kind) {
+    case "audience": {
+      return { kind: audienceExportKind[report.group] };
+    }
+    case "drop_off": {
+      return {
+        episodePublicId: report.episodePublicId,
+        kind: StatsExportKind.EPISODE_DROP_OFF,
+      };
+    }
+    case "revenue": {
+      return { kind: revenueExportKind[report.group] };
+    }
+    default: {
+      return report satisfies never;
+    }
+  }
+};
+
+const statsReportQuery = (
+  report: StatsExportReport,
+  period: StatsPeriodRequest
+): string =>
+  buildQueryString({
+    from: period.start,
+    group:
+      report.kind === "drop_off" || report.group === "day" ? "" : report.group,
+    to: period.end,
+  });
+
+const statsReportPath = (report: StatsExportReport): string =>
+  report.kind === "drop_off"
+    ? `/analytics/episodes/${report.seriesPublicId}/${report.episodePublicId}`
+    : `/analytics/${report.kind}`;
+
+/** The screen that shows a report over `period`, as its own links spell it. */
+export const statsReportHref = (
+  report: StatsExportReport,
+  period: StatsPeriodRequest
+): string => `${statsReportPath(report)}${statsReportQuery(report, period)}`;
+
+/**
+ * Where a report downloads as CSV: the screen's own path under the API, with
+ * the period spelled out rather than left to a default, so the file covers the
+ * days the screen showed whenever it is opened.
+ */
+export const statsCsvPath = (
+  report: StatsExportReport,
+  period: StatsPeriodRequest
+): string =>
+  `/api/v1${statsReportPath(report)}/csv${statsReportQuery(report, period)}`;
+
+/**
+ * A report as the CSV the API encodes, byte for byte. A period the API refuses
+ * is answered like an episode the tenant does not have: there is no such file.
+ */
+export const exportStats = async (
+  tenantId: string,
+  report: StatsExportReport,
+  period: StatsPeriodRequest
+): Promise<ExportStatsResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return { ok: false, reason: "signedOut" };
+  }
+
+  try {
+    const response = await apiClient.engagement.exportStats(
+      {
+        ...statsExportFields(report),
+        endDate: period.end,
+        startDate: period.start,
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { csv: new Uint8Array(response.csv), ok: true };
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      return { ok: false, reason: "signedOut" };
+    }
+    if (
+      isMissingResourceRpcError(error) ||
+      isRpcError(error, Code.InvalidArgument)
+    ) {
+      return { ok: false, reason: "missing" };
+    }
+    throw error;
   }
 };
