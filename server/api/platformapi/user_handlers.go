@@ -473,10 +473,13 @@ func (s *platformServer) DeleteEndUser(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 	// Queued before the delete takes the account's links, and the Apple tokens
-	// they hold, with it.
+	// they hold, with it, and leaves its subscriptions naming no one.
 	if user.TenantID.Valid {
 		if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, txq, user.TenantID.UUID, user.ID); err != nil {
 			return nil, s.internalDBError(ctx, "failed to queue the apple token revocations", err, "user_id", user.ID.String())
+		}
+		if err := outbox.QueueSubscriptionCancellationsForUser(ctx, txq, user.TenantID.UUID, user.ID); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the subscription cancellations", err, "user_id", user.ID.String())
 		}
 	}
 	if err := txq.DeleteUserByID(ctx, user.ID); err != nil {

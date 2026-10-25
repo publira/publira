@@ -16,6 +16,7 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
@@ -25,6 +26,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -34,10 +36,12 @@ type subscriptionFixture struct {
 	pg            *testutil.PostgresEnv
 	stripe        *stripetest.Fixture
 	credentials   paymentprovider.Credentials
+	encryptor     *secretcrypto.Manager
 	tenant        testutil.Tenant
 	reader        testutil.TenantUser
 	subscriptions publirav1connect.SubscriptionServiceClient
 	purchases     publirav1connect.PurchaseServiceClient
+	auth          publirav1connect.AuthServiceClient
 }
 
 func newSubscriptionFixture(t *testing.T) *subscriptionFixture {
@@ -74,10 +78,12 @@ func newSubscriptionFixtureWithGuards(t *testing.T, guards readerGuards) *subscr
 		pg:            pg,
 		stripe:        fixture,
 		credentials:   credentials,
+		encryptor:     encryptor,
 		tenant:        tenant,
 		reader:        reader,
 		subscriptions: publirav1connect.NewSubscriptionServiceClient(client),
 		purchases:     publirav1connect.NewPurchaseServiceClient(client),
+		auth:          publirav1connect.NewAuthServiceClient(client),
 	}
 }
 
@@ -115,6 +121,28 @@ func (f *subscriptionFixture) countRows(t *testing.T, query string, args ...any)
 		t.Fatalf("%s: %v", query, err)
 	}
 	return count
+}
+
+// cancelSubscriptions sends the subscription cancellations queued so far, as
+// the worker does.
+func (f *subscriptionFixture) cancelSubscriptions(t *testing.T) {
+	t.Helper()
+	f.pg.ProcessPendingOutboxEvents(t, map[string]func(context.Context, dbmodels.OutboxEvent) error{
+		outbox.EventTypeSubscriptionCancel: outbox.NewSubscriptionCancelHandler(outbox.SubscriptionCancelHandlerConfig{
+			DB:        f.pg.OpenOutboxDB(t),
+			Encryptor: f.encryptor,
+			Providers: paymentprovider.NewRegistry(f.stripe.Provider()),
+		}),
+	})
+}
+
+func (f *subscriptionFixture) stripeStatus(t *testing.T, subscriptionID string) string {
+	t.Helper()
+	subscription, ok := f.stripe.API.Subscription(f.credentials[stripe.FieldSecretKey], subscriptionID)
+	if !ok {
+		t.Fatalf("the tenant's Stripe account holds no subscription %s", subscriptionID)
+	}
+	return subscription.Status
 }
 
 func (f *subscriptionFixture) mySubscription(t *testing.T) *publirav1.Subscription {
@@ -582,5 +610,96 @@ func TestDBStartSubscriptionCheckoutSpendsTheReadersAllowance(t *testing.T) {
 	}
 	if got := len(f.stripe.API.CheckoutSessions()); got != 1 {
 		t.Fatalf("checkout sessions = %d, want the refused start to have asked Stripe for nothing", got)
+	}
+}
+
+// A reader who closes their account can reach no billing page to cancel their
+// subscription, so the deletion cancels it, at once, on the tenant's Stripe
+// account. A subscription that is over, and another reader's, are left alone.
+func TestDBDeleteMeCancelsTheReadersSubscription(t *testing.T) {
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	other := f.pg.SeedEndUser(t, f.tenant.ID, "SUBREADER02", "other@example.com", "Other subscriber")
+	subscribe := func(id string, readerID uuid.UUID, status string) stripetest.Subscription {
+		t.Helper()
+		subscription := stripetest.Subscription{
+			ID:         id,
+			CustomerID: "cus_" + id,
+			PriceID:    "price_monthly",
+			Status:     status,
+			Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, readerID, plan.ID, "price_monthly"),
+		}
+		payload, headers := f.stripe.SubscriptionUpdated(t, f.credentials, subscription)
+		if err := f.deliver(t, payload, headers); err != nil {
+			t.Fatalf("deliver the subscription %s: %v", id, err)
+		}
+		return subscription
+	}
+	subscribe("sub_earlier", f.reader.ID, "canceled")
+	billed := subscribe("sub_billed", f.reader.ID, "active")
+	subscribe("sub_other", other.ID, "active")
+
+	if _, err := f.auth.DeleteMe(f.readerCtx(t), &publirav1.DeleteMeRequest{Tenant: tenantContext(f.tenant), Password: testutil.SeededPassword}); err != nil {
+		t.Fatalf("DeleteMe: %v", err)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2", f.tenant.ID, outbox.EventTypeSubscriptionCancel); got != 1 {
+		t.Fatalf("cancellations queued = %d, want the billed subscription's alone", got)
+	}
+	f.cancelSubscriptions(t)
+
+	if got := f.stripeStatus(t, "sub_billed"); got != "canceled" {
+		t.Fatalf("the deleted reader's subscription is %q on Stripe, want canceled", got)
+	}
+	if got := f.stripeStatus(t, "sub_other"); got != "active" {
+		t.Fatalf("another reader's subscription is %q on Stripe, want active", got)
+	}
+	if got := f.stripe.API.SubscriptionCancellations(); len(got) != 1 {
+		t.Fatalf("cancellations sent = %+v, want one", got)
+	}
+
+	// Stripe then reports the cancellation, which is recorded for no one and
+	// owes nothing further.
+	billed.Status = "canceled"
+	payload, headers := f.stripe.SubscriptionDeleted(t, f.credentials, billed)
+	if err := f.deliver(t, payload, headers); err != nil {
+		t.Fatalf("deliver the deletion: %v", err)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM subscriptions WHERE tenant_id = $1 AND stripe_subscription_id = 'sub_billed' AND status = 'canceled' AND user_id IS NULL", f.tenant.ID); got != 1 {
+		t.Fatalf("recorded cancellations without the reader = %d, want 1", got)
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2 AND status = 'pending'", f.tenant.ID, outbox.EventTypeSubscriptionCancel); got != 0 {
+		t.Fatalf("cancellations pending after Stripe reported the cancellation = %d, want 0", got)
+	}
+}
+
+// A checkout paid by a reader who closed their account before Stripe reported
+// it starts a subscription the deletion could not find. The webhook that
+// records it for no one cancels it.
+func TestDBProcessPaymentWebhookCancelsASubscriptionWhoseReaderIsGone(t *testing.T) {
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
+	if _, err := f.auth.DeleteMe(f.readerCtx(t), &publirav1.DeleteMeRequest{Tenant: tenantContext(f.tenant), Password: testutil.SeededPassword}); err != nil {
+		t.Fatalf("DeleteMe: %v", err)
+	}
+
+	subscription := stripetest.Subscription{
+		ID:         "sub_late",
+		CustomerID: "cus_late",
+		PriceID:    "price_monthly",
+		Status:     "active",
+		Metadata:   stripetest.SubscriptionMetadata(f.tenant.ID, f.reader.ID, plan.ID, "price_monthly"),
+	}
+	payload, headers := f.stripe.SubscriptionCheckoutCompleted(t, f.credentials, "cs_late", subscription)
+	for range 2 {
+		if err := f.deliver(t, payload, headers); err != nil {
+			t.Fatalf("deliver the completed checkout: %v", err)
+		}
+	}
+	if got := f.countRows(t, "SELECT count(*) FROM outbox_events WHERE tenant_id = $1 AND event_type = $2", f.tenant.ID, outbox.EventTypeSubscriptionCancel); got != 1 {
+		t.Fatalf("cancellations queued = %d, want one however often the notification is delivered", got)
+	}
+	f.cancelSubscriptions(t)
+	if got := f.stripeStatus(t, "sub_late"); got != "canceled" {
+		t.Fatalf("the subscription is %q on Stripe, want canceled", got)
 	}
 }

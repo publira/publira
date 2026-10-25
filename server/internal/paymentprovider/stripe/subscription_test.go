@@ -214,6 +214,44 @@ func TestRetrieveSubscriptionAnswersTheSubscriptionAsStripeHoldsItNow(t *testing
 
 // A subscription Stripe does not hold, or one in a state this server does not
 // know, is refused rather than recorded as something it was not read as.
+// CancelSubscription ends the subscription at once, rather than at the end of
+// the period the reader paid for.
+func TestCancelSubscriptionEndsTheSubscriptionNow(t *testing.T) {
+	api := stripetest.NewAPI(t)
+	provider := stripe.New(stripe.WithAPIURL(api.URL()))
+	secretKey := checkoutCredentials[stripe.FieldSecretKey]
+	api.SetSubscription(secretKey, stripetest.Subscription{
+		ID:                "sub_cancel",
+		CustomerID:        "cus_cancel",
+		PriceID:           "price_monthly",
+		Status:            "active",
+		CancelAtPeriodEnd: true,
+		Metadata:          stripetest.SubscriptionMetadata(uuid.New(), uuid.New(), uuid.New(), "price_monthly"),
+	})
+
+	if err := provider.CancelSubscription(t.Context(), checkoutCredentials, "sub_cancel"); err != nil {
+		t.Fatalf("CancelSubscription: %v", err)
+	}
+	if got, _ := api.Subscription(secretKey, "sub_cancel"); got.Status != "canceled" {
+		t.Fatalf("status after the cancellation = %q, want canceled", got.Status)
+	}
+	if got := api.SubscriptionCancellations(); len(got) != 1 || got[0].SubscriptionID != "sub_cancel" {
+		t.Fatalf("cancellations = %+v, want sub_cancel's alone", got)
+	}
+
+	if err := provider.CancelSubscription(t.Context(), checkoutCredentials, "sub_missing"); !errors.Is(err, paymentprovider.ErrSubscriptionNotFound) {
+		t.Fatalf("CancelSubscription of a subscription the account does not hold = %v, want ErrSubscriptionNotFound", err)
+	}
+	other := paymentprovider.Credentials{stripe.FieldSecretKey: "sk_test_other"}
+	if err := provider.CancelSubscription(t.Context(), other, "sub_cancel"); !errors.Is(err, paymentprovider.ErrSubscriptionNotFound) {
+		t.Fatalf("CancelSubscription on another account = %v, want ErrSubscriptionNotFound", err)
+	}
+	api.FailNextSubscriptionCancel(secretKey, "sub_cancel")
+	if err := provider.CancelSubscription(t.Context(), checkoutCredentials, "sub_cancel"); err == nil || errors.Is(err, paymentprovider.ErrSubscriptionNotFound) {
+		t.Fatalf("CancelSubscription Stripe could not take = %v, want an error other than not found", err)
+	}
+}
+
 func TestRetrieveSubscriptionRefusesASubscriptionItCannotRead(t *testing.T) {
 	fixture := stripetest.NewFixture(t)
 	provider := stripe.New(stripe.WithAPIURL(fixture.API.URL()))

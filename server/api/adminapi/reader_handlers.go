@@ -599,9 +599,13 @@ func (s *adminServer) DeleteReader(
 		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
 			return "", err
 		}
-		// Queued before the delete takes the links with the account; a reader
-		// the delete does not find rolls the queue back with it.
+		// Queued before the delete takes the links with the account and leaves
+		// the subscriptions naming no one; a reader the delete does not find
+		// rolls the queue back with it.
 		if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, queries, tenant.ID, readerID); err != nil {
+			return "", err
+		}
+		if err := outbox.QueueSubscriptionCancellationsForUser(ctx, queries, tenant.ID, readerID); err != nil {
 			return "", err
 		}
 		deleted, err = queries.DeleteTenantReader(ctx, dbmodels.DeleteTenantReaderParams{

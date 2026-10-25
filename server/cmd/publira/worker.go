@@ -21,6 +21,8 @@ import (
 	"github.com/publira/publira/server/internal/httpserver"
 	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/revalidate"
@@ -145,6 +147,18 @@ func workerServiceNames() []string {
 // enqueues them all and rescues any a dead replica left running.
 func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	logger := deps.logger
+
+	// The Outbox drain cancels the subscriptions of deleted accounts, so it
+	// calls the payment providers where the server does. Read before a pool is
+	// opened, so a misconfiguration is refused without reaching the database.
+	var payments *paymentprovider.Registry
+	if queues.outbox {
+		paymentsConfig, err := providers.ConfigFromEnv()
+		if err != nil {
+			return half{}, failed("failed to load config", err)
+		}
+		payments = providers.New(paymentsConfig)
+	}
 
 	pools, err := openWorkerPools(queues, sqldb.Open)
 	if err != nil {
@@ -285,6 +299,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		outbox.CommentApprovedNotificationHandlerConfig{DB: db},
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
+		outbox.SubscriptionCancelHandlerConfig{DB: db, Encryptor: encryptor, Providers: payments},
 		invalidator, catalogIndexer, searchCacheRecorder)
 	cfg.Queues = queues.riverQueues()
 	worker, err := outbox.Start(context.Background(), db, cfg)
@@ -402,6 +417,7 @@ func workerConfig(
 	commentApprovedHandlers outbox.CommentApprovedNotificationHandlerConfig,
 	googlePlayHandlers outbox.GooglePlayHandlerConfig,
 	appleSignInHandlers outbox.AppleSignInHandlerConfig,
+	subscriptionCancelHandlers outbox.SubscriptionCancelHandlerConfig,
 	invalidator outbox.CacheInvalidator,
 	catalogIndexer outbox.CatalogIndexer,
 	searchCacheRecorder outbox.CacheInvalidationRecorder,
@@ -444,6 +460,8 @@ func workerConfig(
 	appleSignInHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeAppleSignInCodeExchange, outbox.NewAppleSignInCodeExchangeHandler(appleSignInHandlers))
 	handlers.Register(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers))
+	subscriptionCancelHandlers.Logger = logger
+	handlers.Register(outbox.EventTypeSubscriptionCancel, outbox.NewSubscriptionCancelHandler(subscriptionCancelHandlers))
 	return outbox.Config{
 		Logger:            logger,
 		Handlers:          handlers,

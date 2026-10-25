@@ -1567,6 +1567,9 @@ type Querier interface {
 	// Every tenant that chose automatic closing, for the maintenance pass that
 	// closes their months across tenants.
 	ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoyaltyConfig, error)
+	// The subscriptions of the reader Stripe will go on billing, which closing the
+	// account cancels.
+	ListBilledStripeSubscriptionIDsForUser(ctx context.Context, arg ListBilledStripeSubscriptionIDsForUserParams) ([]string, error)
 	// Every published banner with a boundary the ticker has not dropped the site
 	// caches for yet. A banner whose start and end both passed while the ticker
 	// was down comes back with both flags set, and one drop answers for both. An
@@ -3803,9 +3806,8 @@ type Querier interface {
 	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)
 	// Whether the reader holds a subscription Stripe will go on billing, which a
-	// second checkout would run beside. An incomplete one is not among them:
-	// Stripe drops it within a day unless its first payment goes through, and a
-	// reader whose payment failed starts again.
+	// second checkout would run beside. A reader whose first payment failed starts
+	// again.
 	UserHoldsLiveSubscription(ctx context.Context, arg UserHoldsLiveSubscriptionParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns

@@ -15,6 +15,7 @@ import (
 
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -527,6 +528,14 @@ func (s *apiServer) recordSubscription(
 	})
 	if err != nil {
 		return s.internalDBError(ctx, "failed to record a subscription", err, "event_id", event.ID, "subscription_id", subscription.ID)
+	}
+	// A subscription billed for nobody is one whose reader closed their
+	// account, before its checkout was paid or before the subscription was
+	// recorded. The deletion canceled what it found, and this is the rest.
+	if !recorded.UserID.Valid && subscription.Status.Billed() {
+		if err := outbox.QueueSubscriptionCancellation(ctx, queries, tenantID, subscription.ID); err != nil {
+			return s.internalError(ctx, "failed to queue the cancellation of a subscription", err, "tenant_id", tenantID.String(), "event_id", event.ID, "subscription_id", subscription.ID)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return s.internalDBError(ctx, "failed to commit a subscription", err, "event_id", event.ID, "subscription_id", subscription.ID)

@@ -273,6 +273,25 @@ func (p *Provider) RetrieveSubscription(ctx context.Context, credentials payment
 	return read, nil
 }
 
+// CancelSubscription cancels a subscription at once. Stripe neither prorates
+// the period paid for nor invoices it again, so the reader is charged nothing
+// further and refunded nothing.
+func (p *Provider) CancelSubscription(ctx context.Context, credentials paymentprovider.Credentials, subscriptionID string) error {
+	client, err := p.client(credentials)
+	if err != nil {
+		return err
+	}
+	_, err = client.V1Subscriptions.Cancel(ctx, subscriptionID, &stripego.SubscriptionCancelParams{})
+	if err != nil {
+		var stripeErr *stripego.Error
+		if errors.As(err, &stripeErr) && stripeErr.Code == stripego.ErrorCodeResourceMissing {
+			return paymentprovider.ErrSubscriptionNotFound
+		}
+		return fmt.Errorf("cancel subscription: %w", err)
+	}
+	return nil
+}
+
 // readSubscription reads the subscription a subscription checkout started. A
 // plan bills one Price, so the subscription's first item is the one it bills.
 func readSubscription(subscription *stripego.Subscription) (paymentprovider.Subscription, error) {

@@ -65,15 +65,13 @@ LIMIT 1;
 
 -- name: UserHoldsLiveSubscription :one
 -- Whether the reader holds a subscription Stripe will go on billing, which a
--- second checkout would run beside. An incomplete one is not among them:
--- Stripe drops it within a day unless its first payment goes through, and a
--- reader whose payment failed starts again.
+-- second checkout would run beside. A reader whose first payment failed starts
+-- again.
 SELECT EXISTS (
         SELECT 1
-        FROM subscriptions
+        FROM billed_subscriptions
         WHERE tenant_id = $1
             AND user_id = $2
-            AND status IN ('trialing', 'active', 'past_due', 'unpaid', 'paused')
     ) AS holds;
 
 -- name: GetLatestStripeCustomerIDForUser :one
@@ -145,3 +143,13 @@ SELECT EXISTS (
             AND stripe_subscription_id = $2
             AND status IN ('canceled', 'incomplete_expired')
     ) AS ended;
+
+-- name: ListBilledStripeSubscriptionIDsForUser :many
+-- The subscriptions of the reader Stripe will go on billing, which closing the
+-- account cancels.
+SELECT stripe_subscription_id
+FROM billed_subscriptions
+WHERE tenant_id = $1
+    AND user_id = $2
+ORDER BY created_at,
+    id;

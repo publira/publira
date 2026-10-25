@@ -139,6 +139,7 @@ var publicDataTables = []struct {
 	{name: "subscription_plans", count: "SELECT count(*) FROM subscription_plans"},
 	{name: "subscription_plan_targets", count: "SELECT count(*) FROM subscription_plan_targets"},
 	{name: "subscriptions", count: "SELECT count(*) FROM subscriptions"},
+	{name: "billed_subscriptions", count: "SELECT count(*) FROM billed_subscriptions"},
 	{name: "subscription_checkouts", count: "SELECT count(*) FROM subscription_checkouts"},
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
 	{name: "tenant_config_translations", count: "SELECT count(*) FROM tenant_config_translations"},

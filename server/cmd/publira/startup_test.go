@@ -339,6 +339,20 @@ func TestServerRefusesAStripeAPIURLThatIsNotOne(t *testing.T) {
 	}
 }
 
+// The worker's Outbox drain cancels subscriptions through the same providers,
+// so it refuses the same origin before a pool is opened.
+func TestWorkerRefusesAStripeAPIURLThatIsNotOne(t *testing.T) {
+	code, output := testutil.RunMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_STRIPE_API_URL": "127.0.0.1:8500",
+	}, revalidationWithoutPlatformConsole()), "worker")
+	if code == 0 {
+		t.Fatalf("exit code = 0, want a failure; output:\n%s", output)
+	}
+	if !strings.Contains(output, "PUBLIRA_STRIPE_API_URL") {
+		t.Fatalf("output does not name PUBLIRA_STRIPE_API_URL:\n%s", output)
+	}
+}
+
 // The worker starts on the same footing. Object storage is not among what it
 // needs either: the orphan image sweep is the only job that needs a bucket,
 // and it resolves one from the platform's settings when a run starts.

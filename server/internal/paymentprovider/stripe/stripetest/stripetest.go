@@ -98,6 +98,10 @@ type API struct {
 	prices        map[string]map[string]Price
 	subscriptions map[string]map[string]Subscription
 	portals       []BillingPortalSession
+	// cancellations are the subscriptions the fake canceled, in order, and
+	// failCancel the ones whose next cancellation it fails, by secret key.
+	cancellations []SubscriptionCancellation
+	failCancel    map[string]map[string]bool
 	// sessionStates holds where each Checkout Session the fake made stands,
 	// by its id, and the subscription a completed one started.
 	sessionStates map[string]sessionState
@@ -131,6 +135,12 @@ type Subscription struct {
 	CurrentPeriodEnd  int64
 	CancelAtPeriodEnd bool
 	Metadata          map[string]string
+}
+
+// SubscriptionCancellation is one subscription the fake canceled.
+type SubscriptionCancellation struct {
+	SecretKey      string
+	SubscriptionID string
 }
 
 // BillingPortalSession is one request the fake received to open a billing
@@ -183,6 +193,7 @@ func NewAPI(t testing.TB) *API {
 		idempotent:    map[string]map[string]Refund{},
 		prices:        map[string]map[string]Price{},
 		subscriptions: map[string]map[string]Subscription{},
+		failCancel:    map[string]map[string]bool{},
 		sessionStates: map[string]sessionState{},
 	}
 	mux := http.NewServeMux()
@@ -194,6 +205,7 @@ func NewAPI(t testing.TB) *API {
 	mux.HandleFunc("GET /v1/payment_intents/{id}", api.getPaymentIntent)
 	mux.HandleFunc("GET /v1/prices/{id}", api.getPrice)
 	mux.HandleFunc("GET /v1/subscriptions/{id}", api.getSubscription)
+	mux.HandleFunc("DELETE /v1/subscriptions/{id}", api.cancelSubscription)
 	mux.HandleFunc("POST /v1/billing_portal/sessions", api.createBillingPortalSession)
 	api.server = httptest.NewServer(mux)
 	t.Cleanup(api.server.Close)
@@ -554,6 +566,35 @@ func (a *API) SetSubscription(secretKey string, subscription Subscription) {
 	a.subscriptions[secretKey][subscription.ID] = subscription
 }
 
+// Subscription answers the subscription id on the account of secretKey as the
+// fake holds it now.
+func (a *API) Subscription(secretKey, id string) (Subscription, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	subscription, ok := a.subscriptions[secretKey][id]
+	return subscription, ok
+}
+
+// FailNextSubscriptionCancel makes the next cancellation of the subscription
+// id, under secretKey, fail the way Stripe answers when it cannot take the
+// request, and tell the client not to retry it, so the failure reaches the
+// caller.
+func (a *API) FailNextSubscriptionCancel(secretKey, id string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.failCancel[secretKey] == nil {
+		a.failCancel[secretKey] = map[string]bool{}
+	}
+	a.failCancel[secretKey][id] = true
+}
+
+// SubscriptionCancellations answers every subscription the fake canceled.
+func (a *API) SubscriptionCancellations() []SubscriptionCancellation {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]SubscriptionCancellation(nil), a.cancellations...)
+}
+
 // BillingPortalSessions answers every billing portal session the fake opened.
 func (a *API) BillingPortalSessions() []BillingPortalSession {
 	a.mu.Lock()
@@ -603,6 +644,37 @@ func (a *API) getSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(SubscriptionObject(subscription))
+}
+
+// cancelSubscription cancels a subscription at once, as Stripe does when no
+// period end is asked for. Stripe refuses to cancel one that has already ended.
+func (a *API) cancelSubscription(w http.ResponseWriter, r *http.Request) {
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	id := r.PathValue("id")
+	a.mu.Lock()
+	subscription, ok := a.subscriptions[secretKey][id]
+	fail := a.failCancel[secretKey][id]
+	delete(a.failCancel[secretKey], id)
+	ended := subscription.Status == "canceled" || subscription.Status == "incomplete_expired"
+	if ok && !fail && !ended {
+		subscription.Status = "canceled"
+		subscription.CancelAtPeriodEnd = false
+		a.subscriptions[secretKey][id] = subscription
+		a.cancellations = append(a.cancellations, SubscriptionCancellation{SecretKey: secretKey, SubscriptionID: id})
+	}
+	a.mu.Unlock()
+	switch {
+	case !ok:
+		writeError(w, http.StatusNotFound, "resource_missing", "No such subscription: '"+id+"'")
+	case fail:
+		w.Header().Set("Stripe-Should-Retry", "false")
+		writeErrorOfType(w, http.StatusInternalServerError, "api_error", "", "The fake was told to fail this cancellation.")
+	case ended:
+		writeError(w, http.StatusBadRequest, "", "A canceled subscription can only update its cancellation_details and metadata.")
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(SubscriptionObject(subscription))
+	}
 }
 
 // SubscriptionObject is subscription in the shape Stripe answers it and puts

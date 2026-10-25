@@ -1495,10 +1495,14 @@ func (s *apiServer) DeleteMe(
 		return nil, s.internalDBError(ctx, "failed to bump credentials version", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	// Queued before the delete takes the links, and the tokens they hold, with
-	// the account.
+	// the account, and leaves the subscriptions naming no one.
 	if err := outbox.QueueAppleSignInTokenRevocationsForUser(ctx, txq, tenant.ID, user.ID); err != nil {
 		auth.AuditEvent(ctx, "delete_me", "failure", tenant.PublicID, user.PublicID, "revocation_enqueue_failed")
 		return nil, s.internalError(ctx, "failed to queue the apple token revocations", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := outbox.QueueSubscriptionCancellationsForUser(ctx, txq, tenant.ID, user.ID); err != nil {
+		auth.AuditEvent(ctx, "delete_me", "failure", tenant.PublicID, user.PublicID, "subscription_cancel_enqueue_failed")
+		return nil, s.internalError(ctx, "failed to queue the subscription cancellations", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	if err := txq.DeleteUserByID(ctx, user.ID); err != nil {
 		auth.AuditEvent(ctx, "delete_me", "failure", tenant.PublicID, user.PublicID, "delete_failed")

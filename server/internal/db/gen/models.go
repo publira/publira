@@ -72,6 +72,21 @@ type AuditLog struct {
 	ActorName     sql.NullString `json:"actor_name"`
 }
 
+type BilledSubscription struct {
+	ID                   uuid.UUID     `json:"id"`
+	TenantID             uuid.UUID     `json:"tenant_id"`
+	UserID               uuid.NullUUID `json:"user_id"`
+	PlanID               uuid.UUID     `json:"plan_id"`
+	StripeCustomerID     string        `json:"stripe_customer_id"`
+	StripeSubscriptionID string        `json:"stripe_subscription_id"`
+	StripePriceID        string        `json:"stripe_price_id"`
+	Status               string        `json:"status"`
+	CurrentPeriodEnd     sql.NullTime  `json:"current_period_end"`
+	CancelAtPeriodEnd    bool          `json:"cancel_at_period_end"`
+	CreatedAt            time.Time     `json:"created_at"`
+	UpdatedAt            time.Time     `json:"updated_at"`
+}
+
 type CampaignBanner struct {
 	ID                 uuid.UUID     `json:"id"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
