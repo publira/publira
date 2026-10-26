@@ -29,6 +29,7 @@ import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
+import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -194,6 +195,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// price the checkout no longer charges.
   Timer? _campaignEnd;
 
+  /// Shared by the gate's ways to pay for the episode, so one chosen keeps
+  /// the others from starting until it has settled.
+  final _paymentLock = PaymentLock();
+
   @override
   void initState() {
     super.initState();
@@ -351,6 +356,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   @override
   void dispose() {
+    _paymentLock.dispose();
     _campaignEnd?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _saver?.flush();
@@ -740,6 +746,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             rentalPeriodHours: detail.episode.rentalPeriodHours,
             onOpened: _reload,
             onChanged: _reload,
+            lock: _paymentLock,
           )
         : null;
     final buy = sold && !soldOnWeb
@@ -752,6 +759,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             onAlreadyPurchased: _reload,
             onStorePurchase: onStorePurchase,
             outlined: coins is CoinOffer && coins.leads,
+            lock: _paymentLock,
           )
         : null;
     // A rented episode is offered both ways, each naming what it costs, since
@@ -765,6 +773,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             currency: _currency!,
             onAlreadyPurchased: _reload,
             onStorePurchase: onStorePurchase,
+            lock: _paymentLock,
           )
         : null;
     final String message;

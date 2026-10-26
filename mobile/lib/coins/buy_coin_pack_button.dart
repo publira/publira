@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/coins/coin_shop.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -26,6 +27,7 @@ class BuyCoinPackButton extends StatefulWidget {
     required this.label,
     required this.onChanged,
     this.outlined = false,
+    this.lock,
   });
 
   final StoreCoinPack pack;
@@ -41,6 +43,10 @@ class BuyCoinPackButton extends StatefulWidget {
 
   /// Whether the button stands beside a way in that leads, in outline.
   final bool outlined;
+
+  /// Shared with the other payments the screen offers, so only one of them
+  /// runs at a time.
+  final PaymentLock? lock;
 
   @override
   State<BuyCoinPackButton> createState() => _BuyCoinPackButtonState();
@@ -60,6 +66,10 @@ class _BuyCoinPackButtonState extends State<BuyCoinPackButton> {
         messenger.showSnackBar(SnackBar(content: AutospacedText(text)));
     if (purchaser == null) {
       say(messages.purchaseStoreUnavailable);
+      return;
+    }
+    final lock = widget.lock;
+    if (lock != null && !lock.acquire()) {
       return;
     }
     setState(() {
@@ -98,6 +108,7 @@ class _BuyCoinPackButtonState extends State<BuyCoinPackButton> {
           say(messages.purchaseStartFailed);
       }
     } finally {
+      lock?.release();
       if (mounted) {
         setState(() {
           _buying = false;
@@ -108,7 +119,17 @@ class _BuyCoinPackButtonState extends State<BuyCoinPackButton> {
 
   @override
   Widget build(BuildContext context) {
-    final onPressed = _buying ? null : () => unawaited(_buy());
+    final lock = widget.lock;
+    if (lock == null) {
+      return _button();
+    }
+    return ListenableBuilder(listenable: lock, builder: (_, _) => _button());
+  }
+
+  Widget _button() {
+    final onPressed = _buying || (widget.lock?.held ?? false)
+        ? null
+        : () => unawaited(_buy());
     final label = AutospacedText(widget.label, textAlign: TextAlign.center);
     return widget.outlined
         ? OutlinedButton(onPressed: onPressed, child: label)

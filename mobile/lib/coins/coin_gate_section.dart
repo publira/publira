@@ -9,6 +9,7 @@ import 'package:publira/coins/coin_shop.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
@@ -29,6 +30,7 @@ class CoinGateSection extends StatefulWidget {
     required this.rentalPeriodHours,
     required this.onOpened,
     required this.onChanged,
+    this.lock,
   });
 
   final CoinGateOffer offer;
@@ -43,6 +45,10 @@ class CoinGateSection extends StatefulWidget {
   /// What the gate offers may have changed: a pack was bought, the price or
   /// the balance moved, or the reader is back from the packs.
   final VoidCallback onChanged;
+
+  /// Shared with the gate's other ways to pay for the episode, such as the
+  /// store's payment sheet, so a payment with coins never runs beside one.
+  final PaymentLock? lock;
 
   /// Whether [offer] gives the reader anything to do or to know.
   static bool shows(CoinGateOffer offer) => switch (offer) {
@@ -70,6 +76,10 @@ class _CoinGateSectionState extends State<CoinGateSection> {
     final locale = Localizations.localeOf(context).toLanguageTag();
     void say(String text) =>
         messenger.showSnackBar(SnackBar(content: AutospacedText(text)));
+    final lock = widget.lock;
+    if (lock != null && !lock.acquire()) {
+      return;
+    }
     setState(() {
       _paying = true;
     });
@@ -109,6 +119,7 @@ class _CoinGateSectionState extends State<CoinGateSection> {
           say(messages.coinsPayFailed(coinName: offer.coinName));
       }
     } finally {
+      lock?.release();
       if (mounted) {
         setState(() {
           _paying = false;
@@ -126,6 +137,17 @@ class _CoinGateSectionState extends State<CoinGateSection> {
 
   @override
   Widget build(BuildContext context) {
+    final lock = widget.lock;
+    if (lock == null) {
+      return _section(context);
+    }
+    return ListenableBuilder(
+      listenable: lock,
+      builder: (context, _) => _section(context),
+    );
+  }
+
+  Widget _section(BuildContext context) {
     final messages = AppMessages.of(context);
     final theme = Theme.of(context);
     final offer = widget.offer;
@@ -139,10 +161,11 @@ class _CoinGateSectionState extends State<CoinGateSection> {
     }
     final coinName = offer.coinName;
     final pack = offer.pack;
-    final onPay = _paying
+    final busy = _paying || (widget.lock?.held ?? false);
+    final onPay = busy
         ? null
         : () => unawaited(_pay(offer, PurchaseKind.purchase));
-    final onRent = _paying
+    final onRent = busy
         ? null
         : () => unawaited(_pay(offer, PurchaseKind.rental));
     final rentLabel = AutospacedText(
@@ -214,6 +237,7 @@ class _CoinGateSectionState extends State<CoinGateSection> {
                 ),
                 outlined: offer.leads,
                 onChanged: widget.onChanged,
+                lock: widget.lock,
               ),
             if (offer.needed > 0 && pack == null && offer.packsOnSale)
               OutlinedButton(

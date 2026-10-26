@@ -188,6 +188,54 @@ void main() {
       expect(packButton, findsNothing);
     });
 
+    testWidgets('pays no coins while the store purchase is starting', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      coins.coins = 120;
+      purchases
+        ..storeStartGate = gate
+        ..onConfirmed = () {
+          catalog.episodes = fixtureEpisodes(access: EpisodeAccess.entitled);
+        };
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pay);
+
+      await tester.tap(buy);
+      await tester.pump();
+      expect(tester.widget<FilledButton>(pay).onPressed, isNull);
+      await tester.tap(pay, warnIfMissed: false);
+      await tester.pump();
+      gate.complete();
+      await pumpUntilFound(tester, pages);
+
+      expect(coins.attempts, isEmpty);
+      expect(platform.bought, hasLength(1));
+    });
+
+    testWidgets('opens no store purchase while coins are being paid', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      coins
+        ..coins = 120
+        ..payGate = gate;
+      await pumpApp(tester);
+      await pumpUntilFound(tester, pay);
+
+      await tester.tap(pay);
+      await tester.pump();
+      expect(tester.widget<OutlinedButton>(buy).onPressed, isNull);
+      await tester.tap(buy, warnIfMissed: false);
+      await tester.pump();
+      gate.complete();
+      await pumpUntilFound(tester, pages);
+
+      expect(coins.payments, hasLength(1));
+      expect(purchases.storeIntents, isEmpty);
+      expect(platform.bought, isEmpty);
+    });
+
     testWidgets('keeps a key for each sale across retries', (tester) async {
       catalog.episodes = fixtureEpisodes(
         access: EpisodeAccess.locked,

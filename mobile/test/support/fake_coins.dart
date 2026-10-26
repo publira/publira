@@ -51,6 +51,9 @@ class FakeCoinRepository implements CoinRepository {
   /// Thrown by [payEpisode], which then spends nothing.
   CoinFailure? payFailure;
 
+  /// Held open by a test that needs [payEpisode] in flight.
+  Completer<void>? payGate;
+
   /// Every history entry, newest first, served [pageSize] at a time.
   List<CoinTransaction> history = const [];
   int pageSize = coinTransactionPageLimit;
@@ -153,6 +156,7 @@ class FakeCoinRepository implements CoinRepository {
   }) async {
     locales.add(locale);
     attempts.add((key: idempotencyKey, kind: kind));
+    await payGate?.future;
     if (failure ?? payFailure case final failure?) {
       throw failure;
     }

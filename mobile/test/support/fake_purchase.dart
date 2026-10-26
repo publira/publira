@@ -31,6 +31,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// Thrown by [startStorePurchase].
   PurchaseFailure? storeStartFailure;
 
+  /// Held open by a test that needs [startStorePurchase] in flight.
+  Completer<void>? storeStartGate;
+
   /// Episodes [startStorePurchase] was asked for, in order.
   final List<String> storeIntents = <String>[];
 
@@ -233,6 +236,7 @@ class FakePurchaseRepository implements PurchaseRepository {
     InAppPurchaseStore store,
   ) async {
     storeIntents.add(episodeInternalId);
+    await storeStartGate?.future;
     final failure = storeStartFailure;
     if (failure != null) {
       throw failure;

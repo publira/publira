@@ -6,6 +6,7 @@ import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
+import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -36,6 +37,7 @@ class BuyEpisodeButton extends StatefulWidget {
     this.signInReturnTo,
     this.compact = false,
     this.outlined = false,
+    this.lock,
   });
 
   final String episodeId;
@@ -75,6 +77,10 @@ class BuyEpisodeButton extends StatefulWidget {
   /// so the purchase stands beside it in outline.
   final bool outlined;
 
+  /// Shared with the other ways the screen offers to pay for the episode, so
+  /// only one of them runs at a time.
+  final PaymentLock? lock;
+
   @override
   State<BuyEpisodeButton> createState() => _BuyEpisodeButtonState();
 }
@@ -94,6 +100,10 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
     final messenger = ScaffoldMessenger.of(context);
     final messages = AppMessages.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final lock = widget.lock;
+    if (lock != null && !lock.acquire()) {
+      return;
+    }
     setState(() {
       _starting = true;
     });
@@ -159,6 +169,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
           );
       }
     } finally {
+      lock?.release();
       if (mounted) {
         setState(() {
           _starting = false;
@@ -175,6 +186,17 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
 
   @override
   Widget build(BuildContext context) {
+    final lock = widget.lock;
+    if (lock == null) {
+      return _button(context);
+    }
+    return ListenableBuilder(
+      listenable: lock,
+      builder: (context, _) => _button(context),
+    );
+  }
+
+  Widget _button(BuildContext context) {
     final messages = AppMessages.of(context);
     final price = messages.formatPrice(widget.price, widget.currency);
     final rentalPeriodHours = widget.rentalPeriodHours;
@@ -191,7 +213,9 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
           ? 'episode-buy-${widget.episodeId}'
           : 'episode-rent-${widget.episodeId}',
     );
-    final onPressed = _starting ? null : () => unawaited(_buy());
+    final onPressed = _starting || (widget.lock?.held ?? false)
+        ? null
+        : () => unawaited(_buy());
     // The rental is the alternative to the permanent copy, so it stands
     // beside it in outline, as the permanent copy does beside a way in that
     // leads.
