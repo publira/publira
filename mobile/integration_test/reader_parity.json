@@ -492,7 +492,17 @@
           "StartCoinPackCheckout"
         ]
       },
-      "exception": "Not in the app yet: #4475."
+      "mobile": {
+        "routes": ["/account/coins", "/series/:seriesId/episodes/:episodeId"],
+        "rpcs": [
+          "GetCoinSettings",
+          "GetCoinBalance",
+          "ListCoinTransactions",
+          "PayEpisodeWithCoins",
+          "StartStorePurchase",
+          "ConfirmStorePurchase"
+        ]
+      }
     },
     {
       "name": "Saving the purchase history as a CSV file",

@@ -13,6 +13,7 @@ import 'package:publira/screens/catalog_screen.dart';
 import 'package:publira/screens/change_email_screen.dart';
 import 'package:publira/screens/change_password_screen.dart';
 import 'package:publira/screens/checkout_return_screen.dart';
+import 'package:publira/screens/coins_screen.dart';
 import 'package:publira/screens/confirm_email_screen.dart';
 import 'package:publira/screens/confirm_password_screen.dart';
 import 'package:publira/screens/contact_screen.dart';
@@ -113,6 +114,11 @@ abstract final class AppRoutes {
   static const accountFollowUpdates = '$account/$followUpdates';
   static const pages = 'pages';
   static const accountPages = '$account/$pages';
+
+  /// The tenant's coins, which the account screen and a locked episode's gate
+  /// open on their own tab.
+  static const coins = 'coins';
+  static const coinsPath = '/$coins';
 
   /// The catalog's routes, which every tab holds under its own root.
   static const seriesDetail = 'series/:seriesId';
@@ -307,6 +313,10 @@ List<RouteBase> _tabRoutes() => [
     path: AppRoutes.publishedPage,
     builder: (context, state) =>
         PublishedPageScreen(slug: '/${state.pathParameters['pageSlug']!}'),
+  ),
+  GoRoute(
+    path: AppRoutes.coins,
+    builder: (context, state) => const CoinsScreen(),
   ),
   GoRoute(
     path: AppRoutes.creators,

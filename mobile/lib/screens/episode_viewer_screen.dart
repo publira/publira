@@ -12,6 +12,9 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/free_until_badge.dart';
+import 'package:publira/coins/coin_gate_section.dart';
+import 'package:publira/coins/coin_repository.dart';
+import 'package:publira/coins/coin_shop.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/content_views/content_view_recorder.dart';
@@ -26,8 +29,10 @@ import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
+import 'package:publira/purchase/payment_lock.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/purchase/subscription_offer.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
@@ -50,6 +55,7 @@ class _OpenEpisode {
     this.provenRating,
     this.waitFree,
     this.plansOffered = false,
+    this.coins,
   });
 
   final EpisodeDetail detail;
@@ -69,6 +75,10 @@ class _OpenEpisode {
   /// Whether a plan the tenant sells opens a locked body, so its gate offers
   /// the plans.
   final bool plansOffered;
+
+  /// What a locked body's gate offers for the tenant's coins, or `null` when
+  /// it says nothing about them.
+  final CoinGateOffer? coins;
 }
 
 /// Episode reader. Loads the body of one published episode, the images
@@ -185,6 +195,19 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// price the checkout no longer charges.
   Timer? _campaignEnd;
 
+  /// Shared by the gate's ways to pay for the episode, so one chosen keeps
+  /// the others from starting until it has settled.
+  final _paymentLock = PaymentLock();
+
+  /// The store's recorded packs, heard so that a gate still short of coins
+  /// reads the balance again once a pack held pending is granted.
+  StreamSubscription<String>? _packsRecorded;
+  StorePurchaser? _listenedPurchaser;
+
+  /// Whether the body last read is locked, which is when a granted pack can
+  /// change what the screen offers.
+  var _bodyLocked = false;
+
   @override
   void initState() {
     super.initState();
@@ -200,6 +223,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final purchaser = PurchaseScope.maybeOf(context)?.storePurchaser;
+    if (!identical(purchaser, _listenedPurchaser)) {
+      _listenedPurchaser = purchaser;
+      unawaited(_packsRecorded?.cancel());
+      _packsRecorded = purchaser?.recorded.where(isCoinPackProduct).listen((_) {
+        if (mounted && _bodyLocked) {
+          _reload();
+        }
+      });
+    }
     final catalog = CatalogScope.of(context);
     final accessToken = AuthScope.of(context).accessToken;
     final locale = Localizations.localeOf(context).toLanguageTag();
@@ -224,6 +257,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           AuthScope.of(context),
           waitFree: WaitFreeScope.maybeOf(context),
           purchase: PurchaseScope.maybeOf(context)?.repository,
+          storePurchaser: PurchaseScope.maybeOf(context)?.storePurchaser,
+          coins: CoinScope.maybeOf(context),
           resumeAt: relocalized ? _pageOnScreen : null,
         );
       }
@@ -258,6 +293,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       AuthScope.of(context),
       waitFree: WaitFreeScope.maybeOf(context),
       purchase: PurchaseScope.maybeOf(context)?.repository,
+      storePurchaser: PurchaseScope.maybeOf(context)?.storePurchaser,
+      coins: CoinScope.maybeOf(context),
       confirmPurchase: widget.checkout == CheckoutOutcome.success,
     );
     final purchase = PurchaseScope.maybeOf(context)?.repository;
@@ -338,6 +375,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   @override
   void dispose() {
+    _paymentLock.dispose();
+    unawaited(_packsRecorded?.cancel());
     _campaignEnd?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _saver?.flush();
@@ -366,10 +405,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// [checkoutConfirmationDelays], for a reader the browser has just sent
   /// back from paying.
   ///
-  /// A body that stays locked is asked what [waitFree] offers on it, and
-  /// [purchase] whether a plan opens it, before the gate is drawn rather than
-  /// after, so the gate does not change under a reader already reaching for
-  /// its button.
+  /// A body that stays locked is asked what [waitFree] offers on it,
+  /// [purchase] whether a plan opens it, and [coins] what the reader's coins
+  /// and the packs [storePurchaser] sells do for it, before the gate is drawn
+  /// rather than after, so the gate does not change under a reader already
+  /// reaching for its button.
   ///
   /// [resumeAt] is the page to open on in place of the one recorded, for a
   /// body read again while the reader is in it.
@@ -378,6 +418,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     AuthController auth, {
     WaitFreeRepository? waitFree,
     PurchaseRepository? purchase,
+    StorePurchaser? storePurchaser,
+    CoinRepository? coins,
     bool confirmPurchase = false,
     int? resumeAt,
   }) async {
@@ -407,6 +449,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       return null;
     }
     _episodeInternalId = detail.episode.internalId;
+    _bodyLocked = detail.access == EpisodeAccess.locked;
     if (mounted) {
       _scheduleCampaignEnd(detail);
     }
@@ -435,6 +478,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           detail: detail,
           locale: locale,
         );
+    final coinOffer = coins == null || purchase == null
+        ? null
+        : await readCoinGateOffer(
+            coins: coins,
+            purchase: purchase,
+            purchaser: storePurchaser,
+            detail: detail,
+            signedIn: auth.isSignedIn,
+            locale: locale,
+          );
     return _OpenEpisode(
       detail: detail,
       startPage: resumePageIndex(saved, detail.images.length),
@@ -442,6 +495,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       provenRating: age?.provenAgeRating(DateTime.now()),
       waitFree: offer,
       plansOffered: plansOffered,
+      coins: coinOffer,
     );
   }
 
@@ -517,6 +571,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         AuthScope.of(context),
         waitFree: WaitFreeScope.maybeOf(context),
         purchase: PurchaseScope.maybeOf(context)?.repository,
+        storePurchaser: PurchaseScope.maybeOf(context)?.storePurchaser,
+        coins: CoinScope.maybeOf(context),
       );
     });
   }
@@ -608,6 +664,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         detail,
         open.waitFree,
         plansOffered: open.plansOffered,
+        coins: open.coins,
       );
     }
     if (detail.images.isEmpty) {
@@ -657,11 +714,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// The plans are offered where a plan the tenant sells opens the episode
   /// and the tenant sells through its web checkout: the store sells no plan,
   /// so an app on the store route sends nobody to the site for one.
+  ///
+  /// The tenant's coins are offered on the store route alone, and lead where
+  /// the reader's coins pay for the episode: the purchase stands beside them
+  /// in outline then.
   Widget _locked(
     AppMessages messages,
     EpisodeDetail detail,
     WaitFreeOffer? waitFree, {
     required bool plansOffered,
+    CoinGateOffer? coins,
   }) {
     final signedIn = AuthScope.of(context).isSignedIn;
     // The browser reported the payment and the API has not recorded it yet.
@@ -698,6 +760,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     // whether or not the episode is rented too, and the rental keeps its own.
     // The store charges it as well, as the product of that price.
     final campaign = detail.episode.campaignAt(DateTime.now());
+    final coinSection = coins != null && CoinGateSection.shows(coins)
+        ? CoinGateSection(
+            offer: coins,
+            episodeInternalId: detail.episode.internalId,
+            rentalPeriodHours: detail.episode.rentalPeriodHours,
+            onOpened: _reload,
+            onChanged: _reload,
+            lock: _paymentLock,
+          )
+        : null;
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
@@ -707,6 +779,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             currency: _currency!,
             onAlreadyPurchased: _reload,
             onStorePurchase: onStorePurchase,
+            outlined: coins is CoinOffer && coins.leads,
+            lock: _paymentLock,
           )
         : null;
     // A rented episode is offered both ways, each naming what it costs, since
@@ -720,6 +794,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             currency: _currency!,
             onAlreadyPurchased: _reload,
             onStorePurchase: onStorePurchase,
+            lock: _paymentLock,
           )
         : null;
     final String message;
@@ -784,9 +859,22 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             ),
       title: messages.viewerLockedTitle,
       message: message,
-      notice: waitFree == null
-          ? null
-          : WaitFreeNotice(offer: waitFree, onRecharged: _reload),
+      notice: switch ((waitFree, coinSection)) {
+        (null, null) => null,
+        (final waitFree?, null) => WaitFreeNotice(
+          offer: waitFree,
+          onRecharged: _reload,
+        ),
+        (null, final coinSection?) => coinSection,
+        (final waitFree?, final coinSection?) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            WaitFreeNotice(offer: waitFree, onRecharged: _reload),
+            const SizedBox(height: 16),
+            coinSection,
+          ],
+        ),
+      },
       actions: [?ticket, ?accessAction, ?rent, ?plans, _backToSeries(messages)],
       footer: nextFree == null
           ? null

@@ -298,19 +298,36 @@ class HttpPurchaseRepository implements PurchaseRepository {
   Future<StorePurchaseIntent> startStorePurchase(
     String episodeInternalId,
     InAppPurchaseStore store,
+  ) => _startStorePurchase(
+    store,
+    (request) => request.episodeId = episodeInternalId,
+  );
+
+  @override
+  Future<StorePurchaseIntent> startCoinPackStorePurchase(
+    String coinPackId,
+    InAppPurchaseStore store,
+  ) => _startStorePurchase(store, (request) => request.coinPackId = coinPackId);
+
+  /// Opens an intent for what [name] writes into the request: an episode or a
+  /// pack.
+  Future<StorePurchaseIntent> _startStorePurchase(
+    InAppPurchaseStore store,
+    void Function(pb.StartStorePurchaseRequest request) name,
   ) async {
     // Read once and sent explicitly, so the intent is opened for the reader
     // who tapped and no one else.
     final accessToken = _requireAccessToken();
     try {
       final tenantId = await _tenants.resolve();
+      final request = pb.StartStorePurchaseRequest(
+        store: _store(store),
+        tenant: pb.TenantContext(tenantId: tenantId),
+      );
+      name(request);
       final body = await pb.PurchaseServiceApi(_client).startStorePurchase(
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
-        pb.StartStorePurchaseRequest(
-          episodeId: episodeInternalId,
-          store: _store(store),
-          tenant: pb.TenantContext(tenantId: tenantId),
-        ),
+        request,
       );
       final intentId = body.intentId.trim();
       final productId = body.productId.trim();

@@ -21,6 +21,8 @@ import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
+import 'package:publira/coins/coin_repository.dart';
+import 'package:publira/coins/http_coin_repository.dart';
 import 'package:publira/comments/comment_repository.dart';
 import 'package:publira/comments/http_comment_repository.dart';
 import 'package:publira/config.dart';
@@ -103,6 +105,7 @@ class PubliraApp extends StatefulWidget {
     this.purchases,
     this.checkoutLauncher,
     this.storePurchaser,
+    this.coins,
     this.waitFree,
     this.offline,
     this.downloader,
@@ -274,6 +277,7 @@ class PubliraApp extends StatefulWidget {
               store: purchaseStore,
               repository: purchases,
             ),
+      coins: HttpCoinRepository(client: client, tenants: tenants),
       waitFree: waitFree,
       offline: library,
       downloader: EpisodeDownloader(catalog: catalog, library: library),
@@ -413,6 +417,13 @@ class PubliraApp extends StatefulWidget {
   /// platform on iOS or Android. The app starts it on launch and has it
   /// confirm what the store still holds on sign-in and on resume.
   final StorePurchaser? storePurchaser;
+
+  /// The tenant's coins and the reader's balance of them, which a locked
+  /// episode is paid for with and the account screen leads to.
+  ///
+  /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
+  /// direct constructor, and the app then shows nothing about coins.
+  final CoinRepository? coins;
 
   /// The reader's wait-for-free tickets, which a locked episode of a series
   /// offering the rule is opened with.
@@ -973,13 +984,16 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
                                       repository: widget.purchases,
                                       launcher: widget.checkoutLauncher,
                                       storePurchaser: widget.storePurchaser,
-                                      child: WaitFreeScope(
-                                        repository: widget.waitFree,
-                                        child: AgeRatingConfirmationScope(
-                                          controller: _ageRating,
-                                          child: ScreenCaptureScope(
-                                            notices: widget.screenCaptures,
-                                            child: app,
+                                      child: CoinScope(
+                                        repository: widget.coins,
+                                        child: WaitFreeScope(
+                                          repository: widget.waitFree,
+                                          child: AgeRatingConfirmationScope(
+                                            controller: _ageRating,
+                                            child: ScreenCaptureScope(
+                                              notices: widget.screenCaptures,
+                                              child: app,
+                                            ),
                                           ),
                                         ),
                                       ),

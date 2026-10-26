@@ -52,8 +52,9 @@ InAppPurchasePlatform? registerDeviceInAppPurchasePlatform() {
   return InAppPurchasePlatform.instance;
 }
 
-/// Buys an episode with the store's payment sheet and hands every transaction
-/// the store reports to the server before finishing it.
+/// Buys an episode or a pack of the tenant's coins with the store's payment
+/// sheet and hands every transaction the store reports to the server before
+/// finishing it.
 ///
 /// The transaction the store reports goes to `ConfirmStorePurchase`, and it
 /// is finished only once the server has recorded it — consumed on Google
@@ -74,6 +75,15 @@ class StorePurchaser {
 
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
+  final _recorded = StreamController<String>.broadcast();
+
+  /// The product ID of each transaction as the server records it, whenever
+  /// that is: a pending purchase, or one the server could not take at first,
+  /// is recorded on a later resume or sign-in, long after the screen that
+  /// sold it was told it is pending. A screen showing what such a purchase
+  /// bought, such as a balance of coins, reads it again on hearing of one.
+  Stream<String> get recorded => _recorded.stream;
+
   /// Transactions the server has not recorded yet, keyed by what is sent to
   /// it, and the confirmation of each one under way, so a transaction
   /// reported twice is confirmed once.
@@ -81,6 +91,11 @@ class StorePurchaser {
   final _confirming = <String, Future<void>>{};
 
   _OpenPurchase? _open;
+
+  /// Whether a purchase is between its tap and its outcome. It is taken
+  /// before the first wait, so a second tap while the store is still being
+  /// asked is refused rather than opening a second order over the first.
+  var _buying = false;
 
   /// Starts listening to what the store reports. On iOS that is where the
   /// transactions an earlier run left unfinished arrive; Google Play reports
@@ -111,6 +126,7 @@ class StorePurchaser {
   Future<void> dispose() async {
     await _subscription?.cancel();
     _subscription = null;
+    await _recorded.close();
   }
 
   Future<void> _askForUnfinished() async {
@@ -135,13 +151,56 @@ class StorePurchaser {
   /// Throws [PurchaseFailure]: [PurchaseFailureKind.storeUnavailable] when the
   /// device cannot pay, [PurchaseFailureKind.notSold] when the store has no
   /// product for the episode, and whatever [PurchaseRepository] throws.
-  Future<StorePurchaseOutcome> buy(String episodeInternalId) async {
-    if (_open != null) {
+  Future<StorePurchaseOutcome> buy(String episodeInternalId) =>
+      _buy(() => repository.startStorePurchase(episodeInternalId, store));
+
+  /// Opens the payment sheet for the pack of the tenant's coins [coinPackId]
+  /// names, as [buy] does for an episode. The server grants the coins once it
+  /// has recorded the transaction, which is when this answers
+  /// [StorePurchaseOutcome.purchased].
+  Future<StorePurchaseOutcome> buyCoinPack(String coinPackId) =>
+      _buy(() => repository.startCoinPackStorePurchase(coinPackId, store));
+
+  /// The price the store sells each of [productIds] at, formatted by the
+  /// store for the reader's storefront, keyed by product ID. A product the
+  /// store does not have is left out, and so is every one on a device that
+  /// cannot pay.
+  Future<Map<String, String>> prices(Set<String> productIds) async {
+    if (productIds.isEmpty || !await _isAvailable()) {
+      return const {};
+    }
+    final ProductDetailsResponse response;
+    try {
+      response = await platform.queryProductDetails(productIds);
+    } on PlatformException {
+      return const {};
+    }
+    return Map.unmodifiable({
+      for (final product in response.productDetails)
+        if (productIds.contains(product.id)) product.id: product.price,
+    });
+  }
+
+  Future<StorePurchaseOutcome> _buy(
+    Future<StorePurchaseIntent> Function() start,
+  ) async {
+    if (_buying) {
       throw const PurchaseFailure(
         PurchaseFailureKind.unexpected,
         message: 'a purchase is already open',
       );
     }
+    _buying = true;
+    try {
+      return await _buyOnce(start);
+    } finally {
+      _buying = false;
+    }
+  }
+
+  Future<StorePurchaseOutcome> _buyOnce(
+    Future<StorePurchaseIntent> Function() start,
+  ) async {
     if (!await _isAvailable()) {
       throw const PurchaseFailure(PurchaseFailureKind.storeUnavailable);
     }
@@ -149,10 +208,7 @@ class StorePurchaser {
     // unfinished transaction of, so one the server can take now is cleared
     // before a new order of the same price.
     await reconcile();
-    final intent = await repository.startStorePurchase(
-      episodeInternalId,
-      store,
-    );
+    final intent = await start();
     final product = await _product(intent.productId);
     final open = _OpenPurchase(intent);
     _open = open;
@@ -269,6 +325,9 @@ class StorePurchaser {
       return;
     }
     _unconfirmed.remove(transaction);
+    if (!_recorded.isClosed) {
+      _recorded.add(purchase.productID);
+    }
     try {
       await _finish(purchase);
     } on Object {
@@ -280,7 +339,7 @@ class StorePurchaser {
 
   /// Finishes a transaction the server has recorded. A Google Play purchase is
   /// consumed rather than acknowledged, so the same price can be bought again
-  /// for another episode.
+  /// for another episode, and the same pack again.
   Future<void> _finish(PurchaseDetails purchase) async {
     final addition = InAppPurchasePlatformAddition.instance;
     if (addition is InAppPurchaseAndroidPlatformAddition) {

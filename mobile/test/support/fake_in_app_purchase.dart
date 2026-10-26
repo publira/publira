@@ -22,6 +22,13 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
   /// The product IDs the store has.
   Set<String> products;
 
+  /// What the store charges, in yen, for a product that is not named after
+  /// its price, such as a pack of coins.
+  Map<String, int> prices = {};
+
+  /// How many times the store was asked for its products.
+  var productQueries = 0;
+
   /// What the payment sheet reports once it is opened for a purchase.
   List<PurchaseDetails> Function(PurchaseParam param) sheet;
 
@@ -93,21 +100,28 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
   @override
   Future<ProductDetailsResponse> queryProductDetails(
     Set<String> identifiers,
-  ) async => ProductDetailsResponse(
-    productDetails: [
-      for (final id in identifiers.where(products.contains))
-        // A product is named after its price, as `episode_500` is ¥500.
-        ProductDetails(
-          id: id,
-          title: id,
-          description: '',
-          price: '¥${id.split('_').last}',
-          rawPrice: double.parse(id.split('_').last),
-          currencyCode: 'JPY',
-        ),
-    ],
-    notFoundIDs: identifiers.where((id) => !products.contains(id)).toList(),
-  );
+  ) async {
+    productQueries++;
+    return ProductDetailsResponse(
+      productDetails: [
+        for (final id in identifiers.where(products.contains))
+          ProductDetails(
+            id: id,
+            title: id,
+            description: '',
+            price: '¥${_priceOf(id)}',
+            rawPrice: _priceOf(id).toDouble(),
+            currencyCode: 'JPY',
+          ),
+      ],
+      notFoundIDs: identifiers.where((id) => !products.contains(id)).toList(),
+    );
+  }
+
+  /// An episode's product is named after its price, as `episode_500` is ¥500.
+  int _priceOf(String id) => id.startsWith('episode_')
+      ? int.parse(id.split('_').last)
+      : prices[id] ?? 0;
 
   @override
   Future<bool> buyConsumable({

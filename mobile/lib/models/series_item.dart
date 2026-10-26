@@ -370,6 +370,9 @@ class EpisodeItem {
     this.ratingCount = 0,
     this.freeUntil,
     this.campaign,
+    this.coinPrice = 0,
+    this.coinRentalPrice = 0,
+    this.coinName = '',
     this.eyeCatchVariants = const [],
   });
 
@@ -434,6 +437,18 @@ class EpisodeItem {
     final campaign = this.campaign;
     return campaign != null && campaign.isOpenAt(now) ? campaign : null;
   }
+
+  /// What the permanent copy and the rental cost in the tenant's coins, and
+  /// the tenant's word for them in the reader's locale. Both prices are 0,
+  /// and [coinName] empty, while the tenant offers no coins, on an episode
+  /// not sold, and on a copy saved on the device, which offers nothing to buy.
+  final int coinPrice;
+  final int coinRentalPrice;
+  final String coinName;
+
+  /// Whether the episode is priced in the tenant's coins at all.
+  bool get isSoldForCoins =>
+      (coinPrice > 0 || coinRentalPrice > 0) && coinName.isNotEmpty;
 
   /// Renditions of the episode's own eye-catch, which the episodes
   /// `GetSeriesDetail` lists, the episode `GetEpisodeDetail` answers, and the

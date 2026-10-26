@@ -11,6 +11,9 @@ import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
+import 'package:publira/coins/coin_failure.dart';
+import 'package:publira/coins/coin_repository.dart';
+import 'package:publira/coins/coin_shop.dart';
 import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -18,6 +21,7 @@ import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
@@ -91,6 +95,9 @@ class AccountScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     const _PurchasesEntry(),
+                    // Keyed by the reader, so another account signing in reads
+                    // its own balance rather than showing the last one's.
+                    _CoinsEntry(key: ValueKey(('coins', session.userPublicId))),
                     ListTile(
                       key: const ValueKey('account-reading-history'),
                       title: AutospacedText(messages.readingHistoryTitle),
@@ -736,6 +743,137 @@ class _PurchasesEntry extends StatelessWidget {
           subtitle: AutospacedText(messages.purchasesAccountDescription),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push(AppRoutes.accountPurchases),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+/// The way to the tenant's coins, titled with the tenant's word for them and
+/// saying how many the reader holds. It is read when the screen is, and again
+/// when the reader comes back from the coins, which may have bought some.
+///
+/// Left out where the app shows nothing about coins: a build carrying no
+/// [CoinScope], a tenant whose app does not sell through the store, and one
+/// that has coins off.
+class _CoinsEntry extends StatefulWidget {
+  const _CoinsEntry({super.key});
+
+  @override
+  State<_CoinsEntry> createState() => _CoinsEntryState();
+}
+
+class _CoinsEntryState extends State<_CoinsEntry> {
+  /// The tenant's word for its coins, `null` while nothing is shown.
+  String? _coinName;
+  CoinBalance? _balance;
+  var _locale = '';
+  var _reads = 0;
+
+  /// The store's recorded packs, heard so that a pack held pending reaches
+  /// the balance here once the server grants it.
+  StreamSubscription<String>? _packsRecorded;
+  StorePurchaser? _listenedPurchaser;
+
+  /// Whether the account tab was on screen when last asked.
+  var _active = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final purchaser = PurchaseScope.maybeOf(context)?.storePurchaser;
+    if (!identical(purchaser, _listenedPurchaser)) {
+      _listenedPurchaser = purchaser;
+      unawaited(_packsRecorded?.cancel());
+      _packsRecorded = purchaser?.recorded.where(isCoinPackProduct).listen((_) {
+        if (mounted) {
+          unawaited(_read());
+        }
+      });
+    }
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    // The tab stays mounted while another is on screen, where the reader may
+    // have spent coins, so coming back to it reads the balance again.
+    final active = AppTabScope.isActive(context);
+    final returned = active && !_active;
+    _active = active;
+    if (locale == _locale && !returned) {
+      return;
+    }
+    _locale = locale;
+    unawaited(_read());
+  }
+
+  Future<void> _read() async {
+    final read = ++_reads;
+    final coins = CoinScope.maybeOf(context);
+    final purchase = PurchaseScope.repositoryOf(context);
+    final locale = _locale;
+    if (coins == null || purchase == null || !await appShowsCoins(purchase)) {
+      return;
+    }
+    String? coinName;
+    CoinBalance? balance;
+    try {
+      balance = await coins.balance(locale: locale);
+      coinName = balance.coinName;
+    } on CoinFailure catch (failure) {
+      // A balance that could not be read still leads to the coins, named by
+      // the settings; coins that are off lead nowhere.
+      if (failure.kind != CoinFailureKind.unavailable) {
+        coinName = await coins
+            .settings(locale: locale)
+            .then<String?>((settings) => settings.coinName)
+            .onError<CoinFailure>((_, _) => null);
+      }
+    }
+    if (!mounted || read != _reads) {
+      return;
+    }
+    setState(() {
+      _coinName = coinName;
+      _balance = balance;
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_packsRecorded?.cancel());
+    super.dispose();
+  }
+
+  Future<void> _open() async {
+    await context.pushInTab<void>(AppRoutes.coinsPath);
+    if (mounted) {
+      unawaited(_read());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final coinName = _coinName;
+    if (coinName == null) {
+      return const SizedBox.shrink();
+    }
+    final messages = AppMessages.of(context);
+    final balance = _balance;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: const ValueKey('account-coins'),
+          title: AutospacedText(coinName),
+          subtitle: balance == null
+              ? null
+              : AutospacedText(
+                  messages.coinsBalanceValue(
+                    coinName: coinName,
+                    count: balance.coins,
+                  ),
+                ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => unawaited(_open()),
         ),
         const Divider(height: 1),
       ],
