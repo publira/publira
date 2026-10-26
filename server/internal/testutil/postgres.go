@@ -79,6 +79,13 @@ const (
 // by this package. Tests that drive a real Login need the cleartext.
 const SeededPassword = "password-for-tests-only"
 
+// seededPasswordHash is the one hash every seeded user stores. bcrypt spends
+// tens of milliseconds of CPU on each hash by design, and seeding a fresh one
+// per user made it the largest share of a database test package's CPU time.
+var seededPasswordHash = sync.OnceValues(func() (string, error) {
+	return auth.HashPassword(SeededPassword)
+})
+
 // PostgresEnv holds a shared Testcontainers PostgreSQL instance prepared with
 // migrations and application roles. Prefer [StartPostgres] from tests.
 type PostgresEnv struct {
@@ -539,7 +546,7 @@ func (e *PostgresEnv) seedPlatformUser(t *testing.T, publicID, email, name, role
 	email = defaultIfEmpty(email, "platform@example.com")
 	name = defaultIfEmpty(name, "Platform Operator")
 
-	passwordHash, err := auth.HashPassword(SeededPassword)
+	passwordHash, err := seededPasswordHash()
 	if err != nil {
 		t.Fatalf("hash password: %v", err)
 	}

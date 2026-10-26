@@ -260,7 +260,7 @@ func (e *PostgresEnv) seedUser(t *testing.T, tenantID uuid.UUID, publicID, email
 	email = defaultIfEmpty(email, "admin@example.com")
 	name = defaultIfEmpty(name, "Tenant Admin")
 
-	passwordHash, err := auth.HashPassword(SeededPassword)
+	passwordHash, err := seededPasswordHash()
 	if err != nil {
 		t.Fatalf("HashPassword: %v", err)
 	}
