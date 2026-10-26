@@ -3,6 +3,7 @@ import type { Locale } from "@publira/i18n";
 
 const countFormatters = new Map<string, Intl.NumberFormat>();
 const ratingFormatters = new Map<string, Intl.NumberFormat>();
+const dayFormatters = new Map<string, Intl.NumberFormat>();
 
 const formatterFor = (
   cache: Map<string, Intl.NumberFormat>,
@@ -31,6 +32,13 @@ export const formatCount = (value: number, locale: Locale): string =>
 /** A rating on the 1-5 scale, to the one decimal the API rounds it to. */
 export const formatRating = (value: number, locale: Locale): string =>
   formatterFor(ratingFormatters, locale, {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  }).format(value);
+
+/** A span of days to one decimal, such as the median wait for a purchase. */
+export const formatDays = (value: number, locale: Locale): string =>
+  formatterFor(dayFormatters, locale, {
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
   }).format(value);

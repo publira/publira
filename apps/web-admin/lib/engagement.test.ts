@@ -10,15 +10,19 @@ const {
   mockExportStatsApi,
   mockGetAudienceStatsApi,
   mockGetEpisodeDropOffApi,
+  mockGetRetentionCohortsApi,
   mockGetRevenueStatsApi,
   mockGetSessionId,
+  mockGetSignUpFunnelApi,
   mockListEpisodeReadThroughApi,
 } = vi.hoisted(() => ({
   mockExportStatsApi: vi.fn(),
   mockGetAudienceStatsApi: vi.fn(),
   mockGetEpisodeDropOffApi: vi.fn(),
+  mockGetRetentionCohortsApi: vi.fn(),
   mockGetRevenueStatsApi: vi.fn(),
   mockGetSessionId: vi.fn(),
+  mockGetSignUpFunnelApi: vi.fn(),
   mockListEpisodeReadThroughApi: vi.fn(),
 }));
 
@@ -32,7 +36,9 @@ vi.mock("@publira/api-client/admin/client", () => ({
       exportStats: mockExportStatsApi,
       getAudienceStats: mockGetAudienceStatsApi,
       getEpisodeDropOff: mockGetEpisodeDropOffApi,
+      getRetentionCohorts: mockGetRetentionCohortsApi,
       getRevenueStats: mockGetRevenueStatsApi,
+      getSignUpFunnel: mockGetSignUpFunnelApi,
       listEpisodeReadThrough: mockListEpisodeReadThroughApi,
     },
   }),
@@ -500,6 +506,148 @@ describe("getEpisodeDropOff", () => {
     });
 
     expect(result).toEqual({ notFound: true, ok: false });
+  });
+});
+
+describe("getRetentionCohorts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetSessionId.mockResolvedValue("session-token");
+  });
+
+  it("maps each week's cohort and its active counts, and passes the series", async () => {
+    mockGetRetentionCohortsApi.mockResolvedValueOnce({
+      cohorts: [
+        { activeCounts: [3n, 1n], cohortSize: 4n, weekStart: "2026-09-21" },
+        { activeCounts: [], cohortSize: 0n, weekStart: "2026-09-28" },
+      ],
+      ...period,
+      timeZone: "Asia/Tokyo",
+    });
+
+    const { getRetentionCohorts } = await import("./engagement");
+
+    const result = await getRetentionCohorts("TENANT001", "en", {
+      end: "2026-10-24",
+      seriesPublicId: "SER001",
+      start: "2026-09-27",
+    });
+
+    expect(result).toEqual({
+      cohorts: [
+        { activeCounts: [3, 1], cohortSize: 4, weekStart: "2026-09-21" },
+        { activeCounts: [], cohortSize: 0, weekStart: "2026-09-28" },
+      ],
+      ok: true,
+      period: {
+        end: "2026-10-24",
+        start: "2026-09-27",
+        timeZone: "Asia/Tokyo",
+      },
+    });
+    expect(mockGetRetentionCohortsApi).toHaveBeenCalledWith(
+      {
+        endDate: "2026-10-24",
+        seriesPublicId: "SER001",
+        startDate: "2026-09-27",
+        tenant: { tenantId: "TENANT001" },
+      },
+      sessionHeaders
+    );
+  });
+
+  it("asks for sign-in without a session", async () => {
+    mockGetSessionId.mockResolvedValue("");
+
+    const { getRetentionCohorts } = await import("./engagement");
+
+    const result = await getRetentionCohorts("TENANT001", "en", {
+      end: "2026-10-24",
+      seriesPublicId: "",
+      start: "2026-09-27",
+    });
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: true });
+    expect(mockGetRetentionCohortsApi).not.toHaveBeenCalled();
+  });
+});
+
+describe("getSignUpFunnel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetSessionId.mockResolvedValue("session-token");
+  });
+
+  it("maps every step and the median", async () => {
+    mockGetSignUpFunnelApi.mockResolvedValueOnce({
+      ...period,
+      activeCount: 6n,
+      medianDaysToFirstPurchase: 2.5,
+      purchasedCount: 3n,
+      purchasedWithinSevenDaysCount: 2n,
+      purchasedWithinThirtyDaysCount: 3n,
+      signedUpCount: 10n,
+      timeZone: "UTC",
+    });
+
+    const { getSignUpFunnel } = await import("./engagement");
+
+    const result = await getSignUpFunnel("TENANT001", "en", {
+      end: "2026-10-24",
+      start: "2026-09-27",
+    });
+
+    expect(result).toEqual({
+      funnel: {
+        activeCount: 6,
+        medianDaysToFirstPurchase: 2.5,
+        purchasedCount: 3,
+        purchasedWithinSevenDaysCount: 2,
+        purchasedWithinThirtyDaysCount: 3,
+        signedUpCount: 10,
+      },
+      ok: true,
+      period: { end: "2026-10-24", start: "2026-09-27", timeZone: "UTC" },
+    });
+  });
+
+  it("has no median when nobody has bought", async () => {
+    mockGetSignUpFunnelApi.mockResolvedValueOnce({
+      ...period,
+      medianDaysToFirstPurchase: 0,
+      purchasedCount: 0n,
+      signedUpCount: 2n,
+      timeZone: "UTC",
+    });
+
+    const { getSignUpFunnel } = await import("./engagement");
+
+    const result = await getSignUpFunnel("TENANT001", "en", {
+      end: "2026-10-24",
+      start: "2026-09-27",
+    });
+
+    expect(result).toMatchObject({
+      funnel: { medianDaysToFirstPurchase: null, purchasedCount: 0 },
+      ok: true,
+    });
+  });
+
+  it("words a refused role with the shared copy", async () => {
+    mockGetSignUpFunnelApi.mockRejectedValueOnce(
+      new ConnectError("denied", Code.PermissionDenied)
+    );
+
+    const { getSignUpFunnel } = await import("./engagement");
+
+    const result = await getSignUpFunnel("TENANT001", "en", {
+      end: "2026-10-24",
+      start: "2026-09-27",
+    });
+
+    expect(result).toMatchObject({ ok: false, requiresSignIn: false });
   });
 });
 

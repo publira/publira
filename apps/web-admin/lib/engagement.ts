@@ -8,6 +8,7 @@ import type {
   AudienceStatsTotals,
   EpisodePageReach,
   EpisodeReadThrough,
+  RetentionCohort,
   RevenueStatsRow,
   RevenueStatsTotals,
 } from "@publira/api-client/admin/types";
@@ -600,6 +601,158 @@ export const getEpisodeDropOff = async (
     return statsReadFailure(
       error,
       t("admin.analytics.drop_off.load_failed"),
+      locale
+    );
+  }
+};
+
+/** One week's sign-ups, and how many of them were active in each week after. */
+export interface RetentionCohortItem {
+  /** The Monday the cohort's week begins on, a tenant day. */
+  weekStart: string;
+  cohortSize: number;
+  /**
+   * The readers active in each week from the sign-up week on, as far as the
+   * last week that has ended: a week still in progress has no entry.
+   */
+  activeCounts: number[];
+}
+
+export type GetRetentionCohortsResult =
+  | { ok: true; cohorts: RetentionCohortItem[]; period: StatsPeriod }
+  | StatsReadFailure;
+
+/**
+ * The generated `RetentionCohort` fields {@link mapRetentionCohort} reads (see
+ * `series.ts`).
+ */
+type RawRetentionCohort = Pick<
+  RetentionCohort,
+  "activeCounts" | "cohortSize" | "weekStart"
+>;
+
+const mapRetentionCohort = (
+  cohort: RawRetentionCohort
+): RetentionCohortItem => ({
+  activeCounts: (cohort.activeCounts ?? []).map(Number),
+  cohortSize: Number(cohort.cohortSize ?? 0),
+  weekStart: cohort.weekStart ?? "",
+});
+
+/**
+ * The readers who signed up in each week of `period`, and how many of them
+ * were active in each week after it. `seriesPublicId` narrows the activity,
+ * never the cohorts; empty counts activity anywhere in the tenant.
+ */
+export const getRetentionCohorts = async (
+  tenantId: string,
+  locale: Locale,
+  input: StatsPeriodRequest & { seriesPublicId: string }
+): Promise<GetRetentionCohortsResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return signInRequired(locale);
+  }
+
+  try {
+    const response = await apiClient.engagement.getRetentionCohorts(
+      {
+        endDate: input.end,
+        seriesPublicId: input.seriesPublicId,
+        startDate: input.start,
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return {
+      cohorts: (response.cohorts ?? []).map((cohort) =>
+        mapRetentionCohort(cohort)
+      ),
+      ok: true,
+      period: {
+        end: response.endDate ?? "",
+        start: response.startDate ?? "",
+        timeZone: response.timeZone ?? "",
+      },
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    const t = await getMessagesFor(locale);
+    return statsReadFailure(
+      error,
+      t("admin.analytics.cohorts.load_failed"),
+      locale
+    );
+  }
+};
+
+/** How far the readers who signed up in a period got, each count of them all. */
+export interface SignUpFunnelItem {
+  signedUpCount: number;
+  activeCount: number;
+  purchasedWithinSevenDaysCount: number;
+  purchasedWithinThirtyDaysCount: number;
+  purchasedCount: number;
+  /** Fractional days, or `null` when nobody has bought. */
+  medianDaysToFirstPurchase: number | null;
+}
+
+export type GetSignUpFunnelResult =
+  | { ok: true; funnel: SignUpFunnelItem; period: StatsPeriod }
+  | StatsReadFailure;
+
+/** How many of the readers who signed up in `period` were active and bought. */
+export const getSignUpFunnel = async (
+  tenantId: string,
+  locale: Locale,
+  input: StatsPeriodRequest
+): Promise<GetSignUpFunnelResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return signInRequired(locale);
+  }
+
+  try {
+    const response = await apiClient.engagement.getSignUpFunnel(
+      {
+        endDate: input.end,
+        startDate: input.start,
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    const purchasedCount = Number(response.purchasedCount ?? 0);
+
+    return {
+      funnel: {
+        activeCount: Number(response.activeCount ?? 0),
+        // The API sends 0 when nobody has bought, which is no median rather
+        // than a purchase at the moment of sign-up.
+        medianDaysToFirstPurchase:
+          purchasedCount > 0 ? (response.medianDaysToFirstPurchase ?? 0) : null,
+        purchasedCount,
+        purchasedWithinSevenDaysCount: Number(
+          response.purchasedWithinSevenDaysCount ?? 0
+        ),
+        purchasedWithinThirtyDaysCount: Number(
+          response.purchasedWithinThirtyDaysCount ?? 0
+        ),
+        signedUpCount: Number(response.signedUpCount ?? 0),
+      },
+      ok: true,
+      period: {
+        end: response.endDate ?? "",
+        start: response.startDate ?? "",
+        timeZone: response.timeZone ?? "",
+      },
+    };
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    const t = await getMessagesFor(locale);
+    return statsReadFailure(
+      error,
+      t("admin.analytics.funnel.load_failed"),
       locale
     );
   }

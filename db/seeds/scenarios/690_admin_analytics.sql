@@ -12,7 +12,7 @@
 --   tenant   AnlyTNNTAAA1 (analytics.localhost / admin.analytics.localhost),
 --            on UTC and selling in the platform's default currency, JPY
 --   admin    AnlyADMNAAA1 (analytics-admin@example.com / adminpass)
---   readers  AnlyMMBRAAA1 .. AnlyMMBRAAA3
+--   readers  AnlyMMBRAAA1 .. AnlyMMBRAAA4
 --   series   AnlySERSAAA1 `Analytics Series 01`, episodes AnlyEPSDAAA1
 --            `Analytics Episode 01-01` (300 yen, four pages) and AnlyEPSDAAA2
 --            `Analytics Episode 01-02` (500 yen)
@@ -46,6 +46,18 @@
 -- Read-through: one row for Analytics Episode 01-01, two of the tenant's days
 -- back from the day the file is applied, so the Episodes screen lists the
 -- episode its drop-off is opened from.
+--
+-- Cohorts: Reader 1 signed up on 2025-02-26, the week before, and Readers 2,
+-- 3, and 4 on 03-03, 03-04, and 03-06, so the week of 03-03 is a cohort of
+-- three. Their active days, written straight into reader_daily_activity the
+-- way the rebuild files them: in week 0 all three (Reader 3 on both series),
+-- in week 1 Reader 2 on Series 01, and in week 2 Reader 3 on Series 02. That is
+-- 100%, 33%, and 33% of the cohort, or 67%, 33%, and 0% narrowed to Series 01.
+-- Each of the three bought: Reader 2 an hour after signing up (sale 1),
+-- Reader 3 two days after (sale 4), and Reader 4 fourteen days after, on
+-- 03-20, a sale outside the revenue week. So of the three, all were active,
+-- two bought within 7 days, all three within 30, and the median wait is 2
+-- days.
 
 -- Sales and the catalog restrict the deletes that would reach them from the
 -- tenant, so they go first, in the order deleteTenantsByPublicIds uses.
@@ -96,8 +108,10 @@ VALUES (
 \set seed_tenant AnlyTNNTAAA1
 \ir ../creator_roles.sql
 
--- The admin and three readers. The password hash is the same as `adminpass`
--- for the admin and `memberpass` for the readers.
+-- The admin and four readers. The password hash is the same as `adminpass`
+-- for the admin and `memberpass` for the readers. The readers' sign-ups are
+-- the cohorts above; the admin's is left at now, and a member of staff is in
+-- no cohort anyway.
 INSERT INTO users (
     id,
     tenant_id,
@@ -106,7 +120,8 @@ INSERT INTO users (
     password_hash,
     name,
     status,
-    email_verified_at
+    email_verified_at,
+    created_at
 )
 SELECT
     u.id,
@@ -116,7 +131,8 @@ SELECT
     u.password_hash,
     u.name,
     'active',
-    NOW()
+    NOW(),
+    COALESCE(u.created_at, NOW())
 FROM tenants t
 CROSS JOIN (
     VALUES
@@ -125,30 +141,42 @@ CROSS JOIN (
             'AnlyADMNAAA1',
             'analytics-admin@example.com',
             '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
-            'Analytics Admin'
+            'Analytics Admin',
+            NULL::timestamptz
         ),
         (
             '018f11c0-0002-7000-8000-000000000002'::uuid,
             'AnlyMMBRAAA1',
             'analytics-reader-1@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
-            'Analytics Reader 1'
+            'Analytics Reader 1',
+            '2025-02-26T09:00:00Z'::timestamptz
         ),
         (
             '018f11c0-0002-7000-8000-000000000003'::uuid,
             'AnlyMMBRAAA2',
             'analytics-reader-2@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
-            'Analytics Reader 2'
+            'Analytics Reader 2',
+            '2025-03-03T08:00:00Z'::timestamptz
         ),
         (
             '018f11c0-0002-7000-8000-000000000004'::uuid,
             'AnlyMMBRAAA3',
             'analytics-reader-3@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
-            'Analytics Reader 3'
+            'Analytics Reader 3',
+            '2025-03-04T09:00:00Z'::timestamptz
+        ),
+        (
+            '018f11c0-0002-7000-8000-000000000005'::uuid,
+            'AnlyMMBRAAA4',
+            'analytics-reader-4@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Analytics Reader 4',
+            '2025-03-06T09:00:00Z'::timestamptz
         )
-) AS u(id, public_id, email, password_hash, name)
+) AS u(id, public_id, email, password_hash, name, created_at)
 WHERE t.public_id = 'AnlyTNNTAAA1';
 
 INSERT INTO tenant_user_roles (id, user_id, role, tenant_id)
@@ -264,8 +292,10 @@ FROM episodes e
 CROSS JOIN generate_series(1, 4) AS page(n)
 WHERE e.public_id = 'AnlyEPSDAAA1';
 
--- The week's sales, and one the day after it. The buyer is left unset the way
--- a deleted reader leaves it; a report never names one.
+-- The week's sales, one the day after it, and one ten days after that. A
+-- revenue report never names the buyer: the three readers' first purchases are
+-- what the funnel counts, and every other buyer is left unset the way a
+-- deleted reader leaves it.
 INSERT INTO purchases (
     id,
     user_id,
@@ -281,7 +311,7 @@ INSERT INTO purchases (
 )
 SELECT
     ('018f11c0-000a-7000-8000-' || lpad(sale.n::text, 12, '0'))::uuid,
-    NULL,
+    u.id,
     e.id,
     el.price,
     'JPY',
@@ -293,17 +323,19 @@ SELECT
     CASE WHEN sale.refunded THEN 'refund' END
 FROM (
     VALUES
-        (1, 'AnlyEPSDAAA1', '2025-03-03T09:00:00Z'::timestamptz, false),
-        (2, 'AnlyEPSDAAA1', '2025-03-03T10:00:00Z'::timestamptz, false),
-        (3, 'AnlyEPSDAAA2', '2025-03-05T09:00:00Z'::timestamptz, true),
-        (4, 'AnlyEPSDAAA3', '2025-03-06T09:00:00Z'::timestamptz, false),
-        (5, 'AnlyEPSDAAA3', '2025-03-06T10:00:00Z'::timestamptz, false),
-        (6, 'AnlyEPSDAAA3', '2025-03-06T11:00:00Z'::timestamptz, false),
-        (7, 'AnlyEPSDAAA2', '2025-03-08T09:00:00Z'::timestamptz, false),
-        (8, 'AnlyEPSDAAA3', '2025-03-10T09:00:00Z'::timestamptz, false)
-) AS sale(n, episode_public_id, purchased_at, refunded)
+        (1, 'AnlyEPSDAAA1', '2025-03-03T09:00:00Z'::timestamptz, false, 'AnlyMMBRAAA2'),
+        (2, 'AnlyEPSDAAA1', '2025-03-03T10:00:00Z'::timestamptz, false, NULL),
+        (3, 'AnlyEPSDAAA2', '2025-03-05T09:00:00Z'::timestamptz, true, NULL),
+        (4, 'AnlyEPSDAAA3', '2025-03-06T09:00:00Z'::timestamptz, false, 'AnlyMMBRAAA3'),
+        (5, 'AnlyEPSDAAA3', '2025-03-06T10:00:00Z'::timestamptz, false, NULL),
+        (6, 'AnlyEPSDAAA3', '2025-03-06T11:00:00Z'::timestamptz, false, NULL),
+        (7, 'AnlyEPSDAAA2', '2025-03-08T09:00:00Z'::timestamptz, false, NULL),
+        (8, 'AnlyEPSDAAA3', '2025-03-10T09:00:00Z'::timestamptz, false, NULL),
+        (9, 'AnlyEPSDAAA2', '2025-03-20T09:00:00Z'::timestamptz, false, 'AnlyMMBRAAA4')
+) AS sale(n, episode_public_id, purchased_at, refunded, buyer_public_id)
 JOIN episodes e ON e.public_id = sale.episode_public_id
-JOIN episode_listings el ON el.episode_id = e.id;
+JOIN episode_listings el ON el.episode_id = e.id
+LEFT JOIN users u ON u.public_id = sale.buyer_public_id;
 
 -- The trigger on series_follows moves the tally and records each change at
 -- the follow's created_at, so these follows land on the days named here.
@@ -408,3 +440,22 @@ FROM (
         ('2025-03-10'::date, 0, 100)
 ) AS reach(stat_date, page_index, reader_count)
 JOIN episodes e ON e.public_id = 'AnlyEPSDAAA1';
+
+-- The days the cohort was active on, by series.
+INSERT INTO reader_daily_activity (tenant_id, stat_date, user_id, series_id)
+SELECT
+    u.tenant_id,
+    activity.stat_date,
+    u.id,
+    s.id
+FROM (
+    VALUES
+        ('AnlyMMBRAAA2', 'AnlySERSAAA1', '2025-03-04'::date),
+        ('AnlyMMBRAAA3', 'AnlySERSAAA1', '2025-03-05'::date),
+        ('AnlyMMBRAAA3', 'AnlySERSAAA2', '2025-03-06'::date),
+        ('AnlyMMBRAAA4', 'AnlySERSAAA2', '2025-03-06'::date),
+        ('AnlyMMBRAAA2', 'AnlySERSAAA1', '2025-03-11'::date),
+        ('AnlyMMBRAAA3', 'AnlySERSAAA2', '2025-03-18'::date)
+) AS activity(user_public_id, series_public_id, stat_date)
+JOIN users u ON u.public_id = activity.user_public_id
+JOIN series s ON s.public_id = activity.series_public_id;

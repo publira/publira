@@ -1510,7 +1510,8 @@
       "analytics": "Analytics",
       "revenue_label": "Revenue",
       "audience_label": "Audience",
-      "episodes_label": "Episodes"
+      "episodes_label": "Episodes",
+      "cohorts_label": "Cohorts"
     },
     "not_found": {
       "description": "This item may have been deleted, or the URL may have changed. Choose it from a list instead.",
@@ -4048,6 +4049,43 @@
           "share": "Share of readers",
           "left": "Left here"
         }
+      },
+      "cohorts": {
+        "title": "Cohorts",
+        "page_description": "How the readers who signed up each week kept coming back, and how many of them bought.",
+        "section_error": "Could not display the cohorts",
+        "load_failed": "Could not load the cohorts. Please try again later.",
+        "series": "Series",
+        "series_all": "Every series",
+        "table_title": "Retention by sign-up week",
+        "columns": {
+          "week": "Sign-up week",
+          "readers": "Readers",
+          "week_after": "Week {$week}"
+        },
+        "share_unavailable": "—",
+        "definition": "A cohort is the readers whose accounts were created in one week, Monday to Sunday in the tenant's time zone. Every week with a day in the period is a cohort, counted whole. Each week after it shows the share of the cohort that viewed, finished, or bought an episode on any day of that week, once that week is over and its days have been counted; a week still under way is blank. With a series chosen, only activity on that series counts, and the cohorts are still every reader who signed up.",
+        "activity_note": "Activity is counted from the day this install began keeping it. A week before that shows the readers who signed up in it but none of their activity, and is never filled in afterwards."
+      },
+      "funnel": {
+        "title": "Funnel",
+        "section_error": "Could not display the funnel",
+        "load_failed": "Could not load the funnel. Please try again later.",
+        "median_label": "Median days to first purchase",
+        "share_unavailable": "—",
+        "columns": {
+          "step": "Step",
+          "readers": "Readers",
+          "share": "Share of sign-ups"
+        },
+        "steps": {
+          "signed_up": "Signed up",
+          "active": "Read or bought an episode",
+          "within_seven_days": "Bought within 7 days",
+          "within_thirty_days": "Bought within 30 days",
+          "purchased": "Bought"
+        },
+        "definition": "The readers whose accounts were created in the period and still exist, and of them those who read or bought an episode, those whose first purchase came within 7 and within 30 days of signing up, and those who have bought at all. Each share is of the readers who signed up. A purchase counts as soon as it is made, a refunded one included; one made in a store's sandbox or a payment provider's test mode does not."
       },
       "export": {
         "button": "Download CSV"

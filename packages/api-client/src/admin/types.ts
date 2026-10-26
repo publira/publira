@@ -21,6 +21,7 @@ export type {
   AudienceStatsTotals,
   EpisodePageReach,
   EpisodeReadThrough,
+  RetentionCohort,
   RevenueStatsRow,
   RevenueStatsTotals,
 } from "../gen/publira/admin/v1/engagement_pb.js";

@@ -1510,7 +1510,8 @@
       "analytics": "分析",
       "revenue_label": "销售额",
       "audience_label": "读者反响",
-      "episodes_label": "章节"
+      "episodes_label": "章节",
+      "cohorts_label": "同期群"
     },
     "not_found": {
       "description": "该对象可能已被删除，或URL已变更。请改从列表中选择。",
@@ -4048,6 +4049,43 @@
           "share": "占读者的比例",
           "left": "在此离开"
         }
+      },
+      "cohorts": {
+        "title": "同期群",
+        "page_description": "每周注册的读者之后是否持续回访，以及其中有多少人购买。",
+        "section_error": "无法显示同期群",
+        "load_failed": "无法加载同期群。请稍后再试。",
+        "series": "系列",
+        "series_all": "所有系列",
+        "table_title": "按注册周的留存",
+        "columns": {
+          "week": "注册周",
+          "readers": "读者",
+          "week_after": "第{$week}周"
+        },
+        "share_unavailable": "—",
+        "definition": "同期群是在租户时区内从周一到周日的一周中创建账号的读者。期间内只要包含一天的周都各是一个同期群，并按整周统计。之后的每一周显示同期群中在该周任意一天浏览、读完或购买过章节的读者所占的比例，在该周结束并完成统计后显示；尚未结束的周留空。选择系列后只统计该系列上的活动，同期群仍是所有注册的读者。",
+        "activity_note": "活动从本安装开始记录的那一天起统计。在此之前的周只显示注册的读者数，不显示其活动，之后也不会补上。"
+      },
+      "funnel": {
+        "title": "漏斗",
+        "section_error": "无法显示漏斗",
+        "load_failed": "无法加载漏斗。请稍后再试。",
+        "median_label": "首次购买前的天数（中位数）",
+        "share_unavailable": "—",
+        "columns": {
+          "step": "阶段",
+          "readers": "读者",
+          "share": "占注册读者的比例"
+        },
+        "steps": {
+          "signed_up": "已注册",
+          "active": "阅读或购买了章节",
+          "within_seven_days": "7天内购买",
+          "within_thirty_days": "30天内购买",
+          "purchased": "已购买"
+        },
+        "definition": "期间内创建账号且账号仍存在的读者，以及其中阅读或购买了章节的读者、注册后7天内和30天内首次购买的读者、购买过的读者的人数。所有比例均相对于注册的读者。购买在发生时即计入，包括已退款的购买；在商店沙盒或支付服务测试模式下的购买不计入。"
       },
       "export": {
         "button": "下载CSV"

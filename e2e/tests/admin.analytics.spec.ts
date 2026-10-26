@@ -3,14 +3,16 @@ import { readFile } from "node:fs/promises";
 import type { Download, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { signInAsAdmin } from "../src/admin";
+import { selectOption, signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import {
   ADMIN_ANALYTICS_SCENARIO,
   ANALYTICS_ADMIN,
   ANALYTICS_AUDIENCE,
+  ANALYTICS_COHORTS,
   ANALYTICS_DROP_OFF,
   ANALYTICS_EPISODES,
+  ANALYTICS_FUNNEL,
   ANALYTICS_REVENUE,
   ANALYTICS_SERIES,
   ANALYTICS_TENANT,
@@ -68,6 +70,25 @@ const csvRows = async (download: Download): Promise<string[]> => {
   const csv = await readFile(await download.path(), "utf-8");
   return csv.split("\r\n").filter((row) => row !== "");
 };
+
+/** Every cell's text of the body rows of the section under `heading`. */
+const sectionRowTexts = (
+  page: Page,
+  heading: string
+): Promise<(string | null)[][]> =>
+  page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", { exact: true, level: 2, name: heading }),
+    })
+    // The innermost: the stack the sections sit in is a section as well.
+    .last()
+    .locator("tbody tr")
+    .evaluateAll((rows) =>
+      rows.map((row) =>
+        [...row.querySelectorAll("td")].map((cell) => cell.textContent)
+      )
+    );
 
 const sortHeading = (page: Page, name: string): Locator =>
   page.getByRole("columnheader", { exact: true, name });
@@ -340,5 +361,61 @@ test.describe("admin analytics", () => {
           .toSorted((a, b) => Number(b.left) - Number(a.left))
           .map((row) => row.page)
       );
+  });
+
+  test("Cohorts follows the week's sign-ups, and the Funnel how far they got", async ({
+    page,
+  }) => {
+    await signIn(page, `/analytics/cohorts${weekQuery()}`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Cohorts" })
+    ).toBeVisible();
+
+    // Every week since 2025 has ended, so the weeks after the last active one
+    // are counted as nobody rather than left blank.
+    const quietWeeks = Array.from(
+      { length: 13 - ANALYTICS_COHORTS.weeks.length },
+      () => "0%"
+    );
+    await expect
+      .poll(() => sectionRowTexts(page, "Retention by sign-up week"))
+      .toEqual([
+        [
+          ANALYTICS_COHORTS.weekStart,
+          ANALYTICS_COHORTS.readers,
+          ...ANALYTICS_COHORTS.weeks,
+          ...quietWeeks,
+        ],
+      ]);
+
+    await expect(
+      summaryValue(page, "Median days to first purchase")
+    ).toHaveText(ANALYTICS_FUNNEL.median);
+    await expect
+      .poll(() => sectionRowTexts(page, "Funnel"))
+      .toEqual(
+        ANALYTICS_FUNNEL.steps.map((row) => [row.step, row.readers, row.share])
+      );
+
+    // A series narrows the activity, and the cohort stays every sign-up.
+    await selectOption(
+      page,
+      page.getByRole("combobox", { name: "Series" }),
+      ANALYTICS_SERIES.first.title
+    );
+    await page.getByRole("button", { exact: true, name: "Apply" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`[?&]series=${ANALYTICS_SERIES.first.publicId}`, "u")
+    );
+    await expect
+      .poll(() => sectionRowTexts(page, "Retention by sign-up week"))
+      .toEqual([
+        [
+          ANALYTICS_COHORTS.weekStart,
+          ANALYTICS_COHORTS.readers,
+          ...ANALYTICS_COHORTS.firstSeriesWeeks,
+          ...quietWeeks,
+        ],
+      ]);
   });
 });
