@@ -21,9 +21,9 @@ export type ScreenshotViewport = (typeof SCREENSHOT_VIEWPORTS)[number];
 /**
  * Every loading placeholder on a screen, whichever component drew it.
  *
- * `Skeleton` and `SkeletonLine` word the utility as `motion-safe:animate-pulse`
- * and the placeholders written inline as plain `animate-pulse`, so the match is
- * on the substring both spell. That one utility is the whole vocabulary this
+ * `Skeleton`, `SkeletonLine`, and the few placeholders written inline all word
+ * the utility as `motion-safe:animate-pulse`, and the match is on the substring
+ * rather than the whole class. That one utility is the whole vocabulary this
  * repository has for "the copy or the data here has not arrived yet" — nothing
  * in `apps/` or `packages/` pulses as decoration — which is what lets one
  * selector stand for a placeholder a screen has not named.

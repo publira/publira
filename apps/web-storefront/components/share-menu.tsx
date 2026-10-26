@@ -3,6 +3,7 @@
 import { ShareIcon } from "@publira/icons/share-icon";
 import { buttonVariants } from "@publira/ui-components/button";
 import * as Popover from "@publira/ui-components/popover";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import { useState } from "react";
 
@@ -28,12 +29,7 @@ const SHARE_ROW = cn(
 );
 
 /** Same footprint as the rendered trigger, so the action row does not shift. */
-export const ShareMenuSkeleton = () => (
-  <div
-    aria-hidden="true"
-    className="h-10 w-28 animate-pulse rounded-control bg-muted"
-  />
-);
+export const ShareMenuSkeleton = () => <Skeleton className="h-10 w-28" />;
 
 /**
  * The control a reader passes a page on with.

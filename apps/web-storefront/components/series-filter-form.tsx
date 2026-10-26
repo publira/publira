@@ -1,4 +1,5 @@
 import { Button, LinkButton } from "@publira/ui-components/button";
+import { Skeleton } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import Form from "next/form";
 
@@ -20,10 +21,10 @@ export const SeriesFilterFormSkeleton = () => (
     aria-hidden="true"
     className="grid gap-4 rounded-surface border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4"
   >
-    <span className="h-14 animate-pulse rounded-control bg-muted" />
-    <span className="h-14 animate-pulse rounded-control bg-muted" />
-    <span className="h-14 animate-pulse rounded-control bg-muted" />
-    <span className="h-14 animate-pulse rounded-control bg-muted" />
+    <Skeleton className="h-14" />
+    <Skeleton className="h-14" />
+    <Skeleton className="h-14" />
+    <Skeleton className="h-14" />
   </div>
 );
 

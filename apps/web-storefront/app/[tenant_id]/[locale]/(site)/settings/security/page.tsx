@@ -2,7 +2,7 @@ import type { Locale } from "@publira/i18n";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import * as PasswordInput from "@publira/ui-components/password-input";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import { cache, Suspense } from "react";
 
@@ -281,7 +281,7 @@ const EmailChangeSection = async () => {
 const EmailChangeSectionFallback = () => (
   <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-40" />
-    <div className="h-64 w-full animate-pulse rounded-md bg-muted" />
+    <Skeleton className="h-64 w-full" />
   </section>
 );
 
@@ -428,7 +428,7 @@ const PasswordChangeSection = async () => {
 const PasswordChangeSectionFallback = () => (
   <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-36" />
-    <div className="h-56 w-full animate-pulse rounded-md bg-muted" />
+    <Skeleton className="h-56 w-full" />
   </section>
 );
 

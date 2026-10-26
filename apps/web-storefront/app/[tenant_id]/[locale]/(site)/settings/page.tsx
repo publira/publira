@@ -240,7 +240,7 @@ const ProfileSectionFallback = () => (
       <Skeleton className="size-20 rounded-full" />
       <Skeleton className="h-8 w-32 pointer-coarse:h-11" />
     </div>
-    <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+    <Skeleton className="h-10 w-full" />
   </section>
 );
 

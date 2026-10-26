@@ -1,5 +1,5 @@
 import * as SectionError from "@publira/ui-components/section-error";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
@@ -398,7 +398,7 @@ const AnnouncementsSection = async ({
 const AnnouncementsSectionFallback = () => (
   <section className="border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-32" />
-    <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
+    <Skeleton className="h-24 w-full" />
   </section>
 );
 

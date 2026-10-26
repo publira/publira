@@ -42,9 +42,7 @@ export const CreateTenantForm = () => (
           type="text"
         />
       </Field.Content>
-      <Suspense
-        fallback={<div className="h-24 animate-pulse rounded bg-muted/70" />}
-      >
+      <Suspense fallback={<Skeleton className="h-24 bg-muted/70" />}>
         <TenantDomainCautions />
       </Suspense>
     </Field.Root>

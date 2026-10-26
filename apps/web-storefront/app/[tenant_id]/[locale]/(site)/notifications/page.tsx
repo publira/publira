@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -29,7 +29,7 @@ type NotificationsPageProps = PageProps<"/[tenant_id]/[locale]/notifications">;
 const NotificationListSkeleton = () => (
   <section className="border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-28" />
-    <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
+    <Skeleton className="h-24 w-full" />
   </section>
 );
 
