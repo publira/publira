@@ -22,14 +22,15 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 /// the same read-ahead the library's lists use.
 const _readAheadRows = 5;
 
-/// Everything the reader has bought — an episode, a volume, or the rest of a
-/// series — newest purchase first, read from the API rather than from what
-/// this device keeps, so a purchase made on the site or on another device is
-/// here too.
+/// Everything the reader has bought — an episode, a volume, the rest of a
+/// series, or a pack of coins — newest purchase first, read from the API
+/// rather than from what this device keeps, so a purchase made on the site or
+/// on another device is here too.
 ///
 /// A row opens its episode, or the series of a volume or of the rest of a
-/// series, whether or not the purchase still opens it. The app bar exports
-/// the whole list as the CSV file the site downloads.
+/// series, whether or not the purchase still opens it; a pack's row opens
+/// nothing. The app bar exports the whole list as the CSV file the site
+/// downloads.
 class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
 
@@ -376,6 +377,9 @@ class _PurchaseRow extends StatelessWidget {
     final expiresAt = purchase.expiresAt;
     final status = purchase.status;
     final rental = purchase.kind == PurchaseKind.rental;
+    // A pack is no reading right: it neither expires nor is read, so it says
+    // when it was bought and what was paid, and whether it was refunded.
+    final coinPack = purchase.item == PurchasedItem.coinPack;
     final details = <String>[
       if (rental) messages.purchasesRental,
       if (purchase.purchasedAt case final purchasedAt?)
@@ -389,6 +393,7 @@ class _PurchaseRow extends StatelessWidget {
       // A refunded or canceled purchase closed before its reading period
       // ran out, so neither the period nor its end says when it stopped.
       ...switch (status) {
+        _ when coinPack => const [],
         MyPurchaseStatus.refunded || MyPurchaseStatus.canceled => const [],
         _ when expiresAt == null => [messages.purchasesNoExpiry],
         MyPurchaseStatus.active => [
@@ -402,7 +407,8 @@ class _PurchaseRow extends StatelessWidget {
       },
     ];
     // A volume's title is the tenant's own and carries no locale of its own,
-    // and the rest of a series is named in the app's language.
+    // and the rest of a series and a pack are named in the app's language,
+    // a pack's coins under the tenant's word for them.
     final (title, titleLocale) = switch (purchase.item) {
       PurchasedItem.episode => (
         [
@@ -418,10 +424,20 @@ class _PurchaseRow extends StatelessWidget {
         ),
         null,
       ),
+      PurchasedItem.coinPack => (
+        messages.purchasesCoinPackTitle(
+          count: purchase.grantedCoins,
+          bonus: purchase.bonusCoins,
+          coinName: purchase.coinName,
+        ),
+        null,
+      ),
     };
+    final hasSeries = purchase.seriesTitle.isNotEmpty;
     return ListTile(
       key: ValueKey('purchase-row-${purchase.id}'),
-      isThreeLine: true,
+      // A pack is of no series, so its details are the only line under it.
+      isThreeLine: hasSeries,
       title: AutospacedText(
         title,
         locale: titleLocale,
@@ -433,7 +449,7 @@ class _PurchaseRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (purchase.seriesTitle.isNotEmpty)
+          if (hasSeries)
             AutospacedText(
               purchase.seriesTitle,
               locale: purchase.seriesTextLocale,
@@ -443,14 +459,23 @@ class _PurchaseRow extends StatelessWidget {
             _RentalTimeLeft(purchaseId: purchase.id, expiresAt: expiresAt),
         ],
       ),
-      trailing: _PurchaseState(status: status),
+      // A pack opens nothing to read, so only a refund or a dispute is marked
+      // on it.
+      trailing: coinPack && status == MyPurchaseStatus.active
+          ? null
+          : _PurchaseState(status: status),
       // A volume and the rest of a series open several episodes, which the
-      // series lists.
-      onTap: () => context.pushInTab(
-        purchase.item == PurchasedItem.episode
-            ? AppRoutes.episodeViewerPath(purchase.seriesId, purchase.episodeId)
-            : AppRoutes.seriesDetailPath(purchase.seriesId),
-      ),
+      // series lists, and a pack has nothing to open.
+      onTap: coinPack
+          ? null
+          : () => context.pushInTab(
+              purchase.item == PurchasedItem.episode
+                  ? AppRoutes.episodeViewerPath(
+                      purchase.seriesId,
+                      purchase.episodeId,
+                    )
+                  : AppRoutes.seriesDetailPath(purchase.seriesId),
+            ),
     );
   }
 }

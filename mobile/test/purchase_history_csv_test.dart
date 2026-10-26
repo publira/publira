@@ -50,7 +50,7 @@ void main() {
       csv,
       '﻿purchase_id,purchased_at,series_title,episode_number,'
       'episode_title,price,refunded_amount,currency,expires_at,refunded_at,'
-      'status,item,volume_title\r\n',
+      'status,item,volume_title,coins,bonus_coins\r\n',
     );
   });
 
@@ -67,7 +67,7 @@ void main() {
 
     expect(rows, [
       'purchase-1,2026-01-10T12:00:00Z,Series,3,Episode,500,0,JPY,'
-          '2026-01-13T12:00:00Z,,expired,episode,',
+          '2026-01-13T12:00:00Z,,expired,episode,,,',
     ]);
   });
 
@@ -103,7 +103,7 @@ void main() {
       [for (final row in rows) row.split(',')[10]],
       ['active', 'expired', 'refunded', 'canceled'],
     );
-    expect(rows[2], endsWith(',2026-01-11T12:00:00Z,refunded,episode,'));
+    expect(rows[2], endsWith(',2026-01-11T12:00:00Z,refunded,episode,,,'));
   });
 
   test('quotes a field that holds a comma, a quote, or a line break', () {
@@ -119,7 +119,7 @@ void main() {
     expect(
       rows.join('\r\n'),
       'purchase-1,2026-01-10T12:00:00Z,"Night, Again",3,'
-      '"The ""last"" one\nand after",500,0,JPY,,,active,episode,',
+      '"The ""last"" one\nand after",500,0,JPY,,,active,episode,,,',
     );
   });
 
@@ -162,8 +162,29 @@ void main() {
     );
 
     expect(rows, [
-      'purchase-volume,,Series,,,350,0,JPY,,,active,volume,Volume 1',
-      'purchase-rest,,Series,,,810,0,JPY,,,active,remaining_episodes,',
+      'purchase-volume,,Series,,,350,0,JPY,,,active,volume,Volume 1,,',
+      'purchase-rest,,Series,,,810,0,JPY,,,active,remaining_episodes,,,',
     ]);
+  });
+
+  test('counts the coins of a pack, its bonus among them, with no series', () {
+    final rows = _rows(
+      renderPurchaseHistoryCsv([
+        const MyPurchase(
+          id: 'purchase-pack',
+          seriesId: '',
+          seriesTitle: '',
+          item: PurchasedItem.coinPack,
+          coins: 1000,
+          bonusCoins: 100,
+          coinName: 'Points',
+          price: 1000,
+          currency: 'JPY',
+          isActive: true,
+        ),
+      ]),
+    );
+
+    expect(rows, ['purchase-pack,,,,,1000,0,JPY,,,active,coin_pack,,1100,100']);
   });
 }

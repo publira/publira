@@ -68,6 +68,8 @@ const _header = [
   'status',
   'item',
   'volume_title',
+  'coins',
+  'bonus_coins',
 ];
 
 /// The reader's purchase history as CSV, in the columns and the encoding of
@@ -77,11 +79,14 @@ const _header = [
 /// [MyPurchaseStatus.wireName] the library marks the purchase with, and `item`
 /// the [PurchasedItem.wireName] of what it bought. The episode columns are
 /// empty for a volume and for the rest of a series, which name no one
-/// episode.
+/// episode, and `coins`, every coin a pack granted, and `bonus_coins` are
+/// empty for anything but a pack. The columns that came later are appended,
+/// so a sheet that reads the earlier ones by position keeps reading them.
 String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
   final rows = StringBuffer(_bom)..write(_encodeRow(_header));
   for (final purchase in purchases) {
     final episode = purchase.item == PurchasedItem.episode;
+    final coinPack = purchase.item == PurchasedItem.coinPack;
     rows.write(
       _encodeRow([
         purchase.id,
@@ -97,6 +102,8 @@ String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
         purchase.status.wireName,
         purchase.item.wireName,
         if (purchase.item == PurchasedItem.volume) purchase.volumeTitle else '',
+        if (coinPack) '${purchase.grantedCoins}' else '',
+        if (coinPack) '${purchase.bonusCoins}' else '',
       ]),
     );
   }

@@ -664,6 +664,42 @@ void main() {
       expect(rest.seriesId, seriesId);
     });
 
+    test('names a pack by its coins and the tenant\'s word for them', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        pb.MyPurchase(
+          id: 'purchase-pack',
+          coinPack: pb.PurchasedCoinPack(
+            id: 'pack-1',
+            publicId: 'PACK00000001',
+            coins: 1000,
+            bonusCoins: 100,
+          ),
+          coinName: 'Points',
+          priceAtPurchase: 1000,
+          currency: 'JPY',
+          purchasedAt: '2026-01-10T12:00:00Z',
+          isActive: true,
+          kind: pb.PurchaseKind.PURCHASE_KIND_PURCHASE,
+        ),
+      ];
+
+      final [pack] = (await repository().listMyPurchases(
+        locale: 'en',
+      )).purchases;
+
+      expect(pack.item, PurchasedItem.coinPack);
+      expect(pack.coins, 1000);
+      expect(pack.bonusCoins, 100);
+      expect(pack.grantedCoins, 1100);
+      expect(pack.coinName, 'Points');
+      expect(pack.seriesId, isEmpty);
+      expect(pack.seriesTitle, isEmpty);
+      expect(pack.episodeId, isEmpty);
+      expect(pack.price, 1000);
+      expect(pack.status, MyPurchaseStatus.active);
+    });
+
     test('tells a rental from the permanent copy', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
       server.myPurchases = [

@@ -378,6 +378,84 @@ void main() {
       },
     );
 
+    testWidgets('names a pack by its coins under the tenant\'s word for them', (
+      tester,
+    ) async {
+      MyPurchase pack(
+        String id, {
+        required int bonusCoins,
+        bool isActive = true,
+        DateTime? refundedAt,
+      }) => MyPurchase(
+        id: id,
+        seriesId: '',
+        seriesTitle: '',
+        item: PurchasedItem.coinPack,
+        coins: 1000,
+        bonusCoins: bonusCoins,
+        coinName: 'Points',
+        price: 1000,
+        currency: 'JPY',
+        isActive: isActive,
+        refundedAmount: refundedAt == null ? 0 : 1000,
+        purchasedAt: DateTime.utc(2026, 1, 10, 12),
+        refundedAt: refundedAt,
+        revokedAt: refundedAt,
+      );
+      purchases.pages = [
+        [
+          pack('purchase-bonus', bonusCoins: 100),
+          pack('purchase-plain', bonusCoins: 0),
+          pack(
+            'purchase-refunded',
+            bonusCoins: 0,
+            isActive: false,
+            refundedAt: DateTime.utc(2026, 1, 11, 12),
+          ),
+        ],
+      ];
+      await openPurchases(tester);
+      final bonus = find.byKey(const ValueKey('purchase-row-purchase-bonus'));
+      await pumpUntilFound(tester, bonus);
+
+      expect(
+        find.descendant(
+          of: bonus,
+          matching: find.text('1,100 Points (including 100 bonus)'),
+        ),
+        findsOne,
+      );
+      expect(
+        find.descendant(
+          of: bonus,
+          matching: find.textContaining('Paid ¥1,000'),
+        ),
+        findsOne,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('purchase-row-purchase-plain')),
+          matching: find.text('1,000 Points'),
+        ),
+        findsOne,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('purchase-row-purchase-refunded')),
+          matching: find.text('Refunded'),
+        ),
+        findsOne,
+      );
+      // Coins are not read and do not expire, so a pack names neither.
+      expect(find.text('Readable'), findsNothing);
+      expect(find.textContaining('No expiry'), findsNothing);
+
+      await tester.tap(bonus);
+      await tester.pump();
+
+      expect(router.state.uri.path, AppRoutes.accountPurchases);
+    });
+
     testWidgets('reads the page under it as the reader nears the end', (
       tester,
     ) async {
@@ -597,11 +675,11 @@ void main() {
       final episode = '${series.title},${series.episodeCount}';
       expect(lines.sublist(1), [
         'purchase-active,2026-01-10T12:00:00Z,$episode,Still open,'
-            '500,0,JPY,,,active,episode,',
+            '500,0,JPY,,,active,episode,,,',
         'purchase-refunded,2026-01-10T12:00:00Z,$episode,Paid back,'
-            '500,500,JPY,,2026-01-11T12:00:00Z,refunded,episode,',
+            '500,500,JPY,,2026-01-11T12:00:00Z,refunded,episode,,,',
         'purchase-canceled,2026-01-10T12:00:00Z,$episode,Disputed,'
-            '500,0,JPY,,,canceled,episode,',
+            '500,0,JPY,,,canceled,episode,,,',
         '',
       ]);
       // The whole history, read in the largest pages the API answers rather

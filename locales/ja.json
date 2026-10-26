@@ -5752,8 +5752,9 @@
       "store_unavailable": "この端末では購入できません。ストアにサインインしているか、購入が制限されていないかを確認してください。"
     },
     "purchases": {
-      "account_description": "この端末に保存していないものも含め、購入したエピソードを確認できます。",
+      "account_description": "この端末に保存していないエピソードも含め、購入したエピソードとパックを確認できます。",
       "canceled": "取り消し済み",
+      "coin_pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）}}",
       "empty": "まだエピソードを購入していません。購入したエピソードは、サインインしたどの端末でもここに表示されます。",
       "ended_at": "{$date}に閲覧期限終了",
       "expired": "期限切れ",

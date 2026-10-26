@@ -5752,8 +5752,9 @@
       "store_unavailable": "此裝置無法進行購買。請確認已登入商店且未限制購買。"
     },
     "purchases": {
-      "account_description": "查看您購買的章節，包括未儲存在此裝置上的章節。",
+      "account_description": "查看您購買的章節和套餐，包括未儲存在此裝置上的章節。",
       "canceled": "已取消",
+      "coin_pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
       "empty": "您還沒有購買任何章節。您購買的章節會顯示在這裡，在您登入的每台裝置上都能看到。",
       "ended_at": "{$date}閱讀期限已結束",
       "expired": "已過期",
