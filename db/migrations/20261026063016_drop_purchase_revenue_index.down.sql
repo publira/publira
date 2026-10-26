@@ -1,0 +1,1 @@
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_purchases_tenant_purchased_at_id_amounts ON purchases USING btree (tenant_id, purchased_at DESC, id DESC) INCLUDE (episode_id, currency, is_test, price_at_purchase, refunded_amount, dispute_lost_at);

@@ -6,7 +6,9 @@
 // closing it takes back the coins of the grant still unspent. The coins of it
 // already spent cannot be taken back, since they opened episodes the reader
 // keeps, so they are recorded as a shortfall the reader owes, and the next
-// grants pay it as they are made, before any coin of them can be spent.
+// grants pay it as they are made, before any coin of them can be spent. What
+// those coins were worth is recorded as refunded on the purchases they paid
+// for, which takes it back from the sales a royalty statement pays on.
 //
 // Every write here holds the lock a spend holds (LockCoinSpendsOfUser), so it
 // and the reader's spends see each other's grants whole. q therefore has to be
@@ -44,6 +46,7 @@ type Querier interface {
 	LockCoinGrant(ctx context.Context, arg dbmodels.LockCoinGrantParams) (dbmodels.LockCoinGrantRow, error)
 	GetExpiredCoinsOfGrant(ctx context.Context, arg dbmodels.GetExpiredCoinsOfGrantParams) (int32, error)
 	CloseCoinGrant(ctx context.Context, arg dbmodels.CloseCoinGrantParams) error
+	RefundCoinSpendsOfGrant(ctx context.Context, arg dbmodels.RefundCoinSpendsOfGrantParams) (int64, error)
 }
 
 // Grant is what a pack purchase grants.
@@ -110,13 +113,16 @@ type Revocation struct {
 	// it already spent, which the reader now owes.
 	Revoked   int32
 	Shortfall int32
+	// RefundedAmount is what the coins of it already spent were worth, now
+	// refunded on the purchases they paid for.
+	RefundedAmount int64
 }
 
 // RevokePackGrant closes the grant a pack purchase made, because the purchase
 // has been refunded or disputed: what it has left is taken back, and what of
-// it was spent is recorded as the reader's shortfall. Coins of it that lapsed
-// unspent were never spent, so they are no part of the shortfall. A grant
-// closed already is left as it is.
+// it was spent is recorded as the reader's shortfall, and as a refund of the
+// purchases it paid for. Coins of it that lapsed unspent were never spent, so
+// they are no part of the shortfall. A grant closed already is left as it is.
 func RevokePackGrant(ctx context.Context, q Querier, tenantID, purchaseID uuid.UUID) (Revocation, error) {
 	owner, err := q.GetCoinGrantOfPurchase(ctx, dbmodels.GetCoinGrantOfPurchaseParams{TenantID: tenantID, PurchaseID: purchaseID})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -156,6 +162,10 @@ func RevokePackGrant(ctx context.Context, q Querier, tenantID, purchaseID uuid.U
 	}
 	if err := record(ctx, q, tenantID, owner.UserID, grant.ID, KindShortfall, revocation.Shortfall); err != nil {
 		return Revocation{}, err
+	}
+	revocation.RefundedAmount, err = q.RefundCoinSpendsOfGrant(ctx, dbmodels.RefundCoinSpendsOfGrantParams{TenantID: tenantID, GrantID: grant.ID})
+	if err != nil {
+		return Revocation{}, fmt.Errorf("refund the purchases a grant's coins paid for: %w", err)
 	}
 	return revocation, nil
 }

@@ -464,7 +464,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	coinTransactionID := uuid.Must(uuid.NewV7())
 	seed("coin grant", "INSERT INTO coin_grants (id, tenant_id, user_id, source, coins, remaining_coins, expires_at) VALUES ($1, $2, $3, 'staff', 100, 100, NOW() + interval '30 days')", coinGrantID, first.ID, member.ID)
 	seed("coin transaction", "INSERT INTO coin_transactions (id, tenant_id, user_id, kind, coins, grant_id) VALUES ($1, $2, $3, 'grant', 100, $4)", coinTransactionID, first.ID, member.ID, coinGrantID)
-	seed("coin spend allocation", "INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins) VALUES ($1, $2, $3, 10)", first.ID, coinTransactionID, coinGrantID)
+	seed("coin spend allocation", "INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins, amount) VALUES ($1, $2, $3, 10, 0)", first.ID, coinTransactionID, coinGrantID)
 	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
 	seed("wait-free rule", "INSERT INTO series_wait_free_settings (tenant_id, series_id, enabled) VALUES ($1, $2, true)", first.ID, series.ID)
 	seed("wait-free ticket state", "INSERT INTO wait_free_ticket_states (tenant_id, user_id, series_id, next_available_at) VALUES ($1, $2, $3, NOW())", first.ID, member.ID, series.ID)

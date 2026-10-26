@@ -21,9 +21,10 @@ WHERE ct.tenant_id = sqlc.arg('tenant_id')
 -- name: CreatePurchasePaidWithCoins :one
 -- The purchase a spend of coins pays for. It names the spend as its checkout,
 -- under the provider `coins`, so that what follows a purchase — the episode it
--- opens, its reading period, its revocation, the reader's purchase history —
--- applies to it unchanged. No payment was taken, so it has no payment id and
--- its price is 0.
+-- opens, its reading period, its revocation, the reader's purchase history,
+-- the royalties on its sale — applies to it unchanged. No payment was taken,
+-- so it has no payment id, and its price is what the coins it spent were
+-- worth: the amounts of its spend's allocations added up.
 INSERT INTO purchases (
         id,
         tenant_id,
@@ -41,7 +42,7 @@ VALUES (
         sqlc.arg('tenant_id')::uuid,
         sqlc.arg('user_id')::uuid,
         sqlc.arg('episode_id')::uuid,
-        0,
+        sqlc.arg('price')::integer,
         sqlc.narg('expires_at')::timestamptz,
         'coins',
         sqlc.arg('spend_id')::uuid::text,
@@ -71,13 +72,44 @@ VALUES (
     );
 
 -- name: CreateCoinSpendAllocation :exec
-INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins)
+INSERT INTO coin_spend_allocations (
+        tenant_id,
+        transaction_id,
+        grant_id,
+        coins,
+        amount
+    )
 VALUES (
         sqlc.arg('tenant_id'),
         sqlc.arg('transaction_id'),
         sqlc.arg('grant_id'),
-        sqlc.arg('coins')
+        sqlc.arg('coins'),
+        sqlc.arg('amount')
     );
+
+-- name: RefundCoinSpendsOfGrant :one
+-- Records, on each purchase that coins of a grant paid for, the part of its
+-- price those coins accounted for as refunded, once the grant has been closed
+-- because its pack purchase was refunded or disputed. The reader keeps the
+-- episodes the coins opened, so nothing is revoked, and a purchase whose coins
+-- all came from the grant stays a sale whose whole price is refunded. A grant
+-- is closed once, so its spends are refunded once. Answers what was refunded
+-- in all.
+WITH refunded AS (
+    UPDATE purchases p
+    SET refunded_amount = COALESCE(p.refunded_amount, 0) + a.amount
+    FROM coin_spend_allocations a
+        JOIN coin_transactions t ON t.tenant_id = a.tenant_id
+        AND t.id = a.transaction_id
+    WHERE a.tenant_id = sqlc.arg('tenant_id')
+        AND a.grant_id = sqlc.arg('grant_id')
+        AND a.amount > 0
+        AND p.tenant_id = t.tenant_id
+        AND p.id = t.purchase_id
+    RETURNING a.amount
+)
+SELECT COALESCE(sum(amount), 0)::bigint AS refunded_amount
+FROM refunded;
 
 -- name: ListCoinTransactionsDesc :many
 -- The reader's coin history, newest first. A spend names the episode of the

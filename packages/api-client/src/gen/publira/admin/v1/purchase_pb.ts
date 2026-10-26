@@ -78,7 +78,11 @@ export type AdminPurchase = Message<"publira.admin.v1.AdminPurchase"> & {
   readerEmail: string;
 
   /**
-   * What the reader paid, in the minor unit of currency.
+   * What the reader paid, in the minor unit of currency. On a purchase paid
+   * with coins it is what the coins spent were worth: each coin its part of
+   * what the pack it came from was paid, the pack's bonus coins counting as
+   * much as the rest, and a coin granted without a payment nothing. That is
+   * the sale a royalty statement pays on.
    *
    * @generated from field: int64 price = 10;
    */
@@ -107,8 +111,8 @@ export type AdminPurchase = Message<"publira.admin.v1.AdminPurchase"> & {
 
   /**
    * The payment provider the reader paid through, as its declaration names
-   * it ("stripe", "payjp"). Empty for a purchase made in a store or granted
-   * without a payment.
+   * it ("stripe", "payjp"), or "coins" for a purchase paid with the tenant's
+   * coins. Empty for a purchase made in a store or granted without a payment.
    *
    * @generated from field: string provider = 14;
    */
@@ -132,7 +136,10 @@ export type AdminPurchase = Message<"publira.admin.v1.AdminPurchase"> & {
 
   /**
    * The total the provider has reported refunded so far, in the minor unit of
-   * currency. Zero while no refund has been reported.
+   * currency. Zero while no refund has been reported. On a purchase paid with
+   * coins it is what the coins from a pack refunded in full or disputed since
+   * were worth; the reader keeps the episode, so it never reaches price with
+   * refunded_at set.
    *
    * @generated from field: int64 refunded_amount = 17;
    */

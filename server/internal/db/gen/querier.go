@@ -389,9 +389,10 @@ type Querier interface {
 	CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, arg CreatePurchaseFromProviderVolumeCheckoutParams) (Purchase, error)
 	// The purchase a spend of coins pays for. It names the spend as its checkout,
 	// under the provider `coins`, so that what follows a purchase — the episode it
-	// opens, its reading period, its revocation, the reader's purchase history —
-	// applies to it unchanged. No payment was taken, so it has no payment id and
-	// its price is 0.
+	// opens, its reading period, its revocation, the reader's purchase history,
+	// the royalties on its sale — applies to it unchanged. No payment was taken,
+	// so it has no payment id, and its price is what the coins it spent were
+	// worth: the amounts of its spend's allocations added up.
 	CreatePurchasePaidWithCoins(ctx context.Context, arg CreatePurchasePaidWithCoinsParams) (Purchase, error)
 	// A reply the reader mailed back, as the inbound webhook stores it. A provider
 	// delivers a mail again whenever it is not sure the first delivery landed, so
@@ -1126,7 +1127,11 @@ type Querier interface {
 	// back on a purchase is purchase_returned_amount, taken off the day the
 	// purchase was made, so a refund leaves the sale counted and its money not.
 	//
-	// The range of the period is read from idx_purchases_tenant_purchased_at_id_amounts,
+	// A purchase of a pack of coins is left out. Its money is counted as its
+	// coins are spent, on the purchase each spend paid for, at what the coins
+	// spent were paid for, and a refund of the pack is taken off those purchases.
+	//
+	// The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
 	// which carries every column GetRevenueTotals and ListRevenueByDay read, so
 	// those two answer from the index alone. The series and episode reports join
 	// each purchase to its parts in purchase_episode_parts, and narrow the parts
@@ -1145,7 +1150,9 @@ type Querier interface {
 	GetRoyaltyMonthBounds(ctx context.Context, arg GetRoyaltyMonthBoundsParams) (GetRoyaltyMonthBoundsRow, error)
 	// Totals the month's sales once each, however many episodes and creators a
 	// sale is credited to. The month, the refund rule, and the currency are
-	// those of ListRoyaltyLinesForPeriod.
+	// those of ListRoyaltyLinesForPeriod. A purchase of a pack of coins is left
+	// out: its money is the price of the purchases its coins paid for, which
+	// are counted here.
 	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
 	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
 	GetSeriesBundleIDByIdempotencyKey(ctx context.Context, arg GetSeriesBundleIDByIdempotencyKeyParams) (uuid.UUID, error)
@@ -1531,7 +1538,8 @@ type Querier interface {
 	// own month, by the rules of ListRoyaltyLinesForPeriod, and the change it
 	// carries of each sale ListRoyaltyAdjustmentLinesForPeriod adjusts. Both
 	// halves read the purchases as they stood before this statement, which is the
-	// snapshot the lines were computed in.
+	// snapshot the lines were computed in. A purchase of a pack of coins is no
+	// sale, and nothing of it is written down.
 	InsertRoyaltyStatementPurchases(ctx context.Context, arg InsertRoyaltyStatementPurchasesParams) error
 	InsertTenantCommunityLimitOverrides(ctx context.Context, arg InsertTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
 	// The entries arrive validated, lowercased, and without duplicates.
@@ -2471,7 +2479,7 @@ type Querier interface {
 	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
 	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
 	// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
-	// both over idx_purchases_tenant_purchased_at_id_amounts, or over
+	// both over idx_purchases_tenant_purchased_at_id_sales, or over
 	// idx_purchases_tenant_user_purchased_at for one reader's purchases, and the
 	// handler puts the ascending rows back into display order. id is a UUIDv7, so
 	// the order stays unique when purchased_at ties. These read the keys alone,
@@ -2687,7 +2695,10 @@ type Querier interface {
 	// and is carried as refunded_amount. A test purchase, from a store's sandbox or a
 	// payment provider's test mode, paid the tenant nothing and is not a sale
 	// either, and neither is one paid in a currency other than the one asked
-	// for, the tenant's: its price cannot be added to theirs. The payout is
+	// for, the tenant's: its price cannot be added to theirs. An episode paid
+	// with coins is a sale at what its coins were paid for, which its purchase
+	// records as its price, and a pack of coins is no sale of an episode. The
+	// payout is
 	// floored per line over the month's sum, which keeps the rounding loss to one
 	// minor unit of the currency per line.
 	ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error)
@@ -3204,7 +3215,15 @@ type Querier interface {
 	LockTenantHosts(ctx context.Context) error
 	LockTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
 	// The reader's grants a spend can draw on, in the order it draws on them: the
-	// one that expires first first. Locked for the draws that follow.
+	// one that expires first first. The grants are locked for the draws that
+	// follow, and the pack purchases that made them are not, so a refund of one
+	// does not wait for the spend.
+	//
+	// paid_amount is what the coins granted were paid for, in currency, which a
+	// spend spreads over them: the price of the pack purchase that made the
+	// grant. A grant made by staff was paid for by no one, a test purchase paid
+	// the tenant nothing, and a pack paid in another currency than the spend's
+	// cannot be added to its price, so each of those is paid 0.
 	LockUnspentCoinGrantsForUser(ctx context.Context, arg LockUnspentCoinGrantsForUserParams) ([]LockUnspentCoinGrantsForUserRow, error)
 	// Removing the tags a save let go of takes two statements, because one cannot
 	// be trusted on its own.
@@ -3628,6 +3647,14 @@ type Querier interface {
 	// drifted for any reason is corrected by the next write instead of staying
 	// wrong until someone notices.
 	RefreshEpisodeCommentOpenReportCount(ctx context.Context, arg RefreshEpisodeCommentOpenReportCountParams) (int32, error)
+	// Records, on each purchase that coins of a grant paid for, the part of its
+	// price those coins accounted for as refunded, once the grant has been closed
+	// because its pack purchase was refunded or disputed. The reader keeps the
+	// episodes the coins opened, so nothing is revoked, and a purchase whose coins
+	// all came from the grant stays a sale whose whole price is refunded. A grant
+	// is closed once, so its spends are refunded once. Answers what was refunded
+	// in all.
+	RefundCoinSpendsOfGrant(ctx context.Context, arg RefundCoinSpendsOfGrantParams) (int64, error)
 	// Every open report on one comment, decided at once by a restore.
 	//
 	// Putting a removed comment back is staff saying the comment stands, so the

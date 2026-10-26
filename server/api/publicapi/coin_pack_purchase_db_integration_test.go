@@ -162,14 +162,48 @@ func (f *coinPackFixture) balance(t *testing.T) *publirav1.CoinBalance {
 
 func (f *coinPackFixture) spend(t *testing.T, coins int32, key string) {
 	t.Helper()
-	if _, err := f.coins.PayEpisodeWithCoins(f.readerCtx(t), &publirav1.PayEpisodeWithCoinsRequest{
+	f.spendOn(t, f.episode.ID, coins, key)
+}
+
+// spendOn opens an episode with coins and answers the purchase they paid for.
+func (f *coinPackFixture) spendOn(t *testing.T, episodeID uuid.UUID, coins int32, key string) *publirav1.MyPurchase {
+	t.Helper()
+	res, err := f.coins.PayEpisodeWithCoins(f.readerCtx(t), &publirav1.PayEpisodeWithCoinsRequest{
 		Tenant:         tenantContext(f.tenant),
-		EpisodeId:      f.episode.ID.String(),
+		EpisodeId:      episodeID.String(),
 		Coins:          coins,
 		IdempotencyKey: key,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("PayEpisodeWithCoins: %v", err)
 	}
+	return res.GetPurchase()
+}
+
+// soldFor answers what the purchase records of a sale: its price, what is
+// refunded of it, and whether it was refunded in full or revoked.
+func (f *coinPackFixture) soldFor(t *testing.T, purchaseID string) (price, refunded int32, closed bool) {
+	t.Helper()
+	var refundedAmount sql.NullInt32
+	if err := f.env.PG.DB.QueryRowContext(context.Background(), `
+		SELECT price_at_purchase, refunded_amount, refunded_at IS NOT NULL OR revoked_at IS NOT NULL
+		FROM purchases
+		WHERE tenant_id = $1 AND id = $2
+	`, f.tenant.ID, purchaseID).Scan(&price, &refundedAmount, &closed); err != nil {
+		t.Fatalf("read purchase %s: %v", purchaseID, err)
+	}
+	return price, refundedAmount.Int32, closed
+}
+
+// pricedEpisode seeds a published episode of the fixture's series at price.
+func (f *coinPackFixture) pricedEpisode(t *testing.T, publicID string, price int32) testutil.Episode {
+	t.Helper()
+	return f.env.PG.SeedEpisode(t, f.tenant.ID, f.series.ID, testutil.EpisodeSeed{
+		PublicID: publicID,
+		Title:    publicID,
+		Price:    price,
+		Status:   testutil.EpisodeStatusPublished,
+	})
 }
 
 // history answers the reader's coin history, oldest first, as kind and coins.
@@ -473,6 +507,96 @@ func TestDBARefundThatOvertakesItsPackClosesTheCoinsAsTheyAreGranted(t *testing.
 	}
 	if got := f.history(t); strings.Join(got, ",") != "GRANT 1100,REVOCATION 1100" {
 		t.Fatalf("coin history = %v, want the grant and its revocation", got)
+	}
+}
+
+// An episode paid with coins of a pack is a sale at what those coins were paid
+// for: each of the pack's 1,100 coins, its bonus coins among them, is worth
+// its 1,000 spread over all of them, so 100 coins are worth 90.9, rounded
+// down. The reader is shown the coins they spent, and no price.
+func TestDBASpendOfPackCoinsIsASaleAtWhatTheCoinsWerePaidFor(t *testing.T) {
+	f := newCoinPackFixture(t)
+	f.buy(t, "cs_valued")
+	episode := f.pricedEpisode(t, "PACKEPISODE2", 1000)
+
+	purchase := f.spendOn(t, episode.ID, 100, "valued")
+	if price, refunded, _ := f.soldFor(t, purchase.GetId()); price != 90 || refunded != 0 {
+		t.Fatalf("sale = %d with %d refunded, want 90 with nothing refunded", price, refunded)
+	}
+	if purchase.GetPriceAtPurchase() != 0 || purchase.GetCoinsSpent() != 100 {
+		t.Fatalf("purchase shown to the reader = %+v, want 100 coins spent and no price", purchase)
+	}
+	if got := f.env.countRows(t, `SELECT count(*) FROM coin_spend_allocations WHERE tenant_id = $1 AND coins = 100 AND amount = 90`, f.tenant.ID); got != 1 {
+		t.Fatalf("allocations of 100 coins worth 90 = %d, want 1", got)
+	}
+}
+
+// Coins granted without a payment are worth nothing, so a spend that draws on
+// them and on a pack is a sale at what its pack coins alone were paid for.
+// Coins of a test purchase paid the tenant nothing either.
+func TestDBCoinsNoOnePaidForAreWorthNothing(t *testing.T) {
+	f := newCoinPackFixture(t)
+	f.buy(t, "cs_mixed")
+	// Staff's coins expire before the pack's, so they are spent first.
+	f.env.PG.SeedCoinGrant(t, f.tenant.ID, f.reader.ID, 50, time.Now().Add(24*time.Hour))
+	episode := f.pricedEpisode(t, "PACKEPISODE2", 1000)
+
+	purchase := f.spendOn(t, episode.ID, 100, "mixed")
+	if price, _, _ := f.soldFor(t, purchase.GetId()); price != 45 {
+		t.Fatalf("sale = %d, want 45 for 50 coins of staff's and 50 of the pack's", price)
+	}
+
+	if _, err := f.env.PG.DB.ExecContext(context.Background(), `UPDATE purchases SET is_test = true WHERE tenant_id = $1 AND coin_pack_id IS NOT NULL`, f.tenant.ID); err != nil {
+		t.Fatalf("mark the pack purchase a test: %v", err)
+	}
+	purchase = f.spendOn(t, f.episode.ID, 30, "test")
+	if price, _, _ := f.soldFor(t, purchase.GetId()); price != 0 {
+		t.Fatalf("sale = %d, want 0 for coins of a test purchase", price)
+	}
+}
+
+// A refund of a pack in full refunds, on each purchase its coins paid for, what
+// those coins were worth, and leaves the episode open: the coins it paid with
+// are what the reader now owes. A purchase whose coins came from several packs
+// is refunded the part the refunded pack paid. The reader is shown no refund.
+func TestDBARefundOfAPackRefundsTheSalesItsCoinsPaidFor(t *testing.T) {
+	f := newCoinPackFixture(t)
+	f.buy(t, "cs_refunded")
+	episode := f.pricedEpisode(t, "PACKEPISODE2", 1000)
+	whole := f.spendOn(t, episode.ID, 100, "whole")
+	// The pack has 1,000 coins left. A second one, bought later, expires later
+	// and is drawn on once the first runs out.
+	f.buy(t, "cs_kept")
+	big := f.pricedEpisode(t, "PACKEPISODE3", 15000)
+	split := f.spendOn(t, big.ID, 1500, "split")
+	if price, _, _ := f.soldFor(t, split.GetId()); price != 909+454 {
+		t.Fatalf("split sale = %d, want 909 for 1,000 coins of the first pack and 454 for 500 of the second", price)
+	}
+
+	f.refund(t, "cs_refunded", 1000)
+	if price, refunded, closed := f.soldFor(t, whole.GetId()); price != 90 || refunded != 90 || closed {
+		t.Fatalf("sale paid with the refunded pack = %d with %d refunded (closed %v), want 90 refunded in full and left open", price, refunded, closed)
+	}
+	if price, refunded, closed := f.soldFor(t, split.GetId()); price != 1363 || refunded != 909 || closed {
+		t.Fatalf("split sale = %d with %d refunded (closed %v), want the refunded pack's 909 of 1,363 refunded", price, refunded, closed)
+	}
+	// Refunding the pack again takes nothing more back.
+	f.refund(t, "cs_refunded", 1000)
+	if _, refunded, _ := f.soldFor(t, whole.GetId()); refunded != 90 {
+		t.Fatalf("refunded after the refund was reported again = %d, want 90", refunded)
+	}
+
+	library, err := f.purchases.ListMyPurchases(f.readerCtx(t), &publirav1.ListMyPurchasesRequest{Tenant: tenantContext(f.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyPurchases: %v", err)
+	}
+	for _, bought := range library.GetPurchases() {
+		if bought.GetCoinsSpent() == 0 {
+			continue
+		}
+		if bought.GetRefundedAmount() != 0 || bought.GetRefundedAt() != "" || !bought.GetIsActive() {
+			t.Fatalf("purchase paid with coins = %+v, want it open with no refund shown", bought)
+		}
 	}
 }
 

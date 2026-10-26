@@ -100,12 +100,19 @@ func (q *Queries) CreateCoinSpend(ctx context.Context, arg CreateCoinSpendParams
 }
 
 const CreateCoinSpendAllocation = `-- name: CreateCoinSpendAllocation :exec
-INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins)
+INSERT INTO coin_spend_allocations (
+        tenant_id,
+        transaction_id,
+        grant_id,
+        coins,
+        amount
+    )
 VALUES (
         $1,
         $2,
         $3,
-        $4
+        $4,
+        $5
     )
 `
 
@@ -114,6 +121,7 @@ type CreateCoinSpendAllocationParams struct {
 	TransactionID uuid.UUID `json:"transaction_id"`
 	GrantID       uuid.UUID `json:"grant_id"`
 	Coins         int32     `json:"coins"`
+	Amount        int32     `json:"amount"`
 }
 
 func (q *Queries) CreateCoinSpendAllocation(ctx context.Context, arg CreateCoinSpendAllocationParams) error {
@@ -122,6 +130,7 @@ func (q *Queries) CreateCoinSpendAllocation(ctx context.Context, arg CreateCoinS
 		arg.TransactionID,
 		arg.GrantID,
 		arg.Coins,
+		arg.Amount,
 	)
 	return err
 }
@@ -144,12 +153,12 @@ VALUES (
         $2::uuid,
         $3::uuid,
         $4::uuid,
-        0,
-        $5::timestamptz,
+        $5::integer,
+        $6::timestamptz,
         'coins',
-        $6::uuid::text,
-        $7::text,
-        $8::text
+        $7::uuid::text,
+        $8::text,
+        $9::text
     )
 RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 `
@@ -159,6 +168,7 @@ type CreatePurchasePaidWithCoinsParams struct {
 	TenantID  uuid.UUID    `json:"tenant_id"`
 	UserID    uuid.UUID    `json:"user_id"`
 	EpisodeID uuid.UUID    `json:"episode_id"`
+	Price     int32        `json:"price"`
 	ExpiresAt sql.NullTime `json:"expires_at"`
 	SpendID   uuid.UUID    `json:"spend_id"`
 	Currency  string       `json:"currency"`
@@ -167,15 +177,17 @@ type CreatePurchasePaidWithCoinsParams struct {
 
 // The purchase a spend of coins pays for. It names the spend as its checkout,
 // under the provider `coins`, so that what follows a purchase — the episode it
-// opens, its reading period, its revocation, the reader's purchase history —
-// applies to it unchanged. No payment was taken, so it has no payment id and
-// its price is 0.
+// opens, its reading period, its revocation, the reader's purchase history,
+// the royalties on its sale — applies to it unchanged. No payment was taken,
+// so it has no payment id, and its price is what the coins it spent were
+// worth: the amounts of its spend's allocations added up.
 func (q *Queries) CreatePurchasePaidWithCoins(ctx context.Context, arg CreatePurchasePaidWithCoinsParams) (Purchase, error) {
 	row := q.db.QueryRowContext(ctx, CreatePurchasePaidWithCoins,
 		arg.ID,
 		arg.TenantID,
 		arg.UserID,
 		arg.EpisodeID,
+		arg.Price,
 		arg.ExpiresAt,
 		arg.SpendID,
 		arg.Currency,
@@ -602,4 +614,41 @@ type LockCoinSpendsOfUserParams struct {
 func (q *Queries) LockCoinSpendsOfUser(ctx context.Context, arg LockCoinSpendsOfUserParams) error {
 	_, err := q.db.ExecContext(ctx, LockCoinSpendsOfUser, arg.TenantID, arg.UserID)
 	return err
+}
+
+const RefundCoinSpendsOfGrant = `-- name: RefundCoinSpendsOfGrant :one
+WITH refunded AS (
+    UPDATE purchases p
+    SET refunded_amount = COALESCE(p.refunded_amount, 0) + a.amount
+    FROM coin_spend_allocations a
+        JOIN coin_transactions t ON t.tenant_id = a.tenant_id
+        AND t.id = a.transaction_id
+    WHERE a.tenant_id = $1
+        AND a.grant_id = $2
+        AND a.amount > 0
+        AND p.tenant_id = t.tenant_id
+        AND p.id = t.purchase_id
+    RETURNING a.amount
+)
+SELECT COALESCE(sum(amount), 0)::bigint AS refunded_amount
+FROM refunded
+`
+
+type RefundCoinSpendsOfGrantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	GrantID  uuid.UUID `json:"grant_id"`
+}
+
+// Records, on each purchase that coins of a grant paid for, the part of its
+// price those coins accounted for as refunded, once the grant has been closed
+// because its pack purchase was refunded or disputed. The reader keeps the
+// episodes the coins opened, so nothing is revoked, and a purchase whose coins
+// all came from the grant stays a sale whose whole price is refunded. A grant
+// is closed once, so its spends are refunded once. Answers what was refunded
+// in all.
+func (q *Queries) RefundCoinSpendsOfGrant(ctx context.Context, arg RefundCoinSpendsOfGrantParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, RefundCoinSpendsOfGrant, arg.TenantID, arg.GrantID)
+	var refunded_amount int64
+	err := row.Scan(&refunded_amount)
+	return refunded_amount, err
 }

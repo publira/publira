@@ -22,6 +22,7 @@ SELECT
 FROM purchases p
 WHERE p.tenant_id = $1
     AND NOT p.is_test
+    AND p.coin_pack_id IS NULL
     AND p.currency = $2::text
     AND p.purchased_at >= ($4::date::timestamp AT TIME ZONE $3::text)
     AND p.purchased_at < (($5::date + 1)::timestamp AT TIME ZONE $3::text)
@@ -52,7 +53,11 @@ type GetRevenueTotalsRow struct {
 // back on a purchase is purchase_returned_amount, taken off the day the
 // purchase was made, so a refund leaves the sale counted and its money not.
 //
-// The range of the period is read from idx_purchases_tenant_purchased_at_id_amounts,
+// A purchase of a pack of coins is left out. Its money is counted as its
+// coins are spent, on the purchase each spend paid for, at what the coins
+// spent were paid for, and a refund of the pack is taken off those purchases.
+//
+// The range of the period is read from idx_purchases_tenant_purchased_at_id_sales,
 // which carries every column GetRevenueTotals and ListRevenueByDay read, so
 // those two answer from the index alone. The series and episode reports join
 // each purchase to its parts in purchase_episode_parts, and narrow the parts
@@ -89,6 +94,7 @@ WITH revenue AS (
         AND pp.purchased_at < (($8::date + 1)::timestamp AT TIME ZONE $6::text)
     WHERE p.tenant_id = $1
         AND NOT p.is_test
+        AND p.coin_pack_id IS NULL
         AND p.currency = $9::text
         AND p.purchased_at >= ($7::date::timestamp AT TIME ZONE $6::text)
         AND p.purchased_at < (($8::date + 1)::timestamp AT TIME ZONE $6::text)
@@ -217,6 +223,7 @@ WITH revenue AS (
         AND pp.purchased_at < (($8::date + 1)::timestamp AT TIME ZONE $6::text)
     WHERE p.tenant_id = $1
         AND NOT p.is_test
+        AND p.coin_pack_id IS NULL
         AND p.currency = $9::text
         AND p.purchased_at >= ($7::date::timestamp AT TIME ZONE $6::text)
         AND p.purchased_at < (($8::date + 1)::timestamp AT TIME ZONE $6::text)
@@ -339,6 +346,7 @@ WITH sales AS (
     FROM purchases p
     WHERE p.tenant_id = $4
         AND NOT p.is_test
+        AND p.coin_pack_id IS NULL
         AND p.currency = $5::text
         AND p.purchased_at >= ($1::date::timestamp AT TIME ZONE $3::text)
         AND p.purchased_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
@@ -425,6 +433,7 @@ WITH parts AS (
     JOIN episodes e ON e.tenant_id = pp.tenant_id AND e.id = pp.episode_id
     WHERE p.tenant_id = $1
         AND NOT p.is_test
+        AND p.coin_pack_id IS NULL
         AND p.currency = $9::text
         AND p.purchased_at >= ($7::date::timestamp AT TIME ZONE $6::text)
         AND p.purchased_at < (($8::date + 1)::timestamp AT TIME ZONE $6::text)
@@ -551,6 +560,7 @@ WITH parts AS (
     JOIN episodes e ON e.tenant_id = pp.tenant_id AND e.id = pp.episode_id
     WHERE p.tenant_id = $1
         AND NOT p.is_test
+        AND p.coin_pack_id IS NULL
         AND p.currency = $9::text
         AND p.purchased_at >= ($7::date::timestamp AT TIME ZONE $6::text)
         AND p.purchased_at < (($8::date + 1)::timestamp AT TIME ZONE $6::text)

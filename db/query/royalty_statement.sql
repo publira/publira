@@ -44,7 +44,10 @@ SELECT
 -- and is carried as refunded_amount. A test purchase, from a store's sandbox or a
 -- payment provider's test mode, paid the tenant nothing and is not a sale
 -- either, and neither is one paid in a currency other than the one asked
--- for, the tenant's: its price cannot be added to theirs. The payout is
+-- for, the tenant's: its price cannot be added to theirs. An episode paid
+-- with coins is a sale at what its coins were paid for, which its purchase
+-- records as its price, and a pack of coins is no sale of an episode. The
+-- payout is
 -- floored per line over the month's sum, which keeps the rounding loss to one
 -- minor unit of the currency per line.
 SELECT
@@ -98,7 +101,9 @@ ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, 
 -- name: GetRoyaltySalesTotalsForPeriod :one
 -- Totals the month's sales once each, however many episodes and creators a
 -- sale is credited to. The month, the refund rule, and the currency are
--- those of ListRoyaltyLinesForPeriod.
+-- those of ListRoyaltyLinesForPeriod. A purchase of a pack of coins is left
+-- out: its money is the price of the purchases its coins paid for, which
+-- are counted here.
 SELECT
     COALESCE(sum(p.price_at_purchase), 0)::bigint AS total_gross,
     COALESCE(sum(COALESCE(p.refunded_amount, 0)), 0)::bigint AS total_refunded
@@ -107,6 +112,7 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
     AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
+    AND p.coin_pack_id IS NULL
     AND p.currency = sqlc.arg('currency')::text
     AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
     AND p.purchased_at < sqlc.arg('ends_at')::timestamptz;
@@ -294,7 +300,8 @@ FROM jsonb_to_recordset(sqlc.arg('lines')::jsonb) AS line(
 -- own month, by the rules of ListRoyaltyLinesForPeriod, and the change it
 -- carries of each sale ListRoyaltyAdjustmentLinesForPeriod adjusts. Both
 -- halves read the purchases as they stood before this statement, which is the
--- snapshot the lines were computed in.
+-- snapshot the lines were computed in. A purchase of a pack of coins is no
+-- sale, and nothing of it is written down.
 INSERT INTO royalty_statement_purchases (
     tenant_id,
     purchase_id,
@@ -315,6 +322,7 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.refunded_at IS NULL
     AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
+    AND p.coin_pack_id IS NULL
     AND p.currency = sqlc.arg('currency')::text
     AND p.purchased_at >= sqlc.arg('starts_at')::timestamptz
     AND p.purchased_at < sqlc.arg('ends_at')::timestamptz

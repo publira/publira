@@ -424,7 +424,7 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 		{
 			name:       "coin_spend_allocations.grant_id",
 			constraint: "coin_spend_allocations_tenant_grant_id_fkey",
-			statement:  `INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins) VALUES ($1, $2, $3, 10)`,
+			statement:  `INSERT INTO coin_spend_allocations (tenant_id, transaction_id, grant_id, coins, amount) VALUES ($1, $2, $3, 10, 0)`,
 			args:       []any{first.tenantID, first.coinTransactionID, second.coinGrantID},
 		},
 		{

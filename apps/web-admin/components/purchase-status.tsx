@@ -121,8 +121,8 @@ export const PurchaseStatusChip = ({
 
 /**
  * Where the reader paid: the provider's name as the server declares it, the
- * store, or that no payment was made. `providerNames` maps a provider's id to
- * its name; an id missing from it is shown as it is.
+ * tenant's coins, the store, or that no payment was made. `providerNames` maps
+ * a provider's id to its name; an id missing from it is shown as it is.
  */
 export const PurchasePaidThrough = ({
   providerNames,
@@ -131,6 +131,13 @@ export const PurchasePaidThrough = ({
   providerNames: ReadonlyMap<string, string>;
   purchase: Pick<PurchaseItem, "provider" | "store">;
 }) => {
+  if (purchase.provider === "coins") {
+    return (
+      <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+        <Message message="admin.purchases.paid_through.coins" />
+      </Suspense>
+    );
+  }
   if (purchase.provider) {
     return providerNames.get(purchase.provider) ?? purchase.provider;
   }

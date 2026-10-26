@@ -315,32 +315,54 @@ func (q *Queries) LockCoinGrant(ctx context.Context, arg LockCoinGrantParams) (L
 }
 
 const LockUnspentCoinGrantsForUser = `-- name: LockUnspentCoinGrantsForUser :many
-SELECT id,
-    remaining_coins
-FROM coin_grants
-WHERE tenant_id = $1
-    AND user_id = $2::uuid
-    AND remaining_coins > 0
-    AND expires_at > NOW()
-ORDER BY expires_at,
-    id
-FOR UPDATE
+SELECT g.id,
+    g.coins,
+    g.remaining_coins,
+    (
+        CASE
+            WHEN p.id IS NULL
+            OR p.is_test
+            OR p.currency <> $1::text THEN 0
+            ELSE p.price_at_purchase
+        END
+    )::integer AS paid_amount
+FROM coin_grants g
+    LEFT JOIN purchases p ON p.tenant_id = g.tenant_id
+    AND p.id = g.purchase_id
+WHERE g.tenant_id = $2
+    AND g.user_id = $3::uuid
+    AND g.remaining_coins > 0
+    AND g.expires_at > NOW()
+ORDER BY g.expires_at,
+    g.id
+FOR UPDATE OF g
 `
 
 type LockUnspentCoinGrantsForUserParams struct {
+	Currency string    `json:"currency"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	UserID   uuid.UUID `json:"user_id"`
 }
 
 type LockUnspentCoinGrantsForUserRow struct {
 	ID             uuid.UUID `json:"id"`
+	Coins          int32     `json:"coins"`
 	RemainingCoins int32     `json:"remaining_coins"`
+	PaidAmount     int32     `json:"paid_amount"`
 }
 
 // The reader's grants a spend can draw on, in the order it draws on them: the
-// one that expires first first. Locked for the draws that follow.
+// one that expires first first. The grants are locked for the draws that
+// follow, and the pack purchases that made them are not, so a refund of one
+// does not wait for the spend.
+//
+// paid_amount is what the coins granted were paid for, in currency, which a
+// spend spreads over them: the price of the pack purchase that made the
+// grant. A grant made by staff was paid for by no one, a test purchase paid
+// the tenant nothing, and a pack paid in another currency than the spend's
+// cannot be added to its price, so each of those is paid 0.
 func (q *Queries) LockUnspentCoinGrantsForUser(ctx context.Context, arg LockUnspentCoinGrantsForUserParams) ([]LockUnspentCoinGrantsForUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, LockUnspentCoinGrantsForUser, arg.TenantID, arg.UserID)
+	rows, err := q.db.QueryContext(ctx, LockUnspentCoinGrantsForUser, arg.Currency, arg.TenantID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +370,12 @@ func (q *Queries) LockUnspentCoinGrantsForUser(ctx context.Context, arg LockUnsp
 	var items []LockUnspentCoinGrantsForUserRow
 	for rows.Next() {
 		var i LockUnspentCoinGrantsForUserRow
-		if err := rows.Scan(&i.ID, &i.RemainingCoins); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Coins,
+			&i.RemainingCoins,
+			&i.PaidAmount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
