@@ -155,6 +155,7 @@ jobs:
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
+              - '.github/actions/main-cache-save/**'
             test_go:
               - *docs_excluded
               - 'server/**'
@@ -200,6 +201,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
+              - '.github/actions/main-cache-save/**'
             test_db_migrations:
               - *docs_excluded
               - 'db/**'
@@ -255,6 +257,7 @@ jobs:
               - '.github/actions/flutter-setup/**'
               - '.github/actions/mobile-android-setup/**'
               - '.github/actions/tool-install/**'
+              - '.github/actions/main-cache-save/**'
             test_e2e:
               - *docs_excluded
               - 'e2e/**'
@@ -327,6 +330,7 @@ jobs:
               - '.github/actions/go-setup/**'
               - '.github/actions/pnpm-setup/**'
               - '.github/actions/tool-install/**'
+              - '.github/actions/main-cache-save/**'
             test_bootstrap:
               - *docs_excluded
               - 'compose.yaml'
@@ -352,6 +356,7 @@ jobs:
               - '.github/actions/go-setup/**'
               - '.github/actions/pnpm-setup/**'
               - '.github/actions/tool-install/**'
+              - '.github/actions/main-cache-save/**'
             test_routing:
               - *docs_excluded
               - 'compose.yaml'
@@ -1257,6 +1262,31 @@ jobs:
       - name: Dependencies / Install
         run: task deps
 
+      # `playwright install --with-deps` installs the browser's system
+      # packages with an apt call of its own, which downloads them from the
+      # mirror on every run. Installed here first, they come from the archives
+      # `apt-install` caches, and that call finds nothing left to fetch. The
+      # dry run lists the packages missing from the runner and exits 1 when
+      # there are any.
+      - name: Setup / Playwright package list
+        id: playwright-packages
+        run: |
+          set -uo pipefail
+          status=0
+          report="$(pnpm --dir e2e exec playwright install-deps --dry-run chromium)" || status=$?
+          packages="$(sed -n 's/^  //p' <<< "${report}" | tr '\n' ' ')"
+          if ((status != 0)) && [[ -z "${packages// /}" ]]; then
+            echo "${report}"
+            exit "${status}"
+          fi
+          echo "packages=${packages}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup / Playwright packages
+        if: steps.playwright-packages.outputs.packages != ''
+        uses: ./.github/actions/apt-install
+        with:
+          packages: ${{ steps.playwright-packages.outputs.packages }}
+
       # Playwright downloads a build of each browser for the distribution it
       # runs on, and keeps it under a directory named after the browser's
       # revision alone. A cache restored from another Ubuntu release would
@@ -1416,6 +1446,27 @@ jobs:
 
       - name: Dependencies / Install
         run: task deps
+
+      # Installed ahead of `playwright install --with-deps` for the reason
+      # `Test / E2E` gives.
+      - name: Setup / Playwright package list
+        id: playwright-packages
+        run: |
+          set -uo pipefail
+          status=0
+          report="$(pnpm --dir e2e exec playwright install-deps --dry-run chromium)" || status=$?
+          packages="$(sed -n 's/^  //p' <<< "${report}" | tr '\n' ' ')"
+          if ((status != 0)) && [[ -z "${packages// /}" ]]; then
+            echo "${report}"
+            exit "${status}"
+          fi
+          echo "packages=${packages}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup / Playwright packages
+        if: steps.playwright-packages.outputs.packages != ''
+        uses: ./.github/actions/apt-install
+        with:
+          packages: ${{ steps.playwright-packages.outputs.packages }}
 
       # Playwright downloads a build of each browser for the distribution it
       # runs on, and keeps it under a directory named after the browser's
