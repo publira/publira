@@ -118,7 +118,8 @@ export const StoreProductList = async ({
                     <p className="text-sm text-muted-foreground">
                       {t("admin.settings.store_products.coin_pack", {
                         bonus: product.coinPack.bonusCoins,
-                        count: product.coinPack.coins,
+                        count:
+                          product.coinPack.coins + product.coinPack.bonusCoins,
                       })}
                     </p>
                   ) : null}

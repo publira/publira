@@ -3398,7 +3398,7 @@
         "episodes": "Episodes",
         "empty_title": "No products needed yet",
         "empty": "No paid episode is sold in the app yet.",
-        "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Coin pack ({$count} coins)}}\n* {{Coin pack ({$count} coins and {$bonus} bonus)}}",
+        "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Coin pack ({$count} coins)}}\n* {{Coin pack ({$count} coins, including {$bonus} bonus)}}",
         "coin_pack_names": "Each coin pack on sale is sold as a product of its own too, at the pack's price. The stores show a product under the name you give it in App Store Connect and the Play Console, not one Publira sends, so name each pack's product with your own word for your coins, in every language your app is listed in."
       },
       "mobile_push": {

@@ -89,7 +89,7 @@ describe("StoreProductList", () => {
       within(pack).getByText("coins_0190a0a0000070008000000000000003")
     ).toBeDefined();
     expect(
-      within(pack).getByText("Coin pack (100 coins and 20 bonus)")
+      within(pack).getByText("Coin pack (120 coins, including 20 bonus)")
     ).toBeDefined();
     expect(within(pack).queryByText("0")).toBeNull();
     expect(
