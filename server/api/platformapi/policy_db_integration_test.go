@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -628,15 +629,11 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedTenantCoinAllowance(t *testing.T) {
 	}
 }
 
-// The previous release's insert does not name tenant_coins_allowed, so a row
-// it writes while this release's schema is in place reads the allowance as
-// off.
-func TestDBPlatformPolicyRowWrittenWithoutTheTenantCoinAllowanceReadsItOff(t *testing.T) {
-	client, pg, operator := newPolicyClient(t)
-	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
-		t.Fatalf("UpdatePlatformPolicy: %v", err)
-	}
-
+// rewritePolicyRowWithout writes the stored policy row again with an insert
+// that leaves out the given columns, the way the previous release's insert
+// writes a row while this release's schema is in place.
+func rewritePolicyRowWithout(t *testing.T, pg *testutil.PostgresEnv, omitted ...string) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	tx, err := pg.DB.BeginTx(ctx, nil)
@@ -650,7 +647,7 @@ func TestDBPlatformPolicyRowWrittenWithoutTheTenantCoinAllowanceReadsItOff(t *te
 		FROM information_schema.columns
 		WHERE table_schema = current_schema()
 		  AND table_name = 'platform_policy_config'
-		  AND column_name <> 'tenant_coins_allowed'`).Scan(&columns); err != nil {
+		  AND column_name <> ALL (string_to_array($1, ','))`, strings.Join(omitted, ",")).Scan(&columns); err != nil {
 		t.Fatalf("read the policy columns: %v", err)
 	}
 	for _, statement := range []string{
@@ -665,11 +662,41 @@ func TestDBPlatformPolicyRowWrittenWithoutTheTenantCoinAllowanceReadsItOff(t *te
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("commit: %v", err)
 	}
+}
+
+// The previous release's insert does not name tenant_coins_allowed, so a row
+// it writes while this release's schema is in place reads the allowance as
+// off.
+func TestDBPlatformPolicyRowWrittenWithoutTheTenantCoinAllowanceReadsItOff(t *testing.T) {
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	rewritePolicyRowWithout(t, pg, "tenant_coins_allowed")
 
 	want := tightenedPolicy()
 	want.TenantCoinsAllowed = false
 	if got, _ := getPolicy(t, client, operator); got != want {
 		t.Fatalf("policy = %+v, want %+v with the allowance off", got, want)
+	}
+}
+
+// The previous release's insert does not name the subscription checkout
+// limits either, so a row it writes while this release's schema is in place
+// reads the built-in ones.
+func TestDBPlatformPolicyRowWrittenWithoutTheSubscriptionCheckoutLimitReadsTheDefault(t *testing.T) {
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	rewritePolicyRowWithout(t, pg, "subscription_checkout_limit_per_minute", "subscription_checkout_limit_per_day")
+
+	want := tightenedPolicy()
+	want.SubscriptionCheckout = platformpolicy.Defaults().SubscriptionCheckout
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy = %+v, want %+v with the default subscription checkout limit", got, want)
 	}
 }
 
