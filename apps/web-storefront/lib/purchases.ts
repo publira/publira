@@ -32,6 +32,12 @@ export type PurchasedItem =
   | { bonusCoins: number; coinName: string; coins: number; kind: "coin_pack" };
 
 export interface PurchaseItem {
+  /**
+   * Set on an episode paid with the tenant's coins: how many were spent, and
+   * the tenant's word for them in the reader's locale. Such a purchase took no
+   * payment, so `priceAtPurchase` is 0 on it.
+   */
+  coinsSpent?: { coinName: string; count: number };
   /** ISO 4217 code of the currency the reader paid priceAtPurchase in. */
   currency: string;
   expiresAt: string;
@@ -100,6 +106,7 @@ type RawPurchase = Pick<
   MyPurchase,
   | "coinName"
   | "coinPack"
+  | "coinsSpent"
   | "currency"
   | "episode"
   | "expiresAt"
@@ -166,6 +173,9 @@ const toPurchasedItem = ({
 };
 
 const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
+  coinsSpent: purchase.coinsSpent
+    ? { coinName: purchase.coinName ?? "", count: purchase.coinsSpent }
+    : undefined,
   currency: purchase.currency ?? "",
   expiresAt: purchase.expiresAt ?? "",
   id: purchase.id ?? "",
@@ -186,11 +196,12 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
 /**
  * A private, paged list of the signed-in reader's purchases.
  *
- * Nothing in this app writes what it lists, so no Action clears
- * {@link tenantPurchasesTag}: the checkout Action only hands the reader to the
- * payment provider, and the purchase is recorded when the provider's
- * notification reaches the API. A new purchase shows in the library once the
- * private entry goes stale, or on a reload.
+ * The one purchase this app records itself is an episode paid with coins,
+ * and the Action that pays clears {@link tenantPurchasesTag}. Every other
+ * checkout Action only hands the reader to the payment provider, and the
+ * purchase is recorded when the provider's notification reaches the API, so
+ * such a purchase shows in the library once the private entry goes stale, or
+ * on a reload.
  */
 const readPurchaseList = async (
   tenantId: string,

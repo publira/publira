@@ -3,7 +3,9 @@
 import {
   Code,
   isRpcError,
+  RPC_ERROR_REASON,
   rethrowUnclassifiedRpcError,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -15,7 +17,13 @@ import { apiClient, buildSessionHeaders } from "#lib/api-client";
 import { tenantIdSchema } from "#lib/auth-input";
 import { redirectToLogin, requirePublicSession } from "#lib/auth-session";
 import { isUnauthenticatedError } from "#lib/auth-shared";
-import { tenantReaderAccessTag } from "#lib/cache-tags";
+import {
+  tenantPurchasesTag,
+  tenantReaderAccessTag,
+  tenantSeriesDetailTag,
+} from "#lib/cache-tags";
+import { episodeCoinsPath } from "#lib/coins-path";
+import type { EpisodeCoinsOutcome } from "#lib/coins-path";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
 import { recordIdSchema } from "#lib/record-id";
@@ -204,6 +212,110 @@ export const openWithWaitFreeTicketAction = async (
     tenantId,
     locale,
     failed ? waitFreeErrorPath(seriesPublicId, episodePublicId) : returnTo
+  );
+  redirect(returnPath);
+};
+
+/**
+ * The gate's coin payment: which sale, the coin price the reader was shown,
+ * and the key that makes a second tap of the same button spend nothing more.
+ */
+const coinPaymentFormSchema = checkoutFormSchema.extend({
+  coins: z.coerce.number().int().positive(),
+  idempotencyKey: z.string().trim().min(1).max(200),
+});
+
+/**
+ * Pay for the episode with the reader's coins, and come back to it.
+ *
+ * Most answers lead back to the episode alone, which reads the reader's access
+ * and balance again and says what holds now: the body once the coins opened
+ * it, the pack to buy once the balance falls short, and nothing to pay for an
+ * episode the reader already holds or the site no longer sells for coins.
+ * Those are states the gate words, so the Action does not word them again. A
+ * price that changed since the gate showed it is said outright, because the
+ * reader would otherwise see a new number with nothing saying why.
+ */
+export const payEpisodeWithCoinsAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+  const parsed = coinPaymentFormSchema.safeParse(
+    toFormDataInput(formData, {
+      coins: "value",
+      episodeId: "value",
+      episodePublicId: "value",
+      idempotencyKey: "value",
+      kind: "value",
+      locale: "value",
+      seriesPublicId: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    redirect("/");
+  }
+
+  const {
+    coins,
+    episodeId,
+    episodePublicId,
+    idempotencyKey,
+    kind,
+    locale,
+    seriesPublicId,
+    tenantId,
+  } = parsed.data;
+  const returnTo = episodePath(seriesPublicId, episodePublicId);
+  const sessionId = await requirePublicSession(locale, returnTo, tenantId);
+
+  let outcome: EpisodeCoinsOutcome | undefined;
+  try {
+    await apiClient.coin.payEpisodeWithCoins(
+      {
+        coins,
+        episodeId,
+        idempotencyKey,
+        kind: purchaseKinds[kind],
+        locale,
+        surface: ClientSurface.WEB,
+        tenant: { tenantId },
+      },
+      buildSessionHeaders(sessionId)
+    );
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      await redirectToLogin(locale, returnTo, tenantId);
+    }
+    rethrowUnclassifiedRpcError(error);
+    if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinPriceChanged)) {
+      outcome = "price_changed";
+      // The price the gate showed came from the shared episode read, which
+      // still holds it for every reader.
+      updateTag(tenantSeriesDetailTag(tenantId));
+    } else if (
+      !isRpcError(
+        error,
+        Code.AlreadyExists,
+        Code.FailedPrecondition,
+        Code.NotFound,
+        Code.PermissionDenied
+      )
+    ) {
+      // Too many payments, or an API that could not be reached: nothing the
+      // episode can show tells the reader the coins were not spent.
+      outcome = "pay_error";
+    }
+  }
+
+  // A refusal changes what the gate says as well — a balance that fell short
+  // offers a pack now — so the reads are dropped either way.
+  updateTag(tenantReaderAccessTag(tenantId));
+  updateTag(tenantPurchasesTag(tenantId));
+  const returnPath = await tenantLocalePath(
+    tenantId,
+    locale,
+    episodeCoinsPath(seriesPublicId, episodePublicId, outcome)
   );
   redirect(returnPath);
 };

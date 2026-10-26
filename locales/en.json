@@ -4573,6 +4573,46 @@
       "updating": "Updating…",
       "view_series_detail": "View series"
     },
+    "coins": {
+      "failed": "Could not load this page. Please try again later.",
+      "balance_failed": "Could not load your balance. Please try again later.",
+      "history_failed": "Could not load your history. Please try again later.",
+      "issuer": "Issuer",
+      "terms": "Terms",
+      "terms_link": "Read the terms",
+      "contact": "Contact",
+      "balance_value": "{$count :integer} {$coin_name}",
+      "nearest_expiry": "{$count :integer} {$coin_name} expire on {$date}.",
+      "owed": "{$count :integer} {$coin_name} of a refunded pack had already been spent. They are taken out of the next pack you buy.",
+      "balance_error": "Could not show your balance",
+      "balance_heading": "Balance",
+      "description": "The {$coin_name} you hold, the packs on sale, and everything that added or took them.",
+      "packs_heading": "Buy {$coin_name}",
+      "packs_not_selling": "{$coin_name} are not on sale at the moment. You can keep spending the ones you hold.",
+      "packs_payments_unavailable": "This site cannot take purchases at the moment.",
+      "pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
+      "pack_expiry": ".input {$days :integer}\n.match $days\none {{These {$coin_name} can be spent for {$days} day after purchase.}}\n* {{These {$coin_name} can be spent for {$days} days after purchase.}}",
+      "pack_buy": "Buy for {$price}",
+      "history_heading": "History",
+      "history_error": "Could not show your history",
+      "history_empty_title": "Nothing here yet",
+      "history_empty_description": "When you buy or spend {$coin_name}, it is listed here.",
+      "history_pagination_aria": "History pagination",
+      "kind_grant": "Added",
+      "kind_spend": "Spent on an episode",
+      "kind_revocation": "Taken back after a refund",
+      "kind_expiry": "Expired",
+      "kind_shortfall": "Owed after a refund",
+      "kind_settlement": "Paid back from a new pack",
+      "amount_added": "+{$count :integer} {$coin_name}",
+      "amount_removed": "−{$count :integer} {$coin_name}",
+      "amount_owed": "{$count :integer} {$coin_name} owed",
+      "grant_expires": "Expires on {$date}",
+      "checkout_success": "Thank you. Your {$coin_name} are added once the payment is confirmed.",
+      "checkout_cancelled": "The purchase was cancelled. You have not been charged.",
+      "checkout_error": "Could not start the purchase. Please try again later.",
+      "checkout_unavailable": "This pack is no longer on sale. Check the packs on sale and try again."
+    },
     "contact": {
       "back_to_top": "Back to the top page",
       "body_label": "Message",
@@ -4708,7 +4748,13 @@
         "wait_free_excluded": "This is one of the newest episodes, which a free ticket cannot open.",
         "wait_free_guest": "This series is free if you wait: sign in to read this episode with a free ticket.",
         "wait_free_state_failed": "Your free ticket for this series could not be checked.",
-        "subscribe": "Subscribe"
+        "subscribe": "Subscribe",
+        "coin_balance": "You have {$count :integer} {$coin_name}.",
+        "coin_short": "This episode costs {$price :integer} {$coin_name}, and you have {$balance :integer}. Buy at least {$count :integer} more to pay with them.",
+        "coin_pay": "Pay {$count :integer} {$coin_name}",
+        "coin_rent": "Rent for {$period} ({$count :integer} {$coin_name})",
+        "coin_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Buy {$count} {$coin_name} for {$price}}}\n* {{Buy {$count} {$coin_name} (+{$bonus} bonus) for {$price}}}",
+        "coin_packs": "Buy {$coin_name}"
       },
       "images_empty": "The pages of this episode have not been published yet.",
       "navigation": {
@@ -4755,7 +4801,11 @@
         "progress": "Reading progress",
         "reload": "Reload"
       },
-      "wait_free_error": "Your free ticket could not be used. Try again in a moment."
+      "wait_free_error": "Your free ticket could not be used. Try again in a moment.",
+      "coin_pack_success": "Thank you. Your {$coin_name} are added once the payment is confirmed, and you can then pay for this episode with them.",
+      "coin_pack_cancelled": "The purchase was cancelled. You have not been charged.",
+      "coin_price_changed": "The price of this episode in {$coin_name} has changed. Check the new price and try again.",
+      "coin_pay_error": "Could not pay with {$coin_name}. Please try again later."
     },
     "errors": {
       "not_found_description": "The page may have been removed, or its URL may have changed. Open the home page.",
@@ -4844,7 +4894,8 @@
       "shelf_heading": "Bookshelf",
       "title": "Purchases",
       "open_series": "Open series",
-      "series_bundle_title": "Remaining episodes ({$count :integer})"
+      "series_bundle_title": "Remaining episodes ({$count :integer})",
+      "coins_spent": "{$count :integer} {$coin_name}"
     },
     "my": {
       "creators_empty": "No authors are credited on a published series yet.",
@@ -4883,7 +4934,8 @@
       "manage_billing": "Manage billing",
       "subscription_success": "Thank you for subscribing. Your plan appears here once the payment is confirmed.",
       "billing_unavailable": "Billing cannot be managed on this site at the moment.",
-      "billing_error": "Could not open billing. Please try again later."
+      "billing_error": "Could not open billing. Please try again later.",
+      "to_coins": "Buy {$coin_name} and see your history"
     },
     "nav": {
       "account_menu": "Account menu",

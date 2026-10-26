@@ -45,6 +45,17 @@ const buyButton = () =>
 const rentButton = () =>
   screen.getByRole("button", { name: "storefront.episode.gate.rent_for" });
 
+const coinPayButton = () =>
+  screen.queryByRole("button", { name: "storefront.episode.gate.coin_pay" });
+
+const coinPackButton = () =>
+  screen.queryByRole("button", {
+    name: "storefront.episode.gate.coin_pack_buy",
+  });
+
+const purchaseButton = () =>
+  screen.getByRole("button", { name: "storefront.episode.gate.purchase" });
+
 /** The badge that says until when a campaign runs. */
 const campaignEnd = () =>
   screen.queryByText("storefront.common.campaign_until");
@@ -724,6 +735,136 @@ describe("EpisodeAccessGate", () => {
 
       expect(screen.getByRole("status").textContent).toBe("Could not connect.");
       expect(ticketButton()).toBeNull();
+    });
+  });
+
+  describe("the tenant's coins", () => {
+    const coinOffer = {
+      balance: 300,
+      coinName: "Points",
+      disclosures: {
+        contact: "support@example.com",
+        issuerName: "Example Inc.",
+        notice: "",
+        termsUrl: "https://example.com/terms",
+      },
+      expiryDays: 180,
+      idempotencyKey: "payment-key",
+      kind: "offer" as const,
+      needed: 0,
+      packsOnSale: true,
+      price: 300,
+      rentalPrice: 0,
+    };
+
+    it("Offer the payment with the coins the reader holds, as the Shu beside the purchase", () => {
+      render(
+        <EpisodeAccessGate {...props} acceptsPayments coinOffer={coinOffer} />
+      );
+
+      const button = coinPayButton();
+      expect(button?.classList.contains("bg-secondary")).toBe(true);
+      expect(valuesOf(button as HTMLElement)).toEqual({
+        coin_name: "Points",
+        count: 300,
+      });
+      const form = button?.closest("form");
+      expect(
+        form?.querySelector<HTMLInputElement>('input[name="coins"]')?.value
+      ).toBe("300");
+      expect(
+        form?.querySelector<HTMLInputElement>('input[name="idempotencyKey"]')
+          ?.value
+      ).toBe("payment-key");
+      expect(purchaseButton().classList.contains("bg-secondary")).toBe(false);
+      expect(coinPackButton()).toBeNull();
+      expect(
+        screen.getByText("storefront.episode.gate.coin_balance")
+      ).toBeDefined();
+    });
+
+    it("Offer the pack that covers the shortfall, with its expiry and the tenant's disclosures", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          coinOffer={{
+            ...coinOffer,
+            balance: 100,
+            needed: 200,
+            pack: {
+              bonusCoins: 100,
+              coins: 500,
+              currency: "JPY",
+              id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+              price: 500,
+              publicId: "PACK600",
+            },
+          }}
+        />
+      );
+
+      expect(coinPayButton()).toBeNull();
+      const button = coinPackButton();
+      expect(valuesOf(button as HTMLElement)).toMatchObject({
+        bonus: 100,
+        coin_name: "Points",
+        count: 500,
+      });
+      const form = button?.closest("form");
+      expect(
+        form?.querySelector<HTMLInputElement>('input[name="episodeId"]')?.value
+      ).toBe(props.episodeId);
+      expect(purchaseButton().classList.contains("bg-secondary")).toBe(true);
+      expect(screen.getByText("storefront.coins.pack_expiry")).toBeDefined();
+      expect(screen.getByText("Example Inc.")).toBeDefined();
+      expect(
+        screen
+          .getByRole("link", { name: "storefront.coins.terms_link" })
+          .getAttribute("href")
+      ).toBe("https://example.com/terms");
+    });
+
+    it("Send the reader to every pack when none on sale is large enough", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          coinOffer={{ ...coinOffer, balance: 0, needed: 3000 }}
+        />
+      );
+
+      expect(coinPackButton()).toBeNull();
+      expect(
+        screen
+          .getByRole("link", { name: "storefront.episode.gate.coin_packs" })
+          .getAttribute("href")
+      ).toBe("/my/coins");
+    });
+
+    it("Keep the gate as it was where nothing is offered for coins", () => {
+      render(<EpisodeAccessGate {...props} acceptsPayments />);
+
+      expect(coinPayButton()).toBeNull();
+      expect(coinPackButton()).toBeNull();
+      expect(
+        screen.queryByText("storefront.episode.gate.coin_balance")
+      ).toBeNull();
+      expect(purchaseButton().classList.contains("bg-secondary")).toBe(true);
+    });
+
+    it("Leave the Shu with a ready ticket", () => {
+      render(
+        <EpisodeAccessGate
+          {...props}
+          acceptsPayments
+          coinOffer={coinOffer}
+          waitFree={{ accessHours: 72, kind: "ready" }}
+        />
+      );
+
+      expect(ticketButton()?.classList.contains("bg-secondary")).toBe(true);
+      expect(coinPayButton()?.classList.contains("bg-secondary")).toBe(false);
     });
   });
 });

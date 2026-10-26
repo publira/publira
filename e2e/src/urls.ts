@@ -387,6 +387,32 @@ export const WEB_STOREFRONT_SUBSCRIPTIONS_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the coins tenant from
+ * `db/seeds/scenarios/700_storefront_coins.sql`. Its suite takes the tenant's
+ * payments through Stripe, which is what lets the public site sell the
+ * tenant's packs, so it needs a console of its own.
+ */
+export const WEB_ADMIN_COINS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_COINS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.coins.localhost")
+);
+
+/** Public site of the same coins tenant, whose readers pay with coins. */
+export const WEB_STOREFRONT_COINS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_COINS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "coins.localhost")
+);
+
+/**
+ * Public site of the tenant in the same scenario whose coin settings are saved
+ * and off, whose reader sees the site as it is without coins.
+ */
+export const WEB_STOREFRONT_COINS_OFF_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_COINS_OFF_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "coins-off.localhost")
+);
+
+/**
  * Admin console of the app links tenant from
  * `db/seeds/scenarios/280_app_links.sql`. Its suite saves and clears the apps
  * the tenant's links open in, so it needs a console of its own.

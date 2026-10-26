@@ -17,9 +17,11 @@ import type {
   SeriesWaitFreeRule,
 } from "#lib/catalog";
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
+import { getCoinSettings, getMyCoinBalance } from "#lib/coins";
 import { getLocale } from "#lib/locale";
 import { getMyWaitFreeTicketState } from "#lib/wait-free";
 
+import { episodeOffersCoins, toCoinOffer } from "../_lib/coin-offer";
 import { renewEpisodePageUrlsAction } from "../_lib/renew-page-urls-action";
 import { offersSubscription } from "../_lib/subscription-offer";
 import {
@@ -220,9 +222,27 @@ export const EpisodeBody = async ({
   }
 
   // Asked only where a ticket could open the episode: the rule says on its
-  // own that it keeps one off the latest episodes, whoever the reader is.
-  const ticketState = waitFreeEpisodeEligible(waitFree, episode.id)
-    ? await getMyWaitFreeTicketState(tenantId, series.id, sessionId, locale)
+  // own that it keeps one off the latest episodes, whoever the reader is. The
+  // coins are asked only where the episode is priced in them, which it is only
+  // while the tenant offers them.
+  const coinsOffered = episodeOffersCoins(episode);
+  const [ticketState, coinBalance, coinSettings] = await Promise.all([
+    waitFreeEpisodeEligible(waitFree, episode.id)
+      ? getMyWaitFreeTicketState(tenantId, series.id, sessionId, locale)
+      : undefined,
+    coinsOffered ? getMyCoinBalance(tenantId, locale) : undefined,
+    coinsOffered ? getCoinSettings(tenantId, locale) : undefined,
+  ]);
+  const coinOffer = coinBalance
+    ? toCoinOffer({
+        acceptsPayments,
+        balance: coinBalance,
+        episode,
+        // A key per rendering of the gate: a second tap of the button it
+        // renders sends the same one, and spends nothing more.
+        idempotencyKey: crypto.randomUUID(),
+        settings: coinSettings?.ok ? coinSettings.value : null,
+      })
     : undefined;
 
   return (
@@ -235,6 +255,7 @@ export const EpisodeBody = async ({
         appPayments={appPayments}
         appStoreUrl={appStoreUrl}
         campaign={episode.campaign}
+        coinOffer={coinOffer}
         currency={currency}
         episodeId={episode.id}
         episodePublicId={episode.publicId}

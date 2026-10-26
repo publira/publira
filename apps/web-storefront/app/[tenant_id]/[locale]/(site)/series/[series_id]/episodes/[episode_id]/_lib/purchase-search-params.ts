@@ -19,8 +19,23 @@ const waitFreeStateSchema = searchParamEnum(["error"] as const, {
   fallback: "",
 });
 
+/**
+ * Set by the pack checkout beside `checkout`: the public id of the pack the
+ * reader was sent to buy, which tells a return from it apart from one from the
+ * episode's own checkout.
+ */
+const coinPackSchema = searchParamString({ fallback: "", maxLength: 64 });
+
+/** Set by the Actions that spend coins or buy them, when they could not. */
+const coinsStateSchema = searchParamEnum(
+  ["pack_error", "pack_unavailable", "pay_error", "price_changed"] as const,
+  { fallback: "" }
+);
+
 const purchaseSearchParamsSchema = z.object({
   checkout: checkoutStateSchema,
+  coin_pack: coinPackSchema,
+  coins: coinsStateSchema,
   session_id: checkoutSessionIDSchema,
   wait_free: waitFreeStateSchema,
 });

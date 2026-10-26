@@ -4573,6 +4573,46 @@
       "updating": "更新中…",
       "view_series_detail": "シリーズ詳細を見る"
     },
+    "coins": {
+      "failed": "情報を読み込めませんでした。時間をおいて再試行してください。",
+      "balance_failed": "残高を読み込めませんでした。時間をおいて再試行してください。",
+      "history_failed": "履歴を読み込めませんでした。時間をおいて再試行してください。",
+      "issuer": "発行者",
+      "terms": "利用規約",
+      "terms_link": "利用規約を読む",
+      "contact": "お問い合わせ先",
+      "balance_value": "{$count :integer}{$coin_name}",
+      "nearest_expiry": "{$count :integer}{$coin_name}の有効期限は{$date}です。",
+      "owed": "返金されたパックの{$coin_name}のうち、使用済みだった{$count :integer}{$coin_name}は次に購入するパックから差し引かれます。",
+      "balance_error": "残高を表示できませんでした",
+      "balance_heading": "残高",
+      "description": "保有している{$coin_name}、販売中のパック、増減の履歴を確認できます。",
+      "packs_heading": "{$coin_name}を購入",
+      "packs_not_selling": "{$coin_name}は現在販売していません。保有している分は引き続き使えます。",
+      "packs_payments_unavailable": "このサイトでは現在購入できません。",
+      "pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）}}",
+      "pack_expiry": "この{$coin_name}は購入から{$days :integer}日間使えます。",
+      "pack_buy": "{$price}で購入",
+      "history_heading": "履歴",
+      "history_error": "履歴を表示できませんでした",
+      "history_empty_title": "履歴はまだありません",
+      "history_empty_description": "{$coin_name}を購入したり使ったりすると、ここに表示されます。",
+      "history_pagination_aria": "履歴のページング",
+      "kind_grant": "追加",
+      "kind_spend": "エピソードの購入",
+      "kind_revocation": "返金による取り消し",
+      "kind_expiry": "有効期限切れ",
+      "kind_shortfall": "返金による不足",
+      "kind_settlement": "新しいパックから充当",
+      "amount_added": "+{$count :integer}{$coin_name}",
+      "amount_removed": "−{$count :integer}{$coin_name}",
+      "amount_owed": "{$count :integer}{$coin_name}不足",
+      "grant_expires": "{$date}まで有効",
+      "checkout_success": "ご購入ありがとうございます。決済が確認されると{$coin_name}が追加されます。",
+      "checkout_cancelled": "購入手続きをキャンセルしました。料金は発生していません。",
+      "checkout_error": "購入手続きを開始できませんでした。時間をおいて再試行してください。",
+      "checkout_unavailable": "このパックは販売を終了しました。販売中のパックを確認して、もう一度お試しください。"
+    },
     "contact": {
       "back_to_top": "トップページへ戻る",
       "body_label": "お問い合わせ内容",
@@ -4708,7 +4748,13 @@
         "wait_free_excluded": "最新のエピソードのため、無料チケットでは読めません。",
         "wait_free_guest": "このシリーズは待てば無料です。ログインすると無料チケットでこのエピソードを読めます。",
         "wait_free_state_failed": "このシリーズの無料チケットを確認できませんでした。",
-        "subscribe": "購読する"
+        "subscribe": "購読する",
+        "coin_balance": "{$count :integer}{$coin_name}を保有しています。",
+        "coin_short": "このエピソードは{$price :integer}{$coin_name}で、保有は{$balance :integer}です。{$count :integer}{$coin_name}以上購入すると支払えます。",
+        "coin_pay": "{$count :integer}{$coin_name}で購入",
+        "coin_rent": "{$period}レンタル（{$count :integer}{$coin_name}）",
+        "coin_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}を{$price}で購入}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）を{$price}で購入}}",
+        "coin_packs": "{$coin_name}を購入"
       },
       "images_empty": "本文画像はまだ公開されていません。",
       "navigation": {
@@ -4755,7 +4801,11 @@
         "progress": "読み進み",
         "reload": "再読み込み"
       },
-      "wait_free_error": "無料チケットを使えませんでした。しばらくしてからもう一度お試しください。"
+      "wait_free_error": "無料チケットを使えませんでした。しばらくしてからもう一度お試しください。",
+      "coin_pack_success": "ご購入ありがとうございます。決済が確認されると{$coin_name}が追加され、このエピソードの支払いに使えます。",
+      "coin_pack_cancelled": "購入手続きをキャンセルしました。料金は発生していません。",
+      "coin_price_changed": "このエピソードの{$coin_name}での価格が変わりました。新しい価格を確認して、もう一度お試しください。",
+      "coin_pay_error": "{$coin_name}で支払えませんでした。時間をおいて再試行してください。"
     },
     "errors": {
       "not_found_description": "お探しのページは削除されたか、URLが変更された可能性があります。ホームを開いてください。",
@@ -4844,7 +4894,8 @@
       "shelf_heading": "本棚",
       "title": "購入済み一覧",
       "open_series": "シリーズを開く",
-      "series_bundle_title": "残りの{$count :integer}話"
+      "series_bundle_title": "残りの{$count :integer}話",
+      "coins_spent": "{$count :integer}{$coin_name}"
     },
     "my": {
       "creators_empty": "公開中シリーズに紐づく著者はまだいません。",
@@ -4883,7 +4934,8 @@
       "manage_billing": "支払いの管理",
       "subscription_success": "ご購読ありがとうございます。支払いが確認されると、ここにプランが表示されます。",
       "billing_unavailable": "現在このサイトでは支払いの管理を利用できません。",
-      "billing_error": "支払いの管理を開けませんでした。時間をおいて再試行してください。"
+      "billing_error": "支払いの管理を開けませんでした。時間をおいて再試行してください。",
+      "to_coins": "{$coin_name}の購入と履歴"
     },
     "nav": {
       "account_menu": "アカウントメニュー",
