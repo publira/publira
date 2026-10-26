@@ -72,6 +72,9 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionStartPurchaseCheckout, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
 		if err := s.refuseCheckoutForStoreRoute(ctx, tenant.ID); err != nil {
 			return nil, err

@@ -117,6 +117,8 @@ No lint covers this. The reclamation logic is `internal/orphanimages`, documente
 
 Every public RPC a signed-in reader writes through spends an allowance before it reaches the database: `chargeReaderAction` in `api/publicapi`, over the counters in `internal/ratelimit`. Adding one is an action name and its rules in `reader_guards.go`, its limits in the platform policy (`internal/platformpolicy`, stored in `platform_policy_config` and edited through `PlatformPolicyService` and `publiractl policy set`), and the charge in the handler — never a limiter of its own or an environment variable, either of which would be a second policy an operator has to find before they can raise a limit.
 
+A public RPC that writes nothing but sends a request on the tenant's credentials — a checkout started with the tenant's payment provider — is charged the same way, because what one reader can use up there is the tenant's request quota with that provider. An idempotency key does not stand in for the charge: it makes the provider answer a repeated request with what it made before, and the request is still sent. Several RPCs that spend the same quota share one action, so rotating between them buys a reader nothing.
+
 An RPC that stores something a reader can repeat verbatim also claims that text for the window, so the same body arriving twice is refused rather than stored twice.
 
 The counters live in Redis when `PUBLIRA_REDIS_URL` names one and in this process when it does not, and a Redis that stops answering falls back to the in-process counters rather than to no limit: a rate limiter that fails open is one an outage turns into the flood it was there to stop.

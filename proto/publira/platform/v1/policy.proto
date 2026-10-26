@@ -158,6 +158,13 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit coin_payment = 19;
+  // How often one reader may ask PurchaseService.StartEpisodeCheckout,
+  // StartVolumeCheckout, or CoinService.StartCoinPackCheckout to start a
+  // checkout. The three share the one allowance.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit purchase_checkout = 20;
 }
 
 message GetPlatformPolicyRequest {}
