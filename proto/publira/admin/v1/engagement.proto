@@ -314,6 +314,98 @@ message GetEpisodeDropOffResponse {
   string time_zone = 5;
 }
 
+// One week's sign-ups, and how many of them were active in each of the weeks
+// after it.
+//
+// A reader is active in a week when they viewed, finished, or bought an episode
+// on any day of it, and is counted once in that week however many days they
+// were. A day reaches these figures once the daily aggregates have been rebuilt
+// for it, and its activity is kept after the day's content events are purged,
+// but only from the day the server began filing it: a week before that has no
+// activity to count.
+message RetentionCohort {
+  // The Monday (YYYY-MM-DD) the cohort's week begins on, a tenant day. The
+  // cohort is the readers whose accounts were created from that Monday through
+  // the Sunday after it.
+  string week_start = 1;
+  // The readers in the cohort now. A deleted account has left it, and left
+  // every count below with it.
+  int64 cohort_size = 2;
+  // active_counts[k] is the readers of the cohort active in the k-th week
+  // after week_start, active_counts[0] being the sign-up week itself. It holds
+  // weeks 0 through 12, as far as the last of them that has ended by today:
+  // a week still in progress is left out rather than counted short, so a
+  // cohort none of whose weeks has ended yet holds none.
+  repeated int64 active_counts = 3;
+}
+
+message GetRetentionCohortsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone: the first no later than the last, and covering at most 366 days.
+  // Both are required. Every week with a day in the period is a cohort, and
+  // each is counted whole, so the cohorts can begin before start_date and end
+  // after end_date.
+  string start_date = 2;
+  string end_date = 3;
+  // Narrows the activity to one series: a reader is active in a week when they
+  // viewed, finished, or bought an episode of it. The cohorts stay every
+  // reader who signed up. Empty counts activity anywhere in the tenant. A
+  // series the tenant does not have is not_found.
+  string series_public_id = 4;
+}
+
+message GetRetentionCohortsResponse {
+  // One per week of the period in week order, a week nobody signed up in
+  // included.
+  repeated RetentionCohort cohorts = 1;
+  // The period the request asked for, echoed back.
+  string start_date = 2;
+  string end_date = 3;
+  // The IANA time zone the weeks are the tenant's days in. It is the tenant's
+  // resolved zone: the counting and the wording come from the same read.
+  string time_zone = 4;
+}
+
+message GetSignUpFunnelRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period the readers signed up in, as inclusive calendar dates
+  // (YYYY-MM-DD) in the tenant's time zone: the first no later than the last,
+  // and covering at most 366 days. Both are required.
+  string start_date = 2;
+  string end_date = 3;
+}
+
+// How far the readers who signed up in a period got: each count is a number of
+// those readers, and is not narrowed by the one before it.
+message GetSignUpFunnelResponse {
+  // Readers whose accounts were created in the period and still exist.
+  int64 signed_up_count = 1;
+  // Of them, those who have viewed, finished, or bought an episode on any day
+  // the daily aggregates have been rebuilt for since the server began filing
+  // it, which is what RetentionCohort counts as active.
+  int64 active_count = 2;
+  // Of them, those whose first purchase came less than 7 days, and less than
+  // 30 days, after their account was created, a day being 24 hours. A purchase
+  // of any kind counts, a refunded one included, but not one made in a store's
+  // sandbox or a payment provider's test mode, which GetRevenueStats leaves
+  // out too. Purchases are read themselves, so one made a moment ago counts.
+  int64 purchased_within_seven_days_count = 3;
+  int64 purchased_within_thirty_days_count = 4;
+  // Of them, those who have made a purchase at all.
+  int64 purchased_count = 5;
+  // The median, over the purchased_count readers, of the days from their
+  // account being created to their first purchase, fractional. 0 when
+  // purchased_count is 0.
+  double median_days_to_first_purchase = 6;
+  // The period the request asked for, echoed back.
+  string start_date = 7;
+  string end_date = 8;
+  // The IANA time zone the dates are the tenant's days in. It is the tenant's
+  // resolved zone: the counting and the wording come from the same read.
+  string time_zone = 9;
+}
+
 // Which report ExportStatsRequest writes, and how it cuts the period: each is
 // one of the reports the RPCs above answer, under the grouping it names.
 enum StatsExportKind {
@@ -402,8 +494,19 @@ service AdminEngagementService {
   //
   // Minimum role: tenant_auditor.
   rpc GetEpisodeDropOff(GetEpisodeDropOffRequest) returns (GetEpisodeDropOffResponse) {}
-  // One of the reports above as a CSV file, whole: a ranked report's every
-  // page in one file. It reads what the report's RPC reads, when it is asked,
+  // How many of the readers who signed up in each week of a period were
+  // active in each of the twelve weeks after it.
+  //
+  // Minimum role: tenant_auditor.
+  rpc GetRetentionCohorts(GetRetentionCohortsRequest) returns (GetRetentionCohortsResponse) {}
+  // How many of the readers who signed up in a period were ever active, and
+  // how many of them bought, and how soon. It counts purchases, so it needs the
+  // role revenue does.
+  //
+  // Minimum role: tenant_admin.
+  rpc GetSignUpFunnel(GetSignUpFunnelRequest) returns (GetSignUpFunnelResponse) {}
+  // One of the reports StatsExportKind names as a CSV file, whole: a ranked
+  // report's every page in one file. It reads what the report's RPC reads, when it is asked,
   // and records the download in the tenant's audit log. The role is the one
   // revenue needs whichever report is asked for, since one RPC serves them
   // all.

@@ -73,7 +73,7 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if want := (Result{TenantCount: 2, RowCount: 5}); !reflect.DeepEqual(result, want) {
+	if want := (Result{TenantCount: 2, RowCount: 8}); !reflect.DeepEqual(result, want) {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 
@@ -95,7 +95,7 @@ func TestRunRebuildsDailyStatsPerTenant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if want := (Result{TenantCount: 2, RowCount: 5}); !reflect.DeepEqual(result, want) {
+	if want := (Result{TenantCount: 2, RowCount: 8}); !reflect.DeepEqual(result, want) {
 		t.Fatalf("second result = %+v, want %+v", result, want)
 	}
 	if got := len(loadStats(t, pg.DB, statDate)); got != 5 {
@@ -206,7 +206,7 @@ func TestRunAggregatesTheRemainingTenantsAfterOneFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), broken.ID.String()) {
 		t.Fatalf("Run error = %v, want a failure naming tenant %s", err, broken.ID)
 	}
-	if want := (Result{TenantCount: 1, RowCount: 2}); !reflect.DeepEqual(result, want) {
+	if want := (Result{TenantCount: 1, RowCount: 3}); !reflect.DeepEqual(result, want) {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 
@@ -245,7 +245,7 @@ func TestRunReportsEveryFailedTenant(t *testing.T) {
 			t.Errorf("Run error = %v, want it to name tenant %s", err, tenantID)
 		}
 	}
-	if want := (Result{TenantCount: 1, RowCount: 2}); !reflect.DeepEqual(result, want) {
+	if want := (Result{TenantCount: 1, RowCount: 3}); !reflect.DeepEqual(result, want) {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	if got := len(loadStats(t, pg.DB, statDate)); got != 2 {
@@ -327,7 +327,7 @@ func TestRunLeavesADayPastATenantsRetentionAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	want := Result{TenantCount: 1, RowCount: 2, Skipped: []Skipped{
+	want := Result{TenantCount: 1, RowCount: 3, Skipped: []Skipped{
 		{TenantID: purged.ID, StatDate: statDate},
 		{TenantID: lengthened.ID, StatDate: statDate},
 	}}
@@ -539,8 +539,9 @@ func newAggregator(db *sql.DB) *Aggregator {
 // assertion can tell the row the run left alone from one it rebuilt.
 const staleViewCount = 999
 
-// seedViewedEpisode gives one tenant a single episode view on statDate, which
-// aggregates to exactly two rows: the episode and the series holding it.
+// seedViewedEpisode gives one tenant a single member's episode view on
+// statDate, which aggregates to exactly two stats rows, the episode and the
+// series holding it, and one active reader: three rows in all.
 func seedViewedEpisode(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, prefix string, statDate time.Time) {
 	t.Helper()
 	series := pg.SeedSeries(t, tenantID, testutil.SeriesSeed{PublicID: "STATSSER" + prefix})

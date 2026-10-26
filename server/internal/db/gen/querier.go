@@ -1130,6 +1130,13 @@ type Querier interface {
 	// One series' wait-for-free rule. No row means the rule was never configured,
 	// which the caller answers with the column defaults: off.
 	GetSeriesWaitFreeSettings(ctx context.Context, arg GetSeriesWaitFreeSettingsParams) (GetSeriesWaitFreeSettingsRow, error)
+	// The readers who signed up from the tenant's midnight of start_date to its
+	// midnight after end_date, how many of them were ever active, and how soon
+	// they first bought. A purchase of any kind counts, refunded or not, except
+	// one made in a store's sandbox or a payment provider's test mode, which is
+	// left out as the revenue report leaves it out. The days to the first purchase
+	// are elapsed time, 24 hours a day, from the moment the account was created.
+	GetSignUpFunnel(ctx context.Context, arg GetSignUpFunnelParams) (GetSignUpFunnelRow, error)
 	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
 	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
@@ -2572,6 +2579,30 @@ type Querier interface {
 	// ListRelatedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRelatedSeriesIDsReversedParams) ([]ListRelatedSeriesIDsReversedRow, error)
+	// The console's reader cohorts: of the readers who signed up over a period of
+	// the tenant's days, how many kept reading and how many bought.
+	//
+	// A reader is an account of the tenant that holds no staff role, counted from
+	// users.created_at in time_zone, which is kept for good. The days a reader was
+	// active come from reader_daily_activity, which aggregate-content-stats files
+	// from the content events of each tenant day before they are purged, so a day
+	// reaches these figures once it has been rebuilt. A deleted account takes its
+	// user row and its active days with it, and leaves every figure at once.
+	// Every calendar week, Monday through Sunday, from the one start_date falls in
+	// through the one end_date falls in, a week nobody signed up in included, each
+	// counted whole. A cohort is the readers who signed up in one of them, and
+	// week_index k is the k-th week after that one, 0 being the sign-up week.
+	//
+	// Each cohort carries a row for every week from 0 through 12 that has ended by
+	// today in time_zone, and for a cohort none of whose weeks has ended, one row
+	// whose week_index is -1, so the cohort is still answered with its size. A
+	// week still in progress is left out rather than counted short. series_id
+	// narrows the active days to one series, and NULL leaves the whole tenant;
+	// it never narrows the cohort itself.
+	//
+	// The weeks are generated as timestamps without a zone, so the session's own
+	// zone cannot move one onto the week before.
+	ListRetentionCohorts(ctx context.Context, arg ListRetentionCohortsParams) ([]ListRetentionCohortsRow, error)
 	// Every day of the period in order, a day nothing sold on included, so a
 	// chart of it has no gap to fill. The days are generated as timestamps without
 	// a zone, so the session's own zone cannot move one onto the day before.

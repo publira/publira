@@ -492,7 +492,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | Job | What it does |
 | --- | --- |
 | `project-episode-reads` | Files the missing `episode_complete` events for stored `episode_reads` |
-| `aggregate-content-stats` | Rebuilds one calendar day of `content_daily_stats` and `episode_page_reach_stats` per tenant |
+| `aggregate-content-stats` | Rebuilds one calendar day of `content_daily_stats`, `reader_daily_activity`, and `episode_page_reach_stats` per tenant |
 | `aggregate-rankings` | Rebuilds the daily and weekly `content_ranking_snapshots`, tenant-wide and per genre, with the series ones per surface and the tenant-wide series ones per age rating |
 | `purge-content-events` | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
@@ -532,6 +532,8 @@ A tenant whose day began before its content event cutoff is skipped: the purge h
 
 The same transaction restates `tenant_rating_totals`, the tenant's all-time reaction points and completed reads over its series rows. It is the mean a series with few finished reads is rated against, and storing it here is what keeps the series page from summing the tenant's whole history on every read.
 
+It also rebuilds the day's `reader_daily_activity` from `content_events`: one row for each member and series of which the member viewed, finished, or bought an episode during the day, which is what `GetRetentionCohorts` and `GetSignUpFunnel` count a reader active by. Nothing purges these rows, so a cohort is still followed after its days' events are gone, and a deleted account takes its rows with it. A day skipped because its events may be gone keeps the rows it has.
+
 It also rebuilds the day's `episode_page_reach_stats` from `episode_reading_positions`: for each episode, how many of the readers whose saved position was last moved during the day reached each page, which is what `GetEpisodeDropOff` reports. A position keeps no history, so a rebuild of a day that has already been rebuilt counts only the readers who have not moved since; the others are counted on the later day they moved on.
 
 For local development use the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints.
@@ -547,7 +549,7 @@ Environment variables:
 - `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL`: optional, and unset by default. A hot standby of the database's cluster, signed in as the same login as the connection above, which each tenant's day is read on once it has replayed everything the primary had committed when that tenant's rebuild began; a standby still behind after 5 seconds leaves the tenant to the primary. A URL signing in as another login stops the run before it starts. Unset, the day is read on the connection above. See [The daily rebuilds](../../../docs/en/2-deployments/7-scaling-out.md#the-daily-rebuilds).
 - `PUBLIRA_CONTENT_STATS_DATE`: the calendar date to rebuild as `YYYY-MM-DD`, read as each tenant's own local date. Unset rebuilds every tenant's own yesterday, which is not the same day for all of them.
 
-The structured log records the target date, how many tenants the run finished, how many it skipped, the rows created in both tables, and the elapsed time — on failure too, since each tenant commits on its own — and a warning naming each skipped tenant.
+The structured log records the target date, how many tenants the run finished, how many it skipped, the rows created in the three tables, and the elapsed time — on failure too, since each tenant commits on its own — and a warning naming each skipped tenant.
 
 ## aggregate-rankings
 

@@ -1011,6 +1011,13 @@ type PurchaseEpisodePart struct {
 	PurchasedAt time.Time `json:"purchased_at"`
 }
 
+type ReaderDailyActivity struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	StatDate time.Time `json:"stat_date"`
+	UserID   uuid.UUID `json:"user_id"`
+	SeriesID uuid.UUID `json:"series_id"`
+}
+
 type ReaderIconPreset struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`

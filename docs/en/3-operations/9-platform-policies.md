@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -172,7 +172,7 @@ Some records outlive their period by design:
 
 Choosing a period:
 
-- **Content events** feed two things after they are recorded: each day's statistics, built once the day ends, and the recommendations, which are built from the last 28 days the tenant has finished in its own time zone. The statistics outlive the events, so a short period does not shrink a tenant's reports. A period under 30 days, the 28 plus the day the recommendations are built on and one for a day that a clock change makes longer, would leave the recommendations working from fewer days, and could delete a day's events before its statistics are built, so it is refused, for the platform's default and for a tenant's own period alike. A shorter period saved before Publira refused one is kept as 30 days.
+- **Content events** feed two things after they are recorded: each day's statistics, built once the day ends, and the recommendations, which are built from the last 28 days the tenant has finished in its own time zone. The statistics outlive the events, so a short period does not shrink a tenant's reports. So do the records of which days each signed-in reader was active on, which the console follows the readers who signed up in a week by for twelve weeks after it, so a period shorter than that still leaves those weeks to count. A period under 30 days, the 28 plus the day the recommendations are built on and one for a day that a clock change makes longer, would leave the recommendations working from fewer days, and could delete a day's events before its statistics are built, so it is refused, for the platform's default and for a tenant's own period alike. A shorter period saved before Publira refused one is kept as 30 days.
 - **Ranking snapshots** are kept for comparison over time; only the newest is ever shown to readers. A shorter period only shortens how far back that comparison reaches.
 - **Withdrawn comments** should cover how long your tenants take to settle a report or a dispute about a comment. The tenant console shows staff when each withdrawn comment is due to be deleted.
 

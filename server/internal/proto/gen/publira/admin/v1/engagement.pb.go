@@ -1565,6 +1565,424 @@ func (x *GetEpisodeDropOffResponse) GetTimeZone() string {
 	return ""
 }
 
+// One week's sign-ups, and how many of them were active in each of the weeks
+// after it.
+//
+// A reader is active in a week when they viewed, finished, or bought an episode
+// on any day of it, and is counted once in that week however many days they
+// were. A day reaches these figures once the daily aggregates have been rebuilt
+// for it, and its activity is kept after the day's content events are purged,
+// but only from the day the server began filing it: a week before that has no
+// activity to count.
+type RetentionCohort struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Monday (YYYY-MM-DD) the cohort's week begins on, a tenant day. The
+	// cohort is the readers whose accounts were created from that Monday through
+	// the Sunday after it.
+	WeekStart string `protobuf:"bytes,1,opt,name=week_start,json=weekStart,proto3" json:"week_start,omitempty"`
+	// The readers in the cohort now. A deleted account has left it, and left
+	// every count below with it.
+	CohortSize int64 `protobuf:"varint,2,opt,name=cohort_size,json=cohortSize,proto3" json:"cohort_size,omitempty"`
+	// active_counts[k] is the readers of the cohort active in the k-th week
+	// after week_start, active_counts[0] being the sign-up week itself. It holds
+	// weeks 0 through 12, as far as the last of them that has ended by today:
+	// a week still in progress is left out rather than counted short, so a
+	// cohort none of whose weeks has ended yet holds none.
+	ActiveCounts  []int64 `protobuf:"varint,3,rep,packed,name=active_counts,json=activeCounts,proto3" json:"active_counts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetentionCohort) Reset() {
+	*x = RetentionCohort{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetentionCohort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetentionCohort) ProtoMessage() {}
+
+func (x *RetentionCohort) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetentionCohort.ProtoReflect.Descriptor instead.
+func (*RetentionCohort) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *RetentionCohort) GetWeekStart() string {
+	if x != nil {
+		return x.WeekStart
+	}
+	return ""
+}
+
+func (x *RetentionCohort) GetCohortSize() int64 {
+	if x != nil {
+		return x.CohortSize
+	}
+	return 0
+}
+
+func (x *RetentionCohort) GetActiveCounts() []int64 {
+	if x != nil {
+		return x.ActiveCounts
+	}
+	return nil
+}
+
+type GetRetentionCohortsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+	// zone: the first no later than the last, and covering at most 366 days.
+	// Both are required. Every week with a day in the period is a cohort, and
+	// each is counted whole, so the cohorts can begin before start_date and end
+	// after end_date.
+	StartDate string `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// Narrows the activity to one series: a reader is active in a week when they
+	// viewed, finished, or bought an episode of it. The cohorts stay every
+	// reader who signed up. Empty counts activity anywhere in the tenant. A
+	// series the tenant does not have is not_found.
+	SeriesPublicId string `protobuf:"bytes,4,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetRetentionCohortsRequest) Reset() {
+	*x = GetRetentionCohortsRequest{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRetentionCohortsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRetentionCohortsRequest) ProtoMessage() {}
+
+func (x *GetRetentionCohortsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRetentionCohortsRequest.ProtoReflect.Descriptor instead.
+func (*GetRetentionCohortsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetRetentionCohortsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetRetentionCohortsRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetRetentionCohortsRequest) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *GetRetentionCohortsRequest) GetSeriesPublicId() string {
+	if x != nil {
+		return x.SeriesPublicId
+	}
+	return ""
+}
+
+type GetRetentionCohortsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// One per week of the period in week order, a week nobody signed up in
+	// included.
+	Cohorts []*RetentionCohort `protobuf:"bytes,1,rep,name=cohorts,proto3" json:"cohorts,omitempty"`
+	// The period the request asked for, echoed back.
+	StartDate string `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// The IANA time zone the weeks are the tenant's days in. It is the tenant's
+	// resolved zone: the counting and the wording come from the same read.
+	TimeZone      string `protobuf:"bytes,4,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRetentionCohortsResponse) Reset() {
+	*x = GetRetentionCohortsResponse{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRetentionCohortsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRetentionCohortsResponse) ProtoMessage() {}
+
+func (x *GetRetentionCohortsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRetentionCohortsResponse.ProtoReflect.Descriptor instead.
+func (*GetRetentionCohortsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GetRetentionCohortsResponse) GetCohorts() []*RetentionCohort {
+	if x != nil {
+		return x.Cohorts
+	}
+	return nil
+}
+
+func (x *GetRetentionCohortsResponse) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetRetentionCohortsResponse) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *GetRetentionCohortsResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+type GetSignUpFunnelRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The period the readers signed up in, as inclusive calendar dates
+	// (YYYY-MM-DD) in the tenant's time zone: the first no later than the last,
+	// and covering at most 366 days. Both are required.
+	StartDate     string `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate       string `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSignUpFunnelRequest) Reset() {
+	*x = GetSignUpFunnelRequest{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSignUpFunnelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSignUpFunnelRequest) ProtoMessage() {}
+
+func (x *GetSignUpFunnelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSignUpFunnelRequest.ProtoReflect.Descriptor instead.
+func (*GetSignUpFunnelRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetSignUpFunnelRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetSignUpFunnelRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetSignUpFunnelRequest) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+// How far the readers who signed up in a period got: each count is a number of
+// those readers, and is not narrowed by the one before it.
+type GetSignUpFunnelResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Readers whose accounts were created in the period and still exist.
+	SignedUpCount int64 `protobuf:"varint,1,opt,name=signed_up_count,json=signedUpCount,proto3" json:"signed_up_count,omitempty"`
+	// Of them, those who have viewed, finished, or bought an episode on any day
+	// the daily aggregates have been rebuilt for since the server began filing
+	// it, which is what RetentionCohort counts as active.
+	ActiveCount int64 `protobuf:"varint,2,opt,name=active_count,json=activeCount,proto3" json:"active_count,omitempty"`
+	// Of them, those whose first purchase came less than 7 days, and less than
+	// 30 days, after their account was created, a day being 24 hours. A purchase
+	// of any kind counts, a refunded one included, but not one made in a store's
+	// sandbox or a payment provider's test mode, which GetRevenueStats leaves
+	// out too. Purchases are read themselves, so one made a moment ago counts.
+	PurchasedWithinSevenDaysCount  int64 `protobuf:"varint,3,opt,name=purchased_within_seven_days_count,json=purchasedWithinSevenDaysCount,proto3" json:"purchased_within_seven_days_count,omitempty"`
+	PurchasedWithinThirtyDaysCount int64 `protobuf:"varint,4,opt,name=purchased_within_thirty_days_count,json=purchasedWithinThirtyDaysCount,proto3" json:"purchased_within_thirty_days_count,omitempty"`
+	// Of them, those who have made a purchase at all.
+	PurchasedCount int64 `protobuf:"varint,5,opt,name=purchased_count,json=purchasedCount,proto3" json:"purchased_count,omitempty"`
+	// The median, over the purchased_count readers, of the days from their
+	// account being created to their first purchase, fractional. 0 when
+	// purchased_count is 0.
+	MedianDaysToFirstPurchase float64 `protobuf:"fixed64,6,opt,name=median_days_to_first_purchase,json=medianDaysToFirstPurchase,proto3" json:"median_days_to_first_purchase,omitempty"`
+	// The period the request asked for, echoed back.
+	StartDate string `protobuf:"bytes,7,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,8,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// The IANA time zone the dates are the tenant's days in. It is the tenant's
+	// resolved zone: the counting and the wording come from the same read.
+	TimeZone      string `protobuf:"bytes,9,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSignUpFunnelResponse) Reset() {
+	*x = GetSignUpFunnelResponse{}
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSignUpFunnelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSignUpFunnelResponse) ProtoMessage() {}
+
+func (x *GetSignUpFunnelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSignUpFunnelResponse.ProtoReflect.Descriptor instead.
+func (*GetSignUpFunnelResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetSignUpFunnelResponse) GetSignedUpCount() int64 {
+	if x != nil {
+		return x.SignedUpCount
+	}
+	return 0
+}
+
+func (x *GetSignUpFunnelResponse) GetActiveCount() int64 {
+	if x != nil {
+		return x.ActiveCount
+	}
+	return 0
+}
+
+func (x *GetSignUpFunnelResponse) GetPurchasedWithinSevenDaysCount() int64 {
+	if x != nil {
+		return x.PurchasedWithinSevenDaysCount
+	}
+	return 0
+}
+
+func (x *GetSignUpFunnelResponse) GetPurchasedWithinThirtyDaysCount() int64 {
+	if x != nil {
+		return x.PurchasedWithinThirtyDaysCount
+	}
+	return 0
+}
+
+func (x *GetSignUpFunnelResponse) GetPurchasedCount() int64 {
+	if x != nil {
+		return x.PurchasedCount
+	}
+	return 0
+}
+
+func (x *GetSignUpFunnelResponse) GetMedianDaysToFirstPurchase() float64 {
+	if x != nil {
+		return x.MedianDaysToFirstPurchase
+	}
+	return 0
+}
+
+func (x *GetSignUpFunnelResponse) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetSignUpFunnelResponse) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *GetSignUpFunnelResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
 type ExportStatsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1587,7 +2005,7 @@ type ExportStatsRequest struct {
 
 func (x *ExportStatsRequest) Reset() {
 	*x = ExportStatsRequest{}
-	mi := &file_publira_admin_v1_engagement_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1599,7 +2017,7 @@ func (x *ExportStatsRequest) String() string {
 func (*ExportStatsRequest) ProtoMessage() {}
 
 func (x *ExportStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_engagement_proto_msgTypes[14]
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1612,7 +2030,7 @@ func (x *ExportStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportStatsRequest.ProtoReflect.Descriptor instead.
 func (*ExportStatsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{14}
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ExportStatsRequest) GetTenant() *v1.TenantContext {
@@ -1696,7 +2114,7 @@ type ExportStatsResponse struct {
 
 func (x *ExportStatsResponse) Reset() {
 	*x = ExportStatsResponse{}
-	mi := &file_publira_admin_v1_engagement_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1708,7 +2126,7 @@ func (x *ExportStatsResponse) String() string {
 func (*ExportStatsResponse) ProtoMessage() {}
 
 func (x *ExportStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_engagement_proto_msgTypes[15]
+	mi := &file_publira_admin_v1_engagement_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1721,7 +2139,7 @@ func (x *ExportStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportStatsResponse.ProtoReflect.Descriptor instead.
 func (*ExportStatsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{15}
+	return file_publira_admin_v1_engagement_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ExportStatsResponse) GetCsv() []byte {
@@ -1854,7 +2272,41 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"\n" +
 	"start_date\x18\x03 \x01(\tR\tstartDate\x12\x19\n" +
 	"\bend_date\x18\x04 \x01(\tR\aendDate\x12\x1b\n" +
-	"\ttime_zone\x18\x05 \x01(\tR\btimeZone\"\x94\x02\n" +
+	"\ttime_zone\x18\x05 \x01(\tR\btimeZone\"v\n" +
+	"\x0fRetentionCohort\x12\x1d\n" +
+	"\n" +
+	"week_start\x18\x01 \x01(\tR\tweekStart\x12\x1f\n" +
+	"\vcohort_size\x18\x02 \x01(\x03R\n" +
+	"cohortSize\x12#\n" +
+	"\ractive_counts\x18\x03 \x03(\x03R\factiveCounts\"\xb9\x01\n" +
+	"\x1aGetRetentionCohortsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x03 \x01(\tR\aendDate\x12(\n" +
+	"\x10series_public_id\x18\x04 \x01(\tR\x0eseriesPublicId\"\xb1\x01\n" +
+	"\x1bGetRetentionCohortsResponse\x12;\n" +
+	"\acohorts\x18\x01 \x03(\v2!.publira.admin.v1.RetentionCohortR\acohorts\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x03 \x01(\tR\aendDate\x12\x1b\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\x8b\x01\n" +
+	"\x16GetSignUpFunnelRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x03 \x01(\tR\aendDate\"\xbc\x03\n" +
+	"\x17GetSignUpFunnelResponse\x12&\n" +
+	"\x0fsigned_up_count\x18\x01 \x01(\x03R\rsignedUpCount\x12!\n" +
+	"\factive_count\x18\x02 \x01(\x03R\vactiveCount\x12H\n" +
+	"!purchased_within_seven_days_count\x18\x03 \x01(\x03R\x1dpurchasedWithinSevenDaysCount\x12J\n" +
+	"\"purchased_within_thirty_days_count\x18\x04 \x01(\x03R\x1epurchasedWithinThirtyDaysCount\x12'\n" +
+	"\x0fpurchased_count\x18\x05 \x01(\x03R\x0epurchasedCount\x12@\n" +
+	"\x1dmedian_days_to_first_purchase\x18\x06 \x01(\x01R\x19medianDaysToFirstPurchase\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\a \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\b \x01(\tR\aendDate\x12\x1b\n" +
+	"\ttime_zone\x18\t \x01(\tR\btimeZone\"\x94\x02\n" +
 	"\x12ExportStatsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
 	"\x04kind\x18\x02 \x01(\x0e2!.publira.admin.v1.StatsExportKindR\x04kind\x12\x1d\n" +
@@ -1881,12 +2333,14 @@ const file_publira_admin_v1_engagement_proto_rawDesc = "" +
 	"$STATS_EXPORT_KIND_REVENUE_BY_EPISODE\x10\x03\x12%\n" +
 	"!STATS_EXPORT_KIND_AUDIENCE_BY_DAY\x10\x04\x12(\n" +
 	"$STATS_EXPORT_KIND_AUDIENCE_BY_SERIES\x10\x05\x12&\n" +
-	"\"STATS_EXPORT_KIND_EPISODE_DROP_OFF\x10\x062\xbc\x04\n" +
+	"\"STATS_EXPORT_KIND_EPISODE_DROP_OFF\x10\x062\x9c\x06\n" +
 	"\x16AdminEngagementService\x12}\n" +
 	"\x16ListEpisodeReadThrough\x12/.publira.admin.v1.ListEpisodeReadThroughRequest\x1a0.publira.admin.v1.ListEpisodeReadThroughResponse\"\x00\x12h\n" +
 	"\x0fGetRevenueStats\x12(.publira.admin.v1.GetRevenueStatsRequest\x1a).publira.admin.v1.GetRevenueStatsResponse\"\x00\x12k\n" +
 	"\x10GetAudienceStats\x12).publira.admin.v1.GetAudienceStatsRequest\x1a*.publira.admin.v1.GetAudienceStatsResponse\"\x00\x12n\n" +
-	"\x11GetEpisodeDropOff\x12*.publira.admin.v1.GetEpisodeDropOffRequest\x1a+.publira.admin.v1.GetEpisodeDropOffResponse\"\x00\x12\\\n" +
+	"\x11GetEpisodeDropOff\x12*.publira.admin.v1.GetEpisodeDropOffRequest\x1a+.publira.admin.v1.GetEpisodeDropOffResponse\"\x00\x12t\n" +
+	"\x13GetRetentionCohorts\x12,.publira.admin.v1.GetRetentionCohortsRequest\x1a-.publira.admin.v1.GetRetentionCohortsResponse\"\x00\x12h\n" +
+	"\x0fGetSignUpFunnel\x12(.publira.admin.v1.GetSignUpFunnelRequest\x1a).publira.admin.v1.GetSignUpFunnelResponse\"\x00\x12\\\n" +
 	"\vExportStats\x12$.publira.admin.v1.ExportStatsRequest\x1a%.publira.admin.v1.ExportStatsResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
@@ -1902,7 +2356,7 @@ func file_publira_admin_v1_engagement_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_engagement_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_publira_admin_v1_engagement_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_publira_admin_v1_engagement_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_publira_admin_v1_engagement_proto_goTypes = []any{
 	(RevenueGroupBy)(0),                    // 0: publira.admin.v1.RevenueGroupBy
 	(AudienceGroupBy)(0),                   // 1: publira.admin.v1.AudienceGroupBy
@@ -1921,40 +2375,52 @@ var file_publira_admin_v1_engagement_proto_goTypes = []any{
 	(*EpisodePageReach)(nil),               // 14: publira.admin.v1.EpisodePageReach
 	(*GetEpisodeDropOffRequest)(nil),       // 15: publira.admin.v1.GetEpisodeDropOffRequest
 	(*GetEpisodeDropOffResponse)(nil),      // 16: publira.admin.v1.GetEpisodeDropOffResponse
-	(*ExportStatsRequest)(nil),             // 17: publira.admin.v1.ExportStatsRequest
-	(*ExportStatsResponse)(nil),            // 18: publira.admin.v1.ExportStatsResponse
-	(*v1.TenantContext)(nil),               // 19: publira.types.v1.TenantContext
+	(*RetentionCohort)(nil),                // 17: publira.admin.v1.RetentionCohort
+	(*GetRetentionCohortsRequest)(nil),     // 18: publira.admin.v1.GetRetentionCohortsRequest
+	(*GetRetentionCohortsResponse)(nil),    // 19: publira.admin.v1.GetRetentionCohortsResponse
+	(*GetSignUpFunnelRequest)(nil),         // 20: publira.admin.v1.GetSignUpFunnelRequest
+	(*GetSignUpFunnelResponse)(nil),        // 21: publira.admin.v1.GetSignUpFunnelResponse
+	(*ExportStatsRequest)(nil),             // 22: publira.admin.v1.ExportStatsRequest
+	(*ExportStatsResponse)(nil),            // 23: publira.admin.v1.ExportStatsResponse
+	(*v1.TenantContext)(nil),               // 24: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_engagement_proto_depIdxs = []int32{
-	19, // 0: publira.admin.v1.ListEpisodeReadThroughRequest.tenant:type_name -> publira.types.v1.TenantContext
+	24, // 0: publira.admin.v1.ListEpisodeReadThroughRequest.tenant:type_name -> publira.types.v1.TenantContext
 	3,  // 1: publira.admin.v1.ListEpisodeReadThroughResponse.episodes:type_name -> publira.admin.v1.EpisodeReadThrough
-	19, // 2: publira.admin.v1.GetRevenueStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	24, // 2: publira.admin.v1.GetRevenueStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,  // 3: publira.admin.v1.GetRevenueStatsRequest.group_by:type_name -> publira.admin.v1.RevenueGroupBy
 	6,  // 4: publira.admin.v1.GetRevenueStatsResponse.rows:type_name -> publira.admin.v1.RevenueStatsRow
 	7,  // 5: publira.admin.v1.GetRevenueStatsResponse.totals:type_name -> publira.admin.v1.RevenueStatsTotals
-	19, // 6: publira.admin.v1.GetAudienceStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	24, // 6: publira.admin.v1.GetAudienceStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	1,  // 7: publira.admin.v1.GetAudienceStatsRequest.group_by:type_name -> publira.admin.v1.AudienceGroupBy
 	10, // 8: publira.admin.v1.GetAudienceStatsResponse.rows:type_name -> publira.admin.v1.AudienceStatsRow
 	11, // 9: publira.admin.v1.GetAudienceStatsResponse.totals:type_name -> publira.admin.v1.AudienceStatsTotals
-	19, // 10: publira.admin.v1.GetEpisodeDropOffRequest.tenant:type_name -> publira.types.v1.TenantContext
+	24, // 10: publira.admin.v1.GetEpisodeDropOffRequest.tenant:type_name -> publira.types.v1.TenantContext
 	14, // 11: publira.admin.v1.GetEpisodeDropOffResponse.pages:type_name -> publira.admin.v1.EpisodePageReach
-	19, // 12: publira.admin.v1.ExportStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 13: publira.admin.v1.ExportStatsRequest.kind:type_name -> publira.admin.v1.StatsExportKind
-	4,  // 14: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:input_type -> publira.admin.v1.ListEpisodeReadThroughRequest
-	8,  // 15: publira.admin.v1.AdminEngagementService.GetRevenueStats:input_type -> publira.admin.v1.GetRevenueStatsRequest
-	12, // 16: publira.admin.v1.AdminEngagementService.GetAudienceStats:input_type -> publira.admin.v1.GetAudienceStatsRequest
-	15, // 17: publira.admin.v1.AdminEngagementService.GetEpisodeDropOff:input_type -> publira.admin.v1.GetEpisodeDropOffRequest
-	17, // 18: publira.admin.v1.AdminEngagementService.ExportStats:input_type -> publira.admin.v1.ExportStatsRequest
-	5,  // 19: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:output_type -> publira.admin.v1.ListEpisodeReadThroughResponse
-	9,  // 20: publira.admin.v1.AdminEngagementService.GetRevenueStats:output_type -> publira.admin.v1.GetRevenueStatsResponse
-	13, // 21: publira.admin.v1.AdminEngagementService.GetAudienceStats:output_type -> publira.admin.v1.GetAudienceStatsResponse
-	16, // 22: publira.admin.v1.AdminEngagementService.GetEpisodeDropOff:output_type -> publira.admin.v1.GetEpisodeDropOffResponse
-	18, // 23: publira.admin.v1.AdminEngagementService.ExportStats:output_type -> publira.admin.v1.ExportStatsResponse
-	19, // [19:24] is the sub-list for method output_type
-	14, // [14:19] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	24, // 12: publira.admin.v1.GetRetentionCohortsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	17, // 13: publira.admin.v1.GetRetentionCohortsResponse.cohorts:type_name -> publira.admin.v1.RetentionCohort
+	24, // 14: publira.admin.v1.GetSignUpFunnelRequest.tenant:type_name -> publira.types.v1.TenantContext
+	24, // 15: publira.admin.v1.ExportStatsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 16: publira.admin.v1.ExportStatsRequest.kind:type_name -> publira.admin.v1.StatsExportKind
+	4,  // 17: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:input_type -> publira.admin.v1.ListEpisodeReadThroughRequest
+	8,  // 18: publira.admin.v1.AdminEngagementService.GetRevenueStats:input_type -> publira.admin.v1.GetRevenueStatsRequest
+	12, // 19: publira.admin.v1.AdminEngagementService.GetAudienceStats:input_type -> publira.admin.v1.GetAudienceStatsRequest
+	15, // 20: publira.admin.v1.AdminEngagementService.GetEpisodeDropOff:input_type -> publira.admin.v1.GetEpisodeDropOffRequest
+	18, // 21: publira.admin.v1.AdminEngagementService.GetRetentionCohorts:input_type -> publira.admin.v1.GetRetentionCohortsRequest
+	20, // 22: publira.admin.v1.AdminEngagementService.GetSignUpFunnel:input_type -> publira.admin.v1.GetSignUpFunnelRequest
+	22, // 23: publira.admin.v1.AdminEngagementService.ExportStats:input_type -> publira.admin.v1.ExportStatsRequest
+	5,  // 24: publira.admin.v1.AdminEngagementService.ListEpisodeReadThrough:output_type -> publira.admin.v1.ListEpisodeReadThroughResponse
+	9,  // 25: publira.admin.v1.AdminEngagementService.GetRevenueStats:output_type -> publira.admin.v1.GetRevenueStatsResponse
+	13, // 26: publira.admin.v1.AdminEngagementService.GetAudienceStats:output_type -> publira.admin.v1.GetAudienceStatsResponse
+	16, // 27: publira.admin.v1.AdminEngagementService.GetEpisodeDropOff:output_type -> publira.admin.v1.GetEpisodeDropOffResponse
+	19, // 28: publira.admin.v1.AdminEngagementService.GetRetentionCohorts:output_type -> publira.admin.v1.GetRetentionCohortsResponse
+	21, // 29: publira.admin.v1.AdminEngagementService.GetSignUpFunnel:output_type -> publira.admin.v1.GetSignUpFunnelResponse
+	23, // 30: publira.admin.v1.AdminEngagementService.ExportStats:output_type -> publira.admin.v1.ExportStatsResponse
+	24, // [24:31] is the sub-list for method output_type
+	17, // [17:24] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_engagement_proto_init() }
@@ -1968,7 +2434,7 @@ func file_publira_admin_v1_engagement_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_engagement_proto_rawDesc), len(file_publira_admin_v1_engagement_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   16,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
