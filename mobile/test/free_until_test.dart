@@ -19,6 +19,10 @@ void main() {
   final paidEpisodeId = '${series.id}-ep-${series.episodeCount}';
   final rowBadge = find.byKey(ValueKey('episode-free-until-$paidEpisodeId'));
 
+  /// The end the API reports for a window the free-after-publication rule
+  /// opened, decoded the way the catalog repository decodes it.
+  final ruleFreeUntil = DateTime.parse('9999-12-31T00:00:00Z').toLocal();
+
   late FakeCatalogRepository catalog;
   late FakeIncomingLinks incoming;
 
@@ -95,6 +99,21 @@ void main() {
     expect(find.text('¥500'), findsNothing);
   });
 
+  testWidgets('an episode row says only that the free-after rule opened it', (
+    tester,
+  ) async {
+    catalog.details[series.id] = windowed(ruleFreeUntil);
+    await pumpApp(tester, AppRoutes.seriesDetailPath(series.id));
+    await pumpUntilFound(tester, rowBadge);
+
+    expect(
+      find.descendant(of: rowBadge, matching: find.text('Free')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Free until '), findsNothing);
+    expect(find.text('¥500'), findsNothing);
+  });
+
   testWidgets('a window that closes while the screen is open prices the row', (
     tester,
   ) async {
@@ -126,15 +145,13 @@ void main() {
     expect(rowBadge, findsNothing);
   });
 
-  testWidgets('the age gate tells a guest the episode is free for now', (
-    tester,
-  ) async {
+  /// Opens the paid episode, age-restricted for a guest, with its free window
+  /// closing at [freeUntil].
+  Future<void> pumpAgeGate(WidgetTester tester, DateTime freeUntil) async {
     final key = episodeKey(series.id, paidEpisodeId);
     final body = fixtureEpisodes(access: EpisodeAccess.ageRestricted)[key]!;
     catalog.episodes[key] = EpisodeDetail(
-      episode: windowed(
-        DateTime.now().add(const Duration(days: 3)),
-      ).episodes.last,
+      episode: windowed(freeUntil).episodes.last,
       seriesId: body.seriesId,
       seriesTitle: body.seriesTitle,
       access: body.access,
@@ -149,7 +166,33 @@ void main() {
       tester,
       find.byKey(const ValueKey('episode-age-restricted')),
     );
+  }
 
-    expect(find.byKey(const ValueKey('episode-free-until')), findsOneWidget);
+  const gateBadge = ValueKey('episode-free-until');
+
+  testWidgets('the age gate tells a guest the episode is free for now', (
+    tester,
+  ) async {
+    await pumpAgeGate(tester, DateTime.now().add(const Duration(days: 3)));
+
+    expect(
+      find.descendant(
+        of: find.byKey(gateBadge),
+        matching: find.textContaining('Free until '),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the age gate says only that the free-after rule opened it', (
+    tester,
+  ) async {
+    await pumpAgeGate(tester, ruleFreeUntil);
+
+    expect(
+      find.descendant(of: find.byKey(gateBadge), matching: find.text('Free')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Free until '), findsNothing);
   });
 }
