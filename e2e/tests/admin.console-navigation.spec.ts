@@ -26,6 +26,7 @@ const sidebarEntries = [
   "Revenue",
   "Audience",
   "Episodes",
+  "Cohorts",
   "Royalties",
   "Purchases",
   "Subscription plans",
