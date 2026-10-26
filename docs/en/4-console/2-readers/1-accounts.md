@@ -2,7 +2,7 @@
 title: Reader accounts
 description: Find a reader's account, correct their date of birth, remove their icon, and suspend or delete the account.
 published: 2026-10-21
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.
@@ -27,7 +27,7 @@ Below it, three sections list what the reader has, newest first, twenty to a pag
 
 | Section | What it lists |
 | --- | --- |
-| **Purchases** | Everything they bought, with the episode, volume, or rest of a series it was for, the amount, what they paid through, and whether it still opens what it bought. The title opens what was bought, and **View** opens the purchase on **Purchases**, where it can be refunded |
+| **Purchases** | Everything they bought, with the episode, volume, rest of a series, or pack of coins it was for, the amount, what they paid through, and whether it still opens what it bought. The title opens what was bought, and **View** opens the purchase on **Purchases**, where it can be refunded |
 | **Access tickets** | The tickets the staff issued to them, with the episode and the ticket's status. **Revoke** and **Issue a ticket** work as on [Access tickets](./4-access-tickets.md), without leaving the page |
 | **Comments** | Everything they have written, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](./2-comments.md) |
 

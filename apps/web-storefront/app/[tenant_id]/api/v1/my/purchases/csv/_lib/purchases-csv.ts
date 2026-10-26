@@ -62,7 +62,8 @@ const episodeFields = ({ item }: PurchaseItem): [string, string] =>
 
 /**
  * What the purchase bought, as the `item` column names it. The rest of a
- * series is `remaining_episodes`, which is what the reader bought it as.
+ * series is `remaining_episodes`, which is what the reader bought it as, and a
+ * pack of coins is `coin_pack`.
  */
 const itemType = ({ item }: PurchaseItem): string =>
   item.kind === "series_bundle" ? "remaining_episodes" : item.kind;
@@ -81,7 +82,15 @@ const HEADER = [
   "status",
   "item",
   "volume_title",
+  "coins",
+  "bonus_coins",
 ] as const;
+
+/** The coins a pack granted, its bonus coins among them, and the bonus. */
+const coinFields = ({ item }: PurchaseItem): [string, string] =>
+  item.kind === "coin_pack"
+    ? [String(item.coins + item.bonusCoins), String(item.bonusCoins)]
+    : ["", ""];
 
 /**
  * The reader's purchase history as CSV, laid out the way the consoles' exports
@@ -89,8 +98,9 @@ const HEADER = [
  * CRLF line endings, and RFC 4180 quoting. A header row, then one row per
  * purchase in the order given. The times are RFC 3339 in UTC as the API
  * answers them, and empty where the purchase has none; `status` is `active`,
- * `expired`, `refunded`, or `canceled`, and `item` is `episode`, `volume`, or
- * `remaining_episodes`. The columns that came later are appended, so a sheet
+ * `expired`, `refunded`, or `canceled`, and `item` is `episode`, `volume`,
+ * `remaining_episodes`, or `coin_pack`, whose `coins` are what the pack
+ * granted, its `bonus_coins` included. The columns that came later are appended, so a sheet
  * that reads the earlier ones by position keeps reading them.
  */
 export const renderPurchasesCsv = (
@@ -113,6 +123,7 @@ export const renderPurchasesCsv = (
         purchaseStatus(purchase),
         itemType(purchase),
         purchase.item.kind === "volume" ? purchase.item.title : "",
+        ...coinFields(purchase),
       ])
     )
     .join("");

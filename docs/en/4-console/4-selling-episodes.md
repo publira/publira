@@ -46,6 +46,8 @@ Once bought, the episode:
 
 **Download as CSV** on **Purchases** saves every purchase listed there, across all its pages and refunded ones included, as one CSV file. In the tenant's app, **Export as CSV** on **Purchases** writes the same file and hands it to the device's share sheet, from which the reader saves or sends it.
 
+A pack of the tenant's coins the reader bought on the site is listed under **Purchase history**, named by the coins it granted in the tenant's word for them, such as `1,100 Points (including 100 bonus)`, with what they paid and whether it was refunded. It opens nothing and has no reading period: the coins expire on their own. The CSV writes it with `coin_pack` in its `item` column and the coins it granted, the bonus among them, in `coins` and `bonus_coins`.
+
 ### The rest of a series
 
 A reader can also buy, in one checkout, every paid episode of a series they do not own yet. Above the episode list, the series page offers **Buy remaining episodes** with how many episodes that is and what they cost together, and the series screen of the tenant's app does the same. The purchase opens each of those episodes as buying it alone would, for its own reading period.
@@ -199,6 +201,8 @@ A refund that arrives before the purchase it reverses is kept, and applied when 
 ### Refunding from the console
 
 **Payments** › **Purchases** lists the tenant's purchases, newest first, and narrows them by the reader's email address, the series, the episode, and the days they were made on, in the tenant's time zone. **View** opens a purchase beside the list with what the reader paid, where they paid it, and what has been refunded so far. Only a tenant admin sees the screen.
+
+A purchase of a pack of coins is listed there as the coins it granted, in the tenant's word for them in its default language, and with no series, so narrowing the list to a series or an episode leaves it out. It is refunded like any purchase. Its coins stay with the reader until the provider reports the refund in full, or a dispute of the payment: then what the pack has left is taken back, and what of it the reader had already spent is recorded as owed, and taken out of the next pack they buy.
 
 **Refund** asks the provider the reader paid through to give back what they paid, once you have written a reason; the reason is recorded in the audit log with the refund. The episode closes to the reader at once, and the purchase shows **Refund requested** until the provider reports the refund through the webhook, when it shows **Refunded**. A refund the provider refuses, or one that fails after the provider accepted it, opens the episode to the reader again.
 

@@ -20,14 +20,16 @@ import { getMessagesFor } from "./messages";
 const defaultPurchasePageSize = 20;
 
 /**
- * What one purchase bought: an episode, a volume of the series, or the
- * episodes of the series the reader did not hold yet when they bought the
- * rest of it.
+ * What one purchase bought: an episode, a volume of the series, the episodes
+ * of the series the reader did not hold yet when they bought the rest of it,
+ * or a pack of the tenant's coins, with the coins and bonus coins it granted
+ * and the tenant's word for them in the reader's locale.
  */
 export type PurchasedItem =
   | { kind: "episode"; orderIndex: number; publicId: string; title: string }
   | { kind: "series_bundle"; episodeCount: number }
-  | { kind: "volume"; publicId: string; title: string };
+  | { kind: "volume"; publicId: string; title: string }
+  | { bonusCoins: number; coinName: string; coins: number; kind: "coin_pack" };
 
 export interface PurchaseItem {
   /** ISO 4217 code of the currency the reader paid priceAtPurchase in. */
@@ -96,6 +98,8 @@ const emptyPurchasePage = {
  */
 type RawPurchase = Pick<
   MyPurchase,
+  | "coinName"
+  | "coinPack"
   | "currency"
   | "episode"
   | "expiresAt"
@@ -119,14 +123,27 @@ const toPurchaseKind = (
   kind === PurchaseKind.RENTAL ? "rental" : "purchase";
 
 /**
- * The API sets exactly one of the three. A purchase that names none reads as
- * an episode, which is what every purchase was before the other two existed.
+ * The API sets exactly one of the four. A purchase that names none reads as
+ * an episode, which is what every purchase was before the others existed.
  */
 const toPurchasedItem = ({
+  coinName,
+  coinPack,
   episode,
   seriesBundle,
   volume,
-}: Pick<RawPurchase, "episode" | "seriesBundle" | "volume">): PurchasedItem => {
+}: Pick<
+  RawPurchase,
+  "coinName" | "coinPack" | "episode" | "seriesBundle" | "volume"
+>): PurchasedItem => {
+  if (coinPack) {
+    return {
+      bonusCoins: coinPack.bonusCoins ?? 0,
+      coinName: coinName ?? "",
+      coins: coinPack.coins ?? 0,
+      kind: "coin_pack",
+    };
+  }
   if (volume) {
     return {
       kind: "volume",

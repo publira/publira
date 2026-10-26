@@ -98,7 +98,7 @@ describe("listMyPurchases", () => {
     ]);
   });
 
-  it("says what each purchase bought: an episode, a volume, or the rest of a series", async () => {
+  it("says what each purchase bought: an episode, a volume, the rest of a series, or a pack", async () => {
     mockListMyPurchases.mockResolvedValueOnce({
       nextToken: "",
       previousToken: "",
@@ -112,6 +112,11 @@ describe("listMyPurchases", () => {
           volume: { orderIndex: 1, publicId: "VOLUME01", title: "Volume 1" },
         },
         { id: "PURCHASE03", seriesBundle: { episodeCount: 4 } },
+        {
+          coinName: "Points",
+          coinPack: { bonusCoins: 100, coins: 1000, publicId: "PACK01" },
+          id: "PURCHASE04",
+        },
       ],
     });
 
@@ -126,6 +131,7 @@ describe("listMyPurchases", () => {
       },
       { kind: "volume", publicId: "VOLUME01", title: "Volume 1" },
       { episodeCount: 4, kind: "series_bundle" },
+      { bonusCoins: 100, coinName: "Points", coins: 1000, kind: "coin_pack" },
     ]);
   });
 

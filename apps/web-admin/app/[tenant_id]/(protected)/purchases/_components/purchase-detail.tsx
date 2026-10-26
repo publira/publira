@@ -11,12 +11,12 @@ import {
   PurchasePaidThrough,
   PurchaseStatusChip,
 } from "#components/purchase-status";
+import { PurchasedItemName } from "#components/purchased-item-name";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
 import { getPurchase } from "#lib/purchase";
-import { purchasedItemHref, purchasedItemLabel } from "#lib/purchased-item";
 
 import { RefundPurchaseButton } from "./refund-purchase-button";
 
@@ -166,12 +166,7 @@ export const PurchaseDetail = async ({
         </dt>
         <dd className={valueClassName}>
           <div className="grid gap-0.5">
-            <Link
-              className="font-medium underline-offset-4 hover:underline"
-              href={purchasedItemHref(purchase)}
-            >
-              {purchasedItemLabel(purchase, t)}
-            </Link>
+            <PurchasedItemName purchase={purchase} t={t} />
             <span className="text-muted-foreground">
               {purchase.seriesTitle || purchase.seriesPublicId}
             </span>
@@ -187,20 +182,26 @@ export const PurchaseDetail = async ({
           {formatInstant(purchase.purchasedAt, locale, timeZone)}
         </dd>
 
-        <dt className={labelClassName}>
-          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-            <Message message="admin.purchases.expires_at" />
-          </Suspense>
-        </dt>
-        <dd className={`${valueClassName} tabular-nums`}>
-          {purchase.expiresAt ? (
-            formatInstant(purchase.expiresAt, locale, timeZone)
-          ) : (
-            <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-              <Message message="admin.purchases.expires_never" />
-            </Suspense>
-          )}
-        </dd>
+        {/* A pack of coins opens nothing to read, so it has no reading period
+            to show; its coins expire on their own. */}
+        {purchase.item.kind === "coin_pack" ? null : (
+          <>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                <Message message="admin.purchases.expires_at" />
+              </Suspense>
+            </dt>
+            <dd className={`${valueClassName} tabular-nums`}>
+              {purchase.expiresAt ? (
+                formatInstant(purchase.expiresAt, locale, timeZone)
+              ) : (
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.purchases.expires_never" />
+                </Suspense>
+              )}
+            </dd>
+          </>
+        )}
 
         <dt className={labelClassName}>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
