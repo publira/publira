@@ -27,6 +27,12 @@ export interface EpisodeFreeWindowItem {
   /** RFC 3339. The window covers `startsAt` up to but not including `endsAt`. */
   startsAt: string;
   endsAt: string;
+  /**
+   * The series whose free-after-publication rule wrote the window, empty on
+   * one scheduled by hand. A rule's window runs to the far end and cannot be
+   * deleted: it goes when the rule stops covering the episode.
+   */
+  ruleSeriesId: string;
 }
 
 export type ListEpisodeFreeWindowsResult =
@@ -64,6 +70,7 @@ type RawEpisodeFreeWindow = Pick<
   | "episodePublicId"
   | "episodeTitle"
   | "id"
+  | "ruleSeriesId"
   | "startsAt"
 >;
 
@@ -75,6 +82,7 @@ const mapFreeWindow = (
   episodePublicId: window.episodePublicId,
   episodeTitle: window.episodeTitle,
   id: window.id,
+  ruleSeriesId: window.ruleSeriesId,
   startsAt: window.startsAt,
 });
 

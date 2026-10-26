@@ -337,6 +337,19 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      test("Free after publication, below Free if you wait", async ({
+        page,
+      }) => {
+        await openScreen(page, locale, `/series/${SERIES}`);
+
+        await expectDocsScreenshot(page, {
+          element: docsSection(page, t("admin.series.free_after.title")),
+          locale,
+          page: "console/catalog/series",
+          subject: "free-after-publication",
+        });
+      });
+
       test.describe("volumes", () => {
         const volumesPath = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/volumes`;
 

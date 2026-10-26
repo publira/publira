@@ -2257,9 +2257,11 @@
           "description": "在免費閱讀期間內，任何人都可以免費閱讀本話。本話的價格維持不變，期間結束後重新生效。",
           "empty": "本話沒有已排定的免費閱讀期間。",
           "period": "{$starts_at}至{$ends_at}",
+          "period_by_series_rule": "{$starts_at}起",
           "status_open": "免費中",
           "status_scheduled": "已排定",
           "status_ended": "已結束",
+          "by_series_rule": "依系列規則",
           "starts_at": "開始時間",
           "ends_at": "結束時間",
           "time_zone_description": "時間以{$time_zone}為準。",
@@ -2407,6 +2409,26 @@
           "recharge_hours_invalid": "獲得下一張免費券的時間請輸入1～{$max}之間的整數。",
           "access_hours_invalid": "劇集可閱讀的時間請輸入1～{$max}之間的整數。",
           "excluded_latest_count_invalid": "免費券不可閱讀的最新劇集數請輸入0或以上的整數。"
+        }
+      },
+      "free_after": {
+        "title": "發布後免費",
+        "description": "本系列的付費劇集在發布滿設定天數後，對所有人免費開放。",
+        "enabled": "劇集發布後轉為免費",
+        "enabled_description": "關閉後，下方的數值仍會保留，下次開啟時繼續使用。",
+        "days_after_publication": "發布後天數",
+        "days_after_publication_description": "劇集發布後到轉為免費為止的天數（1～{$max}天）。",
+        "excluded_latest_count": "保持付費的最新劇集數",
+        "excluded_latest_count_description": "依系列順序，從已發布的最新一集往前數。輸入0則所有付費劇集到期後都會轉為免費。",
+        "help": "系統會在每集到期當天將其轉為免費。它新增的免費閱讀期間顯示在該劇集的「免費閱讀期間」中，且無法在那裡刪除。關閉後，這些劇集將重新收費。",
+        "submit": "儲存發布後免費設定",
+        "updated": "已儲存發布後免費設定。",
+        "load_error": "無法顯示發布後免費設定",
+        "load_failed": "無法載入發布後免費設定。請稍後再試。",
+        "save_failed": "無法儲存發布後免費設定。請稍後再試。",
+        "validation": {
+          "days_after_publication_invalid": "發布後天數請輸入1～{$max}之間的整數。",
+          "excluded_latest_count_invalid": "保持付費的最新劇集數請輸入0或以上的整數。"
         }
       },
       "translations": {

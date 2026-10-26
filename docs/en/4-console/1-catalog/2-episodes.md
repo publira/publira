@@ -2,7 +2,7 @@
 title: Episodes
 description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, and publish it now or on time.
 published: 2026-10-07
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -158,7 +158,7 @@ A free reading period opens a paid episode to everyone, signed in or not, betwee
 
 A period cannot be edited. **Delete** it and add another; deleting a period that has started prices the episode again at once.
 
-A period that ends on 31 December 9999 was added by the series' free-after-publication rule, which opens each paid episode a set number of days after it was published. It cannot be deleted here: it goes when the rule is turned off or no longer covers the episode, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#other-scheduled-jobs) describes.
+A period marked **By the series rule**, with no end, was added by the series' [Free after publication](./1-series.md#free-after-publication) rule, which opens each paid episode a set number of days after it was published. It has no **Delete**: it goes when the rule is turned off or no longer covers the episode, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#other-scheduled-jobs) describes.
 
 To give many episodes the same period, choose **Free reading period** on the episode list. Under **Episodes**, choose **Selected episodes**, the episodes checked on the list, **First episodes**, the first so many in the series' order, or **All episodes**. Then enter **Starts** and **Ends** and choose **Add**. Nothing is added if the period overlaps one already on any of the episodes.
 

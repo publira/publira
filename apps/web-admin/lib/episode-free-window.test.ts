@@ -55,7 +55,12 @@ vi.mock("./api", () => ({
   }),
 }));
 
-const freeWindow = (id: string, startsAt: string, endsAt: string) => ({
+const freeWindow = (
+  id: string,
+  startsAt: string,
+  endsAt: string,
+  ruleSeriesId = ""
+) => ({
   createdAt: "2026-10-01T00:00:00Z",
   endsAt,
   episodeId: "EPISODE-ID",
@@ -63,6 +68,7 @@ const freeWindow = (id: string, startsAt: string, endsAt: string) => ({
   episodeTitle: "Chapter One",
   id,
   publicId: `${id}-PUBLIC`,
+  ruleSeriesId,
   seriesId: "SERIES-ID",
   seriesPublicId: "SERIES001",
   startsAt,
@@ -79,7 +85,12 @@ describe("listEpisodeFreeWindows", () => {
     mockListEpisodeFreeWindows
       .mockResolvedValueOnce({
         freeWindows: [
-          freeWindow("WINDOW2", "2026-10-10T00:00:00Z", "2026-10-11T00:00:00Z"),
+          freeWindow(
+            "WINDOW2",
+            "2026-10-10T00:00:00Z",
+            "9999-12-31T00:00:00Z",
+            "SERIES-ID"
+          ),
         ],
         nextToken: "page-2",
       })
@@ -111,11 +122,12 @@ describe("listEpisodeFreeWindows", () => {
     expect(result).toEqual({
       freeWindows: [
         {
-          endsAt: "2026-10-11T00:00:00Z",
+          endsAt: "9999-12-31T00:00:00Z",
           episodeId: "EPISODE-ID",
           episodePublicId: "EPISODE001",
           episodeTitle: "Chapter One",
           id: "WINDOW2",
+          ruleSeriesId: "SERIES-ID",
           startsAt: "2026-10-10T00:00:00Z",
         },
         {
@@ -124,6 +136,7 @@ describe("listEpisodeFreeWindows", () => {
           episodePublicId: "EPISODE001",
           episodeTitle: "Chapter One",
           id: "WINDOW1",
+          ruleSeriesId: "",
           startsAt: "2026-10-01T00:00:00Z",
         },
       ],

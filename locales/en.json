@@ -2257,9 +2257,11 @@
           "description": "During a free reading period everyone can read this episode free of charge. The episode keeps its price, which applies again once the period ends.",
           "empty": "No free reading periods are scheduled for this episode.",
           "period": "{$starts_at} – {$ends_at}",
+          "period_by_series_rule": "{$starts_at} –",
           "status_open": "Free now",
           "status_scheduled": "Scheduled",
           "status_ended": "Ended",
+          "by_series_rule": "By the series rule",
           "starts_at": "Starts",
           "ends_at": "Ends",
           "time_zone_description": "Times are in {$time_zone}.",
@@ -2407,6 +2409,26 @@
           "recharge_hours_invalid": "Enter the hours until the next ticket as a whole number from 1 to {$max}.",
           "access_hours_invalid": "Enter the hours an episode stays open as a whole number from 1 to {$max}.",
           "excluded_latest_count_invalid": "Enter the number of newest episodes as a whole number, 0 or more."
+        }
+      },
+      "free_after": {
+        "title": "Free after publication",
+        "description": "Paid episodes of this series become free to everyone a set number of days after they are published.",
+        "enabled": "Make episodes free after publication",
+        "enabled_description": "Turning this off keeps the numbers below for the next time it is turned on.",
+        "days_after_publication": "Days after publication",
+        "days_after_publication_description": "How many days after an episode is published it becomes free, from 1 to {$max}.",
+        "excluded_latest_count": "Newest episodes that stay priced",
+        "excluded_latest_count_description": "Counted back from the newest published episode in the series' order. Enter 0 to make every paid episode free once its day comes.",
+        "help": "The worker opens each episode on its day. The free reading periods it adds appear under the episode's Free reading periods, and cannot be deleted there. Turning the rule off prices those episodes again.",
+        "submit": "Save free-after settings",
+        "updated": "Free-after settings saved.",
+        "load_error": "Could not show the free-after settings",
+        "load_failed": "Could not load the free-after settings. Please try again later.",
+        "save_failed": "Could not save the free-after settings. Please try again later.",
+        "validation": {
+          "days_after_publication_invalid": "Enter the days after publication as a whole number from 1 to {$max}.",
+          "excluded_latest_count_invalid": "Enter the number of newest episodes that stay priced as a whole number, 0 or more."
         }
       },
       "translations": {

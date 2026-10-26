@@ -33,6 +33,7 @@ import { listAllLabels } from "#lib/label";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getSeries } from "#lib/series";
+import { getSeriesFreeAfterSettings } from "#lib/series-free-after";
 import { getSeriesWaitFreeSettings } from "#lib/series-wait-free";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
@@ -53,9 +54,11 @@ import {
   deleteSeriesTranslationAction,
   updateSeriesAction,
   updateSeriesEyeCatchAction,
+  updateSeriesFreeAfterSettingsAction,
   updateSeriesWaitFreeSettingsAction,
   uploadSeriesEyeCatchAspectImageAction,
 } from "../_lib/actions";
+import { SeriesFreeAfterForm } from "./_components/series-free-after-form";
 import { SeriesTranslationDeleteButton } from "./_components/series-translation-delete-button";
 import { SeriesWaitFreeForm } from "./_components/series-wait-free-form";
 
@@ -213,6 +216,46 @@ const SeriesWaitFreeSection = async ({
       action={updateSeriesWaitFreeSettingsAction}
       initialSettings={settings}
       key={`${seriesPublicId}:${String(settings.enabled)}:${settings.rechargeHours}:${settings.accessHours}:${settings.excludedLatestCount}`}
+      seriesId={seriesId}
+      seriesPublicId={seriesPublicId}
+      tenantId={tenantId}
+    />
+  );
+};
+
+const SeriesFreeAfterSection = async ({
+  seriesId,
+  seriesPublicId,
+  tenantId,
+}: {
+  seriesId: string;
+  seriesPublicId: string;
+  tenantId: string;
+}) => {
+  const result = await getSeriesFreeAfterSettings({ seriesId });
+  // A failed read has no rule to open the form on, and a save from defaults
+  // would write them over the one the series holds.
+  if (!result.ok) {
+    return (
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="admin.series.free_after.load_error" />
+            </Suspense>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
+    );
+  }
+
+  const { settings } = result;
+  return (
+    <SeriesFreeAfterForm
+      action={updateSeriesFreeAfterSettingsAction}
+      initialSettings={settings}
+      key={`${seriesPublicId}:${String(settings.enabled)}:${settings.daysAfterPublication}:${settings.excludedLatestCount}`}
       seriesId={seriesId}
       seriesPublicId={seriesPublicId}
       tenantId={tenantId}
@@ -419,6 +462,21 @@ const EditSeriesFormData = async ({
           />
         </Suspense>
       </SectionErrorBoundary>
+      <SectionErrorBoundary
+        title={
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="admin.series.free_after.load_error" />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<Skeleton className="h-64" />}>
+          <SeriesFreeAfterSection
+            seriesId={result.series.id}
+            seriesPublicId={result.series.publicId}
+            tenantId={tenantId}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
     </div>
   );
 };
@@ -456,6 +514,10 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
       <FlashToast
         keyName="wait_free_updated"
         message="admin.series.wait_free.updated"
+      />
+      <FlashToast
+        keyName="free_after_updated"
+        message="admin.series.free_after.updated"
       />
       <div className="grid gap-6">
         <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>

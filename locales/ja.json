@@ -2257,9 +2257,11 @@
           "description": "無料公開期間中は、誰でもこの話を無料で読めます。話の価格はそのまま残り、期間が終わると再び適用されます。",
           "empty": "この話に予定されている無料公開期間はありません。",
           "period": "{$starts_at} 〜 {$ends_at}",
+          "period_by_series_rule": "{$starts_at} 〜",
           "status_open": "無料公開中",
           "status_scheduled": "予定",
           "status_ended": "終了",
+          "by_series_rule": "シリーズのルールによる",
           "starts_at": "開始日時",
           "ends_at": "終了日時",
           "time_zone_description": "日時は{$time_zone}で入力します。",
@@ -2407,6 +2409,26 @@
           "recharge_hours_invalid": "次のチケットまでの時間は1〜{$max}の整数で入力してください。",
           "access_hours_invalid": "エピソードを読める時間は1〜{$max}の整数で入力してください。",
           "excluded_latest_count_invalid": "チケットで読めない最新話の数は0以上の整数で入力してください。"
+        }
+      },
+      "free_after": {
+        "title": "公開後に無料",
+        "description": "このシリーズの有料エピソードを、公開から決まった日数が過ぎたら全員に無料で公開します。",
+        "enabled": "公開後にエピソードを無料にする",
+        "enabled_description": "オフにしても下の数値は保存され、次にオンにしたときにそのまま使われます。",
+        "days_after_publication": "公開からの日数",
+        "days_after_publication_description": "エピソードの公開から無料になるまでの日数です（1〜{$max}日）。",
+        "excluded_latest_count": "有料のまま残す最新話の数",
+        "excluded_latest_count_description": "シリーズの並び順で、公開済みの最新話から数えます。0にすると、すべての有料エピソードがその日になったら無料になります。",
+        "help": "ワーカーが各エピソードをその日に無料にします。追加された無料公開期間はエピソードの「無料公開期間」に表示され、そこでは削除できません。オフにすると、それらのエピソードは再び有料になります。",
+        "submit": "公開後に無料の設定を保存",
+        "updated": "公開後に無料の設定を保存しました。",
+        "load_error": "公開後に無料の設定を表示できませんでした",
+        "load_failed": "公開後に無料の設定を読み込めませんでした。しばらくしてからもう一度お試しください。",
+        "save_failed": "公開後に無料の設定を保存できませんでした。しばらくしてからもう一度お試しください。",
+        "validation": {
+          "days_after_publication_invalid": "公開からの日数は1〜{$max}の整数で入力してください。",
+          "excluded_latest_count_invalid": "有料のまま残す最新話の数は0以上の整数で入力してください。"
         }
       },
       "translations": {

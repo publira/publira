@@ -53,6 +53,7 @@ export type {
   AdminEpisodeCampaignPrice,
   AdminEpisodeFreeWindow,
   AdminVolume,
+  SeriesFreeAfterSettings,
   SeriesWaitFreeSettings,
 } from "../gen/publira/admin/v1/series_pb.js";
 export type { AdminSubscriptionPlan } from "../gen/publira/admin/v1/subscription_plan_pb.js";

@@ -9,6 +9,7 @@ const {
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockUpdateSeries,
+  mockUpdateSeriesFreeAfterSettings,
   mockUpdateSeriesWaitFreeSettings,
   mockUpdateTag,
   mockVerifyAdminSession,
@@ -21,6 +22,7 @@ const {
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdateSeries: vi.fn(),
+  mockUpdateSeriesFreeAfterSettings: vi.fn(),
   mockUpdateSeriesWaitFreeSettings: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockVerifyAdminSession: vi.fn(),
@@ -75,6 +77,17 @@ vi.mock("#lib/series", () => ({
     `series-${tenantId}-${publicId}`,
   seriesListCacheTag: (tenantId: string) => `series-list-${tenantId}`,
   updateSeries: mockUpdateSeries,
+}));
+
+vi.mock("#lib/episode-free-window", () => ({
+  episodeFreeWindowsCacheTag: (tenantId: string) =>
+    `episode-free-windows-${tenantId}`,
+}));
+
+vi.mock("#lib/series-free-after", () => ({
+  seriesFreeAfterSettingsCacheTag: (tenantId: string, seriesId: string) =>
+    `series-free-after-${tenantId}-${seriesId}`,
+  updateSeriesFreeAfterSettings: mockUpdateSeriesFreeAfterSettings,
 }));
 
 vi.mock("#lib/series-wait-free", () => ({
@@ -1179,6 +1192,158 @@ describe("updateSeriesWaitFreeSettingsAction", () => {
 
     expect(result).toEqual({
       message: "Could not save the free-if-you-wait settings.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateSeriesFreeAfterSettingsAction", () => {
+  const SERIES_ID = "018f0e6a-2000-7000-8000-000000000001";
+
+  const freeAfterFormData = (fields: Record<string, string>) => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", SERIES_ID);
+    formData.set("series_public_id", "SERIES001");
+    formData.set("days_after_publication", "30");
+    formData.set("excluded_latest_count", "2");
+    for (const [name, value] of Object.entries(fields)) {
+      formData.set(name, value);
+    }
+    return formData;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("saves the rule and returns to the series with a notice", async () => {
+    mockUpdateSeriesFreeAfterSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        daysAfterPublication: 30,
+        enabled: true,
+        excludedLatestCount: 2,
+      },
+    });
+
+    const { updateSeriesFreeAfterSettingsAction } = await import("./actions");
+    await updateSeriesFreeAfterSettingsAction(
+      null,
+      freeAfterFormData({ enabled: "on" })
+    );
+
+    expect(mockUpdateSeriesFreeAfterSettings).toHaveBeenCalledWith(
+      {
+        daysAfterPublication: 30,
+        enabled: true,
+        excludedLatestCount: 2,
+        seriesId: SERIES_ID,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `series-free-after-TENANT001-${SERIES_ID}`
+    );
+    // The save removes the periods the rule no longer covers.
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-free-windows-TENANT001"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001?free_after_updated=1"
+    );
+  });
+
+  // An unchecked switch posts nothing, which is the rule turned off rather
+  // than a field left out.
+  it("reads a missing switch as the rule turned off", async () => {
+    mockUpdateSeriesFreeAfterSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        daysAfterPublication: 30,
+        enabled: false,
+        excludedLatestCount: 2,
+      },
+    });
+
+    const { updateSeriesFreeAfterSettingsAction } = await import("./actions");
+    await updateSeriesFreeAfterSettingsAction(null, freeAfterFormData({}));
+
+    expect(mockUpdateSeriesFreeAfterSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false }),
+      "en"
+    );
+  });
+
+  it.each([
+    [
+      "days_after_publication",
+      "0",
+      "daysAfterPublication",
+      "Enter the days after publication as a whole number from 1 to 3650.",
+    ],
+    [
+      "days_after_publication",
+      "3651",
+      "daysAfterPublication",
+      "Enter the days after publication as a whole number from 1 to 3650.",
+    ],
+    [
+      "days_after_publication",
+      "",
+      "daysAfterPublication",
+      "Enter the days after publication as a whole number from 1 to 3650.",
+    ],
+    [
+      "excluded_latest_count",
+      "-1",
+      "excludedLatestCount",
+      "Enter the number of newest episodes that stay priced as a whole number, 0 or more.",
+    ],
+    [
+      "excluded_latest_count",
+      "1.5",
+      "excludedLatestCount",
+      "Enter the number of newest episodes that stay priced as a whole number, 0 or more.",
+    ],
+  ])(
+    "refuses %s=%j next to the field without calling the API",
+    async (name, value, field, message) => {
+      const { updateSeriesFreeAfterSettingsAction } = await import("./actions");
+      const result = await updateSeriesFreeAfterSettingsAction(
+        null,
+        freeAfterFormData({ [name]: value })
+      );
+
+      expect(result).toEqual({
+        fieldErrors: { [field]: message },
+        message: "Please check the information you entered.",
+        ok: false,
+      });
+      expect(mockUpdateSeriesFreeAfterSettings).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    }
+  );
+
+  it("keeps the form open with the API's wording when the save fails", async () => {
+    mockUpdateSeriesFreeAfterSettings.mockResolvedValueOnce({
+      message: "Could not save the free-after settings.",
+      ok: false,
+    });
+
+    const { updateSeriesFreeAfterSettingsAction } = await import("./actions");
+    const result = await updateSeriesFreeAfterSettingsAction(
+      null,
+      freeAfterFormData({ enabled: "on" })
+    );
+
+    expect(result).toEqual({
+      message: "Could not save the free-after settings.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

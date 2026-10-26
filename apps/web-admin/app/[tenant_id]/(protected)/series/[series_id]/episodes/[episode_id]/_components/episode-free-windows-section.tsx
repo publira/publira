@@ -68,9 +68,42 @@ const FreeWindowStatus = ({ status }: { status: ScheduledPeriodStatus }) => {
   }
 };
 
+const FreeWindowPeriod = ({
+  locale,
+  timeZone,
+  window,
+}: {
+  locale: Locale;
+  timeZone: string;
+  window: EpisodeFreeWindowItem;
+}) => {
+  const startsAt = formatDateTime(window.startsAt, { locale, timeZone });
+  // A rule's window ends at the far end, which is no date an editor reads:
+  // it lasts until the rule stops covering the episode.
+  if (window.ruleSeriesId) {
+    return (
+      <Message
+        message="admin.series.episodes.free_windows.period_by_series_rule"
+        values={{ starts_at: startsAt }}
+      />
+    );
+  }
+  return (
+    <Message
+      message="admin.series.episodes.free_windows.period"
+      values={{
+        ends_at: formatDateTime(window.endsAt, { locale, timeZone }),
+        starts_at: startsAt,
+      }}
+    />
+  );
+};
+
 /**
- * The periods during which this episode reads as free, each removable, and a
- * form that schedules another. The list keeps the API's order: the window
+ * The periods during which this episode reads as free, and a form that
+ * schedules another. A period scheduled by hand is removable; one the series'
+ * free-after-publication rule wrote is marked as the rule's instead, since the
+ * API refuses to delete it. The list keeps the API's order: the window
  * furthest ahead first, then the open one, then the ones already over.
  */
 export const EpisodeFreeWindowsSection = ({
@@ -117,39 +150,39 @@ export const EpisodeFreeWindowsSection = ({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm tabular-nums">
                 <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                  <Message
-                    message="admin.series.episodes.free_windows.period"
-                    values={{
-                      ends_at: formatDateTime(window.endsAt, {
-                        locale,
-                        timeZone,
-                      }),
-                      starts_at: formatDateTime(window.startsAt, {
-                        locale,
-                        timeZone,
-                      }),
-                    }}
+                  <FreeWindowPeriod
+                    locale={locale}
+                    timeZone={timeZone}
+                    window={window}
                   />
                 </Suspense>
               </span>
               <FreeWindowStatus status={scheduledPeriodStatus(window, now)} />
             </div>
-            <ScheduledPeriodDeleteButton
-              action={deleteAction}
-              fieldName="free_window_id"
-              messages={{
-                confirmAction:
-                  "admin.series.episodes.free_windows.delete_confirm_action",
-                confirmDescription:
-                  "admin.series.episodes.free_windows.delete_confirm_description",
-                confirmTitle:
-                  "admin.series.episodes.free_windows.delete_confirm_title",
-                delete: "admin.series.episodes.free_windows.delete",
-                deleting: "admin.series.episodes.free_windows.deleting",
-              }}
-              periodId={window.id}
-              tenantId={tenantId}
-            />
+            {window.ruleSeriesId ? (
+              <span className="text-sm text-muted-foreground">
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="admin.series.episodes.free_windows.by_series_rule" />
+                </Suspense>
+              </span>
+            ) : (
+              <ScheduledPeriodDeleteButton
+                action={deleteAction}
+                fieldName="free_window_id"
+                messages={{
+                  confirmAction:
+                    "admin.series.episodes.free_windows.delete_confirm_action",
+                  confirmDescription:
+                    "admin.series.episodes.free_windows.delete_confirm_description",
+                  confirmTitle:
+                    "admin.series.episodes.free_windows.delete_confirm_title",
+                  delete: "admin.series.episodes.free_windows.delete",
+                  deleting: "admin.series.episodes.free_windows.deleting",
+                }}
+                periodId={window.id}
+                tenantId={tenantId}
+              />
+            )}
           </li>
         ))}
       </ul>

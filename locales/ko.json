@@ -2257,9 +2257,11 @@
           "description": "무료 공개 기간에는 누구나 이 에피소드를 무료로 읽을 수 있습니다. 에피소드의 가격은 그대로 유지되며 기간이 끝나면 다시 적용됩니다.",
           "empty": "이 에피소드에 예정된 무료 공개 기간이 없습니다.",
           "period": "{$starts_at} ~ {$ends_at}",
+          "period_by_series_rule": "{$starts_at} ~",
           "status_open": "무료 공개 중",
           "status_scheduled": "예정",
           "status_ended": "종료",
+          "by_series_rule": "시리즈 규칙에 따름",
           "starts_at": "시작 일시",
           "ends_at": "종료 일시",
           "time_zone_description": "일시는 {$time_zone} 기준입니다.",
@@ -2407,6 +2409,26 @@
           "recharge_hours_invalid": "다음 이용권까지의 시간은 1~{$max} 사이의 정수로 입력해 주세요.",
           "access_hours_invalid": "에피소드를 읽을 수 있는 시간은 1~{$max} 사이의 정수로 입력해 주세요.",
           "excluded_latest_count_invalid": "이용권으로 읽을 수 없는 최신화 수는 0 이상의 정수로 입력해 주세요."
+        }
+      },
+      "free_after": {
+        "title": "공개 후 무료",
+        "description": "이 시리즈의 유료 에피소드를 공개 후 정해진 일수가 지나면 모두에게 무료로 공개합니다.",
+        "enabled": "공개 후 에피소드를 무료로 전환",
+        "enabled_description": "꺼도 아래 값은 저장되어 다음에 켤 때 그대로 사용됩니다.",
+        "days_after_publication": "공개 후 일수",
+        "days_after_publication_description": "에피소드가 공개된 뒤 무료가 될 때까지의 일수입니다(1~{$max}일).",
+        "excluded_latest_count": "유료로 남길 최신화 수",
+        "excluded_latest_count_description": "시리즈 순서에서 공개된 최신화부터 셉니다. 0을 입력하면 모든 유료 에피소드가 그날이 되면 무료가 됩니다.",
+        "help": "워커가 각 에피소드를 그날 무료로 전환합니다. 추가된 무료 공개 기간은 에피소드의 무료 공개 기간에 표시되며, 그곳에서는 삭제할 수 없습니다. 끄면 해당 에피소드는 다시 유료가 됩니다.",
+        "submit": "공개 후 무료 설정 저장",
+        "updated": "공개 후 무료 설정을 저장했습니다.",
+        "load_error": "공개 후 무료 설정을 표시할 수 없습니다",
+        "load_failed": "공개 후 무료 설정을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "공개 후 무료 설정을 저장할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "days_after_publication_invalid": "공개 후 일수는 1~{$max} 사이의 정수로 입력해 주세요.",
+          "excluded_latest_count_invalid": "유료로 남길 최신화 수는 0 이상의 정수로 입력해 주세요."
         }
       },
       "translations": {
