@@ -47,25 +47,3 @@ ALTER TABLE reader_daily_activity ENABLE ROW LEVEL SECURITY;
 CREATE POLICY reader_daily_activity_tenant_isolation ON reader_daily_activity
     USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid))
     WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
-
--- The days already rebuilt before this table existed are filed here from the
--- content events the purge has left, the way aggregate-content-stats files a
--- day, since the worker does not go back over a day it has finished. A day that
--- began before the tenant's purge reached is left out, as the rebuild leaves it
--- out: some of its events are gone. A day the worker has yet to rebuild is
--- filed here too, and replaced when it is rebuilt.
-INSERT INTO reader_daily_activity (tenant_id, stat_date, user_id, series_id)
-SELECT DISTINCT
-    ce.tenant_id,
-    (ce.occurred_at AT TIME ZONE btrim(t.timezone))::date,
-    ce.user_id,
-    ce.series_id
-FROM content_events ce
-JOIN tenants t ON t.id = ce.tenant_id
-LEFT JOIN content_event_purges cep ON cep.tenant_id = ce.tenant_id
-WHERE ce.event_type IN ('episode_view', 'episode_complete', 'purchase')
-    AND ce.user_id IS NOT NULL
-    AND (
-        cep.purged_before IS NULL
-        OR ((ce.occurred_at AT TIME ZONE btrim(t.timezone))::date::timestamp AT TIME ZONE btrim(t.timezone)) >= cep.purged_before
-    );

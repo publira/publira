@@ -12,10 +12,11 @@ import (
 )
 
 // The migration versions this test steps between: the last one before the
-// readers' active days were filed, and the one that files them.
+// readers' active days were filed, and the one that files the days already
+// rebuilt.
 const (
-	beforeReaderDailyActivityVersion = 20261025162643
-	readerDailyActivityVersion       = 20261026003554
+	beforeReaderDailyActivityVersion = 20261025222716
+	readerDailyActivityVersion       = 20261026013945
 )
 
 // The days rebuilt before reader_daily_activity existed are filed from the
