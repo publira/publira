@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:publira/coins/coin_failure.dart';
 import 'package:publira/coins/coin_repository.dart';
 import 'package:publira/models/my_purchase.dart';
@@ -55,6 +57,9 @@ class FakeCoinRepository implements CoinRepository {
 
   /// Thrown by [transactions] for every page but the first.
   CoinFailure? moreFailure;
+
+  /// Held open by a test that needs a page after the first in flight.
+  Completer<void>? moreGate;
 
   /// Called for a payment [payEpisode] made, which is when the API starts
   /// answering the episode as the reader's.
@@ -121,6 +126,9 @@ class FakeCoinRepository implements CoinRepository {
       throw failure;
     }
     final start = token.isEmpty ? 0 : int.parse(token);
+    if (start > 0) {
+      await moreGate?.future;
+    }
     if (start > 0 && moreFailure != null) {
       throw moreFailure!;
     }

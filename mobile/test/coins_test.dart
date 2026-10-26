@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/app.dart';
@@ -398,6 +400,47 @@ void main() {
 
       await tester.scrollUntilVisible(last, 200);
       expect(last, findsOne);
+    });
+
+    testWidgets('reads on after a refresh that overtook a page in flight', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      coins
+        ..pageSize = 2
+        ..moreGate = gate
+        ..history = [
+          for (var i = 0; i < 5; i++)
+            CoinTransaction(
+              id: 'grant-$i',
+              kind: CoinTransactionKind.grant,
+              coins: 10,
+              createdAt: DateTime(2026, 10, 20 - i),
+            ),
+        ];
+      await pumpApp(tester, initialLocation: AppRoutes.coinsPath);
+      final list = find.byKey(const ValueKey('coins-list'));
+      await pumpUntilFound(tester, list);
+      // The page under the first is asked for and held.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('coins-transaction-grant-1')),
+        200,
+      );
+      await tester.pump();
+
+      await tester.fling(list, const Offset(0, 1000), 1000);
+      // The indicator's spinner never settles, so the refresh is pumped
+      // through by time.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      await pumpUntilFound(tester, list);
+      gate.complete();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('coins-transaction-grant-4')),
+        200,
+      );
     });
 
     testWidgets('is not found on the web checkout route', (tester) async {

@@ -47,7 +47,11 @@ class _CoinsScreenState extends State<CoinsScreen> {
   var _nextToken = '';
   var _historyFailed = false;
   var _moreFailed = false;
-  var _readingMore = false;
+
+  /// The load ([_reads]) the page under the history is being read for, or
+  /// `null` while none is. A page still on its way for an earlier load does
+  /// not hold back the history a refresh has just read.
+  int? _readingMoreFor;
 
   /// Counts the reads this screen has started, so an answer meant for the
   /// reader or the locale before this one cannot land on it.
@@ -155,11 +159,14 @@ class _CoinsScreenState extends State<CoinsScreen> {
   /// way, the history ended, or the last attempt failed and waits on a retry.
   void _readMore() {
     final coins = CoinScope.maybeOf(context);
-    if (coins == null || _readingMore || _nextToken.isEmpty || _moreFailed) {
+    if (coins == null ||
+        _readingMoreFor == _reads ||
+        _nextToken.isEmpty ||
+        _moreFailed) {
       return;
     }
-    _readingMore = true;
     final read = _reads;
+    _readingMoreFor = read;
     unawaited(() async {
       CoinTransactionPage? page;
       try {
@@ -167,7 +174,9 @@ class _CoinsScreenState extends State<CoinsScreen> {
       } on CoinFailure {
         page = null;
       }
-      _readingMore = false;
+      if (_readingMoreFor == read) {
+        _readingMoreFor = null;
+      }
       if (!mounted || read != _reads) {
         return;
       }
@@ -286,7 +295,12 @@ class _CoinsScreenState extends State<CoinsScreen> {
                   ),
                 )
               else if (_nextToken.isNotEmpty)
-                _MoreHistory(key: ValueKey(_nextToken), onShown: _readMore),
+                // Keyed by the load as well as the page, so every load mounts
+                // a footer of its own, which asks for its own next page.
+                _MoreHistory(
+                  key: ValueKey((_reads, _nextToken)),
+                  onShown: _readMore,
+                ),
             ],
           ],
         ),
