@@ -9,6 +9,7 @@ import (
 
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	"github.com/publira/publira/server/internal/storeproduct"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -100,8 +101,8 @@ func TestDBListTenantStoreProductsNamesTheProductOfEveryPack(t *testing.T) {
 		pack      testutil.CoinPack
 		price     int32
 	}{
-		{productID: "coins_PACKSMALL001", pack: small, price: 100},
-		{productID: "coins_PACKLARGE001", pack: large, price: 1000},
+		{productID: storeproduct.CoinPackProductID(small.ID), pack: small, price: 100},
+		{productID: storeproduct.CoinPackProductID(large.ID), pack: large, price: 1000},
 	} {
 		product := got[i+1]
 		if product.GetProductId() != want.productID || product.GetPrice() != want.price || product.GetEpisodeCount() != 0 || product.GetCoinPack().GetId() != want.pack.ID.String() {

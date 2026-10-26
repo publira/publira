@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect/v2"
@@ -60,8 +61,8 @@ func TestDBBuyingACoinPackThroughTheAppStoreGrantsItsCoins(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartStorePurchase: %v", err)
 	}
-	if intent.GetProductId() != "coins_STOREPACK001" {
-		t.Fatalf("product_id = %q, want coins_ followed by the pack's public ID", intent.GetProductId())
+	if want := "coins_" + strings.ReplaceAll(env.pack.ID.String(), "-", ""); intent.GetProductId() != want {
+		t.Fatalf("product_id = %q, want %q, coins_ followed by the pack's UUID in hexadecimal", intent.GetProductId(), want)
 	}
 	if again, err := env.startPack(publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE); err != nil || again.GetIntentId() != intent.GetIntentId() {
 		t.Fatalf("a second start = (%v, %v), want the open intent %s", again, err, intent.GetIntentId())

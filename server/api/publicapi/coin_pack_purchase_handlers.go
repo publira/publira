@@ -236,7 +236,7 @@ func (s *apiServer) startStoreCoinPackPurchase(ctx context.Context, tenantID, us
 		UserID:         userID,
 		CoinPackID:     pack.ID,
 		Price:          pack.Price,
-		ProductID:      storeproduct.CoinPackProductID(pack.PublicID),
+		ProductID:      storeproduct.CoinPackProductID(pack.ID),
 		Currency:       currency,
 		Coins:          pack.Coins,
 		BonusCoins:     pack.BonusCoins,

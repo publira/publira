@@ -687,7 +687,9 @@ export const UpdateTenantStorePaymentSettingsResponseSchema: GenMessage<UpdateTe
 export type TenantStoreProduct = Message<"publira.admin.v1.TenantStoreProduct"> & {
   /**
    * The same ID in both stores: `episode_` followed by the price, or `coins_`
-   * followed by the pack's public_id.
+   * followed by the pack's id (CoinPack.id) in lowercase hexadecimal, without
+   * hyphens, since Google Play takes digits, lowercase letters, underscores,
+   * and periods alone.
    *
    * @generated from field: string product_id = 1;
    */

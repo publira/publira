@@ -2,7 +2,7 @@
 -- What a purchase bought is now exactly one of an episode, a volume, a series
 -- bundle, and a pack of coins. A pack is bought once and for good, so it is
 -- never rented and has no reading period, and unlike a volume or a bundle a
--- store sells it too, as the consumable coins_<pack public id>.
+-- store sells it too, as the consumable coins_<pack id in hexadecimal>.
 ALTER TABLE ONLY purchases
     DROP CONSTRAINT purchases_item_check,
     ADD COLUMN coin_pack_id uuid,

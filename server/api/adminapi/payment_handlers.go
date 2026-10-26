@@ -373,7 +373,7 @@ func (s *adminServer) ListTenantStoreProducts(
 	}
 	for _, pack := range packs {
 		products = append(products, &publiraadminv1.TenantStoreProduct{
-			ProductId: storeproduct.CoinPackProductID(pack.PublicID),
+			ProductId: storeproduct.CoinPackProductID(pack.ID),
 			Price:     pack.Price,
 			Currency:  currency,
 			CoinPack:  coinPackToProto(pack, currency),

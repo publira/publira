@@ -1318,7 +1318,9 @@ func (x *UpdateTenantStorePaymentSettingsResponse) GetSettings() *TenantStorePay
 type TenantStoreProduct struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The same ID in both stores: `episode_` followed by the price, or `coins_`
-	// followed by the pack's public_id.
+	// followed by the pack's id (CoinPack.id) in lowercase hexadecimal, without
+	// hyphens, since Google Play takes digits, lowercase letters, underscores,
+	// and periods alone.
 	ProductId string `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	// The price in the minor unit of currency.
 	Price int32 `protobuf:"varint,2,opt,name=price,proto3" json:"price,omitempty"`

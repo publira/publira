@@ -10604,7 +10604,8 @@ class StartStorePurchaseResponse extends $pb.GeneratedMessage {
   void clearIntentId() => $_clearField(1);
 
   /// The store product the episode's price is sold as, such as `episode_300`,
-  /// or the pack, `coins_` followed by the pack's public_id.
+  /// or the pack, `coins_` followed by the pack's id in lowercase hexadecimal,
+  /// without hyphens, which every store accepts as a product ID.
   @$pb.TagNumber(2)
   $core.String get productId => $_getSZ(1);
   @$pb.TagNumber(2)

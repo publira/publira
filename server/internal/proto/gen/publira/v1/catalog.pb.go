@@ -8236,7 +8236,8 @@ type StartStorePurchaseResponse struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	IntentId string                 `protobuf:"bytes,1,opt,name=intent_id,json=intentId,proto3" json:"intent_id,omitempty"`
 	// The store product the episode's price is sold as, such as `episode_300`,
-	// or the pack, `coins_` followed by the pack's public_id.
+	// or the pack, `coins_` followed by the pack's id in lowercase hexadecimal,
+	// without hyphens, which every store accepts as a product ID.
 	ProductId     string `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -4331,7 +4331,8 @@ export type StartStorePurchaseResponse = Message<"publira.v1.StartStorePurchaseR
 
   /**
    * The store product the episode's price is sold as, such as `episode_300`,
-   * or the pack, `coins_` followed by the pack's public_id.
+   * or the pack, `coins_` followed by the pack's id in lowercase hexadecimal,
+   * without hyphens, which every store accepts as a product ID.
    *
    * @generated from field: string product_id = 2;
    */
