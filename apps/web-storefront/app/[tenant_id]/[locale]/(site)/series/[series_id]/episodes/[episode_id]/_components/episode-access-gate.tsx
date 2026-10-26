@@ -26,6 +26,7 @@ import type {
   EpisodeNeighborItem,
   EpisodePurchaseSurface,
 } from "#lib/catalog";
+import { coinPackTotal } from "#lib/coins";
 
 import { episodeLoginHref } from "../_lib/access-gate";
 import {
@@ -489,7 +490,7 @@ const CoinSection = ({
                 values={{
                   bonus: pack.bonusCoins,
                   coin_name: coinName,
-                  count: pack.coins,
+                  count: coinPackTotal(pack),
                   price: formatPrice(pack.price, {
                     currency: pack.currency,
                     locale,

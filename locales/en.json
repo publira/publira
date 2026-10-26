@@ -4753,7 +4753,7 @@
         "coin_short": "This episode costs {$price :integer} {$coin_name}, and you have {$balance :integer}. Buy at least {$count :integer} more to pay with them.",
         "coin_pay": "Pay {$count :integer} {$coin_name}",
         "coin_rent": "Rent for {$period} ({$count :integer} {$coin_name})",
-        "coin_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Buy {$count} {$coin_name} for {$price}}}\n* {{Buy {$count} {$coin_name} (+{$bonus} bonus) for {$price}}}",
+        "coin_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Buy {$count} {$coin_name} for {$price}}}\n* {{Buy {$count} {$coin_name} (including {$bonus} bonus) for {$price}}}",
         "coin_packs": "Buy {$coin_name}"
       },
       "images_empty": "The pages of this episode have not been published yet.",

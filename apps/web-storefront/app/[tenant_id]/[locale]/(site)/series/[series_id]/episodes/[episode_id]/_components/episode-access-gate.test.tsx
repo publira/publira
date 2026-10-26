@@ -809,7 +809,7 @@ describe("EpisodeAccessGate", () => {
       expect(valuesOf(button as HTMLElement)).toMatchObject({
         bonus: 100,
         coin_name: "Points",
-        count: 500,
+        count: 600,
       });
       const form = button?.closest("form");
       expect(
