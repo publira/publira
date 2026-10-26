@@ -58,6 +58,7 @@ export default defineConfig({
     "src/unfold-horizontal-icon.tsx",
     "src/user-icon.tsx",
     "src/users-icon.tsx",
+    "src/wallet-icon.tsx",
     "src/wifi-off-icon.tsx",
   ],
   format: "esm",

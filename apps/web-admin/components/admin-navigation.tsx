@@ -34,6 +34,7 @@ import * as ConsoleSidebar from "@publira/layouts/admin/console-sidebar";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
+import { CoinsNavigationItem } from "./coins-navigation-item";
 import { Message } from "./message";
 import { PendingCommentBadge } from "./pending-comment-badge";
 import { PendingCommentBadgeErrorCatch } from "./pending-comment-badge-error-catch";
@@ -69,6 +70,7 @@ const hrefs = [
   "/purchases",
   "/subscription-plans",
   "/integrations/payment",
+  "/coins",
   "/integrations/email",
   "/integrations/mobile-push",
   "/integrations/app-links",
@@ -419,6 +421,9 @@ export const AdminNavigation = () => (
                 </ConsoleSidebar.NavigationItemLabel>
               </ConsoleSidebar.NavigationItemHeading>
             </ConsoleSidebar.NavigationItem>
+            <Suspense fallback={null}>
+              <CoinsNavigationItem />
+            </Suspense>
           </ConsoleSidebar.NavigationItems>
         </ConsoleSidebar.NavigationSection>
       </TenantAdminOnly>

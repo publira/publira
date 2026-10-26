@@ -397,6 +397,22 @@ export const WEB_ADMIN_COINS_BASE_URL = envUrl(
   withHostname(WEB_ADMIN_BASE_URL, "admin.coins.localhost")
 );
 
+/**
+ * Admin console of the tenant from
+ * `db/seeds/scenarios/710_admin_coin_settings.sql`, whose administrator sets
+ * its coins up from nothing.
+ */
+export const WEB_ADMIN_COIN_SETTINGS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_COIN_SETTINGS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.coin-settings.localhost")
+);
+
+/** Public site of the same tenant, which shows its coins once they are on. */
+export const WEB_STOREFRONT_COIN_SETTINGS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_COIN_SETTINGS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "coin-settings.localhost")
+);
+
 /** Public site of the same coins tenant, whose readers pay with coins. */
 export const WEB_STOREFRONT_COINS_BASE_URL = envUrl(
   "PUBLIRA_E2E_WEB_STOREFRONT_COINS_BASE_URL",

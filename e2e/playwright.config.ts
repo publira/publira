@@ -7,6 +7,7 @@ import {
   WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_STOREFRONT_BASE_URL,
+  WEB_ADMIN_COIN_SETTINGS_BASE_URL,
   WEB_STOREFRONT_COINS_BASE_URL,
   WEB_PLATFORM_BASE_URL,
 } from "./src/urls";
@@ -101,6 +102,16 @@ const ageVerificationSpecs = /admin\.age-verification\./u;
  * after the parallel projects rather than beside it.
  */
 const storefrontCoinsSpecs = /storefront\.coins\./u;
+
+/**
+ * The spec that has a tenant administrator set coins up from the console, and
+ * the documentation's screenshots of that screen. The screen is offered only
+ * while the platform lets tenants issue coins, so both allow it for as long
+ * as they run, and follow the storefront's coin suite in the exclusive chain
+ * rather than running beside it or the parallel projects.
+ */
+const adminCoinSettingsSpecs = /admin\.coin-settings\./u;
+const docsCoinsSpecs = /admin\.coins\.docs-screenshots\./u;
 
 /**
  * The spec that makes the platform require MFA of tenant administrators, which
@@ -290,7 +301,7 @@ const screenshotProjects: PlaywrightTestProject[] = [
     dependencies: ["docs-screenshots-setup"],
     name: "docs-screenshots",
     snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
-    testIgnore: [docsScreenshotSetup, docsFirstOperatorSpecs],
+    testIgnore: [docsScreenshotSetup, docsFirstOperatorSpecs, docsCoinsSpecs],
     testMatch: [docsScreenshotSpecs],
     timeout: 120_000,
     use: docsScreenshotProjectUse,
@@ -406,6 +417,7 @@ const adminProjects: PlaywrightTestProject[] = [
       commentModerationSpecs,
       ageVerificationSpecs,
       adminMfaSignInSpecs,
+      adminCoinSettingsSpecs,
       performanceSpecs,
       screenshotSpecs,
       docsScreenshotSpecs,
@@ -624,10 +636,35 @@ const exclusiveProjects: PlaywrightTestProject[] = [
       baseURL: WEB_STOREFRONT_COINS_BASE_URL,
     },
   },
+  // Lets tenants issue coins for as long as it runs too, for the reason the
+  // storefront's coin suite does, so it follows that one.
+  {
+    dependencies: ["storefront-coins"],
+    fullyParallel: false,
+    name: "admin-coin-settings",
+    testMatch: [adminCoinSettingsSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_ADMIN_COIN_SETTINGS_BASE_URL,
+    },
+  },
+  // The documentation's screenshots of the same screen, which needs coins
+  // allowed as well, so it follows the suite above rather than running with
+  // the other documentation screenshots.
+  {
+    dependencies: ["admin-coin-settings"],
+    fullyParallel: false,
+    name: "docs-screenshots-coins",
+    snapshotPathTemplate: `${DOCS_ROOT}/{arg}{ext}`,
+    testMatch: [docsCoinsSpecs],
+    timeout: 120_000,
+    use: docsScreenshotProjectUse,
+  },
   // Requires MFA of every tenant administrator for as long as it runs, so it
   // follows the last console round trip rather than running beside one.
   {
-    dependencies: ["storefront-coins"],
+    dependencies: ["docs-screenshots-coins"],
     fullyParallel: false,
     name: "admin-mfa-sign-in",
     testMatch: [adminMfaSignInSpecs],
