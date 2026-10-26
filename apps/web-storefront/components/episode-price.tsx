@@ -35,7 +35,8 @@ type DatedPriceProps =
  *
  * A priced episode inside an open free reading period says until when it is
  * free instead of quoting the price, because the price is what it costs only
- * after that. One under a campaign quotes the campaign price beside the
+ * after that; one the series' free-after-publication rule opened says only
+ * that it is free. One under a campaign quotes the campaign price beside the
  * regular one and says until when, for the same reason; a free period open
  * over a campaign still opens the episode to everyone, so it wins. A price is
  * quoted in the tenant's currency, and not at all while the tenant could not
