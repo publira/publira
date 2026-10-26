@@ -186,7 +186,9 @@ const CoinsContent = async ({
           }
         >
           <Suspense
-            fallback={<div className="h-32 w-full animate-pulse bg-muted" />}
+            fallback={
+              <div className="h-32 w-full bg-muted motion-safe:animate-pulse" />
+            }
           >
             <CoinHistory searchParams={searchParams} />
           </Suspense>
