@@ -219,9 +219,22 @@ jobs:
               - 'scripts/setup-flutter.sh'
               - '.github/actions/flutter-setup/**'
               - '.github/actions/mobile-android-setup/**'
+            # Dart under mobile/lib/ is compiled and checked on Linux by
+            # test_mobile; this job runs only for the inputs of the Xcode side.
             test_mobile_ios:
               - *docs_excluded
-              - 'mobile/**'
+              - 'mobile/ios/**'
+              # Native plugin code arrives through the dependencies.
+              - 'mobile/pubspec.yaml'
+              - 'mobile/pubspec.lock'
+              - 'mobile/config/**'
+              - 'mobile/scripts/app_manifest.dart'
+              - 'mobile/scripts/app_manifest/**'
+              - 'mobile/scripts/build.dart'
+              # A Run Script phase of the Xcode project runs it.
+              - 'mobile/scripts/ios-check-app-config.sh'
+              - 'mobile/scripts/ios-build-test.sh'
+              - 'mobile/Taskfile.yaml'
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
