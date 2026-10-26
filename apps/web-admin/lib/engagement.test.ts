@@ -1,17 +1,20 @@
 import {
   AudienceGroupBy,
   RevenueGroupBy,
+  StatsExportKind,
 } from "@publira/api-client/admin/engagement";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockExportStatsApi,
   mockGetAudienceStatsApi,
   mockGetEpisodeDropOffApi,
   mockGetRevenueStatsApi,
   mockGetSessionId,
   mockListEpisodeReadThroughApi,
 } = vi.hoisted(() => ({
+  mockExportStatsApi: vi.fn(),
   mockGetAudienceStatsApi: vi.fn(),
   mockGetEpisodeDropOffApi: vi.fn(),
   mockGetRevenueStatsApi: vi.fn(),
@@ -26,6 +29,7 @@ vi.mock("./session", () => ({
 vi.mock("@publira/api-client/admin/client", () => ({
   createAdminApiClient: () => ({
     engagement: {
+      exportStats: mockExportStatsApi,
       getAudienceStats: mockGetAudienceStatsApi,
       getEpisodeDropOff: mockGetEpisodeDropOffApi,
       getRevenueStats: mockGetRevenueStatsApi,
@@ -496,5 +500,146 @@ describe("getEpisodeDropOff", () => {
     });
 
     expect(result).toEqual({ notFound: true, ok: false });
+  });
+});
+
+const week = { end: "2025-03-09", start: "2025-03-03" };
+
+const dropOff = {
+  episodePublicId: "EP001",
+  kind: "drop_off",
+  seriesPublicId: "SER001",
+} as const;
+
+describe("exportStats", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetSessionId.mockResolvedValue("session-token");
+  });
+
+  it.each([
+    [{ group: "day", kind: "revenue" }, StatsExportKind.REVENUE_BY_DAY],
+    [{ group: "series", kind: "revenue" }, StatsExportKind.REVENUE_BY_SERIES],
+    [{ group: "episode", kind: "revenue" }, StatsExportKind.REVENUE_BY_EPISODE],
+    [{ group: "day", kind: "audience" }, StatsExportKind.AUDIENCE_BY_DAY],
+    [{ group: "series", kind: "audience" }, StatsExportKind.AUDIENCE_BY_SERIES],
+  ] as const)("asks for the report a table shows: %o", async (report, kind) => {
+    const csv = new TextEncoder().encode("date\r\n");
+    mockExportStatsApi.mockResolvedValueOnce({ csv });
+
+    const { exportStats } = await import("./engagement");
+
+    await expect(exportStats("TENANT001", report, week)).resolves.toEqual({
+      csv,
+      ok: true,
+    });
+    expect(mockExportStatsApi).toHaveBeenCalledWith(
+      {
+        endDate: "2025-03-09",
+        kind,
+        startDate: "2025-03-03",
+        tenant: { tenantId: "TENANT001" },
+      },
+      sessionHeaders
+    );
+  });
+
+  it("names the episode of a drop-off and nothing else", async () => {
+    mockExportStatsApi.mockResolvedValueOnce({ csv: new Uint8Array() });
+
+    const { exportStats } = await import("./engagement");
+
+    await exportStats("TENANT001", dropOff, week);
+
+    expect(mockExportStatsApi).toHaveBeenCalledWith(
+      {
+        endDate: "2025-03-09",
+        episodePublicId: "EP001",
+        kind: StatsExportKind.EPISODE_DROP_OFF,
+        startDate: "2025-03-03",
+        tenant: { tenantId: "TENANT001" },
+      },
+      sessionHeaders
+    );
+  });
+
+  it("answers signed out without a session, and asks the API nothing", async () => {
+    mockGetSessionId.mockResolvedValueOnce(undefined);
+
+    const { exportStats } = await import("./engagement");
+
+    await expect(
+      exportStats("TENANT001", { group: "day", kind: "revenue" }, week)
+    ).resolves.toEqual({ ok: false, reason: "signedOut" });
+    expect(mockExportStatsApi).not.toHaveBeenCalled();
+  });
+
+  it("answers signed out for a session the API rejects", async () => {
+    mockExportStatsApi.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    const { exportStats } = await import("./engagement");
+
+    await expect(
+      exportStats("TENANT001", { group: "day", kind: "revenue" }, week)
+    ).resolves.toEqual({ ok: false, reason: "signedOut" });
+  });
+
+  it.each([
+    ["an episode the tenant does not have", Code.NotFound],
+    ["a role below tenant admin", Code.PermissionDenied],
+    ["a period the API refuses", Code.InvalidArgument],
+  ])("answers missing for %s", async (_label, code) => {
+    mockExportStatsApi.mockRejectedValueOnce(new ConnectError("refused", code));
+
+    const { exportStats } = await import("./engagement");
+
+    await expect(exportStats("TENANT001", dropOff, week)).resolves.toEqual({
+      ok: false,
+      reason: "missing",
+    });
+  });
+
+  it("lets any other failure reach the error boundary", async () => {
+    mockExportStatsApi.mockRejectedValueOnce(
+      new ConnectError("database down", Code.Unavailable)
+    );
+
+    const { exportStats } = await import("./engagement");
+
+    await expect(
+      exportStats("TENANT001", { group: "day", kind: "revenue" }, week)
+    ).rejects.toThrow("database down");
+  });
+});
+
+describe("statsCsvPath", () => {
+  it("is the screen's path under the API, with the period spelled out", async () => {
+    const { statsCsvPath } = await import("./engagement");
+
+    expect(statsCsvPath({ group: "series", kind: "revenue" }, week)).toBe(
+      "/api/v1/analytics/revenue/csv?from=2025-03-03&group=series&to=2025-03-09"
+    );
+    expect(statsCsvPath({ group: "day", kind: "audience" }, week)).toBe(
+      "/api/v1/analytics/audience/csv?from=2025-03-03&to=2025-03-09"
+    );
+    expect(statsCsvPath(dropOff, week)).toBe(
+      "/api/v1/analytics/episodes/SER001/EP001/csv?from=2025-03-03&to=2025-03-09"
+    );
+  });
+});
+
+describe("statsReportHref", () => {
+  it("is the screen that shows the report over the period", async () => {
+    const { statsReportHref } = await import("./engagement");
+
+    expect(statsReportHref({ group: "episode", kind: "revenue" }, week)).toBe(
+      "/analytics/revenue?from=2025-03-03&group=episode&to=2025-03-09"
+    );
+    expect(statsReportHref(dropOff, week)).toBe(
+      "/analytics/episodes/SER001/EP001?from=2025-03-03&to=2025-03-09"
+    );
   });
 });

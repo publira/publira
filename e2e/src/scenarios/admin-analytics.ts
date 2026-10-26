@@ -5,6 +5,8 @@
  */
 export const ADMIN_ANALYTICS_SCENARIO = "690_admin_analytics";
 
+export const ANALYTICS_TENANT = { publicId: "AnlyTNNTAAA1" } as const;
+
 /** Tenant admin of the tenant. Password hash is the same as `adminpass`. */
 export const ANALYTICS_ADMIN = {
   email: "analytics-admin@example.com",
@@ -37,10 +39,22 @@ export const ANALYTICS_REVENUE = {
   net: "¥1,850",
   purchases: "7",
   refunded: "¥500",
-  /** Net per series, the highest first. */
+  /** Net per series, the highest first, and in the CSV's minor unit. */
   series: [
-    { net: "¥1,100", purchases: "4", title: "Analytics Series 01" },
-    { net: "¥750", purchases: "3", title: "Analytics Series 02" },
+    {
+      net: "¥1,100",
+      netAmount: "1100",
+      publicId: "AnlySERSAAA1",
+      purchases: "4",
+      title: "Analytics Series 01",
+    },
+    {
+      net: "¥750",
+      netAmount: "750",
+      publicId: "AnlySERSAAA2",
+      purchases: "3",
+      title: "Analytics Series 02",
+    },
   ],
 } as const;
 

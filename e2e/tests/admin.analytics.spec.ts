@@ -1,4 +1,6 @@
-import type { Locator, Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+import type { Download, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
@@ -11,6 +13,7 @@ import {
   ANALYTICS_EPISODES,
   ANALYTICS_REVENUE,
   ANALYTICS_SERIES,
+  ANALYTICS_TENANT,
   ANALYTICS_WEEK,
 } from "../src/scenarios/admin-analytics";
 import { WEB_ADMIN_ANALYTICS_BASE_URL } from "../src/urls";
@@ -52,6 +55,19 @@ const rowTexts = (page: Page): Promise<(string | null)[][]> =>
       [...row.querySelectorAll("td")].map((cell) => cell.textContent)
     )
   );
+
+/** Clicks **Download CSV** and waits for the file it saves. */
+const downloadCsv = async (page: Page): Promise<Download> => {
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("link", { exact: true, name: "Download CSV" }).click();
+  return downloading;
+};
+
+/** A downloaded CSV's header and body rows, split on its CRLF endings. */
+const csvRows = async (download: Download): Promise<string[]> => {
+  const csv = await readFile(await download.path(), "utf-8");
+  return csv.split("\r\n").filter((row) => row !== "");
+};
 
 const sortHeading = (page: Page, name: string): Locator =>
   page.getByRole("columnheader", { exact: true, name });
@@ -212,6 +228,51 @@ test.describe("admin analytics", () => {
     await expect
       .poll(() => firstCells(page))
       .toEqual([ANALYTICS_SERIES.second.title, ANALYTICS_SERIES.first.title]);
+  });
+
+  test("Download CSV saves the report each table shows, over its period", async ({
+    page,
+  }) => {
+    await signIn(
+      page,
+      `/analytics/revenue${weekQuery({ group: "series", order: "asc", sort: "net" })}`
+    );
+    const revenue = await downloadCsv(page);
+    expect(revenue.suggestedFilename()).toBe(
+      `revenue-by-series-${ANALYTICS_TENANT.publicId}-${ANALYTICS_WEEK.from}--${ANALYTICS_WEEK.to}.csv`
+    );
+    const [revenueHeader, ...revenueRows] = await csvRows(revenue);
+    expect(revenueHeader).toBe(
+      "\uFEFFstart_date,end_date,series_id,series_title,purchase_count,gross_amount,refunded_amount,net_amount,currency"
+    );
+    // The report's own order, highest net first, whatever the table's sort.
+    expect(revenueRows).toEqual(
+      ANALYTICS_REVENUE.series.map((row) =>
+        expect.stringMatching(
+          new RegExp(
+            `^${ANALYTICS_WEEK.from},${ANALYTICS_WEEK.to},${row.publicId},${row.title},${row.purchases},\\d+,\\d+,${row.netAmount},JPY$`,
+            "u"
+          )
+        )
+      )
+    );
+
+    await page.goto(
+      adminUrl(
+        `/analytics/episodes/${ANALYTICS_SERIES.first.publicId}/${ANALYTICS_EPISODES.first.publicId}${weekQuery()}`
+      )
+    );
+    const dropOff = await downloadCsv(page);
+    expect(dropOff.suggestedFilename()).toBe(
+      `drop-off-${ANALYTICS_TENANT.publicId}-${ANALYTICS_EPISODES.first.publicId}-${ANALYTICS_WEEK.from}--${ANALYTICS_WEEK.to}.csv`
+    );
+    expect(await csvRows(dropOff)).toEqual([
+      "\uFEFFstart_date,end_date,episode_id,page_index,reader_count",
+      ...ANALYTICS_DROP_OFF.pages.map(
+        (row, index) =>
+          `${ANALYTICS_WEEK.from},${ANALYTICS_WEEK.to},${ANALYTICS_EPISODES.first.publicId},${index},${row.readers}`
+      ),
+    ]);
   });
 
   test("an episode's drop-off is opened from Episodes and counts each page", async ({

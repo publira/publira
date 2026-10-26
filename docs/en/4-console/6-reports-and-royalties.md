@@ -7,7 +7,7 @@ updated: 2026-10-25
 
 Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, and **Episodes** how far members read each episode and the page at which readers leave it. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
 
-Every member of the staff sees **Dashboard**, **Audience**, and **Episodes**. Only a **Tenant admin** sees **Revenue** and **Royalties**, closes a month, downloads a statement, or changes how months are closed; for anyone else those screens are not there.
+Every member of the staff sees **Dashboard**, **Audience**, and **Episodes**. Only a **Tenant admin** sees **Revenue** and **Royalties**, downloads a report or a statement as CSV, closes a month, or changes how months are closed; for anyone else those screens and controls are not there.
 
 ## Which day a sale or a read falls on
 
@@ -97,6 +97,25 @@ Choosing an episode in **Read-through** opens its **Drop-off**: how far into the
 | **Pages**                 | The pages the episode has now               |
 
 The chart steps down from the first page to the last, and the table gives each page the readers who reached it, their share of those who reached the first, and the readers who left at it: those who reached it but not the next. Sorting by **Left here** brings the page most readers leave at to the top. A reader is counted at the page where their place in the episode stood at the end of a day, so a reader who read on several days of the period is counted once on each. A page past the episode's last, marked **(removed)**, was reached before pages were taken out of the episode.
+
+### Downloading a report as CSV
+
+**Download CSV**, beside the table of **Revenue**, **Audience**, and **Drop-off**, downloads that table's report over the period the screen shows: by day, by series, or by episode, as the table is. The file holds every row of the report, whatever the table's sort, in the order the report keeps: the days in order, the series or episodes of **Revenue** by net sales and the series of **Audience** by followers, highest first, and the pages of a drop-off in order. **Read-through** on **Episodes** has no download.
+
+The file is named after the report, the tenant, and the period, such as `revenue-by-series-<tenant>-2025-03-03--2025-03-09.csv`, and for a drop-off `drop-off-<tenant>-<episode>-<from>--<to>.csv`. It is UTF-8, with a byte order mark so that Excel reads it correctly, one row for each row of the report under a header row, and no total row. Its columns are:
+
+| Report | Columns |
+| --- | --- |
+| Revenue by day | `date`, `purchase_count`, `gross_amount`, `refunded_amount`, `net_amount`, `currency` |
+| Revenue by series | `start_date`, `end_date`, `series_id`, `series_title`, `purchase_count`, `gross_amount`, `refunded_amount`, `net_amount`, `currency` |
+| Revenue by episode | `start_date`, `end_date`, `series_id`, `series_title`, `episode_id`, `episode_title`, `purchase_count`, `gross_amount`, `refunded_amount`, `net_amount`, `currency` |
+| Audience by day | `date`, `follower_count`, `followed_count`, `unfollowed_count`, `view_count`, `complete_count`, `reaction_count`, `reaction_points` |
+| Audience by series | `start_date`, `end_date`, `series_id`, `series_title`, `follower_count`, `followed_count`, `unfollowed_count`, `view_count`, `complete_count`, `reaction_count`, `reaction_points`, `rating_average`, `rating_count` |
+| Drop-off | `start_date`, `end_date`, `episode_id`, `page_index`, `reader_count` |
+
+`date`, `start_date`, and `end_date` are the tenant's days, `YYYY-MM-DD`; the last two are the period of the download, the same on every row. Amounts are in the smallest unit of the currency, yen for JPY and cents for USD, and `currency` is the tenant's. `rating_average` has one decimal, and is `0.0` for a series no reader has rated. `page_index` counts from `0` for the first page, and `reader_count` is the readers who reached it. Titles are in the tenant's default language, and the IDs keep a row tied to its series or episode across renames. A cell that a spreadsheet would read as a formula is written so that it stays text.
+
+A report is read when it is downloaded, so a period that includes today can download different figures later. Each download is recorded in **Audit logs** as **Analytics CSV downloaded**.
 
 ## Royalties
 
