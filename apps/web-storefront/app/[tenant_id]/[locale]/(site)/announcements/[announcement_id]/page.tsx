@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -78,7 +78,7 @@ const AnnouncementDetailSkeleton = () => (
       <SkeletonLine className="mb-4 h-4 w-32" />
       <SkeletonLine className="mb-3 h-7 w-2/3" />
       <SkeletonLine className="mb-6 h-4 w-40" />
-      <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
+      <Skeleton className="h-24 w-full" />
     </section>
   </div>
 );

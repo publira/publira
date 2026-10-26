@@ -5,7 +5,7 @@ import type { Locale } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
 import * as SiteLayout from "@publira/layouts/site-layout";
 import * as Popover from "@publira/ui-components/popover";
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -51,10 +51,7 @@ import {
  * give way to nothing.
  */
 const LocaleSwitcherSkeleton = () => (
-  <div
-    aria-hidden="true"
-    className="size-9 animate-pulse rounded-control bg-muted pointer-coarse:size-11"
-  />
+  <Skeleton className="size-9 pointer-coarse:size-11" />
 );
 
 /**

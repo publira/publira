@@ -152,7 +152,10 @@ const EpisodeColumn = ({ children }: { children: ReactNode }) => (
 const EpisodeBodySkeleton = () => (
   <div
     aria-busy="true"
-    className={cn(VIEWER_HEIGHT_CLASS, "w-full animate-pulse bg-foreground")}
+    className={cn(
+      VIEWER_HEIGHT_CLASS,
+      "w-full bg-foreground motion-safe:animate-pulse"
+    )}
   />
 );
 

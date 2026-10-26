@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -28,8 +28,8 @@ type PurchaseLibraryPageProps = PageProps<"/[tenant_id]/[locale]/my/library">;
 
 const PurchaseLibrarySkeleton = () => (
   <section className="border border-border bg-card p-6">
-    <div className="h-6 w-24 animate-pulse rounded bg-muted" />
-    <div className="mt-4 h-44 w-full animate-pulse rounded-xl bg-muted" />
+    <Skeleton className="h-6 w-24" />
+    <Skeleton className="mt-4 h-44 w-full" />
   </section>
 );
 

@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
@@ -193,7 +193,7 @@ const MyPage = ({ searchParams }: MyPageProps) => (
         fallback={
           <section className="border border-border bg-card p-6">
             <SkeletonLine className="mb-4 h-6 w-32" />
-            <div className="h-32 w-full animate-pulse rounded-md bg-muted" />
+            <Skeleton className="h-32 w-full" />
           </section>
         }
       >

@@ -1,3 +1,4 @@
+import { Skeleton } from "@publira/ui-components/skeleton";
 import Form from "next/form";
 
 import { SEARCH_QUERY_MAX_LENGTH } from "#lib/catalog";
@@ -10,8 +11,8 @@ export const CatalogSearchFormSkeleton = () => (
     aria-hidden="true"
     className="flex max-w-64 min-w-0 flex-1 items-center gap-2"
   >
-    <span className="h-9 min-w-0 flex-1 animate-pulse rounded-control bg-muted pointer-coarse:h-11" />
-    <span className="h-9 w-14 shrink-0 animate-pulse rounded-control bg-muted pointer-coarse:h-11" />
+    <Skeleton className="h-9 min-w-0 flex-1 pointer-coarse:h-11" />
+    <Skeleton className="h-9 w-14 shrink-0 pointer-coarse:h-11" />
   </div>
 );
 

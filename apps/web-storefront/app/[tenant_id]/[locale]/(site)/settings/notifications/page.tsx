@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
@@ -91,7 +91,7 @@ const BrowserNotificationsSection = async () => {
 const NotificationsSectionFallback = () => (
   <section className="space-y-4 border border-border bg-card p-6">
     <SkeletonLine className="mb-4 h-6 w-40" />
-    <div className="h-20 w-full animate-pulse rounded-md bg-muted" />
+    <Skeleton className="h-20 w-full" />
   </section>
 );
 
