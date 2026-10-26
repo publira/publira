@@ -605,6 +605,31 @@ void main() {
   });
 
   group('the account', () {
+    testWidgets('reads the balance again when its tab comes back', (
+      tester,
+    ) async {
+      coins.coins = 120;
+      await pumpApp(tester, initialLocation: AppRoutes.account);
+      await pumpUntilFound(
+        tester,
+        find.descendant(of: accountCoins, matching: find.text('120 Points')),
+      );
+
+      Finder tab(String label) => find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text(label),
+      );
+      await tester.tap(tab('Home'));
+      await tester.pump();
+      // Spent on an episode while the account tab is off screen.
+      coins.coins = 70;
+      await tester.tap(tab('Account'));
+      await pumpUntilFound(
+        tester,
+        find.descendant(of: accountCoins, matching: find.text('70 Points')),
+      );
+    });
+
     testWidgets('leads nowhere about coins on the web checkout route', (
       tester,
     ) async {

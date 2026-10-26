@@ -67,6 +67,9 @@ class _CoinsScreenState extends State<CoinsScreen> {
   StreamSubscription<String>? _packsRecorded;
   StorePurchaser? _listenedPurchaser;
 
+  /// Whether the tab holding the screen was on screen when last asked.
+  var _active = true;
+
   /// Reads everything again whenever the reader or the locale changes: the
   /// balance is the reader's, and the coins are named in the app's language.
   @override
@@ -84,7 +87,15 @@ class _CoinsScreenState extends State<CoinsScreen> {
     }
     final accessToken = AuthScope.of(context).accessToken;
     final locale = Localizations.localeOf(context).toLanguageTag();
-    if (_started && accessToken == _accessToken && locale == _locale) {
+    // The tab stays mounted while another is on screen, where the reader may
+    // have spent coins, so coming back to it reads them again.
+    final active = AppTabScope.isActive(context);
+    final returned = active && !_active;
+    _active = active;
+    if (_started &&
+        accessToken == _accessToken &&
+        locale == _locale &&
+        !returned) {
       return;
     }
     _started = true;

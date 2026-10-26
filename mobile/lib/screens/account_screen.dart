@@ -776,6 +776,9 @@ class _CoinsEntryState extends State<_CoinsEntry> {
   StreamSubscription<String>? _packsRecorded;
   StorePurchaser? _listenedPurchaser;
 
+  /// Whether the account tab was on screen when last asked.
+  var _active = true;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -790,7 +793,12 @@ class _CoinsEntryState extends State<_CoinsEntry> {
       });
     }
     final locale = Localizations.localeOf(context).toLanguageTag();
-    if (locale == _locale) {
+    // The tab stays mounted while another is on screen, where the reader may
+    // have spent coins, so coming back to it reads the balance again.
+    final active = AppTabScope.isActive(context);
+    final returned = active && !_active;
+    _active = active;
+    if (locale == _locale && !returned) {
       return;
     }
     _locale = locale;
