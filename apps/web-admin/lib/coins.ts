@@ -1,3 +1,4 @@
+import type { GetTenantCoinSettingsResponse } from "@publira/api-client/admin/coin";
 import type {
   CoinPack as RpcCoinPack,
   CoinNameTranslation as RpcCoinNameTranslation,
@@ -192,6 +193,16 @@ type RawTenantCoinSettings = Pick<
   | "termsUrl"
 > & { names: RawCoinNameTranslation[] };
 
+/**
+ * The fields of a coin settings read or save {@link toCoinSettingsRead} reads.
+ * `UpdateTenantCoinSettings` answers the same three as
+ * `GetTenantCoinSettings`, so one key list names both.
+ */
+type RawCoinSettingsResponse = Pick<
+  GetTenantCoinSettingsResponse,
+  "currency" | "platformAllowsCoins"
+> & { settings?: RawTenantCoinSettings };
+
 type RawCoinPack = Pick<
   RpcCoinPack,
   | "bonusCoins"
@@ -230,11 +241,9 @@ const toCoinSettings = (
   termsUrl: settings?.termsUrl ?? "",
 });
 
-const toCoinSettingsRead = (response: {
-  settings?: RawTenantCoinSettings;
-  platformAllowsCoins?: boolean;
-  currency?: string;
-}): CoinSettingsRead => ({
+const toCoinSettingsRead = (
+  response: RawCoinSettingsResponse
+): CoinSettingsRead => ({
   currency: readCurrency(response.currency),
   platformAllowsCoins: Boolean(response.platformAllowsCoins),
   settings: toCoinSettings(response.settings),
