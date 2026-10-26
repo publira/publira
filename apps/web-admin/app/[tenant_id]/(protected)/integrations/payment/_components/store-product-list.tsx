@@ -18,7 +18,13 @@ interface StoreProductListProps {
   products: TenantStoreProduct[];
 }
 
-/** The consumable products the tenant creates in both stores, one per price. */
+/**
+ * The consumable products the tenant creates in both stores: one per price,
+ * and one per pack of the tenant's coins, which names the pack it sells. The
+ * stores show a product under the name the tenant gives it there, so a list
+ * with a pack says the pack's product is to carry the tenant's word for its
+ * coins.
+ */
 export const StoreProductList = async ({
   listErrorMessage,
   locale,
@@ -108,6 +114,15 @@ export const StoreProductList = async ({
                       value={product.productId}
                     />
                   </Identifier.Root>
+                  {product.coinPack ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("admin.settings.store_products.coin_pack", {
+                        bonus: product.coinPack.bonusCoins,
+                        count:
+                          product.coinPack.coins + product.coinPack.bonusCoins,
+                      })}
+                    </p>
+                  ) : null}
                 </Table.Cell>
                 <Table.Cell className="text-right">
                   {formatPrice(product.price, {
@@ -116,13 +131,18 @@ export const StoreProductList = async ({
                   })}
                 </Table.Cell>
                 <Table.Cell className="text-right">
-                  {product.episodeCount}
+                  {product.coinPack ? null : product.episodeCount}
                 </Table.Cell>
               </Table.Row>
             ))}
           </Table.Body>
         </Table.Root>
       )}
+      {products.some((product) => product.coinPack) ? (
+        <p className="text-sm text-muted-foreground">
+          {t("admin.settings.store_products.coin_pack_names")}
+        </p>
+      ) : null}
     </ConsoleSection.Root>
   );
 };

@@ -88,6 +88,8 @@ export interface TenantStoreProduct {
   /** ISO 4217 code of the tenant currency `price` is in. */
   currency: string;
   episodeCount: number;
+  /** The pack of coins the product sells; absent on the product of a price. */
+  coinPack?: { bonusCoins: number; coins: number };
 }
 
 export type TenantStoreProductsResult =
@@ -128,7 +130,7 @@ type RawGooglePlay = Pick<
 
 type RawStoreProduct = Pick<
   RpcTenantStoreProduct,
-  "currency" | "episodeCount" | "price" | "productId"
+  "coinPack" | "currency" | "episodeCount" | "price" | "productId"
 >;
 
 const toAppStore = (
@@ -170,6 +172,12 @@ const toTenantStorePaymentSettings = (settings?: {
 const toTenantStoreProduct = (
   product: RawStoreProduct
 ): TenantStoreProduct => ({
+  coinPack: product.coinPack
+    ? {
+        bonusCoins: product.coinPack.bonusCoins ?? 0,
+        coins: product.coinPack.coins ?? 0,
+      }
+    : undefined,
   currency: product.currency ?? "",
   episodeCount: product.episodeCount ?? 0,
   price: product.price ?? 0,
