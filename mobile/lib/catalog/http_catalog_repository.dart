@@ -1447,6 +1447,9 @@ class HttpCatalogRepository implements CatalogRepository {
       // holds.
       freeUntil: DateTime.tryParse(episode.freeUntil.trim())?.toLocal(),
       campaign: _campaign(episode.campaignPrice, episode.campaignEndsAt),
+      coinPrice: episode.coinPrice,
+      coinRentalPrice: episode.coinRentalPrice,
+      coinName: episode.coinName.trim(),
       eyeCatchVariants: _parseEyeCatchVariants(
         episode.eyeCatchImageVariants,
         path,

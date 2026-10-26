@@ -1148,6 +1148,7 @@ SeriesDetail fixtureDetail(
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
   bool rented = false,
   EpisodeCampaign? campaign,
+  String coinName = '',
 }) {
   return SeriesDetail(
     series: item.internalId.isEmpty
@@ -1185,6 +1186,11 @@ SeriesDetail fixtureDetail(
               ? paidSurface
               : EpisodePurchaseSurface.all,
           campaign: i == item.episodeCount ? campaign : null,
+          // One coin is worth ¥10 wherever the tenant names its coins.
+          coinPrice: coinName.isNotEmpty && i == item.episodeCount ? 50 : 0,
+          coinRentalPrice:
+              coinName.isNotEmpty && rented && i == item.episodeCount ? 20 : 0,
+          coinName: i == item.episodeCount ? coinName : '',
         ),
     ],
   );
@@ -1194,6 +1200,7 @@ Map<String, SeriesDetail> fixtureDetails({
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
   bool rented = false,
   EpisodeCampaign? campaign,
+  String coinName = '',
 }) {
   return {
     for (final item in fixtureSeries)
@@ -1202,6 +1209,7 @@ Map<String, SeriesDetail> fixtureDetails({
         paidSurface: paidSurface,
         rented: rented,
         campaign: campaign,
+        coinName: coinName,
       ),
   };
 }
@@ -1242,6 +1250,7 @@ Map<String, EpisodeDetail> fixtureEpisodes({
       EpisodeEntitlementSource.unspecified,
   bool rented = false,
   EpisodeCampaign? campaign,
+  String coinName = '',
 }) {
   final withheld =
       access == EpisodeAccess.locked || access == EpisodeAccess.ageRestricted;
@@ -1252,6 +1261,7 @@ Map<String, EpisodeDetail> fixtureEpisodes({
       paidSurface: paidSurface,
       rented: rented,
       campaign: campaign,
+      coinName: coinName,
     ).episodes;
     for (var index = 0; index < episodes.length; index++) {
       final episode = episodes[index];

@@ -57,9 +57,10 @@ enum AppPurchaseRoute {
 /// `publira.v1.InAppPurchaseStore` names it.
 enum InAppPurchaseStore { appStore, googlePlay }
 
-/// What the store is asked to charge for one episode: the product the
-/// episode's price is sold as, and the intent the transaction carries as its
-/// account token so the server learns which episode it pays for.
+/// What the store is asked to charge for one episode or one pack of coins: the
+/// product the episode's price or the pack is sold as, and the intent the
+/// transaction carries as its account token so the server learns what it pays
+/// for.
 class StorePurchaseIntent {
   const StorePurchaseIntent({required this.intentId, required this.productId});
 
@@ -270,6 +271,18 @@ abstract class PurchaseRepository {
   /// tenant does not sell it through [store] right now.
   Future<StorePurchaseIntent> startStorePurchase(
     String episodeInternalId,
+    InAppPurchaseStore store,
+  );
+
+  /// Opens a purchase of the pack of the tenant's coins [coinPackId] names
+  /// through [store] for the signed-in reader. Asking again for the same pack
+  /// answers the same intent until a purchase consumes it.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.notSold] when the tenant
+  /// has coins off, has stopped selling packs, or no longer sells this one,
+  /// and when it does not sell through [store] right now.
+  Future<StorePurchaseIntent> startCoinPackStorePurchase(
+    String coinPackId,
     InAppPurchaseStore store,
   );
 

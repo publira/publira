@@ -936,6 +936,274 @@ final class AppMessages {
     return _format('mobile.change_password.unchanged');
   }
 
+  /// `mobile.coins.amount_added`
+  String coinsAmountAdded({required String coinName, required num count}) {
+    return _format('mobile.coins.amount_added', {
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.amount_owed`
+  String coinsAmountOwed({required String coinName, required num count}) {
+    return _format('mobile.coins.amount_owed', {
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.amount_removed`
+  String coinsAmountRemoved({required String coinName, required num count}) {
+    return _format('mobile.coins.amount_removed', {
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.balance_failed`
+  String get coinsBalanceFailed {
+    return _format('mobile.coins.balance_failed');
+  }
+
+  /// `mobile.coins.balance_heading`
+  String get coinsBalanceHeading {
+    return _format('mobile.coins.balance_heading');
+  }
+
+  /// `mobile.coins.balance_value`
+  String coinsBalanceValue({required String coinName, required num count}) {
+    return _format('mobile.coins.balance_value', {
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.contact`
+  String get coinsContact {
+    return _format('mobile.coins.contact');
+  }
+
+  /// `mobile.coins.failed`
+  String get coinsFailed {
+    return _format('mobile.coins.failed');
+  }
+
+  /// `mobile.coins.gate_balance`
+  String coinsGateBalance({required String coinName, required num count}) {
+    return _format('mobile.coins.gate_balance', {
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.gate_pack_buy`
+  String coinsGatePackBuy({
+    required num bonus,
+    required String coinName,
+    required num count,
+    required String price,
+  }) {
+    return _format('mobile.coins.gate_pack_buy', {
+      'bonus': bonus,
+      'coin_name': coinName,
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.coins.gate_packs`
+  String coinsGatePacks({required String coinName}) {
+    return _format('mobile.coins.gate_packs', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.gate_pay`
+  String coinsGatePay({required String coinName, required num count}) {
+    return _format('mobile.coins.gate_pay', {
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.gate_rent`
+  String coinsGateRent({
+    required String coinName,
+    required num count,
+    required String period,
+  }) {
+    return _format('mobile.coins.gate_rent', {
+      'coin_name': coinName,
+      'count': count,
+      'period': period,
+    });
+  }
+
+  /// `mobile.coins.gate_short`
+  String coinsGateShort({
+    required num balance,
+    required String coinName,
+    required num count,
+    required num price,
+  }) {
+    return _format('mobile.coins.gate_short', {
+      'balance': balance,
+      'coin_name': coinName,
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.coins.grant_expires`
+  String coinsGrantExpires({required String date}) {
+    return _format('mobile.coins.grant_expires', {'date': date});
+  }
+
+  /// `mobile.coins.history_empty`
+  String coinsHistoryEmpty({required String coinName}) {
+    return _format('mobile.coins.history_empty', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.history_failed`
+  String get coinsHistoryFailed {
+    return _format('mobile.coins.history_failed');
+  }
+
+  /// `mobile.coins.history_heading`
+  String get coinsHistoryHeading {
+    return _format('mobile.coins.history_heading');
+  }
+
+  /// `mobile.coins.issuer`
+  String get coinsIssuer {
+    return _format('mobile.coins.issuer');
+  }
+
+  /// `mobile.coins.kind_expiry`
+  String get coinsKindExpiry {
+    return _format('mobile.coins.kind_expiry');
+  }
+
+  /// `mobile.coins.kind_grant`
+  String get coinsKindGrant {
+    return _format('mobile.coins.kind_grant');
+  }
+
+  /// `mobile.coins.kind_revocation`
+  String get coinsKindRevocation {
+    return _format('mobile.coins.kind_revocation');
+  }
+
+  /// `mobile.coins.kind_settlement`
+  String get coinsKindSettlement {
+    return _format('mobile.coins.kind_settlement');
+  }
+
+  /// `mobile.coins.kind_shortfall`
+  String get coinsKindShortfall {
+    return _format('mobile.coins.kind_shortfall');
+  }
+
+  /// `mobile.coins.kind_spend`
+  String get coinsKindSpend {
+    return _format('mobile.coins.kind_spend');
+  }
+
+  /// `mobile.coins.more_history_failed`
+  String get coinsMoreHistoryFailed {
+    return _format('mobile.coins.more_history_failed');
+  }
+
+  /// `mobile.coins.nearest_expiry`
+  String coinsNearestExpiry({
+    required String coinName,
+    required num count,
+    required String date,
+  }) {
+    return _format('mobile.coins.nearest_expiry', {
+      'coin_name': coinName,
+      'count': count,
+      'date': date,
+    });
+  }
+
+  /// `mobile.coins.owed`
+  String coinsOwed({required String coinName, required num count}) {
+    return _format('mobile.coins.owed', {
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.pack_confirming`
+  String coinsPackConfirming({required String coinName}) {
+    return _format('mobile.coins.pack_confirming', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.pack_expiry`
+  String coinsPackExpiry({required String coinName, required num days}) {
+    return _format('mobile.coins.pack_expiry', {
+      'coin_name': coinName,
+      'days': days,
+    });
+  }
+
+  /// `mobile.coins.pack_purchased`
+  String coinsPackPurchased({required String coinName}) {
+    return _format('mobile.coins.pack_purchased', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.pack_title`
+  String coinsPackTitle({
+    required num bonus,
+    required String coinName,
+    required num count,
+  }) {
+    return _format('mobile.coins.pack_title', {
+      'bonus': bonus,
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
+  /// `mobile.coins.packs_heading`
+  String coinsPacksHeading({required String coinName}) {
+    return _format('mobile.coins.packs_heading', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.packs_not_selling`
+  String coinsPacksNotSelling({required String coinName}) {
+    return _format('mobile.coins.packs_not_selling', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.packs_unavailable`
+  String coinsPacksUnavailable({required String coinName}) {
+    return _format('mobile.coins.packs_unavailable', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.pay_failed`
+  String coinsPayFailed({required String coinName}) {
+    return _format('mobile.coins.pay_failed', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.price_changed`
+  String coinsPriceChanged({required String coinName}) {
+    return _format('mobile.coins.price_changed', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.sign_in_prompt`
+  String coinsSignInPrompt({required String coinName}) {
+    return _format('mobile.coins.sign_in_prompt', {'coin_name': coinName});
+  }
+
+  /// `mobile.coins.terms`
+  String get coinsTerms {
+    return _format('mobile.coins.terms');
+  }
+
+  /// `mobile.coins.terms_link`
+  String get coinsTermsLink {
+    return _format('mobile.coins.terms_link');
+  }
+
   /// `mobile.comments.approval_notice`
   String get commentsApprovalNotice {
     return _format('mobile.comments.approval_notice');
@@ -3746,6 +4014,54 @@ const _jaSources = <String, String>{
   'mobile.change_password.submit': 'パスワードを変更',
   'mobile.change_password.title': 'パスワード変更',
   'mobile.change_password.unchanged': '現在のパスワードとは異なるパスワードを入力してください。',
+  'mobile.coins.amount_added': '+{\$count :integer}{\$coin_name}',
+  'mobile.coins.amount_owed': '{\$count :integer}{\$coin_name}不足',
+  'mobile.coins.amount_removed': '−{\$count :integer}{\$coin_name}',
+  'mobile.coins.balance_failed': '残高を表示できませんでした。もう一度お試しください。',
+  'mobile.coins.balance_heading': '残高',
+  'mobile.coins.balance_value': '{\$count :integer}{\$coin_name}',
+  'mobile.coins.contact': 'お問い合わせ先',
+  'mobile.coins.failed': 'このページを表示できませんでした。もう一度お試しください。',
+  'mobile.coins.gate_balance': '{\$count :integer}{\$coin_name}を保有しています。',
+  'mobile.coins.gate_pack_buy':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count}{\$coin_name}を{\$price}で購入}}\n* {{{\$count}{\$coin_name}（うちボーナス{\$bonus}）を{\$price}で購入}}',
+  'mobile.coins.gate_packs': '{\$coin_name}を購入',
+  'mobile.coins.gate_pay': '{\$count :integer}{\$coin_name}で購入',
+  'mobile.coins.gate_rent': '{\$period}レンタル（{\$count :integer}{\$coin_name}）',
+  'mobile.coins.gate_short':
+      'このエピソードは{\$price :integer}{\$coin_name}で、保有は{\$balance :integer}です。{\$count :integer}{\$coin_name}以上購入すると支払えます。',
+  'mobile.coins.grant_expires': '{\$date}まで有効',
+  'mobile.coins.history_empty': '{\$coin_name}を購入したり使ったりすると、ここに表示されます。',
+  'mobile.coins.history_failed': '履歴を表示できませんでした。もう一度お試しください。',
+  'mobile.coins.history_heading': '履歴',
+  'mobile.coins.issuer': '発行者',
+  'mobile.coins.kind_expiry': '有効期限切れ',
+  'mobile.coins.kind_grant': '追加',
+  'mobile.coins.kind_revocation': '返金による取り消し',
+  'mobile.coins.kind_settlement': '新しいパックから充当',
+  'mobile.coins.kind_shortfall': '返金による不足',
+  'mobile.coins.kind_spend': 'エピソードの購入',
+  'mobile.coins.more_history_failed': '履歴の続きを表示できませんでした。もう一度お試しください。',
+  'mobile.coins.nearest_expiry':
+      '{\$count :integer}{\$coin_name}の有効期限は{\$date}です。',
+  'mobile.coins.owed':
+      '返金されたパックの{\$coin_name}のうち、使用済みだった{\$count :integer}{\$coin_name}は次に購入するパックから差し引かれます。',
+  'mobile.coins.pack_confirming': '決済を確認しています。購入が反映されると{\$coin_name}が追加されます。',
+  'mobile.coins.pack_expiry': 'この{\$coin_name}は購入から{\$days :integer}日間使えます。',
+  'mobile.coins.pack_purchased': '{\$coin_name}が追加されました。',
+  'mobile.coins.pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count}{\$coin_name}}}\n* {{{\$count}{\$coin_name}（うちボーナス{\$bonus}）}}',
+  'mobile.coins.packs_heading': '{\$coin_name}を購入',
+  'mobile.coins.packs_not_selling':
+      '{\$coin_name}は現在販売していません。保有している分は引き続き使えます。',
+  'mobile.coins.packs_unavailable':
+      '現在、{\$coin_name}はアプリで購入できません。時間をおいて再試行してください。',
+  'mobile.coins.pay_failed': '{\$coin_name}で支払えませんでした。時間をおいて再試行してください。',
+  'mobile.coins.price_changed':
+      'このエピソードの{\$coin_name}での価格が変わりました。新しい価格を確認して、もう一度お試しください。',
+  'mobile.coins.sign_in_prompt': 'サインインすると保有している{\$coin_name}を確認できます。',
+  'mobile.coins.terms': '利用規約',
+  'mobile.coins.terms_link': '利用規約を読む',
   'mobile.comments.approval_notice': 'コメントは運営の承認後に表示されます。',
   'mobile.comments.awaiting_approval': '承認待ち',
   'mobile.comments.body_label': 'コメント',
@@ -4544,6 +4860,60 @@ const _enSources = <String, String>{
   'mobile.change_password.title': 'Change password',
   'mobile.change_password.unchanged':
       'Enter a new password that is different from your current one.',
+  'mobile.coins.amount_added': '+{\$count :integer} {\$coin_name}',
+  'mobile.coins.amount_owed': '{\$count :integer} {\$coin_name} owed',
+  'mobile.coins.amount_removed': '−{\$count :integer} {\$coin_name}',
+  'mobile.coins.balance_failed': 'Could not show your balance. Try again.',
+  'mobile.coins.balance_heading': 'Balance',
+  'mobile.coins.balance_value': '{\$count :integer} {\$coin_name}',
+  'mobile.coins.contact': 'Contact',
+  'mobile.coins.failed': 'Could not show this page. Try again.',
+  'mobile.coins.gate_balance': 'You have {\$count :integer} {\$coin_name}.',
+  'mobile.coins.gate_pack_buy':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{Buy {\$count} {\$coin_name} for {\$price}}}\n* {{Buy {\$count} {\$coin_name} (+{\$bonus} bonus) for {\$price}}}',
+  'mobile.coins.gate_packs': 'Buy {\$coin_name}',
+  'mobile.coins.gate_pay': 'Pay {\$count :integer} {\$coin_name}',
+  'mobile.coins.gate_rent':
+      'Rent for {\$period} ({\$count :integer} {\$coin_name})',
+  'mobile.coins.gate_short':
+      'This episode costs {\$price :integer} {\$coin_name}, and you have {\$balance :integer}. Buy at least {\$count :integer} more to pay with them.',
+  'mobile.coins.grant_expires': 'Expires on {\$date}',
+  'mobile.coins.history_empty':
+      'When you buy or spend {\$coin_name}, it is listed here.',
+  'mobile.coins.history_failed': 'Could not show your history. Try again.',
+  'mobile.coins.history_heading': 'History',
+  'mobile.coins.issuer': 'Issuer',
+  'mobile.coins.kind_expiry': 'Expired',
+  'mobile.coins.kind_grant': 'Added',
+  'mobile.coins.kind_revocation': 'Taken back after a refund',
+  'mobile.coins.kind_settlement': 'Paid back from a new pack',
+  'mobile.coins.kind_shortfall': 'Owed after a refund',
+  'mobile.coins.kind_spend': 'Spent on an episode',
+  'mobile.coins.more_history_failed':
+      'Could not show more of your history. Try again.',
+  'mobile.coins.nearest_expiry':
+      '{\$count :integer} {\$coin_name} expire on {\$date}.',
+  'mobile.coins.owed':
+      '{\$count :integer} {\$coin_name} of a refunded pack had already been spent. They are taken out of the next pack you buy.',
+  'mobile.coins.pack_confirming':
+      'We are confirming your payment. Your {\$coin_name} are added once the purchase is applied.',
+  'mobile.coins.pack_expiry':
+      '.input {\$days :integer}\n.match \$days\none {{These {\$coin_name} can be spent for {\$days} day after purchase.}}\n* {{These {\$coin_name} can be spent for {\$days} days after purchase.}}',
+  'mobile.coins.pack_purchased': 'Your {\$coin_name} have been added.',
+  'mobile.coins.pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count} {\$coin_name}}}\n* {{{\$count} {\$coin_name} (including {\$bonus} bonus)}}',
+  'mobile.coins.packs_heading': 'Buy {\$coin_name}',
+  'mobile.coins.packs_not_selling':
+      '{\$coin_name} are not on sale at the moment. You can keep spending the ones you hold.',
+  'mobile.coins.packs_unavailable':
+      '{\$coin_name} cannot be bought in the app right now. Try again later.',
+  'mobile.coins.pay_failed':
+      'Could not pay with {\$coin_name}. Try again later.',
+  'mobile.coins.price_changed':
+      'The price of this episode in {\$coin_name} has changed. Check the new price and try again.',
+  'mobile.coins.sign_in_prompt': 'Sign in to see your {\$coin_name}.',
+  'mobile.coins.terms': 'Terms',
+  'mobile.coins.terms_link': 'Read the terms',
   'mobile.comments.approval_notice':
       'A comment appears here once a moderator approves it.',
   'mobile.comments.awaiting_approval': 'Awaiting approval',
@@ -5398,6 +5768,57 @@ const _koSources = <String, String>{
   'mobile.change_password.submit': '비밀번호 변경',
   'mobile.change_password.title': '비밀번호 변경',
   'mobile.change_password.unchanged': '현재 비밀번호와 다른 비밀번호를 입력해 주세요.',
+  'mobile.coins.amount_added': '+{\$count :integer} {\$coin_name}',
+  'mobile.coins.amount_owed': '부족 {\$count :integer} {\$coin_name}',
+  'mobile.coins.amount_removed': '−{\$count :integer} {\$coin_name}',
+  'mobile.coins.balance_failed': '잔액을 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.coins.balance_heading': '잔액',
+  'mobile.coins.balance_value': '{\$count :integer} {\$coin_name}',
+  'mobile.coins.contact': '문의처',
+  'mobile.coins.failed': '이 페이지를 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.coins.gate_balance':
+      '{\$count :integer} {\$coin_name}을(를) 보유하고 있습니다.',
+  'mobile.coins.gate_pack_buy':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count} {\$coin_name}을(를) {\$price}에 구매}}\n* {{{\$count} {\$coin_name}(보너스 {\$bonus} 포함)을(를) {\$price}에 구매}}',
+  'mobile.coins.gate_packs': '{\$coin_name} 구매',
+  'mobile.coins.gate_pay': '{\$count :integer} {\$coin_name}(으)로 구매',
+  'mobile.coins.gate_rent': '{\$period} 대여 ({\$count :integer} {\$coin_name})',
+  'mobile.coins.gate_short':
+      '이 에피소드는 {\$price :integer} {\$coin_name}이며, 보유량은 {\$balance :integer}입니다. {\$count :integer} {\$coin_name} 이상 구매하면 결제할 수 있습니다.',
+  'mobile.coins.grant_expires': '{\$date}까지 유효',
+  'mobile.coins.history_empty': '{\$coin_name}을(를) 구매하거나 사용하면 여기에 표시됩니다.',
+  'mobile.coins.history_failed': '내역을 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.coins.history_heading': '내역',
+  'mobile.coins.issuer': '발행자',
+  'mobile.coins.kind_expiry': '유효기간 만료',
+  'mobile.coins.kind_grant': '추가',
+  'mobile.coins.kind_revocation': '환불로 회수',
+  'mobile.coins.kind_settlement': '새 팩에서 차감',
+  'mobile.coins.kind_shortfall': '환불로 인한 부족분',
+  'mobile.coins.kind_spend': '에피소드 구매',
+  'mobile.coins.more_history_failed': '내역을 더 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.coins.nearest_expiry':
+      '{\$count :integer} {\$coin_name}의 유효기간은 {\$date}까지입니다.',
+  'mobile.coins.owed':
+      '환불된 팩의 {\$coin_name} 중 이미 사용한 {\$count :integer} {\$coin_name}은(는) 다음에 구매하는 팩에서 차감됩니다.',
+  'mobile.coins.pack_confirming':
+      '결제를 확인하고 있습니다. 구매가 반영되면 {\$coin_name}이(가) 추가됩니다.',
+  'mobile.coins.pack_expiry':
+      '이 {\$coin_name}은(는) 구매 후 {\$days :integer}일 동안 사용할 수 있습니다.',
+  'mobile.coins.pack_purchased': '{\$coin_name}이(가) 추가되었습니다.',
+  'mobile.coins.pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count} {\$coin_name}}}\n* {{{\$count} {\$coin_name} (보너스 {\$bonus} 포함)}}',
+  'mobile.coins.packs_heading': '{\$coin_name} 구매',
+  'mobile.coins.packs_not_selling':
+      '{\$coin_name}은(는) 현재 판매하지 않습니다. 보유한 분량은 계속 사용할 수 있습니다.',
+  'mobile.coins.packs_unavailable':
+      '지금은 앱에서 {\$coin_name}을(를) 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.coins.pay_failed': '{\$coin_name}(으)로 결제하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.coins.price_changed':
+      '이 에피소드의 {\$coin_name} 가격이 변경되었습니다. 새 가격을 확인하고 다시 시도해 주세요.',
+  'mobile.coins.sign_in_prompt': '로그인하면 보유한 {\$coin_name}을(를) 볼 수 있습니다.',
+  'mobile.coins.terms': '이용약관',
+  'mobile.coins.terms_link': '이용약관 보기',
   'mobile.comments.approval_notice': '댓글은 운영자가 승인한 후에 표시됩니다.',
   'mobile.comments.awaiting_approval': '승인 대기 중',
   'mobile.comments.body_label': '댓글',
@@ -6147,6 +6568,50 @@ const _zhHansSources = <String, String>{
   'mobile.change_password.submit': '变更密码',
   'mobile.change_password.title': '变更密码',
   'mobile.change_password.unchanged': '请输入与当前密码不同的新密码。',
+  'mobile.coins.amount_added': '+{\$count :integer}{\$coin_name}',
+  'mobile.coins.amount_owed': '欠缺{\$count :integer}{\$coin_name}',
+  'mobile.coins.amount_removed': '−{\$count :integer}{\$coin_name}',
+  'mobile.coins.balance_failed': '无法显示您的余额。请重试。',
+  'mobile.coins.balance_heading': '余额',
+  'mobile.coins.balance_value': '{\$count :integer}{\$coin_name}',
+  'mobile.coins.contact': '联系方式',
+  'mobile.coins.failed': '无法显示此页面。请重试。',
+  'mobile.coins.gate_balance': '您持有{\$count :integer}{\$coin_name}。',
+  'mobile.coins.gate_pack_buy':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{以{\$price}购买{\$count}{\$coin_name}}}\n* {{以{\$price}购买{\$count}{\$coin_name}（含赠送{\$bonus}）}}',
+  'mobile.coins.gate_packs': '购买{\$coin_name}',
+  'mobile.coins.gate_pay': '使用{\$count :integer}{\$coin_name}购买',
+  'mobile.coins.gate_rent': '租阅{\$period}（{\$count :integer}{\$coin_name}）',
+  'mobile.coins.gate_short':
+      '该章节需要{\$price :integer}{\$coin_name}，您持有{\$balance :integer}。再购买至少{\$count :integer}{\$coin_name}即可支付。',
+  'mobile.coins.grant_expires': '有效期至{\$date}',
+  'mobile.coins.history_empty': '购买或使用{\$coin_name}后，记录会显示在这里。',
+  'mobile.coins.history_failed': '无法显示您的记录。请重试。',
+  'mobile.coins.history_heading': '记录',
+  'mobile.coins.issuer': '发行方',
+  'mobile.coins.kind_expiry': '已过期',
+  'mobile.coins.kind_grant': '增加',
+  'mobile.coins.kind_revocation': '因退款收回',
+  'mobile.coins.kind_settlement': '从新套餐中抵扣',
+  'mobile.coins.kind_shortfall': '因退款欠缺',
+  'mobile.coins.kind_spend': '购买章节',
+  'mobile.coins.more_history_failed': '无法显示更多记录。请重试。',
+  'mobile.coins.nearest_expiry': '{\$count :integer}{\$coin_name}将于{\$date}到期。',
+  'mobile.coins.owed':
+      '已退款的套餐中已使用的{\$count :integer}{\$coin_name}将从您下次购买的套餐中扣除。',
+  'mobile.coins.pack_confirming': '我们正在确认您的付款。购买生效后将为您增加{\$coin_name}。',
+  'mobile.coins.pack_expiry': '这些{\$coin_name}自购买起{\$days :integer}天内可以使用。',
+  'mobile.coins.pack_purchased': '已为您增加{\$coin_name}。',
+  'mobile.coins.pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count}{\$coin_name}}}\n* {{{\$count}{\$coin_name}（含赠送{\$bonus}）}}',
+  'mobile.coins.packs_heading': '购买{\$coin_name}',
+  'mobile.coins.packs_not_selling': '{\$coin_name}目前暂停销售。您持有的部分仍可继续使用。',
+  'mobile.coins.packs_unavailable': '目前无法在应用中购买{\$coin_name}。请稍后再试。',
+  'mobile.coins.pay_failed': '无法使用{\$coin_name}支付。请稍后再试。',
+  'mobile.coins.price_changed': '该章节的{\$coin_name}价格已变更。请确认新价格后再试。',
+  'mobile.coins.sign_in_prompt': '登录后即可查看您持有的{\$coin_name}。',
+  'mobile.coins.terms': '使用条款',
+  'mobile.coins.terms_link': '查看使用条款',
   'mobile.comments.approval_notice': '评论经审核通过后会显示在这里。',
   'mobile.comments.awaiting_approval': '等待审核',
   'mobile.comments.body_label': '您的评论',
@@ -6842,6 +7307,50 @@ const _zhHantSources = <String, String>{
   'mobile.change_password.submit': '變更密碼',
   'mobile.change_password.title': '變更密碼',
   'mobile.change_password.unchanged': '請輸入與目前密碼不同的新密碼。',
+  'mobile.coins.amount_added': '+{\$count :integer}{\$coin_name}',
+  'mobile.coins.amount_owed': '不足{\$count :integer}{\$coin_name}',
+  'mobile.coins.amount_removed': '−{\$count :integer}{\$coin_name}',
+  'mobile.coins.balance_failed': '無法顯示您的餘額。請重試。',
+  'mobile.coins.balance_heading': '餘額',
+  'mobile.coins.balance_value': '{\$count :integer}{\$coin_name}',
+  'mobile.coins.contact': '聯絡方式',
+  'mobile.coins.failed': '無法顯示此頁面。請重試。',
+  'mobile.coins.gate_balance': '您持有{\$count :integer}{\$coin_name}。',
+  'mobile.coins.gate_pack_buy':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{以{\$price}購買{\$count}{\$coin_name}}}\n* {{以{\$price}購買{\$count}{\$coin_name}（含贈送{\$bonus}）}}',
+  'mobile.coins.gate_packs': '購買{\$coin_name}',
+  'mobile.coins.gate_pay': '使用{\$count :integer}{\$coin_name}購買',
+  'mobile.coins.gate_rent': '租閱{\$period}（{\$count :integer}{\$coin_name}）',
+  'mobile.coins.gate_short':
+      '該章節需要{\$price :integer}{\$coin_name}，您持有{\$balance :integer}。再購買至少{\$count :integer}{\$coin_name}即可支付。',
+  'mobile.coins.grant_expires': '有效期限至{\$date}',
+  'mobile.coins.history_empty': '購買或使用{\$coin_name}後，記錄會顯示在這裡。',
+  'mobile.coins.history_failed': '無法顯示您的記錄。請重試。',
+  'mobile.coins.history_heading': '記錄',
+  'mobile.coins.issuer': '發行者',
+  'mobile.coins.kind_expiry': '已過期',
+  'mobile.coins.kind_grant': '增加',
+  'mobile.coins.kind_revocation': '因退款收回',
+  'mobile.coins.kind_settlement': '從新套組中抵扣',
+  'mobile.coins.kind_shortfall': '因退款不足',
+  'mobile.coins.kind_spend': '購買章節',
+  'mobile.coins.more_history_failed': '無法顯示更多記錄。請重試。',
+  'mobile.coins.nearest_expiry': '{\$count :integer}{\$coin_name}將於{\$date}到期。',
+  'mobile.coins.owed':
+      '已退款的套組中已使用的{\$count :integer}{\$coin_name}，將從您下次購買的套組中扣除。',
+  'mobile.coins.pack_confirming': '我們正在確認您的付款。購買生效後將為您增加{\$coin_name}。',
+  'mobile.coins.pack_expiry': '這些{\$coin_name}自購買起{\$days :integer}天內可以使用。',
+  'mobile.coins.pack_purchased': '已為您增加{\$coin_name}。',
+  'mobile.coins.pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count}{\$coin_name}}}\n* {{{\$count}{\$coin_name}（含贈送{\$bonus}）}}',
+  'mobile.coins.packs_heading': '購買{\$coin_name}',
+  'mobile.coins.packs_not_selling': '{\$coin_name}目前暫停販售。您持有的部分仍可繼續使用。',
+  'mobile.coins.packs_unavailable': '目前無法在應用程式中購買{\$coin_name}。請稍後再試。',
+  'mobile.coins.pay_failed': '無法使用{\$coin_name}支付。請稍後再試。',
+  'mobile.coins.price_changed': '該章節的{\$coin_name}價格已變更。請確認新價格後再試。',
+  'mobile.coins.sign_in_prompt': '登入後即可查看您持有的{\$coin_name}。',
+  'mobile.coins.terms': '使用條款',
+  'mobile.coins.terms_link': '查看使用條款',
   'mobile.comments.approval_notice': '留言經審核通過後會顯示在這裡。',
   'mobile.comments.awaiting_approval': '等待審核',
   'mobile.comments.body_label': '您的留言',

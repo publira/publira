@@ -129,6 +129,26 @@ void main() {
     expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
+  test('a store purchase of a pack names the pack and no episode', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    final intent = await repository().startCoinPackStorePurchase(
+      '0190a0a0-0000-7000-8000-000000000001',
+      InAppPurchaseStore.appStore,
+    );
+    expect(intent.intentId, ConnectFixtureServer.storeIntentId);
+    final request = server
+        .requestsTo('StartStorePurchase')
+        .single
+        .decode(pb.StartStorePurchaseRequest());
+    expect(request.coinPackId, '0190a0a0-0000-7000-8000-000000000001');
+    expect(request.hasEpisodeId(), isFalse);
+    expect(
+      request.store,
+      pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_APP_STORE,
+    );
+  });
+
   test('a store that is not ready does not sell the episode', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
     server.storeStartStatus = HttpStatus.badRequest;

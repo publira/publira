@@ -35,6 +35,7 @@ class BuyEpisodeButton extends StatefulWidget {
     this.rentalPeriodHours,
     this.signInReturnTo,
     this.compact = false,
+    this.outlined = false,
   });
 
   final String episodeId;
@@ -69,6 +70,10 @@ class BuyEpisodeButton extends StatefulWidget {
   /// A row's size rather than a screen's. A row offers no rental, so a button
   /// that rents is always a screen's.
   final bool compact;
+
+  /// Whether another way in leads, such as coins that pay for the episode,
+  /// so the purchase stands beside it in outline.
+  final bool outlined;
 
   @override
   State<BuyEpisodeButton> createState() => _BuyEpisodeButtonState();
@@ -188,8 +193,9 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
     );
     final onPressed = _starting ? null : () => unawaited(_buy());
     // The rental is the alternative to the permanent copy, so it stands
-    // beside it in outline.
-    if (rentalPeriodHours != null) {
+    // beside it in outline, as the permanent copy does beside a way in that
+    // leads.
+    if (rentalPeriodHours != null || widget.outlined) {
       return OutlinedButton(key: key, onPressed: onPressed, child: label);
     }
     if (widget.compact) {

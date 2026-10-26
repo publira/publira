@@ -65,6 +65,19 @@ const waitFreeEpisodeExcludedReason = 'WAIT_FREE_EPISODE_EXCLUDED';
 /// everyone right now.
 const waitFreeEpisodeFreeReason = 'WAIT_FREE_EPISODE_FREE';
 
+/// The ErrorInfo reason `CoinService` and a store purchase of a pack refuse
+/// with, under `failed_precondition`, while the platform does not allow tenant
+/// coins or the tenant has not turned its coins on.
+const coinsUnavailableReason = 'COINS_UNAVAILABLE';
+
+/// The ErrorInfo reason `PayEpisodeWithCoins` refuses with when the episode's
+/// coin price is no longer the one the reader was shown.
+const coinPriceChangedReason = 'COIN_PRICE_CHANGED';
+
+/// The ErrorInfo reason `PayEpisodeWithCoins` refuses with when the reader's
+/// balance falls short of the price.
+const coinBalanceInsufficientReason = 'COIN_BALANCE_INSUFFICIENT';
+
 /// The fields the `google.rpc.BadRequest` details of a Connect error body's
 /// `details` name.
 ///

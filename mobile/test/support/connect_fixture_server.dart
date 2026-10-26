@@ -9,6 +9,7 @@ import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/coin.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/comment.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/contact.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
@@ -631,6 +632,22 @@ class ConnectFixtureServer {
 
   /// How long a ticket `UseTicket` spends opens its episode for.
   Duration ticketAccess = const Duration(hours: 72);
+
+  /// What `GetCoinSettings` answers, or `null` for a tenant with coins off,
+  /// which every `CoinService` call refuses with `COINS_UNAVAILABLE`.
+  pb.CoinSettings? coinSettings;
+
+  /// What `GetCoinBalance` answers the signed-in member, and what
+  /// `PayEpisodeWithCoins` spends from.
+  pb.CoinBalance coinBalance = pb.CoinBalance();
+
+  /// The member's coin history, newest first, which `ListCoinTransactions`
+  /// pages through two at a time.
+  List<pb.CoinTransaction> coinTransactions = const [];
+
+  /// The ErrorInfo reason `PayEpisodeWithCoins` is refused with under
+  /// `failed_precondition`, or `null` to spend the coins.
+  String? coinPaymentRefusal;
 
   /// Episodes `UseTicket` opened, by public id, in order. Each answers the
   /// member as entitled through an access ticket from then on.
@@ -2167,6 +2184,11 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.contains('/publira.v1.CoinService/')) {
+      await _writeCoins(request, recorded);
+      return;
+    }
+
     if (path.endsWith('/GetSeriesEpisodeAccess')) {
       await _writeSeriesEpisodeAccess(
         request,
@@ -2712,6 +2734,83 @@ class ConnectFixtureServer {
     await _writeMessage(
       request,
       pb.UseTicketResponse(ticket: ticket, nextAvailableAt: nextAvailableAt),
+    );
+  }
+
+  /// Every `CoinService` call: the settings for anyone, and the balance, the
+  /// history, and a payment for the signed-in member.
+  Future<void> _writeCoins(
+    HttpRequest request,
+    RecordedRequest recorded,
+  ) async {
+    final path = recorded.path;
+    final settings = path.endsWith('/GetCoinSettings')
+        ? recorded.decode(pb.GetCoinSettingsRequest())
+        : null;
+    if (settings == null && !await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    final current = coinSettings;
+    if (current == null) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'coins are unavailable',
+        details: [errorInfoDetail('COINS_UNAVAILABLE')],
+      );
+      return;
+    }
+    if (settings != null) {
+      await _writeMessage(
+        request,
+        pb.GetCoinSettingsResponse(settings: current),
+      );
+      return;
+    }
+    if (path.endsWith('/GetCoinBalance')) {
+      recorded.decode(pb.GetCoinBalanceRequest());
+      await _writeMessage(
+        request,
+        pb.GetCoinBalanceResponse(balance: coinBalance),
+      );
+      return;
+    }
+    if (path.endsWith('/ListCoinTransactions')) {
+      final list = recorded.decode(pb.ListCoinTransactionsRequest());
+      final start = list.token.isEmpty ? 0 : int.parse(list.token);
+      final end = min(start + 2, coinTransactions.length);
+      await _writeMessage(
+        request,
+        pb.ListCoinTransactionsResponse(
+          transactions: coinTransactions.sublist(start, end),
+          coinName: coinBalance.coinName,
+          nextToken: end < coinTransactions.length ? '$end' : null,
+        ),
+      );
+      return;
+    }
+    final pay = recorded.decode(pb.PayEpisodeWithCoinsRequest());
+    final refusal =
+        coinPaymentRefusal ??
+        (coinBalance.coins < pay.coins ? 'COIN_BALANCE_INSUFFICIENT' : null);
+    if (refusal != null) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        refusal,
+        details: [errorInfoDetail(refusal)],
+      );
+      return;
+    }
+    coinBalance = coinBalance.deepCopy()..coins -= pay.coins;
+    await _writeMessage(
+      request,
+      pb.PayEpisodeWithCoinsResponse(
+        purchase: pb.MyPurchase(coinsSpent: pay.coins),
+        balance: coinBalance,
+      ),
     );
   }
 

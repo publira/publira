@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:publira/coins/coin_repository.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
@@ -242,6 +243,29 @@ class FakePurchaseRepository implements PurchaseRepository {
     );
   }
 
+  /// Packs [startCoinPackStorePurchase] was asked for, in order.
+  final List<String> coinPackIntents = <String>[];
+
+  /// Called for a pack transaction [confirmStorePurchase] records, which is
+  /// when the server grants its coins.
+  void Function(String productId)? onCoinPackConfirmed;
+
+  @override
+  Future<StorePurchaseIntent> startCoinPackStorePurchase(
+    String coinPackId,
+    InAppPurchaseStore store,
+  ) async {
+    coinPackIntents.add(coinPackId);
+    final failure = storeStartFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return StorePurchaseIntent(
+      intentId: intentFor(coinPackId),
+      productId: coinPackProductId(coinPackId),
+    );
+  }
+
   @override
   Future<void> confirmStorePurchase({
     required InAppPurchaseStore store,
@@ -254,6 +278,10 @@ class FakePurchaseRepository implements PurchaseRepository {
       throw failure;
     }
     confirmed.add(transaction);
+    if (productId.startsWith('coins_')) {
+      onCoinPackConfirmed?.call(productId);
+      return;
+    }
     onConfirmed?.call();
   }
 

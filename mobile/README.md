@@ -242,6 +242,7 @@ mobile/
 │   ├── auth/                     # Session, secure storage, AuthController: sign-in with a password, Apple, Google, or a passkey, sign-up, password reset, and the account icon
 │   ├── announcements/            # AnnouncementBoard: the tenant's announcements and the pinned banner
 │   ├── catalog/                  # CatalogRepository, the shelves above the catalog list, eye-catch rendition choice and cover widget
+│   ├── coins/                    # CoinRepository: the tenant's coins, the reader's balance and history, paying for an episode with them, and the packs the store sells
 │   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
 │   ├── contact/                  # ContactRepository: a reader's message to the tenant's staff
 │   ├── content_views/            # ContentViewRepository: the views the tenant's rankings and content statistics count
@@ -258,7 +259,7 @@ mobile/
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # A paid episode bought through the web checkout in the browser or the store's in-app purchase, and the plans that open one
 │   ├── push/                     # PushController: Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / passkeys / notifications / contact / announcements / published page
+│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / passkeys / coins / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   ├── tenant/                   # The tenant's brand and theme, the controller that loads them, and whether the API serves the tenant
 │   ├── viewer/                   # Paged reader: page images, the reading position, and the end of an episode

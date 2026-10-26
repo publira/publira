@@ -24,11 +24,21 @@ A pack of the tenant's coins the reader bought is listed in **Purchases** too, n
 
 A reader who subscribes to one of the tenant's subscription plans reads every episode it covers in the app as well, and the episode list says **Included in your plan** in place of those episodes' prices. Plans are sold on the site alone. With **Web checkout**, a locked episode that a published plan covers offers **See plans**, which opens the site's plan page in the phone's browser; the reader subscribes there, and the app reads the episode again when they come back to it. With **In-app purchase**, the store sells no plan, so the app does not send the reader to the site for one.
 
+### Coins
+
+A tenant that sells its own coins sells them in the app too, as long as the app sells through **In-app purchase**: the stores require a currency spent inside an app to be bought through them, so with **Web checkout** the app shows nothing about coins, and a locked episode offers what it offered before. Every place the app names the coins uses the tenant's word for them in the reader's language.
+
+On a locked episode priced in coins, a signed-in reader is told how many they hold. When those cover the price, **Pay** followed by the price in coins opens the episode at once, and the store purchase stands beside it. When they fall short, the episode offers the smallest pack that covers the difference, at the price the store charges in the reader's country, with how long its coins can be spent and the tenant's disclosures under it. The coins are added once the install has recorded the store's charge, and the reader then pays for the episode with them.
+
+**Account** lists the coins under the tenant's word for them, with the reader's balance, and opens a screen with the balance and when the first of it expires, every pack the store sells at the store's price, the disclosures, and every entry that added coins or took them.
+
 The App Store and Google Play each have rules on how an app may sell digital content, and they decide in review whether an app follows them. Read their current guidelines before choosing **Web checkout** for an app you submit.
 
 ### What each store needs for in-app purchase
 
 The app sells each episode as a store product named after its price, which during a campaign is the campaign's price. **Store products**, on the same console page, lists the product ID each price your paid episodes sell at needs, such as `episode_300`, the prices of campaigns scheduled or on sale included. Create every listed product in both stores, as a consumable product at that price, and add one whenever a new price appears in the list.
+
+Each pack of the tenant's coins on sale is listed there too, as `coins_` followed by the pack's ID, and is created the same way, as a consumable at the pack's price. The app offers a pack only once the store on the reader's phone has its product. The name a store shows for a product on its payment sheet and its receipts is the one you give it in App Store Connect and Play Console, not one Publira sends, so give each pack's product the tenant's word for its coins, in every language the app is listed in.
 
 In **App Store Connect**:
 
