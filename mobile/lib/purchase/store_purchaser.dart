@@ -83,6 +83,11 @@ class StorePurchaser {
 
   _OpenPurchase? _open;
 
+  /// Whether a purchase is between its tap and its outcome. It is taken
+  /// before the first wait, so a second tap while the store is still being
+  /// asked is refused rather than opening a second order over the first.
+  var _buying = false;
+
   /// Starts listening to what the store reports. On iOS that is where the
   /// transactions an earlier run left unfinished arrive; Google Play reports
   /// them only when asked, so they are asked for here.
@@ -169,12 +174,23 @@ class StorePurchaser {
   Future<StorePurchaseOutcome> _buy(
     Future<StorePurchaseIntent> Function() start,
   ) async {
-    if (_open != null) {
+    if (_buying) {
       throw const PurchaseFailure(
         PurchaseFailureKind.unexpected,
         message: 'a purchase is already open',
       );
     }
+    _buying = true;
+    try {
+      return await _buyOnce(start);
+    } finally {
+      _buying = false;
+    }
+  }
+
+  Future<StorePurchaseOutcome> _buyOnce(
+    Future<StorePurchaseIntent> Function() start,
+  ) async {
     if (!await _isAvailable()) {
       throw const PurchaseFailure(PurchaseFailureKind.storeUnavailable);
     }

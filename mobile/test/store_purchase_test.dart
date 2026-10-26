@@ -7,6 +7,7 @@ import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_inte
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/coins/coin_repository.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/purchase/purchase_failure.dart';
@@ -403,5 +404,29 @@ void main() {
     expect(purchases.checkouts, [fixtureInternalId(paidEpisodeId)]);
     expect(purchases.storeIntents, isEmpty);
     expect(platform.bought, isEmpty);
+  });
+
+  test('refuses a second order while the first is still starting', () async {
+    const first = '0190a0a0-0000-7000-8000-000000000001';
+    const second = '0190a0a0-0000-7000-8000-000000000002';
+    platform.products = {coinPackProductId(first), coinPackProductId(second)};
+    // The app starts listening to the store on launch.
+    await purchaser.start();
+
+    final opening = purchaser.buyCoinPack(first);
+    await expectLater(
+      purchaser.buyCoinPack(second),
+      throwsA(
+        isA<PurchaseFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          PurchaseFailureKind.unexpected,
+        ),
+      ),
+    );
+
+    expect(await opening, StorePurchaseOutcome.purchased);
+    expect(purchases.coinPackIntents, [first]);
+    expect(platform.bought.single.productDetails.id, coinPackProductId(first));
   });
 }
