@@ -4224,6 +4224,7 @@
       },
       "paid_through": {
         "none": "No payment",
+        "coins": "Paid with coins",
         "app_store": "App Store",
         "google_play": "Google Play"
       },
@@ -4262,6 +4263,7 @@
       "not_refundable": {
         "store": "A purchase in the app is refunded by Apple or Google, not here.",
         "no_payment": "This purchase was made without a payment, so there is nothing to refund.",
+        "coins": "This purchase was paid with coins and took no payment, so there is nothing to refund here. Refunding the pack the coins came from takes what they were worth back off this sale.",
         "dispute": "The reader disputed this payment with their bank. Respond to the dispute in the payment provider's dashboard.",
         "provider": "The tenant does not take payments through this provider now, so this purchase cannot be refunded here. Refund it in the provider's dashboard."
       },

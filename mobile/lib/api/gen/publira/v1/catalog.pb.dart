@@ -10020,8 +10020,10 @@ class MyPurchase extends $pb.GeneratedMessage {
   $0.SeriesBundle ensureSeriesBundle() => $_ensure(13);
 
   /// Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
-  /// coins spent. Such a purchase took no payment, so its price_at_purchase is
-  /// 0. It is 0 on every other purchase.
+  /// coins spent. Such a purchase took no payment, so its price_at_purchase and
+  /// its refunded_amount are 0, whatever its coins were worth to the tenant and
+  /// whether or not the pack they came from was refunded since. It is 0 on
+  /// every other purchase.
   @$pb.TagNumber(15)
   $core.int get coinsSpent => $_getIZ(14);
   @$pb.TagNumber(15)

@@ -15,17 +15,36 @@ ORDER BY expires_at;
 
 -- name: LockUnspentCoinGrantsForUser :many
 -- The reader's grants a spend can draw on, in the order it draws on them: the
--- one that expires first first. Locked for the draws that follow.
-SELECT id,
-    remaining_coins
-FROM coin_grants
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND user_id = sqlc.arg('user_id')::uuid
-    AND remaining_coins > 0
-    AND expires_at > NOW()
-ORDER BY expires_at,
-    id
-FOR UPDATE;
+-- one that expires first first. The grants are locked for the draws that
+-- follow, and the pack purchases that made them are not, so a refund of one
+-- does not wait for the spend.
+--
+-- paid_amount is what the coins granted were paid for, in currency, which a
+-- spend spreads over them: the price of the pack purchase that made the
+-- grant. A grant made by staff was paid for by no one, a test purchase paid
+-- the tenant nothing, and a pack paid in another currency than the spend's
+-- cannot be added to its price, so each of those is paid 0.
+SELECT g.id,
+    g.coins,
+    g.remaining_coins,
+    (
+        CASE
+            WHEN p.id IS NULL
+            OR p.is_test
+            OR p.currency <> sqlc.arg('currency')::text THEN 0
+            ELSE p.price_at_purchase
+        END
+    )::integer AS paid_amount
+FROM coin_grants g
+    LEFT JOIN purchases p ON p.tenant_id = g.tenant_id
+    AND p.id = g.purchase_id
+WHERE g.tenant_id = sqlc.arg('tenant_id')
+    AND g.user_id = sqlc.arg('user_id')::uuid
+    AND g.remaining_coins > 0
+    AND g.expires_at > NOW()
+ORDER BY g.expires_at,
+    g.id
+FOR UPDATE OF g;
 
 -- name: DrawCoinGrant :exec
 UPDATE coin_grants

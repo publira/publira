@@ -153,6 +153,7 @@ type CoinSpendAllocation struct {
 	TransactionID uuid.UUID `json:"transaction_id"`
 	GrantID       uuid.UUID `json:"grant_id"`
 	Coins         int32     `json:"coins"`
+	Amount        int32     `json:"amount"`
 }
 
 type CoinTransaction struct {

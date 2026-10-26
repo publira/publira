@@ -4090,8 +4090,10 @@ export type MyPurchase = Message<"publira.v1.MyPurchase"> & {
 
   /**
    * Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
-   * coins spent. Such a purchase took no payment, so its price_at_purchase is
-   * 0. It is 0 on every other purchase.
+   * coins spent. Such a purchase took no payment, so its price_at_purchase and
+   * its refunded_amount are 0, whatever its coins were worth to the tenant and
+   * whether or not the pack they came from was refunded since. It is 0 on
+   * every other purchase.
    *
    * @generated from field: int32 coins_spent = 15;
    */

@@ -202,11 +202,13 @@ A refund that arrives before the purchase it reverses is kept, and applied when 
 
 **Payments** › **Purchases** lists the tenant's purchases, newest first, and narrows them by the reader's email address, the series, the episode, and the days they were made on, in the tenant's time zone. **View** opens a purchase beside the list with what the reader paid, where they paid it, and what has been refunded so far. Only a tenant admin sees the screen.
 
-A purchase of a pack of coins is listed there as the coins it granted, in the tenant's word for them in its default language, and with no series, so narrowing the list to a series or an episode leaves it out. It is refunded like any purchase. Its coins stay with the reader until the provider reports the refund in full, or a dispute of the payment: then what the pack has left is taken back, and what of it the reader had already spent is recorded as owed, and taken out of the next pack they buy.
+A purchase of a pack of coins is listed there as the coins it granted, in the tenant's word for them in its default language, and with no series, so narrowing the list to a series or an episode leaves it out. It is refunded like any purchase. Its coins stay with the reader until the provider reports the refund in full, or a dispute of the payment: then what the pack has left is taken back, and what of it the reader had already spent is recorded as owed, and taken out of the next pack they buy. The episodes those spent coins paid for stay open, and each of their purchases shows what the coins were worth as refunded.
+
+A purchase of an episode paid with coins shows **Paid with coins** where the others name the provider, and as its price what the coins spent were worth, which is the sale its Authors are paid royalties on, as [Royalties](./6-reports-and-royalties.md#what-an-author-is-owed) describes. The reader sees the coins they spent, and no price.
 
 **Refund** asks the provider the reader paid through to give back what they paid, once you have written a reason; the reason is recorded in the audit log with the refund. The episode closes to the reader at once, and the purchase shows **Refund requested** until the provider reports the refund through the webhook, when it shows **Refunded**. A refund the provider refuses, or one that fails after the provider accepted it, opens the episode to the reader again.
 
-The console offers no refund for a purchase made in the app, one the reader disputed with their bank, or one paid through a provider the tenant no longer takes payments through: refund those where the reader paid.
+The console offers no refund for a purchase made in the app, one the reader disputed with their bank, or one paid through a provider the tenant no longer takes payments through: refund those where the reader paid. Nor does it offer one for a purchase paid with coins, which took no payment: the money is the pack's, and refunding the pack is what takes it back.
 
 ## Disputes
 

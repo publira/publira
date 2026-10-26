@@ -512,6 +512,13 @@ func purchaseItemFromRow(row purchasePageRow, coinName string, now time.Time) (*
 		RevokedAt:       revokedAt,
 		CoinsSpent:      row.coinsSpent,
 	}
+	// A purchase paid with coins records what its coins were worth, and what
+	// a refund of their pack took back of that, as the tenant's sale. The
+	// reader paid coins and was refunded nothing, so neither is theirs to see.
+	if row.coinsSpent > 0 {
+		item.PriceAtPurchase = 0
+		item.RefundedAmount = 0
+	}
 	if row.seriesID.Valid {
 		item.Series = &publirattypesv1.Series{
 			Id:       row.seriesID.UUID.String(),
@@ -1079,6 +1086,7 @@ func (s *apiServer) logRevokedCoins(ctx context.Context, purchase dbmodels.Purch
 		"purchase_id", purchase.ID,
 		"revoked_coins", revocation.Revoked,
 		"shortfall_coins", revocation.Shortfall,
+		"refunded_spend_amount", revocation.RefundedAmount,
 	)
 }
 

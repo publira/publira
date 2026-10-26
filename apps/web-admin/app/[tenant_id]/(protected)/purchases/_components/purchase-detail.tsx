@@ -54,6 +54,9 @@ const NotRefundableNote = ({ purchase }: { purchase: PurchaseItem }) => {
   if (!purchase.provider) {
     return <Message message="admin.purchases.not_refundable.no_payment" />;
   }
+  if (purchase.provider === "coins") {
+    return <Message message="admin.purchases.not_refundable.coins" />;
+  }
   return <Message message="admin.purchases.not_refundable.provider" />;
 };
 

@@ -100,7 +100,11 @@ type AdminPurchase struct {
 	ReaderPublicId string `protobuf:"bytes,7,opt,name=reader_public_id,json=readerPublicId,proto3" json:"reader_public_id,omitempty"`
 	ReaderName     string `protobuf:"bytes,8,opt,name=reader_name,json=readerName,proto3" json:"reader_name,omitempty"`
 	ReaderEmail    string `protobuf:"bytes,9,opt,name=reader_email,json=readerEmail,proto3" json:"reader_email,omitempty"`
-	// What the reader paid, in the minor unit of currency.
+	// What the reader paid, in the minor unit of currency. On a purchase paid
+	// with coins it is what the coins spent were worth: each coin its part of
+	// what the pack it came from was paid, the pack's bonus coins counting as
+	// much as the rest, and a coin granted without a payment nothing. That is
+	// the sale a royalty statement pays on.
 	Price int64 `protobuf:"varint,10,opt,name=price,proto3" json:"price,omitempty"`
 	// The ISO 4217 code, in capitals, of the currency the reader paid in.
 	Currency string `protobuf:"bytes,11,opt,name=currency,proto3" json:"currency,omitempty"`
@@ -109,8 +113,8 @@ type AdminPurchase struct {
 	// RFC3339; empty when the reading period does not run out.
 	ExpiresAt string `protobuf:"bytes,13,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	// The payment provider the reader paid through, as its declaration names
-	// it ("stripe", "payjp"). Empty for a purchase made in a store or granted
-	// without a payment.
+	// it ("stripe", "payjp"), or "coins" for a purchase paid with the tenant's
+	// coins. Empty for a purchase made in a store or granted without a payment.
 	Provider string `protobuf:"bytes,14,opt,name=provider,proto3" json:"provider,omitempty"`
 	// The store that charged the reader ("app_store", "google_play"). Empty for
 	// every other purchase.
@@ -119,7 +123,10 @@ type AdminPurchase struct {
 	// no money reached the tenant through.
 	Test bool `protobuf:"varint,16,opt,name=test,proto3" json:"test,omitempty"`
 	// The total the provider has reported refunded so far, in the minor unit of
-	// currency. Zero while no refund has been reported.
+	// currency. Zero while no refund has been reported. On a purchase paid with
+	// coins it is what the coins from a pack refunded in full or disputed since
+	// were worth; the reader keeps the episode, so it never reaches price with
+	// refunded_at set.
 	RefundedAmount int64 `protobuf:"varint,17,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
 	// RFC3339; set once the refunded total reaches the price.
 	RefundedAt string `protobuf:"bytes,18,opt,name=refunded_at,json=refundedAt,proto3" json:"refunded_at,omitempty"`

@@ -7717,8 +7717,10 @@ type MyPurchase struct {
 	// episode reads report it.
 	SeriesBundle *v1.SeriesBundle `protobuf:"bytes,14,opt,name=series_bundle,json=seriesBundle,proto3" json:"series_bundle,omitempty"`
 	// Set on a purchase paid with coins (CoinService.PayEpisodeWithCoins): the
-	// coins spent. Such a purchase took no payment, so its price_at_purchase is
-	// 0. It is 0 on every other purchase.
+	// coins spent. Such a purchase took no payment, so its price_at_purchase and
+	// its refunded_amount are 0, whatever its coins were worth to the tenant and
+	// whether or not the pack they came from was refunded since. It is 0 on
+	// every other purchase.
 	CoinsSpent int32 `protobuf:"varint,15,opt,name=coins_spent,json=coinsSpent,proto3" json:"coins_spent,omitempty"`
 	// The tenant's word for its coins in the request's locale, set on a
 	// purchase paid with coins and on a purchase of a pack, and empty on every

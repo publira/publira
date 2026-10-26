@@ -93,6 +93,7 @@ WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
     AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
+    AND p.coin_pack_id IS NULL
     AND p.currency = $2::text
     AND p.purchased_at >= $3::timestamptz
     AND p.purchased_at < $4::timestamptz
@@ -112,7 +113,9 @@ type GetRoyaltySalesTotalsForPeriodRow struct {
 
 // Totals the month's sales once each, however many episodes and creators a
 // sale is credited to. The month, the refund rule, and the currency are
-// those of ListRoyaltyLinesForPeriod.
+// those of ListRoyaltyLinesForPeriod. A purchase of a pack of coins is left
+// out: its money is the price of the purchases its coins paid for, which
+// are counted here.
 func (q *Queries) GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error) {
 	row := q.db.QueryRowContext(ctx, GetRoyaltySalesTotalsForPeriod,
 		arg.TenantID,
@@ -358,6 +361,7 @@ WHERE p.tenant_id = $2
     AND p.refunded_at IS NULL
     AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
+    AND p.coin_pack_id IS NULL
     AND p.currency = $3::text
     AND p.purchased_at >= $4::timestamptz
     AND p.purchased_at < $5::timestamptz
@@ -388,7 +392,8 @@ type InsertRoyaltyStatementPurchasesParams struct {
 // own month, by the rules of ListRoyaltyLinesForPeriod, and the change it
 // carries of each sale ListRoyaltyAdjustmentLinesForPeriod adjusts. Both
 // halves read the purchases as they stood before this statement, which is the
-// snapshot the lines were computed in.
+// snapshot the lines were computed in. A purchase of a pack of coins is no
+// sale, and nothing of it is written down.
 func (q *Queries) InsertRoyaltyStatementPurchases(ctx context.Context, arg InsertRoyaltyStatementPurchasesParams) error {
 	_, err := q.db.ExecContext(ctx, InsertRoyaltyStatementPurchases,
 		arg.StatementID,
@@ -645,7 +650,10 @@ type ListRoyaltyLinesForPeriodRow struct {
 // and is carried as refunded_amount. A test purchase, from a store's sandbox or a
 // payment provider's test mode, paid the tenant nothing and is not a sale
 // either, and neither is one paid in a currency other than the one asked
-// for, the tenant's: its price cannot be added to theirs. The payout is
+// for, the tenant's: its price cannot be added to theirs. An episode paid
+// with coins is a sale at what its coins were paid for, which its purchase
+// records as its price, and a pack of coins is no sale of an episode. The
+// payout is
 // floored per line over the month's sum, which keeps the rounding loss to one
 // minor unit of the currency per line.
 func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error) {

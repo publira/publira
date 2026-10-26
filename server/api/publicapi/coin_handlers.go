@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math"
 	"strconv"
 	"time"
 	"unicode/utf8"
@@ -35,6 +36,7 @@ var (
 	errCoinPriceChanged       = errors.New("the episode's coin price is not the one the reader was shown")
 	errCoinBalanceTooLow      = errors.New("the reader does not hold enough coins")
 	errCoinIdempotencyKeyUsed = errors.New("idempotency_key already paid for another episode or kind")
+	errCoinSpendTooValuable   = errors.New("the coins spent are worth more than a purchase's price can hold")
 )
 
 // coinOffer is what a request is told about the tenant's coins. Nothing about
@@ -617,7 +619,11 @@ func (s *apiServer) PayEpisodeWithCoins(
 		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already rented")
 	}
 
-	grants, err := q.LockUnspentCoinGrantsForUser(ctx, dbmodels.LockUnspentCoinGrantsForUserParams{TenantID: tenant.ID, UserID: user.ID})
+	currency, err := s.tenantCurrency(ctx, q, tenant.ID)
+	if err != nil {
+		return nil, err
+	}
+	grants, err := q.LockUnspentCoinGrantsForUser(ctx, dbmodels.LockUnspentCoinGrantsForUserParams{TenantID: tenant.ID, UserID: user.ID, Currency: currency})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock the reader's coins", err, "tenant_id", tenant.ID.String())
 	}
@@ -629,11 +635,11 @@ func (s *apiServer) PayEpisodeWithCoins(
 		return nil, rpcerrors.NewErrorInfoErrorWithMetadata(connect.CodeFailedPrecondition, errCoinBalanceTooLow, rpcerrors.ReasonCoinBalanceInsufficient,
 			map[string]string{rpcerrors.MetadataShortfall: strconv.FormatInt(int64(coinPrice)-available, 10)})
 	}
-
-	currency, err := s.tenantCurrency(ctx, q, tenant.ID)
-	if err != nil {
-		return nil, err
+	draws, salePrice := drawCoins(grants, coinPrice)
+	if salePrice > math.MaxInt32 {
+		return nil, s.internalError(ctx, "the coins spent are worth more than a price can hold", errCoinSpendTooValuable, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
+
 	spendID, err := uuid.NewV7()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
@@ -648,6 +654,7 @@ func (s *apiServer) PayEpisodeWithCoins(
 		UserID:    user.ID,
 		EpisodeID: episode.ID,
 		ExpiresAt: readingPeriodExpiry(readingPeriodHours, time.Now().UTC()),
+		Price:     int32(salePrice),
 		SpendID:   spendID,
 		Currency:  currency,
 		Kind:      string(kind),
@@ -664,26 +671,19 @@ func (s *apiServer) PayEpisodeWithCoins(
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to record the coin spend", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	// The grants are drawn on in the order they were locked, the one that
-	// expires first first.
-	left := coinPrice
-	for _, grant := range grants {
-		if left == 0 {
-			break
-		}
-		draw := min(grant.RemainingCoins, left)
-		if err := q.DrawCoinGrant(ctx, dbmodels.DrawCoinGrantParams{TenantID: tenant.ID, ID: grant.ID, Coins: draw}); err != nil {
-			return nil, s.internalDBError(ctx, "failed to spend from a coin grant", err, "tenant_id", tenant.ID.String(), "coin_grant_id", grant.ID.String())
+	for _, draw := range draws {
+		if err := q.DrawCoinGrant(ctx, dbmodels.DrawCoinGrantParams{TenantID: tenant.ID, ID: draw.grantID, Coins: draw.coins}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to spend from a coin grant", err, "tenant_id", tenant.ID.String(), "coin_grant_id", draw.grantID.String())
 		}
 		if err := q.CreateCoinSpendAllocation(ctx, dbmodels.CreateCoinSpendAllocationParams{
 			TenantID:      tenant.ID,
 			TransactionID: spendID,
-			GrantID:       grant.ID,
-			Coins:         draw,
+			GrantID:       draw.grantID,
+			Coins:         draw.coins,
+			Amount:        draw.amount,
 		}); err != nil {
-			return nil, s.internalDBError(ctx, "failed to record what a coin spend drew on", err, "tenant_id", tenant.ID.String(), "coin_grant_id", grant.ID.String())
+			return nil, s.internalDBError(ctx, "failed to record what a coin spend drew on", err, "tenant_id", tenant.ID.String(), "coin_grant_id", draw.grantID.String())
 		}
-		left -= draw
 	}
 	// A purchase paid with coins is a purchase of the episode like any other
 	// for the engagement it records. It took no payment, so no receipt is
@@ -699,6 +699,43 @@ func (s *apiServer) PayEpisodeWithCoins(
 		return nil, s.internalDBError(ctx, "failed to commit the coin payment", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
 	return s.coinPaymentResponse(ctx, payment, purchaseID)
+}
+
+// coinDraw is the coins a spend takes from one grant, and what they are worth.
+type coinDraw struct {
+	grantID uuid.UUID
+	coins   int32
+	amount  int32
+}
+
+// drawCoins takes coins from the grants in the order they were locked, the one
+// that expires first first, and answers what each draw takes and the sale
+// price the coins add up to. grants hold at least coins between them.
+func drawCoins(grants []dbmodels.LockUnspentCoinGrantsForUserRow, coins int32) ([]coinDraw, int64) {
+	var draws []coinDraw
+	var price int64
+	left := coins
+	for _, grant := range grants {
+		if left == 0 {
+			break
+		}
+		draw := coinDraw{grantID: grant.ID, coins: min(grant.RemainingCoins, left)}
+		draw.amount = spentCoinsWorth(draw.coins, grant.Coins, grant.PaidAmount)
+		draws = append(draws, draw)
+		price += int64(draw.amount)
+		left -= draw.coins
+	}
+	return draws, price
+}
+
+// spentCoinsWorth is what coins of a grant of granted coins, paid paid for,
+// are worth: their part of the payment, every coin of the grant counting the
+// same, the bonus coins of a pack among them, so the tenant bears a bonus as
+// a discount. It is rounded down to the currency's minor unit. A partial
+// refund of the pack leaves its coins with the reader and their worth as it
+// was.
+func spentCoinsWorth(coins, granted, paid int32) int32 {
+	return int32(int64(coins) * int64(paid) / int64(granted))
 }
 
 // answerPaidCoinSpend answers a payment the reader's client already made with
