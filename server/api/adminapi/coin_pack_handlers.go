@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publicid"
+	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -184,6 +185,10 @@ func (s *adminServer) CreateCoinPack(
 	if err := s.writeTenantSettingAuditOn(txCtx, tenant, session, "coin_pack_created", "coin_pack", created.PublicID); err != nil {
 		return nil, err
 	}
+	owed, err := s.reval.Record(txCtx, queries, tenant.ID, coinSettingsRevalidateTags(tenant.ID))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for a coin pack create", err, "tenant_id", tenant.ID.String())
+	}
 	currency, err := s.tenantCurrency(txCtx, tenant.ID)
 	if err != nil {
 		return nil, err
@@ -191,6 +196,7 @@ func (s *adminServer) CreateCoinPack(
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create coin pack", err, "tenant_id", tenant.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 	return &publiraadminv1.CreateCoinPackResponse{Pack: coinPackToProto(created, currency)}, nil
 }
 
@@ -239,6 +245,7 @@ func (s *adminServer) UpdateCoinPack(
 		}
 	}
 	updated := current
+	var owed revalidate.Owed
 	if termsChanged || input.sortOrder != current.SortOrder || input.onSale != current.OnSale {
 		updated, err = queries.UpdateCoinPack(txCtx, dbmodels.UpdateCoinPackParams{
 			TenantID:   tenant.ID,
@@ -255,6 +262,9 @@ func (s *adminServer) UpdateCoinPack(
 		if err := s.writeTenantSettingAuditOn(txCtx, tenant, session, "coin_pack_updated", "coin_pack", current.PublicID); err != nil {
 			return nil, err
 		}
+		if owed, err = s.reval.Record(txCtx, queries, tenant.ID, coinSettingsRevalidateTags(tenant.ID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to record the cache invalidation for a coin pack update", err, "tenant_id", tenant.ID.String(), "coin_pack_id", current.ID.String())
+		}
 	}
 	currency, err := s.tenantCurrency(txCtx, tenant.ID)
 	if err != nil {
@@ -263,6 +273,7 @@ func (s *adminServer) UpdateCoinPack(
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit update coin pack", err, "tenant_id", tenant.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 	return &publiraadminv1.UpdateCoinPackResponse{Pack: coinPackToProto(updated, currency)}, nil
 }
 
@@ -289,19 +300,25 @@ func (s *adminServer) RetireCoinPack(
 	}
 	defer tx.Rollback() //nolint:errcheck
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
+	queries := s.queriesFor(txCtx)
 
 	current, err := s.lockCoinPack(txCtx, tenant.ID, id)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.queriesFor(txCtx).RetireCoinPack(txCtx, dbmodels.RetireCoinPackParams{TenantID: tenant.ID, ID: current.ID}); err != nil {
+	if err := queries.RetireCoinPack(txCtx, dbmodels.RetireCoinPackParams{TenantID: tenant.ID, ID: current.ID}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to retire coin pack", err, "tenant_id", tenant.ID.String(), "coin_pack_id", current.ID.String())
 	}
 	if err := s.writeTenantSettingAuditOn(txCtx, tenant, session, "coin_pack_retired", "coin_pack", current.PublicID); err != nil {
 		return nil, err
 	}
+	owed, err := s.reval.Record(txCtx, queries, tenant.ID, coinSettingsRevalidateTags(tenant.ID))
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to record the cache invalidation for a coin pack retire", err, "tenant_id", tenant.ID.String(), "coin_pack_id", current.ID.String())
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit retire coin pack", err, "tenant_id", tenant.ID.String())
 	}
+	s.reval.Send(ctx, owed)
 	return &publiraadminv1.RetireCoinPackResponse{}, nil
 }

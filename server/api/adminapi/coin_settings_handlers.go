@@ -52,9 +52,10 @@ var (
 	errCoinUnitAmountFixed = errors.New("coin_unit_amount cannot change once a coin has been granted")
 )
 
-// coinSettingsRevalidateTags are the cached storefront reads a save of the
-// coin settings leaves stale: the series and episode reads, which price each
-// episode in coins and name them.
+// coinSettingsRevalidateTags are the cached storefront reads a write to the
+// tenant's coins leaves stale, whether it saves the settings or a pack: the
+// series and episode reads, which price each episode in coins and name them,
+// and the read of the coins themselves, which carries the packs on sale.
 func coinSettingsRevalidateTags(tenantID uuid.UUID) []string {
 	return []string{fmt.Sprintf("tenant:%s:series:detail", tenantID)}
 }
