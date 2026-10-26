@@ -3397,7 +3397,9 @@
         "price": "价格",
         "episodes": "章节数",
         "empty_title": "暂时不需要商品",
-        "empty": "应用中还没有销售的付费章节。"
+        "empty": "应用中还没有销售的付费章节。",
+        "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{代币包（{$count}代币）}}\n* {{代币包（{$count}代币，含赠送{$bonus}）}}",
+        "coin_pack_names": "在售的代币包也会各自作为一个商品，以代币包的价格销售。商店显示的商品名称并非由Publira发送，而是您在App Store Connect和Play Console中设置的名称，因此请在应用上架的每种语言中，用您为代币取的名称为各代币包的商品命名。"
       },
       "mobile_push": {
         "description": "推送通知通过构建该租户移动应用所用的Firebase项目送达，因此凭据必须是同一项目的服务账号密钥。密钥文件只能写入，保存后不会再次显示。",

@@ -3397,7 +3397,9 @@
         "price": "가격",
         "episodes": "에피소드 수",
         "empty_title": "아직 필요한 상품이 없습니다",
-        "empty": "앱에서 판매하는 유료 에피소드가 아직 없습니다."
+        "empty": "앱에서 판매하는 유료 에피소드가 아직 없습니다.",
+        "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{코인 팩 ({$count}코인)}}\n* {{코인 팩 ({$count}코인, 보너스 {$bonus} 포함)}}",
+        "coin_pack_names": "판매 중인 코인 팩도 각각 팩 가격의 상품 하나로 판매됩니다. 스토어에 표시되는 상품 이름은 Publira가 보내는 것이 아니라 App Store Connect와 Play Console에서 정한 이름이므로, 각 팩의 상품에는 앱이 등록된 모든 언어로 코인에 붙인 고유한 이름을 지정하세요."
       },
       "mobile_push": {
         "description": "푸시 알림은 이 테넌트의 모바일 앱이 빌드된 Firebase 프로젝트를 통해 전달되므로, 인증 정보는 같은 프로젝트의 서비스 계정 키여야 합니다. 키 파일은 쓰기 전용이며 저장한 뒤에는 다시 표시되지 않습니다.",
