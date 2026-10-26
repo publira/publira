@@ -77,7 +77,9 @@ class _CoinGateSectionState extends State<CoinGateSection> {
       await coins.payEpisode(
         widget.episodeInternalId,
         coins: kind == PurchaseKind.rental ? offer.rentalPrice : offer.price,
-        idempotencyKey: offer.idempotencyKey,
+        idempotencyKey: kind == PurchaseKind.rental
+            ? offer.rentalKey
+            : offer.purchaseKey,
         locale: locale,
         kind: kind,
       );

@@ -96,7 +96,8 @@ class CoinOffer extends CoinGateOffer {
     required this.price,
     required this.rentalPrice,
     required this.needed,
-    required this.idempotencyKey,
+    required this.purchaseKey,
+    required this.rentalKey,
     this.pack,
     this.packsOnSale = false,
     this.expiryDays = 0,
@@ -117,8 +118,11 @@ class CoinOffer extends CoinGateOffer {
   /// the balance covers it.
   final int needed;
 
-  /// Names this one payment, so a second tap spends nothing more.
-  final String idempotencyKey;
+  /// Name the payment for the permanent copy and the one for the rental, so
+  /// a second tap or a retry of either spends nothing more. Each sale keeps a
+  /// key of its own: the API refuses a key that already paid for the other.
+  final String purchaseKey;
+  final String rentalKey;
 
   /// The smallest pack this device can buy that covers [needed]. `null` when
   /// the balance covers the permanent copy, and when no pack is large enough,
@@ -197,7 +201,8 @@ Future<CoinGateOffer?> readCoinGateOffer({
     price: episode.coinPrice,
     rentalPrice: episode.isRented ? episode.coinRentalPrice : 0,
     needed: needed,
-    idempotencyKey: newCoinPaymentKey(),
+    purchaseKey: newCoinPaymentKey(),
+    rentalKey: newCoinPaymentKey(),
     pack: needed > 0 ? coinPackCovering(packs, needed) : null,
     packsOnSale: packs.isNotEmpty,
     expiryDays: shop?.settings.expiryDays ?? 0,

@@ -77,6 +77,9 @@ class FakeCoinRepository implements CoinRepository {
   >
   payments = [];
 
+  /// Every payment [payEpisode] was asked for, refused or not, in order.
+  final List<({String key, PurchaseKind kind})> attempts = [];
+
   /// The locale every call was asked in, in order.
   final List<String> locales = <String>[];
 
@@ -149,6 +152,7 @@ class FakeCoinRepository implements CoinRepository {
     PurchaseKind kind = PurchaseKind.purchase,
   }) async {
     locales.add(locale);
+    attempts.add((key: idempotencyKey, kind: kind));
     if (failure ?? payFailure case final failure?) {
       throw failure;
     }

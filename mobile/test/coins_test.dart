@@ -188,6 +188,35 @@ void main() {
       expect(packButton, findsNothing);
     });
 
+    testWidgets('keeps a key for each sale across retries', (tester) async {
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.locked,
+        coinName: 'Points',
+        rented: true,
+      );
+      coins
+        ..coins = 120
+        // The rental's answer is lost on its way back, twice.
+        ..payFailure = const CoinFailure(CoinFailureKind.network);
+      final rent = find.byKey(const ValueKey('episode-coins-rent'));
+      await pumpApp(tester);
+      await pumpUntilFound(tester, rent);
+
+      await tester.tap(rent);
+      await tester.pump();
+      await tester.tap(rent);
+      await tester.pump();
+      coins.payFailure = null;
+      await tester.tap(pay);
+      await pumpUntilFound(tester, pages);
+
+      final [first, retry, purchase] = coins.attempts;
+      expect(first.kind, PurchaseKind.rental);
+      expect(retry, first);
+      expect(purchase.kind, PurchaseKind.purchase);
+      expect(purchase.key, isNot(first.key));
+    });
+
     testWidgets('reads the price again when it changed', (tester) async {
       coins
         ..coins = 120
