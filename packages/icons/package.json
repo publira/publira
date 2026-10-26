@@ -227,6 +227,10 @@
       "types": "./dist/users-icon.d.mts",
       "default": "./dist/users-icon.mjs"
     },
+    "./wallet-icon": {
+      "types": "./dist/wallet-icon.d.mts",
+      "default": "./dist/wallet-icon.mjs"
+    },
     "./wifi-off-icon": {
       "types": "./dist/wifi-off-icon.d.mts",
       "default": "./dist/wifi-off-icon.mjs"

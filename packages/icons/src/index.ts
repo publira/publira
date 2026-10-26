@@ -53,4 +53,5 @@ export type { IconProps } from "./types";
 export { UnfoldHorizontalIcon } from "./unfold-horizontal-icon";
 export { UserIcon } from "./user-icon";
 export { UsersIcon } from "./users-icon";
+export { WalletIcon } from "./wallet-icon";
 export { WifiOffIcon } from "./wifi-off-icon";
