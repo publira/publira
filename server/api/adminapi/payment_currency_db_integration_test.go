@@ -44,6 +44,8 @@ func dbTenantCurrency(t *testing.T, env *adminDBEnv, tenant adminDBTenant) strin
 // provider charges in, and keeps that currency once a purchase has been
 // recorded in it.
 func TestDBTenantCurrencyIsSavedUntilATenantHasAPurchase(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A"})
@@ -112,6 +114,8 @@ func TestDBTenantCurrencyIsSavedUntilATenantHasAPurchase(t *testing.T) {
 // written only while the tenant still sells in that currency. A free episode
 // is free in every currency.
 func TestDBAPriceIsWrittenOnlyInTheCurrencyItWasEnteredIn(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A"})
@@ -173,6 +177,8 @@ func TestDBAPriceIsWrittenOnlyInTheCurrencyItWasEnteredIn(t *testing.T) {
 // currency in progress, and is then checked against the currency the change
 // made, rather than written in the one it read before the change committed.
 func TestDBAPriceCheckWaitsForACurrencyChange(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()

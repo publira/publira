@@ -212,6 +212,8 @@ func assertConnectCode(t *testing.T, label string, err error, want connect.Code)
 // The list runs newest first and narrows to a series, an episode, a reader's
 // address, and a period, each of which a page token keeps to.
 func TestDBListPurchasesFiltersAndPages(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	day := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	first := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: day, paymentID: "pi_first"})
@@ -310,6 +312,8 @@ func (f *purchaseFixture) listReader(t *testing.T, req *publiraadminv1.ListReade
 // One reader's purchases list newest first with the episode named, refunded
 // and expired ones marked, across pages, and only for a reader of the tenant.
 func TestDBListReaderPurchases(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	day := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	expired := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: day, paymentID: "pi_expired", expiresAt: day.Add(72 * time.Hour)})
@@ -381,6 +385,8 @@ func TestDBListReaderPurchases(t *testing.T) {
 }
 
 func TestDBGetPurchaseAnswersOnlyTheTenantsOwn(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_get"})
 
@@ -406,6 +412,8 @@ func TestDBGetPurchaseAnswersOnlyTheTenantsOwn(t *testing.T) {
 // at once. Asking again changes nothing: no second refund, no second audit
 // entry, and the revocation keeps its instant.
 func TestDBRefundPurchaseRefundsThroughTheProviderOnce(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_refund"})
 
@@ -463,6 +471,8 @@ func TestDBRefundPurchaseRefundsThroughTheProviderOnce(t *testing.T) {
 // A purchase refunded in the provider's dashboard already is answered as it is,
 // without asking the provider again or adding an audit entry.
 func TestDBRefundPurchaseLeavesAFullRefundAsItIs(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_done", revocationReason: purchaseRevocationRefund})
 
@@ -484,6 +494,8 @@ func TestDBRefundPurchaseLeavesAFullRefundAsItIs(t *testing.T) {
 // notification, with no staff revocation, and staff's decision is followed by
 // an audit entry saying no refund was made.
 func TestDBRefundPurchaseLeavesADashboardRefundToItsNotification(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_dashboard"})
 	f.stripe.SetRefunded(purchaseTestSecretKey, "pi_dashboard", 500)
@@ -502,6 +514,8 @@ func TestDBRefundPurchaseLeavesADashboardRefundToItsNotification(t *testing.T) {
 }
 
 func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchasedAt := time.Now().Add(-time.Hour)
 
@@ -585,6 +599,8 @@ func TestDBRefundPurchaseRefusesWhatItCannotRefund(t *testing.T) {
 // Two requests that refund the same purchase at once ask Stripe for one
 // refund between them, and leave one audit entry.
 func TestDBRefundPurchaseRecordsOneRefundForConcurrentRequests(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_concurrent"})
 
@@ -611,6 +627,8 @@ func TestDBRefundPurchaseRecordsOneRefundForConcurrentRequests(t *testing.T) {
 // before the purchase is revoked, and then gives way to staff. A dispute that
 // came first stays, and a purchase staff revoked already is not revoked again.
 func TestDBRevokePurchaseForStaffTakesOverOnlyTheRefundsOwnNotification(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchasedAt := time.Now().Add(-time.Hour)
 	queries := dbmodels.New(f.env.PG.DB)
@@ -650,6 +668,8 @@ func TestDBRevokePurchaseForStaffTakesOverOnlyTheRefundsOwnNotification(t *testi
 // attempt under a new idempotency key: under the old one Stripe would only
 // answer the failure again.
 func TestDBRefundPurchaseRetriesAFailedRefundUnderANewKey(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchasedAt := time.Now().Add(-time.Hour)
 	keys := func(paymentID string) []string {
@@ -726,6 +746,8 @@ func TestDBRefundPurchaseRetriesAFailedRefundUnderANewKey(t *testing.T) {
 // cut off between the two leaves it, is asked of Stripe again rather than
 // answered as refunded: the same idempotency key refunds it once.
 func TestDBRefundPurchaseFinishesARefundAnEarlierRequestLeftUnasked(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_unasked", revocationReason: purchaseRevocationStaff})
 
@@ -753,6 +775,8 @@ func TestDBRefundPurchaseFinishesARefundAnEarlierRequestLeftUnasked(t *testing.T
 // A refund with no reason is refused before anything is revoked or asked of
 // the provider, since its audit entry would not say why the money went back.
 func TestDBRefundPurchaseRequiresAReason(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_no_reason"})
 

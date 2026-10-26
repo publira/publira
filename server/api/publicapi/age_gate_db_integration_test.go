@@ -65,6 +65,8 @@ func birthDateForAge(t *testing.T, tenant testutil.Tenant, age int, notYet bool)
 }
 
 func TestDBGetEpisodeDetailAppliesTheTenantAgeRule(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		rule string
@@ -213,6 +215,8 @@ func TestDBGetEpisodeDetailAppliesTheTenantAgeRule(t *testing.T) {
 // the same value for everyone and would put the pages one shared link away
 // from the reader the rule stopped.
 func TestDBGetEpisodeDetailNamesTheReaderInAGatedBodysMediaToken(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)
@@ -277,6 +281,8 @@ func mediaTokenSubject(t *testing.T, imageURL string) string {
 // Buying an episode is not proof of an age. A reader the rule stops is stopped
 // on a body they have already paid for.
 func TestDBGetEpisodeDetailAgeRuleOutranksAPurchase(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)
@@ -325,6 +331,8 @@ func TestDBGetEpisodeDetailAgeRuleOutranksAPurchase(t *testing.T) {
 // The series detail says what the rule asks of the series and nothing about
 // the reader, so it stays one shared answer.
 func TestDBGetSeriesDetailReportsTheRequiredMinimumAge(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		rule   string

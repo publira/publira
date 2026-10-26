@@ -62,6 +62,8 @@ func assertEpisodeLayout(t *testing.T, episode *publirattypesv1.Episode, directi
 // A series nobody has set a layout on is read the way both viewers laid every
 // episode out before the values existed.
 func TestDBSeriesLayoutDefaultsToTheHardCodedViewerLayout(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesPublicID := createDBSeries(t, env.seriesClient(), tenant, "Default Layout")
@@ -88,6 +90,8 @@ func TestDBSeriesLayoutDefaultsToTheHardCodedViewerLayout(t *testing.T) {
 // An episode that overrides nothing follows its series, including after the
 // series changes; one that overrides a value keeps its own.
 func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -157,6 +161,8 @@ func TestDBEpisodeLayoutFollowsItsSeriesUnlessOverridden(t *testing.T) {
 // An invalid direction or spread start is refused and the stored layout stays
 // as it was.
 func TestDBLayoutRejectsInvalidValues(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -239,6 +245,8 @@ func TestDBLayoutRejectsInvalidValues(t *testing.T) {
 }
 
 func TestDBUpdateEpisodeLayoutOfAnotherTenantReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	owner, other := seedTwoTenants(t, env)
 	seriesPublicID := createDBSeries(t, env.seriesClient(), owner, "Owned")

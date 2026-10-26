@@ -73,6 +73,8 @@ func assertEmailRefused(t *testing.T, err error, wantField, wantReason string) {
 }
 
 func TestDBCreateUserRefusesAnAddressOrDomainTheTenantLists(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, other := env.seedTwoTenants(t)
 	env.refuseEmails(t, tenant.ID, false, "john@example.com", "blocked.example")
@@ -124,6 +126,8 @@ func TestDBCreateUserRefusesAnAddressOrDomainTheTenantLists(t *testing.T) {
 // A refusal rests on the address alone, so it is answered before the mail
 // guard is charged: a refused address costs the caller no allowance.
 func TestDBCreateUserRefusalSpendsNoMailAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithMailGuard(t, mailGuardWith(
 		platformpolicy.HourDay{PerHour: 1000, PerDay: 1000},
 		platformpolicy.HourDay{PerHour: 1, PerDay: 1},
@@ -140,6 +144,8 @@ func TestDBCreateUserRefusalSpendsNoMailAllowance(t *testing.T) {
 }
 
 func TestDBCreateUserRefusesADisposableDomainOnlyWhileTheTenantSwitchesTheListOn(t *testing.T) {
+	t.Parallel()
+
 	list := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("throwaway.example\n"))
 	}))
@@ -163,6 +169,8 @@ func TestDBCreateUserRefusesADisposableDomainOnlyWhileTheTenantSwitchesTheListOn
 
 // With the switch on and no list named by the platform, nothing is refused.
 func TestDBCreateUserRefusesNoDisposableDomainWithoutAList(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	env.refuseEmails(t, tenant.ID, true)
@@ -173,6 +181,8 @@ func TestDBCreateUserRefusesNoDisposableDomainWithoutAList(t *testing.T) {
 }
 
 func TestDBRequestEmailChangeRefusesAnAddressTheTenantRefuses(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

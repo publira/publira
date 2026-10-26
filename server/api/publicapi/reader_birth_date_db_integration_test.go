@@ -36,6 +36,8 @@ func storedBirthDate(t *testing.T, env *publicDBEnv, userID uuid.UUID) sql.NullT
 }
 
 func TestDBUpdateMeStoresABirthDateGetMeAnswersWith(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -70,6 +72,8 @@ func TestDBUpdateMeStoresABirthDateGetMeAnswersWith(t *testing.T) {
 // The second write is refused, and the stored date is the one the reader gave
 // first. Changing it goes through support.
 func TestDBUpdateMeRefusesASecondBirthDate(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -101,6 +105,8 @@ func TestDBUpdateMeRefusesASecondBirthDate(t *testing.T) {
 // An empty field is a form that is only renaming the account, not one asking
 // for the stored date to be cleared.
 func TestDBUpdateMeLeavesAStoredBirthDateAloneWhenTheFieldIsEmpty(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -124,6 +130,8 @@ func TestDBUpdateMeLeavesAStoredBirthDateAloneWhenTheFieldIsEmpty(t *testing.T) 
 }
 
 func TestDBUpdateMeRejectsADateItWillNotStore(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -144,6 +152,8 @@ func TestDBUpdateMeRejectsADateItWillNotStore(t *testing.T) {
 // A tenant that verifies ages asks for the birth date on the sign-up form, so
 // the account carries it from the moment it exists.
 func TestDBCreateUserStoresTheBirthDateGivenAtSignup(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -169,6 +179,8 @@ func TestDBCreateUserStoresTheBirthDateGivenAtSignup(t *testing.T) {
 // A form that did not ask sends nothing, and the account is created without a
 // date: whether one is asked for is the tenant's rule, not this handler's.
 func TestDBCreateUserAcceptsASignupWithNoBirthDate(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -191,6 +203,8 @@ func TestDBCreateUserAcceptsASignupWithNoBirthDate(t *testing.T) {
 }
 
 func TestDBCreateUserRejectsADateItWillNotStore(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

@@ -93,6 +93,8 @@ func (f *subscriptionPlanFixture) create(t *testing.T, plan *publiraadminv1.Subs
 // A plan is saved with what its Price bills, read from Stripe, and the labels
 // it names, and is listed and read back as it was saved.
 func TestDBCreateSubscriptionPlanStoresWhatItsPriceBills(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionPlanFixture(t)
 
 	created := f.create(t, f.labelPlan())
@@ -143,6 +145,8 @@ func TestDBCreateSubscriptionPlanStoresWhatItsPriceBills(t *testing.T) {
 }
 
 func TestDBSubscriptionPlanWritesRefuseWhatAPlanCannotHold(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionPlanFixture(t)
 	other := f.env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBADMIN01", "admin@tenant-b.example.com")
 	foreignLabel := f.env.PG.SeedLabel(t, other.Tenant.ID, testutil.LabelSeed{PublicID: "LABELB01", Name: "Label B"})
@@ -198,6 +202,8 @@ func TestDBSubscriptionPlanWritesRefuseWhatAPlanCannotHold(t *testing.T) {
 }
 
 func TestDBCreateSubscriptionPlanRefusesPastTheCap(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionPlanFixture(t)
 	for range maxSubscriptionPlans {
 		f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{})
@@ -212,6 +218,8 @@ func TestDBCreateSubscriptionPlanRefusesPastTheCap(t *testing.T) {
 // changes, so a plan whose Price Stripe no longer answers for can still be
 // renamed.
 func TestDBUpdateSubscriptionPlanReplacesEveryField(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionPlanFixture(t)
 	created := f.create(t, f.labelPlan())
 
@@ -270,6 +278,8 @@ func TestDBUpdateSubscriptionPlanReplacesEveryField(t *testing.T) {
 // A plan anyone has subscribed to stays, whatever the subscription's state; one
 // nobody has goes.
 func TestDBDeleteSubscriptionPlanKeepsAPlanSomeoneSubscribedTo(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionPlanFixture(t)
 	reader := f.env.PG.SeedEndUser(t, f.admin.Tenant.ID, "READER01", "reader@example.com", "Reader")
 	subscribed := f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{})
@@ -325,6 +335,8 @@ func TestDBDeleteSubscriptionPlanKeepsAPlanSomeoneSubscribedTo(t *testing.T) {
 // A plan's subscribers are the readers it bills or is retrying: trialing,
 // active, and past due.
 func TestDBSubscriptionPlanCountsTheReadersItBills(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionPlanFixture(t)
 	plan := f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{})
 	for i, status := range []string{"trialing", "active", "past_due", "canceled", "incomplete", "incomplete_expired", "unpaid", "paused"} {

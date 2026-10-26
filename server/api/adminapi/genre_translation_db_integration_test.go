@@ -24,6 +24,8 @@ func genreTranslationNames(translations []*publirattypesv1.GenreTranslation) []s
 // the console reads the genre by the default locale's name and slug whichever
 // locale was written last.
 func TestDBGenreNamesAreWrittenPerLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -69,6 +71,8 @@ func TestDBGenreNamesAreWrittenPerLocale(t *testing.T) {
 // A genre is created in the locale the request names, and the slug comes from
 // that name while it is the only one.
 func TestDBCreateGenreInAnotherLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -92,6 +96,8 @@ func TestDBCreateGenreInAnotherLocale(t *testing.T) {
 // A name is written only in a language the site offers: one switched off, or
 // one the registry does not know, is refused rather than stored out of sight.
 func TestDBGenreNameIsRefusedInALocaleTheTenantDoesNotOffer(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	if _, err := env.PG.DB.ExecContext(context.Background(), `UPDATE tenants SET supported_locales = '{ja,en}' WHERE id = $1`, tenant.Tenant.ID); err != nil {
@@ -131,6 +137,8 @@ func TestDBGenreNameIsRefusedInALocaleTheTenantDoesNotOffer(t *testing.T) {
 // A genre keeps at least one name, and deleting one leaves the slug where it
 // is, even when the deleted name is the one it was derived from.
 func TestDBDeleteGenreTranslation(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -191,6 +199,8 @@ func TestDBDeleteGenreTranslation(t *testing.T) {
 // leaves that name alone. Renaming it in the new default re-derives the slug
 // as any rename does.
 func TestDBGenreSavesAfterTheDefaultLocaleChanges(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -245,6 +255,8 @@ func TestDBGenreSavesAfterTheDefaultLocaleChanges(t *testing.T) {
 // A genre of another tenant is out of reach of a deletion, as it is of every
 // other genre write.
 func TestDBDeleteGenreTranslationOfAnotherTenantIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	second := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")

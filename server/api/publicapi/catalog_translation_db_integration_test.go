@@ -15,6 +15,8 @@ import (
 // tenant's default locale, and says which locales it does have, so a reader
 // sees a title rather than nothing and a page can name its alternates.
 func TestDBGetSeriesDetailFallsBackToTheDefaultLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Hoshi no Toshokan", Synopsis: "Yoru ni hiraku toshokan.", Published: true})
@@ -103,6 +105,8 @@ func TestDBGetSeriesDetailFallsBackToTheDefaultLocale(t *testing.T) {
 // list of alternates. It is how a series reads after its tenant changes its
 // default language.
 func TestDBCatalogReadsNameTheLocaleOfTheOldestTranslation(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Hoshi no Toshokan", Published: true})
@@ -200,6 +204,8 @@ func TestDBCatalogReadsNameTheLocaleOfTheOldestTranslation(t *testing.T) {
 // A locale the tenant has switched off is not one of a series' alternates,
 // though the translation in it is kept.
 func TestDBGetSeriesDetailNamesOnlyTheOfferedLocales(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Hoshi no Toshokan", Published: true})
@@ -224,6 +230,8 @@ func TestDBGetSeriesDetailNamesOnlyTheOfferedLocales(t *testing.T) {
 // series come in another order in another locale, and a token of one locale's
 // list does not page through another's.
 func TestDBListPublishedSeriesSortsTitlesInTheReadersLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	first := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Alpha", Published: true})

@@ -40,6 +40,8 @@ func readerCounts(t *testing.T, pages []*publiraadminv1.EpisodePageReach) []int6
 // episode's last page even where nobody reached it, and through a page past
 // it that readers reached before the episode lost pages.
 func TestDBAdminEpisodeDropOffSumsThePeriodPageByPage(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "DRP")
 	tenantID := f.admin.Tenant.ID
@@ -109,6 +111,8 @@ func TestDBAdminEpisodeDropOffSumsThePeriodPageByPage(t *testing.T) {
 // An episode the tenant does not have is refused rather than answered with an
 // empty histogram a chart would draw as an episode nobody opened.
 func TestDBAdminEpisodeDropOffRefusesAnEpisodeTheTenantDoesNotHave(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "DRQ")
 	other := env.seedRoyaltyFixture(t, "DRR")

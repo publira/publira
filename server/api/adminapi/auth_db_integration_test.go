@@ -13,6 +13,8 @@ import (
 )
 
 func TestDBAdminLoginIssuesUsableSession(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()
@@ -51,6 +53,8 @@ func TestDBAdminLoginIssuesUsableSession(t *testing.T) {
 // An account publiractl creates, as publira_platform and with no invitation,
 // signs in to the console straight away.
 func TestDBAdminLoginAcceptsAnAccountCreatedWithoutAnInvitation(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
@@ -91,6 +95,8 @@ func TestDBAdminLoginAcceptsAnAccountCreatedWithoutAnInvitation(t *testing.T) {
 }
 
 func TestDBAdminLoginRejectsWrongPassword(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -105,6 +111,8 @@ func TestDBAdminLoginRejectsWrongPassword(t *testing.T) {
 }
 
 func TestDBAdminLoginRejectsUserOfAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
@@ -121,6 +129,8 @@ func TestDBAdminLoginRejectsUserOfAnotherTenant(t *testing.T) {
 }
 
 func TestDBAdminLoginRejectsSuspendedUser(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -143,6 +153,8 @@ func TestDBAdminLoginRejectsSuspendedUser(t *testing.T) {
 // holds no tenant role. The console answers them exactly as it answers a wrong
 // password, so it confirms neither the address nor the password.
 func TestDBAdminLoginRejectsReaderWithoutATenantRole(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
@@ -171,6 +183,8 @@ func TestDBAdminLoginRejectsReaderWithoutATenantRole(t *testing.T) {
 // loses the console session they already hold rather than keeping it until
 // the token expires.
 func TestDBAdminSessionEndsWhenTheMemberRolesAreRemoved(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.seedMember(t, tenant, "TAEDITOR", "editor@tenant-a.example.com", auth.RoleTenantEditor)
@@ -209,6 +223,8 @@ func TestDBAdminSessionEndsWhenTheMemberRolesAreRemoved(t *testing.T) {
 }
 
 func TestDBAdminSessionRejectsStaleCredentialsVersion(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -229,6 +245,8 @@ func TestDBAdminSessionRejectsStaleCredentialsVersion(t *testing.T) {
 }
 
 func TestDBUpdateTenantConfigPersists(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()
@@ -265,6 +283,8 @@ func TestDBUpdateTenantConfigPersists(t *testing.T) {
 // Each locale's copy is written and read on its own, and clearing one leaves
 // the others as they were.
 func TestDBUpdateTenantConfigWritesOneLocaleAtATime(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()

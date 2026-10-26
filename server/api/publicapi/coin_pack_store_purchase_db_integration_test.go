@@ -55,6 +55,8 @@ func (e coinPackStoreEnv) balance(t *testing.T) *publirav1.CoinBalance {
 // the web, once however often the app confirms it, and a refund from the
 // store takes them back.
 func TestDBBuyingACoinPackThroughTheAppStoreGrantsItsCoins(t *testing.T) {
+	t.Parallel()
+
 	env := newCoinPackStoreEnv(t)
 
 	intent, err := env.startPack(publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE)
@@ -105,6 +107,8 @@ func TestDBBuyingACoinPackThroughTheAppStoreGrantsItsCoins(t *testing.T) {
 // A pack bought through Google Play grants its coins and is consumed, so the
 // reader can buy the same pack again.
 func TestDBBuyingACoinPackThroughGooglePlayGrantsItsCoinsAndConsumesIt(t *testing.T) {
+	t.Parallel()
+
 	env := newCoinPackStoreEnv(t)
 
 	intent, err := env.startPack(publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY)
@@ -134,6 +138,8 @@ func TestDBBuyingACoinPackThroughGooglePlayGrantsItsCoinsAndConsumesIt(t *testin
 // The store sells a pack on the terms the web does: only while the tenant
 // sells packs, and only a pack on sale.
 func TestDBStartStorePurchaseRefusesAPackItCannotSell(t *testing.T) {
+	t.Parallel()
+
 	env := newCoinPackStoreEnv(t)
 
 	_, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{

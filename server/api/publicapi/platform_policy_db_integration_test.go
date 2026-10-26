@@ -21,8 +21,7 @@ import (
 func newPublicDBEnvWithSavedPolicy(t *testing.T, policy platformpolicy.Policy) *publicDBEnv {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	pg.SavePlatformPolicy(t, policy)
 	db := pg.OpenPublicDB(t)
 
@@ -38,6 +37,8 @@ func newPublicDBEnvWithSavedPolicy(t *testing.T, policy platformpolicy.Policy) *
 
 // The limits an operator saves are the ones a reader meets.
 func TestDBSavedPlatformPolicyLimitsCommentPosting(t *testing.T) {
+	t.Parallel()
+
 	policy := openPolicy()
 	policy.Community.CommentPost = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
 	env := newPublicDBEnvWithSavedPolicy(t, policy)
@@ -54,6 +55,8 @@ func TestDBSavedPlatformPolicyLimitsCommentPosting(t *testing.T) {
 }
 
 func TestDBSavedPlatformPolicyLimitsMailRequests(t *testing.T) {
+	t.Parallel()
+
 	policy := openPolicy()
 	policy.MailRequestsPerAddress = platformpolicy.HourDay{PerHour: 1, PerDay: 1}
 	env := newPublicDBEnvWithSavedPolicy(t, policy)
@@ -77,8 +80,9 @@ func TestDBSavedPlatformPolicyLimitsMailRequests(t *testing.T) {
 
 // An installation that has saved nothing enforces the built-in defaults.
 func TestDBUnsavedPlatformPolicyEnforcesTheDefaults(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPublicDB(t)
 
 	resolver := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, slog.Default())

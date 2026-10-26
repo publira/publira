@@ -119,6 +119,8 @@ func episodeIDStrings(episodes ...testutil.Episode) []string {
 // An editor creates a volume, gives it episodes in an order of its own,
 // prices it, and puts it on sale, and the console reads all of it back.
 func TestDBAVolumeIsCreatedFilledPricedAndPublished(t *testing.T) {
+	t.Parallel()
+
 	v := newVolumeEnv(t)
 
 	volume := v.create(t, "  Volume One  ", 900)
@@ -203,6 +205,8 @@ func TestDBAVolumeIsCreatedFilledPricedAndPublished(t *testing.T) {
 // and a volume that has been on sale keeps every episode it held: a checkout
 // started while it was on sale may still complete after it is taken off.
 func TestDBSetVolumeEpisodesKeepsEachEpisodeInOneVolumeAndWhatWasOnSale(t *testing.T) {
+	t.Parallel()
+
 	v := newVolumeEnv(t)
 	first := v.create(t, "Volume 1", 900)
 	second := v.create(t, "Volume 2", 900)
@@ -256,6 +260,8 @@ func TestDBSetVolumeEpisodesKeepsEachEpisodeInOneVolumeAndWhatWasOnSale(t *testi
 }
 
 func TestDBReorderVolumesWritesTheOrderTheConsoleRead(t *testing.T) {
+	t.Parallel()
+
 	v := newVolumeEnv(t)
 	first := v.create(t, "Volume 1", 900)
 	second := v.create(t, "Volume 2", 900)
@@ -289,6 +295,8 @@ func TestDBReorderVolumesWritesTheOrderTheConsoleRead(t *testing.T) {
 }
 
 func TestDBCreateVolumeRefusesWhatAVolumeCannotBe(t *testing.T) {
+	t.Parallel()
+
 	v := newVolumeEnv(t)
 	for name, req := range map[string]*publiraadminv1.CreateVolumeRequest{
 		"no title":       {SeriesId: v.series.ID.String(), Title: "  ", Price: 900},
@@ -319,6 +327,8 @@ func TestDBCreateVolumeRefusesWhatAVolumeCannotBe(t *testing.T) {
 // A cover is cut into every ratio an eye-catch has, served from the volume
 // cover route, and taken away again without touching the volume.
 func TestDBAVolumeCoverIsUploadedAndRemoved(t *testing.T) {
+	t.Parallel()
+
 	v := newVolumeEnv(t)
 	volume := v.create(t, "Volume 1", 900)
 

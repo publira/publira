@@ -17,6 +17,8 @@ import (
 // It is still shown — the name is the part that matters — and it comes after
 // the credits that name a role.
 func TestDBSeriesKeepsACreditThatStatesNoRole(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -66,6 +68,8 @@ func creatorCreditRoleNames(creators []*publirattypesv1.Creator) []string {
 // credits rather than one row that has to choose. They read back in role
 // priority order however the save listed them.
 func TestDBSeriesCreditsOnePersonInTwoRoles(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -110,6 +114,8 @@ func TestDBSeriesCreditsOnePersonInTwoRoles(t *testing.T) {
 }
 
 func TestDBCreateSeriesRefusesTheSameCreatorTwiceInOneRole(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -141,6 +147,8 @@ func TestDBCreateSeriesRefusesTheSameCreatorTwiceInOneRole(t *testing.T) {
 // A role of another tenant is a role that does not exist, the way a creator of
 // another tenant is.
 func TestDBCreateSeriesRefusesACreatorRoleOfAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 

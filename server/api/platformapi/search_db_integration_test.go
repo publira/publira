@@ -49,8 +49,7 @@ func newSearchClient(t *testing.T, probe *recordingProbe) (
 ) {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 
 	api := newAPI(db, dbmodels.New(db), slog.Default(), storageTestEncryptor(t), nil, testutil.TokenManager(), nil, openMailGuard(), nil)
@@ -88,6 +87,8 @@ func updateSearchSettings(
 // An installation that has saved nothing searches on SQL, which the read says
 // at revision zero rather than by failing.
 func TestDBGetPlatformSearchSettingsAnswersTheSQLEngine(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
 
 	resp, err := client.GetPlatformSearchSettings(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.GetPlatformSearchSettingsRequest{})
@@ -108,6 +109,8 @@ func TestDBGetPlatformSearchSettingsAnswersTheSQLEngine(t *testing.T) {
 // on, keeps the password out of the answer and out of the row in the clear, and
 // files its audit entry.
 func TestDBUpdatePlatformSearchSettingsSavesAndReportsTheBuildDue(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
 
 	saved, err := updateSearchSettings(client, operator, searchUpdateRequest(0))
@@ -154,6 +157,8 @@ func TestDBUpdatePlatformSearchSettingsSavesAndReportsTheBuildDue(t *testing.T) 
 // An engine the server does not know is refused on save, naming every engine
 // it does, and so is a save based on a revision the row has moved past.
 func TestDBUpdatePlatformSearchSettingsRefusesAnUnknownEngineAndAStaleRevision(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
 
 	unknown := searchUpdateRequest(0)
@@ -183,6 +188,8 @@ func TestDBUpdatePlatformSearchSettingsRefusesAnUnknownEngineAndAStaleRevision(t
 // states, or with the stored one when it states none, and reports what it
 // found.
 func TestDBTestPlatformSearchConnectionUsesTheStoredPassword(t *testing.T) {
+	t.Parallel()
+
 	probe := &recordingProbe{probe: completeOpenSearch()}
 	client, pg, operator := newSearchClient(t, probe)
 	if _, err := updateSearchSettings(client, operator, searchUpdateRequest(0)); err != nil {
@@ -235,6 +242,8 @@ func countAuditActions(t *testing.T, pg *testutil.PostgresEnv, action string) in
 // Elasticsearch is offered wherever the engine is chosen, so the API saves it
 // and answers it back as the value it was saved as.
 func TestDBUpdatePlatformSearchSettingsSavesElasticsearch(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
 
 	req := searchUpdateRequest(0)

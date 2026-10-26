@@ -35,6 +35,8 @@ func csvFile(lines ...string) string {
 // Each revenue export holds the rows GetRevenueStats answers for its grouping,
 // a ranked one all of them at once, and is recorded against its period.
 func TestDBAdminExportStatsWritesTheRevenueReports(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRevenueFixture(t, "RVX")
 	currency := env.PG.TenantCurrency(t, f.admin.Tenant.ID)
@@ -80,6 +82,8 @@ func TestDBAdminExportStatsWritesTheRevenueReports(t *testing.T) {
 // The audience exports hold the rows GetAudienceStats answers, every series
 // in one file, and one narrowed to a series is recorded against that series.
 func TestDBAdminExportStatsWritesTheAudienceReports(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedAudienceFixture(t, "AUX")
 	export := func(kind publiraadminv1.StatsExportKind, seriesPublicID string) string {
@@ -138,6 +142,8 @@ func TestDBAdminExportStatsWritesTheAudienceReports(t *testing.T) {
 // The drop-off export holds the pages GetEpisodeDropOff answers, and is
 // recorded against the episode.
 func TestDBAdminExportStatsWritesTheDropOffOfAnEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "DRX")
 	tenantID := f.admin.Tenant.ID
@@ -179,6 +185,8 @@ func TestDBAdminExportStatsWritesTheDropOffOfAnEpisode(t *testing.T) {
 // request whose fields do not fit its kind is refused rather than answered
 // with a file that is not what it asked for. A refused export records nothing.
 func TestDBAdminExportStatsRefusesWhatItCannotWrite(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "SXR")
 	editor := env.PG.SeedTenantUser(t, f.admin.Tenant.ID, "SXREDITOR01", "editor@sxr.example.com", "Editor", auth.RoleTenantEditor)

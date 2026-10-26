@@ -36,6 +36,8 @@ func createDBSeries(
 }
 
 func TestDBCreateEpisodesAppendInOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -78,6 +80,8 @@ func TestDBCreateEpisodesAppendInOrder(t *testing.T) {
 }
 
 func TestDBCreateEpisodeConcurrentAppendsDistinctOrderIndexes(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -140,6 +144,8 @@ func TestDBCreateEpisodeConcurrentAppendsDistinctOrderIndexes(t *testing.T) {
 }
 
 func TestDBReorderEpisodesPersistsNewOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -185,6 +191,8 @@ func TestDBReorderEpisodesPersistsNewOrder(t *testing.T) {
 }
 
 func TestDBReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -236,6 +244,8 @@ func TestDBReorderEpisodesRejectsStaleExpectedOrder(t *testing.T) {
 }
 
 func TestDBReorderEpisodesConcurrentSameExpectedOneWins(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -319,6 +329,8 @@ func TestDBReorderEpisodesConcurrentSameExpectedOneWins(t *testing.T) {
 }
 
 func TestDBCreateEpisodeInAnotherTenantsSeriesReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()
@@ -338,6 +350,8 @@ func TestDBCreateEpisodeInAnotherTenantsSeriesReturnsNotFound(t *testing.T) {
 }
 
 func TestDBListEpisodesOfAnotherTenantsSeriesIsEmpty(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()
@@ -375,6 +389,8 @@ func TestDBListEpisodesOfAnotherTenantsSeriesIsEmpty(t *testing.T) {
 // followers' notice to the worker. Saving another past time over the
 // published episode leaves it as it is, its notice included.
 func TestDBUpdateEpisodePublishScheduleWithAPastTimePublishesTheEpisode(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		status      string
 		scheduledAt string
@@ -451,6 +467,8 @@ func TestDBUpdateEpisodePublishScheduleWithAPastTimePublishesTheEpisode(t *testi
 // write that creates it, as the console's tenant role, and leaves the
 // followers' notice to the worker.
 func TestDBCreateEpisodeWithPastScheduledAtPublishesIt(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -483,6 +501,8 @@ func TestDBCreateEpisodeWithPastScheduledAtPublishesIt(t *testing.T) {
 }
 
 func TestDBGetEpisodeReturnsDraftAndScheduled(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -540,6 +560,8 @@ func TestDBGetEpisodeReturnsDraftAndScheduled(t *testing.T) {
 }
 
 func TestDBGetEpisodeTenantBoundary(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()

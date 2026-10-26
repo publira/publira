@@ -101,6 +101,8 @@ func (e *adminDBEnv) refundPack(t *testing.T, f royaltyFixture, purchaseID uuid.
 // sales paid, as a refund in full of a sale paid by card does: the reader
 // keeps the episode, so the sale stays and its whole price is refunded.
 func TestDBAdminRoyaltiesPayOnEpisodesSoldForCoins(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYC")
 	card := env.PG.SeedEpisode(t, f.admin.Tenant.ID, f.series.ID, testutil.EpisodeSeed{
@@ -166,6 +168,8 @@ func (e *adminDBEnv) countRoyaltyPurchases(t *testing.T, f royaltyFixture, purch
 // and a refund of their pack as money gone back on it, and leaves the pack's
 // own purchase out, so the pack's money is counted once.
 func TestDBAdminRevenueCountsEpisodesSoldForCoinsAndNotTheirPacks(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RVC")
 	pack, packGrant := env.seedPackSale(t, f, 1100, 1000, inRoyaltyZone(2026, time.January, 10, 12, 0, 0))

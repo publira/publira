@@ -32,6 +32,8 @@ func seedReaderWithRole(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, 
 // access says the same. No role, or a role string outside the three, opens
 // nothing.
 func TestDBGetEpisodeDetailOpensEveryEpisodeToTenantStaff(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -123,6 +125,8 @@ func TestDBGetEpisodeDetailOpensEveryEpisodeToTenantStaff(t *testing.T) {
 // kind it does not know, so the staff grant opens nothing there while it opens
 // the episode here.
 func TestDBStaffGrantStaysOutOfThePreviousReleasesView(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -151,6 +155,8 @@ func TestDBStaffGrantStaysOutOfThePreviousReleasesView(t *testing.T) {
 // who bought an episode to try the checkout sees what a reader would, and a
 // reader's purchase is unaffected by the staff grant.
 func TestDBGetEpisodeDetailReportsAPurchaseOverTheStaffGrant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -190,6 +196,8 @@ func TestDBGetEpisodeDetailReportsAPurchaseOverTheStaffGrant(t *testing.T) {
 
 // A staff role is not proof of an age any more than a purchase is.
 func TestDBGetEpisodeDetailAgeRuleOutranksTheStaffGrant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)
@@ -237,6 +245,8 @@ func TestDBGetEpisodeDetailAgeRuleOutranksTheStaffGrant(t *testing.T) {
 // own staff rate their catalogue into the figures the storefront ranks by. A
 // member of staff is refused on a free episode and on one they bought, too.
 func TestDBRateEpisodeRefusesTenantStaff(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Rated Series", Published: true})
@@ -281,6 +291,8 @@ func TestDBRateEpisodeRefusesTenantStaff(t *testing.T) {
 // Trying the checkout is one reason staff use the storefront, so the grant
 // that opens the episode does not refuse its sale the way a credit does.
 func TestDBStartEpisodeCheckoutStaysOpenToTenantStaff(t *testing.T) {
+	t.Parallel()
+
 	env := newPurchaseSurfaceEnv(t)
 	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "PAYSTAFFSR01", Title: "Staff Series", Published: true})
 	episode := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSTAFFEP01", Status: testutil.EpisodeStatusPublished, Price: 500})
@@ -303,6 +315,8 @@ func TestDBStartEpisodeCheckoutStaysOpenToTenantStaff(t *testing.T) {
 // refuses a rating is reported there, on a free episode as on a paid one. A
 // role string outside the three reads as no role.
 func TestDBGetMyEpisodeRatingReportsTenantStaff(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Rated Series", Published: true})

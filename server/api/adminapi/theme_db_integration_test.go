@@ -32,6 +32,8 @@ func brandingSourcePNG(t *testing.T, width, height int) []byte {
 }
 
 func TestDBTenantIconUploadReplaceAndDelete(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()
@@ -103,6 +105,8 @@ func TestDBTenantIconUploadReplaceAndDelete(t *testing.T) {
 }
 
 func TestDBTenantIconIsPerTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	themes := env.themeClient()
@@ -130,6 +134,8 @@ func TestDBTenantIconIsPerTenant(t *testing.T) {
 // commits last would then leave the image the other stored behind with nothing
 // pointing at it.
 func TestDBTenantIconConcurrentChangesLeaveOneImage(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()
@@ -174,6 +180,8 @@ func TestDBTenantIconConcurrentChangesLeaveOneImage(t *testing.T) {
 }
 
 func TestDBTenantLogoUploadReplaceAndDelete(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()
@@ -253,6 +261,8 @@ func TestDBTenantLogoUploadReplaceAndDelete(t *testing.T) {
 // other slot alone — including the delete, which drops the image the theme
 // pointed at.
 func TestDBTenantLogoAndIconAreIndependent(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()
@@ -319,6 +329,8 @@ func brandingSourceJPEG(t *testing.T, width, height int) []byte {
 // leave the logo alone, and its variant is stored at the upload's own
 // proportions and format.
 func TestDBTenantSignInImageUploadReplaceAndDelete(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	themes := env.themeClient()

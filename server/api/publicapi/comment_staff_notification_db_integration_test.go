@@ -117,6 +117,8 @@ func (e *publicDBEnv) staffNotification(
 // comment queues the alert and the rest add nothing. A comment published
 // straight away queues none at all: nothing is waiting for anyone.
 func TestDBPendingCommentsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "SNQ")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	second := env.PG.SeedEndUser(t, tenant.ID, "SNQREADER", "snq-reader@example.com", "Second Reader")
@@ -153,6 +155,8 @@ func TestDBPendingCommentsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
 // names the episode they have to open. Draining it twice writes nothing more:
 // the worker is at-least-once, and the bell must not show one window twice.
 func TestDBPendingCommentAlertNotifiesEveryStaffMemberOnce(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "SNN")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.PG.SeedTenantAdmin(t, tenant.ID, "SNNSTAFF1", "snn-staff-1@example.com", "First Moderator")
@@ -200,6 +204,8 @@ func TestDBPendingCommentAlertNotifiesEveryStaffMemberOnce(t *testing.T) {
 // approval queue does, and it is a separate alert from the one an approval
 // queue raises.
 func TestDBCommentReportsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "SNR")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.PG.SeedTenantAdmin(t, tenant.ID, "SNRSTAFF", "snr-staff@example.com", "Moderator")
@@ -244,6 +250,8 @@ func TestDBCommentReportsRaiseOneStaffAlertPerEpisodeWindow(t *testing.T) {
 // A repeated report writes no report row, so it must not queue an alert
 // either — a reader tapping the button again is not a new errand.
 func TestDBRepeatedCommentReportRaisesNoStaffAlert(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "SNP")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	reporter := env.PG.SeedEndUser(t, tenant.ID, "SNPREADER", "snp-reader@example.com", "Reporting Reader")

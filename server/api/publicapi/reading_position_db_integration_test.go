@@ -49,6 +49,8 @@ func seedEpisodeWithPages(t *testing.T, env *publicDBEnv, tenantID, seriesID uui
 }
 
 func TestDBSaveReadingPositionKeepsOneRowAndReturnsItToTheSameReader(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTPOSA", "position-a.example.com", "Position A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSA", "member-position-a@example.com", "Member A", "tenant_member")
@@ -101,6 +103,8 @@ func TestDBSaveReadingPositionKeepsOneRowAndReturnsItToTheSameReader(t *testing.
 }
 
 func TestDBSaveReadingPositionRejectsAPageOutsideTheEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTPOSB", "position-b.example.com", "Position B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSB", "member-position-b@example.com", "Member B", "tenant_member")
@@ -130,6 +134,8 @@ func TestDBSaveReadingPositionRejectsAPageOutsideTheEpisode(t *testing.T) {
 }
 
 func TestDBReadingPositionRequiresCurrentPublicationAndBodyAccess(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSC", "member-position-c@example.com", "Member C", "tenant_member")
@@ -187,6 +193,8 @@ func TestDBReadingPositionRequiresCurrentPublicationAndBodyAccess(t *testing.T) 
 }
 
 func TestDBReadingPositionsAreMemberScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTPOSD", "position-d.example.com", "Position D")
 	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSD", "member-position-d@example.com", "Member D", "tenant_member")
@@ -248,6 +256,8 @@ func TestDBReadingPositionsAreMemberScopedByRLS(t *testing.T) {
 }
 
 func TestDBReadingPositionsAreTenantScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSF", "member-position-f@example.com", "Member F", "tenant_member")
@@ -277,6 +287,8 @@ func TestDBReadingPositionsAreTenantScopedByRLS(t *testing.T) {
 }
 
 func TestDBSeriesProgressReturnsTheLastOpenedEpisodeAndItsFinishedState(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTPOSE", "position-e.example.com", "Position E")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSG", "member-position-g@example.com", "Member G", "tenant_member")
@@ -336,6 +348,8 @@ func TestDBSeriesProgressReturnsTheLastOpenedEpisodeAndItsFinishedState(t *testi
 }
 
 func TestDBSeriesProgressSkipsAnEpisodeTheReaderCanNoLongerOpen(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTPOSF", "position-f.example.com", "Position F")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERPOSH", "member-position-h@example.com", "Member H", "tenant_member")
@@ -397,6 +411,8 @@ func recentSeriesPublicIDs(items []*publirav1.RecentSeries) []string {
 }
 
 func TestDBListMyRecentSeriesOffersTheEpisodeAfterTheOneJustFinished(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECA", "recent-a.example.com", "Recent A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECA", "member-recent-a@example.com", "Member A", "tenant_member")
@@ -442,6 +458,8 @@ func TestDBListMyRecentSeriesOffersTheEpisodeAfterTheOneJustFinished(t *testing.
 }
 
 func TestDBListMyRecentSeriesDropsAFinishedSeriesUntilAnotherEpisodeIsPublished(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECB", "recent-b.example.com", "Recent B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECB", "member-recent-b@example.com", "Member B", "tenant_member")
@@ -474,6 +492,8 @@ func TestDBListMyRecentSeriesDropsAFinishedSeriesUntilAnotherEpisodeIsPublished(
 }
 
 func TestDBListMyRecentSeriesPagesNewestActivityFirst(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECC", "recent-c.example.com", "Recent C")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECC", "member-recent-c@example.com", "Member C", "tenant_member")
@@ -539,6 +559,8 @@ func TestDBListMyRecentSeriesPagesNewestActivityFirst(t *testing.T) {
 // that dropping either kind, or taking the older mark of an episode that
 // carries both, changes the answer.
 func TestDBListMyRecentSeriesOrdersOnTheNewerOfAPositionAndARead(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECG", "recent-g.example.com", "Recent G")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECH", "member-recent-h@example.com", "Member H", "tenant_member")
@@ -585,6 +607,8 @@ func TestDBListMyRecentSeriesOrdersOnTheNewerOfAPositionAndARead(t *testing.T) {
 }
 
 func TestDBListMyRecentSeriesSkipsASeriesThatIsNoLongerPublished(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECD", "recent-d.example.com", "Recent D")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECD", "member-recent-d@example.com", "Member D", "tenant_member")
@@ -616,6 +640,8 @@ func TestDBListMyRecentSeriesSkipsASeriesThatIsNoLongerPublished(t *testing.T) {
 }
 
 func TestDBListMyRecentSeriesOffersAnEpisodeWithoutAPositionTheReaderCannotReach(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECE", "recent-e.example.com", "Recent E")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECE", "member-recent-e@example.com", "Member E", "tenant_member")
@@ -653,6 +679,8 @@ func TestDBListMyRecentSeriesOffersAnEpisodeWithoutAPositionTheReaderCannotReach
 }
 
 func TestDBListMyRecentSeriesShowsNothingOfAnotherMembersReading(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRECF", "recent-f.example.com", "Recent F")
 	reader := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRECF", "member-recent-f@example.com", "Member F", "tenant_member")

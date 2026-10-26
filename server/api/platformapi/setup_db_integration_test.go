@@ -38,6 +38,8 @@ func withSetupToken(ctx context.Context) context.Context {
 // server given no token at all. Whether setup is complete stays readable to
 // anyone, since the setup screen asks it before anyone has signed in.
 func TestDBCreateInitialUserTakesTheWebServiceTokenAlone(t *testing.T) {
+	t.Parallel()
+
 	request := &publirasplatformv1.CreateInitialUserRequest{
 		Name:          "Initial Admin",
 		Email:         "initial-admin@example.com",
@@ -79,6 +81,8 @@ func TestDBCreateInitialUserTakesTheWebServiceTokenAlone(t *testing.T) {
 }
 
 func TestDBInitialSetupCreatesLoginableSuperAdmin(t *testing.T) {
+	t.Parallel()
+
 	ts, _ := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -134,6 +138,8 @@ func TestDBInitialSetupCreatesLoginableSuperAdmin(t *testing.T) {
 }
 
 func TestDBCreateInitialUserRejectsSecondSetup(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -156,6 +162,8 @@ func TestDBCreateInitialUserRejectsSecondSetup(t *testing.T) {
 // Setup completion is decided by the platform_users count, so even a row that
 // carries no platform role closes the setup endpoint.
 func TestDBCreateInitialUserRejectsWhenRolelessPlatformUserExists(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -182,6 +190,8 @@ func TestDBCreateInitialUserRejectsWhenRolelessPlatformUserExists(t *testing.T) 
 // A platform user carrying no platform role cannot be authenticated even though
 // the credentials themselves are valid.
 func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "no-role@example.com", "No Role")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -200,6 +210,8 @@ func TestDBLoginRejectsPlatformUserWithoutRole(t *testing.T) {
 // language to render in before anyone opens the settings screen, and no tenant
 // starts selling in a currency nobody chose.
 func TestDBInitialSetupSavesTheChosenDefaults(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -245,6 +257,8 @@ func TestDBInitialSetupSavesTheChosenDefaults(t *testing.T) {
 // A setup that names no currency starts the platform on the built-in one, as a
 // platform settings save that names none would.
 func TestDBInitialSetupWithoutACurrencyStartsOnTheBuiltInOne(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -266,6 +280,8 @@ func TestDBInitialSetupWithoutACurrencyStartsOnTheBuiltInOne(t *testing.T) {
 // platform settings save refuses them, so a rejected setup leaves no
 // administrator and no settings row behind.
 func TestDBCreateInitialUserRejectsACodeThatNamesNoCurrency(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -291,6 +307,8 @@ func TestDBCreateInitialUserRejectsACodeThatNamesNoCurrency(t *testing.T) {
 // The zone chosen at setup is the platform default, so a tenant created
 // afterwards without one starts on it.
 func TestDBInitialSetupSavesTheChosenTimezoneForNewTenants(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -333,6 +351,8 @@ func TestDBInitialSetupSavesTheChosenTimezoneForNewTenants(t *testing.T) {
 // A setup that names no zone starts the platform on the built-in one, as the
 // settings row did before the zone was asked for.
 func TestDBInitialSetupWithoutATimezoneStartsOnTheBuiltInOne(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -354,6 +374,8 @@ func TestDBInitialSetupWithoutATimezoneStartsOnTheBuiltInOne(t *testing.T) {
 // settings save refuses it, so a rejected setup leaves no administrator and no
 // settings row behind.
 func TestDBCreateInitialUserRejectsANameThatIsNoTimezone(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -379,6 +401,8 @@ func TestDBCreateInitialUserRejectsANameThatIsNoTimezone(t *testing.T) {
 // An unsupported code is rejected before any write, so a rejected setup leaves
 // no administrator and no settings row behind.
 func TestDBCreateInitialUserRejectsUnsupportedLocale(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -404,6 +428,8 @@ func TestDBCreateInitialUserRejectsUnsupportedLocale(t *testing.T) {
 // and the later one's upsert overwrote the locale the earlier one saved. Holding
 // the setup lock from outside makes both reach it before either writes.
 func TestDBConcurrentInitialSetupLeavesOneOperator(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -430,7 +456,7 @@ func TestDBConcurrentInitialSetupLeavesOneOperator(t *testing.T) {
 		})
 	}
 
-	for countRows(t, pg, "SELECT COUNT(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted") < len(requests) {
+	for countRows(t, pg, "SELECT COUNT(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted AND database = (SELECT oid FROM pg_database WHERE datname = current_database())") < len(requests) {
 		if ctx.Err() != nil {
 			t.Fatal("both setups never reached the setup lock")
 		}
@@ -480,6 +506,8 @@ func setupLockQuery(fn string) string {
 // A settings row can outlive every operator, so setup completes over it: the
 // chosen locale replaces the saved one and the saved time zone is kept.
 func TestDBInitialSetupOverAnOrphanedSettingsRow(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newSetupEnv(t)
 	setup := publirasplatformv1connect.NewPlatformSetupServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 

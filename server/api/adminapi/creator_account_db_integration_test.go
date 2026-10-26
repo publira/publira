@@ -63,6 +63,8 @@ func creatorAccountReaderPublicIDs(accounts []*publiraadminv1.CreatorAccount) []
 }
 
 func TestDBLinkAndUnlinkCreatorAccountsAreAudited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "CATENANT0001", "creator-accounts.example.com", "Creator Accounts", "CAADMIN00001", "admin@creator-accounts.example.com")
 	penName := env.createCreator(t, admin, "Shared Pen Name").Creator
@@ -142,6 +144,8 @@ func TestDBLinkAndUnlinkCreatorAccountsAreAudited(t *testing.T) {
 }
 
 func TestDBLinkCreatorAccountRefusesAnythingButAnActiveReaderOfTheTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	mine := env.createCreator(t, first, "Tenant A Creator").Creator
@@ -178,6 +182,8 @@ func TestDBLinkCreatorAccountRefusesAnythingButAnActiveReaderOfTheTenant(t *test
 // Readers are the tenant admin's to see, so an editor can neither change a
 // link nor read who is linked.
 func TestDBCreatorAccountsAreTheTenantAdminsAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "CETENANT0001", "creator-editor.example.com", "Creator Editor", "CEADMIN00001", "admin@creator-editor.example.com")
 	editor := admin.as(env.PG.SeedTenantUser(t, admin.Tenant.ID, "CEEDITOR0001", "editor@creator-editor.example.com", "Editor", auth.RoleTenantEditor))

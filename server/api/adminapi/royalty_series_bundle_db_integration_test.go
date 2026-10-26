@@ -83,6 +83,8 @@ func (e *adminDBEnv) seedSeriesBundleSale(t *testing.T, f seriesBundleRoyaltyFix
 // its own. The parts were fixed when the checkout started: an episode repriced,
 // or the series' discount changed, before the close changes nothing.
 func TestDBAdminSeriesBundleSalePaysTheCreditsOfEachEpisodeTheirPart(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedSeriesBundleRoyaltyFixture(t, "RBS")
 
@@ -113,6 +115,8 @@ func TestDBAdminSeriesBundleSalePaysTheCreditsOfEachEpisodeTheirPart(t *testing.
 // takes the same proportion off each episode's part, and the parts still add
 // up to what was paid.
 func TestDBAdminSeriesBundleSaleBelowItsPriceSpreadsThePaymentOverTheParts(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedSeriesBundleRoyaltyFixture(t, "RBC")
 
@@ -130,6 +134,8 @@ func TestDBAdminSeriesBundleSaleBelowItsPriceSpreadsThePaymentOverTheParts(t *te
 // is that month's own, divided over the episodes in proportion to their parts
 // and rounded down for each. The totals keep the refund as it was paid back.
 func TestDBAdminPartialRefundOfASeriesBundleIsDividedOverItsEpisodes(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedSeriesBundleRoyaltyFixture(t, "RBP")
 
@@ -152,6 +158,8 @@ func TestDBAdminPartialRefundOfASeriesBundleIsDividedOverItsEpisodes(t *testing.
 // sale once a dispute of it is lost. Together the statements pay nothing for
 // the sale.
 func TestDBAdminRefundOfASeriesBundleAfterCloseIsTakenBackFromEachEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedSeriesBundleRoyaltyFixture(t, "RBR")
 

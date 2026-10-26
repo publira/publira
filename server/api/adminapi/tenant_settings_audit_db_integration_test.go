@@ -15,6 +15,8 @@ import (
 // to tell whether a save changes anything, so that row has to be the one the
 // schema would store for it.
 func TestDBTenantConfigColumnDefaults(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TCDTNNT1", "config-defaults.example.com", "Config Defaults", "TCDUSER1", "admin@config-defaults.example.com")
 
@@ -58,6 +60,8 @@ func tenantSettingAuditCountOn(t *testing.T, env *adminDBEnv, tenant adminDBTena
 // save that leaves every value as it was leaves no entry: each step below saves
 // the same values twice and expects one entry.
 func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TSATNNT1", "settings-audit.example.com", "Settings Audit", "TSAUSER1", "admin@settings-audit.example.com")
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
@@ -250,6 +254,8 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 // locale the save changed: a save of each locale leaves an entry of its own,
 // and saving the same copy again leaves none.
 func TestDBTenantSiteCopySavesAreAuditedUnderTheirLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TSCTNNT1", "site-copy-audit.example.com", "Site Copy Audit", "TSCUSER1", "admin@site-copy-audit.example.com")
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
@@ -277,6 +283,8 @@ func TestDBTenantSiteCopySavesAreAuditedUnderTheirLocale(t *testing.T) {
 // The first save of a tenant without a config row is compared against the
 // defaults the console showed, so saving those defaults is no change either.
 func TestDBTenantSettingSaveOfTheDefaultsWithoutAConfigRowIsNotAudited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TSDTNNT1", "settings-defaults.example.com", "Settings Defaults", "TSDUSER1", "admin@settings-defaults.example.com")
 	ctx := testutil.WithBearer(context.Background(), tenant.token())

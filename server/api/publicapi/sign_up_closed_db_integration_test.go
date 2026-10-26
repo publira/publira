@@ -36,6 +36,8 @@ func assertSignUpClosed(t *testing.T, err error) {
 }
 
 func TestDBCreateUserIsRefusedWhileSignUpIsClosed(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	closed, other := env.seedTwoTenants(t)
 	env.saveSignUp(t, closed.ID, false, "Sign-up reopens at launch.")
@@ -64,6 +66,8 @@ func TestDBCreateUserIsRefusedWhileSignUpIsClosed(t *testing.T) {
 // A closed sign-up mails nothing, so it is answered before the mail guard is
 // charged and costs the address none of its allowance.
 func TestDBCreateUserRefusedWhileSignUpIsClosedSpendsNoMailAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithMailGuard(t, mailGuardWith(
 		platformpolicy.HourDay{PerHour: 1000, PerDay: 1000},
 		platformpolicy.HourDay{PerHour: 1, PerDay: 1},
@@ -81,6 +85,8 @@ func TestDBCreateUserRefusedWhileSignUpIsClosedSpendsNoMailAllowance(t *testing.
 }
 
 func TestDBCreateUserOpensAnAccountWhileSignUpIsOpen(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	unsaved, open := env.seedTwoTenants(t)
 	// A message kept from an earlier closing does not close anything.
@@ -103,6 +109,8 @@ func TestDBCreateUserOpensAnAccountWhileSignUpIsOpen(t *testing.T) {
 // open completes after it closes: the worker opens its account, and the link it
 // was mailed activates it.
 func TestDBSignUpAcceptedWhileOpenCompletesAfterSignUpCloses(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	client := env.authClient()
@@ -146,6 +154,8 @@ func TestDBSignUpAcceptedWhileOpenCompletesAfterSignUpCloses(t *testing.T) {
 // that one: the reader whose provider account is linked, and the reader whose
 // account holds the address the provider vouches for, both sign in.
 func TestDBLoginWithIdTokenOpensNoAccountWhileSignUpIsClosed(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	linked := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
@@ -183,6 +193,8 @@ func TestDBLoginWithIdTokenOpensNoAccountWhileSignUpIsClosed(t *testing.T) {
 }
 
 func TestDBGetTenantAnswersTheSignUpSetting(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, other := env.seedTwoTenants(t)
 	client := env.tenantAPIClient()

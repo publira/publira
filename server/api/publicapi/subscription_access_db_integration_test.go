@@ -131,6 +131,8 @@ func (f *subscriptionAccessFixture) assertLocked(t *testing.T, user testutil.Ten
 // `series` the series it names. A target that does not match its plan's scope
 // opens nothing, and neither does a plan of another reader.
 func TestDBGetEpisodeDetailOpensThePlanScopeToASubscriber(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionAccessFixture(t)
 	env, tenant := f.env, f.tenant
 
@@ -190,6 +192,8 @@ func TestDBGetEpisodeDetailOpensThePlanScopeToASubscriber(t *testing.T) {
 // cancel at the period end stops there even before Stripe's notification of
 // its end arrives. One with no period recorded opens nothing.
 func TestDBGetEpisodeDetailEndsSubscriberAccessWithTheSubscription(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionAccessFixture(t)
 	env, tenant := f.env, f.tenant
 	plan := env.PG.SeedSubscriptionPlan(t, tenant.ID, testutil.SubscriptionPlanSeed{Scope: "all"})
@@ -242,6 +246,8 @@ func TestDBGetEpisodeDetailEndsSubscriberAccessWithTheSubscription(t *testing.T)
 // holds is reported over it and is still the reader's own copy. It is reported
 // over the staff grant, which opens even more.
 func TestDBGetEpisodeDetailReportsSubscriptionUnderOtherGrants(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionAccessFixture(t)
 	env, tenant := f.env, f.tenant
 	plan := env.PG.SeedSubscriptionPlan(t, tenant.ID, testutil.SubscriptionPlanSeed{Scope: "all"})
@@ -265,6 +271,8 @@ func TestDBGetEpisodeDetailReportsSubscriptionUnderOtherGrants(t *testing.T) {
 // The comment permission check reads the same grants, so a subscriber may
 // comment on an episode of the plan's scope and on none outside it.
 func TestDBPostEpisodeCommentOpensThePlanScopeToASubscriber(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "SUB")
 	env, tenant, member := fixture.env, fixture.tenant, fixture.member
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -285,6 +293,8 @@ func TestDBPostEpisodeCommentOpensThePlanScopeToASubscriber(t *testing.T) {
 // kind it does not know, so a subscription opens nothing there while it opens
 // the episode here.
 func TestDBSubscriptionGrantStaysOutOfThePreviousReleasesView(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionAccessFixture(t)
 	env, tenant := f.env, f.tenant
 	plan := env.PG.SeedSubscriptionPlan(t, tenant.ID, testutil.SubscriptionPlanSeed{Scope: "all"})

@@ -26,8 +26,7 @@ func newEmailSettingsClient(t *testing.T) (
 ) {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 
 	encryptor := storageTestEncryptor(t)
@@ -119,6 +118,8 @@ func seedEmailSettings(
 // saved a new password states `unchanged` for it, and would otherwise write the
 // ciphertext it read back over the new one.
 func TestDBUpdatePlatformEmailSettingsRejectsAStaleRevision(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator, encryptor := newEmailSettingsClient(t)
 
 	// Both sessions read this revision.
@@ -158,6 +159,8 @@ func TestDBUpdatePlatformEmailSettingsRejectsAStaleRevision(t *testing.T) {
 // Two saves from the same revision at the same time. The lock serializes them,
 // so exactly one applies and the other is told the row moved.
 func TestDBUpdatePlatformEmailSettingsConcurrentSavesOneWins(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator, encryptor := newEmailSettingsClient(t)
 
 	shared := seedEmailSettings(t, client, operator)

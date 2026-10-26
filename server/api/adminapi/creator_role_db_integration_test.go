@@ -119,6 +119,8 @@ func listCreatorRoles(
 // A tenant reaches its console with a vocabulary already in it, because a
 // credit names a role and a series is credited from the day it is written.
 func TestDBANewTenantStartsWithTheDefaultCreatorRoles(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -128,6 +130,8 @@ func TestDBANewTenantStartsWithTheDefaultCreatorRoles(t *testing.T) {
 }
 
 func TestDBCreateCreatorRoleAppendsToTheTenantOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
@@ -143,6 +147,8 @@ func TestDBCreateCreatorRoleAppendsToTheTenantOrder(t *testing.T) {
 // Two roles that differ only in case are one choice offered twice, so the
 // second spelling is refused.
 func TestDBCreateCreatorRoleRefusesANameAnotherRoleAlreadyHolds(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
@@ -157,6 +163,8 @@ func TestDBCreateCreatorRoleRefusesANameAnotherRoleAlreadyHolds(t *testing.T) {
 }
 
 func TestDBUpdateCreatorRoleRenamesWithoutMovingItsPublicID(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
@@ -179,6 +187,8 @@ func TestDBUpdateCreatorRoleRenamesWithoutMovingItsPublicID(t *testing.T) {
 }
 
 func TestDBReorderCreatorRolesWritesTheRequestedOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
@@ -203,6 +213,8 @@ func TestDBReorderCreatorRolesWritesTheRequestedOrder(t *testing.T) {
 }
 
 func TestDBReorderCreatorRolesRefusesAnOrderBuiltOnAStaleList(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
@@ -223,6 +235,8 @@ func TestDBReorderCreatorRolesRefusesAnOrderBuiltOnAStaleList(t *testing.T) {
 }
 
 func TestDBDeleteCreatorRoleRemovesAnUnusedOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
@@ -240,6 +254,8 @@ func TestDBDeleteCreatorRoleRemovesAnUnusedOne(t *testing.T) {
 }
 
 func TestDBDeleteCreatorRoleRefusesOneACreditNames(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	roles := env.creatorRoleClient()
@@ -276,6 +292,8 @@ func TestDBDeleteCreatorRoleRefusesOneACreditNames(t *testing.T) {
 }
 
 func TestDBDeleteCreatorRoleReportsHowManyCreditsNameIt(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	roles := env.creatorRoleClient()
@@ -311,6 +329,8 @@ func TestDBDeleteCreatorRoleReportsHowManyCreditsNameIt(t *testing.T) {
 }
 
 func TestDBCreatorRolesOfAnotherTenantAreOutOfReach(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.creatorRoleClient()
@@ -335,6 +355,8 @@ func TestDBCreatorRolesOfAnotherTenantAreOutOfReach(t *testing.T) {
 }
 
 func TestDBCreatorRoleChangesAreAudited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()

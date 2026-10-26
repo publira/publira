@@ -18,6 +18,8 @@ import (
 // translations, and page_versions. Only a real database exercises that join.
 
 func TestDBListPublishedPagesReturnsOnlyPublishedFooterPages(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -64,6 +66,8 @@ func TestDBListPublishedPagesReturnsOnlyPublishedFooterPages(t *testing.T) {
 }
 
 func TestDBListPublishedPageSlugsReturnsEveryPublishedPageOfTheTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -107,6 +111,8 @@ func TestDBListPublishedPageSlugsReturnsEveryPublishedPageOfTheTenant(t *testing
 }
 
 func TestDBGetPublishedPageServesTheStoredVersion(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{
@@ -137,6 +143,8 @@ func TestDBGetPublishedPageServesTheStoredVersion(t *testing.T) {
 }
 
 func TestDBGetPublishedPageHidesPagesThatAreNotPublishedYet(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -168,6 +176,8 @@ func TestDBGetPublishedPageHidesPagesThatAreNotPublishedYet(t *testing.T) {
 // A tenant that moves to a default locale none of a page's translations is in
 // keeps serving the page, in the translation it already had.
 func TestDBPublishedPagesSurviveADefaultLocaleChange(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, _ := env.seedTwoTenants(t)
 
@@ -211,6 +221,8 @@ func TestDBPublishedPagesSurviveADefaultLocaleChange(t *testing.T) {
 // translation, and in the tenant's default locale otherwise, and every answer
 // names the locale it was served in.
 func TestDBPublishedPagesAreServedInTheReadersLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -309,6 +321,8 @@ func TestDBPublishedPagesAreServedInTheReadersLocale(t *testing.T) {
 // still a published page: it is routed, listed, and served in that translation
 // on every locale.
 func TestDBPageWithOnlyANonDefaultTranslationPublishedIsServed(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -366,6 +380,8 @@ func TestDBPageWithOnlyANonDefaultTranslationPublishedIsServed(t *testing.T) {
 // named among the page's alternates. A page published only in such languages
 // is off the site, and comes back as it was once one of them is offered again.
 func TestDBPublishedPagesAreServedOnlyInOfferedLocales(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

@@ -20,6 +20,8 @@ import (
 // address it typed: trying tags must not become a way to learn which addresses
 // are registered.
 func TestDBCreateUserForATaggedVariantAnswersLikeTheRegisteredAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "john@tenant-a.example.com", "John")
@@ -57,6 +59,8 @@ func TestDBCreateUserForATaggedVariantAnswersLikeTheRegisteredAddress(t *testing
 // opened with the address alone and compared on it, so a display name is not
 // a way to open a second account for an inbox, nor a way to store one.
 func TestDBCreateUserStoresTheAddressWithoutItsDisplayName(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "john@tenant-a.example.com", "John")
@@ -92,6 +96,8 @@ func TestDBCreateUserStoresTheAddressWithoutItsDisplayName(t *testing.T) {
 // A change to a tagged variant of another account's address is refused the
 // way a change to that address itself is.
 func TestDBRequestEmailChangeRefusesATaggedVariantOfAnotherAccountsAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -111,6 +117,8 @@ func TestDBRequestEmailChangeRefusesATaggedVariantOfAnotherAccountsAddress(t *te
 // The reader's own account is not another account: moving between tags of the
 // inbox the account already holds is an ordinary change.
 func TestDBRequestEmailChangeMovesBetweenTagsOfTheReadersOwnInbox(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -136,6 +144,8 @@ func TestDBRequestEmailChangeMovesBetweenTagsOfTheReadersOwnInbox(t *testing.T) 
 // taken it by the time both links are followed. The change that would complete
 // then is refused, and the address stays where it was.
 func TestDBConfirmEmailChangeRefusesAnInboxAnotherAccountTookMeanwhile(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

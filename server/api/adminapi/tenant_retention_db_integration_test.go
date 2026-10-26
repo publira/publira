@@ -66,6 +66,8 @@ func updateRetention(env *adminDBEnv, tenant adminDBTenant, overrides *publiraad
 }
 
 func TestDBTenantRetentionSettings(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "RETTENANT001", "retention.example.com", "Retention Tenant", "RETADMIN0001", "admin@retention.example.com")
 	other := env.seedTenantWithAdmin(t, "RETTENANT002", "other-retention.example.com", "Other Retention Tenant", "RETADMIN0002", "admin@other-retention.example.com")
@@ -174,6 +176,8 @@ func TestDBTenantRetentionSettings(t *testing.T) {
 // was saved, so the console can show what has to be raised, while the
 // effective period, the one the purge deletes by, is the bound.
 func TestDBTenantRetentionSavedBelowTheBoundAppliesAsTheBound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "RETTENANT003", "low-retention.example.com", "Low Retention Tenant", "RETADMIN0003", "admin@low-retention.example.com")
 	if _, err := env.PG.DB.ExecContext(context.Background(),
@@ -197,6 +201,8 @@ func TestDBTenantRetentionSavedBelowTheBoundAppliesAsTheBound(t *testing.T) {
 // batch role, and checks that each row is deleted exactly when the value the
 // API reports says it should be.
 func TestDBRetentionDeadlineAndPurgeCutoffsAgree(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	overridden := newCommentModerationFixture(t, env, "RTO", "overridden-retention.example.com")
 	plain := newCommentModerationFixture(t, env, "RTP", "plain-retention.example.com")

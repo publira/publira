@@ -28,8 +28,9 @@ import (
 )
 
 func TestDBProcessPaymentWebhookIsolatesTenantSigningSecrets(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenantA := pg.SeedTenant(t, "PAYISOLA", "pay-iso-a.example.com", "Pay Iso A")
@@ -79,8 +80,9 @@ func TestDBProcessPaymentWebhookIsolatesTenantSigningSecrets(t *testing.T) {
 }
 
 func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "PAYDISAB", "pay-disabled.example.com", "Pay Disabled")
@@ -122,8 +124,9 @@ func TestDBStartEpisodeCheckoutRefusesDisabledTenantSettings(t *testing.T) {
 }
 
 func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "PAYPROJ", "pay-projection.example.com", "Pay Projection")
@@ -214,8 +217,9 @@ func TestDBProcessPaymentWebhookProjectsPurchaseEventIdempotently(t *testing.T) 
 // is owed one receipt for the purchase however many times that happens. The
 // receipt is queued with the purchase, so it names the row that was stored.
 func TestDBProcessPaymentWebhookQueuesOneReceiptPerPurchase(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "PAYRCPT", "pay-receipt.example.com", "Pay Receipt")
@@ -297,8 +301,9 @@ func TestDBProcessPaymentWebhookQueuesOneReceiptPerPurchase(t *testing.T) {
 // editor changed its price, and one after — paid twice, so both payments are
 // purchases: each is a sale, and each can have a refund matched against it.
 func TestDBProcessPaymentWebhookRecordsEveryPaidCheckoutOfAnEpisode(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "PAYTWICE", "pay-twice.example.com", "Pay Twice")
@@ -383,8 +388,9 @@ func TestDBProcessPaymentWebhookRecordsEveryPaidCheckoutOfAnEpisode(t *testing.T
 }
 
 func TestDBProcessPaymentWebhookCreatesADelayedPurchaseOnceItIsPaid(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "PAYDELAY", "pay-delayed.example.com", "Pay Delayed")

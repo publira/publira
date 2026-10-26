@@ -133,6 +133,8 @@ func enrollMfa(t *testing.T, env *adminDBEnv, tenant adminDBTenant) (string, []s
 }
 
 func TestAdminLoginIssuesASessionWhenNoFactorIsEnrolled(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 
@@ -146,6 +148,8 @@ func TestAdminLoginIssuesASessionWhenNoFactorIsEnrolled(t *testing.T) {
 }
 
 func TestAdminMfaEnrollmentStoresTheSecretEncrypted(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 
@@ -166,6 +170,8 @@ func TestAdminMfaEnrollmentStoresTheSecretEncrypted(t *testing.T) {
 }
 
 func TestAdminMfaRecoveryCodesAreStoredHashed(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 
@@ -182,6 +188,8 @@ func TestAdminMfaRecoveryCodesAreStoredHashed(t *testing.T) {
 }
 
 func TestAdminLoginStopsAtAVerifyChallengeOnceTheFactorIsEnrolled(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, _ := enrollMfa(t, env, tenant)
@@ -228,6 +236,8 @@ func TestAdminLoginStopsAtAVerifyChallengeOnceTheFactorIsEnrolled(t *testing.T) 
 // A challenge stands for half a login. Nothing that authorizes on a session
 // may accept it, or the second factor would be optional in practice.
 func TestAdminMfaChallengeTokenIsNotASession(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	enrollMfa(t, env, tenant)
@@ -246,6 +256,8 @@ func TestAdminMfaChallengeTokenIsNotASession(t *testing.T) {
 // The verify and enroll challenges are separate audiences, so the token that
 // may only finish an enrollment cannot answer a verification challenge.
 func TestAdminMfaVerifyChallengeCannotStartAnEnrollment(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	enrollMfa(t, env, tenant)
@@ -265,6 +277,8 @@ func TestAdminMfaVerifyChallengeCannotStartAnEnrollment(t *testing.T) {
 }
 
 func TestAdminMfaVerifySpendsARecoveryCodeOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	_, codes := enrollMfa(t, env, tenant)
@@ -300,6 +314,8 @@ func TestAdminMfaVerifySpendsARecoveryCodeOnce(t *testing.T) {
 // The acceptance window is wider than one period, so a code seen over a
 // shoulder is still current for a while after it was used.
 func TestAdminMfaVerifyRefusesAReplayedCode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, _ := enrollMfa(t, env, tenant)
@@ -330,6 +346,8 @@ func TestAdminMfaVerifyRefusesAReplayedCode(t *testing.T) {
 // one login one session: the second exchange is refused even though the code
 // it presents is a good one the account has not spent.
 func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, codes := enrollMfa(t, env, tenant)
@@ -382,6 +400,8 @@ func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
 // writes, so the claim on it has to be the UPDATE rather than a comparison in
 // Go. Exactly one of them may end up with a session.
 func TestAdminMfaVerifyAcceptsAConcurrentlyPresentedCodeOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, _ := enrollMfa(t, env, tenant)
@@ -422,6 +442,8 @@ func TestAdminMfaVerifyAcceptsAConcurrentlyPresentedCodeOnce(t *testing.T) {
 }
 
 func TestAdminMfaVerifyLocksTheAccountAfterRepeatedFailures(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, _ := enrollMfa(t, env, tenant)
@@ -460,6 +482,8 @@ func TestAdminMfaVerifyLocksTheAccountAfterRepeatedFailures(t *testing.T) {
 }
 
 func TestAdminMfaRegenerateReplacesEveryRecoveryCode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, old := enrollMfa(t, env, tenant)
@@ -492,6 +516,8 @@ func TestAdminMfaRegenerateReplacesEveryRecoveryCode(t *testing.T) {
 // Only the authenticator can mint a new batch: a leaked recovery code that
 // could mint ten more would never expire.
 func TestAdminMfaRegenerateRefusesARecoveryCode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	_, codes := enrollMfa(t, env, tenant)
@@ -509,6 +535,8 @@ func TestAdminMfaRegenerateRefusesARecoveryCode(t *testing.T) {
 }
 
 func TestAdminMfaDisableRemovesTheFactorAndItsRecoveryCodes(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, _ := enrollMfa(t, env, tenant)
@@ -539,6 +567,8 @@ func TestAdminMfaDisableRemovesTheFactorAndItsRecoveryCodes(t *testing.T) {
 // An account whose authenticator is gone gets itself back with a recovery
 // code rather than waiting for an operator.
 func TestAdminMfaDisableAcceptsARecoveryCode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	_, codes := enrollMfa(t, env, tenant)
@@ -555,6 +585,8 @@ func TestAdminMfaDisableAcceptsARecoveryCode(t *testing.T) {
 }
 
 func TestAdminMfaStartRefusesToReplaceAConfirmedFactor(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	enrollMfa(t, env, tenant)
@@ -568,6 +600,8 @@ func TestAdminMfaStartRefusesToReplaceAConfirmedFactor(t *testing.T) {
 }
 
 func TestAdminMfaStatusReportsTheEnrollmentAndWhatIsLeft(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 
@@ -609,6 +643,8 @@ func TestAdminMfaStatusReportsTheEnrollmentAndWhatIsLeft(t *testing.T) {
 // session at all: the only thing its challenge can complete is the
 // enrollment, and doing so finishes the login.
 func TestAdminLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	requireTenantAdminMFA(t, env)
 	tenant := seedMfaTenant(t, env)
@@ -654,6 +690,8 @@ func TestAdminLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
 // both sign in, and a challenge kept after its enrollment could enroll an
 // authenticator of its holder's own once the factor is taken off.
 func TestAdminMfaEnrollChallengeBuysOneSession(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	requireTenantAdminMFA(t, env)
 	tenant := seedMfaTenant(t, env)
@@ -731,6 +769,8 @@ func TestAdminMfaEnrollChallengeBuysOneSession(t *testing.T) {
 // earlier response handed out, and the account would hold ten that no longer
 // work.
 func TestAdminMfaConfirmsAConcurrentEnrollmentOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	signedIn := testutil.WithBearer(context.Background(), tenant.token())
@@ -792,6 +832,8 @@ func TestAdminMfaConfirmsAConcurrentEnrollmentOnce(t *testing.T) {
 // Only tenant_admin is held back. An editor may enroll, and is never stopped
 // from signing in for not having.
 func TestAdminLoginDoesNotForceEnrollmentOnAnEditor(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	requireTenantAdminMFA(t, env)
 	tenant := seedMfaTenant(t, env)
@@ -807,6 +849,8 @@ func TestAdminLoginDoesNotForceEnrollmentOnAnEditor(t *testing.T) {
 }
 
 func TestAdminMfaWritesTheAuditTrail(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	secret, codes := enrollMfa(t, env, tenant)
@@ -880,6 +924,8 @@ func resetMfaAsOperator(t *testing.T, env *adminDBEnv, tenant adminDBTenant) {
 // An account that lost its authenticator and every recovery code signs in with
 // its password alone once the operator has removed the factor.
 func TestAdminLoginTakesThePasswordAloneOnceAnOperatorResetsTheFactor(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	enrollMfa(t, env, tenant)
@@ -901,6 +947,8 @@ func TestAdminLoginTakesThePasswordAloneOnceAnOperatorResetsTheFactor(t *testing
 // Where the platform requires the factor of a tenant admin, the account the
 // operator reset is asked to enroll again rather than let in.
 func TestAdminLoginAsksForAnEnrollmentOnceAnOperatorResetsARequiredFactor(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := seedMfaTenant(t, env)
 	enrollMfa(t, env, tenant)

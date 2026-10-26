@@ -21,6 +21,8 @@ import (
 // The list is defined by the absence of a tenant role, so a tenant member must
 // never appear even though the row lives in the same table.
 func TestDBListEndUsersExcludesTenantMembers(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -46,6 +48,8 @@ func TestDBListEndUsersExcludesTenantMembers(t *testing.T) {
 }
 
 func TestDBListEndUsersFiltersByTenantPublicID(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	readersID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -69,6 +73,8 @@ func TestDBListEndUsersFiltersByTenantPublicID(t *testing.T) {
 }
 
 func TestDBListEndUsersPagesAreStableWhenCreatedAtTies(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -100,6 +106,8 @@ func TestDBListEndUsersPagesAreStableWhenCreatedAtTies(t *testing.T) {
 }
 
 func TestDBListEndUsersFiltersByStatusAndUserIDs(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -131,6 +139,8 @@ func TestDBListEndUsersFiltersByStatusAndUserIDs(t *testing.T) {
 }
 
 func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -176,6 +186,8 @@ func TestDBSuspendAndUnsuspendEndUser(t *testing.T) {
 // Lifting a suspension must not skip the address confirmation, so an
 // unconfirmed reader goes back to the state VerifyUserEmail activates.
 func TestDBUnsuspendUnconfirmedEndUserLeavesItInactive(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -229,6 +241,8 @@ func TestDBUnsuspendUnconfirmedEndUserLeavesItInactive(t *testing.T) {
 // Tenant members are managed from the tenant console, so the platform end-user
 // RPCs refuse them instead of reaching into another console's data.
 func TestDBEndUserOperationsRejectTenantMembers(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -260,6 +274,8 @@ func TestDBEndUserOperationsRejectTenantMembers(t *testing.T) {
 // The delete is physical, and the rows hanging off the user go with it through
 // the ON DELETE CASCADE foreign keys.
 func TestDBDeleteEndUserCascadesRelatedRows(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -301,6 +317,8 @@ func TestDBDeleteEndUserCascadesRelatedRows(t *testing.T) {
 // day's revenue figures are recomputed from, so the delete takes the buyer off
 // them and leaves them where they are.
 func TestDBDeleteEndUserKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -334,6 +352,8 @@ func TestDBDeleteEndUserKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 // The deleted reader can reach no billing page to cancel a subscription, so
 // the delete queues the cancellation of each one Stripe would go on billing.
 func TestDBDeleteEndUserQueuesTheCancellationOfTheReadersSubscriptions(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
@@ -364,6 +384,8 @@ func TestDBDeleteEndUserQueuesTheCancellationOfTheReadersSubscriptions(t *testin
 }
 
 func TestDBEndUserRPCsRequirePlatformSession(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	tenantID := seedTenant(t, pg, "TENANT000001", "readers.example.com", "Readers")
 	seedEndUser(t, pg, tenantID, "ENDUSER00001", "reader@example.com", "Reader One")

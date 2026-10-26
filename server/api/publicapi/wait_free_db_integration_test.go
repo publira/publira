@@ -187,6 +187,8 @@ func (f waitFreeFixture) episodeAccess(t *testing.T, episode testutil.Episode) *
 // A used ticket opens the episode for the access period and starts the
 // recharge, and the next one is refused until that recharge has passed.
 func TestDBUseTicketOpensTheEpisodeAndWaitsForTheRecharge(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 3)
 	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 0)
 
@@ -245,6 +247,8 @@ func TestDBUseTicketOpensTheEpisodeAndWaitsForTheRecharge(t *testing.T) {
 // The interval in force when a ticket is used fixes the next one; changing it
 // afterwards moves the next use, not the wait already running.
 func TestDBUseTicketRechargesByTheIntervalInForceWhenUsed(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 3)
 	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 1, 24, 0)
 
@@ -270,6 +274,8 @@ func TestDBUseTicketRechargesByTheIntervalInForceWhenUsed(t *testing.T) {
 // Using a ticket twice on the same episode spends one recharge and writes one
 // ticket, whether the second call comes after the first or alongside it.
 func TestDBUseTicketIsIdempotentPerEpisode(t *testing.T) {
+	t.Parallel()
+
 	t.Run("a repeated call", func(t *testing.T) {
 		f := newWaitFreeFixture(t, 2)
 		setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 0)
@@ -335,6 +341,8 @@ func TestDBUseTicketIsIdempotentPerEpisode(t *testing.T) {
 // The latest episodes the rule keeps back are refused, counted over the
 // published episodes alone, and GetSeriesDetail names the same ones.
 func TestDBUseTicketRefusesTheExcludedLatestEpisodes(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 4)
 	// A draft after the published four is not one of the latest a reader can see.
 	f.env.PG.SeedEpisode(t, f.tenant.ID, f.series.ID, testutil.EpisodeSeed{PublicID: "EPISODEDRAFT", Title: "Draft", OrderIndex: 5, Price: 300})
@@ -368,6 +376,8 @@ func TestDBUseTicketRefusesTheExcludedLatestEpisodes(t *testing.T) {
 
 // Every other refusal leaves the ticket unspent.
 func TestDBUseTicketRefusals(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 2)
 	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 0)
 	free := f.env.PG.SeedEpisode(t, f.tenant.ID, f.series.ID, testutil.EpisodeSeed{PublicID: "EPISODEFREE1", Title: "Free", OrderIndex: 0, Status: testutil.EpisodeStatusPublished})
@@ -418,6 +428,8 @@ func TestDBUseTicketRefusals(t *testing.T) {
 // A reader the tenant's age rule stops would spend a ticket on an episode the
 // rule keeps closed, so the ticket is refused instead.
 func TestDBUseTicketRefusesAReaderTheAgeRuleStops(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 0)
 	setTenantAgeVerification(t, f.env, f.tenant.ID, ageverification.R18)
 	rated := f.env.PG.SeedSeries(t, f.tenant.ID, testutil.SeriesSeed{PublicID: "SERIESR18001", Title: "Rated", Published: true, AgeRating: ageverification.RatingR18})
@@ -434,6 +446,8 @@ func TestDBUseTicketRefusesAReaderTheAgeRuleStops(t *testing.T) {
 // An expired ticket is still not revoked, and the same episode can be opened
 // with a later ticket all the same; a staff ticket on it is no obstacle either.
 func TestDBUseTicketReopensAnEpisodeWhoseTicketExpired(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 1)
 	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 0)
 	expired := time.Now().Add(-time.Hour)
@@ -468,6 +482,8 @@ func TestDBUseTicketReopensAnEpisodeWhoseTicketExpired(t *testing.T) {
 // The series read says nothing about wait-for-free until the rule is on, and
 // the ticket state of a series without it is refused.
 func TestDBWaitFreeRuleIsSilentWhileOff(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 1)
 	seriesDetail := func(t *testing.T) *publirav1.GetSeriesDetailResponse {
 		t.Helper()
@@ -507,6 +523,8 @@ func TestDBWaitFreeRuleIsSilentWhileOff(t *testing.T) {
 // Every request charges the reader's allowance before anything is read, so a
 // reader cycling through episodes the rule refuses runs out like any other.
 func TestDBUseTicketChargesTheSharedFloodControl(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.WaitFreeTicketUse = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))
@@ -530,6 +548,8 @@ func TestDBUseTicketChargesTheSharedFloodControl(t *testing.T) {
 // episode taken down since, or one the calling surface does not show, is not
 // listed even while its ticket runs.
 func TestDBGetMyTicketStateListsOnlyEpisodesTheSurfaceShows(t *testing.T) {
+	t.Parallel()
+
 	f := newWaitFreeFixture(t, 3)
 	setSeriesWaitFree(t, f.env, f.tenant.ID, f.series.ID, true, 23, 72, 0)
 	for _, episode := range f.episodes {

@@ -22,6 +22,8 @@ func tagNames(tags []*publirattypesv1.Tag) []string {
 }
 
 func TestDBCreateSeriesCarriesItsGenresAndTags(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	genres := env.genreClient()
@@ -80,6 +82,8 @@ func TestDBCreateSeriesCarriesItsGenresAndTags(t *testing.T) {
 }
 
 func TestDBUpdateSeriesReplacesTheWholeClassification(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	genres := env.genreClient()
@@ -123,6 +127,8 @@ func TestDBUpdateSeriesReplacesTheWholeClassification(t *testing.T) {
 }
 
 func TestDBUpdateSeriesClearsTheClassificationWhenTheSaveNamesNone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	genres := env.genreClient()
@@ -160,6 +166,8 @@ func TestDBUpdateSeriesClearsTheClassificationWhenTheSaveNamesNone(t *testing.T)
 }
 
 func TestDBSeriesTagsResolveToOneTagPerSlug(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -195,6 +203,8 @@ func TestDBSeriesTagsResolveToOneTagPerSlug(t *testing.T) {
 }
 
 func TestDBSeriesRefusesAGenreOfAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	theirs := createGenre(t, env.genreClient(), second, "Fantasy")
@@ -211,6 +221,8 @@ func TestDBSeriesRefusesAGenreOfAnotherTenant(t *testing.T) {
 }
 
 func TestDBSeriesRefusesMoreTagsThanTheLimit(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -231,6 +243,8 @@ func TestDBSeriesRefusesMoreTagsThanTheLimit(t *testing.T) {
 }
 
 func TestDBSeriesTagsOfAnotherTenantStayApart(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()

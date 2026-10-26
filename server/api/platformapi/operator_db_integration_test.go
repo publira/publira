@@ -19,6 +19,8 @@ import (
 )
 
 func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -94,6 +96,8 @@ func TestDBCreateOperatorPersistsAndLists(t *testing.T) {
 // sends for it is the only way in: its link sets the first password, and that
 // password signs in.
 func TestDBCreateOperatorMailsTheLinkThatSetsTheFirstPassword(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	transport := connecthttp.NewTransport(ts.Client(), ts.URL)
 	operatorClient := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(transport))
@@ -135,6 +139,8 @@ func TestDBCreateOperatorMailsTheLinkThatSetsTheFirstPassword(t *testing.T) {
 }
 
 func TestDBCreateOperatorRejectsExistingOperatorEmail(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -164,6 +170,8 @@ func TestDBCreateOperatorRejectsExistingOperatorEmail(t *testing.T) {
 // A platform user that exists without a role (an end of some earlier flow) is
 // promoted in place rather than duplicated.
 func TestDBCreateOperatorPromotesRolelessPlatformUser(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	existing := seedPlatformUserWithoutRole(t, pg, "PLATNOROLE01", "roleless@example.com", "Roleless User")
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -208,6 +216,8 @@ func TestDBCreateOperatorPromotesRolelessPlatformUser(t *testing.T) {
 // allowance the reset form does, and an address that has none left gets no
 // account either.
 func TestDBCreateOperatorStopsAtTheMailLimit(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	superAdmin := pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
 	transport := connecthttp.NewTransport(ts.Client(), ts.URL)
@@ -233,6 +243,8 @@ func TestDBCreateOperatorStopsAtTheMailLimit(t *testing.T) {
 }
 
 func TestDBCreateOperatorRequiresSuperAdmin(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -247,6 +259,8 @@ func TestDBCreateOperatorRequiresSuperAdmin(t *testing.T) {
 }
 
 func TestDBUpdateOperatorRoleReplacesTheExistingRole(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	target := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -275,6 +289,8 @@ func TestDBUpdateOperatorRoleReplacesTheExistingRole(t *testing.T) {
 }
 
 func TestDBUpdateOperatorRoleRejectsSelfDemotion(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -297,6 +313,8 @@ func TestDBUpdateOperatorRoleRejectsSelfDemotion(t *testing.T) {
 }
 
 func TestDBOperatorStatusTransitions(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	target := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -361,6 +379,8 @@ func TestDBOperatorStatusTransitions(t *testing.T) {
 }
 
 func TestDBOperatorStatusChangesRejectSelf(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -385,6 +405,8 @@ func TestDBOperatorStatusChangesRejectSelf(t *testing.T) {
 }
 
 func TestDBOperatorNotFoundReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	ts, _, superAdmin := newDBIntegrationSuperAdminServer(t)
 	client := publirasplatformv1connect.NewPlatformOperatorServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 

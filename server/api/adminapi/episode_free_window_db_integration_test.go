@@ -49,6 +49,8 @@ func rfc3339(at time.Time) string {
 }
 
 func TestDBCreateEpisodeFreeWindow(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -100,6 +102,8 @@ func TestDBCreateEpisodeFreeWindow(t *testing.T) {
 }
 
 func TestDBCreateEpisodeFreeWindowRejectsUnusablePeriods(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -135,6 +139,8 @@ func TestDBCreateEpisodeFreeWindowRejectsUnusablePeriods(t *testing.T) {
 // A campaign is scheduled on the episodes of one series, so an episode of
 // another tenant's series is not addressable even with a valid public ID.
 func TestDBCreateEpisodeFreeWindowInAnotherTenantsEpisodeReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	second := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -156,6 +162,8 @@ func TestDBCreateEpisodeFreeWindowInAnotherTenantsEpisodeReturnsNotFound(t *test
 }
 
 func TestDBCreateSeriesFreeWindowsCoversEveryEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -204,6 +212,8 @@ func TestDBCreateSeriesFreeWindowsCoversEveryEpisode(t *testing.T) {
 // The all-or-nothing rule is what a client relies on when it retries: a campaign
 // that collided with one episode's existing window leaves the others untouched.
 func TestDBCreateSeriesFreeWindowsIsAllOrNothing(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -244,6 +254,8 @@ func TestDBCreateSeriesFreeWindowsIsAllOrNothing(t *testing.T) {
 }
 
 func TestDBCreateSeriesFreeWindowsCoversOnlyTheNamedEpisodes(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -284,6 +296,8 @@ func TestDBCreateSeriesFreeWindowsCoversOnlyTheNamedEpisodes(t *testing.T) {
 }
 
 func TestDBCreateSeriesFreeWindowsOnNamedEpisodesIsAllOrNothing(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -325,6 +339,8 @@ func TestDBCreateSeriesFreeWindowsOnNamedEpisodesIsAllOrNothing(t *testing.T) {
 // An episode of another series, or of another tenant, is not part of the
 // campaign the caller named, so the call fails instead of scheduling the rest.
 func TestDBCreateSeriesFreeWindowsRefusesAnEpisodeOutsideTheSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -367,6 +383,8 @@ func TestDBCreateSeriesFreeWindowsRefusesAnEpisodeOutsideTheSeries(t *testing.T)
 }
 
 func TestDBDeleteEpisodeFreeWindow(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -441,6 +459,8 @@ func freeWindowIDs(windows []*publiraadminv1.AdminEpisodeFreeWindow) []string {
 // carries the id DeleteEpisodeFreeWindow takes, which before the listing only
 // the creating call's response did.
 func TestDBListEpisodeFreeWindowsFindsWhatAnEarlierCallScheduled(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -535,6 +555,8 @@ func TestDBListEpisodeFreeWindowsFindsWhatAnEarlierCallScheduled(t *testing.T) {
 // Expired rows are not purged, so an editor sees a window that is over until
 // it is deleted, behind the ones still ahead.
 func TestDBListEpisodeFreeWindowsKeepsWindowsThatAreOver(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -559,6 +581,8 @@ func TestDBListEpisodeFreeWindowsKeepsWindowsThatAreOver(t *testing.T) {
 }
 
 func TestDBListEpisodeFreeWindowsPages(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -634,6 +658,8 @@ func TestDBListEpisodeFreeWindowsPages(t *testing.T) {
 // An episode or series of another tenant lists nothing, even named by its id,
 // and the windows it holds stay out of reach.
 func TestDBListEpisodeFreeWindowsStaysInsideTheTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	owner := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -670,6 +696,8 @@ func TestDBListEpisodeFreeWindowsStaysInsideTheTenant(t *testing.T) {
 }
 
 func TestDBListEpisodeFreeWindowsRequiresAScope(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -694,6 +722,8 @@ func TestDBListEpisodeFreeWindowsRequiresAScope(t *testing.T) {
 // boundary has to fall between windows of different episodes and still resume
 // in order on both sides.
 func TestDBListEpisodeFreeWindowsPagesAcrossTheEpisodesOfASeries(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()

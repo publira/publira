@@ -134,6 +134,8 @@ func (e *adminDBEnv) getReader(t *testing.T, tenant adminDBTenant, publicID stri
 // nothing for an account that shows none: the reader list and the single
 // read, the moderation list, a moderation action, and the report queue.
 func TestDBAdminReadersAndCommentsCarryTheReaderIcon(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RIC", "reader-icon.example.com")
 	reader := testutil.TenantUser{ID: fixture.reader, PublicID: fixture.readerPublicID}
@@ -238,6 +240,8 @@ func TestDBAdminRemoveReaderIconLeavesTheReaderWithNone(t *testing.T) {
 }
 
 func TestDBAdminRemoveReaderIconLeavesOtherTenantsAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RIOTENANT001", "reader-icon-scope.example.com", "Scope", "RIOADMIN0001", "admin@reader-icon-scope.example.com")
 	other := env.seedTenantWithAdmin(t, "RIXTENANT001", "reader-icon-scope-other.example.com", "Other", "RIXADMIN0001", "admin@reader-icon-scope-other.example.com")

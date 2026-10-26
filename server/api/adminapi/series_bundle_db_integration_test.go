@@ -16,6 +16,8 @@ import (
 // save leaves it out, cleared by an explicit zero, and refused outside 0 to
 // 99.
 func TestDBSeriesBundleDiscountIsWrittenWhenStated(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -74,6 +76,8 @@ func TestDBSeriesBundleDiscountIsWrittenWhenStated(t *testing.T) {
 // The console names a purchase of the rest of a series by its bundle, and
 // lists it under the series it was bought from.
 func TestDBListPurchasesNamesTheSeriesBundleBought(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	ctx := context.Background()
 

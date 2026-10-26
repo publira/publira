@@ -36,6 +36,14 @@ const (
 	// Match CI postgres service major version closely enough for schema compatibility.
 	defaultPostgresImage = "postgres:18-alpine"
 
+	// templateDatabase holds the post-migration snapshot that Reset restores
+	// and that every database of StartIsolatedPostgres is created from.
+	templateDatabase = "publira_template"
+
+	// Every test that runs in parallel holds pools of its own, so the default
+	// of 100 connections is used up by a dozen of them at once.
+	maxConnections = "500"
+
 	platformDBUser     = "publira_platform"
 	platformDBPassword = "platformpass"
 
@@ -99,6 +107,9 @@ var (
 	sharedMu  sync.Mutex
 	sharedEnv *PostgresEnv
 	sharedErr error
+	// maintenanceDB connects to the postgres database of the shared container,
+	// which Reset never drops, to create and drop the isolated databases.
+	maintenanceDB *sql.DB
 )
 
 // StartPostgres returns a process-wide PostgreSQL environment (container +
@@ -107,6 +118,7 @@ var (
 //
 // Between tests, call [PostgresEnv.Reset] so each case sees a clean schema
 // (roles and migrations remain; application data is wiped via Snapshot/Restore).
+// A test that can run in parallel takes [StartIsolatedPostgres] instead.
 func StartPostgres(t *testing.T) *PostgresEnv {
 	t.Helper()
 	if testing.Short() {
@@ -187,6 +199,7 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		postgres.WithPassword(defaultPassword),
 		postgres.BasicWaitStrategies(),
 		postgres.WithSQLDriver("pgx"),
+		testcontainers.WithCmdArgs("-c", "max_connections="+maxConnections),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("start postgres container: %w", err)
@@ -228,7 +241,7 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		_ = testcontainers.TerminateContainer(container)
 		return nil, fmt.Errorf("close db before snapshot: %w", err)
 	}
-	if err := container.Snapshot(ctx); err != nil {
+	if err := container.Snapshot(ctx, postgres.WithSnapshotName(templateDatabase)); err != nil {
 		_ = testcontainers.TerminateContainer(container)
 		return nil, fmt.Errorf("snapshot: %w", err)
 	}
@@ -276,6 +289,18 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 		_ = testcontainers.TerminateContainer(container)
 		return nil, err
 	}
+	maintenanceURL, err := databaseConnectionString(connURL, "postgres")
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, err
+	}
+	maintenanceDB, err = sql.Open("pgx", maintenanceURL)
+	if err != nil {
+		_ = db.Close()
+		_ = testcontainers.TerminateContainer(container)
+		return nil, fmt.Errorf("open maintenance db: %w", err)
+	}
 
 	return &PostgresEnv{
 		Container:       container,
@@ -295,8 +320,11 @@ func startPostgres(ctx context.Context) (*PostgresEnv, error) {
 // Do not run tests that call Reset in parallel against the shared env.
 func (e *PostgresEnv) Reset(t *testing.T) {
 	t.Helper()
-	if e == nil || e.Container == nil {
+	if e == nil {
 		t.Fatal("postgres env is nil")
+	}
+	if e.Container == nil {
+		t.Fatal("Reset restores the shared database of StartPostgres; a database of StartIsolatedPostgres starts clean and is the test's own")
 	}
 
 	// Drop pooled connections so Restore can recreate the database.
@@ -321,6 +349,63 @@ func (e *PostgresEnv) Reset(t *testing.T) {
 		t.Fatalf("ping db after restore: %v", err)
 	}
 	e.DB = db
+}
+
+// StartIsolatedPostgres returns an environment on a database of the test's
+// own, created in the shared container from the post-migration snapshot and
+// dropped when the test ends. No other test connects to it, so a test that
+// uses nothing else of the container may call t.Parallel. The roles are the
+// shared container's, since roles are cluster-wide: a test that changes one
+// still runs alone, on [StartPostgres].
+func StartIsolatedPostgres(t *testing.T) *PostgresEnv {
+	t.Helper()
+	shared := StartPostgres(t)
+
+	name := "isolated_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	if _, err := maintenanceDB.ExecContext(ctx, "CREATE DATABASE "+name+" TEMPLATE "+templateDatabase); err != nil {
+		t.Fatalf("create database %s: %v", name, err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		if _, err := maintenanceDB.ExecContext(ctx, "DROP DATABASE "+name+" WITH (FORCE)"); err != nil {
+			t.Errorf("drop database %s: %v", name, err)
+		}
+	})
+
+	env := &PostgresEnv{}
+	for _, dsn := range []struct {
+		shared string
+		own    *string
+	}{
+		{shared.URL, &env.URL},
+		{shared.PlatformURL, &env.PlatformURL},
+		{shared.AdminURL, &env.AdminURL},
+		{shared.PublicURL, &env.PublicURL},
+		{shared.TickerURL, &env.TickerURL},
+		{shared.OutboxURL, &env.OutboxURL},
+		{shared.ContentStatsURL, &env.ContentStatsURL},
+	} {
+		own, err := databaseConnectionString(dsn.shared, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		*dsn.own = own
+	}
+
+	db, err := sql.Open("pgx", env.URL)
+	if err != nil {
+		t.Fatalf("open database %s: %v", name, err)
+	}
+	configurePool(db)
+	t.Cleanup(func() { _ = db.Close() })
+	if err := db.PingContext(ctx); err != nil {
+		t.Fatalf("ping database %s: %v", name, err)
+	}
+	env.DB = db
+	return env
 }
 
 // CreateEmptyDatabase creates a database no migration has touched in the
@@ -646,6 +731,15 @@ func appConnectionString(superuserURL, user, password string) (string, error) {
 		return "", fmt.Errorf("parse postgres url: %w", err)
 	}
 	u.User = url.UserPassword(user, password)
+	return u.String(), nil
+}
+
+func databaseConnectionString(dsn, database string) (string, error) {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "", fmt.Errorf("parse postgres url: %w", err)
+	}
+	u.Path = "/" + database
 	return u.String(), nil
 }
 

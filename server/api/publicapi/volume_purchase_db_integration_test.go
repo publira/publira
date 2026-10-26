@@ -42,8 +42,7 @@ type volumePurchaseEnv struct {
 
 func newVolumePurchaseEnv(t *testing.T, slug, domain string) volumePurchaseEnv {
 	t.Helper()
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, slug, domain, "Volume tenant")
@@ -146,6 +145,8 @@ func (env volumePurchaseEnv) access(t *testing.T, ctx context.Context) map[uuid.
 // reader from paying for any of them again, and is listed in the library as
 // the volume it bought.
 func TestDBBuyingAVolumeOpensEveryEpisodeInItAndNoneOutside(t *testing.T) {
+	t.Parallel()
+
 	env := newVolumePurchaseEnv(t, "VOLUMEBUY", "volume-buy.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -298,6 +299,8 @@ func TestDBBuyingAVolumeOpensEveryEpisodeInItAndNoneOutside(t *testing.T) {
 // with the parts adding up to the amount. A redelivery writes nothing more,
 // and a price changed afterwards moves nothing.
 func TestDBAVolumePurchaseRecordsTheEpisodesItPaidFor(t *testing.T) {
+	t.Parallel()
+
 	env := newVolumePurchaseEnv(t, "VOLPART", "volume-part.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -359,6 +362,8 @@ func TestDBAVolumePurchaseRecordsTheEpisodesItPaidFor(t *testing.T) {
 // A volume is sold only where it can be shown and only while it sells
 // something the reader could open.
 func TestDBStartVolumeCheckoutRefusesAVolumeNotOnSale(t *testing.T) {
+	t.Parallel()
+
 	env := newVolumePurchaseEnv(t, "VOLUMENOT", "volume-not.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -400,6 +405,8 @@ func TestDBStartVolumeCheckoutRefusesAVolumeNotOnSale(t *testing.T) {
 // A volume's checkout that expires unpaid moves the reader's next attempt
 // onto a checkout of its own.
 func TestDBAnExpiredVolumeCheckoutMovesTheNextAttemptOn(t *testing.T) {
+	t.Parallel()
+
 	env := newVolumePurchaseEnv(t, "VOLUMEEXP", "volume-expired.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -440,6 +447,8 @@ func TestDBAnExpiredVolumeCheckoutMovesTheNextAttemptOn(t *testing.T) {
 // Buying a volume buys each of its episodes, so a volume is sold, and listed,
 // only on a surface where every one of them may be bought.
 func TestDBAVolumeIsSoldOnlyWhereEveryEpisodeIsSold(t *testing.T) {
+	t.Parallel()
+
 	env := newVolumePurchaseEnv(t, "VOLUMESRF", "volume-surface.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()

@@ -16,6 +16,8 @@ import (
 // to every request a staff session makes, and resuming the tenant serves all of
 // them again, the session issued before the suspension included.
 func TestDBSuspendedTenantConsoleIsRefusedUntilResumed(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")

@@ -63,6 +63,8 @@ func assertAnalyticsSettings(t *testing.T, label string, got *publiraadminv1.Ten
 // A tenant that has saved nothing reads as loading no tag from Google, and
 // each field is stored normalized, read back, and cleared.
 func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -114,6 +116,8 @@ func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
 
 // A refused save leaves what was stored alone.
 func TestDBTenantAnalyticsSettingsRefuseAMalformedValue(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	valid := func() *publiraadminv1.TenantAnalyticsSettings {
@@ -156,6 +160,8 @@ func TestDBTenantAnalyticsSettingsRefuseAMalformedValue(t *testing.T) {
 // every later save whatever it sends, kept across a switch to another mode,
 // and replaced only when a save asks for it.
 func TestDBTenantAnalyticsGatewayPathIsGeneratedKeptAndRegenerated(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	gateway := func(path string) *publiraadminv1.TenantAnalyticsSettings {
@@ -208,6 +214,8 @@ func TestDBTenantAnalyticsGatewayPathIsGeneratedKeptAndRegenerated(t *testing.T)
 // must agree on one path: each generating its own would leave the path the
 // first one answered replaced, although neither asked for a new one.
 func TestDBTenantAnalyticsConcurrentFirstSavesKeepOneGatewayPath(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -238,6 +246,8 @@ func TestDBTenantAnalyticsConcurrentFirstSavesKeepOneGatewayPath(t *testing.T) {
 // Both RPCs belong to a tenant admin: an auditor or an editor can neither read
 // nor write the settings.
 func TestDBTenantAnalyticsSettingsRequireTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)

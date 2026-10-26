@@ -15,6 +15,8 @@ import (
 )
 
 func TestDBGetAnnouncementReturnsTheTenantsRowByID(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -43,6 +45,8 @@ func TestDBGetAnnouncementReturnsTheTenantsRowByID(t *testing.T) {
 }
 
 func TestDBGetAnnouncementHidesRowsOutsideTheTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -115,6 +119,8 @@ func insertAnnouncementTranslation(
 // in it, and in the tenant default locale's otherwise, and the answer names the
 // locale it is in and every locale the announcement has.
 func TestDBAnnouncementsAreReadInTheRequestedLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	defaultLocale := tenantDefaultLocale(t, env, tenant.ID)
@@ -173,6 +179,8 @@ func TestDBAnnouncementsAreReadInTheRequestedLocale(t *testing.T) {
 // is sent included — and a request that names none leaves it as it was. A
 // visitor with no session, and a token that does not verify, record nothing.
 func TestDBSignedInRequestsRecordTheReadersLastLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

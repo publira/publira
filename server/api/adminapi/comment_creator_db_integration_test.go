@@ -63,6 +63,8 @@ func adminCommentByPublicID(t *testing.T, comments []*publiraadminv1.AdminCommen
 // comment never does. A single comment read back by an action carries the same
 // answer the list gave.
 func TestDBAdminCommentCarriesTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCreditedCreatorFixture(t, env, "ACM", "admin-comment-creator.example.com")
 	byCreator := fixture.seedCommentBy(t, fixture.creatorAccount.ID, fixture.episode.ID, "ACMCREATOR02", "pending")
@@ -114,6 +116,8 @@ func TestDBAdminCommentCarriesTheCreditedCreator(t *testing.T) {
 // author's before deciding on the report, and the decision's answer carries the
 // same mark.
 func TestDBAdminCommentReportCarriesTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCreditedCreatorFixture(t, env, "ARM", "admin-report-creator.example.com")
 	byCreator := fixture.seedCommentBy(t, fixture.creatorAccount.ID, fixture.episode.ID, "ARMCREATOR02", "published")
@@ -144,6 +148,8 @@ func TestDBAdminCommentReportCarriesTheCreditedCreator(t *testing.T) {
 // A creator unlinked from the account stops marking that account's comments:
 // the mark is read from the link as it stands, not stored on the comment.
 func TestDBAdminCommentCreatorMarkFollowsTheLink(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCreditedCreatorFixture(t, env, "AUL", "admin-unlinked-creator.example.com")
 	byCreator := fixture.seedCommentBy(t, fixture.creatorAccount.ID, fixture.episode.ID, "AULCREATOR02", "published")

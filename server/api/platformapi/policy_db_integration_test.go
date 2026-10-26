@@ -31,8 +31,7 @@ func newPolicyClient(t *testing.T) (publirasplatformv1connect.PlatformPolicyServ
 
 func newPolicyClientWith(t *testing.T, encryptor emailsettings.SecretManager) (publirasplatformv1connect.PlatformPolicyServiceClient, *testutil.PostgresEnv, testutil.PlatformOperator) {
 	t.Helper()
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 	api := newAPI(db, dbmodels.New(db), slog.Default(), encryptor, nil, testutil.TokenManager(), nil, openMailGuard(), nil)
 	ts := httptest.NewServer(handlerFromServer(api.server))
@@ -105,6 +104,8 @@ func getPolicy(
 // An installation that has saved nothing reads the built-in defaults, which are
 // what it enforces, at revision zero.
 func TestDBGetPlatformPolicyAnswersTheDefaultsWhenNothingIsSaved(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 
 	policy, revision := getPolicy(t, client, operator)
@@ -117,6 +118,8 @@ func TestDBGetPlatformPolicyAnswersTheDefaultsWhenNothingIsSaved(t *testing.T) {
 }
 
 func TestDBUpdatePlatformPolicyPersistsAndAudits(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 	want := tightenedPolicy()
 
@@ -155,6 +158,8 @@ func TestDBUpdatePlatformPolicyPersistsAndAudits(t *testing.T) {
 // it. The save keeps the stored limit, or the default while nothing is saved,
 // instead of refusing the whole policy.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedWaitFreeTicketUseLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -194,6 +199,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedWaitFreeTicketUseLimit(t *testing.T
 // it, in the same way wait_free_ticket_use did, so an omitted one keeps what is
 // stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedLegalPageAgreementLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -233,6 +240,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedLegalPageAgreementLimit(t *testing.
 // the same way wait_free_ticket_use did, so an omitted one keeps what is stored
 // too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedIdentityLinkLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -272,6 +281,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedIdentityLinkLimit(t *testing.T) {
 // the same way wait_free_ticket_use did, so an omitted one keeps what is stored
 // too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedIconChangeLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -311,6 +322,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedIconChangeLimit(t *testing.T) {
 // the same way wait_free_ticket_use did, so an omitted one keeps what is stored
 // too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedPasskeyLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -350,6 +363,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedPasskeyLimit(t *testing.T) {
 // save it, in the same way wait_free_ticket_use did, so an omitted one keeps
 // what is stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedSeriesRemainderCheckoutLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -389,6 +404,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedSeriesRemainderCheckoutLimit(t *tes
 // save it, in the same way wait_free_ticket_use did, so an omitted one keeps
 // what is stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedSubscriptionCheckoutLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -428,6 +445,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedSubscriptionCheckoutLimit(t *testin
 // the same way wait_free_ticket_use did, so an omitted one keeps what is
 // stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedCoinPaymentLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -467,6 +486,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedCoinPaymentLimit(t *testing.T) {
 // it, in the same way wait_free_ticket_use did, so an omitted one keeps what
 // is stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedPurchaseCheckoutLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -505,6 +526,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedPurchaseCheckoutLimit(t *testing.T)
 // community_limit_defaults.notification_settings reached the policy after the
 // Community page that saves it, so an omitted one keeps what is stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedNotificationSettingsLimit(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -544,6 +567,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedNotificationSettingsLimit(t *testin
 // in the same way wait_free_ticket_use did, so an omitted one keeps what is
 // stored too.
 func TestDBUpdatePlatformPolicyKeepsOmittedLoginLimits(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -586,6 +611,8 @@ func TestDBUpdatePlatformPolicyKeepsOmittedLoginLimits(t *testing.T) {
 // that save it, so a save that leaves it out keeps what is stored rather than
 // switching the requirement off behind the back of the operator who set it.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedOperatorMfaRequirement(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -626,6 +653,8 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedOperatorMfaRequirement(t *testing.T
 // stopping every tenant's coins behind the back of the operator who allowed
 // them.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedTenantCoinAllowance(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newPolicyClient(t)
 	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
 		t.Helper()
@@ -708,6 +737,8 @@ func rewritePolicyRowWithout(t *testing.T, pg *testutil.PostgresEnv, omitted ...
 // it writes while this release's schema is in place reads the allowance as
 // off.
 func TestDBPlatformPolicyRowWrittenWithoutTheTenantCoinAllowanceReadsItOff(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
 		t.Fatalf("UpdatePlatformPolicy: %v", err)
@@ -726,6 +757,8 @@ func TestDBPlatformPolicyRowWrittenWithoutTheTenantCoinAllowanceReadsItOff(t *te
 // limits either, so a row it writes while this release's schema is in place
 // reads the built-in ones.
 func TestDBPlatformPolicyRowWrittenWithoutTheSubscriptionCheckoutLimitReadsTheDefault(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
 		t.Fatalf("UpdatePlatformPolicy: %v", err)
@@ -742,6 +775,8 @@ func TestDBPlatformPolicyRowWrittenWithoutTheSubscriptionCheckoutLimitReadsTheDe
 
 // Nor does it name the purchase checkout limits.
 func TestDBPlatformPolicyRowWrittenWithoutThePurchaseCheckoutLimitReadsTheDefault(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
 		t.Fatalf("UpdatePlatformPolicy: %v", err)
@@ -761,6 +796,8 @@ func TestDBPlatformPolicyRowWrittenWithoutThePurchaseCheckoutLimitReadsTheDefaul
 // off. A requirement stored already, from publiractl, is kept rather than
 // blocking every other save.
 func TestDBUpdatePlatformPolicyRefusesTheOperatorMfaRequirementWithoutSecrets(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClientWith(t, nil)
 
 	_, err := updatePolicy(t, client, operator, tightenedPolicy(), 0)
@@ -794,6 +831,8 @@ func TestDBUpdatePlatformPolicyRefusesTheOperatorMfaRequirementWithoutSecrets(t 
 // A save based on a read another save has since moved past is refused, so it
 // cannot roll that other save back.
 func TestDBUpdatePlatformPolicyRejectsAStaleRevision(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 
 	first, err := updatePolicy(t, client, operator, platformpolicy.Defaults(), 0)
@@ -827,6 +866,8 @@ func TestDBUpdatePlatformPolicyRejectsAStaleRevision(t *testing.T) {
 // With no row saved, only a save stating revision zero creates one: any other
 // number was read from a row that no longer exists.
 func TestDBUpdatePlatformPolicyRefusesARevisionWithoutARow(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 
 	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 1); connect.CodeOf(err) != connect.CodeFailedPrecondition {
@@ -840,6 +881,8 @@ func TestDBUpdatePlatformPolicyRefusesARevisionWithoutARow(t *testing.T) {
 // A refusal names the request field at fault, the same field publiractl
 // policy set names through the flag it came from.
 func TestDBUpdatePlatformPolicyRejectsInvalidValues(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 
 	for name, tc := range map[string]struct {
@@ -903,6 +946,8 @@ func TestDBUpdatePlatformPolicyRejectsInvalidValues(t *testing.T) {
 }
 
 func TestDBPlatformPolicyRequiresAuthentication(t *testing.T) {
+	t.Parallel()
+
 	ts, _ := newDBIntegrationEnv(t)
 	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -918,6 +963,8 @@ func TestDBPlatformPolicyRequiresAuthentication(t *testing.T) {
 
 // An auditor reads the policy and changes none of it.
 func TestDBPlatformAuditorReadsButCannotUpdateThePolicy(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	auditor := pg.SeedPlatformAuditor(t, "PLATAUDIT01", "auditor@example.com", "Platform Auditor")
 	client := publirasplatformv1connect.NewPlatformPolicyServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -937,6 +984,8 @@ func TestDBPlatformAuditorReadsButCannotUpdateThePolicy(t *testing.T) {
 // other is told the row moved on. Run both for the first save, where no row
 // exists to lock, and for a later one, where the lock decides.
 func TestDBUpdatePlatformPolicyConcurrentSavesOneWins(t *testing.T) {
+	t.Parallel()
+
 	for name, seeded := range map[string]bool{"first save": false, "later save": true} {
 		t.Run(name, func(t *testing.T) {
 			client, pg, operator := newPolicyClient(t)
@@ -1001,8 +1050,9 @@ func (droppingRecorder) RecordTenant(context.Context, auditlog.TenantEntry)     
 // The audit entry commits with the policy it records, so a recorder that drops
 // entries cannot leave a policy change unrecorded.
 func TestDBUpdatePlatformPolicyAuditsInTheSameTransaction(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 	api := newAPI(db, dbmodels.New(db), slog.Default(), newTestEncryptor(t), nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard(), nil)
 	ts := httptest.NewServer(handlerFromServer(api.server))
@@ -1023,6 +1073,8 @@ func TestDBUpdatePlatformPolicyAuditsInTheSameTransaction(t *testing.T) {
 // series and episode reads of every tenant whose coins are on, and of no other
 // tenant. The drop waits out the API's own cache of the policy.
 func TestDBUpdatePlatformPolicyDropsTheCoinPricesOfTenantsWithCoins(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 	withCoins := pg.SeedTenant(t, "COINSON", "coins-on.example.com", "Coins on")
 	withoutCoins := pg.SeedTenant(t, "COINSOFF", "coins-off.example.com", "Coins off")

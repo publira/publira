@@ -101,6 +101,8 @@ func (e *adminDBEnv) storedReplyEmailEvents(t *testing.T, tenant adminDBTenant) 
 }
 
 func TestDBReplyToContactMessageStoresTheAnswerAndQueuesItsMail(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL1", "aoto.example.test", "Aoto Press", "CONTACTRPLA1", "kei@aoto.example.test")
 	messageID := env.seedContactMessage(t, tenant, "CONTACTRPLM1", sql.NullString{String: "Wrong date of birth", Valid: true})
@@ -162,6 +164,8 @@ func TestDBReplyToContactMessageStoresTheAnswerAndQueuesItsMail(t *testing.T) {
 // answer under it in the order they were sent. The first person to answer
 // stays the one who handled it.
 func TestDBContactMessageAnsweredByOneMemberOfStaffShowsToAColleague(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL2", "aoto2.example.test", "Aoto Press", "CONTACTRPLA2", "kei@aoto2.example.test")
 	colleague := tenant.as(env.PG.SeedTenantAdmin(t, tenant.Tenant.ID, "CONTACTRPLB2", "mio@aoto2.example.test", "Mio Sato"))
@@ -213,6 +217,8 @@ func TestDBContactMessageAnsweredByOneMemberOfStaffShowsToAColleague(t *testing.
 // was mailed from rather than the message's reply-to address, and a staff entry
 // names no address of its own.
 func TestDBContactMessageReaderEntryNamesTheAddressItCameFrom(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL7", "aoto7.example.test", "Aoto Press", "CONTACTRPLA7", "kei@aoto7.example.test")
 	messageID := env.seedContactMessage(t, tenant, "CONTACTRPLM7", sql.NullString{})
@@ -263,6 +269,8 @@ func TestDBContactMessageReaderEntryNamesTheAddressItCameFrom(t *testing.T) {
 }
 
 func TestDBReplyToContactMessageRefusesAnAnswerItCannotStore(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL3", "aoto3.example.test", "Aoto Press", "CONTACTRPLA3", "kei@aoto3.example.test")
 	messageID := env.seedContactMessage(t, tenant, "CONTACTRPLM3", sql.NullString{})
@@ -291,6 +299,8 @@ func TestDBReplyToContactMessageRefusesAnAnswerItCannotStore(t *testing.T) {
 }
 
 func TestDBReplyToContactMessageStaysWithTheTenantsAdmins(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first := env.seedTenantWithAdmin(t, "CONTACTRPL4", "aoto4.example.test", "Aoto Press", "CONTACTRPLA4", "kei@aoto4.example.test")
 	second := env.seedTenantWithAdmin(t, "CONTACTRPL5", "other.example.test", "Other Press", "CONTACTRPLA5", "admin@other.example.test")
@@ -318,6 +328,8 @@ func TestDBReplyToContactMessageStaysWithTheTenantsAdmins(t *testing.T) {
 // The message survives the account of the member of staff who answered it,
 // and so does the answer.
 func TestDBContactMessageAnswerOutlivesItsAuthorsAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL6", "aoto6.example.test", "Aoto Press", "CONTACTRPLA6", "kei@aoto6.example.test")
 	leaving := tenant.as(env.PG.SeedTenantAdmin(t, tenant.Tenant.ID, "CONTACTRPLL6", "leaving@aoto6.example.test", "Leaving"))
@@ -345,6 +357,8 @@ func TestDBContactMessageAnswerOutlivesItsAuthorsAccount(t *testing.T) {
 // mail behind it is bounded like every other form that mails such an address,
 // and an answer over the allowance stores nothing at all.
 func TestDBReplyToContactMessageStopsAtTheMailLimit(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	tenant := env.seedTenantWithAdmin(t, "CONTACTRPL7", "aoto7.example.test", "Aoto Press", "CONTACTRPLA7", "kei@aoto7.example.test")
 	messageID := env.seedContactMessage(t, tenant, "CONTACTRPLM7", sql.NullString{})

@@ -29,8 +29,9 @@ import (
 // buy the permanent copy, and one who holds the permanent copy may buy
 // neither again. Each purchase keeps the kind it was paid for.
 func TestDBARentalLeavesThePermanentCopyToBuy(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "RENTAL", "rental.example.com", "Rental tenant")
@@ -206,6 +207,8 @@ func TestDBARentalLeavesThePermanentCopyToBuy(t *testing.T) {
 // A checkout started before an episode had two sales names no kind, and
 // completes as the permanent copy it sold.
 func TestDBACheckoutThatNamesNoKindIsRecordedAsThePermanentCopy(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "UNNAMEDKIND", "unnamed-kind.example.com", "pi_unnamed_kind")
 
 	var kind string

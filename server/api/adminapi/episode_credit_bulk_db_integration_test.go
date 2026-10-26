@@ -138,6 +138,8 @@ func unchangedReasons(unchanged []*publiraadminv1.UnchangedEpisodeCredit) map[st
 // eleven episodes, and the episode that also credits a guest is changed like
 // every other one while the guest stays where they were credited.
 func TestDBBulkEditEpisodeCreditsReplacesTheArtistAcrossTheRange(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := seedSeriesRun(t, env, map[string]string{
 		creatorroles.Defaults[0].Name: "Aoi Sakura",
@@ -191,6 +193,8 @@ func TestDBBulkEditEpisodeCreditsReplacesTheArtistAcrossTheRange(t *testing.T) {
 // Episodes the credit never reached come back as skips with a reason, so an
 // editor sees that a removal covered fewer episodes than the range they picked.
 func TestDBBulkEditEpisodeCreditsReportsTheEpisodesThatNeverHadTheCredit(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := seedSeriesRun(t, env, map[string]string{
 		creatorroles.Defaults[0].Name: "Aoi Sakura",
@@ -242,6 +246,8 @@ func TestDBBulkEditEpisodeCreditsReportsTheEpisodesThatNeverHadTheCredit(t *test
 // A credit written on the episode itself is a deliberate deviation, so a range
 // edit passes over it and says which of the two kinds of skip it was.
 func TestDBBulkEditEpisodeCreditsLeavesACreditWrittenOnTheEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := seedSeriesRun(t, env, map[string]string{
 		creatorroles.Defaults[0].Name: "Aoi Sakura",
@@ -292,6 +298,8 @@ func TestDBBulkEditEpisodeCreditsLeavesACreditWrittenOnTheEpisode(t *testing.T) 
 // the range, and an episode that already credits them is a skip rather than a
 // duplicate.
 func TestDBBulkEditEpisodeCreditsAddsTheCreditWhereItIsMissing(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := seedSeriesRun(t, env, map[string]string{
 		creatorroles.Defaults[0].Name: "Aoi Sakura",
@@ -344,6 +352,8 @@ func TestDBBulkEditEpisodeCreditsAddsTheCreditWhereItIsMissing(t *testing.T) {
 // refused before anything is written, rather than reaching the unique
 // constraint with an error naming neither the episode nor the remedy.
 func TestDBBulkEditEpisodeCreditsRefusesAReplaceThatWouldCreditTwice(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := seedSeriesRun(t, env, map[string]string{
 		creatorroles.Defaults[0].Name: "Aoi Sakura",
@@ -385,6 +395,8 @@ func TestDBBulkEditEpisodeCreditsRefusesAReplaceThatWouldCreditTwice(t *testing.
 // range the console could not have composed, so the whole request is refused
 // rather than partly applied.
 func TestDBBulkEditEpisodeCreditsRefusesAnEpisodeOfAnotherSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := seedSeriesRun(t, env, map[string]string{
 		creatorroles.Defaults[0].Name: "Aoi Sakura",

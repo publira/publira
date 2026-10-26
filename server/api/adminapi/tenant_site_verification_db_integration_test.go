@@ -52,6 +52,8 @@ func assertSiteVerification(t *testing.T, label string, got, want *publiraadminv
 // A tenant that has saved nothing reads as having no code, and each code is
 // stored trimmed, read back, and cleared on its own.
 func TestDBTenantSiteVerificationIsStoredReadBackAndCleared(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -100,6 +102,8 @@ func TestDBTenantSiteVerificationIsStoredReadBackAndCleared(t *testing.T) {
 // Anything but the bare code is refused, a whole <meta> element among them,
 // and a refused save leaves what was stored alone.
 func TestDBTenantSiteVerificationRefusesAnythingButTheBareCode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	valid := func() *publiraadminv1.TenantSiteVerification {
@@ -141,6 +145,8 @@ func TestDBTenantSiteVerificationRefusesAnythingButTheBareCode(t *testing.T) {
 // Both RPCs belong to a tenant admin: an auditor or an editor can neither read
 // nor write the codes.
 func TestDBTenantSiteVerificationRequiresTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)

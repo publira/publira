@@ -77,8 +77,7 @@ func newStorePurchaseEnv(t *testing.T) *storePurchaseEnv {
 
 func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurchaseEnv {
 	t.Helper()
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -212,6 +211,8 @@ func (e *storePurchaseEnv) purchases(t *testing.T) int {
 }
 
 func TestDBStartStorePurchaseAnswersTheTierProductAndReusesTheOpenIntent(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 
 	first := env.start(t, env.token)
@@ -231,6 +232,8 @@ func TestDBStartStorePurchaseAnswersTheTierProductAndReusesTheOpenIntent(t *test
 // although the campaign ends before the store confirms it. One scheduled to
 // start later changes nothing yet.
 func TestDBStartStorePurchaseSellsAtTheCampaignPriceOpenNow(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	now := time.Now()
 	env.pg.SeedEpisodeCampaignPrice(t, env.tenant.ID, env.episode.ID, 150, now.Add(24*time.Hour), now.Add(48*time.Hour))
@@ -260,6 +263,8 @@ func TestDBStartStorePurchaseSellsAtTheCampaignPriceOpenNow(t *testing.T) {
 }
 
 func TestDBStartStorePurchaseRefusesATenantThatSellsThroughTheCheckout(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	if _, err := env.pg.DB.ExecContext(context.Background(),
 		"UPDATE tenant_config SET app_purchase_route = 'external_checkout' WHERE tenant_id = $1", env.tenant.ID); err != nil {
@@ -278,6 +283,8 @@ func TestDBStartStorePurchaseRefusesATenantThatSellsThroughTheCheckout(t *testin
 // The app offers a purchase only through a store StartStorePurchase would
 // accept, so the tenant read answers each store on the same terms.
 func TestDBGetTenantAnswersWhichStoreTheAppSellsThrough(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	storePayments := func() (bool, bool) {
 		t.Helper()
@@ -318,6 +325,8 @@ func TestDBGetTenantAnswersWhichStoreTheAppSellsThrough(t *testing.T) {
 }
 
 func TestDBConfirmStorePurchaseRecordsAnAppStoreTransactionOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	transaction := env.appStoreTransaction("2000000000000001", intent)
@@ -367,6 +376,8 @@ func TestDBConfirmStorePurchaseRecordsAnAppStoreTransactionOnce(t *testing.T) {
 // payment sheet opened before the tenant changed its currency becomes a
 // purchase in the currency that price was set in.
 func TestDBConfirmStorePurchaseRecordsTheCurrencyTheIntentWasOpenedIn(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	ctx := context.Background()
 	store := paymentsettings.New(dbmodels.New(env.pg.DB), newPublicTestEncryptor(t), providers.Registry(), nil, slog.Default())
@@ -393,6 +404,8 @@ func TestDBConfirmStorePurchaseRecordsTheCurrencyTheIntentWasOpenedIn(t *testing
 }
 
 func TestDBConfirmStorePurchaseRefusesAnAppStoreTransactionItCannotMatch(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 
@@ -444,6 +457,8 @@ func TestDBConfirmStorePurchaseRefusesAnAppStoreTransactionItCannotMatch(t *test
 }
 
 func TestDBConfirmStorePurchaseRefusesAConsumedIntent(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	first := env.appStoreTransaction("2000000000000010", intent)
@@ -463,6 +478,8 @@ func TestDBConfirmStorePurchaseRefusesAConsumedIntent(t *testing.T) {
 }
 
 func TestDBConfirmStorePurchaseRefusesAnotherReadersIntent(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	transaction := env.appStoreTransaction("2000000000000020", intent)
@@ -478,6 +495,8 @@ func TestDBConfirmStorePurchaseRefusesAnotherReadersIntent(t *testing.T) {
 }
 
 func TestDBConfirmStorePurchaseKeepsASandboxPurchaseOffTheRoyaltyStatement(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	transaction := env.appStoreTransaction("2000000000000030", intent)
@@ -521,6 +540,8 @@ func TestDBConfirmStorePurchaseKeepsASandboxPurchaseOffTheRoyaltyStatement(t *te
 }
 
 func TestDBConfirmStorePurchaseRecordsAGooglePlayPurchaseAndQueuesItsConsumption(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	const purchaseToken = "play-token-0001.AO-J1Oy"
@@ -557,6 +578,8 @@ func TestDBConfirmStorePurchaseRecordsAGooglePlayPurchaseAndQueuesItsConsumption
 }
 
 func TestDBConfirmStorePurchaseMarksALicenseTestersPurchase(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	const purchaseToken = "play-token-0002.AO-J1Oy"
@@ -571,6 +594,8 @@ func TestDBConfirmStorePurchaseMarksALicenseTestersPurchase(t *testing.T) {
 }
 
 func TestDBConfirmStorePurchaseRefusesAGooglePlayPurchaseItCannotRecord(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	env.play.Put(t, storeTestPackageName, intent.ProductId, "pending-token", googleplaytest.Pending, intent.IntentId)
@@ -602,6 +627,8 @@ func TestDBConfirmStorePurchaseRefusesAGooglePlayPurchaseItCannotRecord(t *testi
 }
 
 func TestDBStartStorePurchaseRefusesAStoreThatIsNotReady(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	if _, err := env.pg.DB.ExecContext(context.Background(),
 		"UPDATE tenant_google_play_config SET enabled = false WHERE tenant_id = $1", env.tenant.ID); err != nil {
@@ -620,6 +647,8 @@ func TestDBStartStorePurchaseRefusesAStoreThatIsNotReady(t *testing.T) {
 }
 
 func TestDBStartStorePurchaseRefusesAStoreWhoseKeyDoesNotDecrypt(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	// A key this server cannot decrypt could not verify the charge.
 	if _, err := env.pg.DB.ExecContext(context.Background(),
@@ -640,6 +669,8 @@ func TestDBStartStorePurchaseRefusesAStoreWhoseKeyDoesNotDecrypt(t *testing.T) {
 }
 
 func TestDBConfirmStorePurchaseKeepsTheReadingPeriodTheIntentWasOpenedOn(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	if _, err := env.pg.DB.ExecContext(context.Background(),
 		"UPDATE episode_listings SET reading_period_hours = 48 WHERE episode_id = $1", env.episode.ID); err != nil {
@@ -668,6 +699,8 @@ func TestDBConfirmStorePurchaseKeepsTheReadingPeriodTheIntentWasOpenedOn(t *test
 }
 
 func TestDBConfirmStorePurchaseChargesTheReaderBeforeAskingTheStore(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.StorePurchaseConfirmation = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
 	}))

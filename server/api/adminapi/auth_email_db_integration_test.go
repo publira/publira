@@ -58,6 +58,8 @@ func (e *adminDBEnv) processPasswordResetRequests(t *testing.T) {
 // the request, and the worker leaves a token row and the event that will mail
 // its link, in one transaction.
 func TestDBAdminRequestPasswordResetEnqueuesTheEmail(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -111,6 +113,8 @@ func TestDBAdminRequestPasswordResetEnqueuesTheEmail(t *testing.T) {
 // arrive at once: a second live request would leave the operator two pairs of
 // links, each pointing at an address change the other one does not know about.
 func TestDBAdminRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()
@@ -154,6 +158,8 @@ func TestDBAdminRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *test
 // lock is where it finds that out. Holding the row from the test is what makes
 // the order a step rather than a race.
 func TestDBAdminRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -210,6 +216,8 @@ func TestDBAdminRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *test
 // One event per address to confirm, each with its own key, so a failure to
 // deliver to one side is retried on its own.
 func TestDBAdminRequestEmailChangeEnqueuesOneEmailPerSide(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -260,6 +268,8 @@ func TestDBAdminRequestEmailChangeEnqueuesOneEmailPerSide(t *testing.T) {
 // Confirming the second side stores the new address and, in the same
 // transaction, the notice to the address it moved from.
 func TestDBAdminConfirmEmailChangeEnqueuesTheNoticeWithTheNewAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()

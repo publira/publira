@@ -68,6 +68,8 @@ func loginReader(client publirav1connect.AuthServiceClient, tenant testutil.Tena
 }
 
 func TestDBAdminSuspensionRefusesTheReaderUntilItIsLifted(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "reader@tenant-a.example.com", "Reader")
@@ -112,6 +114,8 @@ func TestDBAdminSuspensionRefusesTheReaderUntilItIsLifted(t *testing.T) {
 // Confirming an address activates an account that was waiting for it, and
 // nothing else: a reader suspended before opening the link stays suspended.
 func TestDBVerifyUserEmailDoesNotLiftAnAdminSuspension(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
@@ -144,6 +148,8 @@ func TestDBVerifyUserEmailDoesNotLiftAnAdminSuspension(t *testing.T) {
 // A reader who never confirmed their address goes back to waiting for it,
 // rather than to an active account nobody confirmed.
 func TestDBAdminUnsuspendReturnsAnUnconfirmedReaderToInactive(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
@@ -170,6 +176,8 @@ func TestDBAdminUnsuspendReturnsAnUnconfirmedReaderToInactive(t *testing.T) {
 // An account a tenant admin deletes is gone the way DeleteMe leaves one: the
 // session and the sign-in both stop, and the purchases stay without the buyer.
 func TestDBAdminDeleteReaderLeavesWhatDeleteMeLeaves(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	buyer := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "buyer@tenant-a.example.com", "Buyer")
@@ -216,6 +224,8 @@ func TestDBAdminDeleteReaderLeavesWhatDeleteMeLeaves(t *testing.T) {
 // A reader cannot rewrite their own birth date, so staff correct a wrong one.
 // The session the reader already holds is decided on the corrected date.
 func TestDBAdminBirthDateCorrectionDecidesTheNextAgeGatedRead(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)

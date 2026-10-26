@@ -30,6 +30,8 @@ func followUpdateEpisodePublicIDs(updates []*publirav1.FollowUpdate) []string {
 }
 
 func TestDBFollowServiceListsNewEpisodesOfFollowedSeriesAndCreators(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTFOLU", "follow-u.example.com", "Follow U")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERFOLU", "member-follow-u@example.com", "Member U", "tenant_member")
@@ -114,6 +116,8 @@ func TestDBFollowServiceListsNewEpisodesOfFollowedSeriesAndCreators(t *testing.T
 }
 
 func TestDBFollowServicePagesThroughFollowUpdates(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTFOLV", "follow-v.example.com", "Follow V")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERFOLV", "member-follow-v@example.com", "Member V", "tenant_member")

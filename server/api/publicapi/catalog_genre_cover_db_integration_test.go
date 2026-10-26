@@ -27,6 +27,8 @@ func featuredSeriesPublicIDs(genre *publirav1.PublishedGenre) []string {
 }
 
 func TestDBListPublishedGenresFeaturesTheLeaderboardThenTheNewestSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	now := time.Now()

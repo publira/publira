@@ -10,6 +10,8 @@ import (
 )
 
 func TestDBSearchPublishedCreatorsMatchesPartOfTheName(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -41,6 +43,8 @@ func TestDBSearchPublishedCreatorsMatchesPartOfTheName(t *testing.T) {
 }
 
 func TestDBSearchPublishedCreatorsMatchesNonASCIINameCaseInsensitively(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -78,6 +82,8 @@ func TestDBSearchPublishedCreatorsMatchesNonASCIINameCaseInsensitively(t *testin
 }
 
 func TestDBSearchPublishedCreatorsRequiresAPublishedSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -111,6 +117,8 @@ func TestDBSearchPublishedCreatorsRequiresAPublishedSeries(t *testing.T) {
 }
 
 func TestDBSearchPublishedCreatorsEscapesIlikeMetacharacters(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -133,6 +141,8 @@ func TestDBSearchPublishedCreatorsEscapesIlikeMetacharacters(t *testing.T) {
 }
 
 func TestDBSearchPublishedCreatorsExcludesAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -156,6 +166,8 @@ func TestDBSearchPublishedCreatorsExcludesAnotherTenant(t *testing.T) {
 }
 
 func TestDBSearchPublishedCreatorsPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -211,6 +223,8 @@ func TestDBSearchPublishedCreatorsPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBSearchPublishedLabelsMatchesPartOfTheName(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -232,6 +246,8 @@ func TestDBSearchPublishedLabelsMatchesPartOfTheName(t *testing.T) {
 }
 
 func TestDBSearchPublishedLabelsMatchesNonASCIINameCaseInsensitively(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -267,6 +283,8 @@ func TestDBSearchPublishedLabelsMatchesNonASCIINameCaseInsensitively(t *testing.
 }
 
 func TestDBSearchPublishedLabelsRequireAPublishedSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -304,6 +322,8 @@ func TestDBSearchPublishedLabelsRequireAPublishedSeries(t *testing.T) {
 }
 
 func TestDBSearchPublishedLabelsEscapesIlikeMetacharacters(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -325,6 +345,8 @@ func TestDBSearchPublishedLabelsEscapesIlikeMetacharacters(t *testing.T) {
 }
 
 func TestDBSearchPublishedLabelsExcludesAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -346,6 +368,8 @@ func TestDBSearchPublishedLabelsExcludesAnotherTenant(t *testing.T) {
 }
 
 func TestDBSearchPublishedLabelsPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

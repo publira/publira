@@ -69,6 +69,8 @@ func (e *adminDBEnv) electReaderIconPreset(t *testing.T, tenant testutil.Tenant,
 // A tenant that has saved nothing lets readers upload, and a save is read back
 // as it was stored.
 func TestDBReaderIconPolicyDefaultsToUploadAndReadsBackWhatWasSaved(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "RIPTENANT01", "reader-icon-policy.example.com", "Policy", "RIPADMIN001", "admin@reader-icon-policy.example.com")
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
@@ -266,6 +268,8 @@ func TestDBReaderIconPresetUploadListAndDelete(t *testing.T) {
 
 // A preset of another tenant is not one this tenant can delete.
 func TestDBReaderIconPresetDeleteLeavesOtherTenantsAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RIQTENANT01", "reader-icon-preset-scope.example.com", "Scope", "RIQADMIN001", "admin@reader-icon-preset-scope.example.com")
 	other := env.seedTenantWithAdmin(t, "RIYTENANT01", "reader-icon-preset-other.example.com", "Other", "RIYADMIN001", "admin@reader-icon-preset-other.example.com")
@@ -288,6 +292,8 @@ func TestDBReaderIconPresetDeleteLeavesOtherTenantsAlone(t *testing.T) {
 // A tenant holds at most maxReaderIconPresets, so the picker that lists all of
 // them stays one a reader can choose from.
 func TestDBReaderIconPresetUploadRefusesPastTheLimit(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "RILTENANT01", "reader-icon-preset-limit.example.com", "Limit", "RILADMIN001", "admin@reader-icon-preset-limit.example.com")
 	for range maxReaderIconPresets {
@@ -313,6 +319,8 @@ func TestDBReaderIconPresetUploadRefusesPastTheLimit(t *testing.T) {
 }
 
 func TestDBReaderIconPresetUploadRefusesAnUploadItCannotStore(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "RIBTENANT01", "reader-icon-preset-bad.example.com", "Bad", "RIBADMIN001", "admin@reader-icon-preset-bad.example.com")
 

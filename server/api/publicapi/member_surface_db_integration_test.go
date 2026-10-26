@@ -128,6 +128,8 @@ func (f memberSurfaceFixture) token(t *testing.T) string {
 // leaves out the one it may not, and a client that names no surface is
 // answered as the storefront.
 func TestDBMemberListsShowAWorkOnlyOnItsSurfaces(t *testing.T) {
+	t.Parallel()
+
 	fixture := newMemberSurfaceFixture(t)
 	ctx := context.Background()
 	tenant := tenantContext(fixture.tenant)
@@ -227,6 +229,8 @@ func TestDBMemberListsShowAWorkOnlyOnItsSurfaces(t *testing.T) {
 // A read or write of a work from a surface that may not show it
 // answers not_found, exactly as it does for an unpublished work.
 func TestDBMemberCallsRefuseAWorkTheSurfaceMayNotShow(t *testing.T) {
+	t.Parallel()
+
 	fixture := newMemberSurfaceFixture(t)
 	ctx := context.Background()
 	tenant := tenantContext(fixture.tenant)
@@ -341,6 +345,8 @@ func TestDBMemberCallsRefuseAWorkTheSurfaceMayNotShow(t *testing.T) {
 // does, so a read from another surface refuses it rather than paging a list
 // that holds other rows.
 func TestDBMemberListsRefuseATokenFromAnotherSurface(t *testing.T) {
+	t.Parallel()
+
 	fixture := newMemberSurfaceFixture(t)
 	ctx := context.Background()
 	tenant := tenantContext(fixture.tenant)

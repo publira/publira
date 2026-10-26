@@ -55,8 +55,7 @@ func newIdentityDBEnvWithMailGuard(t *testing.T, mail *mailguard.Guard) *identit
 func newIdentityDBEnvWithGuards(t *testing.T, guards readerGuards, mail *mailguard.Guard) *identityDBEnv {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPublicDB(t)
 	encryptor := newPublicTestEncryptor(t)
 	apple, google := signintest.NewProvider(t), signintest.NewProvider(t)
@@ -172,6 +171,8 @@ func (e *identityDBEnv) processAppleEvents(t *testing.T) {
 }
 
 func TestDBLoginWithIdTokenCreatesAnAccountAndFindsItAgain(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 
@@ -205,6 +206,8 @@ func TestDBLoginWithIdTokenCreatesAnAccountAndFindsItAgain(t *testing.T) {
 }
 
 func TestDBLoginWithIdTokenRefusesAReplayedNonce(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	token := env.googleToken(t, "google-subject", "reader@example.com", "only-once")
@@ -225,6 +228,8 @@ func TestDBLoginWithIdTokenRefusesAReplayedNonce(t *testing.T) {
 // A token past its expiry is still accepted for the verifier's clock leeway,
 // so its nonce has to outlive the prune another sign-in commits meanwhile.
 func TestDBLoginWithIdTokenRefusesAReplayWithinTheClockLeeway(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	token := env.google.Sign(t, signintest.Token{
@@ -246,6 +251,8 @@ func TestDBLoginWithIdTokenRefusesAReplayWithinTheClockLeeway(t *testing.T) {
 }
 
 func TestDBLoginWithIdTokenRefusesAProviderTheTenantHasNotEnabled(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.saveSignInSettings(t, signin.UpdateInput{
 		Google: signin.GoogleUpdate{Enabled: false, WebClientID: identityWebClientID},
@@ -273,6 +280,8 @@ func TestDBLoginWithIdTokenRefusesAProviderTheTenantHasNotEnabled(t *testing.T) 
 }
 
 func TestDBLoginWithIdTokenLinksTheAccountHoldingTheVouchedAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -302,6 +311,8 @@ func TestDBLoginWithIdTokenLinksTheAccountHoldingTheVouchedAddress(t *testing.T)
 // An address that differs from the stored one only by case is the same one, so
 // the provider's sign-in links that account rather than opening another.
 func TestDBLoginWithIdTokenLinksTheAccountWhateverTheCaseOfTheAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "Member@Tenant-A.example.com", "Member")
@@ -318,6 +329,8 @@ func TestDBLoginWithIdTokenLinksTheAccountWhateverTheCaseOfTheAddress(t *testing
 // Nor does it link the one there: the provider vouched for its own address, and
 // the reader signs in with the account's to link the provider from there.
 func TestDBLoginWithIdTokenRefusesAnInboxAnAccountHoldsUnderAnotherTag(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name    string
 		stored  string
@@ -349,6 +362,8 @@ func TestDBLoginWithIdTokenRefusesAnInboxAnAccountHoldsUnderAnotherTag(t *testin
 // Whoever registered an address nobody confirmed may not own it, so the
 // provider's owner takes the account over and the password set for it goes.
 func TestDBLoginWithIdTokenTakesOverAnAccountNobodyConfirmed(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	squatter := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "victim@example.com", "Squatter")
@@ -376,6 +391,8 @@ func TestDBLoginWithIdTokenTakesOverAnAccountNobodyConfirmed(t *testing.T) {
 }
 
 func TestDBLoginWithIdTokenRefusesAnAddressTheProviderDoesNotVouchFor(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	token := env.google.Sign(t, signintest.Token{
@@ -402,6 +419,8 @@ func TestDBLoginWithIdTokenRefusesAnAddressTheProviderDoesNotVouchFor(t *testing
 // A first sign-in without the consent the tenant asks for is refused without
 // spending its nonce, so the reader agrees and the client sends the same token.
 func TestDBLoginWithIdTokenAsksForConsentBeforeCreatingAnAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	terms := env.PG.SeedPage(t, env.tenant.ID, testutil.PageSeed{Slug: "terms", Title: "Terms", Published: true})
@@ -426,6 +445,8 @@ func TestDBLoginWithIdTokenAsksForConsentBeforeCreatingAnAccount(t *testing.T) {
 }
 
 func TestDBUnlinkIdentityKeepsTheLastWayIn(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
@@ -513,6 +534,8 @@ func TestDBUnlinkIdentityLeavesAnAccountItsPasskey(t *testing.T) {
 // The authorization code an Apple sign-in carries becomes a refresh token the
 // link keeps, and that token is revoked when the account goes.
 func TestDBAppleSignInKeepsTheRefreshTokenAndRevokesItWithTheAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_APPLE,
@@ -577,6 +600,8 @@ func TestDBAppleSignInKeepsTheRefreshTokenAndRevokesItWithTheAccount(t *testing.
 // change only. The new address may be mailed once an hour, so the change that
 // goes through after the refusals shows none of them spent its allowance.
 func TestDBRequestEmailChangeIsConfirmedByAFreshSignIn(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	env.enableProviders(t)
 	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
@@ -632,6 +657,8 @@ func TestDBRequestEmailChangeIsConfirmedByAFreshSignIn(t *testing.T) {
 // ends the session on unauthenticated and the session it came with is still
 // good. A sign-in has no session, so it keeps answering unauthenticated.
 func TestDBIdentityConfirmationRefusesAnUnverifiableIDTokenWithoutEndingTheSession(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	google := publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE
@@ -715,6 +742,8 @@ func TestDBIdentityConfirmationRefusesAnUnverifiableIDTokenWithoutEndingTheSessi
 // GetTenant answers the providers a client can offer, with the client IDs it
 // signs in through, and nothing of the key.
 func TestDBGetTenantAnswersTheProvidersReadersCanSignInWith(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	tenantClient := env.tenantAPIClient()
 
@@ -767,6 +796,8 @@ func (e *identityDBEnv) link(session string, provider publirav1.IdentityProvider
 // it, and that Apple account signs in to the same account from then on rather
 // than opening a second one.
 func TestDBLinkIdentityLinksAProviderAccountUnderAnotherAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -807,6 +838,8 @@ func TestDBLinkIdentityLinksAProviderAccountUnderAnotherAddress(t *testing.T) {
 // and none spends the nonce, so the reader can retry the same sign-in once
 // the cause is gone.
 func TestDBLinkIdentityRefusesWhatASignInWouldRefuse(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	google := publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE
@@ -876,6 +909,8 @@ func TestDBLinkIdentityRefusesWhatASignInWouldRefuse(t *testing.T) {
 }
 
 func TestDBLinkIdentityRefusesASuspendedAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	member := env.PG.SeedEndUser(t, env.tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -898,6 +933,8 @@ func TestDBLinkIdentityRefusesASuspendedAccount(t *testing.T) {
 // Every link charges the reader's allowance before the token is verified, so a
 // refused link sent again runs out like any other write.
 func TestDBLinkIdentityChargesTheSharedFloodControl(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.IdentityLink = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}), openMailGuard())

@@ -15,6 +15,8 @@ import (
 // series' eye catch for the links to the neighbouring episodes, the same
 // variants the series read answers with.
 func TestDBGetEpisodeDetailCarriesTheSeriesEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

@@ -28,6 +28,8 @@ func newMailLimitedEnv(t *testing.T) *publicDBEnv {
 // A stranger aiming the sign-up form at somebody's address gets one notice out
 // of it and nothing after that.
 func TestDBCreateUserStopsQueueingNoticesAtTheLimit(t *testing.T) {
+	t.Parallel()
+
 	env := newMailLimitedEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -69,6 +71,8 @@ func TestDBCreateUserStopsQueueingNoticesAtTheLimit(t *testing.T) {
 // avoid: a caller over the limit is answered the same way whether the address
 // they named has an account or not.
 func TestDBCreateUserRefusesARegisteredAddressLikeAFreeOne(t *testing.T) {
+	t.Parallel()
+
 	env := newMailLimitedEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -134,6 +138,8 @@ func TestDBCreateUserRefusesARegisteredAddressLikeAFreeOne(t *testing.T) {
 // One mailbox holds one allowance whichever form is aimed at it, so a caller
 // cannot get more mail out of a tenant by moving between them.
 func TestDBTheMailFormsShareOneAllowancePerAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newMailLimitedEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
@@ -170,6 +176,8 @@ func TestDBTheMailFormsShareOneAllowancePerAddress(t *testing.T) {
 // Rotating the sub-address tag of one inbox does not buy a caller more mail:
 // every tag spends that inbox's one allowance, and another inbox keeps its own.
 func TestDBTheSubAddressedVariantsOfOneInboxShareOneAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newMailLimitedEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -197,6 +205,8 @@ func TestDBTheSubAddressedVariantsOfOneInboxShareOneAllowance(t *testing.T) {
 // named — otherwise the form would be a way for any signed-in caller to stop
 // other people receiving their own mail.
 func TestDBRequestEmailChangeDoesNotSpendTheAllowanceOfAnAddressItRefuses(t *testing.T) {
+	t.Parallel()
+
 	env := newMailLimitedEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -240,6 +250,8 @@ func TestDBRequestEmailChangeDoesNotSpendTheAllowanceOfAnAddressItRefuses(t *tes
 // The address a member wants to move to is one nobody has confirmed, so the
 // mail it receives is bounded like any other, session or no session.
 func TestDBRequestEmailChangeStopsAtTheLimit(t *testing.T) {
+	t.Parallel()
+
 	env := newMailLimitedEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

@@ -42,6 +42,8 @@ func seedTenantBranding(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, 
 }
 
 func TestDBGetTenantReturnsItsOwnBranding(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedTenantBranding(t, env, first, "© Tenant A", "Tenant A description", "Tenant A tagline", "#111111")
@@ -77,6 +79,8 @@ func TestDBGetTenantReturnsItsOwnBranding(t *testing.T) {
 // tenant's default locale, and a reader in a locale it did write is served
 // that one.
 func TestDBGetTenantReadsTheSiteCopyInTheReadersLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	seedTenantBranding(t, env, tenant, "© Hoshi Shobo", "Comics from Hoshi Shobo", "Read tonight", "#111111")
@@ -117,6 +121,8 @@ func TestDBGetTenantReadsTheSiteCopyInTheReadersLocale(t *testing.T) {
 }
 
 func TestDBGetTenantRejectsAnUnknownTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -132,6 +138,8 @@ func TestDBGetTenantRejectsAnUnknownTenant(t *testing.T) {
 // because it is what produces one. It therefore also runs without
 // app.current_tenant_id set on the connection.
 func TestDBGetTenantByDomainResolvesTheFirstMatchingHost(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	client := env.domainClient()

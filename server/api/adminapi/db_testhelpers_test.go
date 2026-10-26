@@ -34,7 +34,7 @@ type adminDBEnv struct {
 	PG     *testutil.PostgresEnv
 }
 
-// newAdminDBEnv resets the shared database and starts a server on it. Nothing is
+// newAdminDBEnv starts a server on a database of the test's own. Nothing is
 // seeded; tests add tenants through [adminDBEnv.seedTenantWithAdmin].
 func newAdminDBEnv(t *testing.T) *adminDBEnv {
 	t.Helper()
@@ -90,8 +90,7 @@ func newAdminDBEnvWithPaymentProviders(t *testing.T, registry *paymentprovider.R
 func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.Guard, serviceToken *auth.ServiceToken, login *loginguard.Guard, configure ...func(*adminServer)) *adminDBEnv {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenAdminDB(t)
 
 	api, err := newAPI(db, dbmodels.New(db), provider, slog.Default(), newAdminTestEncryptor(t), nil, testutil.TokenManager(), nil, nil, mail)

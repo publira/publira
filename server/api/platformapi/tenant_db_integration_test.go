@@ -17,6 +17,8 @@ import (
 )
 
 func TestDBListTenantsReturnsEmptyList(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -30,6 +32,8 @@ func TestDBListTenantsReturnsEmptyList(t *testing.T) {
 }
 
 func TestDBCreateTenantPersistsAndLists(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -85,6 +89,8 @@ func TestDBCreateTenantPersistsAndLists(t *testing.T) {
 }
 
 func TestDBListTenantsPaginatesWithTokens(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -147,6 +153,8 @@ func TestDBListTenantsPaginatesWithTokens(t *testing.T) {
 }
 
 func TestDBCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -173,6 +181,8 @@ func TestDBCreateTenantDuplicateDomainReturnsAlreadyExists(t *testing.T) {
 }
 
 func TestDBCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -201,6 +211,8 @@ func TestDBCreateTenantDuplicateAdminDomainReturnsAlreadyExists(t *testing.T) {
 }
 
 func TestDBSuspendAndResumeTenant(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -238,6 +250,8 @@ func TestDBSuspendAndResumeTenant(t *testing.T) {
 // A console form edits either the name or the host names, and the fields it
 // leaves out keep what the tenant holds now rather than what the form read.
 func TestDBUpdateTenantChangesOnlyTheFieldsTheRequestCarries(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	ctx := testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator))
@@ -321,6 +335,8 @@ func TestDBUpdateTenantChangesOnlyTheFieldsTheRequestCarries(t *testing.T) {
 }
 
 func TestDBCreateTenantRejectsEmptyDomain(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 

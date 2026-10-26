@@ -40,6 +40,8 @@ func updateDBEmailRejectionSettings(env *adminDBEnv, tenant adminDBTenant, setti
 }
 
 func TestDBEmailRejectionSettingsAreStoredNormalizedAndAudited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -85,6 +87,8 @@ func TestDBEmailRejectionSettingsAreStoredNormalizedAndAudited(t *testing.T) {
 }
 
 func TestDBEmailRejectionSettingsRefuseAnEntryThatIsNeitherAnAddressNorADomain(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	if _, err := updateDBEmailRejectionSettings(env, tenant, &publiraadminv1.TenantEmailRejectionSettings{
@@ -131,6 +135,8 @@ func violatedField(t *testing.T, err *connect.Error) string {
 // The console says whether the switch refuses anything, which it does only
 // while the platform policy names a list.
 func TestDBEmailRejectionSettingsAnswerWhetherTheListIsAvailable(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	if getDBEmailRejectionSettings(t, env, tenant).DisposableDomainListAvailable {
@@ -153,6 +159,8 @@ func TestDBEmailRejectionSettingsAnswerWhetherTheListIsAvailable(t *testing.T) {
 }
 
 func TestDBEmailRejectionSettingsRequireTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)

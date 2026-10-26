@@ -69,6 +69,8 @@ func eyeCatchPaths(t *testing.T, urls []string) []string {
 }
 
 func TestDBCreateGenreStoresOneVariantPerRatioAndWidth(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -100,6 +102,8 @@ func TestDBCreateGenreStoresOneVariantPerRatioAndWidth(t *testing.T) {
 // A genre holds its name within the tenant, so a create whose upload fails
 // must not leave the genre behind to refuse the editor's retry.
 func TestDBCreateGenreWithAnUnusableImageLeavesNoGenre(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -120,6 +124,8 @@ func TestDBCreateGenreWithAnUnusableImageLeavesNoGenre(t *testing.T) {
 }
 
 func TestDBUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -211,6 +217,8 @@ func TestDBUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 }
 
 func TestDBUploadGenreEyeCatchAspectImageRequiresAnEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -229,6 +237,8 @@ func TestDBUploadGenreEyeCatchAspectImageRequiresAnEyeCatch(t *testing.T) {
 }
 
 func TestDBUpdateGenreClearsTheEyeCatchAndKeepsItOtherwise(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -274,6 +284,8 @@ func TestDBUpdateGenreClearsTheEyeCatchAndKeepsItOtherwise(t *testing.T) {
 // default-locale name, and one that has a default-locale name keeps it as it
 // was written.
 func TestDBUpdateGenreEyeCatchLeavesTheNamesAsTheyAre(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -349,6 +361,8 @@ func TestDBUpdateGenreEyeCatchLeavesTheNamesAsTheyAre(t *testing.T) {
 }
 
 func TestDBReorderGenresKeepsTheEyeCatchInTheAnswer(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -373,6 +387,8 @@ func TestDBReorderGenresKeepsTheEyeCatchInTheAnswer(t *testing.T) {
 // A rename writes eye_catch_image_id back, so a rename that waited behind a
 // clear must write what the clear left, not what it read before waiting.
 func TestDBUpdateGenreRenameAfterAConcurrentClearKeepsTheClear(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -404,7 +420,7 @@ func TestDBUpdateGenreRenameAfterAConcurrentClearKeepsTheClear(t *testing.T) {
 	// The rename has to be waiting on the row before the clear commits, or the
 	// two would simply run one after the other.
 	deadline := time.Now().Add(10 * time.Second)
-	for env.countRows(t, "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%genres%'") == 0 {
+	for env.countRows(t, "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%genres%' AND datname = current_database()") == 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("the rename never waited on the genre row")
 		}

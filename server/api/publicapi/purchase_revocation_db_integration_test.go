@@ -130,6 +130,8 @@ func (e refundWebhookEnv) mayBuyAgain(t *testing.T) bool {
 }
 
 func TestDBProcessPaymentWebhookRevokesADisputedPurchase(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "DISPUTED", "disputed.example.com", "pi_disputed")
 	if !env.hasContentAccess(t) {
 		t.Fatal("the purchase does not open the episode before the dispute")
@@ -165,6 +167,8 @@ func TestDBProcessPaymentWebhookRevokesADisputedPurchase(t *testing.T) {
 // A full refund revokes the purchase as a refund, and a dispute that follows
 // leaves that reason alone.
 func TestDBProcessPaymentWebhookKeepsTheFirstRevocationReason(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "REVFIRST", "revocation-first.example.com", "pi_revocation_first")
 
 	env.deliver(t, "charge.refunded", refundedCharge("pi_revocation_first", 500, 500))
@@ -182,6 +186,8 @@ func TestDBProcessPaymentWebhookKeepsTheFirstRevocationReason(t *testing.T) {
 
 // A partial refund leaves the purchase open, so it records no revocation.
 func TestDBProcessPaymentWebhookDoesNotRevokeOnAPartialRefund(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "REVPART", "revocation-partial.example.com", "pi_revocation_partial")
 
 	env.deliver(t, "charge.refunded", refundedCharge("pi_revocation_partial", 500, 200))
@@ -193,6 +199,8 @@ func TestDBProcessPaymentWebhookDoesNotRevokeOnAPartialRefund(t *testing.T) {
 // A dispute held for a payment whose Checkout event is still being retried
 // revokes the purchase that event creates, as a held refund does.
 func TestDBProcessPaymentWebhookRevokesAPurchaseWhoseDisputeArrivedFirst(t *testing.T) {
+	t.Parallel()
+
 	env := newUnpaidRefundWebhookEnv(t, "DISPPRE", "dispute-early.example.com")
 
 	env.deliverDispute(t, "pi_dispute_early")
@@ -216,6 +224,8 @@ func TestDBProcessPaymentWebhookRevokesAPurchaseWhoseDisputeArrivedFirst(t *test
 // A dispute of a charge this tenant has no purchase for is held and touches
 // nothing else, as an unmatched refund is.
 func TestDBProcessPaymentWebhookHoldsADisputeOfAnUnknownCharge(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "DISPUNK", "dispute-unknown.example.com", "pi_dispute_known")
 
 	env.deliverDispute(t, "pi_dispute_stranger")
@@ -231,6 +241,8 @@ func TestDBProcessPaymentWebhookHoldsADisputeOfAnUnknownCharge(t *testing.T) {
 // leaves the revocation and the refund columns as they were: the money went
 // back through the bank, not through a refund.
 func TestDBProcessPaymentWebhookRecordsALostDispute(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "DISPLOST", "dispute-lost.example.com", "pi_dispute_lost")
 
 	env.deliverDispute(t, "pi_dispute_lost")
@@ -260,6 +272,8 @@ func TestDBProcessPaymentWebhookRecordsALostDispute(t *testing.T) {
 // A won dispute leaves the purchase as the dispute left it: revoked, and still
 // a sale, since the payment stayed with the tenant.
 func TestDBProcessPaymentWebhookLeavesAWonDisputeRevoked(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "DISPWON", "dispute-won.example.com", "pi_dispute_won")
 
 	env.deliverDispute(t, "pi_dispute_won")
@@ -280,6 +294,8 @@ func TestDBProcessPaymentWebhookLeavesAWonDisputeRevoked(t *testing.T) {
 // A lost dispute whose opening notification never arrived revokes the
 // purchase itself.
 func TestDBProcessPaymentWebhookRevokesOnALostDisputeAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "DISPLONE", "dispute-lost-alone.example.com", "pi_dispute_lost_alone")
 
 	env.deliverDisputeClosed(t, "pi_dispute_lost_alone", stripego.DisputeStatusLost)
@@ -297,6 +313,8 @@ func TestDBProcessPaymentWebhookRevokesOnALostDisputeAlone(t *testing.T) {
 // A lost dispute held for a payment whose Checkout event is still being
 // retried is recorded on the purchase that event creates.
 func TestDBProcessPaymentWebhookRecordsALostDisputeThatArrivedFirst(t *testing.T) {
+	t.Parallel()
+
 	env := newUnpaidRefundWebhookEnv(t, "DISPLPRE", "dispute-lost-early.example.com")
 
 	env.deliverDisputeClosed(t, "pi_dispute_lost_early", stripego.DisputeStatusLost)
@@ -321,6 +339,8 @@ func TestDBProcessPaymentWebhookRecordsALostDisputeThatArrivedFirst(t *testing.T
 // Nothing that takes back a refund reopens a purchase whose dispute was lost,
 // whatever revoked it first: the reader's bank has returned the money.
 func TestDBALostDisputeKeepsThePurchaseRevoked(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("a refund that fails after the dispute is lost", func(t *testing.T) {
@@ -364,8 +384,9 @@ func TestDBALostDisputeKeepsThePurchaseRevoked(t *testing.T) {
 // a new one rather than the provider's answer for the key of the expired one,
 // and a repeated report of the same expiry does not move it again.
 func TestDBStartEpisodeCheckoutStartsAFreshCheckoutAfterOneExpires(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "EXPIRED", "checkout-expired.example.com", "Expired checkout tenant")

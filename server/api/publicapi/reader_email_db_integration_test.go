@@ -11,6 +11,8 @@ import (
 // The reader's own address comes back from the two RPCs that answer with their
 // own account, which is what lets a form fill it in.
 func TestDBOwnAccountCarriesTheReadersEmail(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

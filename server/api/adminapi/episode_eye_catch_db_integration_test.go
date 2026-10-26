@@ -58,6 +58,8 @@ func listDBEpisodes(t *testing.T, env *adminDBEnv, tenant adminDBTenant, seriesP
 // a route of its own, and carried by the episode reads; an episode without one
 // is read with both fields empty.
 func TestDBUploadEpisodeEyeCatchImageIsCarriedByTheEpisodeReads(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesPublicID := createDBSeries(t, env.seriesClient(), tenant, "Eye Catch Series")
@@ -120,6 +122,8 @@ func TestDBUploadEpisodeEyeCatchImageIsCarriedByTheEpisodeReads(t *testing.T) {
 // A second whole upload stores a new image and points the episode at it, so
 // every URL changes and the image it replaced is left for the sweep.
 func TestDBUploadEpisodeEyeCatchImageReplacesTheWholeEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesPublicID := createDBSeries(t, env.seriesClient(), tenant, "Eye Catch Series")
@@ -142,6 +146,8 @@ func TestDBUploadEpisodeEyeCatchImageReplacesTheWholeEyeCatch(t *testing.T) {
 }
 
 func TestDBUploadEpisodeEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesPublicID := createDBSeries(t, env.seriesClient(), tenant, "Eye Catch Series")
@@ -186,6 +192,8 @@ func TestDBUploadEpisodeEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 }
 
 func TestDBUploadEpisodeEyeCatchAspectImageRequiresAnEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesPublicID := createDBSeries(t, env.seriesClient(), tenant, "Eye Catch Series")
@@ -205,6 +213,8 @@ func TestDBUploadEpisodeEyeCatchAspectImageRequiresAnEyeCatch(t *testing.T) {
 
 // An episode of another tenant is not found, for every write to an eye-catch.
 func TestDBEpisodeEyeCatchWritesRefuseAnotherTenantsEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenantA := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	tenantB := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -247,6 +257,8 @@ func TestDBEpisodeEyeCatchWritesRefuseAnotherTenantsEpisode(t *testing.T) {
 }
 
 func TestDBDeleteEpisodeEyeCatchImageLeavesTheEpisodeWithoutOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesPublicID := createDBSeries(t, env.seriesClient(), tenant, "Eye Catch Series")

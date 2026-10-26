@@ -80,6 +80,8 @@ func seedSitemapCatalog(t *testing.T, env *publicDBEnv) testutil.Tenant {
 }
 
 func TestDBListSitemapEntriesListsWhatTheWebStorefrontShows(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := seedSitemapCatalog(t, env)
 
@@ -121,6 +123,8 @@ func TestDBListSitemapEntriesListsWhatTheWebStorefrontShows(t *testing.T) {
 }
 
 func TestDBListSitemapEntriesWalksEveryEntryOnceAcrossKinds(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := seedSitemapCatalog(t, env)
 
@@ -162,6 +166,8 @@ func TestDBListSitemapEntriesWalksEveryEntryOnceAcrossKinds(t *testing.T) {
 }
 
 func TestDBListSitemapEntriesRefusesATokenNamingNoKind(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := seedSitemapCatalog(t, env)
 
@@ -180,6 +186,8 @@ func TestDBListSitemapEntriesRefusesATokenNamingNoKind(t *testing.T) {
 // are the ones its read answers in published_locales, and names them in
 // registry order whatever order the tenant's row holds its locales in.
 func TestDBListSitemapEntriesNamesTheLocalesEachEntryIsTranslatedInto(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -259,6 +267,8 @@ func TestDBListSitemapEntriesNamesTheLocalesEachEntryIsTranslatedInto(t *testing
 // deleting one of its translations each move the time the sitemap dates the
 // episode by.
 func TestDBListSitemapEntriesDatesAnEpisodeByItsTranslations(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESSHOWN1", Title: "Hoshi no Toshokan", Published: true})

@@ -13,6 +13,8 @@ import (
 // list, the series list, and a series' own page. The slug a URL is built from
 // is the same in every locale.
 func TestDBGenreNamesFallBackToTheDefaultLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Hoshi no Toshokan", Published: true})

@@ -58,6 +58,8 @@ func assertGoogleTag(t *testing.T, label string, got, want *publirav1.TenantGoog
 
 // Each tenant reads back only its own tag, with no credential at all.
 func TestDBGetTenantAnalyticsSettingsAnswersEachTenantItsOwnTag(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedAnalyticsSettings(t, env, first, "G-TENANTA1", "GTM-TENANTA", "server_container", "https://sgtm.tenant-a.example.com", "")
@@ -78,6 +80,8 @@ func TestDBGetTenantAnalyticsSettingsAnswersEachTenantItsOwnTag(t *testing.T) {
 // The answer carries only what the serving mode uses: a URL and a path kept
 // for another mode stay out of it.
 func TestDBGetTenantAnalyticsSettingsAnswersOnlyWhatTheModeUses(t *testing.T) {
+	t.Parallel()
+
 	for name, tt := range map[string]struct {
 		mode string
 		want *publirav1.TenantGoogleTag
@@ -110,6 +114,8 @@ func TestDBGetTenantAnalyticsSettingsAnswersOnlyWhatTheModeUses(t *testing.T) {
 // A tenant that has saved nothing, and one that names neither ID, loads no
 // tag, whatever its serving mode holds.
 func TestDBGetTenantAnalyticsSettingsAnswersNoTagWithoutAnID(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedAnalyticsSettings(t, env, second, "", "", "gateway", "https://sgtm.example.com", "_abcdefghijklmn27")

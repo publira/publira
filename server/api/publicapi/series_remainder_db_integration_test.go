@@ -54,8 +54,7 @@ func newSeriesRemainderEnv(t *testing.T, slug, domain string, guards ...readerGu
 	if len(guards) > 0 {
 		readers = guards[0]
 	}
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, slug, domain, "Remainder tenant")
@@ -189,6 +188,8 @@ func (env seriesRemainderEnv) access(t *testing.T, ctx context.Context) (map[uui
 // payment is recorded once as a purchase of the bundle, which opens each of
 // those episodes for as long as its own purchase would.
 func TestDBBuyingTheRestOfASeriesOpensEveryEpisodeTheReaderDidNotHold(t *testing.T) {
+	t.Parallel()
+
 	env := newSeriesRemainderEnv(t, "REMAINBUY", "remainder-buy.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -353,6 +354,8 @@ func TestDBBuyingTheRestOfASeriesOpensEveryEpisodeTheReaderDidNotHold(t *testing
 // campaign not open yet counts for nothing, and one that ends moves the next
 // checkout onto a bundle of its own at the regular price.
 func TestDBTheRestOfASeriesSellsAnEpisodeAtItsOpenCampaignPrice(t *testing.T) {
+	t.Parallel()
+
 	env := newSeriesRemainderEnv(t, "REMAINCMP", "remainder-campaign.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -419,6 +422,8 @@ func TestDBTheRestOfASeriesSellsAnEpisodeAtItsOpenCampaignPrice(t *testing.T) {
 // The rest of a series is no sale when nothing is left to sell, when more is
 // left than one checkout lists, or when the reader is credited on part of it.
 func TestDBStartSeriesRemainderCheckoutRefusesWhatItCannotSell(t *testing.T) {
+	t.Parallel()
+
 	env := newSeriesRemainderEnv(t, "REMAINNOT", "remainder-not.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -464,6 +469,8 @@ func TestDBStartSeriesRemainderCheckoutRefusesWhatItCannotSell(t *testing.T) {
 // A remainder checkout that expires unpaid moves the reader's next attempt
 // onto a checkout of its own.
 func TestDBAnExpiredRemainderCheckoutMovesTheNextAttemptOn(t *testing.T) {
+	t.Parallel()
+
 	env := newSeriesRemainderEnv(t, "REMAINEXP", "remainder-expired.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -532,6 +539,8 @@ func TestDBAnExpiredRemainderCheckoutMovesTheNextAttemptOn(t *testing.T) {
 // the request alone names the lines by title and price, which the change
 // leaves as they were.
 func TestDBARemainderCheckoutStartedAfterAPeriodChangeIsANewOne(t *testing.T) {
+	t.Parallel()
+
 	env := newSeriesRemainderEnv(t, "REMAINPER", "remainder-period.example.com")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -571,6 +580,8 @@ func TestDBARemainderCheckoutStartedAfterAPeriodChangeIsANewOne(t *testing.T) {
 // Starting a checkout of the rest of a series spends the reader's allowance
 // before anything is written or asked of the provider.
 func TestDBStartSeriesRemainderCheckoutSpendsTheReadersAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newSeriesRemainderEnv(t, "REMAINLIM", "remainder-limit.example.com", guardsWith(func(policy *platformpolicy.Policy) {
 		policy.SeriesRemainderCheckout = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
 	}))

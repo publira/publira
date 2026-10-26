@@ -25,6 +25,8 @@ func updateViewerPreferencesRequest(tenant testutil.Tenant, wideViewerEnabled *b
 }
 
 func TestDBViewerPreferencesFollowTheReaderToTheirNextDevice(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTVPA", "viewer-pref-a.example.com", "Viewer Pref A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPA", "member-viewer-pref-a@example.com", "Member A", "tenant_member")
@@ -54,6 +56,8 @@ func TestDBViewerPreferencesFollowTheReaderToTheirNextDevice(t *testing.T) {
 }
 
 func TestDBViewerPreferencesAnswerTheDefaultsWhenNothingWasSaved(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTVPB", "viewer-pref-b.example.com", "Viewer Pref B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPB", "member-viewer-pref-b@example.com", "Member B", "tenant_member")
@@ -79,6 +83,8 @@ func TestDBViewerPreferencesAnswerTheDefaultsWhenNothingWasSaved(t *testing.T) {
 // a VALUES list cannot ask for a column default conditionally. This is what
 // fails when they stop agreeing.
 func TestDBViewerPreferenceDefaultsAgreeAcrossPaths(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTVPC", "viewer-pref-c.example.com", "Viewer Pref C")
 	unsaved := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPC", "member-viewer-pref-c@example.com", "Member C", "tenant_member")
@@ -103,6 +109,8 @@ func TestDBViewerPreferenceDefaultsAgreeAcrossPaths(t *testing.T) {
 }
 
 func TestDBViewerPreferencesKeepThePreferencesAnUpdateOmits(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTVPE", "viewer-pref-e.example.com", "Viewer Pref E")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPE", "member-viewer-pref-e@example.com", "Member E", "tenant_member")
@@ -131,6 +139,8 @@ func TestDBViewerPreferencesKeepThePreferencesAnUpdateOmits(t *testing.T) {
 }
 
 func TestDBViewerPreferencesAreMemberScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTVPF", "viewer-pref-f.example.com", "Viewer Pref F")
 	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPF", "member-viewer-pref-f@example.com", "Member F", "tenant_member")
@@ -190,6 +200,8 @@ func TestDBViewerPreferencesAreMemberScopedByRLS(t *testing.T) {
 }
 
 func TestDBViewerPreferencesAreTenantScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERVPH", "member-viewer-pref-h@example.com", "Member H", "tenant_member")
@@ -216,6 +228,8 @@ func TestDBViewerPreferencesAreTenantScopedByRLS(t *testing.T) {
 }
 
 func TestDBViewerPreferencesNeedASession(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTVPI", "viewer-pref-i.example.com", "Viewer Pref I")
 	client := env.authClient()
@@ -234,6 +248,8 @@ func TestDBViewerPreferencesNeedASession(t *testing.T) {
 }
 
 func TestDBUpdateViewerPreferencesChargesTheReaderAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.Community.ViewerPreferencesUpdate = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))

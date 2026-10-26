@@ -17,6 +17,8 @@ import (
 const testWebServiceToken = "test-web-service-token"
 
 func TestDBServiceTokenReadsTheGenresOfTheTenantItNames(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenantA := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	tenantB := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -44,6 +46,8 @@ func TestDBServiceTokenReadsTheGenresOfTheTenantItNames(t *testing.T) {
 // so a handler that starts reading the session fails here rather than in the
 // console.
 func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	label := env.PG.SeedLabel(t, tenant.Tenant.ID, testutil.LabelSeed{Name: "Label"})
@@ -141,6 +145,8 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 }
 
 func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	creator := env.PG.SeedCreator(t, tenant.Tenant.ID, testutil.CreatorSeed{Name: "Creator"})
@@ -179,6 +185,8 @@ func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
 }
 
 func TestDBServiceTokenIsUnauthenticatedUnlessItIsTheConfiguredOne(t *testing.T) {
+	t.Parallel()
+
 	tests := map[string]struct {
 		configured *auth.ServiceToken
 		bearer     string

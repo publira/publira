@@ -18,6 +18,8 @@ import (
 // Reporting anything else would put a number on the card that the very next
 // save contradicts.
 func TestDBTenantCommentSettingsDefaultsMatchTheColumnDefaults(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TCSTNNT1", "comment-settings.example.com", "Comment Settings", "TCSUSER1", "admin@comment-settings.example.com")
 
@@ -48,6 +50,8 @@ func TestDBTenantCommentSettingsDefaultsMatchTheColumnDefaults(t *testing.T) {
 // The card saves the mode and the threshold together, and reads back what was
 // stored rather than what was sent.
 func TestDBTenantCommentSettingsRoundTrip(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TCRTNNT1", "comment-roundtrip.example.com", "Comment Round Trip", "TCRUSER1", "admin@comment-roundtrip.example.com")
 	settings := env.tenantSettingsClient()
@@ -91,6 +95,8 @@ func TestDBTenantCommentSettingsRoundTrip(t *testing.T) {
 // The age rule is saved the same way, and a tenant that has saved nothing is
 // answered with the rule the column's own default carries.
 func TestDBTenantAgeVerificationRoundTrip(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TAVTNNT1", "age-verification.example.com", "Age Verification", "TAVUSER1", "admin@age-verification.example.com")
 	settings := env.tenantSettingsClient()

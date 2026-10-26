@@ -25,6 +25,8 @@ func creditedNames(creators []*publirattypesv1.Creator) []string {
 // team that episode shipped with, and the link to the next one names that
 // episode's team rather than the one the reader is on.
 func TestDBGetEpisodeDetailCreditsEachEpisodeWithItsOwnTeam(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -82,6 +84,8 @@ func TestDBGetEpisodeDetailCreditsEachEpisodeWithItsOwnTeam(t *testing.T) {
 // the credits of its series: the episode is the unit that is credited, and a
 // fallback would hide the fact that a credit is missing.
 func TestDBGetEpisodeDetailDoesNotFallBackToTheSeriesCredits(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{

@@ -17,6 +17,8 @@ import (
 // address from anyone who can reach it, so the mail behind it is bounded the
 // same way a storefront's is.
 func TestDBPlatformRequestPasswordResetStopsAtTheLimit(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

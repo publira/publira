@@ -146,6 +146,8 @@ func TestCoinPriceOfRoundsUp(t *testing.T) {
 }
 
 func TestDBPayEpisodeWithCoinsOpensTheEpisodeAndRecordsAPurchase(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.grant(t, 50, 30*24*time.Hour)
 
@@ -190,6 +192,8 @@ func TestDBPayEpisodeWithCoinsOpensTheEpisodeAndRecordsAPurchase(t *testing.T) {
 }
 
 func TestDBPayEpisodeWithCoinsRentsAnEpisodeForItsPeriod(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.grant(t, 50, 30*24*time.Hour)
 	if _, err := f.env.PG.DB.ExecContext(context.Background(), `UPDATE episode_listings SET rental_price = 101, rental_period_hours = 48 WHERE episode_id = $1`, f.episode.ID); err != nil {
@@ -220,6 +224,8 @@ func TestDBPayEpisodeWithCoinsRentsAnEpisodeForItsPeriod(t *testing.T) {
 }
 
 func TestDBPayEpisodeWithCoinsRefusesAShortBalanceWithTheShortfall(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.grant(t, 12, 30*24*time.Hour)
 
@@ -240,6 +246,8 @@ func TestDBPayEpisodeWithCoinsRefusesAShortBalanceWithTheShortfall(t *testing.T)
 }
 
 func TestDBPayEpisodeWithCoinsSpendsTheCoinsThatExpireFirst(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	later := f.grant(t, 20, 20*24*time.Hour)
 	sooner := f.grant(t, 15, 5*24*time.Hour)
@@ -269,6 +277,8 @@ func TestDBPayEpisodeWithCoinsSpendsTheCoinsThatExpireFirst(t *testing.T) {
 }
 
 func TestDBPayEpisodeWithCoinsSpendsOnceForARepeatedKey(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.grant(t, 100, 30*24*time.Hour)
 
@@ -298,6 +308,8 @@ func TestDBPayEpisodeWithCoinsSpendsOnceForARepeatedKey(t *testing.T) {
 }
 
 func TestDBPayEpisodeWithCoinsRefusesAPriceTheReaderWasNotShown(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.grant(t, 100, 30*24*time.Hour)
 
@@ -316,6 +328,8 @@ func TestDBPayEpisodeWithCoinsRefusesAPriceTheReaderWasNotShown(t *testing.T) {
 // The coin name follows the reader's locale and falls back to the tenant
 // default locale's, as a series title does.
 func TestDBCoinNameFollowsTheReadersLocale(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 
 	for _, tc := range []struct{ locale, want string }{
@@ -337,6 +351,8 @@ func TestDBCoinNameFollowsTheReadersLocale(t *testing.T) {
 }
 
 func TestDBGetCoinSettingsAnswersThePacksOnSale(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	ctx := context.Background()
 	for _, pack := range []struct {
@@ -368,6 +384,8 @@ func TestDBGetCoinSettingsAnswersThePacksOnSale(t *testing.T) {
 // With either gate off nothing about coins reaches a reader: no coin field on
 // the episode, and every coin RPC refused.
 func TestDBCoinsStayHiddenWhileEitherGateIsOff(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name           string
 		platformAllows bool
@@ -424,6 +442,8 @@ func TestDBCoinsStayHiddenWhileEitherGateIsOff(t *testing.T) {
 // A grant that expired with coins left counts for nothing at once, and the
 // expiry job writes where the coins went into the history.
 func TestDBExpiredCoinsLeaveTheBalanceAndShowInTheHistory(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	expired := f.grant(t, 40, -time.Hour)
 	f.grant(t, 10, 30*24*time.Hour)
@@ -464,6 +484,8 @@ func TestDBExpiredCoinsLeaveTheBalanceAndShowInTheHistory(t *testing.T) {
 }
 
 func TestDBListCoinTransactionsNamesTheEpisodeASpendPaidFor(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.grant(t, 100, 30*24*time.Hour)
 	if _, err := f.pay(t, publirattypesv1.PurchaseKind_PURCHASE_KIND_PURCHASE, 30, "tap-1"); err != nil {
@@ -494,6 +516,8 @@ func TestDBListCoinTransactionsNamesTheEpisodeASpendPaidFor(t *testing.T) {
 // two payments of the same episode at once. Either way the coins are spent
 // once.
 func TestDBPayEpisodeWithCoinsSpendsOnceUnderConcurrentRequests(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.grant(t, 100, 30*24*time.Hour)
 

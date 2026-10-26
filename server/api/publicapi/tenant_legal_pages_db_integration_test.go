@@ -38,6 +38,8 @@ func wantLegalPage(t *testing.T, role string, page *publirav1.TenantLegalPage, s
 // while they are published: a tenant that named none, and one whose named page
 // is unpublished, gets nothing to link to.
 func TestDBGetTenantLegalPagesReportsTheTenantsOwnPublishedPages(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	terms := env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
@@ -82,6 +84,8 @@ func TestDBGetTenantLegalPagesReportsTheTenantsOwnPublishedPages(t *testing.T) {
 // it, and in the tenant's default locale where it is not, so the title they
 // read and the version they agree to belong to the text the link opens.
 func TestDBGetTenantLegalPagesReadsEachPageInTheReadersLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms (ja)", Published: true})
@@ -121,6 +125,8 @@ func TestDBGetTenantLegalPagesReadsEachPageInTheReadersLocale(t *testing.T) {
 // A named page whose only published translation is not in the default locale
 // is still served, so it is still linked, in that translation.
 func TestDBGetTenantLegalPagesLinksAPagePublishedOnlyInAnotherLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms (ja draft)"})

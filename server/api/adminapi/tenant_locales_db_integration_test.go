@@ -18,6 +18,8 @@ import (
 // moves with the default. A request whose set leaves out its default changes
 // neither.
 func TestDBUpdateTenantDefaultLocaleSavesTheSetWithTheDefault(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TLCTNNT1", "locales.example.com", "Locales", "TLCUSER1", "admin@locales.example.com")
 	ctx := testutil.WithBearer(context.Background(), tenant.token())

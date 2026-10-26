@@ -84,6 +84,8 @@ func assertConnectCode(t *testing.T, err error, want connect.Code) {
 // absent from every read of the one it may not, and a caller that names no
 // surface is answered as the storefront.
 func TestDBCatalogShowsASeriesOnlyOnItsSurfaces(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := env.seedSurfaceCatalog(t)
 	ctx := context.Background()
@@ -212,6 +214,8 @@ func TestDBCatalogShowsASeriesOnlyOnItsSurfaces(t *testing.T) {
 // access list, and the links from the episodes either side — and a direct read
 // of it is refused the way an unpublished one is.
 func TestDBCatalogShowsAnEpisodeOnlyOnItsSurfaces(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESEPS001", Title: "Episodes Apart", Published: true})
@@ -302,6 +306,8 @@ func TestDBCatalogShowsAnEpisodeOnlyOnItsSurfaces(t *testing.T) {
 // kept off a surface its series is kept off, because the episode read would
 // otherwise carry that series onto it.
 func TestDBCatalogKeepsAnEpisodeWithinItsSeriesSurfaces(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESAPP001", Title: "App Only", Published: true, Availability: "app"})
@@ -329,6 +335,8 @@ func TestDBCatalogKeepsAnEpisodeWithinItsSeriesSurfaces(t *testing.T) {
 // down to how many series it counts there. A label with no published series
 // stays on both with a count of zero, so its URL outlives its last series.
 func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	ctx := context.Background()
 	client := env.catalogClient()
@@ -405,6 +413,8 @@ func TestDBCatalogListsALabelOnlyWhereItsSeriesAre(t *testing.T) {
 // wants: a label created before any of its series is public, and one whose
 // series are all kept off the surface, are left out.
 func TestDBCatalogListsOnlyLabelsWithAPublishedSeriesWhenAsked(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	ctx := context.Background()
 	client := env.catalogClient()
@@ -451,6 +461,8 @@ func TestDBCatalogListsOnlyLabelsWithAPublishedSeriesWhenAsked(t *testing.T) {
 }
 
 func TestDBCatalogRejectsAnUnknownSurface(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -465,6 +477,8 @@ func TestDBCatalogRejectsAnUnknownSurface(t *testing.T) {
 // storefront — a web URL opened through a deep link, say — is refused rather
 // than applied to a list it was not built from.
 func TestDBCatalogRefusesATokenFromAnotherSurface(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := env.seedSurfaceCatalog(t)
 	ctx := context.Background()

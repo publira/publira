@@ -42,6 +42,8 @@ func adminReaderPublicIDs(readers []*publiraadminv1.AdminReader) []string {
 }
 
 func TestDBAdminListReadersListsEveryAccountAndPages(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RDRTENANT001", "readers.example.com", "Readers", "RDRADMIN0001", "admin@readers.example.com")
 	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RDREDITOR001", "editor@readers.example.com", "Editor", auth.RoleTenantEditor)
@@ -102,6 +104,8 @@ func TestDBAdminListReadersListsEveryAccountAndPages(t *testing.T) {
 // Only the single read carries a birth date; a page of readers never does, in
 // either direction.
 func TestDBAdminListReadersLeavesBirthDatesOut(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RBLTENANT001", "reader-birth-list.example.com", "Birth", "RBLADMIN0001", "admin@reader-birth-list.example.com")
 	older := env.PG.SeedEndUser(t, admin.Tenant.ID, "RBLOLDER0001", "older@reader-birth-list.example.com", "Older")
@@ -143,6 +147,8 @@ func TestDBAdminListReadersLeavesBirthDatesOut(t *testing.T) {
 }
 
 func TestDBAdminListReadersBindsTokensToTheFilters(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RTKTENANT001", "reader-token.example.com", "Token", "RTKADMIN0001", "admin@reader-token.example.com")
 	first := env.PG.SeedEndUser(t, admin.Tenant.ID, "RTKFIRST0001", "first@reader-token.example.com", "Match First")
@@ -178,6 +184,8 @@ func TestDBAdminListReadersBindsTokensToTheFilters(t *testing.T) {
 }
 
 func TestDBAdminListReadersRejectsAnUnknownStatus(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSTTENANT001", "reader-status.example.com", "Status", "RSTADMIN0001", "admin@reader-status.example.com")
 
@@ -191,6 +199,8 @@ func TestDBAdminListReadersRejectsAnUnknownStatus(t *testing.T) {
 }
 
 func TestDBAdminGetReaderReadsOneReaderOfTheTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RGTTENANT001", "reader-get.example.com", "Get", "RGTADMIN0001", "admin@reader-get.example.com")
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RGTREADER001", "reader@reader-get.example.com", "Reader")
@@ -245,6 +255,8 @@ func TestDBAdminGetReaderReadsOneReaderOfTheTenant(t *testing.T) {
 }
 
 func TestDBAdminReaderRPCsRequireTheAdminRole(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RRLTENANT001", "reader-role.example.com", "Role", "RRLADMIN0001", "admin@reader-role.example.com")
 	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RRLEDITOR001", "editor@reader-role.example.com", "Editor", auth.RoleTenantEditor)
@@ -324,6 +336,8 @@ func assertReaderAuditLog(t *testing.T, entry *publiraadminv1.AdminAuditLog, act
 }
 
 func TestDBAdminSuspendAndUnsuspendReaderAreAuditedOncePerChange(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSUTENANT001", "reader-suspend.example.com", "Suspend", "RSUADMIN0001", "admin@reader-suspend.example.com")
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RSUREADER001", "reader@reader-suspend.example.com", "Reader")
@@ -380,6 +394,8 @@ func TestDBAdminSuspendAndUnsuspendReaderAreAuditedOncePerChange(t *testing.T) {
 }
 
 func TestDBAdminDeleteReaderIsAudited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RDLTENANT001", "reader-delete.example.com", "Delete", "RDLADMIN0001", "admin@reader-delete.example.com")
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDLREADER001", "reader@reader-delete.example.com", "Reader")
@@ -403,6 +419,8 @@ func TestDBAdminDeleteReaderIsAudited(t *testing.T) {
 // The deleted reader can reach no billing page to cancel a subscription, so
 // the delete queues the cancellation of each one Stripe would go on billing.
 func TestDBAdminDeleteReaderQueuesTheCancellationOfTheReadersSubscriptions(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RDSTENANT001", "reader-subscriptions.example.com", "Subscriptions", "RDSADMIN0001", "admin@reader-subscriptions.example.com")
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDSREADER001", "reader@reader-subscriptions.example.com", "Reader")
@@ -432,6 +450,8 @@ func TestDBAdminDeleteReaderQueuesTheCancellationOfTheReadersSubscriptions(t *te
 }
 
 func TestDBAdminSetReaderBirthDateCorrectsAWrittenOnceDate(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RBDTENANT001", "reader-birth.example.com", "Birth", "RBDADMIN0001", "admin@reader-birth.example.com")
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RBDREADER001", "reader@reader-birth.example.com", "Reader")
@@ -490,6 +510,8 @@ func TestDBAdminSetReaderBirthDateCorrectsAWrittenOnceDate(t *testing.T) {
 }
 
 func TestDBAdminSetReaderBirthDateRejectsWhatAReaderCouldNotStore(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RBVTENANT001", "reader-birth-invalid.example.com", "Birth", "RBVADMIN0001", "admin@reader-birth-invalid.example.com")
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RBVREADER001", "reader@reader-birth-invalid.example.com", "Reader")
@@ -517,6 +539,8 @@ func TestDBAdminSetReaderBirthDateRejectsWhatAReaderCouldNotStore(t *testing.T) 
 // A reader of another tenant is out of reach of every action, as it is of
 // GetReader.
 func TestDBAdminReaderActionsLeaveOtherTenantsAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSCTENANT001", "reader-scope.example.com", "Scope", "RSCADMIN0001", "admin@reader-scope.example.com")
 	other := env.seedTenantWithAdmin(t, "RSOTENANT001", "reader-scope-other.example.com", "Other", "RSOADMIN0001", "admin@reader-scope-other.example.com")
@@ -563,6 +587,8 @@ func TestDBAdminReaderActionsLeaveOtherTenantsAlone(t *testing.T) {
 }
 
 func TestDBAdminListCommentsFiltersByAuthor(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "AUT", "author.example.com")
 	another := env.PG.SeedEndUser(t, fixture.admin.Tenant.ID, "AUTREADER002", "another@author.example.com", "Another")
@@ -599,6 +625,8 @@ func TestDBAdminListCommentsFiltersByAuthor(t *testing.T) {
 // A staff account is acted on like any other account: suspended, lifted,
 // corrected and deleted, and deleting it takes its roles with it.
 func TestDBAdminReaderActionsReachStaffAccounts(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSFTENANT001", "reader-staff.example.com", "Staff", "RSFADMIN0001", "admin@reader-staff.example.com")
 	editor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "RSFEDITOR001", "editor@reader-staff.example.com", "Editor", auth.RoleTenantEditor)
@@ -681,6 +709,8 @@ func requireReaderRefusal(t *testing.T, err error, reason string) {
 }
 
 func TestDBAdminSuspendAndDeleteReaderRefuseTheCallersOwnAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RSLTENANT001", "reader-self.example.com", "Self", "RSLADMIN0001", "admin@reader-self.example.com")
 	// Another active administrator, so the last-administrator guard is not
@@ -749,6 +779,8 @@ func (e *adminDBEnv) afterConcurrentSuspension(t *testing.T, caller adminDBTenan
 }
 
 func TestDBAdminSuspendAndDeleteReaderKeepAnActiveTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RLATENANT001", "reader-last-admin.example.com", "Last", "RLAADMIN0001", "admin@reader-last-admin.example.com")
 	second := env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RLAADMIN0002", "second@reader-last-admin.example.com", "Second")
@@ -814,8 +846,9 @@ func (q heldAuditQueries) InsertAuditLog(ctx context.Context, arg dbmodels.Inser
 // its actor is already deleted. It is filed under the public ID and name the
 // session carried rather than refused by the foreign key and dropped.
 func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenAdminDB(t)
 	queries := heldAuditQueries{Querier: dbmodels.New(pg.DB), held: make(chan struct{}, 1), release: make(chan struct{})}
 	recorder := auditlog.NewAsyncWithConfig(queries, nil, slog.Default(), auditlog.AsyncConfig{})
@@ -878,6 +911,8 @@ func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
 // and can still be filtered by them, and the page versions it wrote stay
 // without naming it.
 func TestDBAdminDeleteReaderKeepsTheRecordOfAStaffAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RAHTENANT001", "reader-history.example.com", "History", "RAHADMIN0001", "admin@reader-history.example.com")
 	second := admin.as(env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RAHADMIN0002", "second@reader-history.example.com", "Second"))

@@ -17,6 +17,8 @@ import (
 )
 
 func TestDBPlatformNotificationsListUnreadAndMark(t *testing.T) {
+	t.Parallel()
+
 	server, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	other := pg.SeedPlatformOperator(t, "PLATUSER002", "other@example.com", "Other Operator")
@@ -66,6 +68,8 @@ func TestDBPlatformNotificationsListUnreadAndMark(t *testing.T) {
 }
 
 func TestDBPlatformNotificationsHideOtherOperatorsAndTenantRows(t *testing.T) {
+	t.Parallel()
+
 	server, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	other := pg.SeedPlatformOperator(t, "PLATUSER002", "other@example.com", "Other Operator")

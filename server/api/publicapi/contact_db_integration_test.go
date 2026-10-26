@@ -72,6 +72,8 @@ func (e *publicDBEnv) submitContactMessage(
 }
 
 func TestDBContactMessageFromAGuestReachesTheInbox(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT1", "contact1.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF1", "staff@contact1.example.com", "Staff")
@@ -116,6 +118,8 @@ func TestDBContactMessageFromAGuestReachesTheInbox(t *testing.T) {
 // The mail is queued in the transaction that stores the message, so staff learn
 // about it without the submission waiting on a mail server.
 func TestDBContactMessageQueuesTheStaffMail(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT2", "contact2.example.com", "Aoto Press")
 
@@ -157,6 +161,8 @@ func TestDBContactMessageQueuesTheStaffMail(t *testing.T) {
 // Every message is a row of its own, with a staff mail of its own, rather than
 // the first one standing in for all that follow.
 func TestDBContactMessagesAreStoredSeparately(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT9", "contact9.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF9", "staff@contact9.example.com", "Staff")
@@ -190,6 +196,8 @@ func TestDBContactMessagesAreStoredSeparately(t *testing.T) {
 }
 
 func TestDBContactMessageFromASignedInReaderCarriesTheAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT3", "contact3.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF3", "staff@contact3.example.com", "Staff")
@@ -223,6 +231,8 @@ func TestDBContactMessageFromASignedInReaderCarriesTheAccount(t *testing.T) {
 }
 
 func TestDBContactMessageRefusesWhatTheColumnsCannotHold(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT4", "contact4.example.com", "Aoto Press")
 
@@ -286,6 +296,8 @@ func TestDBContactMessageRefusesWhatTheColumnsCannotHold(t *testing.T) {
 // The client's allowance is the only one a guest spends, so it is what has to
 // stop a form nobody is signed in to.
 func TestDBContactMessageRefusesAGuestPastTheClientAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.Community.ContactMessagePerClient = platformpolicy.HourDay{PerHour: 1, PerDay: 1}
 	}))
@@ -310,6 +322,8 @@ func TestDBContactMessageRefusesAGuestPastTheClientAllowance(t *testing.T) {
 // The account's allowance is charged on top of the client's, so signing up does
 // not widen what one client may send.
 func TestDBContactMessageRefusesAReaderPastTheAccountAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.Community.ContactMessagePerAccount = platformpolicy.HourDay{PerHour: 1, PerDay: 1}
 	}))
@@ -335,6 +349,8 @@ func TestDBContactMessageRefusesAReaderPastTheAccountAllowance(t *testing.T) {
 }
 
 func TestDBContactMessageIsMarkedHandledAndPutBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT7", "contact7.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF7", "staff@contact7.example.com", "Staff")
@@ -411,6 +427,8 @@ func TestDBContactMessageIsMarkedHandledAndPutBack(t *testing.T) {
 }
 
 func TestDBContactMessageIsReadableOneAtATime(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT8", "contact8.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF8", "staff@contact8.example.com", "Staff")
@@ -447,6 +465,8 @@ func TestDBContactMessageIsReadableOneAtATime(t *testing.T) {
 
 // A message belongs to the tenant it was sent to, and to no other.
 func TestDBContactMessageStaysOnItsOwnTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	firstStaff := env.PG.SeedTenantAdmin(t, first.ID, "CONTACTSTFA", "staff@tenant-a.example.com", "Staff A")

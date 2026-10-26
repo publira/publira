@@ -18,6 +18,8 @@ import (
 )
 
 func TestDBLoginIssuesTokenAcceptedByAuthenticatedRPC(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	tenantClient := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -48,6 +50,8 @@ func TestDBLoginIssuesTokenAcceptedByAuthenticatedRPC(t *testing.T) {
 }
 
 func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -76,6 +80,8 @@ func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
 // out; the latter relies on the credentials_version bump written in the same
 // transaction as the status change.
 func TestDBSuspendOperatorRevokesLoginAndIssuedToken(t *testing.T) {
+	t.Parallel()
+
 	ts, pg, superAdmin := newDBIntegrationSuperAdminServer(t)
 	target := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -122,6 +128,8 @@ func TestDBSuspendOperatorRevokesLoginAndIssuedToken(t *testing.T) {
 // A token minted against an older credentials_version must stop working, which is
 // what makes a password reset terminate the sessions it was meant to terminate.
 func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -229,6 +237,8 @@ func TestDBPasswordResetChangesPasswordAndRevokesTokens(t *testing.T) {
 }
 
 func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -262,6 +272,8 @@ func TestDBConfirmPasswordResetRejectsExpiredToken(t *testing.T) {
 // The address is only free until the confirmation completes, so the final update
 // has to answer to platform_users_email_key rather than the pre-flight check.
 func TestDBConfirmEmailChangeRejectsAddressTakenAfterRequest(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -306,6 +318,8 @@ func TestDBConfirmEmailChangeRejectsAddressTakenAfterRequest(t *testing.T) {
 }
 
 func TestDBRequestEmailChangeRejectsExistingAddress(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	pg.SeedPlatformSuperAdmin(t, "PLATADMIN001", "superadmin@example.com", "Platform Super Admin")
@@ -328,6 +342,8 @@ func TestDBRequestEmailChangeRejectsExistingAddress(t *testing.T) {
 // SMTP configuration is needed to answer it. The worker then writes the token
 // and the mail that carries it, and the mail belongs to no tenant either.
 func TestDBRequestPasswordResetQueuesTenantlessOutboxEvent(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -385,6 +401,8 @@ func TestDBRequestPasswordResetQueuesTenantlessOutboxEvent(t *testing.T) {
 // An unknown address is answered the same way as a known one, so the endpoint
 // cannot be used to enumerate operators.
 func TestDBRequestPasswordResetHidesUnknownAddress(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	authClient := publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

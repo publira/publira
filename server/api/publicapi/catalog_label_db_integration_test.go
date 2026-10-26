@@ -12,6 +12,8 @@ import (
 )
 
 func TestDBGetPublishedLabelDetailListsPublishedSeriesByTitle(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	label := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{
@@ -43,6 +45,8 @@ func TestDBGetPublishedLabelDetailListsPublishedSeriesByTitle(t *testing.T) {
 }
 
 func TestDBGetPublishedLabelDetailPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	label := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELPUB001", Name: "Jump"})
@@ -96,6 +100,8 @@ func TestDBGetPublishedLabelDetailPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBGetPublishedLabelDetailExcludesAnotherTenantsLabel(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -115,6 +121,8 @@ func TestDBGetPublishedLabelDetailExcludesAnotherTenantsLabel(t *testing.T) {
 }
 
 func TestDBGetPublishedLabelDetailKeepsLabelWithOnlyDraftSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	label := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELDRAFT1", Name: "Draft Label"})
@@ -136,6 +144,8 @@ func TestDBGetPublishedLabelDetailKeepsLabelWithOnlyDraftSeries(t *testing.T) {
 }
 
 func TestDBGetPublishedLabelDetailHidesMissingLabel(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -149,6 +159,8 @@ func TestDBGetPublishedLabelDetailHidesMissingLabel(t *testing.T) {
 }
 
 func TestDBGetPublishedLabelDetailDoesNotListAnotherLabelsSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	mine := env.PG.SeedLabel(t, tenant.ID, testutil.LabelSeed{PublicID: "LABELMINE001", Name: "Mine"})
@@ -170,6 +182,8 @@ func TestDBGetPublishedLabelDetailDoesNotListAnotherLabelsSeries(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesMatchesTitleAndSynopsis(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -211,6 +225,8 @@ func TestDBSearchPublishedSeriesMatchesTitleAndSynopsis(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesEscapesIlikeMetacharacters(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -239,6 +255,8 @@ func TestDBSearchPublishedSeriesEscapesIlikeMetacharacters(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesExcludesAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -259,6 +277,8 @@ func TestDBSearchPublishedSeriesExcludesAnotherTenant(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -307,6 +327,8 @@ func TestDBSearchPublishedSeriesPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesHidesFuturePublication(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

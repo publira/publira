@@ -24,6 +24,8 @@ func seedTwoTenants(t *testing.T, env *adminDBEnv) (adminDBTenant, adminDBTenant
 }
 
 func TestDBCreateSeriesPersistsAndReadsBack(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -92,6 +94,8 @@ func TestDBCreateSeriesPersistsAndReadsBack(t *testing.T) {
 }
 
 func TestDBUpdateSeriesPersistsChanges(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -149,6 +153,8 @@ func TestDBUpdateSeriesPersistsChanges(t *testing.T) {
 // stored ascending and distinct whatever order it arrived in, and an update
 // that states it replaces the whole set rather than merging into it.
 func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -219,6 +225,8 @@ func TestDBSeriesListingMetadataRoundTrips(t *testing.T) {
 // both ways round, because a series that overrode the tenant must be able to
 // go back.
 func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTC", "tenant-c.example.com", "Tenant C", "TCUSER01", "admin@tenant-c.example.com")
 	client := env.seriesClient()
@@ -279,6 +287,8 @@ func TestDBSeriesCommentModeOverrideRoundTrips(t *testing.T) {
 // A save that states only the title leaves every listing field as it was,
 // including the ones whose stored value is not their default.
 func TestDBUpdateSeriesKeepsTheListingFieldsItLeavesUnset(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -342,6 +352,8 @@ func TestDBUpdateSeriesKeepsTheListingFieldsItLeavesUnset(t *testing.T) {
 // Stating a field writes it even when the value is its default: each listing
 // field goes back to what a new series carries.
 func TestDBUpdateSeriesWritesTheDefaultsItStates(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -410,6 +422,8 @@ func TestDBUpdateSeriesWritesTheDefaultsItStates(t *testing.T) {
 // A weekday outside the week never reaches the CHECK constraint: the RPC
 // refuses it, and the series keeps the schedule it had.
 func TestDBUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -446,6 +460,8 @@ func TestDBUpdateSeriesRejectsAWeekdayOutsideTheWeek(t *testing.T) {
 }
 
 func TestDBListSeriesExcludesOtherTenants(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()
@@ -486,6 +502,8 @@ func TestDBListSeriesExcludesOtherTenants(t *testing.T) {
 }
 
 func TestDBUpdateSeriesOfAnotherTenantReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()
@@ -514,6 +532,8 @@ func TestDBUpdateSeriesOfAnotherTenantReturnsNotFound(t *testing.T) {
 }
 
 func TestDBSeriesSessionOfAnotherTenantIsRejected(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()
@@ -528,6 +548,8 @@ func TestDBSeriesSessionOfAnotherTenantIsRejected(t *testing.T) {
 }
 
 func TestDBCreateSeriesRejectsEmptyTitle(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -544,6 +566,8 @@ func TestDBCreateSeriesRejectsEmptyTitle(t *testing.T) {
 }
 
 func TestDBCreateSeriesWithUnknownLabelReturnsInvalidArgument(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -558,6 +582,8 @@ func TestDBCreateSeriesWithUnknownLabelReturnsInvalidArgument(t *testing.T) {
 }
 
 func TestDBCreateSeriesUnknownCreatorLeavesNoRows(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -582,6 +608,8 @@ func TestDBCreateSeriesUnknownCreatorLeavesNoRows(t *testing.T) {
 }
 
 func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -642,6 +670,8 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 }
 
 func TestDBSeriesCreditSharesReadBack(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -713,6 +743,8 @@ func seriesCreditShares(credits []*publiraadminv1.SeriesCreatorCredit) []int32 {
 }
 
 func TestDBListSeriesPaginatesWithTokens(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()

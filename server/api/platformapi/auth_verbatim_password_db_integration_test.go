@@ -19,6 +19,8 @@ import (
 // every other form that asks for it. The current password an address change
 // asks for is compared as typed too.
 func TestDBConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
+	t.Parallel()
+
 	const spacedPassword = "  correct horse battery staple  "
 	trimmed := strings.TrimSpace(spacedPassword)
 	ts, pg := newDBIntegrationEnv(t)

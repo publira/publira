@@ -116,6 +116,8 @@ func TestDBSignUpSettingsAreStoredTrimmedAuditedAndRevalidated(t *testing.T) {
 }
 
 func TestDBSignUpSettingsRefuseALongMessage(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -152,6 +154,8 @@ func TestDBSignUpSettingsRefuseALongMessage(t *testing.T) {
 // Every member of staff may see the setting, and only a tenant admin may change
 // it.
 func TestDBSignUpSettingsAreWrittenByATenantAdminAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)

@@ -49,6 +49,8 @@ func assertRefusedOn(t *testing.T, err error, field string, want error) {
 // A tenant's own SMTP server may be a relay that takes no credentials, saved
 // with neither a username nor a password.
 func TestDBTenantSMTPOverrideSavesWithoutCredentials(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -69,6 +71,8 @@ func TestDBTenantSMTPOverrideSavesWithoutCredentials(t *testing.T) {
 // A password has no username to be sent with, whether it is given with the
 // save or kept from the one before.
 func TestDBTenantSMTPOverrideRefusesAPasswordWithoutAUsername(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -94,6 +98,8 @@ func TestDBTenantSMTPOverrideRefusesAPasswordWithoutAUsername(t *testing.T) {
 
 // A username still needs the password it signs in with.
 func TestDBTenantSMTPOverrideRefusesAUsernameWithoutAPassword(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 

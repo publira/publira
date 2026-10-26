@@ -20,6 +20,8 @@ func creatorPublicIDs(items []*publirav1.PublishedCreator) []string {
 }
 
 func TestDBListPublishedCreatorsReturnsOnlyCreatorsWithPublishedSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -81,6 +83,8 @@ func TestDBListPublishedCreatorsReturnsOnlyCreatorsWithPublishedSeries(t *testin
 }
 
 func TestDBListPublishedCreatorsExcludesAnotherTenantsCreators(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -112,6 +116,8 @@ func TestDBListPublishedCreatorsExcludesAnotherTenantsCreators(t *testing.T) {
 }
 
 func TestDBListPublishedCreatorsPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -177,6 +183,8 @@ func TestDBListPublishedCreatorsPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBGetPublishedCreatorDetailListsPublishedSeriesByTitle(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	creator := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{
@@ -215,6 +223,8 @@ func TestDBGetPublishedCreatorDetailListsPublishedSeriesByTitle(t *testing.T) {
 }
 
 func TestDBGetPublishedCreatorDetailPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	creator := env.PG.SeedCreator(t, tenant.ID, testutil.CreatorSeed{
@@ -287,6 +297,8 @@ func TestDBGetPublishedCreatorDetailPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBGetPublishedCreatorDetailHidesCreatorsWithoutPublishedSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

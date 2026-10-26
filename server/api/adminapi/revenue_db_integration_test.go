@@ -154,6 +154,8 @@ func assertRevenueTotals(t *testing.T, label string, totals *publiraadminv1.Reve
 // dispute come off the day it was sold on. A test purchase and one in another
 // currency are in no row and no total.
 func TestDBAdminRevenueByDayCutsTheTenantsDays(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRevenueFixture(t, "RVD")
 
@@ -182,6 +184,8 @@ func TestDBAdminRevenueByDayCutsTheTenantsDays(t *testing.T) {
 // each priced episode in it at that episode's part, with its refund divided
 // the way a royalty statement divides one. Each report ranks by net.
 func TestDBAdminRevenueBySeriesAndEpisodeCreditsTheParts(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRevenueFixture(t, "RVG")
 	period := func(groupBy publiraadminv1.RevenueGroupBy) *publiraadminv1.GetRevenueStatsRequest {
@@ -214,6 +218,8 @@ func TestDBAdminRevenueBySeriesAndEpisodeCreditsTheParts(t *testing.T) {
 // grouping and the period it was issued for. A request naming no grouping is
 // refused.
 func TestDBAdminRevenueByEpisodePagesAndBindsItsTokens(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRevenueFixture(t, "RVP")
 	request := func(token string) *publiraadminv1.GetRevenueStatsRequest {
@@ -275,6 +281,8 @@ func TestDBAdminRevenueByEpisodePagesAndBindsItsTokens(t *testing.T) {
 // idx_purchases_tenant_purchased_at_id_sales alone, without visiting the
 // table.
 func TestDBAdminRevenueTotalsAndDaysScanOnlyTheIndex(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRevenueFixture(t, "RVI")
 	ctx := context.Background()

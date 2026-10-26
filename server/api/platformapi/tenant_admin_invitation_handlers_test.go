@@ -256,8 +256,9 @@ func TestListTenantAdminInvitationsRejectsInvalidToken(t *testing.T) {
 }
 
 func TestCreateTenantAdminInvitationCommitsOutboxEventWithoutSMTP(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	tenantID := seedTenant(t, pg, "OUTBOXAPI001", "outbox-api.example.com", "Outbox API Tenant")
 	queries := dbmodels.New(pg.DB)
 	server := &platformServer{queries: queries, db: pg.DB, logger: slog.Default(), mail: openMailGuard()}

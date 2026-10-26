@@ -58,6 +58,8 @@ func tryLogin(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, email, pas
 }
 
 func TestDBLoginRefusesPastTheAccountAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newLoginLimitedEnv(t, 3)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -87,6 +89,8 @@ func TestDBLoginRefusesPastTheAccountAllowance(t *testing.T) {
 // through. An address with no account is refused the same way, so the refusal
 // does not say which addresses hold one.
 func TestDBLoginRefusalVerifiesNothingAndDoesNotRevealTheAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newLoginLimitedEnv(t, 1)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -111,6 +115,8 @@ func TestDBLoginRefusalVerifiesNothingAndDoesNotRevealTheAccount(t *testing.T) {
 // A reader who mistypes and then gets it right is not held back: reaching the
 // password proves they were not guessing, so the tries before it stop counting.
 func TestDBLoginCorrectPasswordClearsTheAccountCount(t *testing.T) {
+	t.Parallel()
+
 	env := newLoginLimitedEnv(t, 3)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -133,6 +139,8 @@ func TestDBLoginCorrectPasswordClearsTheAccountCount(t *testing.T) {
 // One origin trying one password against many addresses meets the origin's
 // allowance, however fresh each address's own is.
 func TestDBLoginRefusesPastTheSourceAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithLoginGuard(t, loginGuardWith(
 		platformpolicy.MinuteDay{PerMinute: 1000, PerDay: 1000},
 		platformpolicy.HourDay{PerHour: 2, PerDay: 2},
@@ -161,6 +169,8 @@ func TestDBLoginRefusesPastTheSourceAllowance(t *testing.T) {
 // the other. Kept in this process, as they are when no Redis is named, two
 // guards would be two allowances to rotate between.
 func TestDBLoginSharesTheAccountAllowanceWithTheTenantConsole(t *testing.T) {
+	t.Parallel()
+
 	login := loginGuardWith(
 		platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2},
 		platformpolicy.HourDay{PerHour: 1000, PerDay: 1000},

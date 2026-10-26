@@ -16,6 +16,8 @@ import (
 // The console resolves the tenant a URL names by public ID once, and names the
 // tenant and its members by the internal IDs the responses carry from then on.
 func TestDBTenantRPCsAddressTheTenantAndItsMembersByID(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

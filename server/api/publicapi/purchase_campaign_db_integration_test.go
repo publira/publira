@@ -30,8 +30,9 @@ import (
 // its own price. A campaign that no longer undercuts the listing, and one not
 // started yet, are neither quoted nor charged.
 func TestDBACampaignPriceIsQuotedAndCharged(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "CAMPAIGN", "campaign.example.com", "Campaign tenant")
@@ -175,6 +176,8 @@ func TestDBACampaignPriceIsQuotedAndCharged(t *testing.T) {
 // code that takes off the whole price still makes a purchase, with no payment
 // behind it.
 func TestDBAPromotionCodeRecordsWhatTheReaderPaid(t *testing.T) {
+	t.Parallel()
+
 	env := newUnpaidRefundWebhookEnv(t, "PROMOCODE", "promotion-code.example.com")
 	metadata := map[string]string{
 		stripe.MetadataTenantID:  env.tenant.ID.String(),
@@ -252,8 +255,9 @@ func TestDBAPromotionCodeRecordsWhatTheReaderPaid(t *testing.T) {
 // sells, so a code's subtotal is the price the checkout was started at, the
 // campaign's while one is open.
 func TestDBACampaignCheckoutAllowsPromotionCodes(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "CAMPPROMO", "campaign-promo.example.com", "Campaign promo tenant")

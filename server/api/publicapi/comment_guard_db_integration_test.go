@@ -15,6 +15,8 @@ import (
 // every other reader's untouched.
 
 func TestDBPostEpisodeCommentSpendsAnAllowancePerReader(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixtureWithGuards(t, "FLD", guardsWith(func(policy *platformpolicy.Policy) {
 		policy.Community.CommentPost = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))
@@ -39,6 +41,8 @@ func TestDBPostEpisodeCommentSpendsAnAllowancePerReader(t *testing.T) {
 }
 
 func TestDBPostEpisodeCommentRefusesARepeatedBody(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixtureWithGuards(t, "DUP", openReaderGuards())
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -68,6 +72,8 @@ func TestDBPostEpisodeCommentRefusesARepeatedBody(t *testing.T) {
 }
 
 func TestDBReportEpisodeCommentSpendsAnAllowancePerReader(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixtureWithGuards(t, "RFL", guardsWith(func(policy *platformpolicy.Policy) {
 		policy.Community.CommentReport = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
 	}))

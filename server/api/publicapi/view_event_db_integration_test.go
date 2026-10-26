@@ -98,6 +98,8 @@ func episodeDetailRequest(tenant testutil.Tenant, publicID string) *publirav1.Ge
 }
 
 func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, episode := env.seedPublishedEpisode(t, tenant)
@@ -158,6 +160,8 @@ func TestDBEpisodeViewEventMintsAnActorAndRecordsOneRowPerBucket(t *testing.T) {
 }
 
 func TestDBEpisodeViewEventAttributesASignedInReaderToTheirUser(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	_, episode := env.seedPublishedEpisode(t, tenant)
@@ -185,6 +189,8 @@ func TestDBEpisodeViewEventAttributesASignedInReaderToTheirUser(t *testing.T) {
 }
 
 func TestDBEpisodeViewEventConcurrentViewsWithOneCookieCollapseToOneRow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	_, episode := env.seedPublishedEpisode(t, tenant)
@@ -218,6 +224,8 @@ func TestDBEpisodeViewEventConcurrentViewsWithOneCookieCollapseToOneRow(t *testi
 }
 
 func TestDBSeriesViewEventIsRecordedForTheSeriesTarget(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, _ := env.seedPublishedEpisode(t, tenant)
@@ -251,6 +259,8 @@ func TestDBSeriesViewEventIsRecordedForTheSeriesTarget(t *testing.T) {
 // An unpublished episode is not something a view may be filed against, so the
 // call fails before anything is written rather than recording an attempt.
 func TestDBViewEventIsNotRecordedForAnUnpublishedTarget(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -278,6 +288,8 @@ func TestDBViewEventIsNotRecordedForAnUnpublishedTarget(t *testing.T) {
 // bearer. When they instrumented views themselves, every fill minted a fresh
 // actor and left a row nothing could deduplicate.
 func TestDBRepeatedDetailReadsRecordNoViewEvents(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, episode := env.seedPublishedEpisode(t, tenant)

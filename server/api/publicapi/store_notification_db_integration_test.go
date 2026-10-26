@@ -76,6 +76,8 @@ func (e *storePurchaseEnv) listPurchases(t *testing.T) []*publirav1.MyPurchase {
 }
 
 func TestDBAppStoreRefundClosesTheReadingRightAndLeavesTheRoyaltyStatement(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	transaction := env.appStoreTransaction("2000000000000100", intent)
@@ -108,6 +110,8 @@ func TestDBAppStoreRefundClosesTheReadingRightAndLeavesTheRoyaltyStatement(t *te
 }
 
 func TestDBAppStoreRefundBeforeTheConfirmationIsAppliedWhenThePurchaseIsRecorded(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	transaction := env.appStoreTransaction("2000000000000101", intent)
@@ -129,6 +133,8 @@ func TestDBAppStoreRefundBeforeTheConfirmationIsAppliedWhenThePurchaseIsRecorded
 }
 
 func TestDBGooglePlayRefundBeforeTheConfirmationIsAppliedAndNotConsumed(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	const purchaseToken = "play-token-held.AO-J1Oy"
@@ -150,6 +156,8 @@ func TestDBGooglePlayRefundBeforeTheConfirmationIsAppliedAndNotConsumed(t *testi
 }
 
 func TestDBAppStoreNotificationChangesNothingItCannotTrust(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	intent := env.start(t, env.token)
 	transaction := env.appStoreTransaction("2000000000000102", intent)
