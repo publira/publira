@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/coins/coin_failure.dart';
@@ -177,6 +178,42 @@ void main() {
       await tester.tap(pay);
       await pumpUntilFound(tester, pages);
       expect(coins.payments.single.coins, 50);
+    });
+
+    testWidgets('offers the payment once a pack held pending is granted', (
+      tester,
+    ) async {
+      coins.coins = 10;
+      // Ask to Buy: the store holds the order for approval.
+      platform.sheet = (param) => [
+        FakeInAppPurchasePlatform.orderWithoutTransaction(
+          param.productDetails.id,
+          PurchaseStatus.pending,
+        ),
+      ];
+      await pumpApp(tester);
+      await pumpUntilFound(tester, packButton);
+
+      await tester.tap(packButton);
+      await pumpUntilFound(
+        tester,
+        find.text(
+          'We are confirming your payment. '
+          'Your Points are added once the purchase is applied.',
+        ),
+      );
+      expect(pay, findsNothing);
+
+      // Approved later, the store reports the transaction on its own.
+      platform.report([
+        FakeInAppPurchasePlatform.storeTransaction(
+          id: '2000000000000009',
+          productId: smallProduct,
+          intentId: FakePurchaseRepository.intentFor(smallPack),
+        ),
+      ]);
+      await pumpUntilFound(tester, pay);
+      expect(find.text('You have 110 Points.'), findsOne);
     });
 
     testWidgets('offers no pack the store does not sell', (tester) async {
@@ -433,6 +470,33 @@ void main() {
       expect(purchases.coinPackIntents, [largePack]);
       expect(platform.bought.single.productDetails.id, largeProduct);
       expect(purchases.confirmed, hasLength(1));
+    });
+
+    testWidgets('shows a pack held pending once it is granted', (tester) async {
+      coins.coins = 0;
+      platform.sheet = (param) => [
+        FakeInAppPurchasePlatform.orderWithoutTransaction(
+          param.productDetails.id,
+          PurchaseStatus.pending,
+        ),
+      ];
+      await pumpApp(tester, initialLocation: AppRoutes.coinsPath);
+      final buyLarge = find.byKey(const ValueKey('coins-pack-buy-$largePack'));
+      await pumpUntilFound(tester, buyLarge);
+
+      await tester.tap(buyLarge);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('0 Points'), findsOne);
+
+      platform.report([
+        FakeInAppPurchasePlatform.storeTransaction(
+          id: '2000000000000010',
+          productId: largeProduct,
+          intentId: FakePurchaseRepository.intentFor(largePack),
+        ),
+      ]);
+      await pumpUntilFound(tester, find.text('550 Points'));
     });
 
     testWidgets('says the packs are not on sale while the tenant stopped', (

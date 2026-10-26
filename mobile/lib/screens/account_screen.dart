@@ -21,6 +21,7 @@ import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
@@ -770,9 +771,24 @@ class _CoinsEntryState extends State<_CoinsEntry> {
   var _locale = '';
   var _reads = 0;
 
+  /// The store's recorded packs, heard so that a pack held pending reaches
+  /// the balance here once the server grants it.
+  StreamSubscription<String>? _packsRecorded;
+  StorePurchaser? _listenedPurchaser;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final purchaser = PurchaseScope.maybeOf(context)?.storePurchaser;
+    if (!identical(purchaser, _listenedPurchaser)) {
+      _listenedPurchaser = purchaser;
+      unawaited(_packsRecorded?.cancel());
+      _packsRecorded = purchaser?.recorded.where(isCoinPackProduct).listen((_) {
+        if (mounted) {
+          unawaited(_read());
+        }
+      });
+    }
     final locale = Localizations.localeOf(context).toLanguageTag();
     if (locale == _locale) {
       return;
@@ -811,6 +827,12 @@ class _CoinsEntryState extends State<_CoinsEntry> {
       _coinName = coinName;
       _balance = balance;
     });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_packsRecorded?.cancel());
+    super.dispose();
   }
 
   Future<void> _open() async {

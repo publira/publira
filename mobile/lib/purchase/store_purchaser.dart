@@ -75,6 +75,15 @@ class StorePurchaser {
 
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
+  final _recorded = StreamController<String>.broadcast();
+
+  /// The product ID of each transaction as the server records it, whenever
+  /// that is: a pending purchase, or one the server could not take at first,
+  /// is recorded on a later resume or sign-in, long after the screen that
+  /// sold it was told it is pending. A screen showing what such a purchase
+  /// bought, such as a balance of coins, reads it again on hearing of one.
+  Stream<String> get recorded => _recorded.stream;
+
   /// Transactions the server has not recorded yet, keyed by what is sent to
   /// it, and the confirmation of each one under way, so a transaction
   /// reported twice is confirmed once.
@@ -117,6 +126,7 @@ class StorePurchaser {
   Future<void> dispose() async {
     await _subscription?.cancel();
     _subscription = null;
+    await _recorded.close();
   }
 
   Future<void> _askForUnfinished() async {
@@ -315,6 +325,9 @@ class StorePurchaser {
       return;
     }
     _unconfirmed.remove(transaction);
+    if (!_recorded.isClosed) {
+      _recorded.add(purchase.productID);
+    }
     try {
       await _finish(purchase);
     } on Object {

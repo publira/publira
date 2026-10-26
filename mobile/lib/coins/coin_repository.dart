@@ -18,6 +18,9 @@ const coinTransactionPageLimit = 20;
 String coinPackProductId(String coinPackId) =>
     'coins_${coinPackId.replaceAll('-', '').toLowerCase()}';
 
+/// Whether [productId] is the store product of a pack of coins.
+bool isCoinPackProduct(String productId) => productId.startsWith('coins_');
+
 /// A key naming one payment with coins, which `PayEpisodeWithCoins` spends
 /// once however many times it is sent.
 String newCoinPaymentKey() {

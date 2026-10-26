@@ -13,6 +13,7 @@ import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/layout/window_width.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/store_purchaser.dart';
 import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
@@ -61,11 +62,26 @@ class _CoinsScreenState extends State<CoinsScreen> {
   var _accessToken = '';
   var _locale = '';
 
+  /// The store's recorded packs, heard so that a pack held pending reaches
+  /// the balance on screen once the server grants it.
+  StreamSubscription<String>? _packsRecorded;
+  StorePurchaser? _listenedPurchaser;
+
   /// Reads everything again whenever the reader or the locale changes: the
   /// balance is the reader's, and the coins are named in the app's language.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final purchaser = PurchaseScope.maybeOf(context)?.storePurchaser;
+    if (!identical(purchaser, _listenedPurchaser)) {
+      _listenedPurchaser = purchaser;
+      unawaited(_packsRecorded?.cancel());
+      _packsRecorded = purchaser?.recorded.where(isCoinPackProduct).listen((_) {
+        if (mounted) {
+          unawaited(_load());
+        }
+      });
+    }
     final accessToken = AuthScope.of(context).accessToken;
     final locale = Localizations.localeOf(context).toLanguageTag();
     if (_started && accessToken == _accessToken && locale == _locale) {
@@ -75,6 +91,12 @@ class _CoinsScreenState extends State<CoinsScreen> {
     _accessToken = accessToken;
     _locale = locale;
     unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    unawaited(_packsRecorded?.cancel());
+    super.dispose();
   }
 
   Future<void> _load() async {

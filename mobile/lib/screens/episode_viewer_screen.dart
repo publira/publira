@@ -199,6 +199,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// the others from starting until it has settled.
   final _paymentLock = PaymentLock();
 
+  /// The store's recorded packs, heard so that a gate still short of coins
+  /// reads the balance again once a pack held pending is granted.
+  StreamSubscription<String>? _packsRecorded;
+  StorePurchaser? _listenedPurchaser;
+
+  /// Whether the body last read is locked, which is when a granted pack can
+  /// change what the screen offers.
+  var _bodyLocked = false;
+
   @override
   void initState() {
     super.initState();
@@ -214,6 +223,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final purchaser = PurchaseScope.maybeOf(context)?.storePurchaser;
+    if (!identical(purchaser, _listenedPurchaser)) {
+      _listenedPurchaser = purchaser;
+      unawaited(_packsRecorded?.cancel());
+      _packsRecorded = purchaser?.recorded.where(isCoinPackProduct).listen((_) {
+        if (mounted && _bodyLocked) {
+          _reload();
+        }
+      });
+    }
     final catalog = CatalogScope.of(context);
     final accessToken = AuthScope.of(context).accessToken;
     final locale = Localizations.localeOf(context).toLanguageTag();
@@ -357,6 +376,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   @override
   void dispose() {
     _paymentLock.dispose();
+    unawaited(_packsRecorded?.cancel());
     _campaignEnd?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _saver?.flush();
@@ -429,6 +449,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       return null;
     }
     _episodeInternalId = detail.episode.internalId;
+    _bodyLocked = detail.access == EpisodeAccess.locked;
     if (mounted) {
       _scheduleCampaignEnd(detail);
     }
