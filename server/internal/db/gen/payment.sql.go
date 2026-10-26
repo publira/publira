@@ -27,7 +27,7 @@ WHERE d.tenant_id = p.tenant_id
     AND p.tenant_id = $1
     AND p.provider = $2::text
     AND p.provider_payment_id = $3::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id
 `
 
 type ApplyUnappliedDisputeToPurchaseParams struct {
@@ -69,6 +69,7 @@ func (q *Queries) ApplyUnappliedDisputeToPurchase(ctx context.Context, arg Apply
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -117,7 +118,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -161,6 +162,7 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -197,7 +199,7 @@ VALUES (
     $13::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -262,6 +264,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -475,9 +478,9 @@ SELECT
     p.purchased_at,
     p.expires_at,
     p.is_test,
-    -- What was bought: an episode, a volume, or a series bundle. The title of
-    -- each of the others is empty, and the episode count is that of the
-    -- bundle, 0 on any other purchase.
+    -- What was bought: an episode, a volume, a series bundle, or a pack of
+    -- coins. The title of each of the others is empty, and the episode count
+    -- is that of the bundle, 0 on any other purchase.
     COALESCE(et.title, '')::text AS episode_title,
     COALESCE(v.title, '')::text AS volume_title,
     (
@@ -486,7 +489,14 @@ SELECT
         WHERE sbe.tenant_id = p.tenant_id
             AND sbe.series_bundle_id = p.series_bundle_id
     )::integer AS series_bundle_episode_count,
-    str.title AS series_title,
+    -- The pack bought, as the reader was shown it, and when its coins expire,
+    -- 0 and NULL on any other purchase. A pack is of no series, so its
+    -- series title is empty.
+    COALESCE(cpp.coins, 0)::integer AS coin_pack_coins,
+    COALESCE(cpp.bonus_coins, 0)::integer AS coin_pack_bonus_coins,
+    g.expires_at AS coins_expire_at,
+    COALESCE(cn.name, '')::text AS coin_name,
+    COALESCE(str.title, '')::text AS series_title,
     u.email AS reader_email
 FROM purchases p
 LEFT JOIN episodes e
@@ -499,10 +509,18 @@ LEFT JOIN volumes v
 LEFT JOIN series_bundles b
     ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-JOIN series s
+LEFT JOIN coin_pack_purchases cpp
+    ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+LEFT JOIN coin_grants g
+    ON g.tenant_id = p.tenant_id
+    AND g.purchase_id = p.id
+LEFT JOIN LATERAL tenant_coin_name_for(p.tenant_id, '') cn
+    ON p.coin_pack_id IS NOT NULL
+LEFT JOIN series s
     ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-CROSS JOIN LATERAL series_translation_for(s.id, '') str
+LEFT JOIN LATERAL series_translation_for(s.id, '') str ON TRUE
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
@@ -525,6 +543,10 @@ type GetPurchaseReceiptForTenantRow struct {
 	EpisodeTitle             string         `json:"episode_title"`
 	VolumeTitle              string         `json:"volume_title"`
 	SeriesBundleEpisodeCount int32          `json:"series_bundle_episode_count"`
+	CoinPackCoins            int32          `json:"coin_pack_coins"`
+	CoinPackBonusCoins       int32          `json:"coin_pack_bonus_coins"`
+	CoinsExpireAt            sql.NullTime   `json:"coins_expire_at"`
+	CoinName                 string         `json:"coin_name"`
 	SeriesTitle              string         `json:"series_title"`
 	ReaderEmail              sql.NullString `json:"reader_email"`
 }
@@ -546,6 +568,10 @@ func (q *Queries) GetPurchaseReceiptForTenant(ctx context.Context, arg GetPurcha
 		&i.EpisodeTitle,
 		&i.VolumeTitle,
 		&i.SeriesBundleEpisodeCount,
+		&i.CoinPackCoins,
+		&i.CoinPackBonusCoins,
+		&i.CoinsExpireAt,
+		&i.CoinName,
 		&i.SeriesTitle,
 		&i.ReaderEmail,
 	)
@@ -738,10 +764,15 @@ SELECT p.id,
         WHERE sbe.tenant_id = b.tenant_id
             AND sbe.series_bundle_id = b.id
     )::integer AS series_bundle_episode_count,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
+    -- Empty on a purchase of a pack, which is of no series.
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title,
-    str.locale AS series_title_locale
+    COALESCE(str.title, '')::text AS series_title,
+    COALESCE(str.locale, '')::text AS series_title_locale
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
@@ -752,14 +783,21 @@ FROM purchases p
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-    JOIN series s ON s.tenant_id = p.tenant_id
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    LEFT JOIN series s ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
+    LEFT JOIN LATERAL series_translation_for(s.id, $1::text) str ON TRUE
 WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = $3::uuid
     AND (
-        EXISTS (
+        -- A pack is of no series, and its coins are spent on whatever surface
+        -- the reader reads on, so every surface lists it.
+        p.coin_pack_id IS NOT NULL
+        OR EXISTS (
             SELECT 1
             FROM episode_surfaces es
             WHERE es.episode_id = e.id
@@ -828,8 +866,12 @@ type ListMyPurchasesAscRow struct {
 	SeriesBundleID              uuid.NullUUID  `json:"series_bundle_id"`
 	SeriesBundleDiscountPercent sql.NullInt32  `json:"series_bundle_discount_percent"`
 	SeriesBundleEpisodeCount    int32          `json:"series_bundle_episode_count"`
-	SeriesID                    uuid.UUID      `json:"series_id"`
-	SeriesPublicID              string         `json:"series_public_id"`
+	CoinPackID                  uuid.NullUUID  `json:"coin_pack_id"`
+	CoinPackPublicID            sql.NullString `json:"coin_pack_public_id"`
+	CoinPackCoins               sql.NullInt32  `json:"coin_pack_coins"`
+	CoinPackBonusCoins          sql.NullInt32  `json:"coin_pack_bonus_coins"`
+	SeriesID                    uuid.NullUUID  `json:"series_id"`
+	SeriesPublicID              sql.NullString `json:"series_public_id"`
 	SeriesTitle                 string         `json:"series_title"`
 	SeriesTitleLocale           string         `json:"series_title_locale"`
 }
@@ -875,6 +917,10 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.SeriesBundleID,
 			&i.SeriesBundleDiscountPercent,
 			&i.SeriesBundleEpisodeCount,
+			&i.CoinPackID,
+			&i.CoinPackPublicID,
+			&i.CoinPackCoins,
+			&i.CoinPackBonusCoins,
 			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
@@ -924,10 +970,15 @@ SELECT p.id,
         WHERE sbe.tenant_id = b.tenant_id
             AND sbe.series_bundle_id = b.id
     )::integer AS series_bundle_episode_count,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
+    -- Empty on a purchase of a pack, which is of no series.
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title,
-    str.locale AS series_title_locale
+    COALESCE(str.title, '')::text AS series_title,
+    COALESCE(str.locale, '')::text AS series_title_locale
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
@@ -938,14 +989,21 @@ FROM purchases p
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-    JOIN series s ON s.tenant_id = p.tenant_id
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    LEFT JOIN series s ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
+    LEFT JOIN LATERAL series_translation_for(s.id, $1::text) str ON TRUE
 WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = $3::uuid
     AND (
-        EXISTS (
+        -- A pack is of no series, and its coins are spent on whatever surface
+        -- the reader reads on, so every surface lists it.
+        p.coin_pack_id IS NOT NULL
+        OR EXISTS (
             SELECT 1
             FROM episode_surfaces es
             WHERE es.episode_id = e.id
@@ -1014,14 +1072,19 @@ type ListMyPurchasesDescRow struct {
 	SeriesBundleID              uuid.NullUUID  `json:"series_bundle_id"`
 	SeriesBundleDiscountPercent sql.NullInt32  `json:"series_bundle_discount_percent"`
 	SeriesBundleEpisodeCount    int32          `json:"series_bundle_episode_count"`
-	SeriesID                    uuid.UUID      `json:"series_id"`
-	SeriesPublicID              string         `json:"series_public_id"`
+	CoinPackID                  uuid.NullUUID  `json:"coin_pack_id"`
+	CoinPackPublicID            sql.NullString `json:"coin_pack_public_id"`
+	CoinPackCoins               sql.NullInt32  `json:"coin_pack_coins"`
+	CoinPackBonusCoins          sql.NullInt32  `json:"coin_pack_bonus_coins"`
+	SeriesID                    uuid.NullUUID  `json:"series_id"`
+	SeriesPublicID              sql.NullString `json:"series_public_id"`
 	SeriesTitle                 string         `json:"series_title"`
 	SeriesTitleLocale           string         `json:"series_title_locale"`
 }
 
 // The reader's library, newest purchase first: each purchase of an episode,
-// and each purchase of a volume or of a series bundle as one row of its own.
+// and each purchase of a volume, of a series bundle, or of a pack of coins as
+// one row of its own.
 // Publication is not re-checked, so a purchase outlives the episode or the
 // volume being taken down, but the calling surface is: an episode that surface
 // may not show, or a volume or a bundle of a series it may not show, is left
@@ -1067,6 +1130,10 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.SeriesBundleID,
 			&i.SeriesBundleDiscountPercent,
 			&i.SeriesBundleEpisodeCount,
+			&i.CoinPackID,
+			&i.CoinPackPublicID,
+			&i.CoinPackCoins,
+			&i.CoinPackBonusCoins,
 			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
@@ -1361,8 +1428,16 @@ SELECT p.id,
         WHERE sbe.tenant_id = b.tenant_id
             AND sbe.series_bundle_id = b.id
     )::integer AS series_bundle_episode_count,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
+    -- The tenant's word for its coins in its default locale, empty on any
+    -- other purchase.
+    COALESCE(cn.name, '')::text AS coin_name,
+    -- Empty on a purchase of a pack, which is of no series.
     s.public_id AS series_public_id,
-    str.title AS series_title,
+    COALESCE(str.title, '')::text AS series_title,
     u.public_id AS reader_public_id,
     u.name AS reader_name,
     u.email AS reader_email,
@@ -1387,9 +1462,14 @@ FROM purchases p
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-    JOIN series s ON s.tenant_id = p.tenant_id
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    LEFT JOIN LATERAL tenant_coin_name_for(p.tenant_id, '') cn ON p.coin_pack_id IS NOT NULL
+    LEFT JOIN series s ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-    CROSS JOIN LATERAL series_translation_for(s.id, '') str
+    LEFT JOIN LATERAL series_translation_for(s.id, '') str ON TRUE
     LEFT JOIN users u ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
 WHERE p.tenant_id = $1
@@ -1412,7 +1492,12 @@ type ListPurchasesForTenantByIDsRow struct {
 	SeriesBundleID              uuid.NullUUID  `json:"series_bundle_id"`
 	SeriesBundleDiscountPercent sql.NullInt32  `json:"series_bundle_discount_percent"`
 	SeriesBundleEpisodeCount    int32          `json:"series_bundle_episode_count"`
-	SeriesPublicID              string         `json:"series_public_id"`
+	CoinPackID                  uuid.NullUUID  `json:"coin_pack_id"`
+	CoinPackPublicID            sql.NullString `json:"coin_pack_public_id"`
+	CoinPackCoins               sql.NullInt32  `json:"coin_pack_coins"`
+	CoinPackBonusCoins          sql.NullInt32  `json:"coin_pack_bonus_coins"`
+	CoinName                    string         `json:"coin_name"`
+	SeriesPublicID              sql.NullString `json:"series_public_id"`
 	SeriesTitle                 string         `json:"series_title"`
 	ReaderPublicID              sql.NullString `json:"reader_public_id"`
 	ReaderName                  sql.NullString `json:"reader_name"`
@@ -1433,8 +1518,8 @@ type ListPurchasesForTenantByIDsRow struct {
 }
 
 // What the console shows of each purchase named, in no particular order: the
-// episode bought, the volume, or the series bundle, and the series of any of
-// them. The
+// episode bought, the volume, the series bundle, or the pack of coins, and the
+// series of any of the first three. The
 // buyer is joined within the tenant, so the purchase of a reader who has since
 // deleted their account, which keeps no user, answers no buyer rather than no
 // row.
@@ -1458,6 +1543,11 @@ func (q *Queries) ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurch
 			&i.SeriesBundleID,
 			&i.SeriesBundleDiscountPercent,
 			&i.SeriesBundleEpisodeCount,
+			&i.CoinPackID,
+			&i.CoinPackPublicID,
+			&i.CoinPackCoins,
+			&i.CoinPackBonusCoins,
+			&i.CoinName,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 			&i.ReaderPublicID,
@@ -1523,7 +1613,7 @@ SET revoked_at = COALESCE(revoked_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 `
 
 type RecordDisputeOnPurchaseParams struct {
@@ -1565,6 +1655,7 @@ func (q *Queries) RecordDisputeOnPurchase(ctx context.Context, arg RecordDispute
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -1645,7 +1736,7 @@ WHERE p.tenant_id = $2
     AND p.provider = $3::text
     AND p.provider_payment_id = $4::text
     AND p.currency = $5::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id
 `
 
 type RecordFailedRefundOnPurchaseParams struct {
@@ -1705,6 +1796,7 @@ func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFa
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -1717,7 +1809,7 @@ SET dispute_lost_at = COALESCE(dispute_lost_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 `
 
 type RecordLostDisputeOnPurchaseParams struct {
@@ -1761,6 +1853,7 @@ func (q *Queries) RecordLostDisputeOnPurchase(ctx context.Context, arg RecordLos
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }
@@ -1798,7 +1891,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -1857,6 +1950,7 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
 }

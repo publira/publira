@@ -3199,6 +3199,14 @@ const MyPurchase$json = {
     },
     {'1': 'coins_spent', '3': 15, '4': 1, '5': 5, '10': 'coinsSpent'},
     {'1': 'coin_name', '3': 16, '4': 1, '5': 9, '10': 'coinName'},
+    {
+      '1': 'coin_pack',
+      '3': 17,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.PurchasedCoinPack',
+      '10': 'coinPack'
+    },
   ],
 };
 
@@ -3215,7 +3223,8 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'ZUtpbmRSBGtpbmQSMAoGdm9sdW1lGA0gASgLMhgucHVibGlyYS50eXBlcy52MS5Wb2x1bWVSBn'
     'ZvbHVtZRJDCg1zZXJpZXNfYnVuZGxlGA4gASgLMh4ucHVibGlyYS50eXBlcy52MS5TZXJpZXNC'
     'dW5kbGVSDHNlcmllc0J1bmRsZRIfCgtjb2luc19zcGVudBgPIAEoBVIKY29pbnNTcGVudBIbCg'
-    'ljb2luX25hbWUYECABKAlSCGNvaW5OYW1l');
+    'ljb2luX25hbWUYECABKAlSCGNvaW5OYW1lEkAKCWNvaW5fcGFjaxgRIAEoCzIjLnB1YmxpcmEu'
+    'dHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2tSCGNvaW5QYWNr');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {
@@ -3348,6 +3357,7 @@ const StartStorePurchaseRequest$json = {
       '10': 'store'
     },
     {'1': 'episode_id', '3': 4, '4': 1, '5': 9, '10': 'episodeId'},
+    {'1': 'coin_pack_id', '3': 5, '4': 1, '5': 9, '10': 'coinPackId'},
   ],
   '9': [
     {'1': 2, '2': 3},
@@ -3360,7 +3370,8 @@ final $typed_data.Uint8List startStorePurchaseRequestDescriptor = $convert.base6
     'ChlTdGFydFN0b3JlUHVyY2hhc2VSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudH'
     'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EjQKBXN0b3JlGAMgASgOMh4ucHVibGlyYS52'
     'MS5JbkFwcFB1cmNoYXNlU3RvcmVSBXN0b3JlEh0KCmVwaXNvZGVfaWQYBCABKAlSCWVwaXNvZG'
-    'VJZEoECAIQA1IRZXBpc29kZV9wdWJsaWNfaWQ=');
+    'VJZBIgCgxjb2luX3BhY2tfaWQYBSABKAlSCmNvaW5QYWNrSWRKBAgCEANSEWVwaXNvZGVfcHVi'
+    'bGljX2lk');
 
 @$core.Deprecated('Use startStorePurchaseResponseDescriptor instead')
 const StartStorePurchaseResponse$json = {
@@ -4098,6 +4109,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.types.v1.Volume': $0.Volume$json,
   '.publira.types.v1.SeriesBundle': $0.SeriesBundle$json,
+  '.publira.types.v1.PurchasedCoinPack': $0.PurchasedCoinPack$json,
   '.publira.v1.ProcessPaymentWebhookRequest': ProcessPaymentWebhookRequest$json,
   '.publira.v1.ProcessPaymentWebhookRequest.HeadersEntry':
       ProcessPaymentWebhookRequest_HeadersEntry$json,

@@ -342,3 +342,65 @@ func TestPurchaseReceiptEmailFailsForGoodOnAPurchaseOfAnotherTenant(t *testing.T
 		t.Fatalf("sent %d mails, want none", len(mailer.sent))
 	}
 }
+
+// A purchase of a pack names no series: it says how many of the tenant's coins
+// it bought, under the tenant's word for them in its default locale, and until
+// when they can be spent.
+func TestPurchaseReceiptEmailNamesTheCoinsAPackBought(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	env := newPurchaseReceiptEnv(t, ctx)
+	env.pg.SeedCoinSettings(t, env.tenantID, testutil.CoinSettingsSeed{Names: map[string]string{"en": "Points", "ja": "ポイント"}})
+	pack := env.pg.SeedCoinPack(t, env.tenantID, testutil.CoinPackSeed{Coins: 1000, BonusCoins: 100, Price: 1000})
+	purchase, err := env.queries.CreatePurchaseFromProviderCoinPackCheckout(ctx, dbmodels.CreatePurchaseFromProviderCoinPackCheckoutParams{
+		ID:                 uuid.New(),
+		TenantID:           env.tenantID,
+		UserID:             env.readerID,
+		CoinPackID:         pack.ID,
+		PriceAtPurchase:    1000,
+		Provider:           "stripe",
+		ProviderCheckoutID: "cs_receipt_pack",
+		Currency:           "JPY",
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseFromProviderCoinPackCheckout: %v", err)
+	}
+	if err := env.queries.CreateCoinPackPurchase(ctx, dbmodels.CreateCoinPackPurchaseParams{
+		TenantID:   env.tenantID,
+		PurchaseID: purchase.ID,
+		Coins:      1000,
+		BonusCoins: 100,
+	}); err != nil {
+		t.Fatalf("CreateCoinPackPurchase: %v", err)
+	}
+	expiresAt := time.Date(2030, time.July, 14, 12, 0, 0, 0, time.UTC)
+	if _, err := env.pg.DB.ExecContext(ctx, `
+		INSERT INTO coin_grants (id, tenant_id, user_id, source, purchase_id, coins, remaining_coins, expires_at)
+		VALUES ($1, $2, $3, 'pack_purchase', $4, 1100, 1100, $5)
+	`, uuid.Must(uuid.NewV7()), env.tenantID, env.readerID, purchase.ID, expiresAt); err != nil {
+		t.Fatalf("grant the pack's coins: %v", err)
+	}
+
+	mailer := &recordingMailer{}
+	renderer := &recordingRenderer{}
+	if err := env.handler(mailer, renderer)(ctx, env.event(t, purchase.ID)); err != nil {
+		t.Fatalf("purchase receipt handler: %v", err)
+	}
+	if len(mailer.sent) != 1 {
+		t.Fatalf("sent %d mails, want 1", len(mailer.sent))
+	}
+	text := mailer.sent[0].email.Text
+	for _, fragment := range []string{"Points: 1,100 (including 100 bonus)", "Price paid: ¥1,000 (JPY)", "Spendable until: Jul 14, 2030, 9:00\u202fPM"} {
+		if !strings.Contains(text, fragment) {
+			t.Errorf("the mail does not carry %q:\n%s", fragment, text)
+		}
+	}
+	if strings.Contains(text, "Series:") || strings.Contains(text, "Episode:") {
+		t.Errorf("the mail of a pack names a series or an episode:\n%s", text)
+	}
+	data := renderer.requests[0].Data
+	if data["coin_pack_coins"] != int64(1000) || data["coin_pack_bonus_coins"] != int64(100) || data["coin_name"] != "Points" || data["coins_expire_at"] != "2030-07-14T12:00:00Z" || data["series_title"] != "" {
+		t.Errorf("data = %v, want the pack's coins, the en name, their expiry, and no series", data)
+	}
+}

@@ -13,6 +13,50 @@ import (
 	"github.com/google/uuid"
 )
 
+const CreateCoinGrantTransaction = `-- name: CreateCoinGrantTransaction :exec
+INSERT INTO coin_transactions (
+        id,
+        tenant_id,
+        user_id,
+        kind,
+        coins,
+        grant_id
+    )
+VALUES (
+        $1,
+        $2,
+        $3::uuid,
+        $4::text,
+        $5,
+        $6::uuid
+    ) ON CONFLICT (grant_id, kind) DO NOTHING
+`
+
+type CreateCoinGrantTransactionParams struct {
+	ID       uuid.UUID     `json:"id"`
+	TenantID uuid.UUID     `json:"tenant_id"`
+	UserID   uuid.NullUUID `json:"user_id"`
+	Kind     string        `json:"kind"`
+	Coins    int32         `json:"coins"`
+	GrantID  uuid.UUID     `json:"grant_id"`
+}
+
+// Records an entry of the reader's history that is about one grant: the grant
+// itself, its revocation, the shortfall its revocation left, or the coins of
+// it a shortfall took. A grant has one entry of each kind, so recording one
+// again is a no-op.
+func (q *Queries) CreateCoinGrantTransaction(ctx context.Context, arg CreateCoinGrantTransactionParams) error {
+	_, err := q.db.ExecContext(ctx, CreateCoinGrantTransaction,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.Kind,
+		arg.Coins,
+		arg.GrantID,
+	)
+	return err
+}
+
 const CreateCoinSpend = `-- name: CreateCoinSpend :exec
 INSERT INTO coin_transactions (
         id,
@@ -107,7 +151,7 @@ VALUES (
         $7::text,
         $8::text
     )
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id
 `
 
 type CreatePurchasePaidWithCoinsParams struct {
@@ -163,8 +207,36 @@ func (q *Queries) CreatePurchasePaidWithCoins(ctx context.Context, arg CreatePur
 		&i.VolumeID,
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
+		&i.CoinPackID,
 	)
 	return i, err
+}
+
+const GetCoinShortfallOfUser = `-- name: GetCoinShortfallOfUser :one
+SELECT COALESCE(SUM(
+            CASE
+                WHEN kind = 'shortfall' THEN coins
+                ELSE -coins
+            END
+        ), 0)::bigint
+FROM coin_transactions
+WHERE tenant_id = $1
+    AND user_id = $2::uuid
+    AND kind IN ('shortfall', 'shortfall_settlement')
+`
+
+type GetCoinShortfallOfUserParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+// What the reader owes: the coins of every closed grant that had been spent,
+// less what later grants have paid of them.
+func (q *Queries) GetCoinShortfallOfUser(ctx context.Context, arg GetCoinShortfallOfUserParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, GetCoinShortfallOfUser, arg.TenantID, arg.UserID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const GetCoinSpendByIdempotencyKey = `-- name: GetCoinSpendByIdempotencyKey :one
@@ -209,13 +281,37 @@ func (q *Queries) GetCoinSpendByIdempotencyKey(ctx context.Context, arg GetCoinS
 	return i, err
 }
 
+const GetExpiredCoinsOfGrant = `-- name: GetExpiredCoinsOfGrant :one
+SELECT COALESCE(SUM(coins), 0)::integer
+FROM coin_transactions
+WHERE tenant_id = $1
+    AND grant_id = $2::uuid
+    AND kind = 'expiry'
+`
+
+type GetExpiredCoinsOfGrantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	GrantID  uuid.UUID `json:"grant_id"`
+}
+
+// The coins of a grant the expiry job recorded lapsed, 0 while it has
+// recorded none.
+func (q *Queries) GetExpiredCoinsOfGrant(ctx context.Context, arg GetExpiredCoinsOfGrantParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, GetExpiredCoinsOfGrant, arg.TenantID, arg.GrantID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const ListCoinTransactionsAsc = `-- name: ListCoinTransactionsAsc :many
 SELECT ct.id,
     ct.kind,
     ct.coins,
     ct.created_at,
     g.expires_at AS grant_expires_at,
-    ct.purchase_id,
+    -- A spend names the purchase it paid for, and an entry about a grant the
+    -- pack purchase that made the grant.
+    COALESCE(ct.purchase_id, g.purchase_id) AS purchase_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.order_index AS episode_order_index,
@@ -352,7 +448,9 @@ SELECT ct.id,
     ct.coins,
     ct.created_at,
     g.expires_at AS grant_expires_at,
-    ct.purchase_id,
+    -- A spend names the purchase it paid for, and an entry about a grant the
+    -- pack purchase that made the grant.
+    COALESCE(ct.purchase_id, g.purchase_id) AS purchase_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     e.order_index AS episode_order_index,

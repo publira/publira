@@ -100,3 +100,59 @@ FROM lapsed
 RETURNING tenant_id,
     grant_id,
     coins;
+
+-- name: CreatePackCoinGrant :one
+-- Grants the reader the coins a pack purchase bought, less what a shortfall
+-- took of them as they were granted. A purchase grants once, so a grant made
+-- already is no row.
+INSERT INTO coin_grants (
+        id,
+        tenant_id,
+        user_id,
+        source,
+        purchase_id,
+        coins,
+        remaining_coins,
+        expires_at
+    )
+VALUES (
+        sqlc.arg('id'),
+        sqlc.arg('tenant_id'),
+        sqlc.arg('user_id')::uuid,
+        'pack_purchase',
+        sqlc.arg('purchase_id')::uuid,
+        sqlc.arg('coins'),
+        sqlc.arg('remaining_coins'),
+        sqlc.arg('expires_at')
+    ) ON CONFLICT (tenant_id, purchase_id) DO NOTHING
+RETURNING id;
+
+-- name: GetCoinGrantOfPurchase :one
+-- The grant a pack purchase made, and the reader it was made to, which a
+-- revocation locks before it locks the grant.
+SELECT id,
+    user_id
+FROM coin_grants
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND purchase_id = sqlc.arg('purchase_id')::uuid;
+
+-- name: LockCoinGrant :one
+-- A grant as a revocation reads it, locked against a spend drawing on it and
+-- the expiry job zeroing it.
+SELECT id,
+    coins,
+    remaining_coins,
+    revoked_at
+FROM coin_grants
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+FOR UPDATE;
+
+-- name: CloseCoinGrant :exec
+-- Takes back what a grant has left and records it closed.
+UPDATE coin_grants
+SET remaining_coins = 0,
+    revoked_at = NOW(),
+    updated_at = NOW()
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');

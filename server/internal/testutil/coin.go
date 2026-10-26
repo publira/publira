@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -83,4 +84,50 @@ func (e *PostgresEnv) SeedCoinGrant(t *testing.T, tenantID, userID uuid.UUID, co
 		t.Fatalf("insert the grant transaction of user %s: %v", userID, err)
 	}
 	return grantID
+}
+
+// CoinPackSeed describes a pack of coins to insert. A zero seed is a pack of
+// 100 coins at 100, on sale.
+type CoinPackSeed struct {
+	PublicID   string
+	Coins      int32
+	BonusCoins int32
+	Price      int32
+	SortOrder  int32
+	OffSale    bool
+}
+
+// CoinPack is a seeded pack.
+type CoinPack struct {
+	ID       uuid.UUID
+	PublicID string
+}
+
+// SeedCoinPack inserts a pack of the tenant's coins, as CreateCoinPack stores
+// one.
+func (e *PostgresEnv) SeedCoinPack(t *testing.T, tenantID uuid.UUID, seed CoinPackSeed) CoinPack {
+	t.Helper()
+	e.requireDB(t)
+
+	pack := CoinPack{ID: uuid.Must(uuid.NewV7()), PublicID: seed.PublicID}
+	if pack.PublicID == "" {
+		pack.PublicID = "PACK" + strings.ToUpper(strings.ReplaceAll(pack.ID.String(), "-", ""))[24:]
+	}
+	coins, price := seed.Coins, seed.Price
+	if coins == 0 {
+		coins = 100
+	}
+	if price == 0 {
+		price = 100
+	}
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO tenant_coin_packs (id, tenant_id, public_id, coins, bonus_coins, price, sort_order, on_sale)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, pack.ID, tenantID, pack.PublicID, coins, seed.BonusCoins, price, seed.SortOrder, !seed.OffSale); err != nil {
+		t.Fatalf("insert coin pack of tenant %s: %v", tenantID, err)
+	}
+	return pack
 }

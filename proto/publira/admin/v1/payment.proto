@@ -4,6 +4,7 @@ package publira.admin.v1;
 
 option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
 
+import "publira/admin/v1/coin.proto";
 import "publira/admin/v1/email.proto";
 import "publira/types/v1/types.proto";
 
@@ -203,18 +204,25 @@ message UpdateTenantStorePaymentSettingsResponse {
 }
 
 // A consumable product the tenant creates in App Store Connect and the Play
-// Console, one per price its catalog sells in the app at.
+// Console: one per price its catalog sells in the app at, and one per pack of
+// its coins.
 message TenantStoreProduct {
-  // The same ID in both stores, derived from the price.
+  // The same ID in both stores: `episode_` followed by the price, or `coins_`
+  // followed by the pack's id (CoinPack.id) in lowercase hexadecimal, without
+  // hyphens, since Google Play takes digits, lowercase letters, underscores,
+  // and periods alone.
   string product_id = 1;
   // The price in the minor unit of currency.
   int32 price = 2;
   // How many episodes sell at this price, as their own price or as the price
   // of a campaign on them that has not ended, drafts and scheduled ones
-  // included.
+  // included. 0 on the product of a pack.
   int32 episode_count = 3;
   // The ISO 4217 code, in capitals, of the tenant currency price is in.
   string currency = 4;
+  // The pack the product sells, set on the product of a pack and unset on one
+  // of a price. Its name in each store is the tenant's to set.
+  CoinPack coin_pack = 5;
 }
 
 message ListTenantStoreProductsRequest {
@@ -222,7 +230,11 @@ message ListTenantStoreProductsRequest {
 }
 
 message ListTenantStoreProductsResponse {
-  // Ordered by price. Only paid episodes the app may show and sell are counted.
+  // The products of prices, ordered by price, and then the product of every
+  // pack the tenant has not retired, in the order it sells them, on sale or
+  // not, so a pack's product can exist before the pack goes on sale. Only paid
+  // episodes the app may show and sell are counted. The packs are listed
+  // whether or not coins are turned on.
   repeated TenantStoreProduct products = 1;
 }
 

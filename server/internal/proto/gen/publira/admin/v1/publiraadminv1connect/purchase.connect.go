@@ -100,6 +100,11 @@ type AdminPurchaseServiceClient interface {
 	// refuses. An empty reason is invalid_argument with a field violation on
 	// reason.
 	//
+	// A purchase of a pack of coins is refunded the same way. Its coins are
+	// taken back once the provider reports the refund in full rather than when
+	// staff ask, so a refund the provider refuses leaves the reader's coins as
+	// they were.
+	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)
 }
@@ -141,6 +146,11 @@ type AdminPurchaseServiceHandler interface {
 	// longer has enabled are failed_precondition, as is a refund the provider
 	// refuses. An empty reason is invalid_argument with a field violation on
 	// reason.
+	//
+	// A purchase of a pack of coins is refunded the same way. Its coins are
+	// taken back once the provider reports the refund in full rather than when
+	// staff ask, so a refund the provider refuses leaves the reader's coins as
+	// they were.
 	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)

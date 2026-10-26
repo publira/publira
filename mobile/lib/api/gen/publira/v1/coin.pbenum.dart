@@ -41,16 +41,30 @@ class CoinTransactionKind extends $pb.ProtobufEnum {
       CoinTransactionKind._(
           4, _omitEnumNames ? '' : 'COIN_TRANSACTION_KIND_EXPIRY');
 
+  /// Coins of a refunded or disputed pack that had already been spent, which
+  /// the reader now owes. It moves no coins: what it records is taken out of
+  /// the reader's next grants, each as a COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT.
+  static const CoinTransactionKind COIN_TRANSACTION_KIND_SHORTFALL =
+      CoinTransactionKind._(
+          5, _omitEnumNames ? '' : 'COIN_TRANSACTION_KIND_SHORTFALL');
+
+  /// Coins taken out of a grant as it was made, to pay what the reader owed.
+  static const CoinTransactionKind COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT =
+      CoinTransactionKind._(6,
+          _omitEnumNames ? '' : 'COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT');
+
   static const $core.List<CoinTransactionKind> values = <CoinTransactionKind>[
     COIN_TRANSACTION_KIND_UNSPECIFIED,
     COIN_TRANSACTION_KIND_GRANT,
     COIN_TRANSACTION_KIND_SPEND,
     COIN_TRANSACTION_KIND_REVOCATION,
     COIN_TRANSACTION_KIND_EXPIRY,
+    COIN_TRANSACTION_KIND_SHORTFALL,
+    COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT,
   ];
 
   static final $core.List<CoinTransactionKind?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 4);
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
   static CoinTransactionKind? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

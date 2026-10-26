@@ -18,17 +18,19 @@ enum PurchaseRevocationReason {
   PURCHASE_REVOCATION_REASON_STAFF = 3;
 }
 
-// A reader's purchase of one episode, of one volume, or of the rest of a
-// series, as tenant staff see it. The episode fields are set on a purchase of
-// an episode, the volume fields on a purchase of a volume, and series_bundle
-// on a purchase of the rest of a series, never two of them; the series fields
-// name the series of any of them.
+// A reader's purchase of one episode, of one volume, of the rest of a series,
+// or of a pack of the tenant's coins, as tenant staff see it. The episode
+// fields are set on a purchase of an episode, the volume fields on a purchase
+// of a volume, series_bundle on a purchase of the rest of a series, and
+// coin_pack on a purchase of a pack, never two of them; the series fields name
+// the series of any of the first three.
 message AdminPurchase {
   // The purchase's primary key, a UUID.
   string id = 1;
   string episode_id = 2;
   string episode_public_id = 3;
   string episode_title = 4;
+  // Empty on a purchase of a pack of coins, which is of no series.
   string series_public_id = 5;
   string series_title = 6;
   // The buyer. All three are empty once the reader has deleted their account,
@@ -72,6 +74,13 @@ message AdminPurchase {
   string volume_public_id = 23;
   string volume_title = 24;
   publira.types.v1.SeriesBundle series_bundle = 25;
+  // The pack of coins bought, set on a purchase of one, which names no
+  // episode, volume, or series. Its coins are revoked once the purchase is
+  // refunded in full or disputed.
+  publira.types.v1.PurchasedCoinPack coin_pack = 26;
+  // The tenant's word for its coins in the tenant's default locale, set
+  // beside coin_pack.
+  string coin_name = 27;
 }
 
 // Cursor pagination, newest purchase first. Field shape and token rules:
@@ -176,6 +185,11 @@ service AdminPurchaseService {
   // longer has enabled are failed_precondition, as is a refund the provider
   // refuses. An empty reason is invalid_argument with a field violation on
   // reason.
+  //
+  // A purchase of a pack of coins is refunded the same way. Its coins are
+  // taken back once the provider reports the refund in full rather than when
+  // staff ask, so a refund the provider refuses leaves the reader's coins as
+  // they were.
   //
   // Minimum role: tenant_admin.
   rpc RefundPurchase(RefundPurchaseRequest) returns (RefundPurchaseResponse) {}

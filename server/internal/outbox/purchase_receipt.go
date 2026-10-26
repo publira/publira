@@ -113,7 +113,10 @@ func purchaseReceiptEmailIDs(event dbmodels.OutboxEvent) (uuid.UUID, uuid.UUID, 
 // and the plain-text part each write them in the tenant's locale and zone. A
 // purchase with no reading period reaches the mail with an empty expires_at,
 // which is what the copy leaves the line out on, and a purchase paid in the
-// provider's test mode with is_test, which the copy says took no money.
+// provider's test mode with is_test, which the copy says took no money. A
+// purchase of a pack carries its coins, the tenant's word for them in its
+// default locale, and when they stop being spendable, and every other purchase
+// 0 and empty there.
 func purchaseReceiptEmailRequest(
 	delivery tenantDelivery,
 	receipt dbmodels.GetPurchaseReceiptForTenantRow,
@@ -122,6 +125,10 @@ func purchaseReceiptEmailRequest(
 	expiresAt := ""
 	if receipt.ExpiresAt.Valid {
 		expiresAt = receipt.ExpiresAt.Time.UTC().Format(time.RFC3339Nano)
+	}
+	coinsExpireAt := ""
+	if receipt.CoinsExpireAt.Valid {
+		coinsExpireAt = receipt.CoinsExpireAt.Time.UTC().Format(time.RFC3339Nano)
 	}
 	return emailrenderer.Request{
 		Template: "purchase_receipt",
@@ -132,6 +139,10 @@ func purchaseReceiptEmailRequest(
 			"episode_title":               receipt.EpisodeTitle,
 			"volume_title":                receipt.VolumeTitle,
 			"series_bundle_episode_count": int64(receipt.SeriesBundleEpisodeCount),
+			"coin_pack_coins":             int64(receipt.CoinPackCoins),
+			"coin_pack_bonus_coins":       int64(receipt.CoinPackBonusCoins),
+			"coin_name":                   receipt.CoinName,
+			"coins_expire_at":             coinsExpireAt,
 			"expires_at":                  expiresAt,
 			"is_test":                     receipt.IsTest,
 			"library_url":                 libraryURL,

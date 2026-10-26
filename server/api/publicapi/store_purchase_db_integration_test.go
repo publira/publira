@@ -65,6 +65,7 @@ type storePurchaseEnv struct {
 	play     *googleplaytest.Server
 	client   publirav1connect.PurchaseServiceClient
 	tenants  publirav1connect.TenantServiceClient
+	coins    publirav1connect.CoinServiceClient
 }
 
 // newStorePurchaseEnv seeds a tenant whose app sells through both stores and
@@ -137,6 +138,7 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 		play:     play,
 		client:   publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 		tenants:  publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		coins:    publirav1connect.NewCoinServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 	}
 }
 

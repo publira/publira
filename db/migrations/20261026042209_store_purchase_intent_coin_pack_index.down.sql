@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_store_purchase_intents_open_coin_pack;

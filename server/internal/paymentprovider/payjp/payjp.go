@@ -45,7 +45,14 @@ const (
 	MetadataVolumeID = "volume_id"
 	// MetadataSeriesBundleID is present, in place of MetadataEpisodeID, on a
 	// checkout of the rest of a series.
-	MetadataSeriesBundleID     = "series_bundle_id"
+	MetadataSeriesBundleID = "series_bundle_id"
+	// MetadataCoinPackID is present, in place of MetadataEpisodeID, on a
+	// checkout of a pack of coins, and so are MetadataCoins,
+	// MetadataBonusCoins, and MetadataCoinExpiryDays, what the pack grants.
+	MetadataCoinPackID         = "coin_pack_id"
+	MetadataCoins              = "coins"
+	MetadataBonusCoins         = "bonus_coins"
+	MetadataCoinExpiryDays     = "coin_expiry_days"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
 	// MetadataKind is absent on a checkout started before an episode had
@@ -199,6 +206,11 @@ func sessionMetadata(purchase paymentprovider.Purchase) (map[string]payjpv2.Chec
 		values[MetadataVolumeID] = purchase.VolumeID.String()
 	case purchase.SeriesBundleID != uuid.Nil:
 		values[MetadataSeriesBundleID] = purchase.SeriesBundleID.String()
+	case purchase.CoinPackID != uuid.Nil:
+		values[MetadataCoinPackID] = purchase.CoinPackID.String()
+		values[MetadataCoins] = strconv.FormatInt(int64(purchase.Coins), 10)
+		values[MetadataBonusCoins] = strconv.FormatInt(int64(purchase.BonusCoins), 10)
+		values[MetadataCoinExpiryDays] = strconv.FormatInt(int64(purchase.CoinExpiryDays), 10)
 	default:
 		values[MetadataEpisodeID] = purchase.EpisodeID.String()
 	}
@@ -482,19 +494,22 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 	if err != nil {
 		return paymentprovider.Purchase{}, err
 	}
-	// A checkout sells one of an episode, a volume, and a series bundle, and
-	// one started before volumes existed names an episode.
-	var episodeID, volumeID, seriesBundleID uuid.UUID
+	// A checkout sells one of an episode, a volume, a series bundle, and a
+	// pack of coins, and one started before volumes existed names an episode.
+	var episodeID, volumeID, seriesBundleID, coinPackID uuid.UUID
 	_, sellsVolume := metadata[MetadataVolumeID]
 	_, sellsSeriesBundle := metadata[MetadataSeriesBundleID]
+	_, sellsCoinPack := metadata[MetadataCoinPackID]
 	_, sellsEpisode := metadata[MetadataEpisodeID]
 	switch {
-	case sellsVolume && (sellsEpisode || sellsSeriesBundle), sellsSeriesBundle && sellsEpisode:
-		return paymentprovider.Purchase{}, errors.New("metadata names more than one of an episode, a volume, and a series bundle")
+	case countTrue(sellsVolume, sellsSeriesBundle, sellsCoinPack, sellsEpisode) > 1:
+		return paymentprovider.Purchase{}, errors.New("metadata names more than one of an episode, a volume, a series bundle, and a coin pack")
 	case sellsVolume:
 		volumeID, err = parseID(MetadataVolumeID)
 	case sellsSeriesBundle:
 		seriesBundleID, err = parseID(MetadataSeriesBundleID)
+	case sellsCoinPack:
+		coinPackID, err = parseID(MetadataCoinPackID)
 	default:
 		episodeID, err = parseID(MetadataEpisodeID)
 	}
@@ -533,14 +548,51 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 			return paymentprovider.Purchase{}, fmt.Errorf("invalid series bundle metadata: %w", err)
 		}
 	}
+	var coins, bonusCoins, expiryDays int64
+	if sellsCoinPack {
+		parseCount := func(key string) (int64, error) {
+			s, _ := value(key)
+			n, err := strconv.ParseInt(s, 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("invalid %s metadata: %w", key, err)
+			}
+			return n, nil
+		}
+		if coins, err = parseCount(MetadataCoins); err != nil {
+			return paymentprovider.Purchase{}, err
+		}
+		if bonusCoins, err = parseCount(MetadataBonusCoins); err != nil {
+			return paymentprovider.Purchase{}, err
+		}
+		if expiryDays, err = parseCount(MetadataCoinExpiryDays); err != nil {
+			return paymentprovider.Purchase{}, err
+		}
+		if err := paymentprovider.CheckCoinPackSale(kind, readingPeriodHours, coins, bonusCoins, expiryDays); err != nil {
+			return paymentprovider.Purchase{}, fmt.Errorf("invalid coin pack metadata: %w", err)
+		}
+	}
 	return paymentprovider.Purchase{
 		TenantID:           tenantID,
 		ReaderID:           userID,
 		EpisodeID:          episodeID,
 		VolumeID:           volumeID,
 		SeriesBundleID:     seriesBundleID,
+		CoinPackID:         coinPackID,
+		Coins:              int32(coins),
+		BonusCoins:         int32(bonusCoins),
+		CoinExpiryDays:     int32(expiryDays),
 		Kind:               kind,
 		Price:              int32(price),
 		ReadingPeriodHours: int32(readingPeriodHours),
 	}, nil
+}
+
+func countTrue(values ...bool) int {
+	n := 0
+	for _, value := range values {
+		if value {
+			n++
+		}
+	}
+	return n
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/storeproduct"
 	"github.com/publira/publira/server/internal/storepurchase"
@@ -61,7 +62,18 @@ func (s *apiServer) StartStorePurchase(
 	ctx context.Context,
 	req *publirav1.StartStorePurchaseRequest,
 ) (*publirav1.StartStorePurchaseResponse, error) {
-	episodeID, err := requestRecordID("episode_id", req.EpisodeId)
+	// A request names an episode or a pack, and one naming both is refused
+	// rather than read as either.
+	var episodeID, packID uuid.UUID
+	var err error
+	switch {
+	case req.EpisodeId != "" && req.CoinPackId != "":
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("name an episode or a coin pack, not both"), "coin_pack_id")
+	case req.CoinPackId != "":
+		packID, err = requestRecordID("coin_pack_id", req.CoinPackId)
+	default:
+		episodeID, err = requestRecordID("episode_id", req.EpisodeId)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +91,9 @@ func (s *apiServer) StartStorePurchase(
 	}
 	if err := s.requireStoreSelling(ctx, tenant.ID, store); err != nil {
 		return nil, err
+	}
+	if packID != uuid.Nil {
+		return s.startStoreCoinPackPurchase(ctx, tenant.ID, user.ID, packID)
 	}
 
 	queries := s.queriesFor(ctx)
@@ -287,9 +302,10 @@ func (s *apiServer) recordedStorePurchase(
 	return purchase, err == nil, err
 }
 
-// myPurchase reads one purchase of the reader's as the library lists it.
-// coinName is the tenant's word for its coins in locale, which a purchase paid
-// with coins is answered with.
+// myPurchase reads one purchase of the reader's, of an episode or of a pack,
+// as the library lists it. coinName is the tenant's word for its coins in
+// locale, which a purchase paid with coins is answered with; a purchase of a
+// pack reads it here when the caller passes none.
 func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, userID uuid.UUID, locale, coinName string, purchaseID uuid.UUID) (*publirav1.MyPurchase, error) {
 	row, err := queries.GetMyPurchase(ctx, dbmodels.GetMyPurchaseParams{
 		TenantID: tenantID,
@@ -300,24 +316,33 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read a store purchase", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
+	if row.CoinPackID.Valid && coinName == "" {
+		if coinName, err = s.coinNameFor(ctx, tenantID, locale); err != nil {
+			return nil, err
+		}
+	}
 	purchase, err := purchaseItemFromRow(purchasePageRow{
-		id:                row.ID,
-		kind:              row.Kind,
-		priceAtPurchase:   row.PriceAtPurchase,
-		currency:          row.Currency,
-		expiresAt:         row.ExpiresAt,
-		revokedAt:         row.RevokedAt,
-		purchasedAt:       row.PurchasedAt,
-		coinsSpent:        row.CoinsSpent,
-		episodeID:         uuid.NullUUID{UUID: row.EpisodeID, Valid: true},
-		episodePublicID:   row.EpisodePublicID,
-		episodeTitle:      row.EpisodeTitle,
-		episodeLocale:     row.EpisodeTitleLocale,
-		episodeOrderIndex: row.EpisodeOrderIndex,
-		seriesID:          row.SeriesID,
-		seriesPublicID:    row.SeriesPublicID,
-		seriesTitle:       row.SeriesTitle,
-		seriesLocale:      row.SeriesTitleLocale,
+		id:                 row.ID,
+		kind:               row.Kind,
+		priceAtPurchase:    row.PriceAtPurchase,
+		currency:           row.Currency,
+		expiresAt:          row.ExpiresAt,
+		revokedAt:          row.RevokedAt,
+		purchasedAt:        row.PurchasedAt,
+		coinsSpent:         row.CoinsSpent,
+		episodeID:          row.EpisodeID,
+		episodePublicID:    row.EpisodePublicID.String,
+		episodeTitle:       row.EpisodeTitle,
+		episodeLocale:      row.EpisodeTitleLocale,
+		episodeOrderIndex:  row.EpisodeOrderIndex.Int32,
+		coinPackID:         row.CoinPackID,
+		coinPackPublicID:   row.CoinPackPublicID.String,
+		coinPackCoins:      row.CoinPackCoins.Int32,
+		coinPackBonusCoins: row.CoinPackBonusCoins.Int32,
+		seriesID:           row.SeriesID,
+		seriesPublicID:     row.SeriesPublicID.String,
+		seriesTitle:        row.SeriesTitle,
+		seriesLocale:       row.SeriesTitleLocale,
 	}, coinName, time.Now())
 	if err != nil {
 		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
@@ -437,6 +462,51 @@ func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.
 	}, nil
 }
 
+// createStorePurchase records the purchase of the episode or the pack an
+// intent was opened for, on the terms it was opened on, and grants the coins
+// of a pack. A pack's coins expire the tenant's expiry_days after the
+// purchase, as the intent keeps them.
+func createStorePurchase(ctx context.Context, txq *dbmodels.Queries, intent dbmodels.StorePurchaseIntent, transaction storeTransaction) (dbmodels.Purchase, error) {
+	if intent.CoinPackID.Valid {
+		purchase, err := txq.CreateStoreCoinPackPurchase(ctx, dbmodels.CreateStoreCoinPackPurchaseParams{
+			ID:                 uuid.New(),
+			TenantID:           intent.TenantID,
+			UserID:             intent.UserID,
+			CoinPackID:         intent.CoinPackID.UUID,
+			PriceAtPurchase:    intent.Price,
+			Currency:           intent.Currency,
+			Store:              transaction.store,
+			StoreTransactionID: transaction.transactionID,
+			IsTest:             transaction.isTest,
+		})
+		if err != nil {
+			return dbmodels.Purchase{}, err
+		}
+		return purchase, recordCoinPackSale(ctx, txq, purchase, coinPackTerms{
+			coins:      intent.Coins.Int32,
+			bonusCoins: intent.BonusCoins.Int32,
+			expiryDays: intent.CoinExpiryDays.Int32,
+		})
+	}
+	var expiresAt sql.NullTime
+	if hours := intent.ReadingPeriodHours.Int32; intent.ReadingPeriodHours.Valid && hours > 0 {
+		now := time.Now().UTC()
+		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
+	}
+	return txq.CreateStorePurchase(ctx, dbmodels.CreateStorePurchaseParams{
+		ID:                 uuid.New(),
+		TenantID:           intent.TenantID,
+		UserID:             intent.UserID,
+		EpisodeID:          intent.EpisodeID.UUID,
+		PriceAtPurchase:    intent.Price,
+		Currency:           intent.Currency,
+		ExpiresAt:          expiresAt,
+		Store:              transaction.store,
+		StoreTransactionID: transaction.transactionID,
+		IsTest:             transaction.isTest,
+	})
+}
+
 // recordStorePurchase turns a verified transaction into the purchase of the
 // intent it names, once, and answers it titled in locale.
 func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uuid.UUID, locale string, transaction storeTransaction) (*publirav1.MyPurchase, error) {
@@ -479,23 +549,7 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 		return nil, connect.NewError(connect.CodeInvalidArgument, "transaction bought another product than the intent")
 	}
 
-	var expiresAt sql.NullTime
-	if hours := intent.ReadingPeriodHours.Int32; intent.ReadingPeriodHours.Valid && hours > 0 {
-		now := time.Now().UTC()
-		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
-	}
-	purchase, err := txq.CreateStorePurchase(ctx, dbmodels.CreateStorePurchaseParams{
-		ID:                 uuid.New(),
-		TenantID:           tenantID,
-		UserID:             userID,
-		EpisodeID:          intent.EpisodeID,
-		PriceAtPurchase:    intent.Price,
-		Currency:           intent.Currency,
-		ExpiresAt:          expiresAt,
-		Store:              transaction.store,
-		StoreTransactionID: transaction.transactionID,
-		IsTest:             transaction.isTest,
-	})
+	purchase, err := createStorePurchase(ctx, txq, intent, transaction)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to record a store purchase", err, "tenant_id", tenantID.String(), "store", transaction.store)
 	}
@@ -510,12 +564,15 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	if err := txq.ConsumeStorePurchaseIntent(ctx, dbmodels.ConsumeStorePurchaseIntentParams{TenantID: tenantID, ID: intent.ID}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to consume a store purchase intent", err, "tenant_id", tenantID.String())
 	}
-	if _, err := txq.ProjectPurchaseContentEventByID(ctx, dbmodels.ProjectPurchaseContentEventByIDParams{
-		ID:         uuid.Must(uuid.NewV7()),
-		TenantID:   tenantID,
-		PurchaseID: purchase.ID,
-	}); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, s.internalDBError(ctx, "failed to project a store purchase", err, "tenant_id", tenantID.String())
+	// The engagement events are an episode's, and a pack is not one.
+	if purchase.EpisodeID.Valid {
+		if _, err := txq.ProjectPurchaseContentEventByID(ctx, dbmodels.ProjectPurchaseContentEventByIDParams{
+			ID:         uuid.Must(uuid.NewV7()),
+			TenantID:   tenantID,
+			PurchaseID: purchase.ID,
+		}); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, s.internalDBError(ctx, "failed to project a store purchase", err, "tenant_id", tenantID.String())
+		}
 	}
 	// A purchase Google Play has already voided is not one to consume.
 	if transaction.store == storeGooglePlay && !refunded {

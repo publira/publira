@@ -650,6 +650,18 @@ message SeriesBundle {
   int32 discount_percent = 3;
 }
 
+// A pack of the tenant's coins as a purchase bought it: the coins and the bonus
+// coins the reader was shown when the checkout or the store's payment sheet
+// opened, which are what the purchase granted however the pack has changed
+// since.
+message PurchasedCoinPack {
+  // The pack's primary key, a UUID.
+  string id = 1;
+  string public_id = 2;
+  int32 coins = 3;
+  int32 bonus_coins = 4;
+}
+
 // Which of an episode's two sales a purchase is (purchases.kind).
 enum PurchaseKind {
   // On a request, the permanent copy, which is what every client that names no

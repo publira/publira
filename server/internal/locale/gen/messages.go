@@ -12,6 +12,13 @@ var Messages = map[string]map[string]string{
 		"zh-Hans": "打包优惠（{$percent :integer}%）",
 		"zh-Hant": "打包優惠（{$percent :integer}%）",
 	},
+	"checkout.coin_pack_line_item": {
+		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）}}",
+		"en":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
+		"ko":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (보너스 {$bonus} 포함)}}",
+		"zh-Hans": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含赠送{$bonus}）}}",
+		"zh-Hant": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
+	},
 	"checkout.rental_line_item": {
 		"ja":      "{$episode_title}（レンタル・{$hours :integer}時間）",
 		"en":      ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}",
@@ -564,6 +571,20 @@ var Messages = map[string]map[string]string{
 		"ko":      "구매 가격: {$amount} ({$currency})",
 		"zh-Hans": "支付金额：{$amount}（{$currency}）",
 		"zh-Hant": "支付金額：{$amount}（{$currency}）",
+	},
+	"email.purchase_receipt.coin_pack": {
+		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count}（うちボーナス{$bonus}）}}",
+		"en":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (including {$bonus} bonus)}}",
+		"ko":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (보너스 {$bonus} 포함)}}",
+		"zh-Hans": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}：{$count}}}\n* {{{$coin_name}：{$count}（含赠送{$bonus}）}}",
+		"zh-Hant": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}：{$count}}}\n* {{{$coin_name}：{$count}（含贈送{$bonus}）}}",
+	},
+	"email.purchase_receipt.coins_expire_at": {
+		"ja":      "利用期限: {$expires_at}",
+		"en":      "Spendable until: {$expires_at}",
+		"ko":      "사용 기한: {$expires_at}",
+		"zh-Hans": "使用期限至：{$expires_at}",
+		"zh-Hant": "使用期限至：{$expires_at}",
 	},
 	"email.purchase_receipt.episode": {
 		"ja":      "エピソード: {$episode_title}",

@@ -6,6 +6,10 @@ import { purchaseReceiptDataSchema } from "./purchase-receipt";
 
 const data = {
   amount: 500,
+  coin_name: "",
+  coin_pack_bonus_coins: 0,
+  coin_pack_coins: 0,
+  coins_expire_at: "",
   currency: "JPY",
   episode_title: "The First Night",
   expires_at: "2030-01-17T12:00:00Z",
@@ -16,6 +20,18 @@ const data = {
   series_title: "The Lighthouse Keeper",
   tenant_name: "Aoto Press",
   volume_title: "",
+} as const;
+
+// A purchase of a pack of 1,000 Points with 100 bonus Points.
+const pack = {
+  ...data,
+  coin_name: "Points",
+  coin_pack_bonus_coins: 100,
+  coin_pack_coins: 1000,
+  coins_expire_at: "2030-07-14T12:00:00Z",
+  episode_title: "",
+  expires_at: "",
+  series_title: "",
 } as const;
 
 const render = async (
@@ -128,6 +144,28 @@ describe("purchaseReceiptDataSchema", () => {
     ).toBe(false);
   });
 
+  it("accepts a purchase of a pack, which names no series", () => {
+    expect(purchaseReceiptDataSchema.safeParse(pack).success).toBe(true);
+  });
+
+  it("rejects a pack beside a series, an episode, or no coin name", () => {
+    expect(
+      purchaseReceiptDataSchema.safeParse({
+        ...pack,
+        series_title: "The Lighthouse Keeper",
+      }).success
+    ).toBe(false);
+    expect(
+      purchaseReceiptDataSchema.safeParse({
+        ...pack,
+        episode_title: "The First Night",
+      }).success
+    ).toBe(false);
+    expect(
+      purchaseReceiptDataSchema.safeParse({ ...data, series_title: "" }).success
+    ).toBe(false);
+  });
+
   // The console stores titles with no length limit, and a receipt whose data
   // the schema refuses is never sent.
   it("accepts any title the catalogue can hold", () => {
@@ -177,6 +215,23 @@ describe("PurchaseReceiptEmail", () => {
     expect(html).toContain("Remaining episodes: 12 episodes");
     expect(html).toContain("Thank you for buying The Lighthouse Keeper.");
     expect(html).not.toContain("Episode:");
+  });
+
+  it("names the coins of a pack and until when they can be spent", async () => {
+    const html = await render("en", pack);
+
+    expect(html).toContain("Points: 1,100 (including 100 bonus)");
+    expect(html).toMatch(/Spendable until: Jul 14, 2030, 9:00\sPM/u);
+    expect(html).toContain("Thank you for buying Points.");
+    expect(html).not.toContain("Series:");
+    expect(html).not.toContain("Episode:");
+  });
+
+  it("names the coins of a pack with no bonus in Japanese", async () => {
+    const html = await render("ja", { ...pack, coin_pack_bonus_coins: 0 });
+
+    expect(html).toContain("Points: 1,000");
+    expect(html).not.toContain("ボーナス");
   });
 
   it("writes a currency with a minor unit from that unit", async () => {

@@ -152,7 +152,8 @@ func readingPeriodExpiry(hours int32, now time.Time) sql.NullTime {
 	return sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 }
 
-// coinBalance reads the coins the reader can spend now on q.
+// coinBalance reads the coins the reader can spend now on q, and what they
+// owe.
 func (s *apiServer) coinBalance(ctx context.Context, q Querier, tenantID, userID uuid.UUID, coinName string) (*publirav1.CoinBalance, error) {
 	rows, err := q.ListUnspentCoinsForUser(ctx, dbmodels.ListUnspentCoinsForUserParams{
 		TenantID: tenantID,
@@ -168,6 +169,13 @@ func (s *apiServer) coinBalance(ctx context.Context, q Querier, tenantID, userID
 			balance.NearestExpiryAt = row.ExpiresAt.UTC().Format(time.RFC3339)
 			balance.NearestExpiryCoins = row.Coins
 		}
+	}
+	balance.ShortfallCoins, err = q.GetCoinShortfallOfUser(ctx, dbmodels.GetCoinShortfallOfUserParams{
+		TenantID: tenantID,
+		UserID:   userID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read what the reader owes in coins", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
 	return balance, nil
 }
@@ -340,6 +348,10 @@ func coinTransactionKindToProto(kind string) (publirav1.CoinTransactionKind, err
 		return publirav1.CoinTransactionKind_COIN_TRANSACTION_KIND_REVOCATION, nil
 	case "expiry":
 		return publirav1.CoinTransactionKind_COIN_TRANSACTION_KIND_EXPIRY, nil
+	case "shortfall":
+		return publirav1.CoinTransactionKind_COIN_TRANSACTION_KIND_SHORTFALL, nil
+	case "shortfall_settlement":
+		return publirav1.CoinTransactionKind_COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT, nil
 	default:
 		return publirav1.CoinTransactionKind_COIN_TRANSACTION_KIND_UNSPECIFIED, errUnknownCoinTransactionKind
 	}

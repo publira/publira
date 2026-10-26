@@ -188,7 +188,10 @@ var emailTemplates = map[string]func(*emailComposer){
 // which the documented setup asks an operator to make, says it charged nothing,
 // so its "price paid" is not read as money taken. A purchase of a volume names
 // the volume where a purchase of an episode names the episode, and a purchase
-// of the rest of a series how many episodes it bought.
+// of the rest of a series how many episodes it bought. A purchase of a pack of
+// coins names no series, since it is of none: it says how many of the tenant's
+// coins it bought, under the tenant's word for them, and until when they can
+// be spent, which a prepaid instrument has to state.
 func purchaseReceiptCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	libraryURL := c.value("library_url")
@@ -199,8 +202,13 @@ func purchaseReceiptCopy(c *emailComposer) {
 	if c.flag("is_test") {
 		c.line("email.purchase_receipt.test_notice", nil)
 	}
-	c.line("email.purchase_receipt.series", map[string]any{"series_title": c.value("series_title")})
+	coins, bonusCoins := c.integer("coin_pack_coins"), c.integer("coin_pack_bonus_coins")
+	if coins == 0 {
+		c.line("email.purchase_receipt.series", map[string]any{"series_title": c.value("series_title")})
+	}
 	switch count := c.integer("series_bundle_episode_count"); {
+	case coins > 0:
+		c.line("email.purchase_receipt.coin_pack", map[string]any{"coin_name": c.value("coin_name"), "count": int(coins + bonusCoins), "bonus": int(bonusCoins)})
 	case c.value("volume_title") != "":
 		c.line("email.purchase_receipt.volume", map[string]any{"volume_title": c.value("volume_title")})
 	case count > 0:
@@ -212,6 +220,9 @@ func purchaseReceiptCopy(c *emailComposer) {
 	c.line("email.purchase_receipt.purchased_at", map[string]any{"purchased_at": c.instant("purchased_at")})
 	if c.value("expires_at") != "" {
 		c.line("email.purchase_receipt.expires_at", map[string]any{"expires_at": c.instant("expires_at")})
+	}
+	if c.value("coins_expire_at") != "" {
+		c.line("email.purchase_receipt.coins_expire_at", map[string]any{"expires_at": c.instant("coins_expire_at")})
 	}
 	c.linkLine("email.purchase_receipt.action", nil, libraryURL)
 	c.linkLine("email.purchase_receipt.fallback_link", nil, libraryURL)

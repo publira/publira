@@ -27,6 +27,8 @@ const CoinTransactionKind$json = {
     {'1': 'COIN_TRANSACTION_KIND_SPEND', '2': 2},
     {'1': 'COIN_TRANSACTION_KIND_REVOCATION', '2': 3},
     {'1': 'COIN_TRANSACTION_KIND_EXPIRY', '2': 4},
+    {'1': 'COIN_TRANSACTION_KIND_SHORTFALL', '2': 5},
+    {'1': 'COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT', '2': 6},
   ],
 };
 
@@ -35,7 +37,9 @@ final $typed_data.Uint8List coinTransactionKindDescriptor = $convert.base64Decod
     'ChNDb2luVHJhbnNhY3Rpb25LaW5kEiUKIUNPSU5fVFJBTlNBQ1RJT05fS0lORF9VTlNQRUNJRk'
     'lFRBAAEh8KG0NPSU5fVFJBTlNBQ1RJT05fS0lORF9HUkFOVBABEh8KG0NPSU5fVFJBTlNBQ1RJ'
     'T05fS0lORF9TUEVORBACEiQKIENPSU5fVFJBTlNBQ1RJT05fS0lORF9SRVZPQ0FUSU9OEAMSIA'
-    'ocQ09JTl9UUkFOU0FDVElPTl9LSU5EX0VYUElSWRAE');
+    'ocQ09JTl9UUkFOU0FDVElPTl9LSU5EX0VYUElSWRAEEiMKH0NPSU5fVFJBTlNBQ1RJT05fS0lO'
+    'RF9TSE9SVEZBTEwQBRIuCipDT0lOX1RSQU5TQUNUSU9OX0tJTkRfU0hPUlRGQUxMX1NFVFRMRU'
+    '1FTlQQBg==');
 
 @$core.Deprecated('Use coinDisclosuresDescriptor instead')
 const CoinDisclosures$json = {
@@ -167,6 +171,7 @@ const CoinBalance$json = {
       '5': 3,
       '10': 'nearestExpiryCoins'
     },
+    {'1': 'shortfall_coins', '3': 5, '4': 1, '5': 3, '10': 'shortfallCoins'},
   ],
 };
 
@@ -174,7 +179,8 @@ const CoinBalance$json = {
 final $typed_data.Uint8List coinBalanceDescriptor = $convert.base64Decode(
     'CgtDb2luQmFsYW5jZRIUCgVjb2lucxgBIAEoA1IFY29pbnMSGwoJY29pbl9uYW1lGAIgASgJUg'
     'hjb2luTmFtZRIqChFuZWFyZXN0X2V4cGlyeV9hdBgDIAEoCVIPbmVhcmVzdEV4cGlyeUF0EjAK'
-    'FG5lYXJlc3RfZXhwaXJ5X2NvaW5zGAQgASgDUhJuZWFyZXN0RXhwaXJ5Q29pbnM=');
+    'FG5lYXJlc3RfZXhwaXJ5X2NvaW5zGAQgASgDUhJuZWFyZXN0RXhwaXJ5Q29pbnMSJwoPc2hvcn'
+    'RmYWxsX2NvaW5zGAUgASgDUg5zaG9ydGZhbGxDb2lucw==');
 
 @$core.Deprecated('Use getCoinBalanceRequestDescriptor instead')
 const GetCoinBalanceRequest$json = {
@@ -395,6 +401,45 @@ final $typed_data.Uint8List payEpisodeWithCoinsResponseDescriptor =
         'JhLnYxLk15UHVyY2hhc2VSCHB1cmNoYXNlEjEKB2JhbGFuY2UYAiABKAsyFy5wdWJsaXJhLnYx'
         'LkNvaW5CYWxhbmNlUgdiYWxhbmNl');
 
+@$core.Deprecated('Use startCoinPackCheckoutRequestDescriptor instead')
+const StartCoinPackCheckoutRequest$json = {
+  '1': 'StartCoinPackCheckoutRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'coin_pack_id', '3': 2, '4': 1, '5': 9, '10': 'coinPackId'},
+    {'1': 'return_episode_id', '3': 3, '4': 1, '5': 9, '10': 'returnEpisodeId'},
+    {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
+  ],
+};
+
+/// Descriptor for `StartCoinPackCheckoutRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startCoinPackCheckoutRequestDescriptor = $convert.base64Decode(
+    'ChxTdGFydENvaW5QYWNrQ2hlY2tvdXRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ymxpcm'
+    'EudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EiAKDGNvaW5fcGFja19pZBgCIAEoCVIK'
+    'Y29pblBhY2tJZBIqChFyZXR1cm5fZXBpc29kZV9pZBgDIAEoCVIPcmV0dXJuRXBpc29kZUlkEh'
+    'YKBmxvY2FsZRgEIAEoCVIGbG9jYWxl');
+
+@$core.Deprecated('Use startCoinPackCheckoutResponseDescriptor instead')
+const StartCoinPackCheckoutResponse$json = {
+  '1': 'StartCoinPackCheckoutResponse',
+  '2': [
+    {'1': 'checkout_url', '3': 1, '4': 1, '5': 9, '10': 'checkoutUrl'},
+  ],
+};
+
+/// Descriptor for `StartCoinPackCheckoutResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startCoinPackCheckoutResponseDescriptor =
+    $convert.base64Decode(
+        'Ch1TdGFydENvaW5QYWNrQ2hlY2tvdXRSZXNwb25zZRIhCgxjaGVja291dF91cmwYASABKAlSC2'
+        'NoZWNrb3V0VXJs');
+
 const $core.Map<$core.String, $core.dynamic> CoinServiceBase$json = {
   '1': 'CoinService',
   '2': [
@@ -417,6 +462,11 @@ const $core.Map<$core.String, $core.dynamic> CoinServiceBase$json = {
       '1': 'PayEpisodeWithCoins',
       '2': '.publira.v1.PayEpisodeWithCoinsRequest',
       '3': '.publira.v1.PayEpisodeWithCoinsResponse'
+    },
+    {
+      '1': 'StartCoinPackCheckout',
+      '2': '.publira.v1.StartCoinPackCheckoutRequest',
+      '3': '.publira.v1.StartCoinPackCheckoutResponse'
     },
   ],
 };
@@ -450,6 +500,10 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.MyPurchase': $1.MyPurchase$json,
   '.publira.types.v1.Volume': $0.Volume$json,
   '.publira.types.v1.SeriesBundle': $0.SeriesBundle$json,
+  '.publira.types.v1.PurchasedCoinPack': $0.PurchasedCoinPack$json,
+  '.publira.v1.StartCoinPackCheckoutRequest': StartCoinPackCheckoutRequest$json,
+  '.publira.v1.StartCoinPackCheckoutResponse':
+      StartCoinPackCheckoutResponse$json,
 };
 
 /// Descriptor for `CoinService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -461,4 +515,6 @@ final $typed_data.Uint8List coinServiceDescriptor = $convert.base64Decode(
     'dWJsaXJhLnYxLkxpc3RDb2luVHJhbnNhY3Rpb25zUmVxdWVzdBooLnB1YmxpcmEudjEuTGlzdE'
     'NvaW5UcmFuc2FjdGlvbnNSZXNwb25zZRJmChNQYXlFcGlzb2RlV2l0aENvaW5zEiYucHVibGly'
     'YS52MS5QYXlFcGlzb2RlV2l0aENvaW5zUmVxdWVzdBonLnB1YmxpcmEudjEuUGF5RXBpc29kZV'
-    'dpdGhDb2luc1Jlc3BvbnNl');
+    'dpdGhDb2luc1Jlc3BvbnNlEmwKFVN0YXJ0Q29pblBhY2tDaGVja291dBIoLnB1YmxpcmEudjEu'
+    'U3RhcnRDb2luUGFja0NoZWNrb3V0UmVxdWVzdBopLnB1YmxpcmEudjEuU3RhcnRDb2luUGFja0'
+    'NoZWNrb3V0UmVzcG9uc2U=');

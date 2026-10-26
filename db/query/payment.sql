@@ -116,7 +116,8 @@ SELECT EXISTS (
 
 -- name: ListMyPurchasesDesc :many
 -- The reader's library, newest purchase first: each purchase of an episode,
--- and each purchase of a volume or of a series bundle as one row of its own.
+-- and each purchase of a volume, of a series bundle, or of a pack of coins as
+-- one row of its own.
 -- Publication is not re-checked, so a purchase outlives the episode or the
 -- volume being taken down, but the calling surface is: an episode that surface
 -- may not show, or a volume or a bundle of a series it may not show, is left
@@ -151,10 +152,15 @@ SELECT p.id,
         WHERE sbe.tenant_id = b.tenant_id
             AND sbe.series_bundle_id = b.id
     )::integer AS series_bundle_episode_count,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
+    -- Empty on a purchase of a pack, which is of no series.
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title,
-    str.locale AS series_title_locale
+    COALESCE(str.title, '')::text AS series_title,
+    COALESCE(str.locale, '')::text AS series_title_locale
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
@@ -165,14 +171,21 @@ FROM purchases p
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-    JOIN series s ON s.tenant_id = p.tenant_id
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    LEFT JOIN series s ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
+    LEFT JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str ON TRUE
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = sqlc.arg('user_id')::uuid
     AND (
-        EXISTS (
+        -- A pack is of no series, and its coins are spent on whatever surface
+        -- the reader reads on, so every surface lists it.
+        p.coin_pack_id IS NOT NULL
+        OR EXISTS (
             SELECT 1
             FROM episode_surfaces es
             WHERE es.episode_id = e.id
@@ -237,10 +250,15 @@ SELECT p.id,
         WHERE sbe.tenant_id = b.tenant_id
             AND sbe.series_bundle_id = b.id
     )::integer AS series_bundle_episode_count,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
+    -- Empty on a purchase of a pack, which is of no series.
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title,
-    str.locale AS series_title_locale
+    COALESCE(str.title, '')::text AS series_title,
+    COALESCE(str.locale, '')::text AS series_title_locale
 FROM purchases p
     LEFT JOIN coin_transactions ct ON ct.tenant_id = p.tenant_id
     AND ct.purchase_id = p.id
@@ -251,14 +269,21 @@ FROM purchases p
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-    JOIN series s ON s.tenant_id = p.tenant_id
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    LEFT JOIN series s ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
+    LEFT JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str ON TRUE
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = sqlc.arg('user_id')::uuid
     AND (
-        EXISTS (
+        -- A pack is of no series, and its coins are spent on whatever surface
+        -- the reader reads on, so every surface lists it.
+        p.coin_pack_id IS NOT NULL
+        OR EXISTS (
             SELECT 1
             FROM episode_surfaces es
             WHERE es.episode_id = e.id
@@ -342,9 +367,9 @@ SELECT
     p.purchased_at,
     p.expires_at,
     p.is_test,
-    -- What was bought: an episode, a volume, or a series bundle. The title of
-    -- each of the others is empty, and the episode count is that of the
-    -- bundle, 0 on any other purchase.
+    -- What was bought: an episode, a volume, a series bundle, or a pack of
+    -- coins. The title of each of the others is empty, and the episode count
+    -- is that of the bundle, 0 on any other purchase.
     COALESCE(et.title, '')::text AS episode_title,
     COALESCE(v.title, '')::text AS volume_title,
     (
@@ -353,7 +378,14 @@ SELECT
         WHERE sbe.tenant_id = p.tenant_id
             AND sbe.series_bundle_id = p.series_bundle_id
     )::integer AS series_bundle_episode_count,
-    str.title AS series_title,
+    -- The pack bought, as the reader was shown it, and when its coins expire,
+    -- 0 and NULL on any other purchase. A pack is of no series, so its
+    -- series title is empty.
+    COALESCE(cpp.coins, 0)::integer AS coin_pack_coins,
+    COALESCE(cpp.bonus_coins, 0)::integer AS coin_pack_bonus_coins,
+    g.expires_at AS coins_expire_at,
+    COALESCE(cn.name, '')::text AS coin_name,
+    COALESCE(str.title, '')::text AS series_title,
     u.email AS reader_email
 FROM purchases p
 LEFT JOIN episodes e
@@ -366,10 +398,18 @@ LEFT JOIN volumes v
 LEFT JOIN series_bundles b
     ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-JOIN series s
+LEFT JOIN coin_pack_purchases cpp
+    ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+LEFT JOIN coin_grants g
+    ON g.tenant_id = p.tenant_id
+    AND g.purchase_id = p.id
+LEFT JOIN LATERAL tenant_coin_name_for(p.tenant_id, '') cn
+    ON p.coin_pack_id IS NOT NULL
+LEFT JOIN series s
     ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-CROSS JOIN LATERAL series_translation_for(s.id, '') str
+LEFT JOIN LATERAL series_translation_for(s.id, '') str ON TRUE
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
@@ -879,8 +919,8 @@ LIMIT sqlc.arg('limit');
 
 -- name: ListPurchasesForTenantByIDs :many
 -- What the console shows of each purchase named, in no particular order: the
--- episode bought, the volume, or the series bundle, and the series of any of
--- them. The
+-- episode bought, the volume, the series bundle, or the pack of coins, and the
+-- series of any of the first three. The
 -- buyer is joined within the tenant, so the purchase of a reader who has since
 -- deleted their account, which keeps no user, answers no buyer rather than no
 -- row.
@@ -901,8 +941,16 @@ SELECT p.id,
         WHERE sbe.tenant_id = b.tenant_id
             AND sbe.series_bundle_id = b.id
     )::integer AS series_bundle_episode_count,
+    p.coin_pack_id,
+    cp.public_id AS coin_pack_public_id,
+    cpp.coins AS coin_pack_coins,
+    cpp.bonus_coins AS coin_pack_bonus_coins,
+    -- The tenant's word for its coins in its default locale, empty on any
+    -- other purchase.
+    COALESCE(cn.name, '')::text AS coin_name,
+    -- Empty on a purchase of a pack, which is of no series.
     s.public_id AS series_public_id,
-    str.title AS series_title,
+    COALESCE(str.title, '')::text AS series_title,
     u.public_id AS reader_public_id,
     u.name AS reader_name,
     u.email AS reader_email,
@@ -927,9 +975,14 @@ FROM purchases p
     AND v.id = p.volume_id
     LEFT JOIN series_bundles b ON b.tenant_id = p.tenant_id
     AND b.id = p.series_bundle_id
-    JOIN series s ON s.tenant_id = p.tenant_id
+    LEFT JOIN tenant_coin_packs cp ON cp.tenant_id = p.tenant_id
+    AND cp.id = p.coin_pack_id
+    LEFT JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
+    AND cpp.purchase_id = p.id
+    LEFT JOIN LATERAL tenant_coin_name_for(p.tenant_id, '') cn ON p.coin_pack_id IS NOT NULL
+    LEFT JOIN series s ON s.tenant_id = p.tenant_id
     AND s.id = COALESCE(e.series_id, v.series_id, b.series_id)
-    CROSS JOIN LATERAL series_translation_for(s.id, '') str
+    LEFT JOIN LATERAL series_translation_for(s.id, '') str ON TRUE
     LEFT JOIN users u ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')

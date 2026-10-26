@@ -40,7 +40,14 @@ const (
 	MetadataVolumeID = "volume_id"
 	// MetadataSeriesBundleID is present, in place of MetadataEpisodeID, on a
 	// checkout of the rest of a series.
-	MetadataSeriesBundleID     = "series_bundle_id"
+	MetadataSeriesBundleID = "series_bundle_id"
+	// MetadataCoinPackID is present, in place of MetadataEpisodeID, on a
+	// checkout of a pack of coins, and so are MetadataCoins,
+	// MetadataBonusCoins, and MetadataCoinExpiryDays, what the pack grants.
+	MetadataCoinPackID         = "coin_pack_id"
+	MetadataCoins              = "coins"
+	MetadataBonusCoins         = "bonus_coins"
+	MetadataCoinExpiryDays     = "coin_expiry_days"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
 	// MetadataKind is absent on a checkout started before an episode had
@@ -150,14 +157,17 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 	}
 	// The reader may enter one of the tenant's promotion codes on the checkout
 	// page, except on a checkout that takes a discount of its own: Stripe
-	// takes one or the other on a session, never both.
-	if req.Discount != nil {
+	// takes one or the other on a session, never both. Nor on a checkout of
+	// a pack, whose coins are worth what was paid for them: a code would grant
+	// them for less, or, taking off the whole price, for nothing.
+	switch {
+	case req.Discount != nil:
 		couponID, err := createDiscountCoupon(ctx, client, currency, *req.Discount, req.IdempotencyKey)
 		if err != nil {
 			return "", err
 		}
 		params.Discounts = []*stripego.CheckoutSessionCreateDiscountParams{{Coupon: stripego.String(couponID)}}
-	} else {
+	case req.Purchase.CoinPackID == uuid.Nil:
 		params.AllowPromotionCodes = stripego.Bool(true)
 	}
 	params.SetIdempotencyKey(req.IdempotencyKey)
@@ -223,6 +233,11 @@ func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 		metadata[MetadataVolumeID] = purchase.VolumeID.String()
 	case purchase.SeriesBundleID != uuid.Nil:
 		metadata[MetadataSeriesBundleID] = purchase.SeriesBundleID.String()
+	case purchase.CoinPackID != uuid.Nil:
+		metadata[MetadataCoinPackID] = purchase.CoinPackID.String()
+		metadata[MetadataCoins] = strconv.FormatInt(int64(purchase.Coins), 10)
+		metadata[MetadataBonusCoins] = strconv.FormatInt(int64(purchase.BonusCoins), 10)
+		metadata[MetadataCoinExpiryDays] = strconv.FormatInt(int64(purchase.CoinExpiryDays), 10)
 	default:
 		metadata[MetadataEpisodeID] = purchase.EpisodeID.String()
 	}
@@ -465,6 +480,9 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 		return nil, errors.New("checkout session has no ID")
 	}
 	promotionCodeID := sessionPromotionCode(&session)
+	if purchase.CoinPackID != uuid.Nil && promotionCodeID != "" {
+		return nil, fmt.Errorf("%w: a checkout of a coin pack takes no promotion code", paymentprovider.ErrMalformedNotification)
+	}
 	amountPaid, err := paidAmount(&session, purchase.Price, promotionCodeID)
 	if err != nil {
 		return nil, err
@@ -553,19 +571,22 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 	if err != nil {
 		return paymentprovider.Purchase{}, err
 	}
-	// A checkout sells one of an episode, a volume, and a series bundle, and
-	// one started before volumes existed names an episode.
-	var episodeID, volumeID, seriesBundleID uuid.UUID
+	// A checkout sells one of an episode, a volume, a series bundle, and a
+	// pack of coins, and one started before volumes existed names an episode.
+	var episodeID, volumeID, seriesBundleID, coinPackID uuid.UUID
 	_, sellsVolume := metadata[MetadataVolumeID]
 	_, sellsSeriesBundle := metadata[MetadataSeriesBundleID]
+	_, sellsCoinPack := metadata[MetadataCoinPackID]
 	_, sellsEpisode := metadata[MetadataEpisodeID]
 	switch {
-	case sellsVolume && (sellsEpisode || sellsSeriesBundle), sellsSeriesBundle && sellsEpisode:
-		return paymentprovider.Purchase{}, errors.New("metadata names more than one of an episode, a volume, and a series bundle")
+	case countTrue(sellsVolume, sellsSeriesBundle, sellsCoinPack, sellsEpisode) > 1:
+		return paymentprovider.Purchase{}, errors.New("metadata names more than one of an episode, a volume, a series bundle, and a coin pack")
 	case sellsVolume:
 		volumeID, err = parseID(MetadataVolumeID)
 	case sellsSeriesBundle:
 		seriesBundleID, err = parseID(MetadataSeriesBundleID)
+	case sellsCoinPack:
+		coinPackID, err = parseID(MetadataCoinPackID)
 	default:
 		episodeID, err = parseID(MetadataEpisodeID)
 	}
@@ -597,14 +618,50 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 			return paymentprovider.Purchase{}, fmt.Errorf("invalid series bundle metadata: %w", err)
 		}
 	}
+	var coins, bonusCoins, expiryDays int64
+	if sellsCoinPack {
+		parseCount := func(key string) (int64, error) {
+			n, err := strconv.ParseInt(metadata[key], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("invalid %s metadata: %w", key, err)
+			}
+			return n, nil
+		}
+		if coins, err = parseCount(MetadataCoins); err != nil {
+			return paymentprovider.Purchase{}, err
+		}
+		if bonusCoins, err = parseCount(MetadataBonusCoins); err != nil {
+			return paymentprovider.Purchase{}, err
+		}
+		if expiryDays, err = parseCount(MetadataCoinExpiryDays); err != nil {
+			return paymentprovider.Purchase{}, err
+		}
+		if err := paymentprovider.CheckCoinPackSale(kind, readingPeriodHours, coins, bonusCoins, expiryDays); err != nil {
+			return paymentprovider.Purchase{}, fmt.Errorf("invalid coin pack metadata: %w", err)
+		}
+	}
 	return paymentprovider.Purchase{
 		TenantID:           tenantID,
 		ReaderID:           userID,
 		EpisodeID:          episodeID,
 		VolumeID:           volumeID,
 		SeriesBundleID:     seriesBundleID,
+		CoinPackID:         coinPackID,
+		Coins:              int32(coins),
+		BonusCoins:         int32(bonusCoins),
+		CoinExpiryDays:     int32(expiryDays),
 		Kind:               kind,
 		Price:              int32(price),
 		ReadingPeriodHours: int32(readingPeriodHours),
 	}, nil
+}
+
+func countTrue(values ...bool) int {
+	n := 0
+	for _, value := range values {
+		if value {
+			n++
+		}
+	}
+	return n
 }

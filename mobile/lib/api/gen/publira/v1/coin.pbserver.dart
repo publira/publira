@@ -29,6 +29,8 @@ abstract class CoinServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $2.ListCoinTransactionsRequest request);
   $async.Future<$2.PayEpisodeWithCoinsResponse> payEpisodeWithCoins(
       $pb.ServerContext ctx, $2.PayEpisodeWithCoinsRequest request);
+  $async.Future<$2.StartCoinPackCheckoutResponse> startCoinPackCheckout(
+      $pb.ServerContext ctx, $2.StartCoinPackCheckoutRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -40,6 +42,8 @@ abstract class CoinServiceBase extends $pb.GeneratedService {
         return $2.ListCoinTransactionsRequest();
       case 'PayEpisodeWithCoins':
         return $2.PayEpisodeWithCoinsRequest();
+      case 'StartCoinPackCheckout':
+        return $2.StartCoinPackCheckoutRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -58,6 +62,9 @@ abstract class CoinServiceBase extends $pb.GeneratedService {
       case 'PayEpisodeWithCoins':
         return payEpisodeWithCoins(
             ctx, request as $2.PayEpisodeWithCoinsRequest);
+      case 'StartCoinPackCheckout':
+        return startCoinPackCheckout(
+            ctx, request as $2.StartCoinPackCheckoutRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/coin.proto.
  */
 export const file_publira_v1_coin: GenFile = /*@__PURE__*/
-  fileDesc("ChVwdWJsaXJhL3YxL2NvaW4ucHJvdG8SCnB1YmxpcmEudjEiWgoPQ29pbkRpc2Nsb3N1cmVzEhMKC2lzc3Vlcl9uYW1lGAEgASgJEhEKCXRlcm1zX3VybBgCIAEoCRIPCgdjb250YWN0GAMgASgJEg4KBm5vdGljZRgEIAEoCSJuCghDb2luUGFjaxIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDQoFY29pbnMYAyABKAUSEwoLYm9udXNfY29pbnMYBCABKAUSDQoFcHJpY2UYBSABKAUSEAoIY3VycmVuY3kYBiABKAkiygEKDENvaW5TZXR0aW5ncxIRCgljb2luX25hbWUYASABKAkSGAoQY29pbl91bml0X2Ftb3VudBgCIAEoBRIQCghjdXJyZW5jeRgDIAEoCRITCgtleHBpcnlfZGF5cxgEIAEoBRIPCgdzZWxsaW5nGAUgASgIEiMKBXBhY2tzGAYgAygLMhQucHVibGlyYS52MS5Db2luUGFjaxIwCgtkaXNjbG9zdXJlcxgHIAEoCzIbLnB1YmxpcmEudjEuQ29pbkRpc2Nsb3N1cmVzIlkKFkdldENvaW5TZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBmxvY2FsZRgCIAEoCSJFChdHZXRDb2luU2V0dGluZ3NSZXNwb25zZRIqCghzZXR0aW5ncxgBIAEoCzIYLnB1YmxpcmEudjEuQ29pblNldHRpbmdzImgKC0NvaW5CYWxhbmNlEg0KBWNvaW5zGAEgASgDEhEKCWNvaW5fbmFtZRgCIAEoCRIZChFuZWFyZXN0X2V4cGlyeV9hdBgDIAEoCRIcChRuZWFyZXN0X2V4cGlyeV9jb2lucxgEIAEoAyJYChVHZXRDb2luQmFsYW5jZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBmxvY2FsZRgCIAEoCSJCChZHZXRDb2luQmFsYW5jZVJlc3BvbnNlEigKB2JhbGFuY2UYASABKAsyFy5wdWJsaXJhLnYxLkNvaW5CYWxhbmNlIu4BCg9Db2luVHJhbnNhY3Rpb24SCgoCaWQYASABKAkSLQoEa2luZBgCIAEoDjIfLnB1YmxpcmEudjEuQ29pblRyYW5zYWN0aW9uS2luZBINCgVjb2lucxgDIAEoBRISCgpjcmVhdGVkX2F0GAQgASgJEhIKCmV4cGlyZXNfYXQYBSABKAkSEwoLcHVyY2hhc2VfaWQYBiABKAkSKgoHZXBpc29kZRgHIAEoCzIZLnB1YmxpcmEudHlwZXMudjEuRXBpc29kZRIoCgZzZXJpZXMYCCABKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyKuAQobTGlzdENvaW5UcmFuc2FjdGlvbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCRIwCgdzdXJmYWNlGAQgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlEg4KBmxvY2FsZRgFIAEoCSKQAQocTGlzdENvaW5UcmFuc2FjdGlvbnNSZXNwb25zZRIxCgx0cmFuc2FjdGlvbnMYASADKAsyGy5wdWJsaXJhLnYxLkNvaW5UcmFuc2FjdGlvbhIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJEhEKCWNvaW5fbmFtZRgEIAEoCSL5AQoaUGF5RXBpc29kZVdpdGhDb2luc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCmVwaXNvZGVfaWQYAiABKAkSLAoEa2luZBgDIAEoDjIeLnB1YmxpcmEudHlwZXMudjEuUHVyY2hhc2VLaW5kEg0KBWNvaW5zGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCRIwCgdzdXJmYWNlGAYgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlEg4KBmxvY2FsZRgHIAEoCSJxChtQYXlFcGlzb2RlV2l0aENvaW5zUmVzcG9uc2USKAoIcHVyY2hhc2UYASABKAsyFi5wdWJsaXJhLnYxLk15UHVyY2hhc2USKAoHYmFsYW5jZRgCIAEoCzIXLnB1YmxpcmEudjEuQ29pbkJhbGFuY2UqxgEKE0NvaW5UcmFuc2FjdGlvbktpbmQSJQohQ09JTl9UUkFOU0FDVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASHwobQ09JTl9UUkFOU0FDVElPTl9LSU5EX0dSQU5UEAESHwobQ09JTl9UUkFOU0FDVElPTl9LSU5EX1NQRU5EEAISJAogQ09JTl9UUkFOU0FDVElPTl9LSU5EX1JFVk9DQVRJT04QAxIgChxDT0lOX1RSQU5TQUNUSU9OX0tJTkRfRVhQSVJZEAQynQMKC0NvaW5TZXJ2aWNlElwKD0dldENvaW5TZXR0aW5ncxIiLnB1YmxpcmEudjEuR2V0Q29pblNldHRpbmdzUmVxdWVzdBojLnB1YmxpcmEudjEuR2V0Q29pblNldHRpbmdzUmVzcG9uc2UiABJZCg5HZXRDb2luQmFsYW5jZRIhLnB1YmxpcmEudjEuR2V0Q29pbkJhbGFuY2VSZXF1ZXN0GiIucHVibGlyYS52MS5HZXRDb2luQmFsYW5jZVJlc3BvbnNlIgASawoUTGlzdENvaW5UcmFuc2FjdGlvbnMSJy5wdWJsaXJhLnYxLkxpc3RDb2luVHJhbnNhY3Rpb25zUmVxdWVzdBooLnB1YmxpcmEudjEuTGlzdENvaW5UcmFuc2FjdGlvbnNSZXNwb25zZSIAEmgKE1BheUVwaXNvZGVXaXRoQ29pbnMSJi5wdWJsaXJhLnYxLlBheUVwaXNvZGVXaXRoQ29pbnNSZXF1ZXN0GicucHVibGlyYS52MS5QYXlFcGlzb2RlV2l0aENvaW5zUmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types, file_publira_v1_catalog]);
+  fileDesc("ChVwdWJsaXJhL3YxL2NvaW4ucHJvdG8SCnB1YmxpcmEudjEiWgoPQ29pbkRpc2Nsb3N1cmVzEhMKC2lzc3Vlcl9uYW1lGAEgASgJEhEKCXRlcm1zX3VybBgCIAEoCRIPCgdjb250YWN0GAMgASgJEg4KBm5vdGljZRgEIAEoCSJuCghDb2luUGFjaxIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDQoFY29pbnMYAyABKAUSEwoLYm9udXNfY29pbnMYBCABKAUSDQoFcHJpY2UYBSABKAUSEAoIY3VycmVuY3kYBiABKAkiygEKDENvaW5TZXR0aW5ncxIRCgljb2luX25hbWUYASABKAkSGAoQY29pbl91bml0X2Ftb3VudBgCIAEoBRIQCghjdXJyZW5jeRgDIAEoCRITCgtleHBpcnlfZGF5cxgEIAEoBRIPCgdzZWxsaW5nGAUgASgIEiMKBXBhY2tzGAYgAygLMhQucHVibGlyYS52MS5Db2luUGFjaxIwCgtkaXNjbG9zdXJlcxgHIAEoCzIbLnB1YmxpcmEudjEuQ29pbkRpc2Nsb3N1cmVzIlkKFkdldENvaW5TZXR0aW5nc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBmxvY2FsZRgCIAEoCSJFChdHZXRDb2luU2V0dGluZ3NSZXNwb25zZRIqCghzZXR0aW5ncxgBIAEoCzIYLnB1YmxpcmEudjEuQ29pblNldHRpbmdzIoEBCgtDb2luQmFsYW5jZRINCgVjb2lucxgBIAEoAxIRCgljb2luX25hbWUYAiABKAkSGQoRbmVhcmVzdF9leHBpcnlfYXQYAyABKAkSHAoUbmVhcmVzdF9leHBpcnlfY29pbnMYBCABKAMSFwoPc2hvcnRmYWxsX2NvaW5zGAUgASgDIlgKFUdldENvaW5CYWxhbmNlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDgoGbG9jYWxlGAIgASgJIkIKFkdldENvaW5CYWxhbmNlUmVzcG9uc2USKAoHYmFsYW5jZRgBIAEoCzIXLnB1YmxpcmEudjEuQ29pbkJhbGFuY2Ui7gEKD0NvaW5UcmFuc2FjdGlvbhIKCgJpZBgBIAEoCRItCgRraW5kGAIgASgOMh8ucHVibGlyYS52MS5Db2luVHJhbnNhY3Rpb25LaW5kEg0KBWNvaW5zGAMgASgFEhIKCmNyZWF0ZWRfYXQYBCABKAkSEgoKZXhwaXJlc19hdBgFIAEoCRITCgtwdXJjaGFzZV9pZBgGIAEoCRIqCgdlcGlzb2RlGAcgASgLMhkucHVibGlyYS50eXBlcy52MS5FcGlzb2RlEigKBnNlcmllcxgIIAEoCzIYLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzIq4BChtMaXN0Q29pblRyYW5zYWN0aW9uc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAMgASgJEjAKB3N1cmZhY2UYBCABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USDgoGbG9jYWxlGAUgASgJIpABChxMaXN0Q29pblRyYW5zYWN0aW9uc1Jlc3BvbnNlEjEKDHRyYW5zYWN0aW9ucxgBIAMoCzIbLnB1YmxpcmEudjEuQ29pblRyYW5zYWN0aW9uEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkSEQoJY29pbl9uYW1lGAQgASgJIvkBChpQYXlFcGlzb2RlV2l0aENvaW5zUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKZXBpc29kZV9pZBgCIAEoCRIsCgRraW5kGAMgASgOMh4ucHVibGlyYS50eXBlcy52MS5QdXJjaGFzZUtpbmQSDQoFY29pbnMYBCABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEjAKB3N1cmZhY2UYBiABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USDgoGbG9jYWxlGAcgASgJInEKG1BheUVwaXNvZGVXaXRoQ29pbnNSZXNwb25zZRIoCghwdXJjaGFzZRgBIAEoCzIWLnB1YmxpcmEudjEuTXlQdXJjaGFzZRIoCgdiYWxhbmNlGAIgASgLMhcucHVibGlyYS52MS5Db2luQmFsYW5jZSKQAQocU3RhcnRDb2luUGFja0NoZWNrb3V0UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSFAoMY29pbl9wYWNrX2lkGAIgASgJEhkKEXJldHVybl9lcGlzb2RlX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCSI1Ch1TdGFydENvaW5QYWNrQ2hlY2tvdXRSZXNwb25zZRIUCgxjaGVja291dF91cmwYASABKAkqmwIKE0NvaW5UcmFuc2FjdGlvbktpbmQSJQohQ09JTl9UUkFOU0FDVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASHwobQ09JTl9UUkFOU0FDVElPTl9LSU5EX0dSQU5UEAESHwobQ09JTl9UUkFOU0FDVElPTl9LSU5EX1NQRU5EEAISJAogQ09JTl9UUkFOU0FDVElPTl9LSU5EX1JFVk9DQVRJT04QAxIgChxDT0lOX1RSQU5TQUNUSU9OX0tJTkRfRVhQSVJZEAQSIwofQ09JTl9UUkFOU0FDVElPTl9LSU5EX1NIT1JURkFMTBAFEi4KKkNPSU5fVFJBTlNBQ1RJT05fS0lORF9TSE9SVEZBTExfU0VUVExFTUVOVBAGMo0ECgtDb2luU2VydmljZRJcCg9HZXRDb2luU2V0dGluZ3MSIi5wdWJsaXJhLnYxLkdldENvaW5TZXR0aW5nc1JlcXVlc3QaIy5wdWJsaXJhLnYxLkdldENvaW5TZXR0aW5nc1Jlc3BvbnNlIgASWQoOR2V0Q29pbkJhbGFuY2USIS5wdWJsaXJhLnYxLkdldENvaW5CYWxhbmNlUmVxdWVzdBoiLnB1YmxpcmEudjEuR2V0Q29pbkJhbGFuY2VSZXNwb25zZSIAEmsKFExpc3RDb2luVHJhbnNhY3Rpb25zEicucHVibGlyYS52MS5MaXN0Q29pblRyYW5zYWN0aW9uc1JlcXVlc3QaKC5wdWJsaXJhLnYxLkxpc3RDb2luVHJhbnNhY3Rpb25zUmVzcG9uc2UiABJoChNQYXlFcGlzb2RlV2l0aENvaW5zEiYucHVibGlyYS52MS5QYXlFcGlzb2RlV2l0aENvaW5zUmVxdWVzdBonLnB1YmxpcmEudjEuUGF5RXBpc29kZVdpdGhDb2luc1Jlc3BvbnNlIgASbgoVU3RhcnRDb2luUGFja0NoZWNrb3V0EigucHVibGlyYS52MS5TdGFydENvaW5QYWNrQ2hlY2tvdXRSZXF1ZXN0GikucHVibGlyYS52MS5TdGFydENvaW5QYWNrQ2hlY2tvdXRSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types, file_publira_v1_catalog]);
 
 /**
  * What a prepaid instrument has to disclose wherever its coins are sold: who
@@ -252,6 +252,16 @@ export type CoinBalance = Message<"publira.v1.CoinBalance"> & {
    * @generated from field: int64 nearest_expiry_coins = 4;
    */
   nearestExpiryCoins: bigint;
+
+  /**
+   * The coins the reader owes: coins of a pack that had been spent before the
+   * pack was refunded or disputed. They are taken out of the reader's next
+   * grant as it is made, before any coin of it can be spent, and coins is
+   * never reduced for them. 0 while the reader owes nothing.
+   *
+   * @generated from field: int64 shortfall_coins = 5;
+   */
+  shortfallCoins: bigint;
 };
 
 /**
@@ -347,7 +357,9 @@ export type CoinTransaction = Message<"publira.v1.CoinTransaction"> & {
    * purchase, titled in the request's locale. The episode carries the id, the
    * public_id, the title, the locale, and the order_index, and the series the
    * id, the public_id, the title, and the locale. Both are left out for an
-   * episode the calling surface may not show; the purchase is not.
+   * episode the calling surface may not show; the purchase is not. On a
+   * grant, a revocation, an expiry, a shortfall, or a settlement of coins a
+   * pack granted: the purchase of that pack, and no episode or series.
    *
    * @generated from field: string purchase_id = 6;
    */
@@ -573,6 +585,82 @@ export const PayEpisodeWithCoinsResponseSchema: GenMessage<PayEpisodeWithCoinsRe
   messageDesc(file_publira_v1_coin, 12);
 
 /**
+ * Opens a checkout of a pack through the tenant's payment provider, on the
+ * web, for the signed-in reader, and answers the URL to send them to. The
+ * checkout carries the pack's price, its coins and bonus coins, and the
+ * tenant's expiry_days as they are now, and the purchase grants on those
+ * terms once the provider's notification confirms the payment; coming back
+ * from the checkout page grants nothing by itself. The coins expire
+ * expiry_days after the purchase is recorded.
+ *
+ * The app buys a pack through its store instead (StartStorePurchase with
+ * coin_pack_id), as Apple and Google require, so this takes no client.
+ *
+ * A pack that is not on sale, retired, or another tenant's is not_found. A
+ * tenant that is not selling packs, one with no enabled payment provider, and
+ * one whose site has no domain are failed_precondition.
+ *
+ * @generated from message publira.v1.StartCoinPackCheckoutRequest
+ */
+export type StartCoinPackCheckoutRequest = Message<"publira.v1.StartCoinPackCheckoutRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The pack to buy (CoinPack.id). Required.
+   *
+   * @generated from field: string coin_pack_id = 2;
+   */
+  coinPackId: string;
+
+  /**
+   * An episode to send the reader back to once the checkout is over, the one
+   * they were short of coins for, with `checkout` (`success` or `cancelled`)
+   * and `coin_pack` (the pack's public_id) in the query. One the storefront
+   * may not show is invalid_argument with a field violation on
+   * return_episode_id. Empty sends them to `/my/coins` on the tenant's site,
+   * with the same query.
+   *
+   * @generated from field: string return_episode_id = 3;
+   */
+  returnEpisodeId: string;
+
+  /**
+   * The reader's locale, which the checkout page names the pack and the
+   * tenant's coin in. Empty means the tenant's default locale.
+   *
+   * @generated from field: string locale = 4;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message publira.v1.StartCoinPackCheckoutRequest.
+ * Use `create(StartCoinPackCheckoutRequestSchema)` to create a new message.
+ */
+export const StartCoinPackCheckoutRequestSchema: GenMessage<StartCoinPackCheckoutRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_coin, 13);
+
+/**
+ * @generated from message publira.v1.StartCoinPackCheckoutResponse
+ */
+export type StartCoinPackCheckoutResponse = Message<"publira.v1.StartCoinPackCheckoutResponse"> & {
+  /**
+   * @generated from field: string checkout_url = 1;
+   */
+  checkoutUrl: string;
+};
+
+/**
+ * Describes the message publira.v1.StartCoinPackCheckoutResponse.
+ * Use `create(StartCoinPackCheckoutResponseSchema)` to create a new message.
+ */
+export const StartCoinPackCheckoutResponseSchema: GenMessage<StartCoinPackCheckoutResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_coin, 14);
+
+/**
  * @generated from enum publira.v1.CoinTransactionKind
  */
 export enum CoinTransactionKind {
@@ -610,6 +698,22 @@ export enum CoinTransactionKind {
    * @generated from enum value: COIN_TRANSACTION_KIND_EXPIRY = 4;
    */
   EXPIRY = 4,
+
+  /**
+   * Coins of a refunded or disputed pack that had already been spent, which
+   * the reader now owes. It moves no coins: what it records is taken out of
+   * the reader's next grants, each as a COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT.
+   *
+   * @generated from enum value: COIN_TRANSACTION_KIND_SHORTFALL = 5;
+   */
+  SHORTFALL = 5,
+
+  /**
+   * Coins taken out of a grant as it was made, to pay what the reader owed.
+   *
+   * @generated from enum value: COIN_TRANSACTION_KIND_SHORTFALL_SETTLEMENT = 6;
+   */
+  SHORTFALL_SETTLEMENT = 6,
 }
 
 /**
@@ -619,12 +723,12 @@ export const CoinTransactionKindSchema: GenEnum<CoinTransactionKind> = /*@__PURE
   enumDesc(file_publira_v1_coin, 0);
 
 /**
- * A tenant's coins: what they are, how many a reader holds, and spending them
- * on an episode. Every RPC here is failed_precondition with the ErrorInfo
- * reason COINS_UNAVAILABLE while the platform does not allow tenant coins or
- * the tenant has not turned its coins on, and a client answered that shows
- * nothing about coins. GetCoinSettings takes optional authentication; the
- * others answer the signed-in reader alone.
+ * A tenant's coins: what they are, how many a reader holds, buying them, and
+ * spending them on an episode. Every RPC here is failed_precondition with the
+ * ErrorInfo reason COINS_UNAVAILABLE while the platform does not allow tenant
+ * coins or the tenant has not turned its coins on, and a client answered that
+ * shows nothing about coins. GetCoinSettings takes optional authentication;
+ * the others answer the signed-in reader alone.
  *
  * @generated from service publira.v1.CoinService
  */
@@ -660,6 +764,14 @@ export const CoinService: GenService<{
     methodKind: "unary";
     input: typeof PayEpisodeWithCoinsRequestSchema;
     output: typeof PayEpisodeWithCoinsResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.CoinService.StartCoinPackCheckout
+   */
+  startCoinPackCheckout: {
+    methodKind: "unary";
+    input: typeof StartCoinPackCheckoutRequestSchema;
+    output: typeof StartCoinPackCheckoutResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_coin, 0);

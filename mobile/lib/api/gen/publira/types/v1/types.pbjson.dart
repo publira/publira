@@ -1200,6 +1200,23 @@ final $typed_data.Uint8List seriesBundleDescriptor = $convert.base64Decode(
     'CgxTZXJpZXNCdW5kbGUSDgoCaWQYASABKAlSAmlkEiMKDWVwaXNvZGVfY291bnQYAiABKAVSDG'
     'VwaXNvZGVDb3VudBIpChBkaXNjb3VudF9wZXJjZW50GAMgASgFUg9kaXNjb3VudFBlcmNlbnQ=');
 
+@$core.Deprecated('Use purchasedCoinPackDescriptor instead')
+const PurchasedCoinPack$json = {
+  '1': 'PurchasedCoinPack',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'public_id', '3': 2, '4': 1, '5': 9, '10': 'publicId'},
+    {'1': 'coins', '3': 3, '4': 1, '5': 5, '10': 'coins'},
+    {'1': 'bonus_coins', '3': 4, '4': 1, '5': 5, '10': 'bonusCoins'},
+  ],
+};
+
+/// Descriptor for `PurchasedCoinPack`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List purchasedCoinPackDescriptor = $convert.base64Decode(
+    'ChFQdXJjaGFzZWRDb2luUGFjaxIOCgJpZBgBIAEoCVICaWQSGwoJcHVibGljX2lkGAIgASgJUg'
+    'hwdWJsaWNJZBIUCgVjb2lucxgDIAEoBVIFY29pbnMSHwoLYm9udXNfY29pbnMYBCABKAVSCmJv'
+    'bnVzQ29pbnM=');
+
 @$core.Deprecated('Use readerIconPresetDescriptor instead')
 const ReaderIconPreset$json = {
   '1': 'ReaderIconPreset',
