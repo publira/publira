@@ -5,6 +5,7 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 
+import { CoinsSection } from "./_components/coins-section";
 import {
   FollowUpdatesSection,
   FollowUpdatesSectionSkeleton,
@@ -34,7 +35,8 @@ const CREATORS_HEADING_ID = "creators-heading";
  * My Page opens with what has arrived in what the reader follows, then what to
  * read next, and only then with what they have already read. The reader's plan
  * sits above all of them, because it is where a reader coming back from a
- * plan's checkout or its billing portal lands.
+ * plan's checkout or its billing portal lands, and the coins they hold sit
+ * beside it, as the other thing they have paid the site for in advance.
  *
  * Nothing here tells the reader who they are. Their display name is in the
  * account menu this page is reached from, and everything they can change about
@@ -97,6 +99,20 @@ const MyPage = ({ searchParams }: MyPageProps) => (
     >
       <Suspense fallback={null}>
         <SubscriptionSection />
+      </Suspense>
+    </SectionErrorBoundary>
+
+    {/* No skeleton, for the plan's reason: on a site that offers no coins
+      the section renders nothing. */}
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="storefront.coins.balance_error" />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <CoinsSection />
       </Suspense>
     </SectionErrorBoundary>
 

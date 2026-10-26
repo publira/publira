@@ -189,6 +189,9 @@ describe("EpisodeComicViewer wide viewer", () => {
 });
 
 const episode: EpisodeDetail = {
+  coinName: "",
+  coinPrice: 0,
+  coinRentalPrice: 0,
   credits: [],
   id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   locale: "en",

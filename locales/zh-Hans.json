@@ -4571,6 +4571,46 @@
       "updating": "正在更新…",
       "view_series_detail": "查看系列"
     },
+    "coins": {
+      "failed": "无法加载信息。请稍后再试。",
+      "balance_failed": "无法加载您的余额。请稍后再试。",
+      "history_failed": "无法加载您的记录。请稍后再试。",
+      "issuer": "发行方",
+      "terms": "使用条款",
+      "terms_link": "查看使用条款",
+      "contact": "联系方式",
+      "balance_value": "{$count :integer}{$coin_name}",
+      "nearest_expiry": "{$count :integer}{$coin_name}将于{$date}到期。",
+      "owed": "已退款的套餐中已使用的{$count :integer}{$coin_name}将从您下次购买的套餐中扣除。",
+      "balance_error": "无法显示您的余额",
+      "balance_heading": "余额",
+      "description": "查看您持有的{$coin_name}、在售套餐以及增减记录。",
+      "packs_heading": "购买{$coin_name}",
+      "packs_not_selling": "{$coin_name}目前暂停销售。您持有的部分仍可继续使用。",
+      "packs_payments_unavailable": "本站目前无法购买。",
+      "pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含赠送{$bonus}）}}",
+      "pack_expiry": "这些{$coin_name}自购买起{$days :integer}天内可以使用。",
+      "pack_buy": "以{$price}购买",
+      "history_heading": "记录",
+      "history_error": "无法显示您的记录",
+      "history_empty_title": "暂无记录",
+      "history_empty_description": "购买或使用{$coin_name}后，记录会显示在这里。",
+      "history_pagination_aria": "记录分页",
+      "kind_grant": "增加",
+      "kind_spend": "购买剧集",
+      "kind_revocation": "因退款收回",
+      "kind_expiry": "已过期",
+      "kind_shortfall": "因退款欠缺",
+      "kind_settlement": "从新套餐中抵扣",
+      "amount_added": "+{$count :integer}{$coin_name}",
+      "amount_removed": "−{$count :integer}{$coin_name}",
+      "amount_owed": "欠缺{$count :integer}{$coin_name}",
+      "grant_expires": "有效期至{$date}",
+      "checkout_success": "感谢您的购买。付款确认后将为您增加{$coin_name}。",
+      "checkout_cancelled": "购买已取消，未产生任何扣款。",
+      "checkout_error": "无法开始购买。请稍后再试。",
+      "checkout_unavailable": "该套餐已停止销售。请查看在售套餐后再试。"
+    },
     "contact": {
       "back_to_top": "返回首页",
       "body_label": "留言内容",
@@ -4706,7 +4746,13 @@
         "wait_free_excluded": "这是最新的剧集之一，无法使用免费券阅读。",
         "wait_free_guest": "本系列等待即可免费阅读：登录后可使用免费券阅读本集。",
         "wait_free_state_failed": "无法确认你在本系列的免费券。",
-        "subscribe": "订阅"
+        "subscribe": "订阅",
+        "coin_balance": "您持有{$count :integer}{$coin_name}。",
+        "coin_short": "本话需要{$price :integer}{$coin_name}，您持有{$balance :integer}。再购买至少{$count :integer}{$coin_name}即可支付。",
+        "coin_pay": "使用{$count :integer}{$coin_name}购买",
+        "coin_rent": "租阅{$period}（{$count :integer}{$coin_name}）",
+        "coin_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{以{$price}购买{$count}{$coin_name}}}\n* {{以{$price}购买{$count}{$coin_name}（含赠送{$bonus}）}}",
+        "coin_packs": "购买{$coin_name}"
       },
       "images_empty": "本章的页面尚未发布。",
       "navigation": {
@@ -4753,7 +4799,11 @@
         "progress": "阅读进度",
         "reload": "重新加载"
       },
-      "wait_free_error": "无法使用免费券。请稍后再试。"
+      "wait_free_error": "无法使用免费券。请稍后再试。",
+      "coin_pack_success": "感谢您的购买。付款确认后将为您增加{$coin_name}，之后即可用于支付本话。",
+      "coin_pack_cancelled": "购买已取消，未产生任何扣款。",
+      "coin_price_changed": "本话的{$coin_name}价格已变更。请确认新价格后再试。",
+      "coin_pay_error": "无法使用{$coin_name}支付。请稍后再试。"
     },
     "errors": {
       "not_found_description": "该页面可能已被删除，或其URL已变更。",
@@ -4842,7 +4892,8 @@
       "shelf_heading": "书架",
       "title": "已购买",
       "open_series": "打开系列",
-      "series_bundle_title": "剩余的{$count :integer}章"
+      "series_bundle_title": "剩余的{$count :integer}章",
+      "coins_spent": "{$count :integer}{$coin_name}"
     },
     "my": {
       "creators_empty": "还没有作者署名于已发布的系列。",
@@ -4881,7 +4932,8 @@
       "manage_billing": "管理付款",
       "subscription_success": "感谢您的订阅。付款确认后，您的方案会显示在这里。",
       "billing_unavailable": "本站目前无法管理付款。",
-      "billing_error": "无法打开付款管理。请稍后再试。"
+      "billing_error": "无法打开付款管理。请稍后再试。",
+      "to_coins": "购买{$coin_name}并查看记录"
     },
     "nav": {
       "account_menu": "账户菜单",

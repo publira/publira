@@ -48,6 +48,16 @@ Once bought, the episode:
 
 A pack of the tenant's coins the reader bought on the site is listed under **Purchase history**, named by the coins it granted in the tenant's word for them, such as `1,100 Points (including 100 bonus)`, with what they paid and whether it was refunded. It opens nothing and has no reading period: the coins expire on their own. The CSV writes it with `coin_pack` in its `item` column and the coins it granted, the bonus among them, in `coins` and `bonus_coins`.
 
+### Paying with coins
+
+Where the tenant sells coins of its own — the platform allows tenants to issue them, and the tenant has turned its coins on — a paid episode is also priced in them: its price, or its campaign price while one is open, divided by what one coin is worth and rounded up, and its rental the same way. On the site, the episode tells a signed-in reader how many coins they hold, in the tenant's word for them, and when those cover the price, offers a button that spends them, such as **Pay 300 Points**. It opens the episode at once, without a payment page.
+
+A reader who holds too few is offered, beside the purchase, the smallest pack on sale that makes up the difference, with what it costs, how many days its coins can be spent, and the tenant's disclosures. Buying it sends them to the payment provider's checkout and back to the episode, where they pay with the coins once the provider's notification has granted them. Where no pack on sale is large enough, the episode links to the reader's coins page instead. An episode sold in the app alone is not paid for with coins on the site.
+
+An episode paid for with coins is a purchase like any other: it stays open for its reading period, or a rental for its rental period, and is listed under **Purchases** with the coins it took in place of a price. The CSV writes its `price` as `0` and those coins in `coins_spent`.
+
+**My Page** shows a section headed by the tenant's word for its coins, with the reader's balance and when the first of it expires, and a link to the reader's coins page. That page lists the packs on sale, each with its price and how many days its coins can be spent, with the tenant's disclosures under them, and every coin added, spent, taken back, or expired, a page at a time. A pack bought there sends the reader back to it. None of this appears while the platform or the tenant has coins off.
+
 ### The rest of a series
 
 A reader can also buy, in one checkout, every paid episode of a series they do not own yet. Above the episode list, the series page offers **Buy remaining episodes** with how many episodes that is and what they cost together, and the series screen of the tenant's app does the same. The purchase opens each of those episodes as buying it alone would, for its own reading period.

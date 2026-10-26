@@ -24,6 +24,9 @@ const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>();
 const SPREAD_START_INDEX = 1;
 
 const episode: EpisodeDetail = {
+  coinName: "",
+  coinPrice: 0,
+  coinRentalPrice: 0,
   credits: [],
   id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   locale: "en",

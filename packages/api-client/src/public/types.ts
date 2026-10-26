@@ -7,6 +7,13 @@ export type {
   NotificationPreferences,
 } from "../gen/publira/v1/auth_pb.js";
 export type {
+  CoinBalance,
+  CoinDisclosures,
+  CoinPack,
+  CoinSettings,
+  CoinTransaction,
+} from "../gen/publira/v1/coin_pb.js";
+export type {
   EpisodeComment,
   MyEpisodeComment,
 } from "../gen/publira/v1/comment_pb.js";

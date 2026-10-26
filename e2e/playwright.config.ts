@@ -7,6 +7,7 @@ import {
   WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_STOREFRONT_BASE_URL,
+  WEB_STOREFRONT_COINS_BASE_URL,
   WEB_PLATFORM_BASE_URL,
 } from "./src/urls";
 
@@ -91,6 +92,15 @@ const commentModerationSpecs = /admin\.comment-moderation\./u;
  * after the parallel projects rather than beside it.
  */
 const ageVerificationSpecs = /admin\.age-verification\./u;
+
+/**
+ * The spec that lets tenants issue coins, which `platform_policy_config` holds
+ * once for the whole deployment, and has readers spend them on its own
+ * tenant's site. `platform.tenant-coins-policy.spec.ts` turns the same
+ * allowance on and off and expects it off when it starts, so this one runs
+ * after the parallel projects rather than beside it.
+ */
+const storefrontCoinsSpecs = /storefront\.coins\./u;
 
 /**
  * The spec that makes the platform require MFA of tenant administrators, which
@@ -295,6 +305,7 @@ const mainProjects: PlaywrightTestProject[] = [
       /admin\./u,
       /platform\./u,
       processIsolatedSpecs,
+      storefrontCoinsSpecs,
       performanceSpecs,
       screenshotSpecs,
       docsScreenshotSpecs,
@@ -599,10 +610,24 @@ const exclusiveProjects: PlaywrightTestProject[] = [
       baseURL: WEB_ADMIN_AGE_VERIFICATION_BASE_URL,
     },
   },
+  // Lets tenants issue coins for as long as it runs, which the platform's
+  // coin allowance suite expects off, so it follows the last console round
+  // trip rather than running beside the parallel projects.
+  {
+    dependencies: ["admin-age-verification"],
+    fullyParallel: false,
+    name: "storefront-coins",
+    testMatch: [storefrontCoinsSpecs],
+    timeout: 120_000,
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_STOREFRONT_COINS_BASE_URL,
+    },
+  },
   // Requires MFA of every tenant administrator for as long as it runs, so it
   // follows the last console round trip rather than running beside one.
   {
-    dependencies: ["admin-age-verification"],
+    dependencies: ["storefront-coins"],
     fullyParallel: false,
     name: "admin-mfa-sign-in",
     testMatch: [adminMfaSignInSpecs],

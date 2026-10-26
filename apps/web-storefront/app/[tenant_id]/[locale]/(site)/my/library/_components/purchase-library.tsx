@@ -210,10 +210,15 @@ const PurchaseCard = async ({
         <div>
           <dt>{t("storefront.library.price")}</dt>
           <dd className="mt-1 text-foreground">
-            {formatPrice(purchase.priceAtPurchase, {
-              currency: purchase.currency,
-              locale,
-            })}
+            {purchase.coinsSpent
+              ? t("storefront.library.coins_spent", {
+                  coin_name: purchase.coinsSpent.coinName,
+                  count: purchase.coinsSpent.count,
+                })
+              : formatPrice(purchase.priceAtPurchase, {
+                  currency: purchase.currency,
+                  locale,
+                })}
           </dd>
         </div>
         {isCoinPack ? null : (

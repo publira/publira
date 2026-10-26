@@ -36,6 +36,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { CheckoutNotice } from "./_components/checkout-notice";
+import { CoinsNotice } from "./_components/coins-notice";
 import { EpisodeAccessReason } from "./_components/episode-access-reason";
 import { EpisodeBody } from "./_components/episode-body";
 import { EpisodeEndPanel } from "./_components/episode-end-panel";
@@ -408,7 +409,15 @@ const EpisodeContent = async (
             </section>
 
             <EpisodeColumn>
-              <CheckoutNotice checkout={purchaseSearchParams.checkout} />
+              <CheckoutNotice
+                checkout={purchaseSearchParams.checkout}
+                coinName={episode.coinName}
+                coinPack={purchaseSearchParams.coin_pack}
+              />
+              <CoinsNotice
+                coinName={episode.coinName}
+                coins={purchaseSearchParams.coins}
+              />
               <WaitFreeNotice waitFree={purchaseSearchParams.wait_free} />
 
               {/* A running head: which instalment this is. The number is part of

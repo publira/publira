@@ -47,6 +47,10 @@
       "types": "./dist/public/catalog.d.mts",
       "default": "./dist/public/catalog.mjs"
     },
+    "./public/coin": {
+      "types": "./dist/public/coin.d.mts",
+      "default": "./dist/public/coin.mjs"
+    },
     "./public/comment": {
       "types": "./dist/public/comment.d.mts",
       "default": "./dist/public/comment.mjs"

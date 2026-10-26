@@ -4571,6 +4571,46 @@
       "updating": "업데이트 중…",
       "view_series_detail": "시리즈 보기"
     },
+    "coins": {
+      "failed": "정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "balance_failed": "잔액을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "history_failed": "내역을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "issuer": "발행자",
+      "terms": "이용약관",
+      "terms_link": "이용약관 보기",
+      "contact": "문의처",
+      "balance_value": "{$count :integer} {$coin_name}",
+      "nearest_expiry": "{$count :integer} {$coin_name}의 유효기간은 {$date}까지입니다.",
+      "owed": "환불된 팩의 {$coin_name} 중 이미 사용한 {$count :integer} {$coin_name}은(는) 다음에 구매하는 팩에서 차감됩니다.",
+      "balance_error": "잔액을 표시하지 못했습니다",
+      "balance_heading": "잔액",
+      "description": "보유한 {$coin_name}, 판매 중인 팩, 늘고 줄어든 내역을 확인할 수 있습니다.",
+      "packs_heading": "{$coin_name} 구매",
+      "packs_not_selling": "{$coin_name}은(는) 현재 판매하지 않습니다. 보유한 분량은 계속 사용할 수 있습니다.",
+      "packs_payments_unavailable": "이 사이트에서는 현재 구매할 수 없습니다.",
+      "pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (보너스 {$bonus} 포함)}}",
+      "pack_expiry": "이 {$coin_name}은(는) 구매 후 {$days :integer}일 동안 사용할 수 있습니다.",
+      "pack_buy": "{$price}에 구매",
+      "history_heading": "내역",
+      "history_error": "내역을 표시하지 못했습니다",
+      "history_empty_title": "아직 내역이 없습니다",
+      "history_empty_description": "{$coin_name}을(를) 구매하거나 사용하면 여기에 표시됩니다.",
+      "history_pagination_aria": "내역 페이지 이동",
+      "kind_grant": "추가",
+      "kind_spend": "에피소드 구매",
+      "kind_revocation": "환불로 회수",
+      "kind_expiry": "유효기간 만료",
+      "kind_shortfall": "환불로 인한 부족분",
+      "kind_settlement": "새 팩에서 차감",
+      "amount_added": "+{$count :integer} {$coin_name}",
+      "amount_removed": "−{$count :integer} {$coin_name}",
+      "amount_owed": "부족 {$count :integer} {$coin_name}",
+      "grant_expires": "{$date}까지 유효",
+      "checkout_success": "구매해 주셔서 감사합니다. 결제가 확인되면 {$coin_name}이(가) 추가됩니다.",
+      "checkout_cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",
+      "checkout_error": "구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "checkout_unavailable": "이 팩은 판매가 종료되었습니다. 판매 중인 팩을 확인하고 다시 시도해 주세요."
+    },
     "contact": {
       "back_to_top": "첫 페이지로 돌아가기",
       "body_label": "문의 내용",
@@ -4706,7 +4746,13 @@
         "wait_free_excluded": "최신 에피소드라서 무료 이용권으로는 읽을 수 없습니다.",
         "wait_free_guest": "이 시리즈는 기다리면 무료입니다. 로그인하면 무료 이용권으로 이 에피소드를 읽을 수 있습니다.",
         "wait_free_state_failed": "이 시리즈의 무료 이용권을 확인할 수 없습니다.",
-        "subscribe": "구독하기"
+        "subscribe": "구독하기",
+        "coin_balance": "{$count :integer} {$coin_name}을(를) 보유하고 있습니다.",
+        "coin_short": "이 에피소드는 {$price :integer} {$coin_name}이며, 보유량은 {$balance :integer}입니다. {$count :integer} {$coin_name} 이상 구매하면 결제할 수 있습니다.",
+        "coin_pay": "{$count :integer} {$coin_name}(으)로 구매",
+        "coin_rent": "{$period} 대여 ({$count :integer} {$coin_name})",
+        "coin_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}을(를) {$price}에 구매}}\n* {{{$count} {$coin_name}(보너스 {$bonus} 포함)을(를) {$price}에 구매}}",
+        "coin_packs": "{$coin_name} 구매"
       },
       "images_empty": "이 에피소드의 페이지는 아직 공개되지 않았습니다.",
       "navigation": {
@@ -4753,7 +4799,11 @@
         "progress": "읽은 분량",
         "reload": "새로고침"
       },
-      "wait_free_error": "무료 이용권을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
+      "wait_free_error": "무료 이용권을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "coin_pack_success": "구매해 주셔서 감사합니다. 결제가 확인되면 {$coin_name}이(가) 추가되고, 이 에피소드 결제에 사용할 수 있습니다.",
+      "coin_pack_cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",
+      "coin_price_changed": "이 에피소드의 {$coin_name} 가격이 변경되었습니다. 새 가격을 확인하고 다시 시도해 주세요.",
+      "coin_pay_error": "{$coin_name}(으)로 결제하지 못했습니다. 잠시 후 다시 시도해 주세요."
     },
     "errors": {
       "not_found_description": "해당 페이지가 삭제되었거나 URL이 변경되었을 수 있습니다.",
@@ -4842,7 +4892,8 @@
       "shelf_heading": "내 책장",
       "title": "구매 목록",
       "open_series": "시리즈 열기",
-      "series_bundle_title": "남은 {$count :integer}화"
+      "series_bundle_title": "남은 {$count :integer}화",
+      "coins_spent": "{$count :integer} {$coin_name}"
     },
     "my": {
       "creators_empty": "공개 중인 시리즈에 연결된 작가가 아직 없습니다.",
@@ -4881,7 +4932,8 @@
       "manage_billing": "결제 관리",
       "subscription_success": "구독해 주셔서 감사합니다. 결제가 확인되면 여기에 플랜이 표시됩니다.",
       "billing_unavailable": "현재 이 사이트에서는 결제 관리를 이용할 수 없습니다.",
-      "billing_error": "결제 관리를 열 수 없습니다. 잠시 후 다시 시도해 주세요."
+      "billing_error": "결제 관리를 열 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "to_coins": "{$coin_name} 구매 및 내역"
     },
     "nav": {
       "account_menu": "계정 메뉴",

@@ -296,6 +296,19 @@ export interface EpisodeDetail {
   /** The campaign price open on the episode; absent when none is. */
   campaign?: EpisodeCampaign;
   /**
+   * The tenant's word for its coins in the reader's locale. Empty, with both
+   * coin prices 0, while the tenant offers no coins.
+   */
+  coinName: string;
+  /**
+   * What the permanent copy costs in the tenant's coins, at the campaign price
+   * while a campaign is open. 0 while the tenant offers no coins and on a free
+   * episode.
+   */
+  coinPrice: number;
+  /** What the rental costs in coins; 0 on an episode that is not rented. */
+  coinRentalPrice: number;
+  /**
    * Who this episode is credited to, in role priority order. Every episode
    * carries its own credits, so a series whose artist changed part way through
    * credits this episode with the team that made it rather than with the one
@@ -365,6 +378,9 @@ type RawEpisode = Pick<
   Episode,
   | "campaignEndsAt"
   | "campaignPrice"
+  | "coinName"
+  | "coinPrice"
+  | "coinRentalPrice"
   | "creators"
   | "eyeCatchImageVariants"
   | "freeUntil"
@@ -474,6 +490,9 @@ const mapEpisodeDetail = (
   requestedLocale: Locale
 ): EpisodeDetail => ({
   campaign: toEpisodeCampaign(episode),
+  coinName: episode.coinName ?? "",
+  coinPrice: episode.coinPrice ?? 0,
+  coinRentalPrice: episode.coinRentalPrice ?? 0,
   credits: toCreatorCredits(episode.creators),
   eyeCatchImageVariants: toEyeCatchImageVariants(episode.eyeCatchImageVariants),
   freeUntil: episode.freeUntil || undefined,

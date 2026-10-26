@@ -219,6 +219,8 @@ services:
         banner.localhost
         bilingual.localhost
         closed.localhost
+        coins-off.localhost
+        coins.localhost
         comment.localhost
         consent.localhost
         crawlers.localhost
@@ -259,6 +261,7 @@ services:
         admin.banner.localhost
         admin.bilingual.localhost
         admin.closed.localhost
+        admin.coins.localhost
         admin.comment.localhost
         admin.consent.localhost
         admin.crawlers.localhost

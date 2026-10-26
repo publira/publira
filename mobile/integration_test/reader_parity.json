@@ -481,6 +481,20 @@
       "exception": "Not in the app yet: #4877."
     },
     {
+      "name": "The tenant's coins: the balance and its expiry on My Page and on a page of their own, the packs on sale and the history, and paying for an episode with them at its gate",
+      "web": {
+        "routes": ["[locale]/(site)/my/coins"],
+        "rpcs": [
+          "GetCoinSettings",
+          "GetCoinBalance",
+          "ListCoinTransactions",
+          "PayEpisodeWithCoins",
+          "StartCoinPackCheckout"
+        ]
+      },
+      "exception": "Not in the app yet: #4475."
+    },
+    {
       "name": "Saving the purchase history as a CSV file",
       "web": {
         "routes": ["api/v1/my/purchases/csv"],

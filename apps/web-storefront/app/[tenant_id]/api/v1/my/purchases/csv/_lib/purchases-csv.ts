@@ -84,6 +84,7 @@ const HEADER = [
   "volume_title",
   "coins",
   "bonus_coins",
+  "coins_spent",
 ] as const;
 
 /** The coins a pack granted, its bonus coins among them, and the bonus. */
@@ -100,8 +101,10 @@ const coinFields = ({ item }: PurchaseItem): [string, string] =>
  * answers them, and empty where the purchase has none; `status` is `active`,
  * `expired`, `refunded`, or `canceled`, and `item` is `episode`, `volume`,
  * `remaining_episodes`, or `coin_pack`, whose `coins` are what the pack
- * granted, its `bonus_coins` included. The columns that came later are appended, so a sheet
- * that reads the earlier ones by position keeps reading them.
+ * granted, its `bonus_coins` included. An episode paid with coins has a
+ * `price` of 0 and the coins it took in `coins_spent`. The columns that came
+ * later are appended, so a sheet that reads the earlier ones by position keeps
+ * reading them.
  */
 export const renderPurchasesCsv = (
   purchases: readonly PurchaseItem[]
@@ -124,6 +127,7 @@ export const renderPurchasesCsv = (
         itemType(purchase),
         purchase.item.kind === "volume" ? purchase.item.title : "",
         ...coinFields(purchase),
+        purchase.coinsSpent ? String(purchase.coinsSpent.count) : "",
       ])
     )
     .join("");

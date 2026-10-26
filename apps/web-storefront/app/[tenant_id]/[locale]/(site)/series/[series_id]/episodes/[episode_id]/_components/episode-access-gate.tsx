@@ -11,6 +11,8 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 
 import { CampaignPrice } from "#components/campaign-price";
+import { CoinDisclosures } from "#components/coin-disclosures";
+import { CoinPackCheckoutForm } from "#components/coin-pack-checkout-form";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -28,11 +30,29 @@ import type {
 import { episodeLoginHref } from "../_lib/access-gate";
 import {
   openWithWaitFreeTicketAction,
+  payEpisodeWithCoinsAction,
   startEpisodeCheckoutAction,
 } from "../_lib/actions";
+import { coinsCarryShu, offersCoinPayment } from "../_lib/coin-offer";
+import type { CoinOffer } from "../_lib/coin-offer";
 import { episodePath } from "../_lib/episode-path";
 import type { WaitFreeOffer } from "../_lib/wait-free-offer";
 import { WaitFreeCountdown } from "./wait-free-countdown";
+
+/**
+ * The store listings the gate links to: only those whose app sells, since a
+ * listing whose app offers no purchase would send the reader on to nothing.
+ */
+const sellingStoreUrls = (
+  appPayments: TenantAppPayments,
+  {
+    appStoreUrl,
+    googlePlayUrl,
+  }: { appStoreUrl?: string; googlePlayUrl?: string }
+) => ({
+  sellingAppStoreUrl: appPayments.appStore ? appStoreUrl : undefined,
+  sellingGooglePlayUrl: appPayments.googlePlay ? googlePlayUrl : undefined,
+});
 
 /**
  * The stores the tenant's app is listed in: each one's link, and above it a
@@ -211,8 +231,9 @@ const CheckoutForm = ({
  *
  * The permanent copy keeps the Shu, as it does on an episode with one sale;
  * the rental is the alternative to it, and both stay outlined behind a ready
- * ticket. Neither is quoted without the tenant's currency, which leaves the
- * permanent copy alone, the way an episode that is not rented is sold.
+ * ticket or coins that pay for the episode. Neither is quoted without the
+ * tenant's currency, which leaves the permanent copy alone, the way an episode
+ * that is not rented is sold.
  *
  * Under a campaign the permanent copy's button names the campaign price
  * whether or not the episode is rented: the gate quotes it above the buttons,
@@ -229,8 +250,8 @@ const CheckoutActions = ({
   rentalPeriodHours,
   rentalPrice,
   seriesPublicId,
+  shuElsewhere,
   tenantId,
-  ticketReady,
 }: {
   campaign?: EpisodeCampaign;
   currency: string | null;
@@ -241,11 +262,12 @@ const CheckoutActions = ({
   rentalPeriodHours: number;
   rentalPrice: number;
   seriesPublicId: string;
+  /** Whether a ready ticket or the reader's coins carry the Shu instead. */
+  shuElsewhere: boolean;
   tenantId: string;
-  ticketReady: boolean;
 }) => {
   const formProps = { episodeId, episodePublicId, seriesPublicId, tenantId };
-  const purchaseVariant = ticketReady ? "outline" : "secondary";
+  const purchaseVariant = shuElsewhere ? "outline" : "secondary";
   const rented = rentalPrice > 0 && rentalPeriodHours > 0;
 
   if (!currency || !(rented || campaign)) {
@@ -290,6 +312,222 @@ const CheckoutActions = ({
         </CheckoutForm>
       ) : null}
     </>
+  );
+};
+
+/**
+ * One payment the gate offers for coins: a form that spends `coins` on the
+ * sale of `kind`. The price is sent with it, so the reader is never charged
+ * other than what the button said, and the key names this one payment, so a
+ * second tap spends nothing more.
+ */
+const CoinPaymentForm = ({
+  children,
+  coins,
+  episodeId,
+  episodePublicId,
+  idempotencyKey,
+  kind,
+  seriesPublicId,
+  tenantId,
+  variant,
+}: {
+  children: ReactNode;
+  coins: number;
+  episodeId: string;
+  episodePublicId: string;
+  idempotencyKey: string;
+  kind: "purchase" | "rental";
+  seriesPublicId: string;
+  tenantId: string;
+  variant: "outline" | "secondary";
+}) => (
+  <form action={payEpisodeWithCoinsAction}>
+    <LocaleField />
+    <input name="tenantId" type="hidden" value={tenantId} />
+    <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
+    <input name="episodePublicId" type="hidden" value={episodePublicId} />
+    <input name="episodeId" type="hidden" value={episodeId} />
+    <input name="kind" type="hidden" value={kind} />
+    <input name="coins" type="hidden" value={coins} />
+    <input name="idempotencyKey" type="hidden" value={idempotencyKey} />
+    <Button size="lg" type="submit" variant={variant}>
+      {children}
+    </Button>
+  </form>
+);
+
+/**
+ * What the gate offers for the tenant's coins: the reader's balance, a
+ * payment for each sale it covers, and, when it falls short of the permanent
+ * copy, the smallest pack that makes up the difference, sold with its expiry
+ * and the tenant's disclosures beside it. A site with no pack large enough
+ * sends the reader to every pack it sells instead.
+ *
+ * Every string names the coins in the tenant's own word for them.
+ */
+const CoinSection = ({
+  episodeId,
+  episodePublicId,
+  locale,
+  offer,
+  rentalPeriodHours,
+  seriesPublicId,
+  shuTaken,
+  tenantId,
+}: {
+  episodeId: string;
+  episodePublicId: string;
+  locale: Locale;
+  /** Absent where the gate offers nothing for coins. */
+  offer: CoinOffer | undefined;
+  rentalPeriodHours: number;
+  seriesPublicId: string;
+  /** Whether a ready ticket carries the Shu. */
+  shuTaken: boolean;
+  tenantId: string;
+}) => {
+  if (!offer) {
+    return null;
+  }
+  if (offer.kind === "failed") {
+    return (
+      <output className="block text-sm text-muted-foreground">
+        {offer.message}
+      </output>
+    );
+  }
+
+  const formProps = {
+    episodeId,
+    episodePublicId,
+    idempotencyKey: offer.idempotencyKey,
+    seriesPublicId,
+    tenantId,
+  };
+  const { coinName } = offer;
+  const payVariant = shuTaken ? "outline" : "secondary";
+  const rented = offer.rentalPrice > 0 && rentalPeriodHours > 0;
+  const rentable = rented && offer.balance >= offer.rentalPrice;
+  const { pack } = offer;
+
+  return (
+    <div className="grid justify-items-center gap-3">
+      <p className="text-sm tabular-nums">
+        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+          {offer.needed > 0 ? (
+            <Message
+              message="storefront.episode.gate.coin_short"
+              values={{
+                balance: offer.balance,
+                coin_name: coinName,
+                count: offer.needed,
+                price: offer.price,
+              }}
+            />
+          ) : (
+            <Message
+              message="storefront.episode.gate.coin_balance"
+              values={{ coin_name: coinName, count: offer.balance }}
+            />
+          )}
+        </Suspense>
+      </p>
+      <div className="flex flex-wrap justify-center gap-3">
+        {offer.needed === 0 ? (
+          <CoinPaymentForm
+            {...formProps}
+            coins={offer.price}
+            kind="purchase"
+            variant={payVariant}
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+              <Message
+                message="storefront.episode.gate.coin_pay"
+                values={{ coin_name: coinName, count: offer.price }}
+              />
+            </Suspense>
+          </CoinPaymentForm>
+        ) : null}
+        {rentable ? (
+          <CoinPaymentForm
+            {...formProps}
+            coins={offer.rentalPrice}
+            kind="rental"
+            variant={offer.needed === 0 ? "outline" : payVariant}
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+              <Message
+                message="storefront.episode.gate.coin_rent"
+                values={{
+                  coin_name: coinName,
+                  count: offer.rentalPrice,
+                  period: formatDuration(
+                    { hours: rentalPeriodHours },
+                    { locale }
+                  ),
+                }}
+              />
+            </Suspense>
+          </CoinPaymentForm>
+        ) : null}
+        {pack ? (
+          <CoinPackCheckoutForm
+            coinPackId={pack.id}
+            returnEpisode={{
+              id: episodeId,
+              publicId: episodePublicId,
+              seriesPublicId,
+            }}
+            size="lg"
+            tenantId={tenantId}
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+              <Message
+                message="storefront.episode.gate.coin_pack_buy"
+                values={{
+                  bonus: pack.bonusCoins,
+                  coin_name: coinName,
+                  count: pack.coins,
+                  price: formatPrice(pack.price, {
+                    currency: pack.currency,
+                    locale,
+                  }),
+                }}
+              />
+            </Suspense>
+          </CoinPackCheckoutForm>
+        ) : null}
+        {offer.needed > 0 && !pack && offer.packsOnSale ? (
+          <LinkButton
+            render={<LocaleLink href="/my/coins" />}
+            size="lg"
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message
+                message="storefront.episode.gate.coin_packs"
+                values={{ coin_name: coinName }}
+              />
+            </Suspense>
+          </LinkButton>
+        ) : null}
+      </div>
+      {pack ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+              <Message
+                message="storefront.coins.pack_expiry"
+                values={{ coin_name: coinName, days: offer.expiryDays }}
+              />
+            </Suspense>
+          </p>
+          <CoinDisclosures disclosures={offer.disclosures} />
+        </>
+      ) : null}
+    </div>
   );
 };
 
@@ -404,6 +642,11 @@ const WaitFreeSection = ({
  * reader chooses between plans there, sees what each one opens, and is told
  * if they already hold one.
  *
+ * A reader whose coins pay for the episode is offered that payment, which
+ * takes the Shu from the purchase: it opens the episode without leaving the
+ * page. One whose coins fall short is offered the pack that covers the
+ * difference, beside the purchase rather than in place of it.
+ *
  * An episode under a campaign that the site sells says so over the actions,
  * to a guest as to a reader signed in: the campaign is a reason to sign in and
  * buy now, and its end is when that reason runs out. One sold in the app is
@@ -414,6 +657,7 @@ export const EpisodeAccessGate = ({
   appPayments,
   appStoreUrl,
   campaign,
+  coinOffer,
   currency,
   episodeId,
   episodePublicId,
@@ -437,6 +681,11 @@ export const EpisodeAccessGate = ({
   appStoreUrl?: string;
   /** The campaign price open on the episode; absent when none is. */
   campaign?: EpisodeCampaign;
+  /**
+   * What the reader's coins can do here; absent for a guest, and where the
+   * episode is not sold for coins on the site.
+   */
+  coinOffer?: CoinOffer;
   /** The tenant's currency, `null` while the tenant could not be read. */
   currency: string | null;
   episodeId: string;
@@ -473,13 +722,13 @@ export const EpisodeAccessGate = ({
   );
   const soldInApp = destination === "app";
   const payable = destination === "web";
-  // A listing whose app offers no purchase would send the reader on to nothing.
-  const sellingAppStoreUrl = appPayments.appStore ? appStoreUrl : undefined;
-  const sellingGooglePlayUrl = appPayments.googlePlay
-    ? googlePlayUrl
-    : undefined;
+  const { sellingAppStoreUrl, sellingGooglePlayUrl } = sellingStoreUrls(
+    appPayments,
+    { appStoreUrl, googlePlayUrl }
+  );
 
   const ticketReady = waitFree?.kind === "ready";
+  const shuTaken = ticketReady || coinsCarryShu(coinOffer);
 
   let accessAction: ReactNode = null;
   if (signedIn && payable) {
@@ -494,8 +743,8 @@ export const EpisodeAccessGate = ({
         rentalPeriodHours={rentalPeriodHours}
         rentalPrice={rentalPrice}
         seriesPublicId={seriesPublicId}
+        shuElsewhere={shuTaken}
         tenantId={tenantId}
-        ticketReady={ticketReady}
       />
     );
   } else if (!signedIn) {
@@ -531,7 +780,7 @@ export const EpisodeAccessGate = ({
         <p className="text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
             <ClosedBecause
-              payable={payable}
+              payable={payable || offersCoinPayment(coinOffer)}
               signedIn={signedIn}
               soldInApp={soldInApp}
             />
@@ -561,14 +810,25 @@ export const EpisodeAccessGate = ({
             />
           </p>
         ) : null}
+        <CoinSection
+          episodeId={episodeId}
+          episodePublicId={episodePublicId}
+          locale={locale}
+          offer={coinOffer}
+          rentalPeriodHours={rentalPeriodHours}
+          seriesPublicId={seriesPublicId}
+          shuTaken={ticketReady}
+          tenantId={tenantId}
+        />
         {/* Signed in, the store is the one way into this episode and carries
-          the Shu, unless a ready ticket opens it for nothing. A guest who
-          bought it in the app still has to sign in, so signing in keeps it. */}
+          the Shu, unless a ready ticket or the reader's coins open it here.
+          A guest who bought it in the app still has to sign in, so signing in
+          keeps it. */}
         {soldInApp && (sellingAppStoreUrl || sellingGooglePlayUrl) ? (
           <AppStoreLinks
             appStoreUrl={sellingAppStoreUrl}
             googlePlayUrl={sellingGooglePlayUrl}
-            variant={signedIn && !ticketReady ? "secondary" : "outline"}
+            variant={signedIn && !shuTaken ? "secondary" : "outline"}
           />
         ) : null}
         <div className="flex flex-wrap justify-center gap-3">

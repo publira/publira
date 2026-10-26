@@ -13,6 +13,7 @@ export default defineConfig({
     "src/public/client.ts",
     "src/public/auth.ts",
     "src/public/catalog.ts",
+    "src/public/coin.ts",
     "src/public/comment.ts",
     "src/public/notification.ts",
     "src/public/page.ts",

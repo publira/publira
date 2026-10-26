@@ -74,6 +74,30 @@ describe("listMyPurchases", () => {
     ]);
   });
 
+  it("says how many coins an episode paid with them took, in the tenant's word for them", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        {
+          coinName: "Points",
+          coinsSpent: 300,
+          currency: "JPY",
+          id: "PURCHASE01",
+          priceAtPurchase: 0,
+        },
+        { currency: "JPY", id: "PURCHASE02", priceAtPurchase: 300 },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(result.purchases.map(({ coinsSpent }) => coinsSpent)).toEqual([
+      { coinName: "Points", count: 300 },
+      undefined,
+    ]);
+  });
+
   it("says which purchases are rentals", async () => {
     mockListMyPurchases.mockResolvedValueOnce({
       nextToken: "",
