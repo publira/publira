@@ -106,6 +106,23 @@ describe("EpisodePrice", () => {
     expect(screen.queryByText("¥1,200")).toBeNull();
   });
 
+  it("Say only that a priced episode the free-after-publication rule opened is free", () => {
+    render(
+      <EpisodePrice
+        sales={sellsEverywhere}
+        freeUntil="9999-12-31T00:00:00Z"
+        locale="en"
+        price={1200}
+        purchaseSurface="all"
+        timeZone="Asia/Tokyo"
+      />
+    );
+
+    expect(screen.getByText("storefront.common.free")).toBeDefined();
+    expect(screen.queryByText(/storefront\.common\.free_until/u)).toBeNull();
+    expect(screen.queryByText("¥1,200")).toBeNull();
+  });
+
   it("Quote the price once no free reading period is open", () => {
     render(
       <EpisodePrice

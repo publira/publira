@@ -62,4 +62,18 @@ describe("FreeUntilBadge", () => {
       FREE_UNTIL
     );
   });
+
+  it("Says only that an episode the free-after-publication rule opened is free", () => {
+    const { container } = render(
+      <FreeUntilBadge
+        freeUntil="9999-12-31T00:00:00Z"
+        locale="en"
+        timeZone="Asia/Tokyo"
+      />
+    );
+
+    expect(screen.getByText("storefront.common.free")).toBeDefined();
+    expect(screen.queryByText(/storefront\.common\.free_until/u)).toBeNull();
+    expect(container.querySelector("time")).toBeNull();
+  });
 });
