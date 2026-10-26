@@ -158,7 +158,7 @@ A free reading period opens a paid episode to everyone, signed in or not, betwee
 
 A period cannot be edited. **Delete** it and add another; deleting a period that has started prices the episode again at once.
 
-A period that ends on 31 December 9999 was added by the series' free-after-publication rule, which opens each paid episode a set number of days after it was published. It cannot be deleted here: it goes when the rule is turned off, or is saved with numbers that no longer cover the episode, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#other-scheduled-jobs) describes.
+A period that ends on 31 December 9999 was added by the series' free-after-publication rule, which opens each paid episode a set number of days after it was published. It cannot be deleted here: it goes when the rule is turned off or no longer covers the episode, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#other-scheduled-jobs) describes.
 
 To give many episodes the same period, choose **Free reading period** on the episode list. Under **Episodes**, choose **Selected episodes**, the episodes checked on the list, **First episodes**, the first so many in the series' order, or **All episodes**. Then enter **Starts** and **Ends** and choose **Add**. Nothing is added if the period overlaps one already on any of the episodes.
 

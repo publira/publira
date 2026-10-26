@@ -539,6 +539,7 @@ GRANT UPDATE (in_inbox) ON notifications TO publira_ticker;
 GRANT SELECT, UPDATE (remaining_coins, updated_at) ON coin_grants TO publira_ticker;
 GRANT SELECT, INSERT ON coin_transactions TO publira_ticker;
 -- And for a free window: apply-free-after-rules writes the window a series'
--- rule has reached on an episode. It deletes none, which is saving the rule's
--- to do, and SELECT is granted above for the RETURNING clause.
-GRANT INSERT ON episode_free_windows TO publira_ticker;
+-- rule has reached on an episode, and deletes the ones its rule no longer
+-- covers. Its queries name only the windows a rule wrote, and SELECT is
+-- granted above for their RETURNING clauses.
+GRANT INSERT, DELETE ON episode_free_windows TO publira_ticker;

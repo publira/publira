@@ -218,7 +218,7 @@ Some jobs have to act the moment a stored instant passes rather than on a schedu
 | `ticker.apply_campaign_banners` | `PUBLIRA_CAMPAIGN_BANNER_INTERVAL_SECONDS` | Records the drop of the tag the site holds its campaign banners under, at both ends of every published banner's window |
 | `ticker.apply_campaign_prices` | `PUBLIRA_CAMPAIGN_PRICE_INTERVAL_SECONDS` | Records the drop of the public site caches that quote an episode's price, at both ends of every scheduled campaign price |
 | `ticker.expire_coin_grants` | `PUBLIRA_COIN_EXPIRY_INTERVAL_SECONDS` | Records an expiry in the reader's coin history for every grant of coins that expired with coins unspent, and zeroes what the grant has left |
-| `ticker.apply_free_after_rules` | `PUBLIRA_FREE_AFTER_INTERVAL_SECONDS` | Writes the free window each enabled `series_free_after_settings` rule has reached on an episode, and records the drop of the public site caches for one that is already open |
+| `ticker.apply_free_after_rules` | `PUBLIRA_FREE_AFTER_INTERVAL_SECONDS` | Brings the free windows of each enabled `series_free_after_settings` rule in line with it — writing the window an episode has reached, and removing the window of one the rule no longer covers — and records the drop of the public site caches for a window that is open or was |
 
 They run on a River queue of their own (`ticker`, one worker each) rather than the default one the Outbox drain is sized for: one pass is long and rare where an outbox job is short and constant, so a publish walking every tenant with retries must not hold a worker the drain is counting on.
 

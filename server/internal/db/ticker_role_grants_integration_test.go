@@ -388,15 +388,19 @@ func TestTickerRoleRunsApplyFreeAfterRules(t *testing.T) {
 		t.Fatal("start_revalidated_at is null, want the open window's start written off by the pass that wrote it")
 	}
 
-	// The rule's windows go when the rule is saved, never in a pass, and this
-	// role reaches every tenant's windows.
-	_, err := ticker.ExecContext(ctx, "DELETE FROM episode_free_windows WHERE id = $1", windowID)
-	if err == nil {
-		t.Fatal("deleting a free window as the ticker role succeeded, want a permission denied error")
+	// Keeping the episode back takes its window away on the next pass.
+	if _, err := pg.DB.ExecContext(ctx,
+		"UPDATE series_free_after_settings SET excluded_latest_count = 1 WHERE series_id = $1", series.ID,
+	); err != nil {
+		t.Fatalf("keep the episode back: %v", err)
 	}
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
-		t.Fatalf("delete free window error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
+	freeafter.New(ticker, dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+	var left int
+	if err := pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM episode_free_windows WHERE id = $1", windowID).Scan(&left); err != nil {
+		t.Fatalf("read the rule's window: %v", err)
+	}
+	if left != 0 {
+		t.Fatal("the rule's window is still there after the pass, want it removed with the episode kept back")
 	}
 }
 

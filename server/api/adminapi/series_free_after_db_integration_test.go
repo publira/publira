@@ -267,6 +267,100 @@ func TestDBFreeAfterRuleStartsWhereAWindowScheduledByHandEnds(t *testing.T) {
 	assertFreeEpisodes(t, env, series.ID, episode.ID)
 }
 
+// An episode reordered among the newest leaves the rule, and the next pass
+// takes its window away without the rule being saved again.
+func TestDBFreeAfterRulePassRemovesTheWindowOfAnEpisodeReorderedAmongTheNewest(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	series := env.PG.SeedSeries(t, admin.Tenant.ID, testutil.SeriesSeed{PublicID: "FREEAFTER003", Title: "Free After Series", Published: true})
+
+	episodes := make([]testutil.Episode, 0, 3)
+	for i := range 3 {
+		episodes = append(episodes, env.PG.SeedEpisode(t, admin.Tenant.ID, series.ID, testutil.EpisodeSeed{
+			PublicID:    fmt.Sprintf("FREEAFTEREP%d", i+1),
+			Title:       fmt.Sprintf("Chapter %d", i+1),
+			Status:      testutil.EpisodeStatusPublished,
+			Price:       500,
+			PublishedAt: time.Now().Add(-40 * 24 * time.Hour),
+		}))
+	}
+
+	updateFreeAfter(t, env, admin, series.ID.String(), &publiraadminv1.SeriesFreeAfterSettings{Enabled: true, DaysAfterPublication: 30, ExcludedLatestCount: 1})
+	runFreeAfterPass(t, env)
+	assertFreeEpisodes(t, env, series.ID, episodes[0].ID, episodes[1].ID)
+
+	ids := func(order ...testutil.Episode) []string {
+		out := make([]string, 0, len(order))
+		for _, episode := range order {
+			out = append(out, episode.ID.String())
+		}
+		return out
+	}
+	if _, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.ReorderEpisodesRequest{
+		Tenant:             admin.tenantContext(),
+		SeriesId:           series.ID.String(),
+		EpisodeIds:         ids(episodes[1], episodes[2], episodes[0]),
+		ExpectedEpisodeIds: ids(episodes...),
+	}); err != nil {
+		t.Fatalf("ReorderEpisodes: %v", err)
+	}
+
+	runFreeAfterPass(t, env)
+	assertFreeEpisodes(t, env, series.ID, episodes[1].ID, episodes[2].ID)
+}
+
+// A rule's window waiting behind a window scheduled by hand starts on the
+// rule's own day again once that window is deleted, so the episode is not
+// priced for the rest of the period that no longer exists.
+func TestDBFreeAfterRulePassBringsAWindowForwardWhenTheOneItWaitedOnIsDeleted(t *testing.T) {
+	env := newAdminDBEnv(t)
+	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	series := env.PG.SeedSeries(t, admin.Tenant.ID, testutil.SeriesSeed{PublicID: "FREEAFTER004", Title: "Free After Series", Published: true})
+	publishedAt := time.Now().UTC().Add(-40 * 24 * time.Hour).Truncate(time.Second)
+	episode := env.PG.SeedEpisode(t, admin.Tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:    "FREEAFTEREP1",
+		Title:       "Chapter 1",
+		Status:      testutil.EpisodeStatusPublished,
+		Price:       500,
+		PublishedAt: publishedAt,
+	})
+
+	manual, err := client.CreateEpisodeFreeWindow(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.CreateEpisodeFreeWindowRequest{
+		Tenant:    admin.tenantContext(),
+		EpisodeId: episode.ID.String(),
+		StartsAt:  rfc3339(time.Now().Add(-time.Hour)),
+		EndsAt:    rfc3339(time.Now().Add(time.Hour)),
+	})
+	if err != nil {
+		t.Fatalf("CreateEpisodeFreeWindow: %v", err)
+	}
+	updateFreeAfter(t, env, admin, series.ID.String(), &publiraadminv1.SeriesFreeAfterSettings{Enabled: true, DaysAfterPublication: 30})
+	runFreeAfterPass(t, env)
+
+	if _, err := client.DeleteEpisodeFreeWindow(testutil.WithBearer(context.Background(), admin.token()), &publiraadminv1.DeleteEpisodeFreeWindowRequest{
+		Tenant:       admin.tenantContext(),
+		FreeWindowId: manual.FreeWindow.Id,
+	}); err != nil {
+		t.Fatalf("DeleteEpisodeFreeWindow: %v", err)
+	}
+	assertFreeEpisodes(t, env, series.ID)
+
+	runFreeAfterPass(t, env)
+	assertFreeEpisodes(t, env, series.ID, episode.ID)
+	windows := listSeriesFreeWindows(t, env, admin, series.ID.String())
+	if len(windows) != 1 || windows[0].StartsAt != rfc3339(publishedAt.Add(30*24*time.Hour)) {
+		t.Fatalf("windows after the pass = %v, want the rule's alone, starting 30 days after publication", windows)
+	}
+	if got := env.countRows(t,
+		"SELECT count(*) FROM episode_free_windows WHERE rule_series_id = $1 AND start_revalidated_at IS NULL",
+		series.ID,
+	); got != 0 {
+		t.Fatalf("rule windows with their start still owed = %d, want 0: the pass that moved it open writes its start off", got)
+	}
+}
+
 func updateFreeAfter(t *testing.T, env *adminDBEnv, caller adminDBTenant, seriesID string, settings *publiraadminv1.SeriesFreeAfterSettings) *publiraadminv1.SeriesFreeAfterSettings {
 	t.Helper()
 	resp, err := env.seriesClient().UpdateSeriesFreeAfterSettings(testutil.WithBearer(context.Background(), caller.token()), &publiraadminv1.UpdateSeriesFreeAfterSettingsRequest{

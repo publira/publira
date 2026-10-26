@@ -6418,8 +6418,9 @@ func (x *GetSeriesFreeAfterSettingsResponse) GetSettings() *SeriesFreeAfterSetti
 // episodes it no longer covers: every one of them when it is turned off, which
 // prices those episodes again as soon as the caches drop. Windows scheduled by
 // hand are left as they are. An episode the saved rule newly covers is opened
-// by the worker's next pass. Turning the rule off keeps the numbers for the
-// next time it is turned on.
+// by the worker's next pass, which also removes the window of an episode that
+// later leaves the rule, such as one reordered among the newest. Turning the
+// rule off keeps the numbers for the next time it is turned on.
 type UpdateSeriesFreeAfterSettingsRequest struct {
 	state         protoimpl.MessageState   `protogen:"open.v1"`
 	Tenant        *v1.TenantContext        `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

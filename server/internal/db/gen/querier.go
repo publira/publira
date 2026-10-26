@@ -2662,8 +2662,9 @@ type Querier interface {
 	// The episodes of one series the rule covers now: published and priced, past
 	// days_after_publication since they were published, and not among the
 	// excluded_latest_count latest published episodes, counted from the end of
-	// the series' order as Free if you wait counts them. rule_window_id is the
-	// window the rule already wrote on the episode, if it has.
+	// the series' order as Free if you wait counts them. rule_window_id and
+	// rule_window_starts_at are the window the rule already wrote on the episode,
+	// if it has.
 	//
 	// starts_at is where the rule's window on the episode starts: the day the
 	// rule reaches, or, when a window scheduled by hand is open then or starts
@@ -3273,6 +3274,10 @@ type Querier interface {
 	// each time, which stays acceptable for as long as the stored counter is zero
 	// too. Affecting no row is therefore a counter that did not move forward.
 	MarkUserWebauthnCredentialUsed(ctx context.Context, arg MarkUserWebauthnCredentialUsedParams) (int64, error)
+	// Brings a rule's window forward to where it is due to start, once the window
+	// scheduled by hand it was waiting behind has been deleted. The start it moves
+	// to is a new boundary, so it is owed again.
+	MoveSeriesFreeAfterWindowStart(ctx context.Context, arg MoveSeriesFreeAfterWindowStartParams) (MoveSeriesFreeAfterWindowStartRow, error)
 	// Opens the reader's intent to buy an episode as a store product, or answers
 	// the one already open for the same episode and product, so asking again adds
 	// no row. The no-op update is what makes the existing row come back, with the

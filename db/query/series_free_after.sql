@@ -65,8 +65,9 @@ FOR SHARE;
 -- The episodes of one series the rule covers now: published and priced, past
 -- days_after_publication since they were published, and not among the
 -- excluded_latest_count latest published episodes, counted from the end of
--- the series' order as Free if you wait counts them. rule_window_id is the
--- window the rule already wrote on the episode, if it has.
+-- the series' order as Free if you wait counts them. rule_window_id and
+-- rule_window_starts_at are the window the rule already wrote on the episode,
+-- if it has.
 --
 -- starts_at is where the rule's window on the episode starts: the day the
 -- rule reaches, or, when a window scheduled by hand is open then or starts
@@ -91,6 +92,7 @@ WITH published AS (
 )
 SELECT p.id AS episode_id,
     rw.id AS rule_window_id,
+    rw.starts_at AS rule_window_starts_at,
     GREATEST(p.due_at, mw.ends_at)::timestamptz AS starts_at
 FROM published p
     CROSS JOIN LATERAL (
@@ -133,6 +135,19 @@ VALUES (
         '9999-12-31 00:00:00+00'::timestamptz,
         sqlc.arg('series_id')::uuid
     )
+RETURNING id,
+    starts_at;
+
+-- name: MoveSeriesFreeAfterWindowStart :one
+-- Brings a rule's window forward to where it is due to start, once the window
+-- scheduled by hand it was waiting behind has been deleted. The start it moves
+-- to is a new boundary, so it is owed again.
+UPDATE episode_free_windows
+SET starts_at = sqlc.arg('starts_at'),
+    start_revalidated_at = NULL
+WHERE id = sqlc.arg('id')
+    AND rule_series_id IS NOT NULL
+    AND starts_at > sqlc.arg('starts_at')
 RETURNING id,
     starts_at;
 

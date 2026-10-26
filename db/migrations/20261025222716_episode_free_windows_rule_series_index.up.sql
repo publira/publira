@@ -1,6 +1,6 @@
 -- INDEX: idx_episode_free_windows_rule_series
 -- The windows one series' free-after-publication rule wrote, which saving the
--- rule reads to remove the ones it no longer covers. Windows scheduled by hand
+-- rule and the worker's pass read to remove the ones it no longer covers. Windows scheduled by hand
 -- are left out, so the index holds only what a rule wrote.
 --
 -- CONCURRENTLY, so building it does not block the windows editors keep

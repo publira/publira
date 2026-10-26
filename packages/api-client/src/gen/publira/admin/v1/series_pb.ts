@@ -3331,8 +3331,9 @@ export const GetSeriesFreeAfterSettingsResponseSchema: GenMessage<GetSeriesFreeA
  * episodes it no longer covers: every one of them when it is turned off, which
  * prices those episodes again as soon as the caches drop. Windows scheduled by
  * hand are left as they are. An episode the saved rule newly covers is opened
- * by the worker's next pass. Turning the rule off keeps the numbers for the
- * next time it is turned on.
+ * by the worker's next pass, which also removes the window of an episode that
+ * later leaves the rule, such as one reordered among the newest. Turning the
+ * rule off keeps the numbers for the next time it is turned on.
  *
  * @generated from message publira.admin.v1.UpdateSeriesFreeAfterSettingsRequest
  */
