@@ -13,11 +13,16 @@ import {
   expectDocsScreenshot,
   setDocsLocale,
 } from "../src/docs-screenshots";
+import {
+  ANALYTICS_ADMIN,
+  ANALYTICS_WEEK,
+} from "../src/scenarios/admin-analytics";
 import { COMMENT_MODERATION_ADMIN } from "../src/scenarios/comment-moderation";
 import { DOCS_SUBSCRIPTION_PLANS } from "../src/scenarios/docs-subscription-plans";
 import { ROYALTIES_ADMIN, ROYALTIES_SALES } from "../src/scenarios/royalties";
 import { STOREFRONT_SUBSCRIPTIONS_ADMIN } from "../src/scenarios/storefront-subscriptions";
 import {
+  WEB_ADMIN_ANALYTICS_BASE_URL,
   WEB_ADMIN_BASE_URL,
   WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
   WEB_ADMIN_ROYALTIES_BASE_URL,
@@ -38,7 +43,9 @@ import {
  * `db/seeds/scenarios/460_docs_royalties.sql` writes as closed on a fixed day.
  * The subscription plans are photographed on the subscriptions tenant of
  * `db/seeds/scenarios/670_storefront_subscriptions.sql`, beside the two plans
- * `680_docs_subscription_plans.sql` adds to it.
+ * `680_docs_subscription_plans.sql` adds to it. The cohorts are photographed
+ * on the analytics tenant of `db/seeds/scenarios/690_admin_analytics.sql`,
+ * whose one week of sign-ups is long over, so every week of it is counted.
  */
 test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
@@ -280,6 +287,30 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: reportsPage,
           subject: "read-through",
+        });
+      });
+
+      test("Cohorts, with the Funnel below it", async ({ page }) => {
+        // Tall enough for the funnel below the cohort table.
+        await page.setViewportSize({ height: 1400, width: 1280 });
+        const path = `/analytics/cohorts?from=${ANALYTICS_WEEK.from}&to=${ANALYTICS_WEEK.to}`;
+        await signInAsAdmin(
+          page,
+          ANALYTICS_ADMIN,
+          path,
+          WEB_ADMIN_ANALYTICS_BASE_URL
+        );
+        await setDocsLocale(page, WEB_ADMIN_ANALYTICS_BASE_URL, locale);
+        await page.goto(`${WEB_ADMIN_ANALYTICS_BASE_URL}${path}`);
+
+        await expectDocsScreenshot(page, {
+          element: [
+            docsSection(page, t("admin.analytics.cohorts.table_title")),
+            docsSection(page, t("admin.analytics.funnel.title")),
+          ],
+          locale,
+          page: reportsPage,
+          subject: "cohorts",
         });
       });
 

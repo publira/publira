@@ -96,3 +96,28 @@ export const ANALYTICS_DROP_OFF = {
   ],
   readers: "13",
 } as const;
+
+/**
+ * The readers who signed up in the week of 2025-03-03, the share of them active
+ * in each week since, and how far they got toward buying.
+ */
+export const ANALYTICS_COHORTS = {
+  /** Narrowed to Series 01, the weeks of the same cohort. */
+  firstSeriesWeeks: ["67%", "33%", "0%"],
+  readers: "3",
+  weekStart: "Mar 3, 2025",
+  weeks: ["100%", "33%", "33%"],
+} as const;
+
+/** The funnel of the readers who signed up over the week. */
+export const ANALYTICS_FUNNEL = {
+  median: "2.0",
+  /** Each step: its readers, and their share of the readers who signed up. */
+  steps: [
+    { readers: "3", share: "100.0%", step: "Signed up" },
+    { readers: "3", share: "100.0%", step: "Read or bought an episode" },
+    { readers: "2", share: "66.7%", step: "Bought within 7 days" },
+    { readers: "3", share: "100.0%", step: "Bought within 30 days" },
+    { readers: "3", share: "100.0%", step: "Bought" },
+  ],
+} as const;

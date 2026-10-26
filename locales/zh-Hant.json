@@ -1510,7 +1510,8 @@
       "analytics": "分析",
       "revenue_label": "銷售額",
       "audience_label": "讀者反應",
-      "episodes_label": "章節"
+      "episodes_label": "章節",
+      "cohorts_label": "同期群"
     },
     "not_found": {
       "description": "該對象可能已被刪除，或網址已變更。請改從列表中選擇。",
@@ -4048,6 +4049,43 @@
           "share": "占讀者的比例",
           "left": "在此離開"
         }
+      },
+      "cohorts": {
+        "title": "同期群",
+        "page_description": "每週註冊的讀者之後是否持續回訪，以及其中有多少人購買。",
+        "section_error": "無法顯示同期群",
+        "load_failed": "無法載入同期群。請稍後再試。",
+        "series": "系列",
+        "series_all": "所有系列",
+        "table_title": "依註冊週的留存",
+        "columns": {
+          "week": "註冊週",
+          "readers": "讀者",
+          "week_after": "第{$week}週"
+        },
+        "share_unavailable": "—",
+        "definition": "同期群是在租戶時區內從週一到週日的一週中建立帳號的讀者。期間內只要包含一天的週都各是一個同期群，並以整週統計。之後的每一週顯示同期群中在該週任一天瀏覽、讀完或購買過章節的讀者所占的比例，在該週結束並完成統計後顯示；尚未結束的週留空。選擇系列後只統計該系列上的活動，同期群仍是所有註冊的讀者。",
+        "activity_note": "活動從本安裝開始記錄的那一天起統計。在此之前的週只顯示註冊的讀者數，不顯示其活動，之後也不會補上。"
+      },
+      "funnel": {
+        "title": "漏斗",
+        "section_error": "無法顯示漏斗",
+        "load_failed": "無法載入漏斗。請稍後再試。",
+        "median_label": "首次購買前的天數（中位數）",
+        "share_unavailable": "—",
+        "columns": {
+          "step": "階段",
+          "readers": "讀者",
+          "share": "占註冊讀者的比例"
+        },
+        "steps": {
+          "signed_up": "已註冊",
+          "active": "閱讀或購買了章節",
+          "within_seven_days": "7天內購買",
+          "within_thirty_days": "30天內購買",
+          "purchased": "已購買"
+        },
+        "definition": "期間內建立帳號且帳號仍存在的讀者，以及其中閱讀或購買了章節的讀者、註冊後7天內和30天內首次購買的讀者、購買過的讀者的人數。所有比例皆相對於註冊的讀者。購買在發生時即計入，包含已退款的購買；在商店沙盒或支付服務測試模式下的購買不計入。"
       },
       "export": {
         "button": "下載CSV"

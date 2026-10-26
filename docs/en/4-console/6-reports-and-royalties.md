@@ -2,12 +2,12 @@
 title: Reports and royalties
 description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
-Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, and **Episodes** how far members read each episode and the page at which readers leave it. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
+Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, **Episodes** how far members read each episode and the page at which readers leave it, and **Cohorts** how the readers who signed up each week kept coming back and how many of them bought. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
 
-Every member of the staff sees **Dashboard**, **Audience**, and **Episodes**. Only a **Tenant admin** sees **Revenue** and **Royalties**, downloads a report or a statement as CSV, closes a month, or changes how months are closed; for anyone else those screens and controls are not there.
+Every member of the staff sees **Dashboard**, **Audience**, **Episodes**, and **Cohorts**. Only a **Tenant admin** sees **Revenue**, **Royalties**, and the **Funnel** on **Cohorts**, downloads a report or a statement as CSV, closes a month, or changes how months are closed; for anyone else those screens and controls are not there.
 
 ## Which day a sale or a read falls on
 
@@ -38,7 +38,7 @@ The screen updates as soon as a member of the staff saves a series or an episode
 
 ## Analytics
 
-**Revenue**, **Audience**, and the drop-off of an episode each report a period of the tenant's days. Choose it with **From** and **To** and **Apply**; it covers at most 366 days. Without a choice a screen covers the 28 days up to and including yesterday, and the line under the dates names the period and the zone. **Reset** goes back to those 28 days.
+**Revenue**, **Audience**, **Cohorts**, and the drop-off of an episode each report a period of the tenant's days. Choose it with **From** and **To** and **Apply**; it covers at most 366 days. Without a choice a screen covers the 28 days up to and including yesterday, and the line under the dates names the period and the zone. **Reset** goes back to those 28 days.
 
 A screen opens with the totals of its period and a chart of them by day, and below them a table. **By day**, **By series**, and **By episode** choose what the table's rows are, and choosing a column's heading sorts the table by it; choosing it again sorts it the other way. The period, the rows, and the sort are all in the page's address, so a bookmark or a link reopens the same report.
 
@@ -98,9 +98,33 @@ Choosing an episode in **Read-through** opens its **Drop-off**: how far into the
 
 The chart steps down from the first page to the last, and the table gives each page the readers who reached it, their share of those who reached the first, and the readers who left at it: those who reached it but not the next. Sorting by **Left here** brings the page most readers leave at to the top. A reader is counted at the page where their place in the episode stood at the end of a day, so a reader who read on several days of the period is counted once on each. A page past the episode's last, marked **(removed)**, was reached before pages were taken out of the episode.
 
+### Cohorts and funnel
+
+**Cohorts** follows the readers who signed up in each week of the period. A reader here is an account of the tenant's site; the staff's own accounts are left out.
+
+**Retention by sign-up week** has a row for every week with a day in the period, Monday to Sunday in the tenant's time zone, so its first row can begin before **From** and its last end after **To**. Each row gives the week, the readers whose accounts were created in it, and, under **Week 0** to **Week 12**, the share of them who viewed, finished, or bought an episode on any day of the sign-up week and of each of the twelve weeks after it. A reader is counted once in a week however many days they came back. The deeper a cell's shade, the larger the share. A week reaches the table once it is over and its days have been counted, so a week still under way is blank; a row for a week nobody signed up in shows `—`.
+
+Choose a series under **Series** to count only the reading and buying of that series. The rows are still every reader who signed up, so the shares show how many of the week's new readers went on to that series.
+
+**Funnel**, shown to a **Tenant admin**, counts the readers who signed up in the period and how far they got:
+
+| Step | What it counts |
+| --- | --- |
+| **Signed up** | Readers whose accounts were created in the period and still exist |
+| **Read or bought an episode** | Of them, those who viewed, finished, or bought an episode on any day that has been counted |
+| **Bought within 7 days** | Of them, those whose first purchase came less than 7 days after their account was created |
+| **Bought within 30 days** | The same within 30 days |
+| **Bought** | Of them, those who have bought at all |
+
+**Share of sign-ups** is each count over **Signed up**. **Median days to first purchase** is the middle of the waits, in days, from an account being created to its first purchase, over the readers who bought; it is `—` until one has. A purchase counts as soon as it is made, a refunded one included, while one made in a store's sandbox or a payment provider's test mode does not.
+
+A deleted account leaves its row and every count over it at once. The reading and buying these screens count is kept from the day the install began keeping it, which for an install upgraded to the release that added **Cohorts** is the oldest day whose analytics events were still kept at the upgrade: a week before that shows the readers who signed up in it but none of what they did, and is never filled in afterwards.
+
+![Retention by sign-up week for one week of three readers, all of them active in Week 0 and a third of them in Weeks 1 and 2, and below it the Funnel with each step's readers, their share of the sign-ups, and the median days to first purchase.](./reports-and-royalties-cohorts.png)
+
 ### Downloading a report as CSV
 
-**Download CSV**, beside the table of **Revenue**, **Audience**, and **Drop-off**, downloads that table's report over the period the screen shows: by day, by series, or by episode, as the table is. The file holds every row of the report, whatever the table's sort, in the order the report keeps: the days in order, the series or episodes of **Revenue** by net sales and the series of **Audience** by followers, highest first, and the pages of a drop-off in order. **Read-through** on **Episodes** has no download.
+**Download CSV**, beside the table of **Revenue**, **Audience**, and **Drop-off**, downloads that table's report over the period the screen shows: by day, by series, or by episode, as the table is. The file holds every row of the report, whatever the table's sort, in the order the report keeps: the days in order, the series or episodes of **Revenue** by net sales and the series of **Audience** by followers, highest first, and the pages of a drop-off in order. **Read-through** on **Episodes** and **Cohorts** have no download.
 
 The file is named after the report, the tenant, and the period, such as `revenue-by-series-<tenant>-2025-03-03--2025-03-09.csv`, and for a drop-off `drop-off-<tenant>-<episode>-<from>--<to>.csv`. It is UTF-8, with a byte order mark so that Excel reads it correctly, one row for each row of the report under a header row, and no total row. Its columns are:
 

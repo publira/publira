@@ -39,6 +39,7 @@ const SHARED_ENTRIES = [
   "Comments",
   "Audience",
   "Episodes",
+  "Cohorts",
   "App links",
   "Branding",
   "Settings",
@@ -197,6 +198,19 @@ test.describe("tenant roles in the console", () => {
     await expectNotFound(page, "/purchases");
     await expectNotFound(page, "/subscription-plans");
     await expectNotFound(page, "/analytics/revenue");
+
+    // Cohorts is read by every member of staff, and its funnel, which counts
+    // purchases, by a tenant admin alone.
+    await page.goto(adminUrl("/analytics/cohorts"));
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: "Retention by sign-up week",
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { exact: true, level: 2, name: "Funnel" })
+    ).toHaveCount(0);
   });
 
   test("an administrator is offered every entry", async ({ page }) => {

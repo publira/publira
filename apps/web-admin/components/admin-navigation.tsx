@@ -2,6 +2,7 @@ import {
   ActivityIcon,
   BellIcon,
   BookOpenIcon,
+  ChartIcon,
   CoinsIcon,
   CollectionIcon,
   CommentIcon,
@@ -63,6 +64,7 @@ const hrefs = [
   "/analytics/revenue",
   "/analytics/audience",
   "/analytics/episodes",
+  "/analytics/cohorts",
   "/royalties",
   "/purchases",
   "/subscription-plans",
@@ -325,6 +327,18 @@ export const AdminNavigation = () => (
             <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.nav.episodes_label" />
+              </Suspense>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/analytics/cohorts">
+          <ConsoleSidebar.NavigationItemIcon>
+            <ChartIcon className="size-4" />
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.cohorts_label" />
               </Suspense>
             </ConsoleSidebar.NavigationItemLabel>
           </ConsoleSidebar.NavigationItemHeading>
