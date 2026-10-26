@@ -2467,6 +2467,19 @@ final class AppMessages {
     return _format('mobile.purchases.canceled');
   }
 
+  /// `mobile.purchases.coin_pack_title`
+  String purchasesCoinPackTitle({
+    required num bonus,
+    required String coinName,
+    required num count,
+  }) {
+    return _format('mobile.purchases.coin_pack_title', {
+      'bonus': bonus,
+      'coin_name': coinName,
+      'count': count,
+    });
+  }
+
   /// `mobile.purchases.empty`
   String get purchasesEmpty {
     return _format('mobile.purchases.empty');
@@ -4061,8 +4074,11 @@ const _jaSources = <String, String>{
   'mobile.purchase.start_failed': '購入手続きを開始できませんでした。時間をおいて再試行してください。',
   'mobile.purchase.store_unavailable':
       'この端末では購入できません。ストアにサインインしているか、購入が制限されていないかを確認してください。',
-  'mobile.purchases.account_description': 'この端末に保存していないものも含め、購入したエピソードを確認できます。',
+  'mobile.purchases.account_description':
+      'この端末に保存していないエピソードも含め、購入したエピソードとパックを確認できます。',
   'mobile.purchases.canceled': '取り消し済み',
+  'mobile.purchases.coin_pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count}{\$coin_name}}}\n* {{{\$count}{\$coin_name}（うちボーナス{\$bonus}）}}',
   'mobile.purchases.empty':
       'まだエピソードを購入していません。購入したエピソードは、サインインしたどの端末でもここに表示されます。',
   'mobile.purchases.ended_at': '{\$date}に閲覧期限終了',
@@ -4921,8 +4937,10 @@ const _enSources = <String, String>{
   'mobile.purchase.store_unavailable':
       'Purchases are not available on this device. Check that you are signed in to the store and that purchases are allowed.',
   'mobile.purchases.account_description':
-      'Episodes you bought, including those not saved on this device.',
+      'Episodes and packs you bought, including episodes not saved on this device.',
   'mobile.purchases.canceled': 'Canceled',
+  'mobile.purchases.coin_pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count} {\$coin_name}}}\n* {{{\$count} {\$coin_name} (including {\$bonus} bonus)}}',
   'mobile.purchases.empty':
       'You have not bought any episodes yet. Episodes you buy appear here on every device you sign in on.',
   'mobile.purchases.ended_at': 'Ended {\$date}',
@@ -5718,8 +5736,10 @@ const _koSources = <String, String>{
   'mobile.purchase.store_unavailable':
       '이 기기에서는 구매할 수 없습니다. 스토어에 로그인되어 있는지, 구매가 제한되어 있지 않은지 확인해 주세요.',
   'mobile.purchases.account_description':
-      '이 기기에 저장하지 않은 것까지 포함해 구매한 에피소드를 확인할 수 있습니다.',
+      '이 기기에 저장하지 않은 에피소드까지 포함해 구매한 에피소드와 팩을 확인할 수 있습니다.',
   'mobile.purchases.canceled': '취소됨',
+  'mobile.purchases.coin_pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count} {\$coin_name}}}\n* {{{\$count} {\$coin_name} (보너스 {\$bonus} 포함)}}',
   'mobile.purchases.empty':
       '아직 구매한 에피소드가 없습니다. 구매한 에피소드는 로그인한 모든 기기에서 여기에 표시됩니다.',
   'mobile.purchases.ended_at': '{\$date}에 열람 기간 종료',
@@ -6433,8 +6453,10 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.sold_on_web': '在网站上销售',
   'mobile.purchase.start_failed': '无法开始购买。请稍后再试。',
   'mobile.purchase.store_unavailable': '此设备无法进行购买。请确认已登录商店且未限制购买。',
-  'mobile.purchases.account_description': '查看您购买的章节，包括未保存在此设备上的章节。',
+  'mobile.purchases.account_description': '查看您购买的章节和套餐，包括未保存在此设备上的章节。',
   'mobile.purchases.canceled': '已取消',
+  'mobile.purchases.coin_pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count}{\$coin_name}}}\n* {{{\$count}{\$coin_name}（含赠送{\$bonus}）}}',
   'mobile.purchases.empty': '您还没有购买任何章节。您购买的章节会显示在这里，在您登录的每台设备上都能看到。',
   'mobile.purchases.ended_at': '{\$date}阅读期限已结束',
   'mobile.purchases.expired': '已过期',
@@ -7127,8 +7149,10 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.sold_on_web': '在網站上販售',
   'mobile.purchase.start_failed': '無法開始購買。請稍後再試。',
   'mobile.purchase.store_unavailable': '此裝置無法進行購買。請確認已登入商店且未限制購買。',
-  'mobile.purchases.account_description': '查看您購買的章節，包括未儲存在此裝置上的章節。',
+  'mobile.purchases.account_description': '查看您購買的章節和套餐，包括未儲存在此裝置上的章節。',
   'mobile.purchases.canceled': '已取消',
+  'mobile.purchases.coin_pack_title':
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{{\$count}{\$coin_name}}}\n* {{{\$count}{\$coin_name}（含贈送{\$bonus}）}}',
   'mobile.purchases.empty': '您還沒有購買任何章節。您購買的章節會顯示在這裡，在您登入的每台裝置上都能看到。',
   'mobile.purchases.ended_at': '{\$date}閱讀期限已結束',
   'mobile.purchases.expired': '已過期',

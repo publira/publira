@@ -26,7 +26,11 @@ enum PurchasedItem {
 
   /// Every episode of the series the reader did not own yet when they bought
   /// the rest of it.
-  remainingEpisodes('remaining_episodes');
+  remainingEpisodes('remaining_episodes'),
+
+  /// A pack of the tenant's coins, which belongs to no series and opens
+  /// nothing itself.
+  coinPack('coin_pack');
 
   const PurchasedItem(this.wireName);
 
@@ -48,6 +52,9 @@ class MyPurchase {
     this.orderIndex = 0,
     this.volumeTitle = '',
     this.remainingEpisodeCount = 0,
+    this.coins = 0,
+    this.bonusCoins = 0,
+    this.coinName = '',
     required this.price,
     required this.currency,
     required this.isActive,
@@ -60,6 +67,9 @@ class MyPurchase {
   });
 
   final String id;
+
+  /// The series of the episode, the volume, or the rest of a series bought,
+  /// and empty for a pack of coins, which is of no series.
   final String seriesId;
   final String seriesTitle;
 
@@ -68,8 +78,9 @@ class MyPurchase {
   final String seriesLocale;
 
   /// What the purchase bought. The episode fields are set on a purchase of an
-  /// episode alone, [volumeTitle] on one of a volume, and
-  /// [remainingEpisodeCount] on one of the rest of the series.
+  /// episode alone, [volumeTitle] on one of a volume,
+  /// [remainingEpisodeCount] on one of the rest of the series, and the coin
+  /// fields on one of a pack.
   final PurchasedItem item;
 
   final String episodeId;
@@ -91,6 +102,18 @@ class MyPurchase {
 
   /// How many episodes buying the rest of the series opened.
   final int remainingEpisodeCount;
+
+  /// The coins and the bonus coins of a pack as the reader was shown them when
+  /// they bought it, however the pack has changed since.
+  final int coins;
+  final int bonusCoins;
+
+  /// Every coin a pack granted, its bonus coins among them.
+  int get grantedCoins => coins + bonusCoins;
+
+  /// The tenant's word for its coins in the locale the list was read in, which
+  /// a screen names the coins by instead of a word of the app's own.
+  final String coinName;
 
   /// What the reader paid, in the minor unit of [currency].
   final int price;

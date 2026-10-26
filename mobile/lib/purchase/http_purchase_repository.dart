@@ -415,20 +415,23 @@ class HttpPurchaseRepository implements PurchaseRepository {
     }
   }
 
-  /// A purchase names exactly one of an episode, a volume, and the rest of a
-  /// series. One naming none reads as an episode, which is what every
-  /// purchase was before the other two existed.
+  /// A purchase names exactly one of an episode, a volume, the rest of a
+  /// series, and a pack of coins. One naming none reads as an episode, which
+  /// is what every purchase was before the others existed.
   MyPurchase? _purchase(pb.MyPurchase purchase) {
     final episode = purchase.episode;
     final series = purchase.series;
     final episodeId = episode.publicId.trim();
     final seriesId = series.publicId.trim();
-    final item = purchase.hasVolume()
+    final item = purchase.hasCoinPack()
+        ? PurchasedItem.coinPack
+        : purchase.hasVolume()
         ? PurchasedItem.volume
         : purchase.hasSeriesBundle()
         ? PurchasedItem.remainingEpisodes
         : PurchasedItem.episode;
-    if (seriesId.isEmpty ||
+    // A pack is of no series; everything else opens one.
+    if ((item != PurchasedItem.coinPack && seriesId.isEmpty) ||
         (item == PurchasedItem.episode && episodeId.isEmpty)) {
       return null;
     }
@@ -444,6 +447,9 @@ class HttpPurchaseRepository implements PurchaseRepository {
       orderIndex: item == PurchasedItem.episode ? episode.orderIndex : 0,
       volumeTitle: purchase.volume.title.trim(),
       remainingEpisodeCount: purchase.seriesBundle.episodeCount,
+      coins: purchase.coinPack.coins,
+      bonusCoins: purchase.coinPack.bonusCoins,
+      coinName: purchase.coinName.trim(),
       price: purchase.priceAtPurchase,
       currency: purchase.currency.trim(),
       isActive: purchase.isActive,
