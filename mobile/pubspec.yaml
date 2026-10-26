@@ -14,7 +14,7 @@ dependencies:
 
   # HMAC-SHA256 for the page stream the image routes send
   # (see lib/api/image_cipher.dart).
-  crypto: 3.0.7
+  crypto: 3.0.8
   cupertino_icons: 2.0.0
   firebase_core: 4.15.2
   firebase_messaging: 16.7.1
