@@ -67,6 +67,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.SeriesRemainderCheckout = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 12}
 	policy.SubscriptionCheckout = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 14}
 	policy.CoinPayment = platformpolicy.MinuteDay{PerMinute: 5, PerDay: 40}
+	policy.PurchaseCheckout = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 30}
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
@@ -462,6 +463,45 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedCoinPaymentLimit(t *testing.T) {
 	}
 }
 
+// purchase_checkout reached the policy after the console screens that save
+// it, in the same way wait_free_ticket_use did, so an omitted one keeps what
+// is stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedPurchaseCheckoutLimit(t *testing.T) {
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.PurchaseCheckout = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without purchase_checkout: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.PurchaseCheckout = platformpolicy.Defaults().PurchaseCheckout
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default purchase checkout limit", got, want)
+	}
+
+	want.PurchaseCheckout = platformpolicy.MinuteDay{PerMinute: 6, PerDay: 60}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with purchase_checkout: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored purchase checkout limit", got, want)
+	}
+}
+
 // community_limit_defaults.notification_settings reached the policy after the
 // Community page that saves it, so an omitted one keeps what is stored too.
 func TestDBUpdatePlatformPolicyKeepsAnOmittedNotificationSettingsLimit(t *testing.T) {
@@ -697,6 +737,22 @@ func TestDBPlatformPolicyRowWrittenWithoutTheSubscriptionCheckoutLimitReadsTheDe
 	want.SubscriptionCheckout = platformpolicy.Defaults().SubscriptionCheckout
 	if got, _ := getPolicy(t, client, operator); got != want {
 		t.Fatalf("policy = %+v, want %+v with the default subscription checkout limit", got, want)
+	}
+}
+
+// Nor does it name the purchase checkout limits.
+func TestDBPlatformPolicyRowWrittenWithoutThePurchaseCheckoutLimitReadsTheDefault(t *testing.T) {
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	rewritePolicyRowWithout(t, pg, "purchase_checkout_limit_per_minute", "purchase_checkout_limit_per_day")
+
+	want := tightenedPolicy()
+	want.PurchaseCheckout = platformpolicy.Defaults().PurchaseCheckout
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy = %+v, want %+v with the default purchase checkout limit", got, want)
 	}
 }
 

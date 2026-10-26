@@ -144,6 +144,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.SeriesRemainderCheckout = open
 	policy.SubscriptionCheckout = open
 	policy.CoinPayment = open
+	policy.PurchaseCheckout = open
 	return policy
 }
 

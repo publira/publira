@@ -833,6 +833,8 @@ type PlatformPolicyConfig struct {
 	TenantCoinsAllowed                    bool      `json:"tenant_coins_allowed"`
 	CoinPaymentLimitPerMinute             int32     `json:"coin_payment_limit_per_minute"`
 	CoinPaymentLimitPerDay                int32     `json:"coin_payment_limit_per_day"`
+	PurchaseCheckoutLimitPerMinute        int32     `json:"purchase_checkout_limit_per_minute"`
+	PurchaseCheckoutLimitPerDay           int32     `json:"purchase_checkout_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {

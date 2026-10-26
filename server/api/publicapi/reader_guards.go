@@ -104,6 +104,11 @@ const (
 	// An episode paid for with coins. Each payment writes a purchase and the
 	// coins it spent.
 	actionPayWithCoins readerAction = "coin_payment.pay"
+	// A checkout of an episode, a volume, or a coin pack started. None of them
+	// writes anything, so no row bounds them, but each one asks the payment
+	// provider for a checkout on the tenant's credentials. The three share the
+	// allowance, so moving from one to another buys a reader no more requests.
+	actionStartPurchaseCheckout readerAction = "purchase_checkout.start"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -146,6 +151,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionStartSeriesRemainderCheckout:   minuteDayRules(policy.SeriesRemainderCheckout),
 		actionStartSubscriptionCheckout:      minuteDayRules(policy.SubscriptionCheckout),
 		actionPayWithCoins:                   minuteDayRules(policy.CoinPayment),
+		actionStartPurchaseCheckout:          minuteDayRules(policy.PurchaseCheckout),
 	}
 }
 

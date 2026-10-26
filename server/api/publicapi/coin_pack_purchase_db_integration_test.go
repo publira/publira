@@ -52,11 +52,21 @@ func newCoinPackFixture(t *testing.T) *coinPackFixture {
 // tenant coins or forbids them.
 func newCoinPackFixtureUnder(t *testing.T, platformAllows bool) *coinPackFixture {
 	t.Helper()
+	return newCoinPackFixtureGuardedBy(t, func(*sql.DB) readerGuards {
+		return guardsWith(func(policy *platformpolicy.Policy) {
+			policy.TenantCoinsAllowed = platformAllows
+		})
+	})
+}
+
+// newCoinPackFixtureGuardedBy is newCoinPackFixture behind the flood control
+// guards builds over the public API's pool.
+func newCoinPackFixtureGuardedBy(t *testing.T, guards func(*sql.DB) readerGuards) *coinPackFixture {
+	t.Helper()
 	encryptor := newPublicTestEncryptor(t)
 	checkout := newCapturingCheckoutProvider()
-	env := newPublicDBEnvConfigured(t, guardsWith(func(policy *platformpolicy.Policy) {
-		policy.TenantCoinsAllowed = platformAllows
-	}), openMailGuard(), func(api *apiServer, _ *sql.DB) {
+	env := newPublicDBEnvConfigured(t, openReaderGuards(), openMailGuard(), func(api *apiServer, db *sql.DB) {
+		api.guards = guards(db)
 		api.encryptor = encryptor
 		api.paymentProviders = paymentprovider.NewRegistry(checkout)
 	})

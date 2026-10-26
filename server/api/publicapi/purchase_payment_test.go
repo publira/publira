@@ -199,6 +199,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantSettingsMissing(t *testing.T) {
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
@@ -229,6 +230,7 @@ func TestStartEpisodeCheckoutRefusesWhenTenantDomainMissing(t *testing.T) {
 			AddRow(tenantID, "TENANT", "", "Tenant", now, "active", nil, "UTC", "ja", testSupportedLocalesRow, nil))
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -348,6 +350,7 @@ func TestStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.
 			expectTenantLookup(env.mock, tenantID, "TENANT", now)
 			expectAuthSession(env.mock, tenantID, userID, now)
 			expectLegalPagesAgreed(env.mock, tenantID, userID)
+			expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 			if tc.client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
 				expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
 			}
@@ -382,6 +385,7 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "app")
@@ -414,6 +418,7 @@ func TestStartEpisodeCheckoutRefusesTheAppOfATenantSellingThroughTheStore(t *tes
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteStore)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
@@ -442,6 +447,7 @@ func TestStartEpisodeCheckoutSellsOnTheWebOfATenantWhoseAppSellsThroughTheStore(
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	// No route read: the route decides only what the app offers.
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
@@ -471,6 +477,7 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
@@ -516,6 +523,7 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "all")
@@ -561,6 +569,7 @@ func startCheckoutOf(t *testing.T, env publicPaymentServer, encryptor *secretcry
 	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectEpisode(env.mock, tenantID, episodeID, "web")
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
@@ -702,6 +711,7 @@ func TestStartEpisodeCheckoutRefusesTheRentalOfAnEpisodeThatIsNotRented(t *testi
 	expectTenantLookup(env.mock, tenantID, "TENANT", now)
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
 
@@ -741,6 +751,7 @@ func startCheckoutOn(t *testing.T, env publicPaymentServer, encryptor *secretcry
 	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectNoTenantCommunityLimitOverrides(env.mock, tenantID)
 	if client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
 		surface = "app"
 		expectAppPurchaseRoute(env.mock, tenantID, paymentsettings.RouteExternalCheckout)

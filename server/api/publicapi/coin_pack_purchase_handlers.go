@@ -95,6 +95,9 @@ func (s *apiServer) StartCoinPackCheckout(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionStartPurchaseCheckout, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	readerLocale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err

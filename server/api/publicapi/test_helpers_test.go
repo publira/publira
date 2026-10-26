@@ -316,6 +316,15 @@ func withScanLocale(query string, args ...driver.Value) []driver.Value {
 	return slices.Insert(slices.Clone(args), 8, driver.Value("ja"))
 }
 
+// expectNoTenantCommunityLimitOverrides answers the read of the tenant's own
+// community limits, which every charge of the reader flood control makes, with
+// no row, so the platform's limits stand.
+func expectNoTenantCommunityLimitOverrides(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantCommunityLimitOverrides)).
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"tenant_id"}))
+}
+
 // expectNoSavedPlatformPolicy answers the platform policy read with no saved
 // row, which is the built-in policy: tenant coins not allowed. The server's
 // resolver keeps what it read, so a test server reads it once.
