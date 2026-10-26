@@ -49,6 +49,8 @@ func freeEpisodeCountOfListedSeries(t *testing.T, env *publicDBEnv, tenant testu
 }
 
 func TestDBPublishedSeriesCountsTheEpisodesAReaderCanOpenForNothing(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -107,6 +109,8 @@ func TestDBPublishedSeriesCountsTheEpisodesAReaderCanOpenForNothing(t *testing.T
 }
 
 func TestDBListPublishedSeriesKeepsOnlyTheSeriesWithAFreeEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	now := time.Now()
@@ -162,6 +166,8 @@ func TestDBListPublishedSeriesKeepsOnlyTheSeriesWithAFreeEpisode(t *testing.T) {
 // The filtered list pages by the same keyset as the unfiltered one, so its
 // tokens have to walk it in both directions without repeating a series.
 func TestDBListPublishedSeriesPagesTheFilteredListForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	now := time.Now()

@@ -47,6 +47,8 @@ func publicCommentByPublicID(t *testing.T, comments []*publirav1.EpisodeComment,
 // list agree, so the author's comment reads the same before and after the page
 // re-reads it.
 func TestDBEpisodeCommentCarriesTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "CMK")
 	env, tenant, reader, series, credited := fixture.env, fixture.tenant, fixture.member, fixture.series, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -86,6 +88,8 @@ func TestDBEpisodeCommentCarriesTheCreditedCreator(t *testing.T) {
 // approval — is marked in the author's own list and in the post response, so
 // the badge does not appear only once staff approve it.
 func TestDBMyEpisodeCommentCarriesTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "CMY")
 	env, tenant, reader, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "approval_required")
@@ -121,6 +125,8 @@ func TestDBMyEpisodeCommentCarriesTheCreditedCreator(t *testing.T) {
 // named by the credit that leads the episode's credit line — the role first,
 // whatever the names sort to — and the comment is listed once.
 func TestDBEpisodeCommentNamesTheCreditThatSortsFirst(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "CMF")
 	env, tenant, episode := fixture.env, fixture.tenant, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")

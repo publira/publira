@@ -60,6 +60,8 @@ func assertEpisodeEyeCatch(t *testing.T, episode *publirattypesv1.Episode, image
 // where the episode has none, so it carries both. Two entries of one series
 // carry the same series variants.
 func TestDBListMyEpisodeReadsCarriesBothEyeCatches(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERART01", "member-art@example.com", "Member", "tenant_member")
@@ -109,6 +111,8 @@ func TestDBListMyEpisodeReadsCarriesBothEyeCatches(t *testing.T) {
 }
 
 func TestDBListMyRecentSeriesCarriesTheEpisodesEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERART01", "member-art@example.com", "Member", "tenant_member")
@@ -146,6 +150,8 @@ func TestDBListMyRecentSeriesCarriesTheEpisodesEyeCatch(t *testing.T) {
 }
 
 func TestDBListMyFollowUpdatesCarriesTheEpisodesEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERART01", "member-art@example.com", "Member", "tenant_member")

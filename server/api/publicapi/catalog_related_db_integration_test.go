@@ -32,6 +32,8 @@ func (e *publicDBEnv) listRelatedSeries(
 }
 
 func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -113,6 +115,8 @@ func TestDBListRelatedSeriesRanksSharedCreatorsAboveLabelsAndGenres(t *testing.T
 // Genres and tags count one each and add up, so a series sharing more of them
 // outranks one sharing fewer.
 func TestDBListRelatedSeriesAddsUpGenresAndTags(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -169,6 +173,8 @@ func TestDBListRelatedSeriesAddsUpGenresAndTags(t *testing.T) {
 // A series nothing relates to still gets a strip: everything scores 0, and the
 // weekly ranking decides the order among them.
 func TestDBListRelatedSeriesFallsBackToTheRankingWithoutARelation(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -212,6 +218,8 @@ func TestDBListRelatedSeriesFallsBackToTheRankingWithoutARelation(t *testing.T) 
 // The ranking only breaks ties, so it never lifts an unrelated series over a
 // related one.
 func TestDBListRelatedSeriesKeepsScoreAboveTheRanking(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -250,6 +258,8 @@ func TestDBListRelatedSeriesKeepsScoreAboveTheRanking(t *testing.T) {
 }
 
 func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -324,6 +334,8 @@ func TestDBListRelatedSeriesPagesAcrossTheScoreBoundary(t *testing.T) {
 }
 
 func TestDBListRelatedSeriesHidesSeriesTheTenantCannotSee(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 

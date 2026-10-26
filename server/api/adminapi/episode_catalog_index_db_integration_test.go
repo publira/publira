@@ -31,6 +31,8 @@ func (e *adminDBEnv) seriesSyncsQueued(t *testing.T, seriesID string) int {
 // queues the series' sync in its own transaction, and one that cannot queues
 // nothing.
 func TestDBEpisodeWritesQueueTheirSeriesSearchSync(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()

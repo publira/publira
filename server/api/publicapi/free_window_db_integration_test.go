@@ -44,6 +44,8 @@ func tenantMidnight(t *testing.T, tenant testutil.Tenant, now time.Time, dayOffs
 }
 
 func TestDBGetEpisodeDetailOpensAPaidEpisodeInsideItsFreeWindow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -92,6 +94,8 @@ func TestDBGetEpisodeDetailOpensAPaidEpisodeInsideItsFreeWindow(t *testing.T) {
 }
 
 func TestDBGetEpisodeDetailLocksAPaidEpisodeOutsideItsFreeWindow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -142,6 +146,8 @@ func TestDBGetEpisodeDetailLocksAPaidEpisodeOutsideItsFreeWindow(t *testing.T) {
 // A free episode is not "free until" anything: the window field stays empty so a
 // client does not render a countdown on a body that never expires.
 func TestDBGetEpisodeDetailLeavesFreeUntilEmptyForAFreeEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Free Series", Published: true})
@@ -191,6 +197,8 @@ func seriesDetailFreeUntil(t *testing.T, env *publicDBEnv, tenant testutil.Tenan
 // the top page's new-episode rows are drawn from, so each row carries the end of
 // its own window and nothing for the rows around it.
 func TestDBGetSeriesDetailCarriesTheEndOfEachEpisodesOpenFreeWindow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -274,6 +282,8 @@ func TestDBGetSeriesDetailCarriesTheEndOfEachEpisodesOpenFreeWindow(t *testing.T
 // under. The boundaries are passed by moving the stored period behind NOW()
 // rather than by waiting for the clock.
 func TestDBSeriesDetailFreeUntilFollowsAWindowAcrossBothBoundaries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -330,6 +340,8 @@ func TestDBSeriesDetailFreeUntilFollowsAWindowAcrossBothBoundaries(t *testing.T)
 // window through both boundaries and checks, at each, that the list has moved
 // to the new side and that apply-free-windows records the drop of the list tag.
 func TestDBListedFreeEpisodesFollowAWindowAcrossBothBoundaries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series, episodes := seedSeriesWithEpisodes(t, env, tenant,
@@ -401,6 +413,8 @@ func (r *recordingRevalidator) RevalidateTags(_ context.Context, _ uuid.UUID, ta
 // The "continue reading" offers name a priced episode the reader may be about
 // to open, so they carry the end of its window the way a catalog row does.
 func TestDBReadingProgressCarriesTheEndOfAnOpenFreeWindow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERWIN01", "member-window@example.com", "Member", "tenant_member")

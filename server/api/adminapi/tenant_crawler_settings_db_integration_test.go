@@ -28,6 +28,8 @@ func updateDBCrawlerSettings(env *adminDBEnv, tenant adminDBTenant, settings *pu
 }
 
 func TestDBCrawlerSettingsAreStoredNormalizedAndAudited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -99,6 +101,8 @@ func TestDBCrawlerSettingsAreStoredNormalizedAndAudited(t *testing.T) {
 }
 
 func TestDBCrawlerSettingsRefuseAnInvalidEntry(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	if _, err := updateDBCrawlerSettings(env, tenant, &publiraadminv1.TenantCrawlerSettings{
@@ -145,6 +149,8 @@ func TestDBCrawlerSettingsRefuseAnInvalidEntry(t *testing.T) {
 // Every member of staff may see the setting, as the console's read-only form
 // shows it, and only a tenant admin may change it.
 func TestDBCrawlerSettingsAreWrittenByATenantAdminAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)

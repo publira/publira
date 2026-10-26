@@ -37,6 +37,8 @@ func assertInsufficientPrivilege(t *testing.T, err error, what string) {
 // request is answered on a shared connection pool.
 
 func TestDBPublicRoleSeesOnlyTheScopedTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -327,6 +329,8 @@ var publicDataTables = []struct {
 // first — a count of zero over an empty table would hold whether or not the
 // policy is there.
 func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -583,6 +587,8 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 // one member of a tenant cannot read or rewrite another's. These two cases are
 // the reading position pair's, over the tables this inbox writes.
 func TestDBReaderStateIsMemberScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	owner := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "owner@tenant-a.example.com", "Owner")
@@ -688,6 +694,8 @@ func TestDBReaderStateIsMemberScopedByRLS(t *testing.T) {
 // which is the only thing member isolation would match on, so the tenant half
 // is what has to hide every one of these rows.
 func TestDBReaderStateIsTenantScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -741,6 +749,8 @@ func TestDBReaderStateIsTenantScopedByRLS(t *testing.T) {
 // comment or a reader whose report hides one files the row for somebody else;
 // everything else about either table is the recipient's alone.
 func TestDBNotificationsAreMemberScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	owner := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "owner@tenant-a.example.com", "Owner")
@@ -832,6 +842,8 @@ func TestDBNotificationsAreMemberScopedByRLS(t *testing.T) {
 // the member's own id, which is all member isolation would match on, so the
 // tenant half is what has to hide these rows and refuse these writes.
 func TestDBNotificationsAreTenantScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

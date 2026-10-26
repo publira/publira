@@ -73,6 +73,8 @@ func startConsolesWithMailGuard(t *testing.T, env *publicDBEnv, mail *mailguard.
 // alongside them, so mail asked for on the storefront and on the tenant console
 // is spent from the allowance the platform console charges as well.
 func TestDBTheMailAllowanceOfASourceIsOneAcrossTheThreeNamespaces(t *testing.T) {
+	t.Parallel()
+
 	mail := mailGuardWith(platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}, platformpolicy.HourDay{PerHour: 2, PerDay: 2})
 	env := newPublicDBEnvWithMailGuard(t, mail)
 	consoles := startConsolesWithMailGuard(t, env, mail)
@@ -106,6 +108,8 @@ func TestDBTheMailAllowanceOfASourceIsOneAcrossTheThreeNamespaces(t *testing.T) 
 // scope of an address, so a mailbox within a tenant holds one allowance however
 // the two surfaces are asked to mail it.
 func TestDBTheStorefrontAndTheTenantConsoleShareTheMailAllowanceOfAnAddress(t *testing.T) {
+	t.Parallel()
+
 	mail := mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000})
 	env := newPublicDBEnvWithMailGuard(t, mail)
 	consoles := startConsolesWithMailGuard(t, env, mail)

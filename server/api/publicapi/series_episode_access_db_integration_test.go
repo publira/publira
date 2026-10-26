@@ -41,6 +41,8 @@ func execSQL(t *testing.T, env *publicDBEnv, query string, args ...any) {
 }
 
 func TestDBGetSeriesEpisodeAccessAgreesWithGetEpisodeDetail(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
@@ -163,6 +165,8 @@ func TestDBGetSeriesEpisodeAccessAgreesWithGetEpisodeDetail(t *testing.T) {
 }
 
 func TestDBGetSeriesEpisodeAccessAppliesTheTenantAgeRule(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)
@@ -216,6 +220,8 @@ func TestDBGetSeriesEpisodeAccessAppliesTheTenantAgeRule(t *testing.T) {
 }
 
 func TestDBGetSeriesEpisodeAccessHidesSeriesTheStorefrontDoesNot(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenantA, tenantB := env.seedTwoTenants(t)
 	draft := env.PG.SeedSeries(t, tenantA.ID, testutil.SeriesSeed{PublicID: "SERIESDRAFT1", Title: "Draft", Published: false})
@@ -233,6 +239,8 @@ func TestDBGetSeriesEpisodeAccessHidesSeriesTheStorefrontDoesNot(t *testing.T) {
 }
 
 func TestDBGetSeriesEpisodeAccessAnswersAnUnverifiableBearerAsAGuest(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
@@ -256,6 +264,8 @@ func TestDBGetSeriesEpisodeAccessAnswersAnUnverifiableBearerAsAGuest(t *testing.
 }
 
 func TestDBGetSeriesEpisodeAccessSaysWhichEpisodesTheReaderOwns(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})

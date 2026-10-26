@@ -80,6 +80,8 @@ func withWeeks(size int64, active ...int64) []int64 {
 // reader of the tenant, and a deleted account leaves its cohort and every count
 // over it on the next read.
 func TestDBAdminRetentionCohortsFollowEachWeeksSignUps(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "CHT")
 	tenantID := f.admin.Tenant.ID
@@ -164,6 +166,8 @@ func TestDBAdminRetentionCohortsFollowEachWeeksSignUps(t *testing.T) {
 // A week still in progress is no count at all rather than one short of the
 // days it has left.
 func TestDBAdminRetentionCohortsLeaveOutAWeekInProgress(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "CHU")
 	today := time.Now().In(royaltyZone).Format(time.DateOnly)
@@ -177,6 +181,8 @@ func TestDBAdminRetentionCohortsLeaveOutAWeekInProgress(t *testing.T) {
 }
 
 func TestDBAdminRetentionCohortsRefuseASeriesTheTenantDoesNotHave(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "CHV")
 	other := env.seedRoyaltyFixture(t, "CHW")
@@ -196,6 +202,8 @@ func TestDBAdminRetentionCohortsRefuseASeriesTheTenantDoesNotHave(t *testing.T) 
 // with an active day, and those whose first purchase came within 7 days,
 // within 30, and at all, leaving a sandbox purchase out.
 func TestDBAdminSignUpFunnelCountsHowSoonReadersFirstBought(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "FNL")
 	tenantID := f.admin.Tenant.ID

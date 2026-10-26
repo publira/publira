@@ -38,6 +38,8 @@ func seedEpisodeEyeCatch(t *testing.T, env *publicDBEnv, tenantID uuid.UUID, epi
 // series detail lists, so each of them carries its own eye-catch, and one
 // without carries none rather than its series'.
 func TestDBGetSeriesDetailCarriesEachEpisodesEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -81,6 +83,8 @@ func TestDBGetSeriesDetailCarriesEachEpisodesEyeCatch(t *testing.T) {
 }
 
 func TestDBGetEpisodeDetailCarriesTheEpisodesEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{

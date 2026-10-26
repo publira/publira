@@ -56,6 +56,8 @@ func tryLogin(t *testing.T, ts *httptest.Server, email, password string) error {
 // would have gone through. An address with no account is refused the same way,
 // so the refusal does not say which addresses hold one.
 func TestDBLoginRefusesPastTheAccountAllowanceWithoutVerifying(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newLoginLimitedServer(t, 2)
 	const nobody = "nobody@example.com"
 
@@ -79,6 +81,8 @@ func TestDBLoginRefusesPastTheAccountAllowanceWithoutVerifying(t *testing.T) {
 
 // An operator who mistypes and then gets it right is not held back.
 func TestDBLoginCorrectPasswordClearsTheAccountCount(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newLoginLimitedServer(t, 3)
 
 	for typo := 1; typo <= 2; typo++ {
@@ -99,6 +103,8 @@ func TestDBLoginCorrectPasswordClearsTheAccountCount(t *testing.T) {
 // One origin trying one password against many addresses meets the origin's
 // allowance, however fresh each address's own is.
 func TestDBLoginRefusesPastTheSourceAllowance(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithLoginGuard(t, loginGuardWith(
 		platformpolicy.MinuteDay{PerMinute: 1000, PerDay: 1000},
 		platformpolicy.HourDay{PerHour: 2, PerDay: 2},

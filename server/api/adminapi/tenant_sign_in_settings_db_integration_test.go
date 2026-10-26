@@ -34,6 +34,8 @@ func updateDBSignInSettings(env *adminDBEnv, tenant adminDBTenant, req *publiraa
 // An administrator stores the Sign in with Apple key and the Google clients,
 // and reads the key back as a hint only.
 func TestDBSignInSettingsAreStoredAndReadBackMasked(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	keyPEM := signintest.PrivateKeyPEM(t)
@@ -89,6 +91,8 @@ func TestDBSignInSettingsAreStoredAndReadBackMasked(t *testing.T) {
 }
 
 func TestDBSignInSettingsRefuseAnEnabledProviderMissingWhatItNeeds(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -120,6 +124,8 @@ func TestDBSignInSettingsRefuseAnEnabledProviderMissingWhatItNeeds(t *testing.T)
 // A reader deleted from the console takes their links with them, so the Apple
 // token a link held is queued for revocation first.
 func TestDBAdminDeleteReaderQueuesTheRevocationOfItsAppleToken(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "RDLTENANT001", "reader-delete.example.com", "Delete", "RDLADMIN0001", "admin@reader-delete.example.com")
 	reader := env.PG.SeedEndUser(t, admin.Tenant.ID, "RDLREADER001", "reader@reader-delete.example.com", "Reader")

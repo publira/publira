@@ -31,6 +31,8 @@ func episodeTranslationLocales(translations []*publiraadminv1.EpisodeTranslation
 // leaves the series' other translations, and the title the console lists it
 // by, as they were.
 func TestDBUpdateSeriesWritesTheTranslationItNames(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -94,6 +96,8 @@ func TestDBUpdateSeriesWritesTheTranslationItNames(t *testing.T) {
 // A title is written only in a language the site offers: one switched off, or
 // one the registry does not know, is refused rather than stored out of sight.
 func TestDBSeriesTitleIsRefusedInALocaleTheTenantDoesNotOffer(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	if _, err := env.PG.DB.ExecContext(context.Background(), `UPDATE tenants SET supported_locales = '{ja,en}' WHERE id = $1`, tenant.Tenant.ID); err != nil {
@@ -120,6 +124,8 @@ func TestDBSeriesTitleIsRefusedInALocaleTheTenantDoesNotOffer(t *testing.T) {
 // The last translation of a series or an episode cannot be deleted, since a
 // work with no title in any language would vanish from every list.
 func TestDBDeleteCatalogTranslationKeepsTheLastOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -216,6 +222,8 @@ func TestDBDeleteCatalogTranslationKeepsTheLastOne(t *testing.T) {
 // left behind keep no time that says its page changed. A deletion that is
 // refused dates nothing.
 func TestDBDeleteEpisodeTranslationDatesTheEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -282,6 +290,8 @@ func TestDBDeleteEpisodeTranslationDatesTheEpisode(t *testing.T) {
 // Another tenant's series and episodes are not found, whichever translation
 // a request names.
 func TestDBCatalogTranslationsOfAnotherTenantAreNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.seriesClient()

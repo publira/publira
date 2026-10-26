@@ -85,6 +85,8 @@ func (e *adminDBEnv) seedVolumeSale(t *testing.T, f volumeRoyaltyFixture, sale r
 // nothing. What the sale credits was fixed when it was recorded: an episode
 // repriced, or one added to the volume, before the close changes nothing.
 func TestDBAdminVolumeSalePaysTheCreditsOfEachEpisodeTheirPart(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedVolumeRoyaltyFixture(t, "RVS")
 
@@ -123,6 +125,8 @@ func TestDBAdminVolumeSalePaysTheCreditsOfEachEpisodeTheirPart(t *testing.T) {
 // month's own, divided over the episodes in proportion to their parts and
 // rounded down for each. The totals keep the refund as it was paid back.
 func TestDBAdminPartialRefundOfAVolumeIsDividedOverItsEpisodes(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedVolumeRoyaltyFixture(t, "RVP")
 
@@ -144,6 +148,8 @@ func TestDBAdminPartialRefundOfAVolumeIsDividedOverItsEpisodes(t *testing.T) {
 // line of each episode in it, by the episode's part, and so is the sale once
 // a dispute of it is lost. Together the statements pay nothing for the sale.
 func TestDBAdminRefundOfAVolumeAfterCloseIsTakenBackFromEachEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedVolumeRoyaltyFixture(t, "RVR")
 

@@ -51,8 +51,7 @@ func newSubscriptionFixture(t *testing.T) *subscriptionFixture {
 
 func newSubscriptionFixtureWithGuards(t *testing.T, guards readerGuards) *subscriptionFixture {
 	t.Helper()
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 
 	fixture := stripetest.NewFixture(t)
 	credentials := fixture.Credentials()
@@ -155,6 +154,8 @@ func (f *subscriptionFixture) mySubscription(t *testing.T) *publirav1.Subscripti
 }
 
 func TestDBListSubscriptionPlansAnswersThePublishedPlans(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	other := f.pg.SeedTenant(t, "SUBOTHER", "subscriptions-other.example.com", "Other tenant")
 	label := f.pg.SeedLabel(t, f.tenant.ID, testutil.LabelSeed{PublicID: "SUBLABEL01", Name: "Label"})
@@ -195,6 +196,8 @@ func TestDBListSubscriptionPlansAnswersThePublishedPlans(t *testing.T) {
 // answers beside them the ones a reader on the calling surface could open: a
 // label with a series published there, and a series published there.
 func TestDBListSubscriptionPlansNamesWhatEachPlanOpensOnTheSurface(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	shown := f.pg.SeedLabel(t, f.tenant.ID, testutil.LabelSeed{PublicID: "SUBLABELSHOW", Name: "Shown label"})
 	empty := f.pg.SeedLabel(t, f.tenant.ID, testutil.LabelSeed{PublicID: "SUBLABELNONE", Name: "Empty label"})
@@ -267,6 +270,8 @@ func TestDBListSubscriptionPlansNamesWhatEachPlanOpensOnTheSurface(t *testing.T)
 // A subscription is started through Stripe Checkout and from then on is what
 // Stripe last reported it to be: active, set to cancel, past due, and ended.
 func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
 
@@ -387,6 +392,8 @@ func TestDBASubscriptionFollowsStripesWebhooks(t *testing.T) {
 }
 
 func TestDBStartSubscriptionCheckoutRefusesWhatItCannotSell(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	other := f.pg.SeedTenant(t, "SUBNOPAY", "subscriptions-nopay.example.com", "No payments")
 	draft := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{})
@@ -428,6 +435,8 @@ func TestDBStartSubscriptionCheckoutRefusesWhatItCannotSell(t *testing.T) {
 }
 
 func TestDBCreateBillingPortalSessionRefusesAReaderWhoNeverSubscribed(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	_, err := f.subscriptions.CreateBillingPortalSession(f.readerCtx(t), &publirav1.CreateBillingPortalSessionRequest{Tenant: tenantContext(f.tenant)})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
@@ -441,6 +450,8 @@ func TestDBCreateBillingPortalSessionRefusesAReaderWhoNeverSubscribed(t *testing
 // A subscription is recorded on the plan of the Price Stripe bills it at,
 // which follows a reader who changed their Price in the billing portal.
 func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	monthly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
 	yearly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_yearly", Published: true})
@@ -521,6 +532,8 @@ func TestDBProcessPaymentWebhookRecordsASubscriptionOnThePlanOfItsPrice(t *testi
 // A checkout started before staff handed its Price to another plan records the
 // subscription it starts on the plan the reader chose, and keeps it there.
 func TestDBProcessPaymentWebhookRecordsANewSubscriptionOnThePlanItsCheckoutNamed(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	monthly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
 	yearly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_yearly", Published: true})
@@ -560,6 +573,8 @@ func TestDBProcessPaymentWebhookRecordsANewSubscriptionOnThePlanItsCheckoutNamed
 // The reader's current subscription is the latest one that is not over,
 // rather than the one changed last.
 func TestDBGetMySubscriptionPrefersOneThatIsNotOver(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{Published: true})
 	live := f.pg.SeedSubscription(t, f.tenant.ID, f.reader.ID, plan.ID, testutil.SubscriptionSeed{Status: "active"})
@@ -578,6 +593,8 @@ func TestDBGetMySubscriptionPrefersOneThatIsNotOver(t *testing.T) {
 // same plan answers the open checkout, and asking for another expires it
 // first, so two subscriptions can never be paid for side by side.
 func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	monthly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
 	yearly := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_yearly", Published: true})
@@ -670,6 +687,8 @@ func TestDBStartSubscriptionCheckoutKeepsOneCheckoutPerReader(t *testing.T) {
 // Starting a subscription checkout spends the reader's allowance before
 // anything is written or asked of the provider.
 func TestDBStartSubscriptionCheckoutSpendsTheReadersAllowance(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixtureWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.SubscriptionCheckout = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
 	}))
@@ -690,6 +709,8 @@ func TestDBStartSubscriptionCheckoutSpendsTheReadersAllowance(t *testing.T) {
 // subscription, so the deletion cancels it, at once, on the tenant's Stripe
 // account. A subscription that is over, and another reader's, are left alone.
 func TestDBDeleteMeCancelsTheReadersSubscription(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
 	other := f.pg.SeedEndUser(t, f.tenant.ID, "SUBREADER02", "other@example.com", "Other subscriber")
@@ -749,6 +770,8 @@ func TestDBDeleteMeCancelsTheReadersSubscription(t *testing.T) {
 // it starts a subscription the deletion could not find. The webhook that
 // records it for no one cancels it.
 func TestDBProcessPaymentWebhookCancelsASubscriptionWhoseReaderIsGone(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
 	if _, err := f.auth.DeleteMe(f.readerCtx(t), &publirav1.DeleteMeRequest{Tenant: tenantContext(f.tenant), Password: testutil.SeededPassword}); err != nil {
@@ -782,6 +805,8 @@ func TestDBProcessPaymentWebhookCancelsASubscriptionWhoseReaderIsGone(t *testing
 // the deletion and then finds the reader gone, so the subscription it records
 // is canceled too rather than left billing for no one.
 func TestDBProcessPaymentWebhookWaitsForAnAccountDeletionInProgress(t *testing.T) {
+	t.Parallel()
+
 	f := newSubscriptionFixture(t)
 	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{StripePriceID: "price_monthly", Published: true})
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -818,7 +843,7 @@ func TestDBProcessPaymentWebhookWaitsForAnAccountDeletionInProgress(t *testing.T
 		default:
 		}
 		var waiting int
-		if err := f.pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted").Scan(&waiting); err != nil {
+		if err := f.pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted AND database = (SELECT oid FROM pg_database WHERE datname = current_database())").Scan(&waiting); err != nil {
 			t.Fatalf("read pg_locks: %v", err)
 		}
 		if waiting > 0 {

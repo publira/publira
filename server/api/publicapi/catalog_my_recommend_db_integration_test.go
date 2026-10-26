@@ -152,6 +152,8 @@ func (e *publicDBEnv) allMyRecommendedSeries(t *testing.T, tenant testutil.Tenan
 }
 
 func TestDBListMyRecommendedSeriesGivesEachReaderTheirOwnFirstPage(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, other := env.seedTwoTenants(t)
 	first := env.PG.SeedTenantUser(t, tenant.ID, "READERA00001", "reader-a@example.com", "Reader A", "tenant_member")
@@ -211,6 +213,8 @@ func TestDBListMyRecommendedSeriesGivesEachReaderTheirOwnFirstPage(t *testing.T)
 // that a genre shared with the bought series beats a creator shared with the
 // viewed one, and the 3 / 2 / 1 rule orders what the viewed one leads to.
 func TestDBListMyRecommendedSeriesWeighsWhatTheReaderDid(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedTenantUser(t, tenant.ID, "READERA00001", "reader-a@example.com", "Reader A", "tenant_member")
@@ -266,6 +270,8 @@ func TestDBListMyRecommendedSeriesWeighsWhatTheReaderDid(t *testing.T) {
 // and, being one they engaged with, it still lends nothing to the scores, which
 // stay the capped list's. Activity from before the window counts for nothing.
 func TestDBListMyRecommendedSeriesPutsEverythingTheReaderOpenedBehindTheRest(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedTenantUser(t, tenant.ID, "READERA00001", "reader-a@example.com", "Reader A", "tenant_member")
@@ -302,6 +308,8 @@ func TestDBListMyRecommendedSeriesPutsEverythingTheReaderOpenedBehindTheRest(t *
 }
 
 func TestDBListMyRecommendedSeriesPagesBackOverTheEngagedBoundary(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedTenantUser(t, tenant.ID, "READERA00001", "reader-a@example.com", "Reader A", "tenant_member")
@@ -340,6 +348,8 @@ func TestDBListMyRecommendedSeriesPagesBackOverTheEngagedBoundary(t *testing.T) 
 // tenant-wide list, page for page, whether there is no row at all or only one
 // an older build of the batch wrote.
 func TestDBListMyRecommendedSeriesMatchesTheTenantOrderWithoutCurrentFeatures(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string]struct {
 		ranked   bool
 		features func(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, reader testutil.TenantUser, read uuid.UUID)

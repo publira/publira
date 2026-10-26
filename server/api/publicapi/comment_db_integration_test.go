@@ -286,6 +286,8 @@ func newCommentFixtureWithGuards(t *testing.T, prefix string, guards readerGuard
 }
 
 func TestDBPostEpisodeCommentFollowsTheTenantCommentMode(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "CMD")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 
@@ -334,6 +336,8 @@ func TestDBPostEpisodeCommentFollowsTheTenantCommentMode(t *testing.T) {
 // the whole feature: a tenant with commenting on everywhere but one title, and
 // a tenant with it off everywhere but one.
 func TestDBPostEpisodeCommentFollowsTheSeriesModeBeforeTheTenants(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "SOV")
 	env, tenant, member, series, episode := fixture.env, fixture.tenant, fixture.member, fixture.series, fixture.episode
 
@@ -386,6 +390,8 @@ func TestDBPostEpisodeCommentFollowsTheSeriesModeBeforeTheTenants(t *testing.T) 
 }
 
 func TestDBPostEpisodeCommentRequiresAReadableEpisodeBody(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "ACC")
 	env, tenant, member := fixture.env, fixture.tenant, fixture.member
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -428,6 +434,8 @@ func TestDBPostEpisodeCommentRequiresAReadableEpisodeBody(t *testing.T) {
 }
 
 func TestDBPostEpisodeCommentRequiresAnActiveSession(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "SES")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -455,6 +463,8 @@ func TestDBPostEpisodeCommentRequiresAnActiveSession(t *testing.T) {
 }
 
 func TestDBRemovedCommentStaysWithItsAuthorAndNobodyElse(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "HID")
 	env, tenant, author, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -491,6 +501,8 @@ func TestDBRemovedCommentStaysWithItsAuthorAndNobodyElse(t *testing.T) {
 }
 
 func TestDBWithdrawEpisodeCommentIsTheAuthorsOwn(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "WDR")
 	env, tenant, author, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -535,6 +547,8 @@ func TestDBWithdrawEpisodeCommentIsTheAuthorsOwn(t *testing.T) {
 }
 
 func TestDBEpisodeCommentsAreTenantIsolated(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	env.setCommentMode(t, first.ID, "immediate")
@@ -581,6 +595,8 @@ func TestDBEpisodeCommentsAreTenantIsolated(t *testing.T) {
 }
 
 func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "PAG")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -626,6 +642,8 @@ func TestDBEpisodeCommentsPaginateNewestFirst(t *testing.T) {
 
 // A comment token names one list of one episode.
 func TestDBEpisodeCommentTokensStayOnTheirEpisode(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "TOK")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	other := env.PG.SeedEpisode(t, tenant.ID, fixture.series.ID, testutil.EpisodeSeed{
@@ -746,6 +764,8 @@ func (e *publicDBEnv) openReportCount(t *testing.T, tenant testutil.Tenant, comm
 // telling a reader that they had already reported this comment would, on a
 // comment since removed, tell them what the removal is meant not to.
 func TestDBReportEpisodeCommentIsOneRowPerReader(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "RPT")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -793,6 +813,8 @@ func TestDBReportEpisodeCommentIsOneRowPerReader(t *testing.T) {
 // author has a deletion for that, and letting them report it would put a report
 // in the queue that no moderator can act on.
 func TestDBReportEpisodeCommentRefusesWhatTheReaderCannotReport(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "RPR")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "RPRSTAFF", "rpr-staff@example.com", "Moderator")
@@ -841,6 +863,8 @@ func TestDBReportEpisodeCommentRefusesWhatTheReaderCannotReport(t *testing.T) {
 // The reason is what the report queue is worked from, so a report that names
 // none is rejected rather than filed under "other".
 func TestDBReportEpisodeCommentRequiresAReasonAndASession(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "RPN")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -890,6 +914,8 @@ func (e *publicDBEnv) countCommentEvents(t *testing.T, tenantID uuid.UUID) int {
 }
 
 func TestDBPostEpisodeCommentFilesAnEngagementEventOnlyOnceItIsPublic(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "EVT")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 

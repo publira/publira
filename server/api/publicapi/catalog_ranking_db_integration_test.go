@@ -126,6 +126,8 @@ func (e *publicDBEnv) listRankedSeries(
 }
 
 func TestDBListRankedSeriesKeepsSnapshotOrderAndTenantsApart(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -189,6 +191,8 @@ func TestDBListRankedSeriesKeepsSnapshotOrderAndTenantsApart(t *testing.T) {
 }
 
 func TestDBListRankedSeriesLeavesTheGapWhereASeriesWasUnpublished(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -222,6 +226,8 @@ func TestDBListRankedSeriesLeavesTheGapWhereASeriesWasUnpublished(t *testing.T) 
 }
 
 func TestDBListRankedSeriesPagesThroughTheSnapshotBothWays(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -272,6 +278,8 @@ func TestDBListRankedSeriesPagesThroughTheSnapshotBothWays(t *testing.T) {
 }
 
 func TestDBListRankedSeriesKeepsPagingInsideTheSnapshotItStartedIn(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -326,6 +334,8 @@ func TestDBListRankedSeriesKeepsPagingInsideTheSnapshotItStartedIn(t *testing.T)
 }
 
 func TestDBListRankedSeriesReportsMovementAgainstTheEarlierSnapshot(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -387,6 +397,8 @@ func TestDBListRankedSeriesReportsMovementAgainstTheEarlierSnapshot(t *testing.T
 }
 
 func TestDBListRankedSeriesReadsOnlyTheTenantWideRanking(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	genre := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{Name: "Action"})
@@ -429,6 +441,8 @@ func TestDBListRankedSeriesReadsOnlyTheTenantWideRanking(t *testing.T) {
 }
 
 func TestDBListRankedSeriesReturnsAnEmptyListWithoutASnapshot(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -458,6 +472,8 @@ func TestDBListRankedSeriesReturnsAnEmptyListWithoutASnapshot(t *testing.T) {
 // consecutive positions, and each surface's genre tiles and recommendations
 // their own order.
 func TestDBRankingReadsTheLeaderboardOfTheCallingSurface(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	ctx := context.Background()
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -570,6 +586,8 @@ func TestDBRankingReadsTheLeaderboardOfTheCallingSurface(t *testing.T) {
 // default chart names no rated work, and the recommendation order still ranks
 // the whole catalogue together.
 func TestDBRankingCutsALeaderboardPerAgeRating(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	ctx := context.Background()
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -645,6 +663,8 @@ func TestDBRankingCutsALeaderboardPerAgeRating(t *testing.T) {
 }
 
 func TestDBListRankedSeriesAppliesTheTenantAgeRule(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		rule      string
@@ -767,6 +787,8 @@ func TestDBListRankedSeriesAppliesTheTenantAgeRule(t *testing.T) {
 // rating it had, and the read leaves its place empty rather than show it under
 // a rating it no longer carries.
 func TestDBListRankedSeriesLeavesTheGapWhereASeriesWasReRated(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -798,6 +820,8 @@ func TestDBListRankedSeriesLeavesTheGapWhereASeriesWasReRated(t *testing.T) {
 // the genre, so a series that climbed among its genre's works shows the climb
 // even where the tenant-wide chart did not move it.
 func TestDBListRankedSeriesPagesAGenresOwnRanking(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	action := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREACTION1", Name: "Action"})
@@ -901,6 +925,8 @@ func TestDBListRankedSeriesPagesAGenresOwnRanking(t *testing.T) {
 // run — answers an empty chart, as a tenant with no snapshot does, and never
 // the tenant-wide ranking in its place.
 func TestDBListRankedSeriesReturnsAnEmptyListForAGenreWithoutASnapshot(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	drama := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREDRAMA01", Name: "Drama"})
@@ -928,6 +954,8 @@ func TestDBListRankedSeriesReturnsAnEmptyListForAGenreWithoutASnapshot(t *testin
 // genre's snapshot, and the read leaves its place empty rather than rank it
 // under a genre it no longer carries.
 func TestDBListRankedSeriesLeavesTheGapWhereASeriesLeftTheGenre(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	action := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREACTION1", Name: "Action"})
@@ -964,6 +992,8 @@ func TestDBListRankedSeriesLeavesTheGapWhereASeriesLeftTheGenre(t *testing.T) {
 // A genre is read through the tenant, so another tenant's genre is as absent
 // as one that was never created.
 func TestDBListRankedSeriesRejectsAnotherTenantsGenre(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	foreign := env.PG.SeedGenre(t, second.ID, testutil.GenreSeed{PublicID: "GENREFOREIGN", Name: "Foreign"})

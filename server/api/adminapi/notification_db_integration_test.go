@@ -16,6 +16,8 @@ import (
 )
 
 func TestDBAdminNotificationsListUnreadAndMark(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "ADMINA000001", "admin@tenant-a.example.com")
 	otherAdmin := env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "ADMINA000002", "other-admin@tenant-a.example.com", "Other Admin")
@@ -74,6 +76,8 @@ func TestDBAdminNotificationsListUnreadAndMark(t *testing.T) {
 }
 
 func TestDBAdminNotificationsHideOtherTenantAndUserRows(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "ADMINA000001", "admin@tenant-a.example.com")
 	second := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "ADMINB000001", "admin@tenant-b.example.com")
@@ -116,6 +120,8 @@ func TestDBAdminNotificationsHideOtherTenantAndUserRows(t *testing.T) {
 // Every member of staff gets a bell, so the least of the three roles reads its
 // own notifications and marks them read.
 func TestDBAdminNotificationsReachATenantAuditor(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "ADMINA000001", "admin@tenant-a.example.com")
 	auditor := env.PG.SeedTenantUser(t, admin.Tenant.ID, "AUDITORA0001", "auditor@tenant-a.example.com", "Auditor", auth.RoleTenantAuditor)

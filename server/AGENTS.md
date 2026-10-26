@@ -13,7 +13,7 @@ Conventions for the Go backend module `github.com/publira/publira/server`. Prefe
 | `internal/db/gen/` | **sqlc-generated** — do not hand-edit |
 | `internal/proto/gen/` | **buf-generated** protobuf / Connect stubs — do not hand-edit |
 | `config/` | Runtime config |
-| `internal/testutil/` | Shared test helpers (Testcontainers PostgreSQL, Snapshot/Restore) |
+| `internal/testutil/` | Shared test helpers (Testcontainers PostgreSQL, a database per test or Snapshot/Restore) |
 
 ## Implementation rules
 
@@ -252,6 +252,7 @@ go test ./api/adminapi/ -count=1
 - **Unit tests**: prefer `sqlmock` for DB-facing logic when a real Postgres is unnecessary.
 - **sqlmock expectations use sqlc's exported query constants**: `mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID))`, never copied SQL or a fragment of it.
 - **Integration tests**: use `internal/testutil` (Testcontainers PostgreSQL). They skip when Docker is unavailable or when `-short` is set.
+- **A database test runs in parallel on a database of its own**: it takes one from `testutil.StartIsolatedPostgres` and calls `t.Parallel()` first. It stays serial only when it uses something the whole process or the whole cluster shares: a role it changes, an environment variable it sets (`t.Setenv` refuses to run in a parallel test), a search engine container, or a timing it measures, which the other tests' load would skew. A serial test adds its whole duration to its package's run, and the slowest package sets how long `Test / Go` takes.
 - Prefer adding focused package tests next to the code under test (`*_test.go` in the same package or `_test` package as existing files do).
 - Do not rely on a shared long-lived local DB for default unit tests; use mocks or Testcontainers helpers.
 

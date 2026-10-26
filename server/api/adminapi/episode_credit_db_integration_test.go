@@ -74,6 +74,8 @@ func seedCreditedSeries(t *testing.T, env *adminDBEnv) (adminDBTenant, testutil.
 // A new episode is credited to the team its series carries at that moment, and
 // every one of those rows says it came from the series.
 func TestDBCreateEpisodeBakesTheSeriesCredits(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
@@ -111,6 +113,8 @@ func TestDBCreateEpisodeBakesTheSeriesCredits(t *testing.T) {
 // The bake freezes: editing the series afterwards changes what the next
 // episode is created with and leaves the ones already out alone.
 func TestDBEditingTheSeriesLeavesAnAlreadyCreatedEpisodeCredited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
@@ -176,6 +180,8 @@ func TestDBEditingTheSeriesLeavesAnAlreadyCreatedEpisodeCredited(t *testing.T) {
 // keeps stay baked, so a later range edit can still tell the standing team
 // from the guest.
 func TestDBReplaceEpisodeCreditsKeepsTheBakedRowsAndAddsTheGuest(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
@@ -241,6 +247,8 @@ func TestDBReplaceEpisodeCreditsKeepsTheBakedRowsAndAddsTheGuest(t *testing.T) {
 // An empty list is a list: the episode ends up credited to nobody rather than
 // keeping what it had.
 func TestDBReplaceEpisodeCreditsWithAnEmptyListClearsThem(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 
@@ -267,6 +275,8 @@ func TestDBReplaceEpisodeCreditsWithAnEmptyListClearsThem(t *testing.T) {
 
 // The episode of another tenant is an episode this tenant does not have.
 func TestDBReplaceEpisodeCreditsRefusesAnotherTenantsEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant, series, _ := seedCreditedSeries(t, env)
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -292,6 +302,8 @@ func TestDBReplaceEpisodeCreditsRefusesAnotherTenantsEpisode(t *testing.T) {
 // A role an episode still credits someone in cannot be deleted, even when no
 // series names it any more: the episode's rows hold the role too.
 func TestDBDeleteCreatorRoleRefusesARoleOnlyAnEpisodeStillNames(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant, series, creators := seedCreditedSeries(t, env)
 

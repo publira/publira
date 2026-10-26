@@ -26,8 +26,9 @@ import (
 )
 
 func TestDBEveryRegisteredPaymentProviderPassesTheContract(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := newPublicTestEncryptor(t)
 	db := pg.OpenPublicDB(t)
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)

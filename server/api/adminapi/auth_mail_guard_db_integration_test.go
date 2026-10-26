@@ -14,6 +14,8 @@ import (
 // The console's password reset form takes an address from anyone who can reach
 // it, so the mail behind it is bounded like the storefront's.
 func TestDBAdminRequestPasswordResetStopsAtTheLimit(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 

@@ -47,6 +47,8 @@ func RunConcurrently(t *testing.T, n int, request func() error) {
 // a lock. A case that holds a row itself uses it to know the request it started
 // has reached that row rather than merely been dispatched, which is what makes
 // "the row changed while the request waited" a step rather than a race.
+// pg_stat_activity lists the whole cluster, so the query keeps to this database:
+// a test running in parallel on a database of its own waits on locks too.
 func WaitForBlockedBackend(t *testing.T, db *sql.DB) {
 	t.Helper()
 
@@ -65,6 +67,7 @@ func WaitForBlockedBackends(t *testing.T, db *sql.DB, n int) {
 		if err := db.QueryRow(`
 			SELECT count(*) FROM pg_stat_activity
 			WHERE wait_event_type = 'Lock' AND state = 'active'
+				AND datname = current_database()
 		`).Scan(&blocked); err != nil {
 			t.Fatalf("read pg_stat_activity: %v", err)
 		}

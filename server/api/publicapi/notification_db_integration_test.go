@@ -15,6 +15,8 @@ import (
 )
 
 func TestDBMemberNotificationsListUnreadAndMark(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -88,6 +90,8 @@ func TestDBMemberNotificationsListUnreadAndMark(t *testing.T) {
 }
 
 func TestDBMemberNotificationsHideOtherUsersTenantsAndPlatformRows(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	member := env.PG.SeedEndUser(t, first.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member A")
@@ -130,6 +134,8 @@ func TestDBMemberNotificationsHideOtherUsersTenantsAndPlatformRows(t *testing.T)
 }
 
 func TestDBMemberNotificationsDoNotMixWithAnnouncements(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

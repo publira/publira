@@ -14,6 +14,8 @@ import (
 // disappears with only a log line. Recording has to go through the request's
 // tenant-scoped connection, which sqlmock cannot show.
 func TestDBSeriesCreateWritesTenantAuditLog(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -54,6 +56,8 @@ func TestDBSeriesCreateWritesTenantAuditLog(t *testing.T) {
 }
 
 func TestDBListAuditLogsExcludesOtherTenants(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 

@@ -66,6 +66,8 @@ func listGenres(
 }
 
 func TestDBCreateGenreAppendsToTheTenantOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -82,6 +84,8 @@ func TestDBCreateGenreAppendsToTheTenantOrder(t *testing.T) {
 }
 
 func TestDBCreateGenreRefusesANameAnotherGenreAlreadyHolds(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -100,6 +104,8 @@ func TestDBCreateGenreRefusesANameAnotherGenreAlreadyHolds(t *testing.T) {
 }
 
 func TestDBCreateGenreRefusesANameWithNothingToSlug(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -114,6 +120,8 @@ func TestDBCreateGenreRefusesANameWithNothingToSlug(t *testing.T) {
 }
 
 func TestDBUpdateGenreRenamesAndReSlugs(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -140,6 +148,8 @@ func TestDBUpdateGenreRenamesAndReSlugs(t *testing.T) {
 }
 
 func TestDBReorderGenresWritesTheRequestedOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -166,6 +176,8 @@ func TestDBReorderGenresWritesTheRequestedOrder(t *testing.T) {
 }
 
 func TestDBReorderGenresRefusesAnOrderBuiltOnAStaleList(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -187,6 +199,8 @@ func TestDBReorderGenresRefusesAnOrderBuiltOnAStaleList(t *testing.T) {
 }
 
 func TestDBDeleteGenreRemovesAnUnusedOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -205,6 +219,8 @@ func TestDBDeleteGenreRemovesAnUnusedOne(t *testing.T) {
 }
 
 func TestDBDeleteGenreRefusesOneASeriesCarries(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	genres := env.genreClient()
@@ -232,6 +248,8 @@ func TestDBDeleteGenreRefusesOneASeriesCarries(t *testing.T) {
 }
 
 func TestDBGenresOfAnotherTenantAreOutOfReach(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.genreClient()
@@ -255,6 +273,8 @@ func TestDBGenresOfAnotherTenantAreOutOfReach(t *testing.T) {
 }
 
 func TestDBListGenresPagesForwardAndBackward(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()
@@ -307,6 +327,8 @@ func TestDBListGenresPagesForwardAndBackward(t *testing.T) {
 }
 
 func TestDBGenreChangesAreAudited(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.genreClient()

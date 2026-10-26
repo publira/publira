@@ -48,6 +48,8 @@ func (e *publicDBEnv) seedSeriesDailyStats(t *testing.T, tenantID, seriesID uuid
 // series comes in. Until the reactions reach the aggregates the page shows
 // nothing at all, rather than a series rated zero by nobody.
 func TestDBGetSeriesDetailCarriesTheDerivedRating(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTSRTA", "series-rating-a.example.com", "Series Rating A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERSRTA", "member-srt-a@example.com", "Member A", "tenant_member")
@@ -113,6 +115,8 @@ func TestDBGetSeriesDetailCarriesTheDerivedRating(t *testing.T) {
 // a reader who has reacted to none of them gets nothing rather than the bottom
 // of the scale.
 func TestDBGetMySeriesRatingAnswersTheReadersOwnReactions(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTSRTB", "series-rating-b.example.com", "Series Rating B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERSRTB", "member-srt-b@example.com", "Member B", "tenant_member")
@@ -172,6 +176,8 @@ func TestDBGetMySeriesRatingAnswersTheReadersOwnReactions(t *testing.T) {
 // cannot be used to probe for a series the reader is not meant to see. Without
 // a session it is unauthenticated, like every RPC that answers about a reader.
 func TestDBGetMySeriesRatingHidesSeriesTheReaderCannotSee(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTSRTC", "series-rating-c.example.com", "Series Rating C")
 	otherTenant := env.seedTenant(t, "TENANTSRTD", "series-rating-d.example.com", "Series Rating D")

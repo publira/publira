@@ -235,6 +235,8 @@ func (f *coinPackFixture) history(t *testing.T) []string {
 // confirms the payment, and not before, on the terms the checkout was started
 // on, with the tenant's expiry counted from the purchase.
 func TestDBBuyingACoinPackOnTheWebGrantsItsCoinsOnceThePaymentIsConfirmed(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 
 	if err := f.startCheckout(t, f.pack.ID, ""); err != nil {
@@ -362,6 +364,8 @@ func TestDBBuyingACoinPackOnTheWebGrantsItsCoinsOnceThePaymentIsConfirmed(t *tes
 // A checkout is refused unless the tenant sells packs now, while the reader
 // spends the coins they hold whether or not it does.
 func TestDBStartCoinPackCheckoutRefusesWhatItCannotSell(t *testing.T) {
+	t.Parallel()
+
 	t.Run("the platform forbids tenant coins", func(t *testing.T) {
 		f := newCoinPackFixtureUnder(t, false)
 		err := f.startCheckout(t, f.pack.ID, "")
@@ -423,6 +427,8 @@ func TestDBStartCoinPackCheckoutRefusesWhatItCannotSell(t *testing.T) {
 
 // A full refund of a pack nobody has spent from takes every coin of it back.
 func TestDBAFullRefundOfAnUnspentPackTakesItsCoinsBack(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 	f.buy(t, "cs_unspent")
 
@@ -454,6 +460,8 @@ func TestDBAFullRefundOfAnUnspentPackTakesItsCoinsBack(t *testing.T) {
 // spent as a shortfall, which the reader's next pack pays before any coin of
 // it can be spent.
 func TestDBARefundOfAHalfSpentPackLeavesAShortfallTheNextPackCovers(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 	f.buy(t, "cs_first")
 	f.spend(t, 30, "episode")
@@ -488,6 +496,8 @@ func TestDBARefundOfAHalfSpentPackLeavesAShortfallTheNextPackCovers(t *testing.T
 
 // A dispute closes a pack's coins at once, before the dispute is decided.
 func TestDBADisputeOfAPackClosesItsCoinsAtOnce(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 	f.buy(t, "cs_disputed")
 	f.spend(t, 30, "episode")
@@ -505,6 +515,8 @@ func TestDBADisputeOfAPackClosesItsCoinsAtOnce(t *testing.T) {
 // A refund that reaches the server before the payment it refunds is held, and
 // closes the pack's coins as the purchase is recorded.
 func TestDBARefundThatOvertakesItsPackClosesTheCoinsAsTheyAreGranted(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 	if err := f.startCheckout(t, f.pack.ID, ""); err != nil {
 		t.Fatalf("StartCoinPackCheckout: %v", err)
@@ -525,6 +537,8 @@ func TestDBARefundThatOvertakesItsPackClosesTheCoinsAsTheyAreGranted(t *testing.
 // its 1,000 spread over all of them, so 100 coins are worth 90.9, rounded
 // down. The reader is shown the coins they spent, and no price.
 func TestDBASpendOfPackCoinsIsASaleAtWhatTheCoinsWerePaidFor(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 	f.buy(t, "cs_valued")
 	episode := f.pricedEpisode(t, "PACKEPISODE2", 1000)
@@ -545,6 +559,8 @@ func TestDBASpendOfPackCoinsIsASaleAtWhatTheCoinsWerePaidFor(t *testing.T) {
 // them and on a pack is a sale at what its pack coins alone were paid for.
 // Coins of a test purchase paid the tenant nothing either.
 func TestDBCoinsNoOnePaidForAreWorthNothing(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 	f.buy(t, "cs_mixed")
 	// Staff's coins expire before the pack's, so they are spent first.
@@ -570,6 +586,8 @@ func TestDBCoinsNoOnePaidForAreWorthNothing(t *testing.T) {
 // are what the reader now owes. A purchase whose coins came from several packs
 // is refunded the part the refunded pack paid. The reader is shown no refund.
 func TestDBARefundOfAPackRefundsTheSalesItsCoinsPaidFor(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixture(t)
 	f.buy(t, "cs_refunded")
 	episode := f.pricedEpisode(t, "PACKEPISODE2", 1000)

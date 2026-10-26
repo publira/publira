@@ -43,6 +43,8 @@ func seedSeriesOwnedBy(t *testing.T, env *adminDBEnv, tenantID uuid.UUID, public
 }
 
 func TestDBRLSHidesRowsOfAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
@@ -77,6 +79,8 @@ func TestDBRLSHidesRowsOfAnotherTenant(t *testing.T) {
 }
 
 func TestDBRLSHidesNotificationsOfAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
@@ -121,6 +125,8 @@ func TestDBRLSHidesNotificationsOfAnotherTenant(t *testing.T) {
 // codes that stand in for it, so what one tenant can reach of another's is
 // worth stating on its own rather than leaving to the shared policy shape.
 func TestDBRLSHidesMfaEnrollmentsOfAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
@@ -216,6 +222,8 @@ func seedMfaEnrollmentOwnedBy(t *testing.T, env *adminDBEnv, tenantID, userID uu
 }
 
 func TestDBRLSRefusesWritesToAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	theirs := seedSeriesOwnedBy(t, env, second.Tenant.ID, "SERIESB0001", "Tenant B Series")
@@ -263,6 +271,8 @@ func TestDBRLSRefusesWritesToAnotherTenant(t *testing.T) {
 // a connection that never set app.current_tenant_id sees nothing, so a code path
 // that skips the tenant-scoping interceptor cannot leak data across tenants.
 func TestDBRLSHidesEverythingWithoutTenantSetting(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	seedSeriesOwnedBy(t, env, first.Tenant.ID, "SERIESA0001", "Tenant A Series")
@@ -285,6 +295,8 @@ func TestDBRLSHidesEverythingWithoutTenantSetting(t *testing.T) {
 // side: a series only the database knows about shows up for its owner and for
 // nobody else, without the test having created it through the API.
 func TestDBRLSAppliesToHandlerConnections(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	seedSeriesOwnedBy(t, env, second.Tenant.ID, "SERIESB0001", "Tenant B Series")

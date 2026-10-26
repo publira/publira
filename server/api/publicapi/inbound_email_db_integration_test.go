@@ -47,8 +47,7 @@ type inboundHarness struct {
 
 func newInboundHarness(t *testing.T) *inboundHarness {
 	t.Helper()
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := newPublicTestEncryptor(t)
 	db := pg.OpenPublicDB(t)
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
@@ -213,6 +212,8 @@ func (h *inboundHarness) handledAt(t *testing.T, tenantID, messageID uuid.UUID) 
 }
 
 func TestDBEveryRegisteredInboundProviderStoresAReply(t *testing.T) {
+	t.Parallel()
+
 	harness := newInboundHarness(t)
 	for _, provider := range inboundproviders.Registry().Providers() {
 		id := provider.Declaration().ID
@@ -441,6 +442,8 @@ func (h *inboundHarness) assertNothingStored(t *testing.T, seeded inboundTenant)
 // handler runs. A payload past what the webhook takes but inside that bound
 // is acknowledged and dropped, since the provider would only deliver it again.
 func TestDBInboundEmailWebhookBoundsWhatItReads(t *testing.T) {
+	t.Parallel()
+
 	harness := newInboundHarness(t)
 	fixture, ok := providerstest.Fixture(t, "sendgrid")
 	if !ok {
@@ -463,6 +466,8 @@ func TestDBInboundEmailWebhookBoundsWhatItReads(t *testing.T) {
 // message's own address in its To header, and names no answer either; the
 // envelope recipient the forwarding side posts beside it is what matches it.
 func TestDBMIMEInboundEmailIsMatchedByItsEnvelopeRecipient(t *testing.T) {
+	t.Parallel()
+
 	harness := newInboundHarness(t)
 	fixture := mimetest.Fixture{}
 	harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
@@ -522,6 +527,8 @@ func TestDBMIMEInboundEmailIsMatchedByItsEnvelopeRecipient(t *testing.T) {
 // action is SNS publishes the mail in the notification instead, and the same
 // scenarios hold for it.
 func TestDBSESInboundEmailIsStoredFromTheNotification(t *testing.T) {
+	t.Parallel()
+
 	harness := newInboundHarness(t)
 	fixture := sestest.NewFixture(t, sestest.ActionSNS)
 	harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
@@ -532,6 +539,8 @@ func TestDBSESInboundEmailIsStoredFromTheNotification(t *testing.T) {
 // is confirmed with SNS and stores nothing; one that does not carry the
 // tenant's token, or names another topic, is neither confirmed nor accepted.
 func TestDBSESSubscriptionIsConfirmedForTheTenantsTopicOnly(t *testing.T) {
+	t.Parallel()
+
 	harness := newInboundHarness(t)
 
 	t.Run("the tenant's topic is confirmed", func(t *testing.T) {
@@ -577,6 +586,8 @@ func TestDBSESSubscriptionIsConfirmedForTheTenantsTopicOnly(t *testing.T) {
 // A mail the S3 action wrote that cannot be read is answered as unavailable,
 // which SNS delivers again, and stores nothing.
 func TestDBSESInboundEmailItCannotReadIsRetried(t *testing.T) {
+	t.Parallel()
+
 	harness := newInboundHarness(t)
 	fixture := sestest.NewFixture(t, sestest.ActionS3)
 	harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())

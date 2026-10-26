@@ -30,6 +30,8 @@ func requireRateLimited(t *testing.T, what string, call *connect.CallInfo, err e
 // An invitation mails an address nobody has confirmed, so creating and resending
 // one from the platform console spend the mail guard's allowance.
 func TestDBPlatformTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -74,6 +76,8 @@ func TestDBPlatformTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
 // Granting the role to a user the tenant already has mails nothing, so it
 // spends nothing.
 func TestDBPlatformTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1, PerDay: 100}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -97,6 +101,8 @@ func TestDBPlatformTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T)
 // request naming more addresses than the origin may mail creates no tenant, and
 // spends nothing a smaller request could have used.
 func TestDBCreateTenantInitialAdminMailStopsAtTheLimit(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 100, PerDay: 100}, platformpolicy.HourDay{PerHour: 2, PerDay: 100}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -134,6 +140,8 @@ func TestDBCreateTenantInitialAdminMailStopsAtTheLimit(t *testing.T) {
 // The same address named in a second tenant's creation is refused once the
 // mailbox has had its invitations, and that tenant is not created.
 func TestDBCreateTenantInitialAdminMailStopsAtTheAddressLimit(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

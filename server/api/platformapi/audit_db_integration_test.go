@@ -16,6 +16,8 @@ import (
 // The same address can be invited to several tenants, so an invitation entry
 // has to say which tenant it was for, whichever way the log is paged.
 func TestDBListAuditLogsNamesTheTenantAndAddressOfAnInvitation(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	first := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -95,6 +97,8 @@ func TestDBListAuditLogsNamesTheTenantAndAddressOfAnInvitation(t *testing.T) {
 // target_id holds 64 characters and an address may hold 255, so an invitation
 // entry naming the address would refuse the invitation it records.
 func TestDBCreateTenantAdminInvitationTakesAnAddressLongerThanAnAuditTarget(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -112,6 +116,8 @@ func TestDBCreateTenantAdminInvitationTakesAnAddressLongerThanAnAuditTarget(t *t
 // with no invitation, and the same address can belong to users of several
 // tenants, so the entry names the user and takes the tenant from its row.
 func TestDBListAuditLogsNamesTheTenantOfARoleGrantedToAnExistingUser(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	first := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -162,6 +168,8 @@ func TestDBListAuditLogsNamesTheTenantOfARoleGrantedToAnExistingUser(t *testing.
 // The entry for a role granted to an existing user names the user rather than
 // the address, which target_id could not hold past 64 characters.
 func TestDBCreateTenantAdminInvitationGrantsTheRoleToAnAddressLongerThanAnAuditTarget(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -183,6 +191,8 @@ func TestDBCreateTenantAdminInvitationGrantsTheRoleToAnAddressLongerThanAnAuditT
 // through, so the entries about the reader, the deletion's own included, keep
 // the tenant they were written for.
 func TestDBListAuditLogsKeepsTheTenantOfADeletedReader(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	first := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -229,6 +239,8 @@ func TestDBListAuditLogsKeepsTheTenantOfADeletedReader(t *testing.T) {
 // it from the target, as the platform role, so those entries are in the
 // tenant's log too.
 func TestDBListAuditLogsFillsTheTenantOfAnEntryWrittenWithoutOne(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")

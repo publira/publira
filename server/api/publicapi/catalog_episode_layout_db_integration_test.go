@@ -13,6 +13,8 @@ import (
 // where it states one, its series' where it does not, and the layout both
 // viewers hard-coded for a series nobody has set.
 func TestDBGetEpisodeDetailResolvesTheReadingLayout(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

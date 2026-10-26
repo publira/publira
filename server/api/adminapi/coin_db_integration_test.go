@@ -124,6 +124,8 @@ func completeCoinSettings() *publiraadminv1.TenantCoinSettings {
 }
 
 func TestDBTenantCoinSettingsStartOff(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 
 	got, err := f.env.coinClient().GetTenantCoinSettings(f.ctx(), &publiraadminv1.GetTenantCoinSettingsRequest{Tenant: f.admin.tenantContext()})
@@ -155,6 +157,8 @@ func TestDBTenantCoinSettingsStartOff(t *testing.T) {
 // the platform forbids coins or the tenant has no way to sell a pack. Once all
 // of those hold it goes through, and the save is in the audit log.
 func TestDBUpdateTenantCoinSettingsTurnsCoinsOnOnlyWhenEverythingHolds(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 
 	for _, tc := range []struct {
@@ -211,6 +215,8 @@ func TestDBUpdateTenantCoinSettingsTurnsCoinsOnOnlyWhenEverythingHolds(t *testin
 // A tenant whose coins are on keeps saving them after the platform forbids
 // coins: stopping selling, in particular, is never refused.
 func TestDBUpdateTenantCoinSettingsStopsSellingWhateverThePolicy(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.allowCoins(t, true)
 	f.takePayments(t)
@@ -241,6 +247,8 @@ func TestDBUpdateTenantCoinSettingsStopsSellingWhateverThePolicy(t *testing.T) {
 // The names a save carries replace the stored ones, each locale's trimmed
 // and checked, and a save that changes nothing is not audited.
 func TestDBUpdateTenantCoinSettingsReplacesTheNames(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	if _, err := f.env.PG.DB.ExecContext(context.Background(), `UPDATE tenants SET supported_locales = ARRAY['ja', 'en'] WHERE id = $1`, f.admin.Tenant.ID); err != nil {
 		t.Fatalf("narrow the offered locales: %v", err)
@@ -297,6 +305,8 @@ func TestDBUpdateTenantCoinSettingsReplacesTheNames(t *testing.T) {
 }
 
 func TestDBUpdateTenantCoinSettingsChecksTheDisclosures(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 
 	for _, tc := range []struct {
@@ -334,6 +344,8 @@ func TestDBUpdateTenantCoinSettingsChecksTheDisclosures(t *testing.T) {
 // An editor and an auditor read the settings and the packs, and change
 // neither.
 func TestDBCoinSettingsAreReadByEveryRoleAndWrittenByAnAdmin(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	editor := f.admin.as(f.env.PG.SeedTenantUser(t, f.admin.Tenant.ID, "TAEDITOR01", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor))
 	ctx := testutil.WithBearer(context.Background(), editor.token())
@@ -378,6 +390,8 @@ func (f *coinFixture) listPacks(t *testing.T) []*publiraadminv1.CoinPack {
 // Packs are listed in their sort order, a retired one leaves the list, and
 // each write is in the audit log.
 func TestDBCoinPacksAreCreatedOrderedAndRetired(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 
 	large := f.createPack(t, &publiraadminv1.CoinPackInput{Coins: 1000, BonusCoins: 100, Price: 1000, SortOrder: 2, OnSale: true})
@@ -423,6 +437,8 @@ func TestDBCoinPacksAreCreatedOrderedAndRetired(t *testing.T) {
 // A sold pack keeps its price and coins: only its sale state and its order
 // change.
 func TestDBUpdateCoinPackKeepsASoldPacksTerms(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	pack := f.createPack(t, &publiraadminv1.CoinPackInput{Coins: 100, BonusCoins: 10, Price: 100, SortOrder: 1, OnSale: true})
 	if _, err := f.env.PG.DB.ExecContext(context.Background(), `UPDATE tenant_coin_packs SET first_sold_at = now() WHERE id = $1`, pack.GetId()); err != nil {
@@ -456,6 +472,8 @@ func TestDBUpdateCoinPackKeepsASoldPacksTerms(t *testing.T) {
 }
 
 func TestDBCreateCoinPackChecksItsFields(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 
 	for _, tc := range []struct {
@@ -482,6 +500,8 @@ func TestDBCreateCoinPackChecksItsFields(t *testing.T) {
 
 // A tenant sells at most maxCoinPacks packs at once; retiring one makes room.
 func TestDBCreateCoinPackRefusesPastTheCap(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 
 	var first *publiraadminv1.CoinPack
@@ -527,6 +547,8 @@ func errorInfoMetadata(t *testing.T, err error) map[string]string {
 // Readers who hold coins keep the tenant's coins on, and once a coin has been
 // granted what one is worth stays fixed. Stopping selling is never refused.
 func TestDBUpdateTenantCoinSettingsKeepsWhatBalancesAreCountedIn(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinFixture(t)
 	f.allowCoins(t, true)
 	f.takePayments(t)

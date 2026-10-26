@@ -40,6 +40,8 @@ func historyEpisodePublicIDs(reads []*publirav1.MyEpisodeRead) []string {
 }
 
 func TestDBEpisodeReadServiceKeepsFirstReadDuringRepeatedAndConcurrentCalls(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTREADA", "read-a.example.com", "Read A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADA", "member-read-a@example.com", "Member A", "tenant_member")
@@ -101,6 +103,8 @@ func (e *readAtChangedError) Error() string {
 }
 
 func TestDBEpisodeReadServiceRequiresCurrentPublicationAndBodyAccess(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADB", "member-read-b@example.com", "Member B", "tenant_member")
@@ -150,6 +154,8 @@ func TestDBEpisodeReadServiceRequiresCurrentPublicationAndBodyAccess(t *testing.
 }
 
 func TestDBEpisodeReadsAreMemberScopedByRLS(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTREADC", "read-c.example.com", "Read C")
 	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADC", "member-read-c@example.com", "Member C", "tenant_member")
@@ -195,6 +201,8 @@ func TestDBEpisodeReadsAreMemberScopedByRLS(t *testing.T) {
 }
 
 func TestDBEpisodeReadProjectsOneCompleteEventPerRead(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTREADE", "read-e.example.com", "Read E")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADE", "member-read-e@example.com", "Member E", "tenant_member")
@@ -247,6 +255,8 @@ func TestDBEpisodeReadProjectsOneCompleteEventPerRead(t *testing.T) {
 }
 
 func TestDBListMyEpisodeReadsPagesTheMostRecentlyFinishedFirst(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTREADF", "read-f.example.com", "Read F")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADF", "member-read-f@example.com", "Member F", "tenant_member")
@@ -309,6 +319,8 @@ func TestDBListMyEpisodeReadsPagesTheMostRecentlyFinishedFirst(t *testing.T) {
 // series taken down disappears from it, while an episode whose rental has run
 // out stays, because the reader did read it.
 func TestDBListMyEpisodeReadsDropsWithdrawnSeriesAndKeepsExpiredRentals(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTREADG", "read-g.example.com", "Read G")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADG", "member-read-g@example.com", "Member G", "tenant_member")
@@ -354,6 +366,8 @@ func TestDBListMyEpisodeReadsDropsWithdrawnSeriesAndKeepsExpiredRentals(t *testi
 // A history row draws its series' artwork, so it carries the rating a client
 // holds that artwork back behind until the reader has confirmed it.
 func TestDBListMyEpisodeReadsCarriesTheSeriesAgeRating(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	reader := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATE1", "member-rate@example.com", "Member", "tenant_member")
@@ -389,6 +403,8 @@ func TestDBListMyEpisodeReadsCarriesTheSeriesAgeRating(t *testing.T) {
 }
 
 func TestDBListMyEpisodeReadsIsScopedToOneReaderAndTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	reader := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADH", "member-read-h@example.com", "Member H", "tenant_member")
@@ -436,6 +452,8 @@ func TestDBListMyEpisodeReadsIsScopedToOneReaderAndTenant(t *testing.T) {
 // finished episodes without ever saving a position, so it is reported whether
 // or not there is progress to report beside it.
 func TestDBSeriesProgressReportsTheFinishedEpisodesOfThatSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTREADH", "read-h.example.com", "Read H")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERREADK", "member-read-k@example.com", "Member K", "tenant_member")

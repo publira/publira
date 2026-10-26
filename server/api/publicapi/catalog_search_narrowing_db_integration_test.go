@@ -61,6 +61,8 @@ func searchPublishedSeriesIDs(t *testing.T, env *publicDBEnv, req *publirav1.Sea
 }
 
 func TestDBSearchPublishedSeriesKeepsOnlyTheHitsEveryFilterKeeps(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedSearchableCatalog(t, env)
 	monday := int32(1)
@@ -115,6 +117,8 @@ func TestDBSearchPublishedSeriesKeepsOnlyTheHitsEveryFilterKeeps(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesKeepsOnlyTheHitsWithAFreeEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	now := time.Now()
@@ -150,6 +154,8 @@ func TestDBSearchPublishedSeriesKeepsOnlyTheHitsWithAFreeEpisode(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesSortsByTheRequestedOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedSearchableCatalog(t, env)
 	// Second Series gets the newest episode, which moves it to the front of
@@ -216,6 +222,8 @@ func TestDBSearchPublishedSeriesSortsByTheRequestedOrder(t *testing.T) {
 }
 
 func TestDBSearchPublishedSeriesPagesTheNarrowedHitsAndBindsItsToken(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedSearchableCatalog(t, env)
 
@@ -291,6 +299,8 @@ func TestDBSearchPublishedSeriesPagesTheNarrowedHitsAndBindsItsToken(t *testing.
 }
 
 func TestDBSearchPublishedSeriesRefusesAFilterNamingNothing(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedSearchableCatalog(t, env)
 	other := env.seedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
@@ -325,6 +335,8 @@ func TestDBSearchPublishedSeriesRefusesAFilterNamingNothing(t *testing.T) {
 // by its English title and not by a word only its Japanese one has, and finds
 // a series with no English translation by its Japanese title.
 func TestDBSearchPublishedSeriesMatchesTheTranslationOfTheLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	translated := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESGALAX1", Title: "銀河鉄道の夜", Synopsis: "ジョバンニの旅", Published: true})

@@ -42,6 +42,8 @@ func wrongPasswordChangePassword(t *testing.T, env *publicDBEnv, tenant testutil
 // One budget covers all three RPCs. Holding one per RPC would hand a guesser
 // three of them and let them rotate between the forms.
 func TestDBStepUpPasswordLimitIsSharedByTheAccountRPCs(t *testing.T) {
+	t.Parallel()
+
 	env := newStepUpLimitedEnv(t, 3)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -97,6 +99,8 @@ func TestDBStepUpPasswordLimitIsSharedByTheAccountRPCs(t *testing.T) {
 // nothing. The correct password is what proves it — an attempt that was
 // verified would have gone through.
 func TestDBStepUpPasswordRefusalVerifiesNothingAndWritesNothing(t *testing.T) {
+	t.Parallel()
+
 	env := newStepUpLimitedEnv(t, 1)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -141,6 +145,8 @@ func TestDBStepUpPasswordRefusalVerifiesNothingAndWritesNothing(t *testing.T) {
 // A reader who mistypes and then gets it right is not held back: reaching the
 // password proves they were not guessing, so the tries before it stop counting.
 func TestDBStepUpPasswordCorrectPasswordClearsTheCount(t *testing.T) {
+	t.Parallel()
+
 	env := newStepUpLimitedEnv(t, 3)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

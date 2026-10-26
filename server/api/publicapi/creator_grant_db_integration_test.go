@@ -13,6 +13,8 @@ import (
 // one, with images whose token names them. The credit that counts is the
 // episode's own: one only the series carries opens nothing.
 func TestDBGetEpisodeDetailOpensACreditedCreatorsOwnEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -96,6 +98,8 @@ func TestDBGetEpisodeDetailOpensACreditedCreatorsOwnEpisode(t *testing.T) {
 
 // Being a credited creator is not proof of an age any more than a purchase is.
 func TestDBGetEpisodeDetailAgeRuleOutranksTheCreatorGrant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)

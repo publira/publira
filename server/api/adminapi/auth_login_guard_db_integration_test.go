@@ -53,6 +53,8 @@ func tryLogin(t *testing.T, env *adminDBEnv, tenant adminDBTenant, email, passwo
 // would have gone through. An address with no account is refused the same way,
 // so the refusal does not say which addresses hold one.
 func TestDBAdminLoginRefusesPastTheAccountAllowanceWithoutVerifying(t *testing.T) {
+	t.Parallel()
+
 	env := newLoginLimitedEnv(t, 2)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	const nobody = "nobody@tenant-a.example.com"
@@ -77,6 +79,8 @@ func TestDBAdminLoginRefusesPastTheAccountAllowanceWithoutVerifying(t *testing.T
 
 // A member of staff who mistypes and then gets it right is not held back.
 func TestDBAdminLoginCorrectPasswordClearsTheAccountCount(t *testing.T) {
+	t.Parallel()
+
 	env := newLoginLimitedEnv(t, 3)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -98,6 +102,8 @@ func TestDBAdminLoginCorrectPasswordClearsTheAccountCount(t *testing.T) {
 // One origin trying one password against many addresses meets the origin's
 // allowance, however fresh each address's own is.
 func TestDBAdminLoginRefusesPastTheSourceAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithLoginGuard(t, loginGuardWith(
 		platformpolicy.MinuteDay{PerMinute: 1000, PerDay: 1000},
 		platformpolicy.HourDay{PerHour: 2, PerDay: 2},

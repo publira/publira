@@ -23,6 +23,8 @@ func (e *adminDBEnv) accessTicketClient() publiraadminv1connect.AdminAccessTicke
 // A series nobody configured answers the defaults, an editor saves the whole
 // rule, and turning it off keeps the numbers for the next time it is on.
 func TestDBSeriesWaitFreeSettingsRoundTrip(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := admin.as(env.PG.SeedTenantUser(t, admin.Tenant.ID, "TAEDITOR01", "editor@tenant-a.example.com", "Editor", auth.RoleTenantEditor))
@@ -80,6 +82,8 @@ func TestDBSeriesWaitFreeSettingsRoundTrip(t *testing.T) {
 }
 
 func TestDBUpdateSeriesWaitFreeSettingsRefusals(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -133,6 +137,8 @@ func TestDBUpdateSeriesWaitFreeSettingsRefusals(t *testing.T) {
 // issued: IssueAccessTicket neither hands it back as the existing ticket nor
 // collides with it, the list leaves it out, and it cannot be revoked.
 func TestDBIssueAccessTicketBesideAWaitFreeTicket(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	seriesClient := env.seriesClient()

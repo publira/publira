@@ -36,8 +36,7 @@ type purchaseSurfaceEnv struct {
 func newPurchaseSurfaceEnv(t *testing.T) purchaseSurfaceEnv {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "PAYSURF", "pay-surface.example.com", "Pay Surface")
 	user := pg.SeedEndUser(t, tenant.ID, "PAYSURFUSR01", "surface-buyer@example.com", "Surface Buyer")
@@ -114,6 +113,8 @@ const (
 // from the tenant through the series to the episode, and an episode sold on
 // both surfaces is bought from either exactly as before.
 func TestDBStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPurchaseSurfaceEnv(t)
 	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "PAYSURFSR001", Title: "Sold Apart", Published: true})
 	episode := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP001", Status: testutil.EpisodeStatusPublished, Price: 500})
@@ -152,6 +153,8 @@ func TestDBStartEpisodeCheckoutRefusesASurfaceThatMayNotSellTheEpisode(t *testin
 // A surface that may not show the episode cannot sell it either, and answers as
 // the catalog does for a work it does not have.
 func TestDBStartEpisodeCheckoutOfAnEpisodeTheSurfaceDoesNotShowIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newPurchaseSurfaceEnv(t)
 	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "PAYSURFSR002", Title: "Shown Apart", Published: true})
 	episode := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYSURFEP002", Status: testutil.EpisodeStatusPublished, Price: 500, Availability: "app"})
@@ -168,6 +171,8 @@ func TestDBStartEpisodeCheckoutOfAnEpisodeTheSurfaceDoesNotShowIsNotFound(t *tes
 // draws the action the checkout will accept; the tenant read carries the store
 // listings a reader is sent to.
 func TestDBCatalogReadsCarryWhereAnEpisodeMayBeBought(t *testing.T) {
+	t.Parallel()
+
 	env := newPurchaseSurfaceEnv(t)
 	env.setTenantDefault(t, "app")
 	env.exec(t, `
@@ -223,6 +228,8 @@ func TestDBCatalogReadsCarryWhereAnEpisodeMayBeBought(t *testing.T) {
 // resolved from the tenant through the series to the neighbour as the episode
 // read resolves it, so the storefront does not quote a price it cannot take.
 func TestDBEpisodeNeighborsCarryWhereTheyMayBeBought(t *testing.T) {
+	t.Parallel()
+
 	env := newPurchaseSurfaceEnv(t)
 	env.setTenantDefault(t, "web")
 	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "PAYSURFSR004", Title: "Neighbours Apart", Published: true})

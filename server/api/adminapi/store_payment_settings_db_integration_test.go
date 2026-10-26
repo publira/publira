@@ -62,6 +62,8 @@ func getDBStorePaymentSettings(t *testing.T, env *adminDBEnv, tenant adminDBTena
 // An administrator stores both stores' keys, reads them back as hints, and
 // chooses to sell through the store; no key comes back in any response.
 func TestDBStorePaymentSettingsAreStoredAndReadBackMasked(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	if _, err := updateDBTenantMobileAppAssociation(env, tenant, &publiraadminv1.TenantMobileAppAssociation{
@@ -121,6 +123,8 @@ func TestDBStorePaymentSettingsAreStoredAndReadBackMasked(t *testing.T) {
 // The store route needs a store that can sell: an enabled one whose app the
 // tenant names. A refused save stores nothing.
 func TestDBStorePaymentSettingsRefuseTheStoreRouteWithoutAReadyStore(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	enabledAppStore := &publiraadminv1.AppStorePaymentSettingsUpdate{
@@ -151,6 +155,8 @@ func TestDBStorePaymentSettingsRefuseTheStoreRouteWithoutAReadyStore(t *testing.
 }
 
 func TestDBStorePaymentSettingsRequireTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)
@@ -186,6 +192,8 @@ func listDBStoreProducts(t *testing.T, env *adminDBEnv, tenant adminDBTenant) []
 // One product per distinct price of a paid episode the app may show and sell,
 // whatever the episode's publication status, and none from another tenant.
 func TestDBListTenantStoreProductsNamesOneProductPerAppPrice(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -234,6 +242,8 @@ func TestDBListTenantStoreProductsNamesOneProductPerAppPrice(t *testing.T) {
 // share it. An ended campaign, and one that no longer undercuts the episode's
 // price, sell nothing, nor does a campaign on an episode the app does not sell.
 func TestDBListTenantStoreProductsNamesTheProductOfEveryCampaignNotEnded(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A"})
@@ -335,6 +345,8 @@ func testPKCS8PEM(t *testing.T, key any) string {
 // the tenant sells through the store the association may not take away the
 // last app a ready store sells in; it may still change the other platform.
 func TestDBMobileAppAssociationKeepsAnAppForTheStoreRoute(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ios := &publiraadminv1.TenantIosAppAssociation{TeamId: "ABCDE12345", BundleIdentifier: testStoreAppIdentity}

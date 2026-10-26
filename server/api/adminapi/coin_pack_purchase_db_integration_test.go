@@ -39,6 +39,8 @@ func (f *purchaseFixture) seedCoinPackPurchase(t *testing.T, reader testutil.Ten
 // tenant's word for its coins, outside every series, and refunds it as it
 // refunds any purchase paid through the provider.
 func TestDBListPurchasesNamesThePackAPurchaseBought(t *testing.T) {
+	t.Parallel()
+
 	f := newPurchaseFixture(t)
 	f.env.PG.SeedCoinSettings(t, f.admin.Tenant.ID, testutil.CoinSettingsSeed{Names: map[string]string{"en": "Points"}})
 	pack := f.env.PG.SeedCoinPack(t, f.admin.Tenant.ID, testutil.CoinPackSeed{PublicID: "ADMINPACK001", Coins: 1000, BonusCoins: 100, Price: 1000})
@@ -78,6 +80,8 @@ func TestDBListPurchasesNamesThePackAPurchaseBought(t *testing.T) {
 // Every pack the tenant has not retired is a store product after the
 // products of its prices, on sale or not, named by its public ID.
 func TestDBListTenantStoreProductsNamesTheProductOfEveryPack(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A"})

@@ -20,6 +20,8 @@ func (e *adminDBEnv) pagesClient() publiraadminv1connect.AdminPagesServiceClient
 }
 
 func TestDBCreatePageDuplicateSlugReturnsAlreadyExists(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -53,6 +55,8 @@ func TestDBCreatePageDuplicateSlugReturnsAlreadyExists(t *testing.T) {
 // A page is stored with its translation in the tenant's default locale, which
 // is what the console edits and the storefront serves.
 func TestDBCreatePageCreatesTheDefaultLocaleTranslation(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -86,6 +90,8 @@ func TestDBCreatePageCreatesTheDefaultLocaleTranslation(t *testing.T) {
 // A tenant that moves to a default locale none of a page's translations is in
 // can still find and edit the page, through the translation it already had.
 func TestDBPageStaysEditableAfterADefaultLocaleChange(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -131,6 +137,8 @@ func TestDBPageStaysEditableAfterADefaultLocaleChange(t *testing.T) {
 }
 
 func TestDBCreatePageAllowsSameSlugInAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.pagesClient()
@@ -161,6 +169,8 @@ func TestDBCreatePageAllowsSameSlugInAnotherTenant(t *testing.T) {
 }
 
 func TestDBGetPageOfAnotherTenantReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.pagesClient()
@@ -184,6 +194,8 @@ func TestDBGetPageOfAnotherTenantReturnsNotFound(t *testing.T) {
 }
 
 func TestDBCreatePageRequiresTenantEditor(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)
@@ -215,6 +227,8 @@ func TestDBCreatePageRequiresTenantEditor(t *testing.T) {
 }
 
 func TestDBPublishPageVersionUpdatesPublishedVersion(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -266,6 +280,8 @@ func TestDBPublishPageVersionUpdatesPublishedVersion(t *testing.T) {
 }
 
 func TestDBUnpublishPageClearsPublishedVersionAndKeepsVersions(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -341,6 +357,8 @@ func TestDBUnpublishPageClearsPublishedVersionAndKeepsVersions(t *testing.T) {
 }
 
 func TestDBUnpublishAnotherTenantsPageReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.pagesClient()
@@ -364,6 +382,8 @@ func TestDBUnpublishAnotherTenantsPageReturnsNotFound(t *testing.T) {
 }
 
 func TestDBCreateVersionForAnotherTenantsPageReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.pagesClient()
@@ -393,6 +413,8 @@ func TestDBCreateVersionForAnotherTenantsPageReturnsNotFound(t *testing.T) {
 // Rolling back copies the chosen version's body into a new draft numbered after
 // the latest one, and leaves the live version where it was.
 func TestDBRollbackToVersionCreatesADraftFromTheTarget(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -483,6 +505,8 @@ func adminPageWithEnglish(t *testing.T, env *adminDBEnv, tenant adminDBTenant) s
 }
 
 func TestDBCreatePageTranslationAddsALocale(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -526,6 +550,8 @@ func TestDBCreatePageTranslationAddsALocale(t *testing.T) {
 // Each translation keeps its own title, history, and live version: working on
 // one locale never changes what another serves.
 func TestDBPageTranslationsAreEditedAndPublishedIndependently(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -639,6 +665,8 @@ func TestDBPageTranslationsAreEditedAndPublishedIndependently(t *testing.T) {
 // A locale the page has no translation in is not found rather than quietly
 // edited through the default-locale translation.
 func TestDBPageContentInAMissingLocaleIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -684,6 +712,8 @@ func TestDBPageContentInAMissingLocaleIsNotFound(t *testing.T) {
 }
 
 func TestDBDeletePageTranslationKeepsTheLastOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -741,6 +771,8 @@ func TestDBDeletePageTranslationKeepsTheLastOne(t *testing.T) {
 }
 
 func TestDBPageTranslationsOfAnotherTenantAreNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	client := env.pagesClient()

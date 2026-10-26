@@ -168,6 +168,8 @@ func assertAudienceRows(t *testing.T, label string, rows []*publiraadminv1.Audie
 // its end. A follow that ended after the period was still standing in it, so
 // the count it reports does not move when one ends today.
 func TestDBAdminAudienceByDayCutsTheTenantsDays(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedAudienceFixture(t, "AUD")
 	if _, err := env.PG.DB.ExecContext(context.Background(), `
@@ -213,6 +215,8 @@ func TestDBAdminAudienceByDayCutsTheTenantsDays(t *testing.T) {
 // ended within a period that reaches today, and the count at its end is the
 // readers who still follow.
 func TestDBAdminAudienceCountsTheFollowsThatEnded(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedAudienceFixture(t, "AUE")
 	tenantID := f.admin.Tenant.ID
@@ -249,6 +253,8 @@ func TestDBAdminAudienceCountsTheFollowsThatEnded(t *testing.T) {
 // follow one another and their tokens belong to the period they were issued
 // for.
 func TestDBAdminAudienceBySeriesRanksAndPages(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedAudienceFixture(t, "AUF")
 	req := func(token string) *publiraadminv1.GetAudienceStatsRequest {
@@ -306,6 +312,8 @@ func TestDBAdminAudienceBySeriesRanksAndPages(t *testing.T) {
 // A report narrowed to a series the tenant does not have is refused rather than
 // answered with zeros a chart would draw as a series nobody follows.
 func TestDBAdminAudienceRefusesASeriesTheTenantDoesNotHave(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedAudienceFixture(t, "AUG")
 	other := env.seedTenantWithAdmin(t, "AUHTENANT01", "auh.example.com", "Other Tenant", "AUHADMIN001", "admin@auh.example.com")

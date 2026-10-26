@@ -43,6 +43,8 @@ func (e *publicDBEnv) setEpisodeRatingMode(t *testing.T, tenantID uuid.UUID, mod
 // In the mode a tenant gets by default, one press is the whole rating: it
 // stores 5, and pressing again adds nothing.
 func TestDBRateEpisodeStoresTheWholeRatingInSingleMode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRATEA", "rate-a.example.com", "Rate A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEA", "member-rate-a@example.com", "Member A", "tenant_member")
@@ -92,6 +94,8 @@ func TestDBRateEpisodeStoresTheWholeRatingInSingleMode(t *testing.T) {
 // Where a tenant lets readers press their way up, the score climbs by what each
 // call reports and stops at five, and the tally still counts the reader once.
 func TestDBRateEpisodeClimbsAndCapsInMultipleMode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRATEB", "rate-b.example.com", "Rate B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEB", "member-rate-b@example.com", "Member B", "tenant_member")
@@ -137,6 +141,8 @@ func TestDBRateEpisodeClimbsAndCapsInMultipleMode(t *testing.T) {
 // see. Whatever order they land in, the points filed for the day add up to the
 // score the reader ended at.
 func TestDBConcurrentPressesFileExactlyThePointsTheyAdded(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRATEI", "rate-i.example.com", "Rate I")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEN", "member-rate-n@example.com", "Member N", "tenant_member")
@@ -185,6 +191,8 @@ func TestDBConcurrentPressesFileExactlyThePointsTheyAdded(t *testing.T) {
 // Changing the mode leaves stored scores exactly as they were, in either
 // direction: that is what makes a single press worth the whole 5.
 func TestDBChangingTheRatingModeLeavesStoredScoresAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRATEC", "rate-c.example.com", "Rate C")
 	pressedUp := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEC", "member-rate-c@example.com", "Member C", "tenant_member")
@@ -220,6 +228,8 @@ func TestDBChangingTheRatingModeLeavesStoredScoresAlone(t *testing.T) {
 
 // Rating asks for the body access reading the episode asks for.
 func TestDBRateEpisodeRequiresCurrentPublicationAndBodyAccess(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEE", "member-rate-e@example.com", "Member E", "tenant_member")
@@ -264,6 +274,8 @@ func TestDBRateEpisodeRequiresCurrentPublicationAndBodyAccess(t *testing.T) {
 // GetMyEpisodeRating asks only that the episode be published: a rating already
 // given stays readable after the rental that allowed it has run out.
 func TestDBGetMyEpisodeRatingAnswersTheReadersOwnScoreAndThePublicTally(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRATEF", "rate-f.example.com", "Rate F")
 	first := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEJ", "member-rate-j@example.com", "Member J", "tenant_member")
@@ -322,6 +334,8 @@ func TestDBGetMyEpisodeRatingAnswersTheReadersOwnScoreAndThePublicTally(t *testi
 // The episode detail carries the same tally, so the page renders it before the
 // reader's own state has been asked for.
 func TestDBEpisodeDetailCarriesTheStoredRatingCount(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTRATEG", "rate-g.example.com", "Rate G")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATEL", "member-rate-l@example.com", "Member L", "tenant_member")
@@ -357,6 +371,8 @@ func TestDBEpisodeDetailCarriesTheStoredRatingCount(t *testing.T) {
 
 // The flood control the reader-writable RPCs share covers this one.
 func TestDBRateEpisodeChargesTheSharedFloodControl(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.Community.EpisodeRating = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))

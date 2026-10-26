@@ -17,6 +17,8 @@ func updateNotificationSettingsRequest(tenant testutil.Tenant, enabled bool) *pu
 }
 
 func TestDBUpdateNotificationSettingsChargesTheReaderAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.Community.NotificationSettingsUpdate = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))
@@ -42,6 +44,8 @@ func TestDBUpdateNotificationSettingsChargesTheReaderAllowance(t *testing.T) {
 // A tenant's own override is stricter than the platform's and is what the
 // reader runs into first.
 func TestDBUpdateNotificationSettingsFollowsTheTenantOverride(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTNSB", "notification-settings-b.example.com", "Notification Settings B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERNSB", "member-notification-settings-b@example.com", "Member B", "tenant_member")
@@ -94,6 +98,8 @@ func assertNotificationPreferences(t *testing.T, label string, got, want *publir
 }
 
 func TestDBNotificationSettingsAnswerEveryCellOnWhenNothingWasSaved(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTNPA", "notification-pref-a.example.com", "Notification Pref A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERNPA", "member-notification-pref-a@example.com", "Member A", "tenant_member")
@@ -113,6 +119,8 @@ func TestDBNotificationSettingsAnswerEveryCellOnWhenNothingWasSaved(t *testing.T
 }
 
 func TestDBNotificationSettingsRoundTripAGridWithOneCellOff(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTNPB", "notification-pref-b.example.com", "Notification Pref B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERNPB", "member-notification-pref-b@example.com", "Member B", "tenant_member")
@@ -151,6 +159,8 @@ func TestDBNotificationSettingsRoundTripAGridWithOneCellOff(t *testing.T) {
 // existed does, writes those and leaves the rest as the reader set them. The
 // email switch of such a client stands for the whole email column.
 func TestDBNotificationSettingsKeepTheCellsAnUpdateOmits(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTNPC", "notification-pref-c.example.com", "Notification Pref C")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERNPC", "member-notification-pref-c@example.com", "Member C", "tenant_member")
@@ -190,6 +200,8 @@ func TestDBNotificationSettingsKeepTheCellsAnUpdateOmits(t *testing.T) {
 // it on keeps a choice of cells made elsewhere. A request that names an email
 // cell is a client with the column, and its switch is not read.
 func TestDBNotificationSettingsReadTheEmailSwitchAsTheWholeEmailColumn(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTNPG", "notification-pref-g.example.com", "Notification Pref G")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERNPG", "member-notification-pref-g@example.com", "Member G", "tenant_member")
@@ -262,6 +274,8 @@ func TestDBNotificationSettingsReadTheEmailSwitchAsTheWholeEmailColumn(t *testin
 // — because a VALUES list cannot ask for a column default conditionally. This
 // is what fails when they stop agreeing.
 func TestDBNotificationPreferenceDefaultsAgreeAcrossPaths(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTNPD", "notification-pref-d.example.com", "Notification Pref D")
 	unsaved := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERNPD", "member-notification-pref-d@example.com", "Member D", "tenant_member")

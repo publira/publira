@@ -39,6 +39,8 @@ func getRetentionDefaults(
 }
 
 func TestDBPlatformRetentionDefaults(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newPolicyClient(t)
 
 	// An installation that has saved nothing reads the built-in defaults, which
@@ -122,6 +124,8 @@ func TestDBPlatformRetentionDefaults(t *testing.T) {
 }
 
 func TestDBPlatformRetentionDefaultsRequireAuthentication(t *testing.T) {
+	t.Parallel()
+
 	client, _, _ := newPolicyClient(t)
 
 	if _, err := client.GetPlatformRetentionDefaults(context.Background(), &publirasplatformv1.GetPlatformRetentionDefaultsRequest{}); connect.CodeOf(err) != connect.CodeUnauthenticated {
@@ -135,6 +139,8 @@ func TestDBPlatformRetentionDefaultsRequireAuthentication(t *testing.T) {
 }
 
 func TestDBPlatformAuditorReadsButCannotUpdateTheRetentionDefaults(t *testing.T) {
+	t.Parallel()
+
 	client, pg, _ := newPolicyClient(t)
 	auditor := pg.SeedPlatformAuditor(t, "PLATAUDIT01", "auditor@example.com", "Platform Auditor")
 

@@ -102,6 +102,8 @@ func assertSeriesIDs(t *testing.T, what string, got, want []string) {
 }
 
 func TestDBListPublishedSeriesKeepsOnlyTheSeriesOfOneGenre(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -117,6 +119,8 @@ func TestDBListPublishedSeriesKeepsOnlyTheSeriesOfOneGenre(t *testing.T) {
 }
 
 func TestDBListPublishedSeriesKeepsOnlyTheSeriesCarryingOneTag(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -132,6 +136,8 @@ func TestDBListPublishedSeriesKeepsOnlyTheSeriesCarryingOneTag(t *testing.T) {
 }
 
 func TestDBListPublishedSeriesKeepsOnlyTheSeriesInOneStatus(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -154,6 +160,8 @@ func TestDBListPublishedSeriesKeepsOnlyTheSeriesInOneStatus(t *testing.T) {
 }
 
 func TestDBListPublishedSeriesKeepsOnlyTheSeriesExpectedOnOneWeekday(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -179,6 +187,8 @@ func TestDBListPublishedSeriesKeepsOnlyTheSeriesExpectedOnOneWeekday(t *testing.
 }
 
 func TestDBListPublishedSeriesCombinesFilters(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -193,6 +203,8 @@ func TestDBListPublishedSeriesCombinesFilters(t *testing.T) {
 }
 
 func TestDBListPublishedSeriesCarriesTheGenresAndTagsOfEachSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -237,6 +249,8 @@ func TestDBListPublishedSeriesCarriesTheGenresAndTagsOfEachSeries(t *testing.T) 
 }
 
 func TestDBListPublishedSeriesRefusesAFilterNamingNothing(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	foreign := env.PG.SeedGenre(t, second.ID, testutil.GenreSeed{PublicID: "GENREOTHER01", Name: "Foreign"})
@@ -262,6 +276,8 @@ func TestDBListPublishedSeriesRefusesAFilterNamingNothing(t *testing.T) {
 // tokens have to walk it in both directions, and a token built for one filter
 // set has to be refused by another.
 func TestDBListPublishedSeriesPagesTheGenreFilteredListAndBindsItsToken(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -359,6 +375,8 @@ func TestDBListPublishedSeriesPagesTheGenreFilteredListAndBindsItsToken(t *testi
 // The latest-update order sorts on the newest published episode of each series,
 // which is a value no column of series holds.
 func TestDBListPublishedSeriesOrdersByTheNewestPublishedEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	now := time.Now()
@@ -435,6 +453,8 @@ func TestDBListPublishedSeriesOrdersByTheNewestPublishedEpisode(t *testing.T) {
 }
 
 func TestDBListPublishedGenresCountsThePublishedSeriesOfEachGenre(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 	// A genre nothing carries stays in the list, so the URL of its page keeps
@@ -464,6 +484,8 @@ func TestDBListPublishedGenresCountsThePublishedSeriesOfEachGenre(t *testing.T) 
 }
 
 func TestDBListPublishedGenresCarriesTheGenresEyeCatch(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -500,6 +522,8 @@ func TestDBListPublishedGenresCarriesTheGenresEyeCatch(t *testing.T) {
 }
 
 func TestDBListPublishedGenresPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -547,6 +571,8 @@ func TestDBListPublishedGenresPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBListPublishedTagsRanksTheTagsByHowManySeriesCarryThem(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 	// A tag no published series carries has no page to keep working, so it is
@@ -571,6 +597,8 @@ func TestDBListPublishedTagsRanksTheTagsByHowManySeriesCarryThem(t *testing.T) {
 }
 
 func TestDBListPublishedTagsPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	catalog := seedClassifiedCatalog(t, env)
 
@@ -618,6 +646,8 @@ func TestDBListPublishedTagsPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBPublishedGenresAndTagsExcludeAnotherTenants(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 

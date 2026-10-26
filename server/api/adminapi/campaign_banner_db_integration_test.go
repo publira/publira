@@ -114,6 +114,8 @@ func campaignBannerLinks(banners []*publiraadminv1.AdminCampaignBanner) []string
 }
 
 func TestDBCreateCampaignBannerStoresTheBannerAndTheLandscapeCutOfItsImage(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -180,6 +182,8 @@ func TestDBCreateCampaignBannerStoresTheBannerAndTheLandscapeCutOfItsImage(t *te
 // cut's minimum whatever its shape: artwork made for the band is taken as it
 // is, and anything larger is cut from its centre.
 func TestDBCreateCampaignBannerTakesAnyImageItsLandscapeCutFits(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -213,6 +217,8 @@ func TestDBCreateCampaignBannerTakesAnyImageItsLandscapeCutFits(t *testing.T) {
 }
 
 func TestDBCreateCampaignBannerRefusesWhatWouldShowNothingOrLeadNowhere(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -272,6 +278,8 @@ func TestDBCreateCampaignBannerRefusesWhatWouldShowNothingOrLeadNowhere(t *testi
 // A create whose image the object store refuses part-way must not leave a
 // banner behind to count against the cap.
 func TestDBCreateCampaignBannerWhoseImageTheStoreRefusesLeavesNoBanner(t *testing.T) {
+	t.Parallel()
+
 	store := &refusingStorageProvider{}
 	store.refuse.Store(true)
 	env := newAdminDBEnvWithStorage(t, store)
@@ -299,6 +307,8 @@ func TestDBCreateCampaignBannerWhoseImageTheStoreRefusesLeavesNoBanner(t *testin
 }
 
 func TestDBCreateCampaignBannerRefusesATenantAtTheCap(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -329,6 +339,8 @@ func TestDBCreateCampaignBannerRefusesATenantAtTheCap(t *testing.T) {
 }
 
 func TestDBUpdateCampaignBannerKeepsTheImageAndReplacesItWhenGivenOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -394,6 +406,8 @@ func TestDBUpdateCampaignBannerKeepsTheImageAndReplacesItWhenGivenOne(t *testing
 // that leaves it out clears it, and its bound counts characters, as the
 // column's check does, rather than the bytes a non-ASCII text takes.
 func TestDBUpdateCampaignBannerReplacesTheAlternativeText(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -445,6 +459,8 @@ func TestDBUpdateCampaignBannerReplacesTheAlternativeText(t *testing.T) {
 // An expired banner keeps its window, so an editor taking it down or fixing its
 // link is not asked to reschedule it first; a new window is held to the future.
 func TestDBUpdateCampaignBannerAcceptsAnExpiredWindowItAlreadyHas(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -483,6 +499,8 @@ func TestDBUpdateCampaignBannerAcceptsAnExpiredWindowItAlreadyHas(t *testing.T) 
 // stored in the past is applied already, and one in the future is owed to the
 // ticker again, even when the ticker had applied it for the previous window.
 func TestDBUpdateCampaignBannerOwesTheTickerOnlyTheBoundariesAhead(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -519,6 +537,8 @@ func TestDBUpdateCampaignBannerOwesTheTickerOnlyTheBoundariesAhead(t *testing.T)
 }
 
 func TestDBReorderCampaignBannersWritesTheOrderAndRefusesAStaleOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -559,6 +579,8 @@ func TestDBReorderCampaignBannersWritesTheOrderAndRefusesAStaleOne(t *testing.T)
 }
 
 func TestDBDeleteCampaignBannerTakesItsImageWithIt(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -595,6 +617,8 @@ func TestDBDeleteCampaignBannerTakesItsImageWithIt(t *testing.T) {
 // A banner of another tenant is one that does not exist, whichever RPC names
 // it.
 func TestDBCampaignBannerOfAnotherTenantIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -626,6 +650,8 @@ func TestDBCampaignBannerOfAnotherTenantIsNotFound(t *testing.T) {
 // ratio fills that ratio, and one for a ratio the banner holds replaces it;
 // either way the other ratios keep what they had.
 func TestDBUploadCampaignBannerAspectImageReplacesOnlyThatRatio(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()

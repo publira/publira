@@ -74,6 +74,8 @@ func requireLastTenantAdminRefusal(t *testing.T, err error) {
 }
 
 func TestDBTenantMemberRPCsRefuseSessionsThatAreNotTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.seedMember(t, tenant, "TAEDITOR", "editor@tenant-a.example.com", auth.RoleTenantEditor)
@@ -135,6 +137,8 @@ func TestDBTenantMemberRPCsRefuseSessionsThatAreNotTenantAdmin(t *testing.T) {
 }
 
 func TestDBTenantMemberRPCsStayInsideTheCallingTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	secondEditor := env.seedMember(t, second, "TBEDITOR", "editor@tenant-b.example.com", auth.RoleTenantEditor)
@@ -199,6 +203,8 @@ func TestDBTenantMemberRPCsStayInsideTheCallingTenant(t *testing.T) {
 }
 
 func TestDBTenantMemberRPCsKeepAnActiveTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.tenantMemberClient()
@@ -259,6 +265,8 @@ func TestDBTenantMemberRPCsKeepAnActiveTenantAdmin(t *testing.T) {
 }
 
 func TestDBTenantMemberChangesAreAuditedUnderTheActingAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.seedMember(t, tenant, "TAEDITOR", "editor@tenant-a.example.com", auth.RoleTenantEditor)
@@ -316,6 +324,8 @@ func TestDBTenantMemberChangesAreAuditedUnderTheActingAdmin(t *testing.T) {
 // An invitation from the console is the platform's invitation: the same mail
 // on the outbox, and the same acceptance flow at the other end of its link.
 func TestDBCreateTenantAdminInvitationQueuesTheMailTheAcceptanceFlowTakes(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
@@ -371,6 +381,8 @@ func TestDBCreateTenantAdminInvitationQueuesTheMailTheAcceptanceFlowTakes(t *tes
 // A tenant admin can make a reader an Editor or an Auditor directly, without
 // the account passing through the tenant_admin role on the way.
 func TestDBAddTenantMemberGivesAReaderTheRoleDirectly(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "editor@tenant-a.example.com", "Editor To Be")
@@ -409,6 +421,8 @@ func TestDBAddTenantMemberGivesAReaderTheRoleDirectly(t *testing.T) {
 }
 
 func TestDBAddTenantMemberRefusesWhatItCannotGrant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant, second := seedTwoTenants(t, env)
 	editor := env.seedMember(t, tenant, "TAEDITOR", "editor@tenant-a.example.com", auth.RoleTenantEditor)
@@ -450,6 +464,8 @@ func TestDBAddTenantMemberRefusesWhatItCannotGrant(t *testing.T) {
 // An invitation as an Editor or an Auditor makes the invitee that role when it
 // is accepted, and the audit log says which role was granted at both ends.
 func TestDBAnInvitationGrantsTheRoleItNames(t *testing.T) {
+	t.Parallel()
+
 	for _, role := range []string{auth.RoleTenantEditor, auth.RoleTenantAuditor} {
 		t.Run(role, func(t *testing.T) {
 			env := newAdminDBEnv(t)
@@ -540,6 +556,8 @@ func TestDBAnInvitationGrantsTheRoleItNames(t *testing.T) {
 // an account gives that account the role at once, as one as a tenant_admin
 // does, but never takes a role away from a member who holds one.
 func TestDBAnInvitationToAnExistingAccountGrantsTheRoleOnlyToAReader(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
@@ -584,6 +602,8 @@ func TestDBAnInvitationToAnExistingAccountGrantsTheRoleOnlyToAReader(t *testing.
 // An account given a role after it was invited keeps the stronger of the two
 // when it accepts: accepting an Editor's invitation never demotes an admin.
 func TestDBAcceptingAnInvitationNeverLowersARole(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
@@ -648,6 +668,8 @@ func (e *adminDBEnv) promoteWhileGrantWaits(t *testing.T, tenant adminDBTenant, 
 // Accepting an Editor's invitation waits for a promotion that is under way and
 // then keeps it, rather than replacing a role it read before the promotion.
 func TestDBAcceptingAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
@@ -679,6 +701,8 @@ func TestDBAcceptingAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
 // Inviting a reader as an Editor waits for a promotion that is under way, and
 // then refuses, rather than replacing the role it never saw.
 func TestDBAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
@@ -711,8 +735,10 @@ func (e *adminDBEnv) seedAdminInvitation(t *testing.T, tenant adminDBTenant, ema
 	}
 }
 
-// waitForBlockedBackend waits until another session is waiting on a lock, so
-// the test knows the request reached the row it holds instead of racing past it.
+// waitForBlockedBackend waits until another session of this database is
+// waiting on a lock, so the test knows the request reached the row it holds
+// instead of racing past it. Tests running in parallel wait on locks in
+// databases of their own, which pg_stat_activity lists as well.
 func (e *adminDBEnv) waitForBlockedBackend(t *testing.T) {
 	t.Helper()
 
@@ -727,6 +753,7 @@ func (e *adminDBEnv) waitForBlockedBackend(t *testing.T) {
 			FROM pg_stat_activity
 			WHERE pid <> pg_backend_pid()
 				AND wait_event_type = 'Lock'
+				AND datname = current_database()
 		`).Scan(&blocked); err != nil {
 			t.Fatalf("read pg_stat_activity: %v", err)
 		}
@@ -742,6 +769,8 @@ func (e *adminDBEnv) waitForBlockedBackend(t *testing.T) {
 // has to answer as a later acceptance does, not fail on the account the first
 // one is creating.
 func TestDBConcurrentAcceptancesOfOneInvitationCreateOneAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
@@ -803,6 +832,8 @@ func TestDBConcurrentAcceptancesOfOneInvitationCreateOneAccount(t *testing.T) {
 // accepted takes the address first; the acceptance says so on the field
 // instead of reporting a database failure, and a retry grants that account.
 func TestDBAcceptanceRacingASignUpAnswersAlreadyExists(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
@@ -866,6 +897,8 @@ func TestDBAcceptanceRacingASignUpAnswersAlreadyExists(t *testing.T) {
 }
 
 func TestDBCreateTenantAdminInvitationGrantsAnExistingUserAtOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
@@ -890,6 +923,8 @@ func TestDBCreateTenantAdminInvitationGrantsAnExistingUserAtOnce(t *testing.T) {
 // An invitation mails an address nobody has confirmed, so creating and resending
 // one spend the mail guard's allowance like the console's other mail forms.
 func TestDBTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.tenantMemberClient()
@@ -924,6 +959,8 @@ func TestDBTenantAdminInvitationMailStopsAtTheLimit(t *testing.T) {
 
 // Granting the role to an existing user mails nothing, so it spends nothing.
 func TestDBTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")

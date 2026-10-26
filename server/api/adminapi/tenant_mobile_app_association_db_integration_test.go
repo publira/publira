@@ -70,6 +70,8 @@ func assertIosAssociation(t *testing.T, label string, got *publiraadminv1.Tenant
 // A tenant without an app reads as having none; both platforms are stored and
 // read back normalized, replaced, and cleared one at a time.
 func TestDBTenantMobileAppAssociationIsStoredReadBackAndCleared(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -127,6 +129,8 @@ func TestDBTenantMobileAppAssociationIsStoredReadBackAndCleared(t *testing.T) {
 
 // A refused save leaves what was stored alone.
 func TestDBTenantMobileAppAssociationRefusesAnInvalidIdentity(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	valid := func() *publiraadminv1.TenantMobileAppAssociation {
@@ -164,6 +168,8 @@ func TestDBTenantMobileAppAssociationRefusesAnInvalidIdentity(t *testing.T) {
 }
 
 func TestDBUpdateTenantMobileAppAssociationRequiresTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)
@@ -182,6 +188,8 @@ func TestDBUpdateTenantMobileAppAssociationRequiresTenantAdmin(t *testing.T) {
 // One tenant's apps are never another's: each reads back only what it saved,
 // and an admin session cannot write to a tenant it does not belong to.
 func TestDBTenantMobileAppAssociationIsIsolatedPerTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 

@@ -41,6 +41,8 @@ func assertSignsInOnlyAsTyped(t *testing.T, env *publicDBEnv, tenant testutil.Te
 }
 
 func TestDBCreateUserKeepsThePasswordAsTyped(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	client := env.authClient()
@@ -73,6 +75,8 @@ func TestDBCreateUserKeepsThePasswordAsTyped(t *testing.T) {
 }
 
 func TestDBConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -107,6 +111,8 @@ func TestDBConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
 // Every check of the current password compares what was typed, so the password
 // without its spaces is as wrong there as it is on the sign-in form.
 func TestDBChangePasswordKeepsThePasswordAsTyped(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

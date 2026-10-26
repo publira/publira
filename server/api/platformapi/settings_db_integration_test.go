@@ -80,6 +80,8 @@ func platformConfigRevision(t *testing.T, pg *testutil.PostgresEnv) int64 {
 // Real bootstrap writes one with the first operator, so this state has no saved
 // language to report and the read says so rather than naming one.
 func TestDBGetPlatformSettingsFailsWithoutASettingsRow(t *testing.T) {
+	t.Parallel()
+
 	ts, operator := newDBIntegrationTestServer(t)
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -90,6 +92,8 @@ func TestDBGetPlatformSettingsFailsWithoutASettingsRow(t *testing.T) {
 }
 
 func TestDBUpdatePlatformSettingsPersistsAndAudits(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -146,6 +150,8 @@ func TestDBUpdatePlatformSettingsPersistsAndAudits(t *testing.T) {
 }
 
 func TestDBUpdatePlatformSettingsRejectsInvalidTimezone(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -177,6 +183,8 @@ func TestDBUpdatePlatformSettingsRejectsInvalidTimezone(t *testing.T) {
 }
 
 func TestDBUpdatePlatformSettingsRequiresAuthentication(t *testing.T) {
+	t.Parallel()
+
 	ts, _ := newDBIntegrationEnv(t)
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
@@ -196,6 +204,8 @@ func TestDBUpdatePlatformSettingsRequiresAuthentication(t *testing.T) {
 // The platform default decides a tenant's time zone at creation time, and later
 // changes to it must not reach tenants that already exist.
 func TestDBCreateTenantAppliesPlatformDefaultTimezone(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -246,6 +256,8 @@ func TestDBCreateTenantAppliesPlatformDefaultTimezone(t *testing.T) {
 }
 
 func TestDBUpdatePlatformSettingsPersistsLocale(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -274,6 +286,8 @@ func TestDBUpdatePlatformSettingsPersistsLocale(t *testing.T) {
 }
 
 func TestDBUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -307,6 +321,8 @@ func TestDBUpdatePlatformSettingsRejectsInvalidLocale(t *testing.T) {
 // platform default is deliberately the other supported code here, so a tenant
 // that inherited it instead of reading the request would fail this.
 func TestDBCreateTenantStoresRequestedLocale(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	settings := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -346,6 +362,8 @@ func TestDBCreateTenantStoresRequestedLocale(t *testing.T) {
 // land on. An unsupported code is rejected by the handler's allow-list, which
 // is the generated locale.Supported rather than a constraint in the schema.
 func TestDBCreateTenantRejectsMissingLocale(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -370,6 +388,8 @@ func TestDBCreateTenantRejectsMissingLocale(t *testing.T) {
 // row, and whichever writes second would otherwise post its stale copy of the
 // other field back over the first save.
 func TestDBUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -417,6 +437,8 @@ func TestDBUpdatePlatformSettingsRejectsAStaleRevision(t *testing.T) {
 // Two saves from the same revision at the same time. The lock serializes them,
 // so exactly one applies and the other is told the row moved.
 func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
@@ -507,6 +529,8 @@ func TestDBUpdatePlatformSettingsConcurrentSavesOneWins(t *testing.T) {
 // before a save is refused. A tenant with a currency of its own no longer
 // sells in the default, so its purchases leave the default free.
 func TestDBPlatformSettingsReportWhetherTheDefaultCurrencyIsLocked(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	client := publirasplatformv1connect.NewPlatformSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

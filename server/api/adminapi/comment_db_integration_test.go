@@ -239,6 +239,8 @@ func (e *adminDBEnv) commentAuthorNotificationPayload(t *testing.T, tenantID, us
 }
 
 func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "MOD", "moderation.example.com")
 	client := env.commentClient()
@@ -345,6 +347,8 @@ func TestDBAdminCommentMovesThroughItsStatesAndRecordsEachOne(t *testing.T) {
 }
 
 func TestDBAdminCommentModerationRefusesAMissingOrMalformedCommentID(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "CID", "moderation-comment-id.example.com")
 	client := env.commentClient()
@@ -363,6 +367,8 @@ func TestDBAdminCommentModerationRefusesAMissingOrMalformedCommentID(t *testing.
 }
 
 func TestDBAdminCommentApprovalNotifiesTheAuthorAndHideDoesNot(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "NTF", "notify-author.example.com")
 	client := env.commentClient()
@@ -449,6 +455,8 @@ func TestDBAdminCommentApprovalNotifiesTheAuthorAndHideDoesNot(t *testing.T) {
 }
 
 func TestDBAdminRestoreCommentReturnsAPendingCommentToTheQueue(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RPQ", "restore-pending.example.com")
 	client := env.commentClient()
@@ -477,6 +485,8 @@ func TestDBAdminRestoreCommentReturnsAPendingCommentToTheQueue(t *testing.T) {
 }
 
 func TestDBAdminWithdrawnCommentIsReadableButNotMovable(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "WDN", "withdrawn.example.com")
 	client := env.commentClient()
@@ -524,6 +534,8 @@ func TestDBAdminWithdrawnCommentIsReadableButNotMovable(t *testing.T) {
 }
 
 func TestDBAdminPurgeCommentDeletesTheRowAndKeepsTheReason(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "PRG", "purge.example.com")
 	client := env.commentClient()
@@ -562,6 +574,8 @@ func TestDBAdminPurgeCommentDeletesTheRowAndKeepsTheReason(t *testing.T) {
 }
 
 func TestDBAdminCommentModerationStopsAtTheTenantBoundary(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	mine := newCommentModerationFixture(t, env, "OWN", "own.example.com")
 	theirs := newCommentModerationFixture(t, env, "OTH", "other.example.com")
@@ -622,6 +636,8 @@ func TestDBAdminCommentModerationStopsAtTheTenantBoundary(t *testing.T) {
 }
 
 func TestDBAdminListCommentsFiltersAndPages(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "FLT", "filter.example.com")
 
@@ -729,6 +745,8 @@ func TestDBAdminListCommentsFiltersAndPages(t *testing.T) {
 }
 
 func TestDBAdminListCommentsSaysWhetherTheAuthorIsStaff(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "AUS", "author-staff.example.com")
 	readerComment := fixture.seedComment(t, "AUSREADER001", "published")
@@ -760,6 +778,8 @@ func TestDBAdminListCommentsSaysWhetherTheAuthorIsStaff(t *testing.T) {
 }
 
 func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	mine := newCommentModerationFixture(t, env, "CNT", "count.example.com")
 	theirs := newCommentModerationFixture(t, env, "CNO", "count-other.example.com")
@@ -804,6 +824,8 @@ func TestDBAdminCountPendingCommentsCountsOneTenantsQueue(t *testing.T) {
 // Moderating comments is an editor's work: an auditor reads the queue and
 // cannot act on it.
 func TestDBAdminCommentModerationRequiresTheEditorRole(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "ROL", "role.example.com")
 	editor := fixture.admin.as(env.PG.SeedTenantUser(t, fixture.admin.Tenant.ID, "ROLEDITOR001", "editor@role.example.com", "Editor", auth.RoleTenantEditor))
@@ -849,6 +871,8 @@ func TestDBAdminCommentModerationRequiresTheEditorRole(t *testing.T) {
 }
 
 func TestDBAdminListCommentsRejectsAnUnknownStatus(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "STA", "status.example.com")
 
@@ -886,6 +910,8 @@ func (f commentModerationFixture) commentEventCount(t *testing.T, commentID uuid
 }
 
 func TestDBAdminApprovingACommentFilesItsEngagementEventOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "CEV", "comment-events.example.com")
 	client := env.commentClient()

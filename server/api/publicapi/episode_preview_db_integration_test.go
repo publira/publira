@@ -29,6 +29,8 @@ func previewImageIDs(t *testing.T, previews []*publirattypesv1.EpisodeImage) []s
 }
 
 func TestDBGetEpisodeDetailOffersThePreviewOfALockedBody(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -83,6 +85,8 @@ func TestDBGetEpisodeDetailOffersThePreviewOfALockedBody(t *testing.T) {
 // The tenant's rule withholds an R18 body from a guest whatever its price, and
 // the preview stands in for it the way it does for a locked one.
 func TestDBGetEpisodeDetailOffersThePreviewOfAnAgeRestrictedBody(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	setTenantAgeVerification(t, env, tenant.ID, ageverification.R18)
@@ -119,6 +123,8 @@ func TestDBGetEpisodeDetailOffersThePreviewOfAnAgeRestrictedBody(t *testing.T) {
 }
 
 func TestDBGetEpisodeDetailNamesTheNextFreeEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
@@ -176,6 +182,8 @@ func TestDBGetEpisodeDetailNamesTheNextFreeEpisode(t *testing.T) {
 // A series none of whose later episodes is free answers with nothing rather
 // than with the next episode, whatever it costs.
 func TestDBGetEpisodeDetailLeavesTheNextFreeEpisodeUnsetWhenNoneIsLeft(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})

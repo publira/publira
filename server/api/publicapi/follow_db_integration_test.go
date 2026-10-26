@@ -34,6 +34,8 @@ func seriesFollowTarget(id string) *publirav1.FollowTarget {
 }
 
 func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTFOLA", "follow-a.example.com", "Follow A")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERFOLA", "member-follow-a@example.com", "Member A", "tenant_member")
@@ -117,6 +119,8 @@ func TestDBFollowServiceLifecycleIsIdempotentAndPrivate(t *testing.T) {
 }
 
 func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTFOLB", "follow-b.example.com", "Follow B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERFOLB", "member-follow-b@example.com", "Member B", "tenant_member")
@@ -173,6 +177,8 @@ func TestDBFollowServiceListsOnlyPublicTargetsWithCursor(t *testing.T) {
 }
 
 func TestDBFollowServiceDoesNotRevealUnavailableTargets(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERFOLC", "member-follow-c@example.com", "Member C", "tenant_member")

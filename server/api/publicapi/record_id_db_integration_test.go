@@ -15,6 +15,8 @@ import (
 // the catalog and send them back to every RPC that acts on the record.
 
 func TestDBCatalogReadsCarryTheInternalIDs(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTIDSA", "ids-a.example.com", "IDs A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESIDSA", Title: "Series", Published: true})
@@ -67,6 +69,8 @@ func TestDBCatalogReadsCarryTheInternalIDs(t *testing.T) {
 }
 
 func TestDBReaderStateRPCsAddressTheEpisodeAndTheSeriesByID(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTIDSB", "ids-b.example.com", "IDs B")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERIDSB", "member-ids-b@example.com", "Member B", "tenant_member")
@@ -154,6 +158,8 @@ func TestDBReaderStateRPCsAddressTheEpisodeAndTheSeriesByID(t *testing.T) {
 }
 
 func TestDBCommentRPCsAddressTheEpisodeAndTheCommentByID(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "CID")
 	env, tenant, author, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -214,6 +220,8 @@ func TestDBCommentRPCsAddressTheEpisodeAndTheCommentByID(t *testing.T) {
 }
 
 func TestDBFollowAndViewTargetsAreAddressedByID(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTIDSD", "ids-d.example.com", "IDs D")
 	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERIDSD", "member-ids-d@example.com", "Member D", "tenant_member")

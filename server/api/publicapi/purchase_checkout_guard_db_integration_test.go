@@ -23,6 +23,8 @@ import (
 // saved as the platform's policy, through the save publiractl policy set
 // makes, and read the way a running server reads it.
 func TestDBPurchaseCheckoutStartsShareTheReadersAllowance(t *testing.T) {
+	t.Parallel()
+
 	f := newCoinPackFixtureGuardedBy(t, func(db *sql.DB) readerGuards {
 		return readerGuards{limiter: testutil.Limiter(), policy: platformpolicy.NewResolver(dbmodels.New(db), 0, slog.Default())}
 	})

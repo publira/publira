@@ -75,8 +75,7 @@ func newStorageClient(t *testing.T, tester storagesettings.Tester) (
 ) {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 
 	api := newAPI(db, dbmodels.New(db), slog.Default(), storageTestEncryptor(t), nil, testutil.TokenManager(), nil, openMailGuard(), tester)
@@ -143,6 +142,8 @@ func storedSecretCiphertext(t *testing.T, pg *testutil.PostgresEnv) string {
 // An installation that has saved nothing is not configured, which it says by
 // answering revision zero rather than by failing the read.
 func TestDBGetPlatformStorageSettingsAnswersNotConfigured(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
 
 	settings := getStorageSettings(t, client, operator)
@@ -155,6 +156,8 @@ func TestDBGetPlatformStorageSettingsAnswersNotConfigured(t *testing.T) {
 }
 
 func TestDBUpdatePlatformStorageSettingsSavesTheConfigurationAndEncryptsTheSecret(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
 
 	saved, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0))
@@ -183,6 +186,8 @@ func TestDBUpdatePlatformStorageSettingsSavesTheConfigurationAndEncryptsTheSecre
 // and an operator who has to paste the secret again to move a comma is one who
 // will keep it somewhere they should not.
 func TestDBUpdatePlatformStorageSettingsKeepsTheStoredSecretWhenNoneIsSent(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
 
 	if _, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0)); err != nil {
@@ -209,6 +214,8 @@ func TestDBUpdatePlatformStorageSettingsKeepsTheStoredSecretWhenNoneIsSent(t *te
 // Clearing the credential is how an installation moves to the credentials each
 // process finds for itself, so it is a save like any other rather than a gap.
 func TestDBUpdatePlatformStorageSettingsClearsTheCredentialForTheAmbientOne(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
 
 	if _, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0)); err != nil {
@@ -234,6 +241,8 @@ func TestDBUpdatePlatformStorageSettingsClearsTheCredentialForTheAmbientOne(t *t
 // Half a credential cannot sign and says nothing about who would: the save is
 // refused rather than stored as a configuration nothing can use.
 func TestDBUpdatePlatformStorageSettingsRefusesHalfACredential(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
 
 	for _, tc := range []struct {
@@ -268,6 +277,8 @@ func TestDBUpdatePlatformStorageSettingsRefusesHalfACredential(t *testing.T) {
 // A secret access key is issued for one access key id, so a save that names a
 // new id has to bring the secret that goes with it.
 func TestDBUpdatePlatformStorageSettingsRefusesANewAccessKeyIDWithTheStoredSecret(t *testing.T) {
+	t.Parallel()
+
 	client, pg, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
 
 	if _, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0)); err != nil {
@@ -303,6 +314,8 @@ func TestDBUpdatePlatformStorageSettingsRefusesANewAccessKeyIDWithTheStoredSecre
 // A save states the revision it was derived from, so a second session's change
 // cannot be rolled back by a form that was read before it.
 func TestDBUpdatePlatformStorageSettingsRefusesAStaleRevision(t *testing.T) {
+	t.Parallel()
+
 	client, _, operator := newStorageClient(t, &recordingTester{checks: passingChecks()})
 
 	if _, err := updateStorageSettings(t, client, operator, storageUpdateRequest(0)); err != nil {
@@ -324,8 +337,9 @@ func TestDBUpdatePlatformStorageSettingsRefusesAStaleRevision(t *testing.T) {
 // drops entries cannot leave a change to where every stored object lives
 // unrecorded.
 func TestDBUpdatePlatformStorageSettingsAuditsInTheSameTransaction(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 	api := newAPI(db, dbmodels.New(db), slog.Default(), storageTestEncryptor(t), nil, testutil.TokenManager(), droppingRecorder{}, openMailGuard(), &recordingTester{checks: passingChecks()})
 	ts := httptest.NewServer(handlerFromServer(api.server))
@@ -344,6 +358,8 @@ func TestDBUpdatePlatformStorageSettingsAuditsInTheSameTransaction(t *testing.T)
 // An operator testing a saved configuration hands over no credential, so the
 // stored one is decrypted for the test and for nothing else.
 func TestDBTestPlatformStorageConnectionSignsWithTheStoredSecret(t *testing.T) {
+	t.Parallel()
+
 	tester := &recordingTester{checks: passingChecks()}
 	client, pg, operator := newStorageClient(t, tester)
 
@@ -389,6 +405,8 @@ func TestDBTestPlatformStorageConnectionSignsWithTheStoredSecret(t *testing.T) {
 // A store that refused an operation is an answer rather than a failed call: the
 // operator is told which one, and the audit entry names the same reason.
 func TestDBTestPlatformStorageConnectionReportsARefusedOperation(t *testing.T) {
+	t.Parallel()
+
 	tester := &recordingTester{checks: []storagesettings.Check{
 		{Operation: storagesettings.OperationPutObject},
 		{Operation: storagesettings.OperationGetObject, Reason: rpcerrors.ReasonStorageTestPermission},
@@ -422,6 +440,8 @@ func TestDBTestPlatformStorageConnectionReportsARefusedOperation(t *testing.T) {
 // The test signs with the stored secret only under the access key id it was
 // stored with, for the same reason a save does.
 func TestDBTestPlatformStorageConnectionRefusesANewAccessKeyIDWithTheStoredSecret(t *testing.T) {
+	t.Parallel()
+
 	tester := &recordingTester{checks: passingChecks()}
 	client, _, operator := newStorageClient(t, tester)
 
@@ -446,6 +466,8 @@ func TestDBTestPlatformStorageConnectionRefusesANewAccessKeyIDWithTheStoredSecre
 // An unconfigured platform still has a form to test from, and the ambient
 // credential is what an installation on an instance role tests with.
 func TestDBTestPlatformStorageConnectionRunsWithoutAStoredCredential(t *testing.T) {
+	t.Parallel()
+
 	tester := &recordingTester{checks: passingChecks()}
 	client, _, operator := newStorageClient(t, tester)
 

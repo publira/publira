@@ -53,6 +53,8 @@ func replaceInboundField(name, value string) *publiraadminv1.InboundEmailCredent
 }
 
 func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -101,6 +103,8 @@ func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
 // An administrator stores Resend's credentials and a domain, reads them back
 // as hints, and the change is audited without a value.
 func TestDBInboundEmailSettingsAreStoredAndReadBackMasked(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -160,6 +164,8 @@ func TestDBInboundEmailSettingsAreStoredAndReadBackMasked(t *testing.T) {
 }
 
 func TestDBInboundEmailSettingsRefuseWhatCannotReceiveMail(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -190,6 +196,8 @@ func TestDBInboundEmailSettingsRefuseWhatCannotReceiveMail(t *testing.T) {
 
 // One tenant's settings are invisible to another tenant's administrator.
 func TestDBInboundEmailSettingsStayOnTheirTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	second := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")

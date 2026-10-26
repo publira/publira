@@ -87,6 +87,8 @@ func assertLegalPage(t *testing.T, role string, got *publiraadminv1.TenantLegalP
 // be named and cleared, and an unpublished one stays named but is reported as
 // unpublished.
 func TestDBTenantLegalPagesAreNominatedReportedAndCleared(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	pagesClient := env.pagesClient()
@@ -139,6 +141,8 @@ func TestDBTenantLegalPagesAreNominatedReportedAndCleared(t *testing.T) {
 // Only a published page of the tenant's own can be named, and a refused save
 // leaves what was stored alone.
 func TestDBTenantLegalPagesRefuseAPageThatCannotBeNamed(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
@@ -174,6 +178,8 @@ func TestDBTenantLegalPagesRefuseAPageThatCannotBeNamed(t *testing.T) {
 // Deleting a named page clears the nomination rather than leaving a reference
 // to a row that is gone.
 func TestDBTenantLegalPagesForgetADeletedPage(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	termsID := createDBPage(t, env, tenant, "tos", "Terms of Service", true)
@@ -199,6 +205,8 @@ func TestDBTenantLegalPagesForgetADeletedPage(t *testing.T) {
 }
 
 func TestDBUpdateTenantLegalPagesRequiresTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	termsID := createDBPage(t, env, tenant, "tos", "Terms of Service", true)
@@ -216,6 +224,8 @@ func TestDBUpdateTenantLegalPagesRequiresTenantAdmin(t *testing.T) {
 // A page whose only published translation is not in the default locale is
 // served, so it can be named, and is reported as published in that translation.
 func TestDBTenantLegalPagesNameAPagePublishedOnlyInAnotherLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.pagesClient()
@@ -262,6 +272,8 @@ func TestDBTenantLegalPagesNameAPagePublishedOnlyInAnotherLocale(t *testing.T) {
 // publication of the terms or the privacy policy, and is stored on the version
 // published. A correction leaves it unset.
 func TestDBPublishVersionAsksReadersToAgreeToTheLegalPages(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TAUSER02", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor)

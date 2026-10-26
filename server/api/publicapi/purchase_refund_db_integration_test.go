@@ -43,8 +43,7 @@ func newRefundWebhookEnv(t *testing.T, slug, domain, paymentIntentID string) ref
 // purchase yet, for the deliveries that arrive before one exists.
 func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookEnv {
 	t.Helper()
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, slug, domain, "Refund tenant")
@@ -161,6 +160,8 @@ func refundedCharge(paymentIntentID string, amount, amountRefunded int64) map[st
 }
 
 func TestDBProcessPaymentWebhookRecordsFullRefundIdempotently(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "REFUNDFUL", "refund-full.example.com", "pi_refund_full")
 	if !env.hasContentAccess(t) {
 		t.Fatal("the purchase does not open the episode before the refund")
@@ -188,6 +189,8 @@ func TestDBProcessPaymentWebhookRecordsFullRefundIdempotently(t *testing.T) {
 }
 
 func TestDBProcessPaymentWebhookKeepsAccessOnPartialRefund(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "REFUNDPAR", "refund-partial.example.com", "pi_refund_partial")
 
 	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_partial", 500, 200))
@@ -215,6 +218,8 @@ func TestDBProcessPaymentWebhookKeepsAccessOnPartialRefund(t *testing.T) {
 }
 
 func TestDBProcessPaymentWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "REFUNDAMT", "refund-amountless.example.com", "pi_refund_amountless")
 
 	charge := refundedCharge("pi_refund_amountless", 500, 0)
@@ -231,6 +236,8 @@ func TestDBProcessPaymentWebhookRecordsAnAmountlessRefundAsFull(t *testing.T) {
 }
 
 func TestDBProcessPaymentWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
+	t.Parallel()
+
 	env := newRefundWebhookEnv(t, "REFUNDUNK", "refund-unknown.example.com", "pi_refund_known")
 
 	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_stranger", 500, 500))
@@ -251,6 +258,8 @@ func TestDBProcessPaymentWebhookHoldsARefundOfAnUnknownCharge(t *testing.T) {
 // survive until that event lands, or the purchase it creates would open the
 // episode for money the reader already has back.
 func TestDBProcessPaymentWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *testing.T) {
+	t.Parallel()
+
 	env := newUnpaidRefundWebhookEnv(t, "REFUNDPRE", "refund-early.example.com")
 
 	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_early", 500, 500))
@@ -286,6 +295,8 @@ func TestDBProcessPaymentWebhookAppliesARefundThatArrivedBeforeItsPurchase(t *te
 // A partial refund that arrives first leaves the purchase readable, the same
 // as one that arrives after.
 func TestDBProcessPaymentWebhookAppliesAnEarlyPartialRefundWithoutRevokingAccess(t *testing.T) {
+	t.Parallel()
+
 	env := newUnpaidRefundWebhookEnv(t, "REFUNDPRP", "refund-early-partial.example.com")
 
 	env.deliver(t, "charge.refunded", refundedCharge("pi_refund_early_partial", 500, 200))

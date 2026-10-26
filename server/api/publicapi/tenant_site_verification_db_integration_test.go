@@ -41,6 +41,8 @@ func getDBSiteVerification(t *testing.T, env *publicDBEnv, tenant testutil.Tenan
 // Each tenant reads back only its own codes, with no credential at all, and
 // whether or not it loads a Google tag.
 func TestDBGetTenantAnalyticsSettingsAnswersEachTenantItsOwnSiteVerification(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedSiteVerification(t, env, first, "TenantAGoogleCode", "TENANTABINGCODE")
@@ -66,6 +68,8 @@ func TestDBGetTenantAnalyticsSettingsAnswersEachTenantItsOwnSiteVerification(t *
 // A tenant that has saved nothing, and one whose codes are both cleared, has no
 // site verification in the answer.
 func TestDBGetTenantAnalyticsSettingsAnswersNoSiteVerificationWithoutACode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedSiteVerification(t, env, second, "", "")

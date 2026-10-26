@@ -35,6 +35,8 @@ func updateDBTenantPurchaseSettings(t *testing.T, env *adminDBEnv, tenant adminD
 // it saves is what the next read answers, and a store listing that is not an
 // https URL is refused without touching what is stored.
 func TestDBTenantPurchaseSettingsAreStoredAndReadBack(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.tenantSettingsClient()
@@ -94,6 +96,8 @@ func TestDBTenantPurchaseSettingsAreStoredAndReadBack(t *testing.T) {
 // series; each level replaces the one above it, and an update that leaves the
 // series value out keeps it.
 func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -231,6 +235,8 @@ func TestDBEpisodePurchaseAvailabilityResolvesThroughTheSeriesAndTheTenant(t *te
 }
 
 func TestDBPurchaseAvailabilityOfAnotherTenantIsUntouched(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	owner, other := seedTwoTenants(t, env)
 	seriesPublicID := createDBSeries(t, env.seriesClient(), owner, "Owned")

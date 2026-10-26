@@ -92,6 +92,8 @@ func assertRoyaltyTotals(t *testing.T, label string, got *publiraadminv1.Royalty
 // after that month's own lines. A refund recorded before a close is that
 // month's own, and no later statement carries it again.
 func TestDBAdminRefundAfterCloseIsTakenBackFromTheNextStatement(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYF")
 	artist := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYFARTIST001", Name: "Artist Person"})
@@ -143,6 +145,8 @@ func TestDBAdminRefundAfterCloseIsTakenBackFromTheNextStatement(t *testing.T) {
 // altogether, net of the part already carried. Together the statements pay
 // the creator nothing for the sale.
 func TestDBAdminRefundCarriedInPartsIsTakenBackOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYP")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYPCREATOR01", Name: "Creator"})
@@ -178,6 +182,8 @@ func TestDBAdminRefundCarriedInPartsIsTakenBackOnce(t *testing.T) {
 // share edited after the close, and a creator credited after it, change
 // nothing about it.
 func TestDBAdminRefundAfterCloseKeepsTheShareTheClosedMonthApplied(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYK")
 	artist := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYKARTIST001", Name: "Artist Person"})
@@ -222,6 +228,8 @@ func TestDBAdminRefundAfterCloseKeepsTheShareTheClosedMonthApplied(t *testing.T)
 // back 51 and the second the 50 left, where rounding each refund on its own
 // would take back 50 twice and leave 1 paid for two refunded sales.
 func TestDBAdminRefundsOfOneLineSpreadOverMonthsTakeBackAllItPaid(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYR")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYRCREATOR01", Name: "Creator"})
@@ -255,6 +263,8 @@ func TestDBAdminRefundsOfOneLineSpreadOverMonthsTakeBackAllItPaid(t *testing.T) 
 // they stand. Only the next statement of a later month carries what was
 // refunded after either close.
 func TestDBAdminRefundIsCarriedOnlyIntoALaterMonth(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYL")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYLCREATOR01", Name: "Creator"})
@@ -284,6 +294,8 @@ func containsRow(csv, prefix, suffix string) bool {
 // month, and one lost after the close is taken back from the next statement
 // as a full refund would be, net of the part already refunded.
 func TestDBAdminLostDisputeIsNoSale(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYD")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYDCREATOR01", Name: "Creator"})

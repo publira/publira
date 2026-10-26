@@ -91,6 +91,8 @@ func (e *publicDBEnv) reportUntil(
 // The threshold is a count of open reports, and the comment goes at exactly
 // the report that reaches it: one short leaves it on the site.
 func TestDBReportThresholdHidesTheCommentOnlyOnceItIsReached(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "ATH")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -146,6 +148,8 @@ func TestDBReportThresholdHidesTheCommentOnlyOnceItIsReached(t *testing.T) {
 // of a tenant_config row that may not exist. The default the column carries is
 // what protects such a comment.
 func TestDBReportThresholdRunsWithoutATenantConfigRow(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "ANC")
 	env, tenant, member, series, episode := fixture.env, fixture.tenant, fixture.member, fixture.series, fixture.episode
 	env.setSeriesCommentMode(t, series.ID, "immediate")
@@ -173,6 +177,8 @@ func TestDBReportThresholdRunsWithoutATenantConfigRow(t *testing.T) {
 // The removal is the tenant's own setting running, so the audit entry names no
 // account: the readers who reported only pressed "report".
 func TestDBReportThresholdRecordsAnAuditEntryWithNoActor(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "AUD")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -199,6 +205,8 @@ func TestDBReportThresholdRecordsAnAuditEntryWithNoActor(t *testing.T) {
 // 0 turns the automatic removal off. However many readers report a comment,
 // only staff take it down.
 func TestDBReportThresholdOfZeroNeverHidesTheComment(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "ATZ")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -221,6 +229,8 @@ func TestDBReportThresholdOfZeroNeverHidesTheComment(t *testing.T) {
 // Deciding the reports is not putting the comment back. The counter follows
 // the decisions, and only an explicit restore returns the comment to the site.
 func TestDBDecidingReportsLeavesTheAutomaticRemovalStanding(t *testing.T) {
+	t.Parallel()
+
 	fixture := newCommentFixture(t, "ATD")
 	env, tenant, member, episode := fixture.env, fixture.tenant, fixture.member, fixture.episode
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "ATDSTAFF", "atd-staff@example.com", "Moderator")

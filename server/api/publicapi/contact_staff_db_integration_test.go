@@ -106,6 +106,8 @@ func assertContactMessageUnassigned(t *testing.T, message *publiraadminv1.Contac
 }
 
 func TestDBContactMessageIsAssignedReassignedAndCleared(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT9", "contact9.example.com", "Aoto Press")
 	first := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF9A", "first@contact9.example.com", "Kei Arata")
@@ -160,6 +162,8 @@ func TestDBContactMessageIsAssignedReassignedAndCleared(t *testing.T) {
 
 // Only an account that can open the inbox can be handed a message from it.
 func TestDBContactMessageRefusesAnAssigneeWhoCannotWorkTheInbox(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, otherTenant := env.seedTwoTenants(t)
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF10", "staff@tenant-a.example.com", "Staff")
@@ -204,6 +208,8 @@ func TestDBContactMessageRefusesAnAssigneeWhoCannotWorkTheInbox(t *testing.T) {
 // The assignee's account going away leaves the message where it was, waiting
 // for somebody else.
 func TestDBContactMessageOutlivesItsAssigneesAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT11", "contact11.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF11", "staff@contact11.example.com", "Staff")
@@ -232,6 +238,8 @@ func TestDBContactMessageOutlivesItsAssigneesAccount(t *testing.T) {
 }
 
 func TestDBContactMessageStaffNoteIsSavedEditedAndCleared(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT12", "contact12.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF12", "staff@contact12.example.com", "Staff")
@@ -292,6 +300,8 @@ func TestDBContactMessageStaffNoteIsSavedEditedAndCleared(t *testing.T) {
 // The inbox is a tenant_admin's, and so are the two things staff write on a
 // message in it.
 func TestDBContactMessageStaffFieldsRequireATenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT13", "contact13.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF13", "staff@contact13.example.com", "Staff")
@@ -309,6 +319,8 @@ func TestDBContactMessageStaffFieldsRequireATenantAdmin(t *testing.T) {
 }
 
 func TestDBContactMessageStaffFieldsStayOnTheirOwnTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	firstStaff := env.PG.SeedTenantAdmin(t, first.ID, "CONTACTSTFA", "staff@tenant-a.example.com", "Staff A")
@@ -426,6 +438,8 @@ func (e *publicDBEnv) storedContactMessageHandler(t *testing.T, messageID string
 // The status is derived from the handled flag and the assignee together, so
 // every way either one changes moves the message between the three filters.
 func TestDBContactMessageStatusFollowsHandlingAndAssignment(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT14", "contact14.example.com", "Aoto Press")
 	first := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTST14A", "first@contact14.example.com", "Kei Arata")
@@ -488,6 +502,8 @@ func TestDBContactMessageStatusFollowsHandlingAndAssignment(t *testing.T) {
 // The two halves of the queue page apart: a page of one filter is filled with
 // that filter's messages, not cut short by the other half's.
 func TestDBContactMessageStatusFiltersPageIndependently(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT15", "contact15.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF15", "staff@contact15.example.com", "Staff")
@@ -539,6 +555,8 @@ func TestDBContactMessageStatusFiltersPageIndependently(t *testing.T) {
 }
 
 func TestDBContactMessageStatusFilterRefusesAnUnknownState(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "CONTACT16", "contact16.example.com", "Aoto Press")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "CONTACTSTF16", "staff@contact16.example.com", "Staff")

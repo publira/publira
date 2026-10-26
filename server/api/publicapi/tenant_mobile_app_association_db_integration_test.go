@@ -62,6 +62,8 @@ func getDBMobileAppAssociation(t *testing.T, env *publicDBEnv, tenant testutil.T
 // Each tenant reads back only the apps it configured, with every fingerprint
 // and nothing standing in for a platform it left unconfigured.
 func TestDBGetTenantMobileAppAssociationAnswersEachTenantItsOwnApps(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedMobileAppAssociation(t, env, first, "com.tenant_a.reader", []string{testFingerprintA, testFingerprintB}, "AAAAA11111", "com.tenant-a.reader")
@@ -86,6 +88,8 @@ func TestDBGetTenantMobileAppAssociationAnswersEachTenantItsOwnApps(t *testing.T
 }
 
 func TestDBGetTenantMobileAppAssociationAnswersNoAppWithoutAConfigRow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -95,6 +99,8 @@ func TestDBGetTenantMobileAppAssociationAnswersNoAppWithoutAConfigRow(t *testing
 }
 
 func TestDBGetTenantMobileAppAssociationRejectsAnUnknownTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

@@ -34,6 +34,8 @@ func campaignBannerPublicIDs(banners []*publirav1.CampaignBanner) []string {
 }
 
 func TestDBListCampaignBannersAnswersOnlyThePublishedBannersShowingNow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, other := env.seedTwoTenants(t)
 	now := time.Now()
@@ -96,6 +98,8 @@ func TestDBListCampaignBannersAnswersOnlyThePublishedBannersShowingNow(t *testin
 // here a tenant fourteen hours ahead of UTC, whose day starts while UTC's
 // previous one is still running.
 func TestDBListCampaignBannersJudgesTheWindowByTheTenantsCalendar(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	if _, err := env.PG.DB.ExecContext(context.Background(),
@@ -126,6 +130,8 @@ func TestDBListCampaignBannersJudgesTheWindowByTheTenantsCalendar(t *testing.T) 
 // A tenant with nothing scheduled gets an empty answer rather than an error,
 // which a storefront draws as no band at all.
 func TestDBListCampaignBannersIsEmptyWithNothingScheduled(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

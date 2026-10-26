@@ -17,6 +17,8 @@ import (
 )
 
 func TestDBPlatformAuditorCannotWritePlatformSettings(t *testing.T) {
+	t.Parallel()
+
 	server, pg := newDBIntegrationEnv(t)
 	auditor := pg.SeedPlatformAuditor(t, "PLATAUDIT001", "auditor@example.com", "Platform Auditor")
 	queries := dbmodels.New(pg.DB)

@@ -38,6 +38,8 @@ func episodePublicIDs(items []*publirattypesv1.Episode) []string {
 }
 
 func TestDBListPublishedSeriesReturnsOnlyPublishedSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -85,6 +87,8 @@ func TestDBListPublishedSeriesReturnsOnlyPublishedSeries(t *testing.T) {
 }
 
 func TestDBListPublishedSeriesExcludesAnotherTenantsSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -115,6 +119,8 @@ func TestDBListPublishedSeriesExcludesAnotherTenantsSeries(t *testing.T) {
 // The keyset queries only exist in SQL, so paging is meaningless to assert
 // against canned rows: this walks a real index forward and back again.
 func TestDBListPublishedSeriesPagesForwardAndBack(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -178,6 +184,8 @@ func TestDBListPublishedSeriesPagesForwardAndBack(t *testing.T) {
 }
 
 func TestDBGetSeriesDetailListsOnlyPublishedEpisodes(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -238,6 +246,8 @@ func TestDBGetSeriesDetailListsOnlyPublishedEpisodes(t *testing.T) {
 // saying "ongoing, all ages" about a series the detail page reports as ended
 // and rated.
 func TestDBPublishedSeriesListAndDetailAgreeOnTheListingMetadata(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -289,6 +299,8 @@ func TestDBPublishedSeriesListAndDetailAgreeOnTheListingMetadata(t *testing.T) {
 // What a tenant states about a series reaches the storefront through the same
 // read the episodes come from, weekday schedule included.
 func TestDBGetSeriesDetailCarriesTheListingMetadata(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -322,6 +334,8 @@ func TestDBGetSeriesDetailCarriesTheListingMetadata(t *testing.T) {
 // a storefront decides whether to offer a comment section from the series read
 // it already makes.
 func TestDBGetSeriesDetailCarriesTheEffectiveCommentMode(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	following := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -379,6 +393,8 @@ func TestDBGetSeriesDetailCarriesTheEffectiveCommentMode(t *testing.T) {
 // The episode detail answers with the rating of the series it belongs to, so a
 // reader is asked to confirm before the body rather than after it.
 func TestDBGetEpisodeDetailCarriesTheSeriesAgeRating(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -412,6 +428,8 @@ func TestDBGetEpisodeDetailCarriesTheSeriesAgeRating(t *testing.T) {
 }
 
 func TestDBGetSeriesDetailRefusesUnpublishedSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -436,6 +454,8 @@ func TestDBGetSeriesDetailRefusesUnpublishedSeries(t *testing.T) {
 }
 
 func TestDBGetEpisodeDetailHidesEpisodesThatAreNotPubliclyReadable(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -466,6 +486,8 @@ func TestDBGetEpisodeDetailHidesEpisodesThatAreNotPubliclyReadable(t *testing.T)
 }
 
 func TestDBGetEpisodeDetailServesFreeEpisodeImages(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Free Series", Published: true})
@@ -531,6 +553,8 @@ func TestDBGetEpisodeDetailServesFreeEpisodeImages(t *testing.T) {
 // Paid pages are the asset the public API must not hand out by accident, so the
 // locked and entitled shapes are checked against the real entitlement tables.
 func TestDBGetEpisodeDetailWithholdsPaidPagesUntilEntitled(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
@@ -593,6 +617,8 @@ func TestDBGetEpisodeDetailWithholdsPaidPagesUntilEntitled(t *testing.T) {
 // published episodes either side of the one they opened. Draft and scheduled
 // episodes are not among them, and the ends of the series have none.
 func TestDBGetEpisodeDetailNamesThePublishedEpisodesEitherSide(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -689,6 +715,8 @@ func TestDBGetEpisodeDetailNamesThePublishedEpisodesEitherSide(t *testing.T) {
 // episode has to say so. The price stays what the episode costs again once the
 // window closes.
 func TestDBGetEpisodeDetailMarksANeighborInAFreeWindowAsFree(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -754,6 +782,8 @@ func TestDBGetEpisodeDetailMarksANeighborInAFreeWindowAsFree(t *testing.T) {
 // episode was written: reordering the series in the admin console changes them
 // on the next read.
 func TestDBGetEpisodeDetailFollowsAReorderedSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{
@@ -812,6 +842,8 @@ func TestDBGetEpisodeDetailFollowsAReorderedSeries(t *testing.T) {
 // series detail describes has to be the step the episode detail offers, or a
 // reader following "next" lands somewhere the list did not send them.
 func TestDBEpisodeNeighborsAgreeWithTheSeriesDetailOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{

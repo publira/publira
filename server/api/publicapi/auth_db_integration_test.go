@@ -26,6 +26,8 @@ import (
 // against. These cases drive them against a real database.
 
 func TestDBLoginIssuesTokenAcceptedByGetMe(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -56,6 +58,8 @@ func TestDBLoginIssuesTokenAcceptedByGetMe(t *testing.T) {
 }
 
 func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -86,6 +90,8 @@ func TestDBLoginRejectsWrongPasswordAndUnknownEmail(t *testing.T) {
 // Signup leaves the account inactive until the address is confirmed, and the
 // password alone must not get past that.
 func TestDBLoginRejectsUnverifiedAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0002", "pending@tenant-a.example.com", "Pending Member")
@@ -103,6 +109,8 @@ func TestDBLoginRejectsUnverifiedAccount(t *testing.T) {
 // Two storefronts share one users table, so the credentials of one tenant's
 // member must be worthless at another tenant's login form.
 func TestDBLoginRejectsMemberOfAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	theirMember := env.PG.SeedEndUser(t, second.ID, "ENDUSERB0001", "member@tenant-b.example.com", "Tenant B Member")
@@ -120,6 +128,8 @@ func TestDBLoginRejectsMemberOfAnotherTenant(t *testing.T) {
 // A password reset or an account deletion bumps credentials_version, which is
 // what makes the tokens already handed out stop working.
 func TestDBAccessTokenStopsWorkingAfterCredentialsVersionBump(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -158,6 +168,8 @@ func TestDBAccessTokenStopsWorkingAfterCredentialsVersionBump(t *testing.T) {
 }
 
 func TestDBAccessTokenStopsWorkingWhenAccountIsSuspended(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -181,6 +193,8 @@ func TestDBAccessTokenStopsWorkingWhenAccountIsSuspended(t *testing.T) {
 // Unauthenticated into a forced re-login, which would log a reader out over a
 // typo.
 func TestDBDeleteMeRejectsWrongPasswordAsInvalidArgument(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -204,6 +218,8 @@ func TestDBDeleteMeRejectsWrongPasswordAsInvalidArgument(t *testing.T) {
 // closes their account. Closing it therefore takes the buyer off the row and
 // leaves the row where it is.
 func TestDBDeleteMeKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	buyer := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "buyer@tenant-a.example.com", "Buyer")
@@ -249,6 +265,8 @@ func TestDBDeleteMeKeepsThePurchasesWithoutTheBuyer(t *testing.T) {
 // name and public ID, and the page versions it wrote stop naming it. Another
 // administrator stays, so the tenant still has someone to run its console.
 func TestDBDeleteMeDeletesAStaffAccountTheRecordNames(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	staff := env.PG.SeedTenantAdmin(t, tenant.ID, "STAFFA000001", "staff@tenant-a.example.com", "Staff")
@@ -291,6 +309,8 @@ func TestDBDeleteMeDeletesAStaffAccountTheRecordNames(t *testing.T) {
 // DeleteReader cannot delete it: nobody would be left to sign in to the
 // console. The refusal leaves the account and its role as they were.
 func TestDBDeleteMeRefusesTheLastTenantAdmin(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	admin := env.PG.SeedTenantAdmin(t, tenant.ID, "STAFFA000001", "admin@tenant-a.example.com", "Admin")
@@ -337,6 +357,8 @@ func assertPublicBadRequestField(t *testing.T, err error, wantField string) {
 // A valid session at one storefront must not carry over to another, even though
 // both are served by the same process and the same signing key.
 func TestDBGetMeRejectsTokenMintedForAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	theirMember := env.PG.SeedEndUser(t, second.ID, "ENDUSERB0001", "member@tenant-b.example.com", "Tenant B Member")
@@ -385,6 +407,8 @@ func countRows(t *testing.T, env *publicDBEnv, query string, args ...any) int {
 // account. Both cases end in the same response, and what separates them is the
 // mail the outbox carries.
 func TestDBCreateUserAnswersARegisteredAddressLikeAFreeOne(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -435,6 +459,8 @@ func TestDBCreateUserAnswersARegisteredAddressLikeAFreeOne(t *testing.T) {
 // The account's owner is the one told what happened, because a sign-up they
 // made themselves after forgetting the account would otherwise dead-end.
 func TestDBCreateUserMailsTheOwnerOfARegisteredAddress(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -501,6 +527,8 @@ func (e *publicDBEnv) seedEmailVerificationToken(
 // expired row is replaced rather than joined, so the account keeps a single
 // live link, and nothing on the account itself is written to.
 func TestDBRequestEmailVerificationReplacesAnExpiredLink(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
@@ -545,6 +573,8 @@ func TestDBRequestEmailVerificationReplacesAnExpiredLink(t *testing.T) {
 // confirmed one, and an address with no account at all are answered alike, and
 // only the first is mailed anything.
 func TestDBRequestEmailVerificationAnswersEveryAddressAlike(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
@@ -580,6 +610,8 @@ func TestDBRequestEmailVerificationAnswersEveryAddressAlike(t *testing.T) {
 // The link the resend mails activates the account, which is the whole point of
 // asking for one: the reader who lost the first mail reaches a working link.
 func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	pending := env.PG.SeedUnverifiedEndUser(t, tenant.ID, "ENDUSERA0001", "pending@tenant-a.example.com", "Pending")
@@ -631,6 +663,8 @@ func TestDBRequestEmailVerificationIssuesALinkThatActivatesTheAccount(t *testing
 // once: a second live request would leave the reader two pairs of links, each
 // pointing at an address change the other one does not know about.
 func TestDBRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -676,6 +710,8 @@ func TestDBRequestEmailChangeKeepsOneRequestUnderConcurrentRequests(t *testing.T
 // lock is where it finds that out. Holding the row from the test is what makes
 // the order a step rather than a race.
 func TestDBRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -734,6 +770,8 @@ func TestDBRequestEmailChangeEndsWhenThePasswordChangesWhileItWaits(t *testing.T
 // The current password is the whole authorization for a change: a session
 // someone walked away from must not be enough to take the account over.
 func TestDBChangePasswordRejectsAWrongCurrentPassword(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -776,6 +814,8 @@ func TestDBChangePasswordRejectsAWrongCurrentPassword(t *testing.T) {
 // session for nothing, and keep the password whoever prompted the change may
 // already know.
 func TestDBChangePasswordRejectsTheCurrentPasswordAsTheNewOne(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -800,6 +840,8 @@ func TestDBChangePasswordRejectsTheCurrentPasswordAsTheNewOne(t *testing.T) {
 // carried the request. The reader who made the change is handed the replacement
 // rather than signed out of the device they made it from.
 func TestDBChangePasswordKeepsTheCallerSignedInAndEndsTheOtherSessions(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -859,6 +901,8 @@ func TestDBChangePasswordKeepsTheCallerSignedInAndEndsTheOtherSessions(t *testin
 // row from the test until both requests wait on it is what puts both of them
 // inside the race every run, rather than only when the scheduler lets them.
 func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -959,6 +1003,8 @@ func TestDBChangePasswordLetsOnlyOneOfTwoConcurrentChangesThrough(t *testing.T) 
 // every change queues its own notice — the version the change left behind is
 // what keeps two of them apart.
 func TestDBChangePasswordQueuesOneNoticePerChange(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

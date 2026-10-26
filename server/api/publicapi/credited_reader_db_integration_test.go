@@ -52,6 +52,8 @@ func assertPermissionDeniedReason(t *testing.T, err error, reason string) {
 // so they cannot rate their own episode, free or paid, even with a purchase.
 // The credit that counts is the episode's own, as it is for the grant.
 func TestDBRateEpisodeRefusesTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Rated Series", Published: true})
@@ -98,6 +100,8 @@ func TestDBRateEpisodeRefusesTheCreditedCreator(t *testing.T) {
 // creator credited on the series alone, and a reader holding a purchase, read
 // it as not credited.
 func TestDBGetMyEpisodeRatingReportsTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Rated Series", Published: true})
@@ -141,6 +145,8 @@ func TestDBGetMyEpisodeRatingReportsTheCreditedCreator(t *testing.T) {
 // Answering readers under one's own episode is what the creator's account is
 // for, so the credit that refuses a rating leaves commenting open.
 func TestDBPostEpisodeCommentStaysOpenToTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	env.setCommentMode(t, tenant.ID, "immediate")
@@ -158,6 +164,8 @@ func TestDBPostEpisodeCommentStaysOpenToTheCreditedCreator(t *testing.T) {
 // opens, so it is refused before the provider is asked. Another episode, and
 // another reader of the same one, check out as before.
 func TestDBStartEpisodeCheckoutRefusesTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	env := newPurchaseSurfaceEnv(t)
 	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "PAYCREDSR001", Title: "Credited Series", Published: true})
 	own := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PAYCREDEP001", Status: testutil.EpisodeStatusPublished, Price: 500})
@@ -195,6 +203,8 @@ func TestDBStartEpisodeCheckoutRefusesTheCreditedCreator(t *testing.T) {
 
 // The app's own purchase is refused the same way, before any intent is opened.
 func TestDBStartStorePurchaseRefusesTheCreditedCreator(t *testing.T) {
+	t.Parallel()
+
 	env := newStorePurchaseEnv(t)
 	credited := env.pg.SeedCreator(t, env.tenant.ID, testutil.CreatorSeed{Name: "Credited"})
 	env.pg.SeedEpisodeCreator(t, env.tenant.ID, env.episode.ID, credited.ID, "")

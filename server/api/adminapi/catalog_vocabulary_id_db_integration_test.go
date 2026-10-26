@@ -41,6 +41,8 @@ func requireID(t *testing.T, what, value string) {
 }
 
 func TestDBCreatorRolesAreAddressedByID(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.creatorRoleClient()
@@ -93,6 +95,8 @@ func TestDBCreatorRolesAreAddressedByID(t *testing.T) {
 }
 
 func TestDBCreatorRoleIDThatIsNotAnIdentifierIsRefused(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -108,6 +112,8 @@ func TestDBCreatorRoleIDThatIsNotAnIdentifierIsRefused(t *testing.T) {
 // The tenant is part of the lookup by primary key too, so another tenant's
 // genre reads as not found.
 func TestDBGenresAreAddressedByID(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenantA := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	tenantB := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -174,6 +180,8 @@ func TestDBGenresAreAddressedByID(t *testing.T) {
 }
 
 func TestDBCreatorsAreAddressedByID(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	creators := env.creatorClient()
@@ -224,6 +232,8 @@ func TestDBCreatorsAreAddressedByID(t *testing.T) {
 }
 
 func TestDBLabelsAreAddressedByID(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	labels := env.labelClient()

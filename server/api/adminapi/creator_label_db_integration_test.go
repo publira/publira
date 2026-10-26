@@ -14,6 +14,8 @@ import (
 )
 
 func TestDBCreateCreatorAndAttachToSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	creators := env.creatorClient()
@@ -56,6 +58,8 @@ func TestDBCreateCreatorAndAttachToSeries(t *testing.T) {
 }
 
 func TestDBUpdateCreatorPersists(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	creators := env.creatorClient()
@@ -89,6 +93,8 @@ func TestDBUpdateCreatorPersists(t *testing.T) {
 }
 
 func TestDBListCreatorsExcludesOtherTenants(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	creators := env.creatorClient()
@@ -112,6 +118,8 @@ func TestDBListCreatorsExcludesOtherTenants(t *testing.T) {
 }
 
 func TestDBGetCreatorOfAnotherTenantReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	creators := env.creatorClient()
@@ -153,6 +161,8 @@ func TestDBGetCreatorOfAnotherTenantReturnsNotFound(t *testing.T) {
 }
 
 func TestDBGetLabelOfAnotherTenantReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 	labels := env.labelClient()
@@ -193,6 +203,8 @@ func TestDBGetLabelOfAnotherTenantReturnsNotFound(t *testing.T) {
 }
 
 func TestDBSeriesRejectsCreatorFromAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
@@ -222,6 +234,8 @@ func TestDBSeriesRejectsCreatorFromAnotherTenant(t *testing.T) {
 }
 
 func TestDBCreateLabelAndAssignToSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -250,6 +264,8 @@ func TestDBCreateLabelAndAssignToSeries(t *testing.T) {
 }
 
 func TestDBSeriesRejectsLabelFromAnotherTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	first, second := seedTwoTenants(t, env)
 
@@ -291,6 +307,8 @@ func (p *refusingStorageProvider) Upload(ctx context.Context, req storage.Upload
 // A create that fails on its eye-catch must not leave the label behind, or the
 // editor's retry makes a second label of the same name.
 func TestDBCreateLabelWithAnUnusableImageLeavesNoLabel(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	labels := env.labelClient()
@@ -329,6 +347,8 @@ func TestDBCreateLabelWithAnUnusableImageLeavesNoLabel(t *testing.T) {
 // A create whose eye-catch the object store refuses part-way must not leave
 // the label or its image rows behind.
 func TestDBCreateLabelWhoseEyeCatchTheStoreRefusesLeavesNoLabel(t *testing.T) {
+	t.Parallel()
+
 	store := &refusingStorageProvider{}
 	store.refuse.Store(true)
 	env := newAdminDBEnvWithStorage(t, store)
@@ -366,6 +386,8 @@ func TestDBCreateLabelWhoseEyeCatchTheStoreRefusesLeavesNoLabel(t *testing.T) {
 // An update that fails on its eye-catch keeps the label as it was and leaves no
 // image row that nothing points at.
 func TestDBUpdateLabelWithAnUnusableImageLeavesNoImage(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	labels := env.labelClient()
@@ -399,6 +421,8 @@ func TestDBUpdateLabelWithAnUnusableImageLeavesNoImage(t *testing.T) {
 // A create whose icon the object store refuses must not leave the creator
 // behind, or the editor's retry makes a second author of the same name.
 func TestDBCreateCreatorWhoseIconTheStoreRefusesLeavesNoCreator(t *testing.T) {
+	t.Parallel()
+
 	store := &refusingStorageProvider{}
 	store.refuse.Store(true)
 	env := newAdminDBEnvWithStorage(t, store)
@@ -440,6 +464,8 @@ func TestDBCreateCreatorWhoseIconTheStoreRefusesLeavesNoCreator(t *testing.T) {
 // An update whose icon the object store refuses keeps the author as it was and
 // leaves no image row that nothing points at.
 func TestDBUpdateCreatorWhoseIconTheStoreRefusesLeavesNoImage(t *testing.T) {
+	t.Parallel()
+
 	store := &refusingStorageProvider{}
 	env := newAdminDBEnvWithStorage(t, store)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")

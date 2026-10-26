@@ -28,8 +28,9 @@ import (
 // still opens the episode, recorded in the currency it was paid in, and is no
 // sale on a statement in the new one.
 func TestDBATenantInADecimalCurrencySellsInIt(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
 	tenant := pg.SeedTenant(t, "PAYUSD", "pay-usd.example.com", "Pay USD")

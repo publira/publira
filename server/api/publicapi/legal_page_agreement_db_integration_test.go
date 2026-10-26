@@ -64,6 +64,8 @@ func assertLegalPageAgreementRequired(t *testing.T, rpc string, err error) {
 // owing it until they agree, refuses them what they may not do meanwhile, and
 // records their agreement per version.
 func TestDBLegalPageAgreementIsAskedAgainAfterARevision(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
@@ -166,6 +168,8 @@ func TestDBLegalPageAgreementIsAskedAgainAfterARevision(t *testing.T) {
 // An agreement names published versions of the tenant's terms and privacy
 // policy, one per page.
 func TestDBAgreeToLegalPagesRefusesAnythingButTheNamedPages(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
@@ -206,6 +210,8 @@ func TestDBAgreeToLegalPagesRefusesAnythingButTheNamedPages(t *testing.T) {
 // Every agreement charges the reader's allowance before the versions it names
 // are read, so a reader repeating one runs out like any other writer.
 func TestDBAgreeToLegalPagesChargesTheSharedFloodControl(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
 		policy.LegalPageAgreement = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 2}
 	}))

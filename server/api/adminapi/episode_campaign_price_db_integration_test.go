@@ -37,6 +37,8 @@ func (e *adminDBEnv) campaignStartRevalidated(t *testing.T, campaignID string) b
 }
 
 func TestDBCreateEpisodeCampaignPrice(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -99,6 +101,8 @@ func TestDBCreateEpisodeCampaignPrice(t *testing.T) {
 }
 
 func TestDBCreateEpisodeCampaignPriceRejectsWhatCannotCutThePrice(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -152,6 +156,8 @@ func TestDBCreateEpisodeCampaignPriceRejectsWhatCannotCutThePrice(t *testing.T) 
 // of them does not undercut, or a period one of them already has a campaign
 // in, leaves every episode as it was.
 func TestDBCreateSeriesCampaignPricesIsAllOrNothing(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -238,6 +244,8 @@ func TestDBCreateSeriesCampaignPricesIsAllOrNothing(t *testing.T) {
 // A campaign scheduled in one call is listed for a later one, and removed by
 // the id the listing carries, inside the tenant that scheduled it alone.
 func TestDBListAndDeleteEpisodeCampaignPrices(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")

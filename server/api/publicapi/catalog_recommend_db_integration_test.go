@@ -72,6 +72,8 @@ func (e *publicDBEnv) listRecommendedSeries(
 }
 
 func TestDBListRecommendedSeriesOrdersBySignalsAndKeepsTenantsApart(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -126,6 +128,8 @@ func TestDBListRecommendedSeriesOrdersBySignalsAndKeepsTenantsApart(t *testing.T
 }
 
 func TestDBListRecommendedSeriesPagesFromRankedIntoNewArrivals(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -202,6 +206,8 @@ func TestDBListRecommendedSeriesPagesFromRankedIntoNewArrivals(t *testing.T) {
 // being recomputed from the same JSON. A snapshot that folds ambiguously is what
 // tells the two apart.
 func TestDBListRecommendedSeriesPagesConsistentlyOverAnAmbiguousSnapshot(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -255,6 +261,8 @@ func TestDBListRecommendedSeriesPagesConsistentlyOverAnAmbiguousSnapshot(t *test
 }
 
 func TestDBListRecommendedSeriesFallsBackToNewArrivalsWithoutSignals(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

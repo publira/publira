@@ -17,6 +17,8 @@ import (
 // resuming it serves all of them again, the session issued before the
 // suspension included.
 func TestDBSuspendedTenantIsRefusedUntilResumed(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant, other := env.seedTwoTenants(t)
 	user := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

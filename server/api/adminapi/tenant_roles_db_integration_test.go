@@ -54,6 +54,8 @@ func callAdminProcedure(t *testing.T, env *adminDBEnv, seat adminDBTenant, proce
 // TestEveryAdminRPCRequiresItsLevel checks in the source, observed from the
 // outside, so a helper that misreads the session fails here.
 func TestDBEveryAdminRPCRefusesTheRolesBelowItsLevel(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAADMIN01", "admin@tenant-a.example.com")
 	editor := admin.as(env.PG.SeedTenantUser(t, admin.Tenant.ID, "TAEDITOR01", "editor@tenant-a.example.com", "Tenant A Editor", auth.RoleTenantEditor))

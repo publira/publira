@@ -159,6 +159,8 @@ func inRoyaltyZone(year int, month time.Month, day, hour, minute, second int) ti
 }
 
 func TestDBAdminCloseRoyaltyStatementPaysEachCreditItsShare(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYC")
 	artist := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYCARTIST001", Name: "Artist Person"})
@@ -229,6 +231,8 @@ func TestDBAdminCloseRoyaltyStatementPaysEachCreditItsShare(t *testing.T) {
 }
 
 func TestDBAdminCloseRoyaltyStatementClosesAMonthOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYO")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYOCREATOR01", Name: "Creator"})
@@ -268,6 +272,8 @@ func TestDBAdminCloseRoyaltyStatementClosesAMonthOnce(t *testing.T) {
 }
 
 func TestDBAdminRoyaltyStatementCutsTheMonthInTheTenantZone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYZ")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYZCREATOR01", Name: "Creator"})
@@ -294,6 +300,8 @@ func TestDBAdminRoyaltyStatementCutsTheMonthInTheTenantZone(t *testing.T) {
 // episode, a volume, or the rest of a series was sold: however long the
 // tenant has been selling, the months around the one closed are not read.
 func TestDBAdminRoyaltyLinesReadOnlyTheMonthsPurchases(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	bundle := env.seedSeriesBundleRoyaltyFixture(t, "RYP")
 	f := bundle.royaltyFixture
@@ -390,6 +398,8 @@ func (n planNode) rowsReadPerLoop() float64 {
 // the tenant's zone changes after March is closed, the open April starts
 // where March ended, says so, and counts the sale only if March did not.
 func TestDBAdminRoyaltyMonthStartsWhereTheClosedMonthEndedAfterAZoneChange(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	cases := []struct {
 		name       string
@@ -455,6 +465,8 @@ func TestDBAdminRoyaltyMonthStartsWhereTheClosedMonthEndedAfterAZoneChange(t *te
 }
 
 func TestDBAdminRoyaltyStatementLinesFollowTheCredits(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYL")
 	second := env.PG.SeedEpisode(t, f.admin.Tenant.ID, f.series.ID, testutil.EpisodeSeed{
@@ -518,6 +530,8 @@ func TestDBAdminRoyaltyStatementLinesFollowTheCredits(t *testing.T) {
 }
 
 func TestDBAdminRoyaltyStatementSurvivesDeletedCatalogRows(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYD")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYDCREATOR01", Name: "Departed Creator"})
@@ -545,6 +559,8 @@ func TestDBAdminRoyaltyStatementSurvivesDeletedCatalogRows(t *testing.T) {
 }
 
 func TestDBAdminRoyaltyStatementRefusesMonthsNotOverAndOtherCallers(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYR")
 	other := env.seedTenantWithAdmin(t, "RYRTENANT02", "ryr-other.example.com", "Other", "RYRADMIN002", "admin@ryr-other.example.com")
@@ -586,6 +602,8 @@ func TestDBAdminRoyaltyStatementRefusesMonthsNotOverAndOtherCallers(t *testing.T
 }
 
 func TestDBAdminRoyaltyStatementsPage(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYP")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYPCREATOR01", Name: "Creator"})
@@ -648,6 +666,8 @@ func TestDBAdminRoyaltyStatementsPage(t *testing.T) {
 }
 
 func TestDBRoyaltyStatementCannotBeRewrittenButGoesWithItsTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYI")
 	creator := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYICREATOR01", Name: "Creator"})
@@ -707,6 +727,8 @@ func (e *adminDBEnv) exportRoyalties(t *testing.T, tenant adminDBTenant, period 
 }
 
 func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYX")
 	ctx := context.Background()
@@ -767,6 +789,8 @@ func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
 }
 
 func TestDBAdminExportRoyaltyStatementRefusesOpenMonthsAndOtherCallers(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	f := env.seedRoyaltyFixture(t, "RYE")
 	editor := env.PG.SeedTenantUser(t, f.admin.Tenant.ID, "RYEEDITOR01", "editor@rye.example.com", "Editor", auth.RoleTenantEditor)

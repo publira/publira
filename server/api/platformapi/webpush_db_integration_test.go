@@ -102,8 +102,9 @@ func workerWebPushCredentials(t *testing.T, pg *testutil.PostgresEnv, encryptor 
 // environment variable naming one, and Web Push stays off everywhere until a
 // subject is saved.
 func TestDBGetPlatformWebPushSettingsGeneratesAPairAndIsNotConfigured(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := storageTestEncryptor(t)
 	client := newWebPushClient(t, pg, encryptor)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
@@ -133,8 +134,9 @@ func TestDBGetPlatformWebPushSettingsGeneratesAPairAndIsNotConfigured(t *testing
 // Every browser subscription is made against the stored public key, so a
 // restart must answer the same pair rather than generating another.
 func TestDBPlatformWebPushKeyPairSurvivesARestart(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := storageTestEncryptor(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 
@@ -157,8 +159,9 @@ func TestDBPlatformWebPushKeyPairSurvivesARestart(t *testing.T) {
 // worker opens a pair that signs. Neither the response nor the row carries the
 // private key in the clear, and the change is audited with the write.
 func TestDBUpdatePlatformWebPushSubjectConfiguresWebPush(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := storageTestEncryptor(t)
 	client := newWebPushClient(t, pg, encryptor)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
@@ -221,8 +224,9 @@ WHERE event_type = 'next_cache_revalidation'
 // the save that turns Web Push on owes each of them a drop. A later subject
 // changes nothing a site shows and owes none.
 func TestDBUpdatePlatformWebPushSubjectRevalidatesEveryTenantSite(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	client := newWebPushClient(t, pg, storageTestEncryptor(t))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	tenants := []testutil.Tenant{
@@ -250,8 +254,9 @@ func TestDBUpdatePlatformWebPushSubjectRevalidatesEveryTenantSite(t *testing.T) 
 }
 
 func TestDBUpdatePlatformWebPushSubjectRefusesAnInvalidSubject(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	client := newWebPushClient(t, pg, storageTestEncryptor(t))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	read := getWebPushSettings(t, client, operator)
@@ -280,8 +285,9 @@ func TestDBUpdatePlatformWebPushSubjectRefusesAnInvalidSubject(t *testing.T) {
 // A save based on a read another session has since saved over would roll that
 // save back, so it is refused.
 func TestDBUpdatePlatformWebPushSubjectRefusesAStaleRevision(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	client := newWebPushClient(t, pg, storageTestEncryptor(t))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	read := getWebPushSettings(t, client, operator)
@@ -300,8 +306,9 @@ func TestDBUpdatePlatformWebPushSubjectRefusesAStaleRevision(t *testing.T) {
 // No key pair has been generated to save a subject against until the settings
 // are read, so a save that names a revision nothing was read at is refused.
 func TestDBUpdatePlatformWebPushSubjectRefusesASaveBeforeAnyRead(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	client := newWebPushClient(t, pg, storageTestEncryptor(t))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 
@@ -316,8 +323,9 @@ func TestDBUpdatePlatformWebPushSubjectRefusesASaveBeforeAnyRead(t *testing.T) {
 // A process started without secret encryption keys has nothing to seal a
 // private key with, and says so rather than storing one in the clear.
 func TestDBGetPlatformWebPushSettingsWithoutEncryptionKeys(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	client := newWebPushClient(t, pg, nil)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 
@@ -333,8 +341,9 @@ func TestDBGetPlatformWebPushSettingsWithoutEncryptionKeys(t *testing.T) {
 // An auditor may read the settings, which generates the pair, but may not turn
 // Web Push on.
 func TestDBPlatformAuditorCannotUpdateTheWebPushSubject(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
 	client := newWebPushClient(t, pg, storageTestEncryptor(t))
 	auditor := pg.SeedPlatformAuditor(t, "PLATAUDIT01", "auditor@example.com", "Platform Auditor")
 

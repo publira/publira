@@ -41,8 +41,7 @@ type operatorMfaEnv struct {
 func newOperatorMfaEnv(t *testing.T) *operatorMfaEnv {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 	api := newAPI(db, dbmodels.New(db), slog.Default(), newTestEncryptor(t), nil, testutil.TokenManager(), nil, openMailGuard(), nil)
 	server := httptest.NewServer(handlerFromServer(api.server))
@@ -144,6 +143,8 @@ func requireOperatorMfa(t *testing.T, pg *testutil.PostgresEnv) {
 }
 
 func TestDBOperatorLoginIssuesASessionWhenNoFactorIsEnrolled(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 
 	resp := env.login(t, env.operator)
@@ -156,6 +157,8 @@ func TestDBOperatorLoginIssuesASessionWhenNoFactorIsEnrolled(t *testing.T) {
 }
 
 func TestDBOperatorMfaStoresTheSecretEncryptedAndTheCodesHashed(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, codes := env.enroll(t)
 
@@ -179,6 +182,8 @@ func TestDBOperatorMfaStoresTheSecretEncryptedAndTheCodesHashed(t *testing.T) {
 }
 
 func TestDBOperatorLoginStopsAtAVerifyChallengeOnceTheFactorIsEnrolled(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, codes := env.enroll(t)
 
@@ -228,6 +233,8 @@ func TestDBOperatorLoginStopsAtAVerifyChallengeOnceTheFactorIsEnrolled(t *testin
 // A challenge one console earned is no use at the other: the admin audience
 // names a tenant, and the platform API verifies only its own.
 func TestDBOperatorMfaRefusesAnAdminChallenge(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	env.enroll(t)
 
@@ -245,6 +252,8 @@ func TestDBOperatorMfaRefusesAnAdminChallenge(t *testing.T) {
 }
 
 func TestDBOperatorMfaSpendsARecoveryCodeOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	_, codes := env.enroll(t)
 
@@ -271,6 +280,8 @@ func TestDBOperatorMfaSpendsARecoveryCodeOnce(t *testing.T) {
 }
 
 func TestDBOperatorMfaRefusesAReplayedCode(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, _ := env.enroll(t)
 	code := operatorMfaCode(t, secret, 1)
@@ -289,6 +300,8 @@ func TestDBOperatorMfaRefusesAReplayedCode(t *testing.T) {
 // Two requests carrying the same code race for its step, and only one may
 // have it.
 func TestDBOperatorMfaAcceptsAConcurrentlyPresentedCodeOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, _ := env.enroll(t)
 	code := operatorMfaCode(t, secret, 1)
@@ -315,6 +328,8 @@ func TestDBOperatorMfaAcceptsAConcurrentlyPresentedCodeOnce(t *testing.T) {
 }
 
 func TestDBOperatorMfaLocksAfterRepeatedFailures(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, _ := env.enroll(t)
 
@@ -334,6 +349,8 @@ func TestDBOperatorMfaLocksAfterRepeatedFailures(t *testing.T) {
 }
 
 func TestDBOperatorMfaRegenerateReplacesEveryRecoveryCode(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, codes := env.enroll(t)
 
@@ -361,6 +378,8 @@ func TestDBOperatorMfaRegenerateReplacesEveryRecoveryCode(t *testing.T) {
 }
 
 func TestDBOperatorMfaDisableRemovesTheFactorAndItsRecoveryCodes(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	_, codes := env.enroll(t)
 
@@ -404,6 +423,8 @@ func resetMfaAsCommandLine(t *testing.T, env *operatorMfaEnv) {
 // An operator that lost the authenticator and every recovery code signs in
 // with the password alone once the factor is removed from the command line.
 func TestDBOperatorLoginTakesThePasswordAloneOnceTheCommandLineResetsTheFactor(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	env.enroll(t)
 	if login := env.login(t, env.operator); login.MfaChallenge == nil {
@@ -424,6 +445,8 @@ func TestDBOperatorLoginTakesThePasswordAloneOnceTheCommandLineResetsTheFactor(t
 // Where the platform requires the factor of every operator, the operator the
 // command line reset is asked to enroll again rather than let in.
 func TestDBOperatorLoginAsksForAnEnrollmentOnceTheCommandLineResetsARequiredFactor(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	env.enroll(t)
 	requireOperatorMfa(t, env.pg)
@@ -440,6 +463,8 @@ func TestDBOperatorLoginAsksForAnEnrollmentOnceTheCommandLineResetsARequiredFact
 }
 
 func TestDBOperatorMfaStartRefusesToReplaceAConfirmedFactor(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	env.enroll(t)
 
@@ -450,6 +475,8 @@ func TestDBOperatorMfaStartRefusesToReplaceAConfirmedFactor(t *testing.T) {
 }
 
 func TestDBOperatorMfaStatusReportsTheEnrollmentAndThePolicy(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 
 	before, err := env.auth.GetMfaStatus(env.session(), &publirasplatformv1.PlatformAuthServiceGetMfaStatusRequest{})
@@ -480,6 +507,8 @@ func TestDBOperatorMfaStatusReportsTheEnrollmentAndThePolicy(t *testing.T) {
 // at all: the only thing its challenge can complete is the enrollment, and
 // doing so finishes the sign-in. Every role is held to it, an auditor too.
 func TestDBOperatorLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	requireOperatorMfa(t, env.pg)
 	auditor := env.pg.SeedPlatformAuditor(t, "PLATMFA0002", "auditor@example.com", "MFA Auditor")
@@ -530,6 +559,8 @@ func TestDBOperatorLoginForcesEnrollmentWhenTheFactorIsRequired(t *testing.T) {
 // both sign in, and a challenge kept after its enrollment could enroll an
 // authenticator of its holder's own once the factor is taken off.
 func TestDBOperatorMfaEnrollChallengeBuysOneSession(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	requireOperatorMfa(t, env.pg)
 
@@ -595,6 +626,8 @@ func TestDBOperatorMfaEnrollChallengeBuysOneSession(t *testing.T) {
 // earlier response handed out, and the operator would hold ten that no longer
 // work.
 func TestDBOperatorMfaConfirmsAConcurrentEnrollmentOnce(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	started, err := env.auth.StartMfaEnrollment(env.session(), &publirasplatformv1.PlatformAuthServiceStartMfaEnrollmentRequest{})
 	if err != nil {
@@ -634,6 +667,8 @@ func TestDBOperatorMfaConfirmsAConcurrentEnrollmentOnce(t *testing.T) {
 
 // A password change ends a pending challenge, as it ends a session.
 func TestDBOperatorMfaChallengeEndsWithTheCredentialsVersion(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, _ := env.enroll(t)
 	login := env.login(t, env.operator)
@@ -650,6 +685,8 @@ func TestDBOperatorMfaChallengeEndsWithTheCredentialsVersion(t *testing.T) {
 }
 
 func TestDBOperatorMfaWritesThePlatformAuditLog(t *testing.T) {
+	t.Parallel()
+
 	env := newOperatorMfaEnv(t)
 	secret, codes := env.enroll(t)
 

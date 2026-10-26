@@ -21,9 +21,9 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// newDBIntegrationEnv resets the shared PostgreSQL (Testcontainers) and starts an
-// httptest server talking to it as publira_platform. Nothing is seeded, so tests
-// that need operators or end users seed them through the returned env.
+// newDBIntegrationEnv starts an httptest server talking as publira_platform to
+// a PostgreSQL database (Testcontainers) of the test's own. Nothing is seeded,
+// so tests that need operators or end users seed them through the returned env.
 //
 // No SMTP anything: the auth mails are outbox_events rows the resident worker
 // picks up, so the RPCs under test never resolve settings or dial a server.
@@ -62,8 +62,7 @@ func newDBIntegrationEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) (*
 func newDBIntegrationEnvWith(t *testing.T, mail *mailguard.Guard, serviceToken *auth.ServiceToken, login *loginguard.Guard) (*httptest.Server, *testutil.PostgresEnv) {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPlatformDB(t)
 
 	api := newAPI(db, dbmodels.New(db), slog.Default(), nil, nil, testutil.TokenManager(), nil, mail, nil)

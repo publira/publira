@@ -43,6 +43,8 @@ func assertSignsInOnlyAsTyped(t *testing.T, env *adminDBEnv, tenant adminDBTenan
 }
 
 func TestDBAcceptTenantAdminInvitationKeepsThePasswordAsTyped(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	ctx := context.Background()
@@ -76,6 +78,8 @@ func TestDBAcceptTenantAdminInvitationKeepsThePasswordAsTyped(t *testing.T) {
 // The current password an address change asks for is compared as typed too, so
 // the password without its spaces is as wrong there as on the sign-in form.
 func TestDBAdminConfirmPasswordResetKeepsThePasswordAsTyped(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.authClient()

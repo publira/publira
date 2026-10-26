@@ -44,6 +44,8 @@ func getDBCrawlerSettings(t *testing.T, env *publicDBEnv, tenant testutil.Tenant
 }
 
 func TestDBGetTenantCrawlerSettingsAnswersEachTenantItsOwnExclusions(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedCrawlerSettings(t, env, first, []string{"Googlebot-Image", "GPTBot"}, []string{"/drafts"})
@@ -60,6 +62,8 @@ func TestDBGetTenantCrawlerSettingsAnswersEachTenantItsOwnExclusions(t *testing.
 }
 
 func TestDBGetTenantCrawlerSettingsAnswersNothingExcludedWithoutARow(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 
@@ -71,6 +75,8 @@ func TestDBGetTenantCrawlerSettingsAnswersNothingExcludedWithoutARow(t *testing.
 // A token the server no longer knows is never answered, since the storefront
 // writes what it reads into robots.txt as it is.
 func TestDBGetTenantCrawlerSettingsLeavesOutATokenNoLongerKnown(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	seedCrawlerSettings(t, env, tenant, []string{"RetiredBot", "GPTBot"}, []string{})
@@ -81,6 +87,8 @@ func TestDBGetTenantCrawlerSettingsLeavesOutATokenNoLongerKnown(t *testing.T) {
 }
 
 func TestDBGetTenantCrawlerSettingsRejectsAnUnknownTenant(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 

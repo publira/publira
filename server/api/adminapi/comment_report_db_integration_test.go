@@ -122,6 +122,8 @@ func commentReportIDs(reports []*publiraadminv1.CommentReport) []string {
 }
 
 func TestDBAdminCommentReportQueueCarriesTheCommentItIsAbout(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RQU", "report-queue.example.com")
 	comment := fixture.seedComment(t, "RQUREPORTED1", "published")
@@ -169,6 +171,8 @@ func TestDBAdminCommentReportQueueCarriesTheCommentItIsAbout(t *testing.T) {
 }
 
 func TestDBAdminCommentReportSaysTheCommentAuthorIsStaff(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RAS", "report-author-staff.example.com")
 	comment := fixture.seedCommentBy(t, fixture.admin.User.ID, fixture.episode.ID, "RASSTAFF0001", "published")
@@ -189,6 +193,8 @@ func TestDBAdminCommentReportSaysTheCommentAuthorIsStaff(t *testing.T) {
 }
 
 func TestDBAdminResolvingAReportLeavesTheCommentAlone(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RRS", "report-resolve.example.com")
 	comment := fixture.seedComment(t, "RRSREPORTED1", "published")
@@ -242,6 +248,8 @@ func TestDBAdminResolvingAReportLeavesTheCommentAlone(t *testing.T) {
 }
 
 func TestDBAdminRejectingEveryReportLeavesAnAutomaticRemovalInPlace(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RAU", "report-auto.example.com")
 	comment := fixture.seedComment(t, "RAUREPORTED1", "published")
@@ -281,6 +289,8 @@ func TestDBAdminRejectingEveryReportLeavesAnAutomaticRemovalInPlace(t *testing.T
 }
 
 func TestDBAdminRestoringACommentClearsTheReportsThatRemovedIt(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RRE", "report-restore.example.com")
 	comment := fixture.seedComment(t, "RREREPORTED1", "published")
@@ -330,6 +340,8 @@ func TestDBAdminRestoringACommentClearsTheReportsThatRemovedIt(t *testing.T) {
 }
 
 func TestDBAdminListCommentReportsFiltersAndPages(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RPG", "report-paging.example.com")
 	comment := fixture.seedComment(t, "RPGREPORTED1", "published")
@@ -415,6 +427,8 @@ func TestDBAdminListCommentReportsFiltersAndPages(t *testing.T) {
 }
 
 func TestDBAdminCommentReportsStopAtTheTenantBoundary(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	mine := newCommentModerationFixture(t, env, "ROW", "report-own.example.com")
 	theirs := newCommentModerationFixture(t, env, "ROT", "report-other.example.com")
@@ -449,6 +463,8 @@ func TestDBAdminCommentReportsStopAtTheTenantBoundary(t *testing.T) {
 }
 
 func TestDBAdminCommentReportsRejectInvalidArguments(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RIV", "report-invalid.example.com")
 	comment := fixture.seedComment(t, "RIVREPORTED1", "published")
@@ -489,6 +505,8 @@ func TestDBAdminCommentReportsRejectInvalidArguments(t *testing.T) {
 // Deciding a report is an editor's work: an auditor reads the reports and
 // cannot settle one.
 func TestDBAdminCommentReportsRequireTheEditorRole(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	fixture := newCommentModerationFixture(t, env, "RRO", "report-role.example.com")
 	comment := fixture.seedComment(t, "RROREPORTED1", "published")

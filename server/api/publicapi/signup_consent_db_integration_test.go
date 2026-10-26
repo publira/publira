@@ -88,6 +88,8 @@ func assertConsentRefused(t *testing.T, env *publicDBEnv, err error, email strin
 // A tenant that names its terms and privacy policy takes a sign-up only with
 // consent to both, and keeps the version of each that was agreed to.
 func TestDBCreateUserRecordsConsentToTheNamedPages(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
@@ -117,6 +119,8 @@ func TestDBCreateUserRecordsConsentToTheNamedPages(t *testing.T) {
 // page, another tenant's included, or a draft no reader was shown, is refused.
 // A version the page has since superseded is still the text the reader saw.
 func TestDBCreateUserRefusesConsentToAnythingButTheNamedPages(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	terms := env.PG.SeedPage(t, first.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
@@ -165,6 +169,8 @@ func TestDBCreateUserRefusesConsentToAnythingButTheNamedPages(t *testing.T) {
 // A tenant that names no page, or names one it has not published, has nothing
 // for a reader to agree to, and signs readers up as it did before consent.
 func TestDBCreateUserNeedsNoConsentWhereNothingIsNamed(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 
@@ -186,6 +192,8 @@ func TestDBCreateUserNeedsNoConsentWhereNothingIsNamed(t *testing.T) {
 // is served, so a sign-up has to agree to it, in the version a reader of any
 // locale was shown.
 func TestDBCreateUserNeedsConsentToAPagePublishedOnlyInAnotherLocale(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	terms := env.PG.SeedPage(t, tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms (ja draft)"})

@@ -13,6 +13,8 @@ import (
 )
 
 func TestDBPushDeviceMovesToTheReaderWhoRegistersItLast(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	first := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "first@tenant-a.example.com", "First")
@@ -42,6 +44,8 @@ func TestDBPushDeviceMovesToTheReaderWhoRegistersItLast(t *testing.T) {
 }
 
 func TestDBPushDeviceIsListedForTheNotificationsItsOwnerHolds(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
@@ -86,6 +90,8 @@ func TestDBPushDeviceIsListedForTheNotificationsItsOwnerHolds(t *testing.T) {
 }
 
 func TestDBUnregisterPushDeviceLeavesAnotherReadersToken(t *testing.T) {
+	t.Parallel()
+
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")

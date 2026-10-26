@@ -59,6 +59,8 @@ func saveTenantSMTP(t *testing.T, env *adminDBEnv, tenant adminDBTenant, overrid
 // A tenant that overrides nothing is mailed from the platform relay, so that
 // is the address it is told, read on the admin role's column grant.
 func TestDBEmailSenderIsThePlatformsWithoutTheTenantsOwnSMTP(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 
@@ -75,6 +77,8 @@ func TestDBEmailSenderIsThePlatformsWithoutTheTenantsOwnSMTP(t *testing.T) {
 // A tenant's own settings decide the sender only while its override is on:
 // switched off, they are kept but the mail goes out over the platform relay.
 func TestDBEmailSenderFollowsTheTenantsOverride(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	savePlatformSMTP(t, env, "noreply@platform.example.com")

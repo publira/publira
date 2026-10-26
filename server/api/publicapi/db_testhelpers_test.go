@@ -33,7 +33,7 @@ type publicDBEnv struct {
 	PG     *testutil.PostgresEnv
 }
 
-// newPublicDBEnv resets the shared database and starts a server on it. Nothing is
+// newPublicDBEnv starts a server on a database of the test's own. Nothing is
 // seeded; tests add tenants through [publicDBEnv.seedTenant].
 func newPublicDBEnv(t *testing.T) *publicDBEnv {
 	t.Helper()
@@ -84,8 +84,7 @@ func newPublicDBEnvWith(t *testing.T, guards readerGuards, mail *mailguard.Guard
 func newPublicDBEnvConfigured(t *testing.T, guards readerGuards, mail *mailguard.Guard, configure func(*apiServer, *sql.DB)) *publicDBEnv {
 	t.Helper()
 
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	pg := testutil.StartIsolatedPostgres(t)
 	db := pg.OpenPublicDB(t)
 
 	// Secret decryption belongs to the payment flows, which these tests seed

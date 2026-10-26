@@ -15,6 +15,8 @@ import (
 // states is what every console read of the series reports afterwards, and the
 // console lists the series whatever it is.
 func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -115,6 +117,8 @@ func TestDBSeriesAvailabilityIsStoredAndReadBack(t *testing.T) {
 // it is given, and returns to following its series when the override is
 // cleared.
 func TestDBEpisodeAvailabilityOverridesItsSeries(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -181,6 +185,8 @@ func TestDBEpisodeAvailabilityOverridesItsSeries(t *testing.T) {
 }
 
 func TestDBUpdateEpisodeAvailabilityOfAnotherTenantReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	owner, other := seedTwoTenants(t, env)
 	seriesPublicID := createDBSeries(t, env.seriesClient(), owner, "Owned")

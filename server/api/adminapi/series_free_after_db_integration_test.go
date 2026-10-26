@@ -23,6 +23,8 @@ const freeAfterEnd = "9999-12-31T00:00:00Z"
 // A series nobody configured answers the defaults, an editor saves the whole
 // rule, and turning it off keeps the numbers for the next time it is on.
 func TestDBSeriesFreeAfterSettingsRoundTrip(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	editor := admin.as(env.PG.SeedTenantUser(t, admin.Tenant.ID, "TAEDITOR01", "editor@tenant-a.example.com", "Editor", auth.RoleTenantEditor))
@@ -68,6 +70,8 @@ func TestDBSeriesFreeAfterSettingsRoundTrip(t *testing.T) {
 }
 
 func TestDBUpdateSeriesFreeAfterSettingsRefusals(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -118,6 +122,8 @@ func TestDBUpdateSeriesFreeAfterSettingsRefusals(t *testing.T) {
 // the newest two along, and turning the rule off prices every episode it
 // opened again while a window scheduled by hand stays.
 func TestDBFreeAfterRuleOpensEpisodesAsTheyReachTheirDay(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -227,6 +233,8 @@ func TestDBFreeAfterRuleOpensEpisodesAsTheyReachTheirDay(t *testing.T) {
 // that is still open on the day the rule reaches holds the rule's back until
 // it ends, and the episode stays free across the two.
 func TestDBFreeAfterRuleStartsWhereAWindowScheduledByHandEnds(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -270,6 +278,8 @@ func TestDBFreeAfterRuleStartsWhereAWindowScheduledByHandEnds(t *testing.T) {
 // An episode reordered among the newest leaves the rule, and the next pass
 // takes its window away without the rule being saved again.
 func TestDBFreeAfterRulePassRemovesTheWindowOfAnEpisodeReorderedAmongTheNewest(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -314,6 +324,8 @@ func TestDBFreeAfterRulePassRemovesTheWindowOfAnEpisodeReorderedAmongTheNewest(t
 // rule's own day again once that window is deleted, so the episode is not
 // priced for the rest of the period that no longer exists.
 func TestDBFreeAfterRulePassBringsAWindowForwardWhenTheOneItWaitedOnIsDeleted(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	admin := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()

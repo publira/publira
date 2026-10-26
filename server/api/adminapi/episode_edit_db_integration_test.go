@@ -50,6 +50,8 @@ func (e *adminDBEnv) episodeUpdatedEntries(t *testing.T, tenant adminDBTenant, e
 // A rename writes the title and nothing else, and refuses a blank one and an
 // episode of another tenant without writing.
 func TestDBUpdateEpisodeTitleRenamesTheEpisode(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -106,6 +108,8 @@ func TestDBUpdateEpisodeTitleRenamesTheEpisode(t *testing.T) {
 // already made and a store purchase intent already opened keep the terms they
 // were made on.
 func TestDBUpdateEpisodePricingChangesTheTermsOfTheNextSaleOnly(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	other := env.seedTenantWithAdmin(t, "TENANTB", "tenant-b.example.com", "Tenant B", "TBUSER01", "admin@tenant-b.example.com")
@@ -209,6 +213,8 @@ func TestDBUpdateEpisodePricingChangesTheTermsOfTheNextSaleOnly(t *testing.T) {
 // Deleting a page takes it and its renditions out and leaves the others in
 // the order they had.
 func TestDBDeleteEpisodeImageKeepsTheOtherPagesInOrder(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -264,6 +270,8 @@ func TestDBDeleteEpisodeImageKeepsTheOtherPagesInOrder(t *testing.T) {
 // the old page and its renditions are gone, and the new renditions name the
 // objects that were stored for them.
 func TestDBReplaceEpisodeImagePutsTheNewPageInTheOldOnesPlace(t *testing.T) {
+	t.Parallel()
+
 	store := &recordingStorageProvider{}
 	env := newAdminDBEnvWithStorage(t, store)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -332,6 +340,8 @@ func TestDBReplaceEpisodeImagePutsTheNewPageInTheOldOnesPlace(t *testing.T) {
 // A replacement that names a page the episode does not have, or carries no
 // usable image, stores nothing and leaves the pages as they were.
 func TestDBReplaceEpisodeImageRefusesWithoutTouchingThePages(t *testing.T) {
+	t.Parallel()
+
 	store := &recordingStorageProvider{}
 	env := newAdminDBEnvWithStorage(t, store)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -387,6 +397,8 @@ func TestDBReplaceEpisodeImageRefusesWithoutTouchingThePages(t *testing.T) {
 // change states no rental. A rental that would not undercut the permanent copy
 // is refused without writing.
 func TestDBEpisodeRentalIsPricedBesideThePermanentCopy(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()
@@ -451,6 +463,8 @@ func TestDBEpisodeRentalIsPricedBesideThePermanentCopy(t *testing.T) {
 // does the reading period: a save that leaves the field out keeps it, and zero
 // clears it.
 func TestDBSeriesKeepsADefaultRentalPeriod(t *testing.T) {
+	t.Parallel()
+
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.seriesClient()

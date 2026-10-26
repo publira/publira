@@ -17,6 +17,8 @@ import (
 const testWebServiceToken = "test-web-service-token"
 
 func TestDBServiceTokenReadsTheTenantList(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
@@ -44,6 +46,8 @@ func TestDBServiceTokenReadsTheTenantList(t *testing.T) {
 // call, so a handler that starts reading the session fails here rather than in
 // the console.
 func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	endUser := pg.SeedEndUser(t, tenant.ID, "ENDUSER001", "reader@tenant-a.example.com", "Reader")
@@ -140,6 +144,8 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 }
 
 func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
+	t.Parallel()
+
 	ts, pg := newDBIntegrationEnvWithServiceToken(t, auth.NewServiceToken(testWebServiceToken))
 	pg.SeedPlatformOperator(t, "PLATUSER001", "platform@example.com", "Platform Operator")
 	httpClient, url := ts.Client(), ts.URL
@@ -183,6 +189,8 @@ func TestDBServiceTokenIsRefusedOutsideTheAllowlist(t *testing.T) {
 }
 
 func TestDBServiceTokenIsUnauthenticatedUnlessItIsTheConfiguredOne(t *testing.T) {
+	t.Parallel()
+
 	tests := map[string]struct {
 		configured *auth.ServiceToken
 		bearer     string
