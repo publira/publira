@@ -33,7 +33,10 @@ SELECT
 -- A sale of a volume or of the rest of a series is a sale of each episode in
 -- it, at the part of its price purchase_episode_parts says that episode
 -- accounts for, and with the part of its refund
--- episode_part_of_purchase_amount gives that episode.
+-- episode_part_of_purchase_amount gives that episode. The parts are narrowed
+-- to the month as well, by their own purchased_at: the join on purchase_id
+-- alone is not pushed into the branches of the view's union, and each branch
+-- would read the purchases of every month the tenant ever sold in.
 --
 -- The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
 -- fully refunded sale is not a sale, and neither is one whose dispute was
@@ -63,7 +66,10 @@ SELECT
     ec.share_bps,
     ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount
 FROM purchases p
-JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id AND pp.purchase_id = p.id
+JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
+    AND pp.purchase_id = p.id
+    AND pp.purchased_at >= sqlc.arg('starts_at')::timestamptz
+    AND pp.purchased_at < sqlc.arg('ends_at')::timestamptz
 CROSS JOIN LATERAL (
     SELECT episode_part_of_purchase_amount(COALESCE(p.refunded_amount, 0), pp.price, p.price_at_purchase) AS refunded_amount
 ) part

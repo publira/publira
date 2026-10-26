@@ -570,7 +570,10 @@ SELECT
     ec.share_bps,
     ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount
 FROM purchases p
-JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id AND pp.purchase_id = p.id
+JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id
+    AND pp.purchase_id = p.id
+    AND pp.purchased_at >= $1::timestamptz
+    AND pp.purchased_at < $2::timestamptz
 CROSS JOIN LATERAL (
     SELECT episode_part_of_purchase_amount(COALESCE(p.refunded_amount, 0), pp.price, p.price_at_purchase) AS refunded_amount
 ) part
@@ -581,13 +584,13 @@ CROSS JOIN LATERAL series_translation_for(s.id, '') str
 JOIN episode_creators ec ON ec.tenant_id = pp.tenant_id AND ec.episode_id = pp.episode_id
 JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
-WHERE p.tenant_id = $1
+WHERE p.tenant_id = $3
     AND p.refunded_at IS NULL
     AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
-    AND p.currency = $2::text
-    AND p.purchased_at >= $3::timestamptz
-    AND p.purchased_at < $4::timestamptz
+    AND p.currency = $4::text
+    AND p.purchased_at >= $1::timestamptz
+    AND p.purchased_at < $2::timestamptz
 GROUP BY
     s.id, s.public_id, str.title,
     e.id, e.public_id, et.title, e.order_index,
@@ -598,10 +601,10 @@ ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, 
 `
 
 type ListRoyaltyLinesForPeriodParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Currency string    `json:"currency"`
 	StartsAt time.Time `json:"starts_at"`
 	EndsAt   time.Time `json:"ends_at"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Currency string    `json:"currency"`
 }
 
 type ListRoyaltyLinesForPeriodRow struct {
@@ -631,7 +634,10 @@ type ListRoyaltyLinesForPeriodRow struct {
 // A sale of a volume or of the rest of a series is a sale of each episode in
 // it, at the part of its price purchase_episode_parts says that episode
 // accounts for, and with the part of its refund
-// episode_part_of_purchase_amount gives that episode.
+// episode_part_of_purchase_amount gives that episode. The parts are narrowed
+// to the month as well, by their own purchased_at: the join on purchase_id
+// alone is not pushed into the branches of the view's union, and each branch
+// would read the purchases of every month the tenant ever sold in.
 //
 // The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
 // fully refunded sale is not a sale, and neither is one whose dispute was
@@ -644,10 +650,10 @@ type ListRoyaltyLinesForPeriodRow struct {
 // minor unit of the currency per line.
 func (q *Queries) ListRoyaltyLinesForPeriod(ctx context.Context, arg ListRoyaltyLinesForPeriodParams) ([]ListRoyaltyLinesForPeriodRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListRoyaltyLinesForPeriod,
-		arg.TenantID,
-		arg.Currency,
 		arg.StartsAt,
 		arg.EndsAt,
+		arg.TenantID,
+		arg.Currency,
 	)
 	if err != nil {
 		return nil, err

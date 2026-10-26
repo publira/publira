@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	"github.com/publira/publira/server/internal/testutil"
@@ -286,6 +288,102 @@ func TestDBAdminRoyaltyStatementCutsTheMonthInTheTenantZone(t *testing.T) {
 	if august.Totals.Gross != 800 {
 		t.Fatalf("August gross = %d, want the sale at August 1 00:00 Seoul", august.Totals.Gross)
 	}
+}
+
+// A month's lines read the purchases of that month alone, whichever of an
+// episode, a volume, or the rest of a series was sold: however long the
+// tenant has been selling, the months around the one closed are not read.
+func TestDBAdminRoyaltyLinesReadOnlyTheMonthsPurchases(t *testing.T) {
+	env := newAdminDBEnv(t)
+	bundle := env.seedSeriesBundleRoyaltyFixture(t, "RYP")
+	f := bundle.royaltyFixture
+	volume := volumeRoyaltyFixture{royaltyFixture: f, volume: env.PG.SeedVolume(t, f.admin.Tenant.ID, f.series.ID, testutil.VolumeSeed{
+		Price:      600,
+		Published:  true,
+		EpisodeIDs: []uuid.UUID{f.episode.ID, bundle.second.ID},
+	})}
+	sellEachKind := func(at time.Time) {
+		env.seedSale(t, f, f.episode.ID, royaltySale{price: 500, purchasedAt: at})
+		env.seedVolumeSale(t, volume, royaltySale{price: 600, purchasedAt: at})
+		env.seedSeriesBundleSale(t, bundle, royaltySale{price: 600, purchasedAt: at})
+	}
+	// January holds one sale of each kind, and the months either side of it
+	// a sale of each kind every day.
+	const januaryPurchases = 3
+	sellEachKind(inRoyaltyZone(2026, time.January, 15, 12, 0, 0))
+	for day := 1; day <= 28; day++ {
+		sellEachKind(inRoyaltyZone(2025, time.December, day, 12, 0, 0))
+		sellEachKind(inRoyaltyZone(2026, time.February, day, 12, 0, 0))
+	}
+	ctx := context.Background()
+	if _, err := env.PG.DB.ExecContext(ctx, "ANALYZE purchases, volume_purchase_episodes, series_bundle_episodes"); err != nil {
+		t.Fatalf("analyze purchases: %v", err)
+	}
+
+	// A table this small is cheapest read whole, which says nothing about a
+	// tenant with years of sales, so the plan is asked for with sequential
+	// scans turned off.
+	tx, err := env.PG.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin explain transaction: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
+		t.Fatalf("disable sequential scans: %v", err)
+	}
+	// ListRoyaltyLinesForPeriod binds the month first.
+	var plan []byte
+	if err := tx.QueryRowContext(ctx, "EXPLAIN (ANALYZE, FORMAT JSON) "+dbmodels.ListRoyaltyLinesForPeriod,
+		inRoyaltyZone(2026, time.January, 1, 0, 0, 0), inRoyaltyZone(2026, time.February, 1, 0, 0, 0),
+		f.admin.Tenant.ID, env.PG.TenantCurrency(t, f.admin.Tenant.ID)).Scan(&plan); err != nil {
+		t.Fatalf("explain ListRoyaltyLinesForPeriod: %v", err)
+	}
+	var explained []struct {
+		Plan planNode `json:"Plan"`
+	}
+	if err := json.Unmarshal(plan, &explained); err != nil {
+		t.Fatalf("decode plan: %v", err)
+	}
+	scans := 0
+	explained[0].Plan.walk(func(node planNode) {
+		if node.RelationName != "purchases" {
+			return
+		}
+		scans++
+		if read := node.rowsReadPerLoop(); read > januaryPurchases {
+			t.Errorf("%s on purchases %s reads %.0f rows a loop, want at most January's %d:\n%s",
+				node.NodeType, node.Alias, read, januaryPurchases, plan)
+		}
+	})
+	if scans == 0 {
+		t.Fatalf("the plan reads no purchases:\n%s", plan)
+	}
+}
+
+// planNode is the part of a node of EXPLAIN (ANALYZE, FORMAT JSON) that tells
+// how many rows it read.
+type planNode struct {
+	NodeType                  string     `json:"Node Type"`
+	RelationName              string     `json:"Relation Name"`
+	Alias                     string     `json:"Alias"`
+	ActualRows                float64    `json:"Actual Rows"`
+	RowsRemovedByFilter       float64    `json:"Rows Removed by Filter"`
+	RowsRemovedByIndexRecheck float64    `json:"Rows Removed by Index Recheck"`
+	Plans                     []planNode `json:"Plans"`
+}
+
+func (n planNode) walk(visit func(planNode)) {
+	visit(n)
+	for _, child := range n.Plans {
+		child.walk(visit)
+	}
+}
+
+// rowsReadPerLoop is the rows the node read each time it ran: those it
+// returned and those its conditions then threw away. A node inside a nested
+// loop runs once for each outer row, rereading the same rows.
+func (n planNode) rowsReadPerLoop() float64 {
+	return n.ActualRows + n.RowsRemovedByFilter + n.RowsRemovedByIndexRecheck
 }
 
 // A sale late on 31 March in UTC is early on 1 April in Tokyo. Whichever way
