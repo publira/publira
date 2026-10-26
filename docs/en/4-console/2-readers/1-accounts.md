@@ -2,7 +2,7 @@
 title: Reader accounts
 description: Find a reader's account, correct their date of birth, remove their icon, and suspend or delete the account.
 published: 2026-10-21
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.

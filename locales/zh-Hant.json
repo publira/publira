@@ -4173,8 +4173,7 @@
       "view_aria": "檢視{$reader}對{$item}的購買",
       "reader_deleted": "已刪除的帳號",
       "series_bundle": "剩餘的{$count :integer}章",
-      "coin_pack": "{$count :integer}{$coin_name}",
-      "coin_pack_bonus": "{$count :integer}{$coin_name}（含贈送{$bonus :integer}）",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
       "test_payment": "測試",
       "columns": {
         "purchased_at": "購買時間",
@@ -4779,8 +4778,7 @@
     },
     "library": {
       "canceled": "已取消",
-      "coin_pack_title": "{$count :integer}{$coin_name}",
-      "coin_pack_title_bonus": "{$count :integer}{$coin_name}（含贈送{$bonus :integer}）",
+      "coin_pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
       "description": "查看您購買的章節以及它們的閱讀期限。",
       "download_csv": "下載CSV",
       "empty_description": "您購買的章節可以隨時從這裡開啟。",

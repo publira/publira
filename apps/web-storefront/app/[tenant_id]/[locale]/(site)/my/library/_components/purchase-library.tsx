@@ -93,17 +93,11 @@ const purchasedItemLink = (
       return {
         href: "",
         open: "",
-        title:
-          item.bonusCoins > 0
-            ? t("storefront.library.coin_pack_title_bonus", {
-                bonus: item.bonusCoins,
-                coin_name: item.coinName,
-                count: item.coins + item.bonusCoins,
-              })
-            : t("storefront.library.coin_pack_title", {
-                coin_name: item.coinName,
-                count: item.coins,
-              }),
+        title: t("storefront.library.coin_pack_title", {
+          bonus: item.bonusCoins,
+          coin_name: item.coinName,
+          count: item.coins + item.bonusCoins,
+        }),
       };
     }
     case "volume": {

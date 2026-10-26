@@ -4173,8 +4173,7 @@
       "view_aria": "{$reader}による{$item}の購入を表示",
       "reader_deleted": "削除されたアカウント",
       "series_bundle": "残りの{$count :integer}話",
-      "coin_pack": "{$count :integer}{$coin_name}",
-      "coin_pack_bonus": "{$count :integer}{$coin_name}（うちボーナス{$bonus :integer}）",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）}}",
       "test_payment": "テスト",
       "columns": {
         "purchased_at": "購入日時",
@@ -4779,8 +4778,7 @@
     },
     "library": {
       "canceled": "取り消し済み",
-      "coin_pack_title": "{$count :integer}{$coin_name}",
-      "coin_pack_title_bonus": "{$count :integer}{$coin_name}（うちボーナス{$bonus :integer}）",
+      "coin_pack_title": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）}}",
       "description": "購入したエピソードと、その閲覧期限を確認できます。",
       "download_csv": "CSVでダウンロード",
       "empty_description": "購入したエピソードは、ここからいつでも開けます。",

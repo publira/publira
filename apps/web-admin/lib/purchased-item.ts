@@ -17,16 +17,11 @@ export const purchasedItemLabel = (
       return t("admin.purchases.series_bundle", { count: item.episodeCount });
     }
     case "coin_pack": {
-      return item.bonusCoins > 0
-        ? t("admin.purchases.coin_pack_bonus", {
-            bonus: item.bonusCoins,
-            coin_name: item.coinName,
-            count: item.coins + item.bonusCoins,
-          })
-        : t("admin.purchases.coin_pack", {
-            coin_name: item.coinName,
-            count: item.coins,
-          });
+      return t("admin.purchases.coin_pack", {
+        bonus: item.bonusCoins,
+        coin_name: item.coinName,
+        count: item.coins + item.bonusCoins,
+      });
     }
     default: {
       return item.title || item.publicId;
