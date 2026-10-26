@@ -606,3 +606,52 @@ func TestDBUpdateTenantCoinSettingsDropsTheCachedEpisodePrices(t *testing.T) {
 		t.Fatalf("invalidations recorded by an unchanged save = %v, want none", got)
 	}
 }
+
+// The storefront reads the packs on sale with the coin settings, so every pack
+// write that changes what readers are offered drops that read, and an update
+// that stores nothing new drops nothing.
+func TestDBCoinPackWritesDropTheCachedCoins(t *testing.T) {
+	env := newReaderIconDBEnv(t)
+	f := &coinFixture{env: env, admin: env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAADMIN01", "admin@tenant-a.example.com")}
+	want := []string{"tenant:" + f.admin.Tenant.ID.String() + ":series:detail"}
+	env.takeRevalidatedTags(t, f.admin.Tenant)
+
+	pack := f.createPack(t, &publiraadminv1.CoinPackInput{Coins: 100, BonusCoins: 10, Price: 100, SortOrder: 1, OnSale: true})
+	if got := env.takeRevalidatedTags(t, f.admin.Tenant); !slices.Equal(got, want) {
+		t.Fatalf("invalidations recorded by a create = %v, want %v", got, want)
+	}
+
+	if _, err := f.updatePack(pack.GetId(), &publiraadminv1.CoinPackInput{Coins: 100, BonusCoins: 10, Price: 100, SortOrder: 1, OnSale: true}); err != nil {
+		t.Fatalf("save the same pack again: %v", err)
+	}
+	if got := env.takeRevalidatedTags(t, f.admin.Tenant); len(got) != 0 {
+		t.Fatalf("invalidations recorded by an unchanged update = %v, want none", got)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		input *publiraadminv1.CoinPackInput
+	}{
+		{name: "price", input: &publiraadminv1.CoinPackInput{Coins: 100, BonusCoins: 10, Price: 120, SortOrder: 1, OnSale: true}},
+		{name: "coins", input: &publiraadminv1.CoinPackInput{Coins: 120, BonusCoins: 10, Price: 120, SortOrder: 1, OnSale: true}},
+		{name: "bonus coins", input: &publiraadminv1.CoinPackInput{Coins: 120, BonusCoins: 20, Price: 120, SortOrder: 1, OnSale: true}},
+		{name: "sale state", input: &publiraadminv1.CoinPackInput{Coins: 120, BonusCoins: 20, Price: 120, SortOrder: 1, OnSale: false}},
+		{name: "position", input: &publiraadminv1.CoinPackInput{Coins: 120, BonusCoins: 20, Price: 120, SortOrder: 2, OnSale: false}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := f.updatePack(pack.GetId(), tc.input); err != nil {
+				t.Fatalf("UpdateCoinPack: %v", err)
+			}
+			if got := env.takeRevalidatedTags(t, f.admin.Tenant); !slices.Equal(got, want) {
+				t.Fatalf("invalidations recorded by a change to the %s = %v, want %v", tc.name, got, want)
+			}
+		})
+	}
+
+	if _, err := env.coinClient().RetireCoinPack(f.ctx(), &publiraadminv1.RetireCoinPackRequest{Tenant: f.admin.tenantContext(), CoinPackId: pack.GetId()}); err != nil {
+		t.Fatalf("RetireCoinPack: %v", err)
+	}
+	if got := env.takeRevalidatedTags(t, f.admin.Tenant); !slices.Equal(got, want) {
+		t.Fatalf("invalidations recorded by a retire = %v, want %v", got, want)
+	}
+}
