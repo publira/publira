@@ -1,8 +1,8 @@
 ---
 title: Series
-description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, and Free if you wait, and sell its episodes in volumes.
+description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes.
 published: 2026-10-07
-updated: 2026-10-20
+updated: 2026-10-26
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -146,6 +146,18 @@ Choose **Save free-if-you-wait settings** to save. A reader holds one ticket per
 ![The Free if you wait section below the series form, with the switch that offers free tickets, the three numbers that govern them, and Save free-if-you-wait settings.](./series-free-if-you-wait.png)
 
 [Selling episodes](../4-selling-episodes.md#free-reading-periods-and-free-if-you-wait) describes how tickets sit beside prices and free reading periods.
+
+## Free after publication
+
+**Free after publication**, below **Free if you wait** on the **Basic information** tab, makes each paid episode of the series free to everyone a set number of days after it was published:
+
+- **Make episodes free after publication** turns it on. Turning it off keeps the numbers below for the next time.
+- **Days after publication**: how many days after an episode is published it becomes free, from 1 to 3650. It starts at `30`.
+- **Newest episodes that stay priced**: how many of the latest published episodes, counted back from the last one in the series' order, keep their price however old they are. `0` makes every paid episode free once its day comes.
+
+Choose **Save free-after settings** to save. The worker opens each episode on its day by adding a free reading period to it, which the episode's [Free reading periods](./2-episodes.md#free-reading-periods) lists as **By the series rule** and which cannot be deleted there. The period lasts as long as the rule covers the episode: saving the rule turned off, or with numbers that leave an episode out, prices those episodes again at once, and an episode that later moves among the newest is priced again on the worker's next pass. A free reading period scheduled by hand stays as it is, and the rule's period starts where it ends.
+
+![The Free after publication section below Free if you wait, with the switch that turns the rule on, the days after publication, the newest episodes that stay priced, and Save free-after settings.](./series-free-after-publication.png)
 
 ## Volumes
 

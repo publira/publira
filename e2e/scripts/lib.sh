@@ -155,12 +155,14 @@ COMPOSE_PROFILES="$(
 export COMPOSE_PROFILES
 unset _e2e_compose_profiles
 
-# The three periodic jobs the worker runs, in seconds. Short so a
-# scheduled episode, a free window boundary, and a tenant's midnight all land
-# within the same Playwright run instead of after multi-minute waits.
+# The periodic jobs the worker runs, in seconds. Short so a scheduled
+# episode, a free window boundary, a tenant's midnight, and the period a
+# free-after-publication rule adds all land within the same Playwright run
+# instead of after multi-minute waits.
 export PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC="${PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC:-2}"
 export PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC="${PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC:-2}"
 export PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC="${PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC:-2}"
+export PUBLIRA_E2E_FREE_AFTER_INTERVAL_SEC="${PUBLIRA_E2E_FREE_AFTER_INTERVAL_SEC:-2}"
 
 export PNCH_CACHE_APP="${PNCH_CACHE_APP:-web-storefront}"
 

@@ -2257,9 +2257,11 @@
           "description": "在免费阅读期内，任何人都可以免费阅读本话。本话的价格保持不变，阅读期结束后重新生效。",
           "empty": "本话没有已安排的免费阅读期。",
           "period": "{$starts_at}至{$ends_at}",
+          "period_by_series_rule": "{$starts_at}起",
           "status_open": "免费中",
           "status_scheduled": "已安排",
           "status_ended": "已结束",
+          "by_series_rule": "按系列规则",
           "starts_at": "开始时间",
           "ends_at": "结束时间",
           "time_zone_description": "时间以{$time_zone}为准。",
@@ -2407,6 +2409,26 @@
           "recharge_hours_invalid": "获得下一张免费券的时间请输入1～{$max}之间的整数。",
           "access_hours_invalid": "剧集可阅读的时间请输入1～{$max}之间的整数。",
           "excluded_latest_count_invalid": "免费券不可阅读的最新剧集数请输入0或以上的整数。"
+        }
+      },
+      "free_after": {
+        "title": "发布后免费",
+        "description": "本系列的付费剧集在发布满设定天数后，对所有人免费开放。",
+        "enabled": "剧集发布后转为免费",
+        "enabled_description": "关闭后，下方的数值仍会保留，下次开启时继续使用。",
+        "days_after_publication": "发布后天数",
+        "days_after_publication_description": "剧集发布后到转为免费为止的天数（1～{$max}天）。",
+        "excluded_latest_count": "保持付费的最新剧集数",
+        "excluded_latest_count_description": "按系列顺序，从已发布的最新一集往前数。输入0则所有付费剧集到期后都会转为免费。",
+        "help": "系统会在每集到期当天将其转为免费。它添加的免费阅读期显示在该剧集的“免费阅读期”中，且无法在那里删除。关闭后，这些剧集将重新收费。",
+        "submit": "保存发布后免费设置",
+        "updated": "已保存发布后免费设置。",
+        "load_error": "无法显示发布后免费设置",
+        "load_failed": "无法加载发布后免费设置。请稍后再试。",
+        "save_failed": "无法保存发布后免费设置。请稍后再试。",
+        "validation": {
+          "days_after_publication_invalid": "发布后天数请输入1～{$max}之间的整数。",
+          "excluded_latest_count_invalid": "保持付费的最新剧集数请输入0或以上的整数。"
         }
       },
       "translations": {

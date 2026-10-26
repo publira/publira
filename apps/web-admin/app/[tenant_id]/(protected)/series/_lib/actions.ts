@@ -18,6 +18,7 @@ import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
+import { episodeFreeWindowsCacheTag } from "#lib/episode-free-window";
 import {
   boundedIntFormSchema,
   checkboxOnFormSchema,
@@ -53,6 +54,14 @@ import {
   SERIES_STATUS_VALUES,
 } from "#lib/series-classification";
 import { SERIES_COMMENT_MODES } from "#lib/series-comment-mode";
+import {
+  seriesFreeAfterSettingsCacheTag,
+  updateSeriesFreeAfterSettings,
+} from "#lib/series-free-after";
+import {
+  MAX_FREE_AFTER_DAYS,
+  MAX_FREE_AFTER_EXCLUDED_LATEST_COUNT,
+} from "#lib/series-free-after-shared";
 import {
   seriesWaitFreeSettingsCacheTag,
   updateSeriesWaitFreeSettings,
@@ -795,4 +804,77 @@ export const updateSeriesWaitFreeSettingsAction = async (
   updateTag(seriesWaitFreeSettingsCacheTag(tenantId, seriesId));
 
   redirect(`/series/${encodeURIComponent(seriesPublicId)}?wait_free_updated=1`);
+};
+
+const freeAfterSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    daysAfterPublication: boundedIntFormSchema(
+      t("admin.series.free_after.validation.days_after_publication_invalid", {
+        max: String(MAX_FREE_AFTER_DAYS),
+      }),
+      { max: MAX_FREE_AFTER_DAYS, min: 1 }
+    ),
+    enabled: checkboxOnFormSchema,
+    excludedLatestCount: boundedIntFormSchema(
+      t("admin.series.free_after.validation.excluded_latest_count_invalid"),
+      { max: MAX_FREE_AFTER_EXCLUDED_LATEST_COUNT, min: 0 }
+    ),
+    seriesId: requiredRecordId(t("admin.series.validation.id_missing")),
+    seriesPublicId: requiredTrimmedString(
+      t("admin.series.validation.id_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      t("admin.series.validation.tenant_missing")
+    ),
+  });
+};
+
+const freeAfterSettingsFormFields = {
+  daysAfterPublication: { kind: "value", name: "days_after_publication" },
+  enabled: { kind: "value", name: "enabled" },
+  excludedLatestCount: { kind: "value", name: "excluded_latest_count" },
+  seriesId: { kind: "value", name: "series_id" },
+  seriesPublicId: { kind: "value", name: "series_public_id" },
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+export const updateSeriesFreeAfterSettingsAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    freeAfterSettingsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, freeAfterSettingsFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      fieldErrors: toFieldErrors(parsed.error),
+      message: t("errors.validation"),
+      ok: false,
+    };
+  }
+
+  const { seriesId, seriesPublicId, tenantId, ...settings } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateSeriesFreeAfterSettings({ ...settings, seriesId, tenantId }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(seriesFreeAfterSettingsCacheTag(tenantId, seriesId));
+  // The save removes at once the periods the rule no longer covers, which the
+  // episode screens list.
+  updateTag(episodeFreeWindowsCacheTag(tenantId));
+
+  redirect(
+    `/series/${encodeURIComponent(seriesPublicId)}?free_after_updated=1`
+  );
 };
