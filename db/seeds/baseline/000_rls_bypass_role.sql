@@ -192,8 +192,9 @@ $$;
 -- tallies are moved only by the SECURITY DEFINER triggers on episode_ratings,
 -- and the follower tally and its changes only by the one on series_follows;
 -- the daily stats, the tenant rating totals, the page reach of episodes, the
--- ranking snapshots, and the recommendation features are rebuilt by the
--- maintenance batches as publira_content_stats, which keeps its grant.
+-- readers' active days, the ranking snapshots, and the recommendation features
+-- are rebuilt by the maintenance batches as publira_content_stats, which keeps
+-- its grant.
 --
 -- The platform console's tables carry no policy, and correctly so: the console
 -- spans tenants, publira_platform reaches every tenant, and a tenant isolation
@@ -231,6 +232,7 @@ BEGIN
         'content_daily_stats',
         'tenant_rating_totals',
         'episode_page_reach_stats',
+        'reader_daily_activity',
         'content_ranking_snapshots',
         'item_recommend_features',
         'user_recommend_features'

@@ -884,6 +884,15 @@ func TestBatchDerivedTablesRefuseWritesFromTheAPIRoles(t *testing.T) {
 			delete: statement{"DELETE FROM episode_page_reach_stats WHERE tenant_id = $1", []any{tenant}},
 		},
 		{
+			name: "reader_daily_activity",
+			seed: statement{`INSERT INTO reader_daily_activity (tenant_id, stat_date, user_id, series_id)
+				VALUES ($1, '2026-08-15', $2, $3)`, []any{tenant, user, series}},
+			insert: statement{`INSERT INTO reader_daily_activity (tenant_id, stat_date, user_id, series_id)
+				VALUES ($1, '2026-08-16', $2, $3)`, []any{tenant, user, series}},
+			update: statement{"UPDATE reader_daily_activity SET stat_date = '2026-08-17' WHERE tenant_id = $1", []any{tenant}},
+			delete: statement{"DELETE FROM reader_daily_activity WHERE tenant_id = $1", []any{tenant}},
+		},
+		{
 			name: "content_ranking_snapshots",
 			seed: statement{`INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface)
 				VALUES ($1, $2, 'daily', '2026-08-15', '2026-08-15', 'series', 'web')`, []any{uuid.Must(uuid.NewV7()), tenant}},

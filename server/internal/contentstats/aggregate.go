@@ -22,10 +22,10 @@ import (
 )
 
 // Aggregator rebuilds content_daily_stats from content_events, purchases and
-// episode_comments, and episode_page_reach_stats from
-// episode_reading_positions. Its database connection must use a role that
-// reaches every tenant, because each run reads and writes every tenant:
-// [dbroles.RequireEveryTenant] refuses any other.
+// episode_comments, reader_daily_activity from content_events, and
+// episode_page_reach_stats from episode_reading_positions. Its database
+// connection must use a role that reaches every tenant, because each run reads
+// and writes every tenant: [dbroles.RequireEveryTenant] refuses any other.
 type Aggregator struct {
 	db *sql.DB
 	// pools reads a day's sources on its replica once it has caught up, and
@@ -39,8 +39,8 @@ type Aggregator struct {
 // describe the tenants that succeeded rather than the ones that were tried.
 type Result struct {
 	TenantCount int
-	// RowCount is the rows written to content_daily_stats and
-	// episode_page_reach_stats together.
+	// RowCount is the rows written to content_daily_stats,
+	// reader_daily_activity, and episode_page_reach_stats together.
 	RowCount int64
 	// Skipped are the tenants whose day the run left alone because their
 	// content events for it may be gone. They count in neither total.
@@ -97,7 +97,7 @@ type Options struct {
 // Result.Skipped rather than rebuilt, the way the worker's catch-up passes
 // over it. Naming an old date is how such a day gets asked for, and the rows
 // already stored for it are the only copy of its views, completed reads,
-// ratings and favourites left.
+// ratings, favourites, and active readers left.
 func (a *Aggregator) Run(ctx context.Context, opts Options) (Result, error) {
 	if a == nil || a.db == nil {
 		return Result{}, errors.New("content stats aggregator requires a database")
@@ -236,6 +236,22 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 	}
 
 	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM reader_daily_activity
+		WHERE tenant_id = $1 AND stat_date = $2::date
+	`, tenantID, statDate); err != nil {
+		return 0, fmt.Errorf("delete previous reader activity: %w", err)
+	}
+	activityCount, err := insertRebuilt(ctx, tx, replica, readerActivityStatements, tenantID, statDate, tenant.TimeZone)
+	if err != nil {
+		return 0, fmt.Errorf("insert rebuilt reader activity: %w", err)
+	}
+	// Every member's view, completed read, or purchase names a series, so the
+	// same check holds here on its own.
+	if sources.memberActivity > 0 && activityCount == 0 {
+		return 0, fmt.Errorf("reader activity produced no rows from %d member events", sources.memberActivity)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM episode_page_reach_stats
 		WHERE tenant_id = $1 AND stat_date = $2::date
 	`, tenantID, statDate); err != nil {
@@ -254,7 +270,7 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-	return rowCount + reachCount, nil
+	return rowCount + activityCount + reachCount, nil
 }
 
 // querier is where a day's sources are read: the rebuild's own transaction, or
@@ -273,8 +289,9 @@ type rebuildStatements struct {
 }
 
 var (
-	dailyStatsStatements = rebuildStatements{insert: insertStatsSQL, selectRows: selectStatsSQL, insertCopied: insertCopiedStatsSQL}
-	pageReachStatements  = rebuildStatements{insert: insertPageReachSQL, selectRows: selectPageReachSQL, insertCopied: insertCopiedPageReachSQL}
+	dailyStatsStatements     = rebuildStatements{insert: insertStatsSQL, selectRows: selectStatsSQL, insertCopied: insertCopiedStatsSQL}
+	readerActivityStatements = rebuildStatements{insert: insertActivitySQL, selectRows: selectActivitySQL, insertCopied: insertCopiedActivitySQL}
+	pageReachStatements      = rebuildStatements{insert: insertPageReachSQL, selectRows: selectPageReachSQL, insertCopied: insertCopiedPageReachSQL}
 )
 
 // insertRebuilt writes the rebuilt rows of one tenant's day in tx. Without a
@@ -305,8 +322,10 @@ type sourceCounts struct {
 	events    int64
 	purchases int64
 	comments  int64
-	// positions feed episode_page_reach_stats alone, so total leaves them out.
-	positions int64
+	// memberActivity and positions feed reader_daily_activity and
+	// episode_page_reach_stats alone, so total leaves them out.
+	memberActivity int64
+	positions      int64
 }
 
 func (s sourceCounts) total() int64 {
@@ -336,11 +355,18 @@ func countSources(ctx context.Context, reads querier, tenantID uuid.UUID, statDa
 			   AND published_at >= ($2::date::timestamp AT TIME ZONE $3::text)
 			   AND published_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)),
 			(SELECT count(*)
+			 FROM content_events
+			 WHERE tenant_id = $1
+			   AND occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+			   AND occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+			   AND event_type IN ('episode_view', 'episode_complete', 'purchase')
+			   AND user_id IS NOT NULL),
+			(SELECT count(*)
 			 FROM episode_reading_positions
 			 WHERE tenant_id = $1
 			   AND updated_at >= ($2::date::timestamp AT TIME ZONE $3::text)
 			   AND updated_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text))
-	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases, &counts.comments, &counts.positions)
+	`, tenantID, statDate, timeZone).Scan(&counts.events, &counts.purchases, &counts.comments, &counts.memberActivity, &counts.positions)
 	return counts, err
 }
 
@@ -563,6 +589,54 @@ FROM jsonb_to_recordset($3::jsonb) AS r(
 	favorite_count bigint,
 	comment_count bigint
 )
+`
+
+// rebuiltActivitySQL reads into activity the members active during one tenant
+// day, with $2 and $3 the day and its zone as in rebuiltStatsSQL: one row for
+// each member and series of which they viewed, finished, or bought an episode.
+// The day's content events are purged after the tenant's retention period and
+// these rows are not, so they are what a cohort is followed by after that.
+//
+// A purchase is read from its event rather than from purchases, because the
+// event names the series, and a purchase without one is never projected.
+const rebuiltActivitySQL = `
+WITH activity AS (
+	SELECT DISTINCT ce.user_id, ce.series_id
+	FROM content_events ce
+	WHERE ce.tenant_id = $1
+		AND ce.occurred_at >= ($2::date::timestamp AT TIME ZONE $3::text)
+		AND ce.occurred_at < (($2::date + 1)::timestamp AT TIME ZONE $3::text)
+		AND ce.event_type IN ('episode_view', 'episode_complete', 'purchase')
+		AND ce.user_id IS NOT NULL
+)
+`
+
+// insertActivitySQL reads and writes one tenant's day in one statement, on the
+// primary.
+const insertActivitySQL = rebuiltActivitySQL + `
+INSERT INTO reader_daily_activity (tenant_id, stat_date, user_id, series_id)
+SELECT $1, $2::date, user_id, series_id
+FROM activity
+`
+
+// selectActivitySQL reads one tenant's day on the replica, one JSON object per
+// row, for insertCopiedActivitySQL to write on the primary.
+const selectActivitySQL = rebuiltActivitySQL + `
+SELECT to_jsonb(activity) FROM activity
+`
+
+// insertCopiedActivitySQL writes a batch selectActivitySQL read, $3, as one
+// tenant's rows for its day $2. A member whose account was deleted after the
+// replica's read has no user row left to name, so their rows are dropped here
+// rather than failing the tenant's day on the foreign key.
+const insertCopiedActivitySQL = `
+INSERT INTO reader_daily_activity (tenant_id, stat_date, user_id, series_id)
+SELECT $1, $2::date, r.user_id, r.series_id
+FROM jsonb_to_recordset($3::jsonb) AS r(
+	user_id uuid,
+	series_id uuid
+)
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = $1 AND u.id = r.user_id)
 `
 
 // rebuiltPageReachSQL reads into page_reach how far into each episode the

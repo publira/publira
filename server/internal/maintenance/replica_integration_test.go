@@ -194,6 +194,8 @@ func rebuiltRows(t *testing.T, db *sql.DB, tenantID uuid.UUID, day time.Time) st
 		 FROM content_daily_stats WHERE tenant_id = $1 AND stat_date = $2 ORDER BY 1`,
 		`SELECT 'reach ' || episode_id || ' ' || page_index || ' ' || reader_count
 		 FROM episode_page_reach_stats WHERE tenant_id = $1 AND stat_date = $2 ORDER BY episode_id, page_index`,
+		`SELECT 'active ' || user_id || ' ' || series_id
+		 FROM reader_daily_activity WHERE tenant_id = $1 AND stat_date = $2 ORDER BY 1`,
 		`SELECT 'item ' || entity_type || ' ' || entity_id || ' ' || features::text || ' ' || feature_version
 		 FROM item_recommend_features WHERE tenant_id = $1 AND $2::date IS NOT NULL ORDER BY 1`,
 		`SELECT 'user ' || user_id || ' ' || features::text || ' ' || feature_version

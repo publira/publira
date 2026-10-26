@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/engagement.proto.
  */
 export const file_publira_admin_v1_engagement: GenFile = /*@__PURE__*/
-  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAki3AEKD1JldmVudWVTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEhUKDWVwaXNvZGVfdGl0bGUYBSABKAkSFgoOcHVyY2hhc2VfY291bnQYBiABKAMSFAoMZ3Jvc3NfYW1vdW50GAcgASgDEhcKD3JlZnVuZGVkX2Ftb3VudBgIIAEoAxISCgpuZXRfYW1vdW50GAkgASgDIm8KElJldmVudWVTdGF0c1RvdGFscxIWCg5wdXJjaGFzZV9jb3VudBgBIAEoAxIUCgxncm9zc19hbW91bnQYAiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAMgASgDEhIKCm5ldF9hbW91bnQYBCABKAMiwQEKFkdldFJldmVudWVTdGF0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSMgoIZ3JvdXBfYnkYBCABKA4yIC5wdWJsaXJhLmFkbWluLnYxLlJldmVudWVHcm91cEJ5Eg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJIvcBChdHZXRSZXZlbnVlU3RhdHNSZXNwb25zZRIvCgRyb3dzGAEgAygLMiEucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSEAoIY3VycmVuY3kYBSABKAkSNAoGdG90YWxzGAYgASgLMiQucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNUb3RhbHMSFgoOcHJldmlvdXNfdG9rZW4YByABKAkSEgoKbmV4dF90b2tlbhgIIAEoCSKlAgoQQXVkaWVuY2VTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhYKDmZvbGxvd2VyX2NvdW50GAQgASgDEhYKDmZvbGxvd2VkX2NvdW50GAUgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYBiABKAMSEgoKdmlld19jb3VudBgHIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgIIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgJIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYCiABKAMSFgoOcmF0aW5nX2F2ZXJhZ2UYCyABKAESFAoMcmF0aW5nX2NvdW50GAwgASgDIrwBChNBdWRpZW5jZVN0YXRzVG90YWxzEhYKDmZvbGxvd2VyX2NvdW50GAEgASgDEhYKDmZvbGxvd2VkX2NvdW50GAIgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYAyABKAMSEgoKdmlld19jb3VudBgEIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgFIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgGIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYByABKAMi3QEKF0dldEF1ZGllbmNlU3RhdHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzdGFydF9kYXRlGAIgASgJEhAKCGVuZF9kYXRlGAMgASgJEjMKCGdyb3VwX2J5GAQgASgOMiEucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZUdyb3VwQnkSGAoQc2VyaWVzX3B1YmxpY19pZBgFIAEoCRINCgVsaW1pdBgGIAEoBRINCgV0b2tlbhgHIAEoCSLoAQoYR2V0QXVkaWVuY2VTdGF0c1Jlc3BvbnNlEjAKBHJvd3MYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLkF1ZGllbmNlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSNQoGdG90YWxzGAUgASgLMiUucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZVN0YXRzVG90YWxzEhYKDnByZXZpb3VzX3Rva2VuGAYgASgJEhIKCm5leHRfdG9rZW4YByABKAkiPAoQRXBpc29kZVBhZ2VSZWFjaBISCgpwYWdlX2luZGV4GAEgASgFEhQKDHJlYWRlcl9jb3VudBgCIAEoAyKMAQoYR2V0RXBpc29kZURyb3BPZmZSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRISCgpzdGFydF9kYXRlGAMgASgJEhAKCGVuZF9kYXRlGAQgASgJIpsBChlHZXRFcGlzb2RlRHJvcE9mZlJlc3BvbnNlEjEKBXBhZ2VzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUGFnZVJlYWNoEhIKCnBhZ2VfY291bnQYAiABKAUSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCRIRCgl0aW1lX3pvbmUYBSABKAki0QEKEkV4cG9ydFN0YXRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSLwoEa2luZBgCIAEoDjIhLnB1YmxpcmEuYWRtaW4udjEuU3RhdHNFeHBvcnRLaW5kEhIKCnN0YXJ0X2RhdGUYAyABKAkSEAoIZW5kX2RhdGUYBCABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgFIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgGIAEoCSIiChNFeHBvcnRTdGF0c1Jlc3BvbnNlEgsKA2NzdhgBIAEoDCqHAQoOUmV2ZW51ZUdyb3VwQnkSIAocUkVWRU5VRV9HUk9VUF9CWV9VTlNQRUNJRklFRBAAEhgKFFJFVkVOVUVfR1JPVVBfQllfREFZEAESGwoXUkVWRU5VRV9HUk9VUF9CWV9TRVJJRVMQAhIcChhSRVZFTlVFX0dST1VQX0JZX0VQSVNPREUQAyptCg9BdWRpZW5jZUdyb3VwQnkSIQodQVVESUVOQ0VfR1JPVVBfQllfVU5TUEVDSUZJRUQQABIZChVBVURJRU5DRV9HUk9VUF9CWV9EQVkQARIcChhBVURJRU5DRV9HUk9VUF9CWV9TRVJJRVMQAiqmAgoPU3RhdHNFeHBvcnRLaW5kEiEKHVNUQVRTX0VYUE9SVF9LSU5EX1VOU1BFQ0lGSUVEEAASJAogU1RBVFNfRVhQT1JUX0tJTkRfUkVWRU5VRV9CWV9EQVkQARInCiNTVEFUU19FWFBPUlRfS0lORF9SRVZFTlVFX0JZX1NFUklFUxACEigKJFNUQVRTX0VYUE9SVF9LSU5EX1JFVkVOVUVfQllfRVBJU09ERRADEiUKIVNUQVRTX0VYUE9SVF9LSU5EX0FVRElFTkNFX0JZX0RBWRAEEigKJFNUQVRTX0VYUE9SVF9LSU5EX0FVRElFTkNFX0JZX1NFUklFUxAFEiYKIlNUQVRTX0VYUE9SVF9LSU5EX0VQSVNPREVfRFJPUF9PRkYQBjK8BAoWQWRtaW5FbmdhZ2VtZW50U2VydmljZRJ9ChZMaXN0RXBpc29kZVJlYWRUaHJvdWdoEi8ucHVibGlyYS5hZG1pbi52MS5MaXN0RXBpc29kZVJlYWRUaHJvdWdoUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlIgASaAoPR2V0UmV2ZW51ZVN0YXRzEigucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5HZXRSZXZlbnVlU3RhdHNSZXNwb25zZSIAEmsKEEdldEF1ZGllbmNlU3RhdHMSKS5wdWJsaXJhLmFkbWluLnYxLkdldEF1ZGllbmNlU3RhdHNSZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5HZXRBdWRpZW5jZVN0YXRzUmVzcG9uc2UiABJuChFHZXRFcGlzb2RlRHJvcE9mZhIqLnB1YmxpcmEuYWRtaW4udjEuR2V0RXBpc29kZURyb3BPZmZSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5HZXRFcGlzb2RlRHJvcE9mZlJlc3BvbnNlIgASXAoLRXhwb3J0U3RhdHMSJC5wdWJsaXJhLmFkbWluLnYxLkV4cG9ydFN0YXRzUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuRXhwb3J0U3RhdHNSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("CiFwdWJsaXJhL2FkbWluL3YxL2VuZ2FnZW1lbnQucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiqQEKEkVwaXNvZGVSZWFkVGhyb3VnaBIYChBzZXJpZXNfcHVibGljX2lkGAEgASgJEhQKDHNlcmllc190aXRsZRgCIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgDIAEoCRIVCg1lcGlzb2RlX3RpdGxlGAQgASgJEhYKDmNvbXBsZXRlX2NvdW50GAUgASgDEhkKEW1lbWJlcl92aWV3X2NvdW50GAYgASgDIm4KHUxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSKAAgoeTGlzdEVwaXNvZGVSZWFkVGhyb3VnaFJlc3BvbnNlEjYKCGVwaXNvZGVzGAEgAygLMiQucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUmVhZFRocm91Z2gSFAoMcGVyaW9kX3N0YXJ0GAIgASgJEhIKCnBlcmlvZF9lbmQYAyABKAkSHAoUdG90YWxfY29tcGxldGVfY291bnQYBCABKAMSHwoXdG90YWxfbWVtYmVyX3ZpZXdfY291bnQYBSABKAMSFgoOcHJldmlvdXNfdG9rZW4YBiABKAkSEgoKbmV4dF90b2tlbhgHIAEoCRIRCgl0aW1lX3pvbmUYCCABKAki3AEKD1JldmVudWVTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAQgASgJEhUKDWVwaXNvZGVfdGl0bGUYBSABKAkSFgoOcHVyY2hhc2VfY291bnQYBiABKAMSFAoMZ3Jvc3NfYW1vdW50GAcgASgDEhcKD3JlZnVuZGVkX2Ftb3VudBgIIAEoAxISCgpuZXRfYW1vdW50GAkgASgDIm8KElJldmVudWVTdGF0c1RvdGFscxIWCg5wdXJjaGFzZV9jb3VudBgBIAEoAxIUCgxncm9zc19hbW91bnQYAiABKAMSFwoPcmVmdW5kZWRfYW1vdW50GAMgASgDEhIKCm5ldF9hbW91bnQYBCABKAMiwQEKFkdldFJldmVudWVTdGF0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSMgoIZ3JvdXBfYnkYBCABKA4yIC5wdWJsaXJhLmFkbWluLnYxLlJldmVudWVHcm91cEJ5Eg0KBWxpbWl0GAUgASgFEg0KBXRva2VuGAYgASgJIvcBChdHZXRSZXZlbnVlU3RhdHNSZXNwb25zZRIvCgRyb3dzGAEgAygLMiEucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSEAoIY3VycmVuY3kYBSABKAkSNAoGdG90YWxzGAYgASgLMiQucHVibGlyYS5hZG1pbi52MS5SZXZlbnVlU3RhdHNUb3RhbHMSFgoOcHJldmlvdXNfdG9rZW4YByABKAkSEgoKbmV4dF90b2tlbhgIIAEoCSKlAgoQQXVkaWVuY2VTdGF0c1JvdxIMCgRkYXRlGAEgASgJEhgKEHNlcmllc19wdWJsaWNfaWQYAiABKAkSFAoMc2VyaWVzX3RpdGxlGAMgASgJEhYKDmZvbGxvd2VyX2NvdW50GAQgASgDEhYKDmZvbGxvd2VkX2NvdW50GAUgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYBiABKAMSEgoKdmlld19jb3VudBgHIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgIIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgJIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYCiABKAMSFgoOcmF0aW5nX2F2ZXJhZ2UYCyABKAESFAoMcmF0aW5nX2NvdW50GAwgASgDIrwBChNBdWRpZW5jZVN0YXRzVG90YWxzEhYKDmZvbGxvd2VyX2NvdW50GAEgASgDEhYKDmZvbGxvd2VkX2NvdW50GAIgASgDEhgKEHVuZm9sbG93ZWRfY291bnQYAyABKAMSEgoKdmlld19jb3VudBgEIAEoAxIWCg5jb21wbGV0ZV9jb3VudBgFIAEoAxIWCg5yZWFjdGlvbl9jb3VudBgGIAEoAxIXCg9yZWFjdGlvbl9wb2ludHMYByABKAMi3QEKF0dldEF1ZGllbmNlU3RhdHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzdGFydF9kYXRlGAIgASgJEhAKCGVuZF9kYXRlGAMgASgJEjMKCGdyb3VwX2J5GAQgASgOMiEucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZUdyb3VwQnkSGAoQc2VyaWVzX3B1YmxpY19pZBgFIAEoCRINCgVsaW1pdBgGIAEoBRINCgV0b2tlbhgHIAEoCSLoAQoYR2V0QXVkaWVuY2VTdGF0c1Jlc3BvbnNlEjAKBHJvd3MYASADKAsyIi5wdWJsaXJhLmFkbWluLnYxLkF1ZGllbmNlU3RhdHNSb3cSEgoKc3RhcnRfZGF0ZRgCIAEoCRIQCghlbmRfZGF0ZRgDIAEoCRIRCgl0aW1lX3pvbmUYBCABKAkSNQoGdG90YWxzGAUgASgLMiUucHVibGlyYS5hZG1pbi52MS5BdWRpZW5jZVN0YXRzVG90YWxzEhYKDnByZXZpb3VzX3Rva2VuGAYgASgJEhIKCm5leHRfdG9rZW4YByABKAkiPAoQRXBpc29kZVBhZ2VSZWFjaBISCgpwYWdlX2luZGV4GAEgASgFEhQKDHJlYWRlcl9jb3VudBgCIAEoAyKMAQoYR2V0RXBpc29kZURyb3BPZmZSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIZChFlcGlzb2RlX3B1YmxpY19pZBgCIAEoCRISCgpzdGFydF9kYXRlGAMgASgJEhAKCGVuZF9kYXRlGAQgASgJIpsBChlHZXRFcGlzb2RlRHJvcE9mZlJlc3BvbnNlEjEKBXBhZ2VzGAEgAygLMiIucHVibGlyYS5hZG1pbi52MS5FcGlzb2RlUGFnZVJlYWNoEhIKCnBhZ2VfY291bnQYAiABKAUSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCRIRCgl0aW1lX3pvbmUYBSABKAkiUQoPUmV0ZW50aW9uQ29ob3J0EhIKCndlZWtfc3RhcnQYASABKAkSEwoLY29ob3J0X3NpemUYAiABKAMSFQoNYWN0aXZlX2NvdW50cxgDIAMoAyKNAQoaR2V0UmV0ZW50aW9uQ29ob3J0c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCnN0YXJ0X2RhdGUYAiABKAkSEAoIZW5kX2RhdGUYAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCSKKAQobR2V0UmV0ZW50aW9uQ29ob3J0c1Jlc3BvbnNlEjIKB2NvaG9ydHMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLlJldGVudGlvbkNvaG9ydBISCgpzdGFydF9kYXRlGAIgASgJEhAKCGVuZF9kYXRlGAMgASgJEhEKCXRpbWVfem9uZRgEIAEoCSJvChZHZXRTaWduVXBGdW5uZWxSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpzdGFydF9kYXRlGAIgASgJEhAKCGVuZF9kYXRlGAMgASgJIpgCChdHZXRTaWduVXBGdW5uZWxSZXNwb25zZRIXCg9zaWduZWRfdXBfY291bnQYASABKAMSFAoMYWN0aXZlX2NvdW50GAIgASgDEikKIXB1cmNoYXNlZF93aXRoaW5fc2V2ZW5fZGF5c19jb3VudBgDIAEoAxIqCiJwdXJjaGFzZWRfd2l0aGluX3RoaXJ0eV9kYXlzX2NvdW50GAQgASgDEhcKD3B1cmNoYXNlZF9jb3VudBgFIAEoAxIlCh1tZWRpYW5fZGF5c190b19maXJzdF9wdXJjaGFzZRgGIAEoARISCgpzdGFydF9kYXRlGAcgASgJEhAKCGVuZF9kYXRlGAggASgJEhEKCXRpbWVfem9uZRgJIAEoCSLRAQoSRXhwb3J0U3RhdHNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIvCgRraW5kGAIgASgOMiEucHVibGlyYS5hZG1pbi52MS5TdGF0c0V4cG9ydEtpbmQSEgoKc3RhcnRfZGF0ZRgDIAEoCRIQCghlbmRfZGF0ZRgEIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAUgASgJEhkKEWVwaXNvZGVfcHVibGljX2lkGAYgASgJIiIKE0V4cG9ydFN0YXRzUmVzcG9uc2USCwoDY3N2GAEgASgMKocBCg5SZXZlbnVlR3JvdXBCeRIgChxSRVZFTlVFX0dST1VQX0JZX1VOU1BFQ0lGSUVEEAASGAoUUkVWRU5VRV9HUk9VUF9CWV9EQVkQARIbChdSRVZFTlVFX0dST1VQX0JZX1NFUklFUxACEhwKGFJFVkVOVUVfR1JPVVBfQllfRVBJU09ERRADKm0KD0F1ZGllbmNlR3JvdXBCeRIhCh1BVURJRU5DRV9HUk9VUF9CWV9VTlNQRUNJRklFRBAAEhkKFUFVRElFTkNFX0dST1VQX0JZX0RBWRABEhwKGEFVRElFTkNFX0dST1VQX0JZX1NFUklFUxACKqYCCg9TdGF0c0V4cG9ydEtpbmQSIQodU1RBVFNfRVhQT1JUX0tJTkRfVU5TUEVDSUZJRUQQABIkCiBTVEFUU19FWFBPUlRfS0lORF9SRVZFTlVFX0JZX0RBWRABEicKI1NUQVRTX0VYUE9SVF9LSU5EX1JFVkVOVUVfQllfU0VSSUVTEAISKAokU1RBVFNfRVhQT1JUX0tJTkRfUkVWRU5VRV9CWV9FUElTT0RFEAMSJQohU1RBVFNfRVhQT1JUX0tJTkRfQVVESUVOQ0VfQllfREFZEAQSKAokU1RBVFNfRVhQT1JUX0tJTkRfQVVESUVOQ0VfQllfU0VSSUVTEAUSJgoiU1RBVFNfRVhQT1JUX0tJTkRfRVBJU09ERV9EUk9QX09GRhAGMpwGChZBZG1pbkVuZ2FnZW1lbnRTZXJ2aWNlEn0KFkxpc3RFcGlzb2RlUmVhZFRocm91Z2gSLy5wdWJsaXJhLmFkbWluLnYxLkxpc3RFcGlzb2RlUmVhZFRocm91Z2hSZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5MaXN0RXBpc29kZVJlYWRUaHJvdWdoUmVzcG9uc2UiABJoCg9HZXRSZXZlbnVlU3RhdHMSKC5wdWJsaXJhLmFkbWluLnYxLkdldFJldmVudWVTdGF0c1JlcXVlc3QaKS5wdWJsaXJhLmFkbWluLnYxLkdldFJldmVudWVTdGF0c1Jlc3BvbnNlIgASawoQR2V0QXVkaWVuY2VTdGF0cxIpLnB1YmxpcmEuYWRtaW4udjEuR2V0QXVkaWVuY2VTdGF0c1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkdldEF1ZGllbmNlU3RhdHNSZXNwb25zZSIAEm4KEUdldEVwaXNvZGVEcm9wT2ZmEioucHVibGlyYS5hZG1pbi52MS5HZXRFcGlzb2RlRHJvcE9mZlJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkdldEVwaXNvZGVEcm9wT2ZmUmVzcG9uc2UiABJ0ChNHZXRSZXRlbnRpb25Db2hvcnRzEiwucHVibGlyYS5hZG1pbi52MS5HZXRSZXRlbnRpb25Db2hvcnRzUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuR2V0UmV0ZW50aW9uQ29ob3J0c1Jlc3BvbnNlIgASaAoPR2V0U2lnblVwRnVubmVsEigucHVibGlyYS5hZG1pbi52MS5HZXRTaWduVXBGdW5uZWxSZXF1ZXN0GikucHVibGlyYS5hZG1pbi52MS5HZXRTaWduVXBGdW5uZWxSZXNwb25zZSIAElwKC0V4cG9ydFN0YXRzEiQucHVibGlyYS5hZG1pbi52MS5FeHBvcnRTdGF0c1JlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkV4cG9ydFN0YXRzUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * One episode's read-through over the reported period.
@@ -842,6 +842,253 @@ export const GetEpisodeDropOffResponseSchema: GenMessage<GetEpisodeDropOffRespon
   messageDesc(file_publira_admin_v1_engagement, 13);
 
 /**
+ * One week's sign-ups, and how many of them were active in each of the weeks
+ * after it.
+ *
+ * A reader is active in a week when they viewed, finished, or bought an episode
+ * on any day of it, and is counted once in that week however many days they
+ * were. A day reaches these figures once the daily aggregates have been rebuilt
+ * for it, and its activity is kept after the day's content events are purged,
+ * but only from the day the server began filing it: a week before that has no
+ * activity to count.
+ *
+ * @generated from message publira.admin.v1.RetentionCohort
+ */
+export type RetentionCohort = Message<"publira.admin.v1.RetentionCohort"> & {
+  /**
+   * The Monday (YYYY-MM-DD) the cohort's week begins on, a tenant day. The
+   * cohort is the readers whose accounts were created from that Monday through
+   * the Sunday after it.
+   *
+   * @generated from field: string week_start = 1;
+   */
+  weekStart: string;
+
+  /**
+   * The readers in the cohort now. A deleted account has left it, and left
+   * every count below with it.
+   *
+   * @generated from field: int64 cohort_size = 2;
+   */
+  cohortSize: bigint;
+
+  /**
+   * active_counts[k] is the readers of the cohort active in the k-th week
+   * after week_start, active_counts[0] being the sign-up week itself. It holds
+   * weeks 0 through 12, as far as the last of them that has ended by today:
+   * a week still in progress is left out rather than counted short, so a
+   * cohort none of whose weeks has ended yet holds none.
+   *
+   * @generated from field: repeated int64 active_counts = 3;
+   */
+  activeCounts: bigint[];
+};
+
+/**
+ * Describes the message publira.admin.v1.RetentionCohort.
+ * Use `create(RetentionCohortSchema)` to create a new message.
+ */
+export const RetentionCohortSchema: GenMessage<RetentionCohort> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 14);
+
+/**
+ * @generated from message publira.admin.v1.GetRetentionCohortsRequest
+ */
+export type GetRetentionCohortsRequest = Message<"publira.admin.v1.GetRetentionCohortsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+   * zone: the first no later than the last, and covering at most 366 days.
+   * Both are required. Every week with a day in the period is a cohort, and
+   * each is counted whole, so the cohorts can begin before start_date and end
+   * after end_date.
+   *
+   * @generated from field: string start_date = 2;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 3;
+   */
+  endDate: string;
+
+  /**
+   * Narrows the activity to one series: a reader is active in a week when they
+   * viewed, finished, or bought an episode of it. The cohorts stay every
+   * reader who signed up. Empty counts activity anywhere in the tenant. A
+   * series the tenant does not have is not_found.
+   *
+   * @generated from field: string series_public_id = 4;
+   */
+  seriesPublicId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetRetentionCohortsRequest.
+ * Use `create(GetRetentionCohortsRequestSchema)` to create a new message.
+ */
+export const GetRetentionCohortsRequestSchema: GenMessage<GetRetentionCohortsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 15);
+
+/**
+ * @generated from message publira.admin.v1.GetRetentionCohortsResponse
+ */
+export type GetRetentionCohortsResponse = Message<"publira.admin.v1.GetRetentionCohortsResponse"> & {
+  /**
+   * One per week of the period in week order, a week nobody signed up in
+   * included.
+   *
+   * @generated from field: repeated publira.admin.v1.RetentionCohort cohorts = 1;
+   */
+  cohorts: RetentionCohort[];
+
+  /**
+   * The period the request asked for, echoed back.
+   *
+   * @generated from field: string start_date = 2;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 3;
+   */
+  endDate: string;
+
+  /**
+   * The IANA time zone the weeks are the tenant's days in. It is the tenant's
+   * resolved zone: the counting and the wording come from the same read.
+   *
+   * @generated from field: string time_zone = 4;
+   */
+  timeZone: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetRetentionCohortsResponse.
+ * Use `create(GetRetentionCohortsResponseSchema)` to create a new message.
+ */
+export const GetRetentionCohortsResponseSchema: GenMessage<GetRetentionCohortsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 16);
+
+/**
+ * @generated from message publira.admin.v1.GetSignUpFunnelRequest
+ */
+export type GetSignUpFunnelRequest = Message<"publira.admin.v1.GetSignUpFunnelRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The period the readers signed up in, as inclusive calendar dates
+   * (YYYY-MM-DD) in the tenant's time zone: the first no later than the last,
+   * and covering at most 366 days. Both are required.
+   *
+   * @generated from field: string start_date = 2;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 3;
+   */
+  endDate: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetSignUpFunnelRequest.
+ * Use `create(GetSignUpFunnelRequestSchema)` to create a new message.
+ */
+export const GetSignUpFunnelRequestSchema: GenMessage<GetSignUpFunnelRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 17);
+
+/**
+ * How far the readers who signed up in a period got: each count is a number of
+ * those readers, and is not narrowed by the one before it.
+ *
+ * @generated from message publira.admin.v1.GetSignUpFunnelResponse
+ */
+export type GetSignUpFunnelResponse = Message<"publira.admin.v1.GetSignUpFunnelResponse"> & {
+  /**
+   * Readers whose accounts were created in the period and still exist.
+   *
+   * @generated from field: int64 signed_up_count = 1;
+   */
+  signedUpCount: bigint;
+
+  /**
+   * Of them, those who have viewed, finished, or bought an episode on any day
+   * the daily aggregates have been rebuilt for since the server began filing
+   * it, which is what RetentionCohort counts as active.
+   *
+   * @generated from field: int64 active_count = 2;
+   */
+  activeCount: bigint;
+
+  /**
+   * Of them, those whose first purchase came less than 7 days, and less than
+   * 30 days, after their account was created, a day being 24 hours. A purchase
+   * of any kind counts, a refunded one included, but not one made in a store's
+   * sandbox or a payment provider's test mode, which GetRevenueStats leaves
+   * out too. Purchases are read themselves, so one made a moment ago counts.
+   *
+   * @generated from field: int64 purchased_within_seven_days_count = 3;
+   */
+  purchasedWithinSevenDaysCount: bigint;
+
+  /**
+   * @generated from field: int64 purchased_within_thirty_days_count = 4;
+   */
+  purchasedWithinThirtyDaysCount: bigint;
+
+  /**
+   * Of them, those who have made a purchase at all.
+   *
+   * @generated from field: int64 purchased_count = 5;
+   */
+  purchasedCount: bigint;
+
+  /**
+   * The median, over the purchased_count readers, of the days from their
+   * account being created to their first purchase, fractional. 0 when
+   * purchased_count is 0.
+   *
+   * @generated from field: double median_days_to_first_purchase = 6;
+   */
+  medianDaysToFirstPurchase: number;
+
+  /**
+   * The period the request asked for, echoed back.
+   *
+   * @generated from field: string start_date = 7;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 8;
+   */
+  endDate: string;
+
+  /**
+   * The IANA time zone the dates are the tenant's days in. It is the tenant's
+   * resolved zone: the counting and the wording come from the same read.
+   *
+   * @generated from field: string time_zone = 9;
+   */
+  timeZone: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetSignUpFunnelResponse.
+ * Use `create(GetSignUpFunnelResponseSchema)` to create a new message.
+ */
+export const GetSignUpFunnelResponseSchema: GenMessage<GetSignUpFunnelResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_engagement, 18);
+
+/**
  * @generated from message publira.admin.v1.ExportStatsRequest
  */
 export type ExportStatsRequest = Message<"publira.admin.v1.ExportStatsRequest"> & {
@@ -893,7 +1140,7 @@ export type ExportStatsRequest = Message<"publira.admin.v1.ExportStatsRequest"> 
  * Use `create(ExportStatsRequestSchema)` to create a new message.
  */
 export const ExportStatsRequestSchema: GenMessage<ExportStatsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_engagement, 14);
+  messageDesc(file_publira_admin_v1_engagement, 19);
 
 /**
  * @generated from message publira.admin.v1.ExportStatsResponse
@@ -941,7 +1188,7 @@ export type ExportStatsResponse = Message<"publira.admin.v1.ExportStatsResponse"
  * Use `create(ExportStatsResponseSchema)` to create a new message.
  */
 export const ExportStatsResponseSchema: GenMessage<ExportStatsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_engagement, 15);
+  messageDesc(file_publira_admin_v1_engagement, 20);
 
 /**
  * How GetRevenueStatsRequest cuts its period into rows.
@@ -1132,8 +1379,35 @@ export const AdminEngagementService: GenService<{
     output: typeof GetEpisodeDropOffResponseSchema;
   },
   /**
-   * One of the reports above as a CSV file, whole: a ranked report's every
-   * page in one file. It reads what the report's RPC reads, when it is asked,
+   * How many of the readers who signed up in each week of a period were
+   * active in each of the twelve weeks after it.
+   *
+   * Minimum role: tenant_auditor.
+   *
+   * @generated from rpc publira.admin.v1.AdminEngagementService.GetRetentionCohorts
+   */
+  getRetentionCohorts: {
+    methodKind: "unary";
+    input: typeof GetRetentionCohortsRequestSchema;
+    output: typeof GetRetentionCohortsResponseSchema;
+  },
+  /**
+   * How many of the readers who signed up in a period were ever active, and
+   * how many of them bought, and how soon. It counts purchases, so it needs the
+   * role revenue does.
+   *
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminEngagementService.GetSignUpFunnel
+   */
+  getSignUpFunnel: {
+    methodKind: "unary";
+    input: typeof GetSignUpFunnelRequestSchema;
+    output: typeof GetSignUpFunnelResponseSchema;
+  },
+  /**
+   * One of the reports StatsExportKind names as a CSV file, whole: a ranked
+   * report's every page in one file. It reads what the report's RPC reads, when it is asked,
    * and records the download in the tenant's audit log. The role is the one
    * revenue needs whichever report is asked for, since one RPC serves them
    * all.
