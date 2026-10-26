@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { CoinDisclosures } from "#components/coin-disclosures";
 import { CoinPackCheckoutForm } from "#components/coin-pack-checkout-form";
 import { Message } from "#components/message";
+import { coinPackTotal } from "#lib/coins";
 import type { CoinSettingsItem } from "#lib/coins";
 
 /**
@@ -72,7 +73,7 @@ export const CoinPacks = ({
                       values={{
                         bonus: pack.bonusCoins,
                         coin_name: coinName,
-                        count: pack.coins,
+                        count: coinPackTotal(pack),
                       }}
                     />
                   </Suspense>

@@ -259,7 +259,7 @@ test.describe("web-storefront coins", () => {
     await expect(history.getByText("+100 Points")).toBeVisible();
     const packs = page.getByRole("region", { name: "Buy Points" });
     await expect(
-      packs.getByRole("heading", { name: "100 Points (including 20 bonus)" })
+      packs.getByRole("heading", { name: "120 Points (including 20 bonus)" })
     ).toBeVisible();
     await expect(
       packs
