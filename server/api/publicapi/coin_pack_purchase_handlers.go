@@ -190,15 +190,10 @@ func (s *apiServer) StartCoinPackCheckout(
 
 // coinPackLineItemName is what the checkout of a pack calls the sale: the
 // coins it grants, under the tenant's word for them, in the reader's locale,
-// and the bonus coins among them when it grants any.
+// and the bonus coins among them when it grants any, which the catalog
+// message selects on.
 func coinPackLineItemName(code, coinName string, coins, bonusCoins int32) (string, error) {
-	if bonusCoins == 0 {
-		return locale.Message(code, "checkout.coin_pack_line_item", map[string]any{
-			"count":     int(coins),
-			"coin_name": coinName,
-		})
-	}
-	return locale.Message(code, "checkout.coin_pack_line_item_bonus", map[string]any{
+	return locale.Message(code, "checkout.coin_pack_line_item", map[string]any{
 		"count":     int(coins) + int(bonusCoins),
 		"bonus":     int(bonusCoins),
 		"coin_name": coinName,

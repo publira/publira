@@ -97,8 +97,7 @@
     "purchase_receipt": {
       "action": "Open your purchases",
       "amount": "Price paid: {$amount} ({$currency})",
-      "coin_pack": "{$coin_name}: {$count :integer}",
-      "coin_pack_bonus": "{$coin_name}: {$count :integer} (including {$bonus :integer} bonus)",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (including {$bonus} bonus)}}",
       "coins_expire_at": "Spendable until: {$expires_at}",
       "episode": "Episode: {$episode_title}",
       "expires_at": "Readable until: {$expires_at}",
@@ -250,8 +249,7 @@
   },
   "checkout": {
     "bundle_discount": "Bundle discount ({$percent :integer}%)",
-    "coin_pack_line_item": "{$count :integer} {$coin_name}",
-    "coin_pack_line_item_bonus": "{$count :integer} {$coin_name} (including {$bonus :integer} bonus)",
+    "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
     "rental_line_item": ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}"
   },
   "errors": {

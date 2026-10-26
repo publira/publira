@@ -134,16 +134,11 @@ const PurchasedItem = ({
   messages: Messages;
 }) => {
   if (data.coin_pack_coins > 0) {
-    return data.coin_pack_bonus_coins > 0
-      ? emailMessage(messages, "email.purchase_receipt.coin_pack_bonus", {
-          bonus: data.coin_pack_bonus_coins,
-          coin_name: data.coin_name,
-          count: data.coin_pack_coins + data.coin_pack_bonus_coins,
-        })
-      : emailMessage(messages, "email.purchase_receipt.coin_pack", {
-          coin_name: data.coin_name,
-          count: data.coin_pack_coins,
-        });
+    return emailMessage(messages, "email.purchase_receipt.coin_pack", {
+      bonus: data.coin_pack_bonus_coins,
+      coin_name: data.coin_name,
+      count: data.coin_pack_coins + data.coin_pack_bonus_coins,
+    });
   }
   if (data.episode_title !== "") {
     return emailMessage(messages, "email.purchase_receipt.episode", {

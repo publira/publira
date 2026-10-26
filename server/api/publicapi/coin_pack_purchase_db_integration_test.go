@@ -475,3 +475,25 @@ func TestDBARefundThatOvertakesItsPackClosesTheCoinsAsTheyAreGranted(t *testing.
 		t.Fatalf("coin history = %v, want the grant and its revocation", got)
 	}
 }
+
+// The catalog message names the bonus coins only when a pack grants any.
+func TestCoinPackLineItemNameNamesTheBonusOnlyWhenThereIsOne(t *testing.T) {
+	for _, tc := range []struct {
+		code              string
+		coins, bonusCoins int32
+		coinName, want    string
+	}{
+		{code: "en", coins: 1000, bonusCoins: 100, coinName: "Points", want: "1,100 Points (including 100 bonus)"},
+		{code: "en", coins: 500, coinName: "Points", want: "500 Points"},
+		{code: "ja", coins: 1000, bonusCoins: 100, coinName: "ポイント", want: "1,100ポイント（うちボーナス100）"},
+		{code: "ja", coins: 500, coinName: "ポイント", want: "500ポイント"},
+	} {
+		got, err := coinPackLineItemName(tc.code, tc.coinName, tc.coins, tc.bonusCoins)
+		if err != nil {
+			t.Fatalf("coinPackLineItemName(%s, %d, %d): %v", tc.code, tc.coins, tc.bonusCoins, err)
+		}
+		if got != tc.want {
+			t.Errorf("coinPackLineItemName(%s, %d, %d) = %q, want %q", tc.code, tc.coins, tc.bonusCoins, got, tc.want)
+		}
+	}
+}

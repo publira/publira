@@ -207,10 +207,8 @@ func purchaseReceiptCopy(c *emailComposer) {
 		c.line("email.purchase_receipt.series", map[string]any{"series_title": c.value("series_title")})
 	}
 	switch count := c.integer("series_bundle_episode_count"); {
-	case coins > 0 && bonusCoins > 0:
-		c.line("email.purchase_receipt.coin_pack_bonus", map[string]any{"coin_name": c.value("coin_name"), "count": int(coins + bonusCoins), "bonus": int(bonusCoins)})
 	case coins > 0:
-		c.line("email.purchase_receipt.coin_pack", map[string]any{"coin_name": c.value("coin_name"), "count": int(coins)})
+		c.line("email.purchase_receipt.coin_pack", map[string]any{"coin_name": c.value("coin_name"), "count": int(coins + bonusCoins), "bonus": int(bonusCoins)})
 	case c.value("volume_title") != "":
 		c.line("email.purchase_receipt.volume", map[string]any{"volume_title": c.value("volume_title")})
 	case count > 0:

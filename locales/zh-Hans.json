@@ -97,8 +97,7 @@
     "purchase_receipt": {
       "action": "查看已购买",
       "amount": "支付金额：{$amount}（{$currency}）",
-      "coin_pack": "{$coin_name}：{$count :integer}",
-      "coin_pack_bonus": "{$coin_name}：{$count :integer}（含赠送{$bonus :integer}）",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}：{$count}}}\n* {{{$coin_name}：{$count}（含赠送{$bonus}）}}",
       "coins_expire_at": "使用期限至：{$expires_at}",
       "episode": "章节：{$episode_title}",
       "expires_at": "有效期至：{$expires_at}",
@@ -250,8 +249,7 @@
   },
   "checkout": {
     "bundle_discount": "打包优惠（{$percent :integer}%）",
-    "coin_pack_line_item": "{$count :integer}{$coin_name}",
-    "coin_pack_line_item_bonus": "{$count :integer}{$coin_name}（含赠送{$bonus :integer}）",
+    "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含赠送{$bonus}）}}",
     "rental_line_item": "{$episode_title}（租借，{$hours :integer}小时）"
   },
   "errors": {

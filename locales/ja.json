@@ -97,8 +97,7 @@
     "purchase_receipt": {
       "action": "購入済み一覧を開く",
       "amount": "購入価格: {$amount}（{$currency}）",
-      "coin_pack": "{$coin_name}: {$count :integer}",
-      "coin_pack_bonus": "{$coin_name}: {$count :integer}（うちボーナス{$bonus :integer}）",
+      "coin_pack": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count}（うちボーナス{$bonus}）}}",
       "coins_expire_at": "利用期限: {$expires_at}",
       "episode": "エピソード: {$episode_title}",
       "expires_at": "有効期限: {$expires_at}",
@@ -250,8 +249,7 @@
   },
   "checkout": {
     "bundle_discount": "まとめ買い割引（{$percent :integer}%）",
-    "coin_pack_line_item": "{$count :integer}{$coin_name}",
-    "coin_pack_line_item_bonus": "{$count :integer}{$coin_name}（うちボーナス{$bonus :integer}）",
+    "coin_pack_line_item": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）}}",
     "rental_line_item": "{$episode_title}（レンタル・{$hours :integer}時間）"
   },
   "errors": {
