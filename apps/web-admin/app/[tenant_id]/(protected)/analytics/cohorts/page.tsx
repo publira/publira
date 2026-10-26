@@ -13,6 +13,7 @@ import { createPlaceholderStaticParams } from "@publira/utils/next-static-params
 import { searchParamString } from "@publira/utils/search-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
@@ -191,34 +192,35 @@ const CohortTable = ({
   </Table.Root>
 );
 
-/** A funnel step's share of every reader who signed up. */
-const FunnelShare = ({
+/**
+ * One step of the funnel: its label, the readers who reached it, and their
+ * share of every reader who signed up.
+ */
+const FunnelStep = ({
+  children,
   count,
   locale,
   signedUp,
 }: {
+  children: ReactNode;
   count: number;
   locale: Locale;
   signedUp: number;
-}) =>
-  signedUp > 0 ? (
-    formatPercent(count / signedUp, { locale })
-  ) : (
-    <Suspense fallback={<SkeletonLine className="h-4 w-4" />}>
-      <Message message="admin.analytics.funnel.share_unavailable" />
-    </Suspense>
-  );
-
-const funnelSteps = [
-  ["signed_up", "signedUpCount"],
-  ["active", "activeCount"],
-  ["within_seven_days", "purchasedWithinSevenDaysCount"],
-  ["within_thirty_days", "purchasedWithinThirtyDaysCount"],
-  ["purchased", "purchasedCount"],
-] as const satisfies readonly (readonly [
-  string,
-  Exclude<keyof SignUpFunnelItem, "medianDaysToFirstPurchase">,
-])[];
+}) => (
+  <Table.Row>
+    <Table.Cell className="font-medium">{children}</Table.Cell>
+    <Table.Cell>{formatCount(count, locale)}</Table.Cell>
+    <Table.Cell>
+      {signedUp > 0 ? (
+        formatPercent(count / signedUp, { locale })
+      ) : (
+        <Suspense fallback={<SkeletonLine className="h-4 w-4" />}>
+          <Message message="admin.analytics.funnel.share_unavailable" />
+        </Suspense>
+      )}
+    </Table.Cell>
+  </Table.Row>
+);
 
 const Funnel = ({
   funnel,
@@ -267,47 +269,54 @@ const Funnel = ({
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {funnelSteps.map(([step, field]) => (
-          <Table.Row key={step}>
-            <Table.Cell className="font-medium">
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message={`admin.analytics.funnel.steps.${step}`} />
-              </Suspense>
-            </Table.Cell>
-            <Table.Cell>{formatCount(funnel[field], locale)}</Table.Cell>
-            <Table.Cell>
-              <FunnelShare
-                count={funnel[field]}
-                locale={locale}
-                signedUp={funnel.signedUpCount}
-              />
-            </Table.Cell>
-          </Table.Row>
-        ))}
+        <FunnelStep
+          count={funnel.signedUpCount}
+          locale={locale}
+          signedUp={funnel.signedUpCount}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+            <Message message="admin.analytics.funnel.steps.signed_up" />
+          </Suspense>
+        </FunnelStep>
+        <FunnelStep
+          count={funnel.activeCount}
+          locale={locale}
+          signedUp={funnel.signedUpCount}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="admin.analytics.funnel.steps.active" />
+          </Suspense>
+        </FunnelStep>
+        <FunnelStep
+          count={funnel.purchasedWithinSevenDaysCount}
+          locale={locale}
+          signedUp={funnel.signedUpCount}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.analytics.funnel.steps.within_seven_days" />
+          </Suspense>
+        </FunnelStep>
+        <FunnelStep
+          count={funnel.purchasedWithinThirtyDaysCount}
+          locale={locale}
+          signedUp={funnel.signedUpCount}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.analytics.funnel.steps.within_thirty_days" />
+          </Suspense>
+        </FunnelStep>
+        <FunnelStep
+          count={funnel.purchasedCount}
+          locale={locale}
+          signedUp={funnel.signedUpCount}
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="admin.analytics.funnel.steps.purchased" />
+          </Suspense>
+        </FunnelStep>
       </Table.Body>
     </Table.Root>
   </>
-);
-
-const ReportError = ({
-  message,
-  title,
-}: {
-  message: string;
-  title:
-    | "admin.analytics.cohorts.section_error"
-    | "admin.analytics.funnel.section_error";
-}) => (
-  <SectionError.Root>
-    <SectionError.Heading>
-      <SectionError.Title>
-        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
-          <Message message={title} />
-        </Suspense>
-      </SectionError.Title>
-      <SectionError.Description>{message}</SectionError.Description>
-    </SectionError.Heading>
-  </SectionError.Root>
 );
 
 const CohortsContent = async ({
@@ -377,10 +386,18 @@ const CohortsContent = async ({
             </p>
           </>
         ) : (
-          <ReportError
-            message={cohorts.message}
-            title="admin.analytics.cohorts.section_error"
-          />
+          <SectionError.Root>
+            <SectionError.Heading>
+              <SectionError.Title>
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="admin.analytics.cohorts.section_error" />
+                </Suspense>
+              </SectionError.Title>
+              <SectionError.Description>
+                {cohorts.message}
+              </SectionError.Description>
+            </SectionError.Heading>
+          </SectionError.Root>
         )}
       </ConsoleSection.Root>
 
@@ -405,10 +422,18 @@ const CohortsContent = async ({
               </p>
             </>
           ) : (
-            <ReportError
-              message={funnel.message}
-              title="admin.analytics.funnel.section_error"
-            />
+            <SectionError.Root>
+              <SectionError.Heading>
+                <SectionError.Title>
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="admin.analytics.funnel.section_error" />
+                  </Suspense>
+                </SectionError.Title>
+                <SectionError.Description>
+                  {funnel.message}
+                </SectionError.Description>
+              </SectionError.Heading>
+            </SectionError.Root>
           )}
         </ConsoleSection.Root>
       ) : null}
