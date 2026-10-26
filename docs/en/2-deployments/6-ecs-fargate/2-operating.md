@@ -2,7 +2,7 @@
 title: Operating on ECS
 description: Add a tenant, keep the consoles' credentials off the tenants' domains, serve the images and the public API apart, and upgrade an install that runs on Amazon ECS on Fargate.
 published: 2026-10-21
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 These are the changes made to an install once [Amazon ECS on Fargate](./index.md) and [CloudFront in front of ECS](./1-cloudfront.md) have brought it into service. Their commands use the shell variables and functions those pages defined. In a shell other than the one the install was built in, define again the ones a command names: the variables of [Before you start](./index.md#before-you-start), the `run_publiractl` function of [Apply the migrations and create the database roles](./index.md#4-apply-the-migrations-and-create-the-database-roles), `SERVER_SG` and `NAMESPACE` and the `registry` function of [Open the network paths](./index.md#3-open-the-network-paths), the `target_group` function of [Create the load balancer](./index.md#5-create-the-load-balancer), the `service` function of [Start the services](./index.md#6-start-the-services), and `LISTENER`, which `aws elbv2 describe-listeners --load-balancer-arn <the load balancer ARN> --query 'Listeners[0].ListenerArn' --output text` prints.
@@ -22,7 +22,7 @@ Nothing else changes: the services, the parameters, and the security groups serv
 
 The load balancer already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second service with `--role storefront`, and route the tenants' domains and `web-storefront` to it. The split also lets reader traffic scale apart from the consoles, since each service runs tasks of its own, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes.
 
-Its task definition is the `publira-server.json` of [Start the services](./index.md#6-start-the-services) with the family and the container named `publira-storefront`, `["server", "--role", "storefront"]` as its command, and only the secrets that role reads: the encryption keys, `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_PUBLIC_DB_URL`. Register it, and give it a target group of its own and a Cloud Map name, since `web-storefront` calls it as well as the load balancer. Then create its service with the `publira-server` security group, which already admits the web apps:
+Its task definition is the `publira-server.json` of [Start the services](./index.md#6-start-the-services) with the family and the container named `publira-storefront`, `["server", "--role", "storefront"]` as its command, and only the secrets that role reads: the encryption keys, `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_PUBLIC_DB_URL`. Register it, and give it a target group of its own and a Cloud Map name, since `web-storefront` calls it as well as the load balancer:
 
 ```bash
 aws ecs register-task-definition --cli-input-json file://publira-storefront.json > /dev/null
@@ -30,7 +30,6 @@ STOREFRONT_SERVER_TG=$(target_group publira-storefront 8000)
 aws servicediscovery create-service --name publira-storefront --namespace-id "$NAMESPACE" \
   --dns-config 'RoutingPolicy=MULTIVALUE,DnsRecords=[{Type=A,TTL=10}]' \
   --health-check-custom-config FailureThreshold=1 > /dev/null
-service publira-storefront "$SERVER_SG" 8000 "$STOREFRONT_SERVER_TG"
 ```
 
 Then add rules ahead of the server's, which send the tenants' domains to it:
@@ -39,7 +38,24 @@ Then add rules ahead of the server's, which send the tenants' domains to it:
 | --- | --- | --- | --- |
 | `900` to `999` | A tenant's domain | `/images*`, `/rpc/publira.v1.*` | `publira-storefront` |
 
-Point `web-storefront` at the new service too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in `web-storefront.json` to `http://publira-storefront.publira.internal:8000/rpc`, register it, and update the `web-storefront` service to the new revision. The console hosts, `web-admin`, and `web-platform` keep reaching `publira-server`, which serves every role, until [Leaving the public API off the consoles' server](#leaving-the-public-api-off-the-consoles-server) takes the public API off it. The two paths leave room for three host names among the five values a rule takes, so a rule in this band serves the domains of three tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
+The two paths leave room for three host names among the five values a rule takes, so a rule in this band serves the domains of three tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
+
+A rule is what attaches a target group to a load balancer, and ECS refuses to create a service whose target group has none, so the rules come before the service. Until the service's tasks are up, though, the new target group has nothing to answer with, so create each rule still forwarding to `publira-server`, with `publira-storefront` beside it at a weight of `0`. Then create the service with the `publira-server` security group, which already admits the web apps, and once its tasks are healthy, forward the rule to it alone:
+
+```bash
+RULE_900=$(aws elbv2 create-rule --listener-arn "$LISTENER" --priority 900 \
+  --conditions "[$(host_is comics.example.com),$(path_is '["/images*","/rpc/publira.v1.*"]')]" \
+  --actions "Type=forward,ForwardConfig={TargetGroups=[{TargetGroupArn=$SERVER_TG,Weight=1},{TargetGroupArn=$STOREFRONT_SERVER_TG,Weight=0}]}" \
+  --query 'Rules[0].RuleArn' --output text)
+service publira-storefront "$SERVER_SG" 8000 "$STOREFRONT_SERVER_TG"
+aws ecs wait services-stable --cluster publira --services publira-storefront
+aws elbv2 modify-rule --rule-arn "$RULE_900" \
+  --actions "Type=forward,TargetGroupArn=$STOREFRONT_SERVER_TG" > /dev/null
+```
+
+`host_is` and `path_is` are the functions of [Create the load balancer](./index.md#5-create-the-load-balancer), and `SERVER_TG` is the target group created there; in another shell, `aws elbv2 describe-target-groups --names publira-server --query 'TargetGroups[0].TargetGroupArn' --output text` prints it. A rule added to the band once the service runs forwards to `publira-storefront` alone, with that page's `rule` function.
+
+Point `web-storefront` at the new service too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in `web-storefront.json` to `http://publira-storefront.publira.internal:8000/rpc`, register it, and update the `web-storefront` service to the new revision. The console hosts, `web-admin`, and `web-platform` keep reaching `publira-server`, which serves every role, until [Leaving the public API off the consoles' server](#leaving-the-public-api-off-the-consoles-server) takes the public API off it.
 
 The load balancer answers a console API with `404` on every host either way, so check that the tenants' domains reach the new service instead: `aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"` lists its tasks as `healthy`, and the public API call in [Check the edge](./1-cloudfront.md#check-the-edge) still answers `invalid_argument` on the tenant's domain, now from `publira-storefront`.
 
