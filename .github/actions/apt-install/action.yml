@@ -1,5 +1,5 @@
 name: Install apt packages
-description: Install Ubuntu packages on the runner, and make every later apt call in the job give up on an unresponsive mirror quickly.
+description: Install Ubuntu packages on the runner from cached archives where it can, and keep a stalled or throttled Ubuntu mirror from holding up this or any later apt call in the job.
 
 inputs:
   packages:
@@ -17,7 +17,7 @@ runs:
     # with archive.ubuntu.com behind it, `apt-get update` had not finished
     # after 400 seconds on the defaults and finished in 44 with these values.
     # The timeout counts silence, not slowness, so a mirror that keeps sending
-    # bytes is never cut off by it.
+    # bytes is never cut off by it; `Download` handles that one.
     #
     # The file lives under apt.conf.d rather than on this command line, so it
     # also reaches the apt calls other tools make later in the job, such as
@@ -31,12 +31,111 @@ runs:
         Acquire::Retries "1";
         EOF
 
+    # The cache entry holds the archives this install downloads: the packages
+    # the image lacks, at the versions the lists name today. The key names the
+    # package set and those archives, so it changes when Ubuntu publishes a
+    # new version of one of them, and the set's newest entry then still
+    # supplies every archive but that one.
+    - name: Resolve
+      id: resolve
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        set="$(tr -s ' ' '\n' <<< "${PACKAGES}" | sed '/^$/d' | sort -u | sha256sum | cut -c1-16)"
+        list="${RUNNER_TEMP}/apt-archives/${set}.txt"
+        mkdir -p "${RUNNER_TEMP}/apt-archives"
+        # PACKAGES is a space-separated list, split into one argument each.
+        # shellcheck disable=SC2086
+        apt-get install --print-uris -qq --no-install-recommends $PACKAGES |
+          awk '{ print $2 }' | sort > "${list}"
+        {
+          echo "set=${set}"
+          echo "list=${list}"
+          echo "count=$(wc -l < "${list}")"
+          echo "prefix=apt-${ImageOS}-${set}-"
+          echo "key=apt-${ImageOS}-${set}-$(sha256sum < "${list}" | cut -c1-16)"
+        } >> "${GITHUB_OUTPUT}"
+
+    - name: Cache / Restore
+      id: cache
+      if: steps.resolve.outputs.count != '0'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/apt-archives/${{ steps.resolve.outputs.set }}
+        key: ${{ steps.resolve.outputs.key }}
+        restore-keys: ${{ steps.resolve.outputs.prefix }}
+
+    # A mirror can also stay connected and send a few kB/s, which the timeouts
+    # above never cut off. In westus and westus3 the Azure mirror answered
+    # every request that way: 25–55 kB/s on one connection and about 400 kB/s
+    # on sixteen, so the 54 MB `libvips-dev` needs took up to 30 minutes, while
+    # archive.ubuntu.com served the same files to the same westus runners at
+    # 2.7–4 MB/s. Every other region fetches them from the Azure mirror in
+    # under 20 seconds, so a download still running after a minute is a
+    # throttled mirror: drop it from the list for the rest of the job and
+    # download what is left from the next one. The archives already fetched
+    # stay in apt's cache. Against a mirror that served the lists at full
+    # speed and the archives at 30 kB/s, with archive.ubuntu.com behind it,
+    # the 140 MB this install needs on a bare ubuntu:26.04 finished 107
+    # seconds after the download started.
+    - name: Download
+      if: steps.resolve.outputs.count != '0'
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+        ARCHIVES: ${{ runner.temp }}/apt-archives/${{ steps.resolve.outputs.set }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        cached=("${ARCHIVES}"/*.deb)
+        if ((${#cached[@]})); then
+          sudo cp -- "${cached[@]}" /var/cache/apt/archives/
+        fi
+        download() {
+          # shellcheck disable=SC2086
+          sudo timeout --kill-after=10 "$1" \
+            apt-get install --download-only -y --no-install-recommends $PACKAGES
+        }
+        status=0
+        download 60 || status=$?
+        if ((status != 0)); then
+          echo "::warning::Downloading from the Azure mirror ended with status ${status}; retrying without it."
+          sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt
+          download 600
+        fi
+
+    # Only `main` saves, because only its entries are readable from a pull
+    # request or a merge group. An entry changes only when Ubuntu publishes a
+    # new version of one of its archives, and an entry no run restores for a
+    # week is evicted, so superseded entries are not pruned.
+    - name: Cache / Collect
+      if: github.ref == 'refs/heads/main' && steps.resolve.outputs.count != '0' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        LIST: ${{ steps.resolve.outputs.list }}
+        ARCHIVES: ${{ runner.temp }}/apt-archives/${{ steps.resolve.outputs.set }}
+      run: |
+        set -euo pipefail
+        rm -rf "${ARCHIVES}"
+        mkdir -p "${ARCHIVES}"
+        while read -r archive; do
+          cp -- "/var/cache/apt/archives/${archive}" "${ARCHIVES}/"
+        done < "${LIST}"
+
+    - name: Cache / Save
+      if: github.ref == 'refs/heads/main' && steps.resolve.outputs.count != '0' && steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/main-cache-save
+      with:
+        path: ${{ runner.temp }}/apt-archives/${{ steps.resolve.outputs.set }}
+        key: ${{ steps.resolve.outputs.key }}
+
     - name: Install
       shell: bash
       env:
         PACKAGES: ${{ inputs.packages }}
       run: |
-        sudo apt-get update
-        # PACKAGES is a space-separated list, split into one argument each.
         # shellcheck disable=SC2086
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $PACKAGES
