@@ -380,7 +380,7 @@ class _CoinsScreenState extends State<CoinsScreen> {
               messages.coinsPackTitle(
                 bonus: pack.bonusCoins,
                 coinName: coinName,
-                count: pack.coins,
+                count: pack.totalCoins,
               ),
             ),
             trailing: BuyCoinPackButton(

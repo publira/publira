@@ -207,7 +207,7 @@ class _CoinGateSectionState extends State<CoinGateSection> {
                 label: messages.coinsGatePackBuy(
                   bonus: pack.bonusCoins,
                   coinName: coinName,
-                  count: pack.coins,
+                  count: pack.totalCoins,
                   price: pack.price,
                 ),
                 outlined: offer.leads,

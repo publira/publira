@@ -5492,7 +5492,7 @@
       "contact": "Contact",
       "failed": "Could not show this page. Try again.",
       "gate_balance": "You have {$count :integer} {$coin_name}.",
-      "gate_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Buy {$count} {$coin_name} for {$price}}}\n* {{Buy {$count} {$coin_name} (+{$bonus} bonus) for {$price}}}",
+      "gate_pack_buy": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{Buy {$count} {$coin_name} for {$price}}}\n* {{Buy {$count} {$coin_name} (including {$bonus} bonus) for {$price}}}",
       "gate_packs": "Buy {$coin_name}",
       "gate_pay": "Pay {$count :integer} {$coin_name}",
       "gate_rent": "Rent for {$period} ({$count :integer} {$coin_name})",

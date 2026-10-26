@@ -4870,7 +4870,7 @@ const _enSources = <String, String>{
   'mobile.coins.failed': 'Could not show this page. Try again.',
   'mobile.coins.gate_balance': 'You have {\$count :integer} {\$coin_name}.',
   'mobile.coins.gate_pack_buy':
-      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{Buy {\$count} {\$coin_name} for {\$price}}}\n* {{Buy {\$count} {\$coin_name} (+{\$bonus} bonus) for {\$price}}}',
+      '.input {\$count :integer}\n.input {\$bonus :integer}\n.match \$bonus\n0 {{Buy {\$count} {\$coin_name} for {\$price}}}\n* {{Buy {\$count} {\$coin_name} (including {\$bonus} bonus) for {\$price}}}',
   'mobile.coins.gate_packs': 'Buy {\$coin_name}',
   'mobile.coins.gate_pay': 'Pay {\$count :integer} {\$coin_name}',
   'mobile.coins.gate_rent':

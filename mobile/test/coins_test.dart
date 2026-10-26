@@ -318,7 +318,7 @@ void main() {
         findsOne,
       );
       expect(find.text('100 Points'), findsOne);
-      expect(find.text('500 Points (including 50 bonus)'), findsOne);
+      expect(find.text('550 Points (including 50 bonus)'), findsOne);
       expect(find.text('Buy for ¥1000'), findsOne);
       expect(find.text('Buy for ¥5000'), findsOne);
       expect(find.text('Issuer: Example Publishing'), findsOne);
