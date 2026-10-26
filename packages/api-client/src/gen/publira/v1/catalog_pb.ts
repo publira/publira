@@ -729,7 +729,9 @@ export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailRespo
    * A priced episode reads as free until this instant and is locked again
    * afterwards, which is what a countdown on the reader's screen counts down
    * to. An episode whose price is 0 carries no value here: it is not free
-   * until anything. episode.free_until carries the same value.
+   * until anything. 9999-12-31T00:00:00Z is a window the series'
+   * free-after-publication rule opened, which no countdown reaches.
+   * episode.free_until carries the same value.
    *
    * @generated from field: string free_until = 5;
    */

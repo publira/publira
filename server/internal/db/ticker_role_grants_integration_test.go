@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/campaignprices"
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/freeafter"
 	"github.com/publira/publira/server/internal/freewindows"
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	"github.com/publira/publira/server/internal/publishepisodes"
@@ -347,6 +348,59 @@ func TestTickerRoleCannotRepriceACampaign(t *testing.T) {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
 		t.Fatalf("update campaign price error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
+	}
+}
+
+func TestTickerRoleRunsApplyFreeAfterRules(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT12", "free-after.example.com", "Free After Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TICKSERIES12", Title: "Free After Series", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:    "TICKEPISOD12",
+		Title:       "Free After Episode",
+		Status:      testutil.EpisodeStatusPublished,
+		Price:       500,
+		PublishedAt: time.Now().Add(-40 * 24 * time.Hour),
+	})
+	if _, err := pg.DB.ExecContext(ctx,
+		"INSERT INTO series_free_after_settings (tenant_id, series_id, enabled, days_after_publication) VALUES ($1, $2, true, 30)",
+		tenant.ID, series.ID,
+	); err != nil {
+		t.Fatalf("insert free-after rule: %v", err)
+	}
+
+	ticker := pg.OpenTickerDB(t)
+	freeafter.New(ticker, dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+
+	var windowID uuid.UUID
+	var startApplied sql.NullTime
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT id, start_revalidated_at FROM episode_free_windows WHERE episode_id = $1 AND rule_series_id = $2", episode.ID, series.ID,
+	).Scan(&windowID, &startApplied); err != nil {
+		t.Fatalf("read the rule's window: %v", err)
+	}
+	if !startApplied.Valid {
+		t.Fatal("start_revalidated_at is null, want the open window's start written off by the pass that wrote it")
+	}
+
+	// Keeping the episode back takes its window away on the next pass.
+	if _, err := pg.DB.ExecContext(ctx,
+		"UPDATE series_free_after_settings SET excluded_latest_count = 1 WHERE series_id = $1", series.ID,
+	); err != nil {
+		t.Fatalf("keep the episode back: %v", err)
+	}
+	freeafter.New(ticker, dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+	var left int
+	if err := pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM episode_free_windows WHERE id = $1", windowID).Scan(&left); err != nil {
+		t.Fatalf("read the rule's window: %v", err)
+	}
+	if left != 0 {
+		t.Fatal("the rule's window is still there after the pass, want it removed with the episode kept back")
 	}
 }
 

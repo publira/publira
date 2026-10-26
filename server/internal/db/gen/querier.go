@@ -400,6 +400,10 @@ type Querier interface {
 	// written through here always names one.
 	CreateSeriesCreator(ctx context.Context, arg CreateSeriesCreatorParams) error
 	CreateSeriesFollow(ctx context.Context, arg CreateSeriesFollowParams) (SeriesFollow, error)
+	// A window the rule opens on one episode. It runs to the far end, which the
+	// table's check holds every rule's window to: it ends when the rule stops
+	// covering the episode and the window is deleted.
+	CreateSeriesFreeAfterWindow(ctx context.Context, arg CreateSeriesFreeAfterWindowParams) (CreateSeriesFreeAfterWindowRow, error)
 	CreateSeriesGenre(ctx context.Context, arg CreateSeriesGenreParams) error
 	CreateSeriesImage(ctx context.Context, arg CreateSeriesImageParams) (SeriesImage, error)
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
@@ -496,6 +500,11 @@ type Querier interface {
 	// from the read it did first. end_revalidated_at says whether apply-free-windows
 	// has already closed the window, and the series is the one whose search
 	// document a window it has not closed yet leaves stale.
+	//
+	// A window a series' free-after-publication rule wrote is not deleted: the
+	// rule would write it again on the worker's next pass, so it ends only when
+	// the rule stops covering the episode. No row comes back for one, and the
+	// caller reads the window to tell it apart from one that does not exist.
 	DeleteEpisodeFreeWindowByIDForTenant(ctx context.Context, arg DeleteEpisodeFreeWindowByIDForTenantParams) (DeleteEpisodeFreeWindowByIDForTenantRow, error)
 	// Takes one page out of its episode, its renditions with it, and answers the
 	// place it held so a replacement can be put there. No page is renumbered: the
@@ -524,6 +533,10 @@ type Querier interface {
 	// has to re-read along with those it credits now.
 	DeleteSeriesCreatorsBySeriesID(ctx context.Context, seriesID uuid.UUID) ([]uuid.UUID, error)
 	DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollowParams) (int64, error)
+	// Removes the windows the series' rule wrote on every episode but the ones it
+	// still covers, which is all of them when the rule is turned off. A window
+	// scheduled by hand is never one of them.
+	DeleteSeriesFreeAfterWindowsExcept(ctx context.Context, arg DeleteSeriesFreeAfterWindowsExceptParams) ([]DeleteSeriesFreeAfterWindowsExceptRow, error)
 	DeleteSeriesGenresBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch so a newly uploaded image for that
 	// ratio can take its place. The objects the deleted rows named are left to
@@ -1100,6 +1113,9 @@ type Querier interface {
 	// A currently public series the calling surface shows, with the bundle
 	// discount a checkout of its rest takes off.
 	GetSeriesForRemainderSale(ctx context.Context, arg GetSeriesForRemainderSaleParams) (GetSeriesForRemainderSaleRow, error)
+	// One series' free-after-publication rule. No row means the rule was never
+	// configured, which the caller answers with the column defaults: off.
+	GetSeriesFreeAfterSettings(ctx context.Context, arg GetSeriesFreeAfterSettingsParams) (GetSeriesFreeAfterSettingsRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	// What a series is rated, and what one reader's own reactions say about it.
 	//
@@ -1717,6 +1733,12 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListCreatorsByTenantDesc(ctx context.Context, arg ListCreatorsByTenantDescParams) ([]ListCreatorsByTenantDescRow, error)
 	ListDailyRebuildProgress(ctx context.Context) ([]ListDailyRebuildProgressRow, error)
+	// Every rule that is on, for the worker's pass. The pass reads each one again
+	// under the series lock before it writes, so a rule turned off after this
+	// listing writes nothing.
+	//
+	// This spans every tenant, so the connection must bypass RLS.
+	ListEnabledSeriesFreeAfterSettings(ctx context.Context) ([]ListEnabledSeriesFreeAfterSettingsRow, error)
 	ListEndUsersAsc(ctx context.Context, arg ListEndUsersAscParams) ([]ListEndUsersAscRow, error)
 	// ListEndUsers lists the end users (the ones that hold no tenant_user_roles
 	// row) in (created_at, id) DESC. Tenant members are left out deliberately:
@@ -2637,6 +2659,19 @@ type Querier interface {
 	// none, and it is still a credit. Those come last, which is where a name with
 	// nothing said about it belongs.
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
+	// The episodes of one series the rule covers now: published and priced, past
+	// days_after_publication since they were published, and not among the
+	// excluded_latest_count latest published episodes, counted from the end of
+	// the series' order as Free if you wait counts them. rule_window_id and
+	// rule_window_starts_at are the window the rule already wrote on the episode,
+	// if it has.
+	//
+	// starts_at is where the rule's window on the episode starts: the day the
+	// rule reaches, or, when a window scheduled by hand is open then or starts
+	// later, the end of the last such window, since two windows of one episode
+	// cannot overlap. An episode a window scheduled by hand keeps free to the far
+	// end is left out: the rule has nothing left to open.
+	ListSeriesFreeAfterEpisodes(ctx context.Context, arg ListSeriesFreeAfterEpisodesParams) ([]ListSeriesFreeAfterEpisodesRow, error)
 	// Genres read back in the tenant's own genre order rather than the order they
 	// were assigned in, so every series presents them the same way the genre list
 	// does, each named in the tenant default locale as the console's genre list
@@ -2961,6 +2996,14 @@ type Querier interface {
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByIDForTenant(ctx context.Context, arg LockSeriesByIDForTenantParams) (LockSeriesByIDForTenantRow, error)
+	// Holds the series row while the worker writes the rule's windows. Saving the
+	// rule takes the same row FOR UPDATE, and so do the writes that add or reorder
+	// the series' episodes, so the windows a pass writes follow the rule and the
+	// episode order as they stand when it commits. The rule is read again in a
+	// statement of its own afterwards: READ COMMITTED freezes a statement's
+	// snapshot at its start, so a read that waited for the lock in this statement
+	// would still see the rule as it was before the wait.
+	LockSeriesForFreeAfterRule(ctx context.Context, arg LockSeriesForFreeAfterRuleParams) (uuid.UUID, error)
 	// Serialises the begins of the storefront sign-ins one origin makes on the
 	// tenant for the rest of the transaction, as LockUserWebauthnCeremonies does
 	// an account's, so two begins arriving together cannot each count the same
@@ -3231,6 +3274,10 @@ type Querier interface {
 	// each time, which stays acceptable for as long as the stored counter is zero
 	// too. Affecting no row is therefore a counter that did not move forward.
 	MarkUserWebauthnCredentialUsed(ctx context.Context, arg MarkUserWebauthnCredentialUsedParams) (int64, error)
+	// Brings a rule's window forward to where it is due to start, once the window
+	// scheduled by hand it was waiting behind has been deleted. The start it moves
+	// to is a new boundary, so it is owed again.
+	MoveSeriesFreeAfterWindowStart(ctx context.Context, arg MoveSeriesFreeAfterWindowStartParams) (MoveSeriesFreeAfterWindowStartRow, error)
 	// Opens the reader's intent to buy an episode as a store product, or answers
 	// the one already open for the same episode and product, so asking again adds
 	// no row. The no-op update is what makes the existing row come back, with the
@@ -3835,6 +3882,7 @@ type Querier interface {
 	// Starting enrollment replaces whatever unconfirmed secret was there and
 	// clears the lock, so a stalled attempt never blocks the next one.
 	UpsertPlatformUserMfaTotpSecret(ctx context.Context, arg UpsertPlatformUserMfaTotpSecretParams) (PlatformUserMfaTotp, error)
+	UpsertSeriesFreeAfterSettings(ctx context.Context, arg UpsertSeriesFreeAfterSettingsParams) (UpsertSeriesFreeAfterSettingsRow, error)
 	// The translations of a series, one per locale, as the console writes them.
 	// What a reader is shown is picked by series_translation_for in the reads
 	// themselves.

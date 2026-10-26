@@ -381,6 +381,7 @@
         "series_free_windows_created": "시리즈 무료 공개 기간 일괄 추가",
         "series_campaign_prices_created": "시리즈 캠페인 가격 일괄 추가",
         "series_wait_free_settings_updated": "기다리면 무료 설정 변경",
+        "series_free_after_settings_updated": "공개 후 무료 설정 변경",
         "episode_updated": "에피소드 변경",
         "episode_translation_deleted": "에피소드 번역 삭제",
         "episode_image_uploaded": "에피소드 본문 이미지 업로드",

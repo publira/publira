@@ -23,6 +23,7 @@ Start from what you see, and look at the job that owns it:
 | A campaign banner is still missing from the site after its window opened, or still up after it closed | Campaign banners | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | An episode's site page still quotes its regular price after a campaign price started, or the campaign price after it ended | Campaign prices | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | A reader's coin history does not show the coins that expired unspent | Coin expiry | [Other scheduled jobs](#other-scheduled-jobs) |
+| An episode is still priced after the day its series' free-after-publication rule makes it free | Free after publication | [Other scheduled jobs](#other-scheduled-jobs) |
 | A page keeps showing what it showed before a change | Cache revalidation, in the outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | A mail or a push notification never arrives | The outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | The rankings, series ratings, or recommendations stop moving | The statistics and ranking chain | [Statistics and rankings](#statistics-and-rankings) |
@@ -37,7 +38,7 @@ Every one of them first needs `publira worker` to be running and ready: an insta
 
 The worker logs every failure, and the log line names the job. Every run of a scheduled job also leaves a row in the `river_job` table of the database, where the worker queues its own work, so that table shows whether a job ran at all, and when.
 
-What the row says about a failure depends on the job. The publication, free reading period, day rollover, pinned announcement, scheduled series, campaign banner, campaign price, and coin expiry jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's [administrative login](../2-deployments/2-installing.md#provision-the-services):
+What the row says about a failure depends on the job. The publication, free reading period, day rollover, pinned announcement, scheduled series, campaign banner, campaign price, coin expiry, and free after publication jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's [administrative login](../2-deployments/2-installing.md#provision-the-services):
 
 ```sql
 SELECT kind, state, attempt, finalized_at, errors
@@ -91,6 +92,7 @@ The worker remembers, per tenant, the last day each link finished, and starts fr
 
 | Job | How often | What it does |
 | --- | --- | --- |
+| Free after publication | Every minute | Adds a free reading period to each published, priced episode a series' free-after-publication rule has reached: the set number of days have passed since the episode was published, and it is not among the newest episodes the rule keeps priced. The period starts on that day, or where a period scheduled by hand that is still open then ends, and moves back to that day if that period is deleted. It lasts until the rule no longer covers the episode: saving the rule turned off, or with numbers that leave the episode out, removes it at once, and the next pass removes it from an episode that left the rule otherwise, such as one moved among the newest or taken down. The episode's pages are marked stale in the same pass, as a period that starts or ends does. Like the jobs that keep cached pages on time, it has no `publiractl job` command |
 | Coin expiry | Every minute | Writes an entry into a reader's coin history for each grant of coins that expired with coins unspent, so the history says where they went. The coins stop counting toward the balance at the moment they expire, with no job involved, and are never restored. Like the jobs that keep cached pages on time, it has no `publiractl job` command |
 | Royalty close (`close-royalty-statements`) | Every hour | Closes each month a tenant on **Close automatically** owes, once the tenant's close day has come. A month already closed, by hand or by an earlier pass, is left as it is |
 | Google Play refund sync (`sync-google-play-voided-purchases`) | Every hour | Reads the purchases Google Play refunded in the last 30 days, for every tenant whose Google Play store is on, and takes them back, as [Selling episodes](../4-console/4-selling-episodes.md#refunds) describes |
@@ -104,7 +106,7 @@ A worker started with `--queue` runs the jobs of the queues it names and leaves 
 | Queue | Jobs |
 | --- | --- |
 | `outbox` | [The outbox](#the-outbox-mail-push-and-cache-revalidation): mail, push notifications, cache revalidation, and the search engine's index updates |
-| `ticker` | Scheduled publication, free reading periods, the tenant day rollover, pinned announcements, scheduled series, campaign banners, campaign prices, and coin expiry |
+| `ticker` | Scheduled publication, free reading periods, the tenant day rollover, pinned announcements, scheduled series, campaign banners, campaign prices, coin expiry, and free after publication |
 | `maintenance` | The statistics and ranking chain, the royalty close, the Google Play refund sync, and the purges |
 | `search_index` | The search index build |
 
@@ -128,6 +130,7 @@ A worker that was stopped, or that ran without a working database, does nothing 
 | The outbox | Sends every entry that was waiting. An entry a stopped worker was in the middle of is picked up again after 15 minutes |
 | Scheduled publication | Publishes every episode whose time passed, and notifies its followers |
 | Free reading periods, the tenant day rollover, pinned announcements, scheduled series | Mark stale every page whose boundary passed in the meantime, and take down every banner whose time ran out |
+| Free after publication | Opens every episode whose day passed in the meantime, from that day |
 | The statistics and ranking chain | Rebuilds every day each tenant missed, in order, except the days whose analytics events have already passed their retention period, or were purged under a shorter period saved before: those are logged as missing and skipped, and cannot be rebuilt |
 | Royalty close | Closes every month that became owed |
 | Search index build | Builds a pending index |

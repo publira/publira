@@ -474,8 +474,9 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- was never granted fails in its integration test rather than in production.
 --
 -- Reads: the due listings, series, windows, pinned and campaign banners,
--- campaign prices, the catalog rows the log lines name, the recipients each
--- notification fans out to and the preferences that decide whether it is
+-- campaign prices, the free-after-publication rules, the catalog rows the log
+-- lines name, the recipients each notification fans out to and the
+-- preferences that decide whether it is
 -- listed in their inbox, and the views that decide whether a published
 -- episode is announced at all. A security_invoker view reads its tables with this role's own rights,
 -- so the views it is built on are granted alongside it.
@@ -492,6 +493,7 @@ GRANT SELECT ON
     tenants,
     platform_config,
     episode_free_windows,
+    series_free_after_settings,
     campaign_banners,
     episode_campaign_prices,
     episode_follows,
@@ -536,3 +538,8 @@ GRANT UPDATE (in_inbox) ON notifications TO publira_ticker;
 -- the insert.
 GRANT SELECT, UPDATE (remaining_coins, updated_at) ON coin_grants TO publira_ticker;
 GRANT SELECT, INSERT ON coin_transactions TO publira_ticker;
+-- And for a free window: apply-free-after-rules writes the window a series'
+-- rule has reached on an episode, and deletes the ones its rule no longer
+-- covers. Its queries name only the windows a rule wrote, and SELECT is
+-- granted above for their RETURNING clauses.
+GRANT INSERT, DELETE ON episode_free_windows TO publira_ticker;

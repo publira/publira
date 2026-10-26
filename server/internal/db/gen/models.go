@@ -431,6 +431,7 @@ type EpisodeFreeWindow struct {
 	EndRevalidatedAt   sql.NullTime  `json:"end_revalidated_at"`
 	CreatedByUserID    uuid.NullUUID `json:"created_by_user_id"`
 	CreatedAt          time.Time     `json:"created_at"`
+	RuleSeriesID       uuid.NullUUID `json:"rule_series_id"`
 }
 
 type EpisodeGrant struct {
@@ -1167,6 +1168,15 @@ type SeriesFollowerCount struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	SeriesID uuid.UUID `json:"series_id"`
 	Count    int64     `json:"count"`
+}
+
+type SeriesFreeAfterSetting struct {
+	TenantID             uuid.UUID `json:"tenant_id"`
+	SeriesID             uuid.UUID `json:"series_id"`
+	Enabled              bool      `json:"enabled"`
+	DaysAfterPublication int32     `json:"days_after_publication"`
+	ExcludedLatestCount  int32     `json:"excluded_latest_count"`
+	UpdatedAt            time.Time `json:"updated_at"`
 }
 
 type SeriesGenre struct {

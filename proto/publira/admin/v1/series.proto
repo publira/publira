@@ -821,6 +821,11 @@ message AdminEpisodeFreeWindow {
   string id = 8;
   string episode_id = 9;
   string series_id = 10;
+  // The series whose free-after-publication rule wrote the window, which is
+  // this episode's own series, and empty on a window scheduled by hand. A
+  // rule's window ends_at the far end, 9999-12-31T00:00:00Z: it lasts until
+  // the rule stops covering the episode, and DeleteEpisodeFreeWindow refuses it.
+  string rule_series_id = 11;
 }
 
 message CreateEpisodeFreeWindowRequest {
@@ -892,6 +897,9 @@ message ListEpisodeFreeWindowsResponse {
 
 // Removes a scheduled window. Removing one that is currently open ends the
 // campaign immediately: the episode is priced again as soon as the caches drop.
+// A window a series' free-after-publication rule wrote is failed_precondition:
+// the rule would write it again, so it is removed by changing the rule or
+// turning it off.
 message DeleteEpisodeFreeWindowRequest {
   reserved 2;
   reserved "public_id";
@@ -1040,6 +1048,51 @@ message UpdateSeriesWaitFreeSettingsRequest {
 
 message UpdateSeriesWaitFreeSettingsResponse {
   SeriesWaitFreeSettings settings = 1;
+}
+
+// One series' free-after-publication rule: each published, priced episode of
+// the series becomes free to everyone days_after_publication days after it was
+// published, except the excluded_latest_count latest ones. The worker writes
+// a free window for each episode as its day comes, which
+// ListEpisodeFreeWindows lists with rule_series_id set.
+message SeriesFreeAfterSettings {
+  bool enabled = 1;
+  // How many days after an episode is published it becomes free. 1 to 3650
+  // (ten years).
+  int32 days_after_publication = 2;
+  // How many of the series' latest published episodes stay priced, counted
+  // from the end of the order the storefront lists them in, as
+  // SeriesWaitFreeSettings.excluded_latest_count counts them. 0 keeps none
+  // back.
+  int32 excluded_latest_count = 3;
+}
+
+// A series nobody configured answers the defaults: off, 30 days, and no
+// episode kept back.
+message GetSeriesFreeAfterSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+}
+
+message GetSeriesFreeAfterSettingsResponse {
+  SeriesFreeAfterSettings settings = 1;
+}
+
+// Saves the whole rule, and removes at once the windows it wrote on the
+// episodes it no longer covers: every one of them when it is turned off, which
+// prices those episodes again as soon as the caches drop. Windows scheduled by
+// hand are left as they are. An episode the saved rule newly covers is opened
+// by the worker's next pass, which also removes the window of an episode that
+// later leaves the rule, such as one reordered among the newest. Turning the
+// rule off keeps the numbers for the next time it is turned on.
+message UpdateSeriesFreeAfterSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  SeriesFreeAfterSettings settings = 3;
+}
+
+message UpdateSeriesFreeAfterSettingsResponse {
+  SeriesFreeAfterSettings settings = 1;
 }
 
 // Deletes one locale's translation of a series. The last translation of a
@@ -1302,6 +1355,10 @@ service AdminSeriesService {
   rpc GetSeriesWaitFreeSettings(GetSeriesWaitFreeSettingsRequest) returns (GetSeriesWaitFreeSettingsResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateSeriesWaitFreeSettings(UpdateSeriesWaitFreeSettingsRequest) returns (UpdateSeriesWaitFreeSettingsResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetSeriesFreeAfterSettings(GetSeriesFreeAfterSettingsRequest) returns (GetSeriesFreeAfterSettingsResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UpdateSeriesFreeAfterSettings(UpdateSeriesFreeAfterSettingsRequest) returns (UpdateSeriesFreeAfterSettingsResponse) {}
   // Minimum role: tenant_editor.
   rpc DeleteSeriesTranslation(DeleteSeriesTranslationRequest) returns (DeleteSeriesTranslationResponse) {}
   // Minimum role: tenant_editor.

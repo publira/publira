@@ -24,6 +24,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -59,6 +60,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -91,6 +93,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -123,6 +126,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -136,7 +140,8 @@ FROM series s
             fw.public_id,
             fw.starts_at,
             fw.ends_at,
-            fw.created_at
+            fw.created_at,
+            fw.rule_series_id
         FROM episode_free_windows fw
         WHERE fw.episode_id = e.id
             AND (
@@ -166,6 +171,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     w.created_at,
+    w.rule_series_id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
@@ -179,7 +185,8 @@ FROM series s
             fw.public_id,
             fw.starts_at,
             fw.ends_at,
-            fw.created_at
+            fw.created_at,
+            fw.rule_series_id
         FROM episode_free_windows fw
         WHERE fw.episode_id = e.id
             AND (
@@ -209,9 +216,15 @@ LIMIT sqlc.arg('limit');
 -- from the read it did first. end_revalidated_at says whether apply-free-windows
 -- has already closed the window, and the series is the one whose search
 -- document a window it has not closed yet leaves stale.
+--
+-- A window a series' free-after-publication rule wrote is not deleted: the
+-- rule would write it again on the worker's next pass, so it ends only when
+-- the rule stops covering the episode. No row comes back for one, and the
+-- caller reads the window to tell it apart from one that does not exist.
 DELETE FROM episode_free_windows w
 WHERE w.tenant_id = sqlc.arg('tenant_id')
     AND w.id = sqlc.arg('id')
+    AND w.rule_series_id IS NULL
 RETURNING w.id,
     w.public_id,
     w.episode_id,

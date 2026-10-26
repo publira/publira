@@ -117,6 +117,10 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 			_, err := seriesClient.GetSeriesWaitFreeSettings(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetSeriesWaitFreeSettingsRequest{Tenant: tenantCtx, SeriesId: series.ID.String()})
 			return err
 		},
+		publiraadminv1connect.AdminSeriesServiceGetSeriesFreeAfterSettingsProcedure: func(ctx context.Context) error {
+			_, err := seriesClient.GetSeriesFreeAfterSettings(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetSeriesFreeAfterSettingsRequest{Tenant: tenantCtx, SeriesId: series.ID.String()})
+			return err
+		},
 		publiraadminv1connect.AdminDashboardServiceGetDashboardProcedure: func(ctx context.Context) error {
 			_, err := dashboardClient.GetDashboard(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetDashboardRequest{Tenant: tenantCtx})
 			return err

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_episode_free_windows_rule_series;

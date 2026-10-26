@@ -1999,6 +1999,9 @@ class Episode extends $pb.GeneratedMessage {
   /// episode, so a row in a list can say how long a priced episode stays free
   /// without the episode being opened. `price` stays the stored price meanwhile,
   /// because that is what the episode costs again once the window closes.
+  /// 9999-12-31T00:00:00Z is a window the series' free-after-publication rule
+  /// opened, which has no end of its own: the episode is free for as long as
+  /// the rule covers it.
   ///
   /// Set on the public reads that carry `price`: GetEpisodeDetail, the episodes
   /// GetSeriesDetail lists, GetMySeriesProgress and ListMyRecentSeries. Empty

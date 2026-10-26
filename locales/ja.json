@@ -381,6 +381,7 @@
         "series_free_windows_created": "シリーズへの無料公開期間の一括追加",
         "series_campaign_prices_created": "シリーズへのキャンペーン価格の一括追加",
         "series_wait_free_settings_updated": "待てば無料の設定変更",
+        "series_free_after_settings_updated": "公開後無料の設定変更",
         "episode_updated": "エピソード更新",
         "episode_translation_deleted": "エピソードの翻訳の削除",
         "episode_image_uploaded": "エピソード本文画像のアップロード",
