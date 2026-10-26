@@ -99,6 +99,10 @@ const expectEachActionFits = async (
  * none of them spills out of the trigger.
  */
 test.describe("web-platform audit log action filter", () => {
+  // Each case only reads, and walking every action is slow enough that the
+  // fifteen of them in order would hold one worker, and one shard, for minutes.
+  test.describe.configure({ mode: "parallel" });
+
   for (const locale of LOCALES) {
     for (const width of WIDTHS) {
       test(`fits every action name in ${locale} at ${width}px`, async ({
