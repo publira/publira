@@ -7,6 +7,11 @@ export type { AdminAnnouncement } from "../gen/publira/admin/v1/announcement_pb.
 export type { AdminAuditLog } from "../gen/publira/admin/v1/audit_pb.js";
 export type { AdminCampaignBanner } from "../gen/publira/admin/v1/campaign_banner_pb.js";
 export type {
+  CoinNameTranslation,
+  CoinPack,
+  TenantCoinSettings,
+} from "../gen/publira/admin/v1/coin_pb.js";
+export type {
   AdminComment,
   CommentReport,
 } from "../gen/publira/admin/v1/comment_pb.js";

@@ -76,7 +76,7 @@ It covers every role, **Auditor** included, since every operator can read every 
 
 Coins are a stored-value instrument, so laws on prepaid payment instruments, electronic money, money transmission, or gift cards may reach them, depending on where you and each tenant are. In some jurisdictions the platform that runs the install, rather than the tenant that sells the coins, is the party those laws look at. Leave it off unless you have established that letting tenants issue coins does not make you the issuer, or have done what being one requires.
 
-Turning it on changes nothing a reader sees: a tenant still has to turn coins on for itself. Turning it off, by clearing the checkbox or with `--tenant-coins-allowed=false`, stops every tenant at once, whatever its own setting: no tenant sells coins and no reader spends them, and every reader keeps their balance. Turning it on again gives each tenant back the setting it had saved.
+Turning it on changes nothing a reader sees: a tenant still has to turn coins on for itself, under **Payments** › **Coins** in its console, as [Coins](../4-console/9-coins.md) describes. Turning it off, by clearing the checkbox or with `--tenant-coins-allowed=false`, stops every tenant at once, whatever its own setting: no tenant sells coins and no reader spends them, and every reader keeps their balance. Turning it on again gives each tenant back the setting it had saved.
 
 ### Rate limits
 

@@ -219,6 +219,7 @@ services:
         banner.localhost
         bilingual.localhost
         closed.localhost
+        coin-settings.localhost
         coins-off.localhost
         coins.localhost
         comment.localhost
@@ -261,6 +262,7 @@ services:
         admin.banner.localhost
         admin.bilingual.localhost
         admin.closed.localhost
+        admin.coin-settings.localhost
         admin.coins.localhost
         admin.comment.localhost
         admin.consent.localhost

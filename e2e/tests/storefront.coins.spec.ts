@@ -1,20 +1,11 @@
-import { randomUUID } from "node:crypto";
-
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import { signInAsAdmin } from "../src/admin";
+import { setTenantCoinsAllowed, takePaymentsThroughStripe } from "../src/coins";
 import { applyScenarioSql } from "../src/db";
 import { uploadEpisodePages } from "../src/episode-pages";
-import { formMessage, signInAsPlatformOperator } from "../src/platform";
-import {
-  revalidatePlatformTags,
-  revalidateStorefrontTags,
-} from "../src/revalidate";
-import {
-  PLATFORM_TENANT_COINS_OPERATOR,
-  PLATFORM_TENANT_COINS_SCENARIO,
-} from "../src/scenarios/platform-tenant-coins";
+import { revalidateStorefrontTags } from "../src/revalidate";
+import { PLATFORM_TENANT_COINS_SCENARIO } from "../src/scenarios/platform-tenant-coins";
 import {
   STOREFRONT_COINS_ADMIN,
   STOREFRONT_COINS_BUYER,
@@ -32,7 +23,6 @@ import {
 } from "../src/scenarios/storefront-coins";
 import { episodePageLabel } from "../src/scenarios/viewer-pages";
 import { signInAsMember } from "../src/storefront";
-import { registerStripeWebhook } from "../src/stripe";
 import {
   STRIPE_BASE_URL,
   WEB_ADMIN_COINS_BASE_URL,
@@ -94,73 +84,6 @@ const coinsSection = (page: Page) =>
   page.getByRole("region", { name: STOREFRONT_COINS_NAME.en });
 
 /**
- * Lets tenants issue coins, or stops them, from the Platform Console's
- * Security page, as the operator `660_platform_tenant_coins.sql` seeds. Saving there writes the
- * policy row and owes every tenant's catalog a drop once the API's own cache
- * of the policy has run out.
- *
- * The scenario writes the policy row straight to Postgres, which leaves the
- * console holding the revision it read before, and the save of a stale
- * revision is refused. The console's policy tag is dropped first and the save
- * tried again until the form carries the revision that is stored.
- */
-const setTenantCoinsAllowed = async (
-  page: Page,
-  allowed: boolean
-): Promise<void> => {
-  await signInAsPlatformOperator(
-    page,
-    PLATFORM_TENANT_COINS_OPERATOR,
-    "/policies/security"
-  );
-  await expect(async () => {
-    await revalidatePlatformTags(["platform:policy"]);
-    await page.reload();
-    await page
-      .getByRole("checkbox", {
-        exact: true,
-        name: "Allow tenants to issue coins",
-      })
-      .setChecked(allowed);
-    await page.getByRole("button", { name: "Save security policy" }).click();
-    await expect(formMessage(page)).toContainText("Security policy saved.", {
-      timeout: 5000,
-    });
-  }).toPass({ timeout: 60_000 });
-};
-
-/**
- * Takes the tenant's payments through Stripe, which is what sells its packs.
- * The secret key is a new one each run, a test account of its own, for the
- * reason `storefront.checkout.spec.ts` gives.
- */
-const takePaymentsThroughStripe = async (page: Page): Promise<void> => {
-  await signInAsAdmin(
-    page,
-    STOREFRONT_COINS_ADMIN,
-    "/integrations/payment",
-    WEB_ADMIN_COINS_BASE_URL
-  );
-  const provider = page.getByRole("combobox", { name: "Payment provider" });
-  await provider.click();
-  await page.getByRole("option", { name: "Stripe" }).click();
-  await expect(provider).toContainText("Stripe");
-
-  await page.getByRole("checkbox", { name: "Enable payments" }).click();
-  const secretKey = `sk_test_${randomUUID().replaceAll("-", "")}`;
-  await page.getByLabel(/^Secret key/u).fill(secretKey);
-  const webhookSecret = await registerStripeWebhook(
-    secretKey,
-    await page.getByLabel("Webhook URL").inputValue()
-  );
-  await page.getByLabel(/^Webhook signing secret/u).fill(webhookSecret);
-  await page.getByRole("button", { exact: true, name: "Save" }).click();
-  await expect(
-    page.getByText("The payment settings were saved.")
-  ).toBeVisible();
-};
-
-/**
  * Opens `path` until `ready` shows. The API reads the platform's allowance
  * through a cache of its own for a few seconds after the save, and an episode
  * the storefront read in that window is held without its price in coins until
@@ -193,7 +116,11 @@ test.describe("web-storefront coins", () => {
     const page = await browser.newPage();
     try {
       await setTenantCoinsAllowed(page, true);
-      await takePaymentsThroughStripe(page);
+      await takePaymentsThroughStripe(
+        page,
+        STOREFRONT_COINS_ADMIN,
+        WEB_ADMIN_COINS_BASE_URL
+      );
     } finally {
       await page.close();
     }
