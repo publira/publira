@@ -4,7 +4,7 @@ description: Install Go, restore the module cache or download the modules, and r
 inputs:
   build-cache:
     description: >-
-      The compile whose build cache to restore: `build` for the server binaries (`task server:build`, and the `go run` of the same commands), or `test` for `go test ./...`. Empty restores the module cache alone.
+      The compile whose build cache to restore: `build` for the server binaries (`task server:build`, and the `go run` of the same commands), or `test-<share>` for one share of `go test ./...` in `Test / Go` (`scripts/go-test-share.sh`). Empty restores the module cache alone.
     default: ""
 
 outputs:
@@ -79,12 +79,12 @@ runs:
     # 65 s cold, 30 s with only the dependencies cached, 23 s on an entry five
     # server commits behind, and 7 s, the link alone, on its own entry.
     #
-    # Only `main` saves one (the `Build` and `Test / Go` jobs, through
-    # `main-cache-save`), because only its entries are readable from a pull
-    # request or a merge group, and `Cache / Prune Go build` keeps the newest of
-    # each kind there. Go trims
-    # what it has not used for five days, so restoring an older entry does not
-    # make the saved one grow without bound.
+    # Only `main` saves one (the `Build` job and each `Test / Go` share,
+    # through `main-cache-save`), because only its entries are readable from a
+    # pull request or a merge group, and `Cache / Prune Go build` keeps the
+    # newest of each kind there. Go trims what it has not used for five days,
+    # so restoring an older entry does not make the saved one grow without
+    # bound.
     - name: Cache / Go build
       id: build
       if: inputs.build-cache != ''
