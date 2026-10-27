@@ -266,13 +266,19 @@ const openDarkTab = async (page: Page): Promise<void> => {
   ).toBeVisible();
 };
 
-/** The tab has a Delete only while a dark palette is saved. */
+/**
+ * The Dark tab's Delete, offered only while a dark palette is saved. The panel
+ * scopes it: a brand mark another suite uploaded puts a Delete of its own on
+ * the screen.
+ */
+const darkPaletteDeleteButton = (page: Page): Locator =>
+  page
+    .getByRole("tabpanel")
+    .getByRole("button", { exact: true, name: "Delete" });
+
 const deleteDarkPaletteIfSet = async (page: Page): Promise<void> => {
   await openDarkTab(page);
-  const deleteButton = page.getByRole("button", {
-    exact: true,
-    name: "Delete",
-  });
+  const deleteButton = darkPaletteDeleteButton(page);
   if (await deleteButton.isVisible()) {
     await deleteButton.click();
     const dialog = page.getByRole("alertdialog");
@@ -577,7 +583,7 @@ test.describe("admin brand settings", () => {
       darkBackground
     );
 
-    await page.getByRole("button", { exact: true, name: "Delete" }).click();
+    await darkPaletteDeleteButton(page).click();
     const dialog = page.getByRole("alertdialog");
     await dialog.getByRole("button", { exact: true, name: "Delete" }).click();
     await expectStatus(page, "The dark palette was deleted.");
