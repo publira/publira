@@ -5167,7 +5167,11 @@
       "search": "검색",
       "search_label": "작품 검색",
       "search_submit": "검색",
-      "signup": "시작하기"
+      "signup": "시작하기",
+      "theme_dark": "다크",
+      "theme_light": "라이트",
+      "theme_switch": "테마",
+      "theme_system": "시스템 설정에 맞춤"
     },
     "notifications": {
       "announcement_posted_description": "운영자가 “{$title}”을(를) 게시했습니다.",

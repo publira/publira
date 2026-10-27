@@ -106,6 +106,7 @@ A privacy policy says what the site keeps in its readers' browsers. These are al
 | Browser storage | Set when | Holds | Kept for |
 | --- | --- | --- | --- |
 | `publira.age-rating.confirmation.<tenant ID>` in `localStorage` | The reader confirms their age before opening a rated series or episode, with **I am 15 or older** or **I am 18 or older** | The highest rating confirmed, `r15` or `r18` | Until the reader clears the site's data |
+| `publira.theme` in `localStorage` | The reader chooses **Light**, **Dark**, or **Match system** under **Theme** in the site's header, which the site shows only when the tenant has a dark palette | The choice, `light`, `dark`, or `system` | Until the reader clears the site's data |
 | `publira.wide-viewer` in `sessionStorage` | The reader widens the episode viewer to the window, or narrows it again | Whether the viewer is wide | Until the tab is closed |
 | A push subscription | The reader turns on **Browser notifications** under **Settings** and allows notifications in the browser's own prompt | The address the browser's push service delivers the site's notifications to | Until the reader turns notifications off or signs out |
 | The site's service worker | The same moment as the push subscription | The script that shows the site's notifications. It keeps no pages and nothing about the reader | Until the reader clears the site's data. Turning notifications off or signing out ends the subscription, and the worker stays with nothing to deliver |

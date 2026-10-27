@@ -13,8 +13,14 @@ import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { tenantOrigin } from "@publira/utils/tenant-origin";
-import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
-import type { TenantTheme } from "@publira/utils/theme-css-variables";
+import {
+  resolveTenantThemeColors,
+  resolveTenantThemePalette,
+} from "@publira/utils/theme-css-variables";
+import type {
+  TenantTheme,
+  TenantThemeColors,
+} from "@publira/utils/theme-css-variables";
 import { cacheLife } from "next/cache";
 
 import { apiClient } from "./api-client";
@@ -489,13 +495,24 @@ export const getTenantSiteCopy = async (
 };
 
 /**
+ * The palettes `GET /theme.css` writes. `dark` is absent while the tenant has
+ * saved no dark palette, and the site then offers no choice of theme.
+ */
+export interface TenantThemePalettes {
+  dark?: TenantThemeColors;
+  light: TenantTheme;
+}
+
+/**
  * Reads only the colors used by `GET /theme.css`. It has its own cache entry
  * and tag, rather than sharing site chrome's entry, so an admin theme save can
  * invalidate this stylesheet's source without relying on `tenant:<id>:site`.
+ * The header's theme switch reads the same entry, so it is offered exactly
+ * when the stylesheet has a dark palette to switch to.
  */
 export const getTenantTheme = async (
   tenantId: string
-): Promise<TenantTheme | null> => {
+): Promise<TenantThemePalettes | null> => {
   "use cache";
   cacheLife({ stale: 30 });
 
@@ -513,7 +530,10 @@ export const getTenantTheme = async (
     if (!trimmed(response.tenantPublicId)) {
       return null;
     }
-    return resolveTenantThemeColors(response.theme);
+    return {
+      dark: resolveTenantThemePalette(response.darkTheme),
+      light: resolveTenantThemeColors(response.theme),
+    };
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {
       // A cached fill must return a value. Drop the failed entry so the next
@@ -523,6 +543,14 @@ export const getTenantTheme = async (
     }
     return null;
   }
+};
+
+/** Whether the tenant has a dark palette for a reader to choose. */
+export const hasTenantDarkTheme = async (
+  tenantId: string
+): Promise<boolean> => {
+  const theme = await getTenantTheme(tenantId);
+  return theme?.dark !== undefined;
 };
 
 /**

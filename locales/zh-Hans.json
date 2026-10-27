@@ -5167,7 +5167,11 @@
       "search": "搜索",
       "search_label": "搜索作品",
       "search_submit": "搜索",
-      "signup": "立即开始"
+      "signup": "立即开始",
+      "theme_dark": "深色",
+      "theme_light": "浅色",
+      "theme_switch": "主题",
+      "theme_system": "跟随系统"
     },
     "notifications": {
       "announcement_posted_description": "运营方发布了《{$title}》。",

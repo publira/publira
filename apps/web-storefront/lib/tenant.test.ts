@@ -4,6 +4,7 @@ import {
   AppPurchaseRoute,
   TenantBrandMarkKind,
 } from "@publira/api-client/public/types";
+import { DEFAULT_TENANT_THEME_COLORS } from "@publira/utils/theme-css-variables";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -92,12 +93,37 @@ describe("tenant", () => {
     });
 
     await expect(getTenantTheme(" TENANT_001 ")).resolves.toMatchObject({
-      primaryColor: "#112233",
+      dark: undefined,
+      light: { primaryColor: "#112233" },
     });
 
     expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT_001:theme");
     expect(mockGetTenant).toHaveBeenCalledWith({
       tenant: { tenantId: "TENANT_001" },
+    });
+  });
+
+  it("reads the dark palette beside the light one", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      darkTheme: { ...DEFAULT_TENANT_THEME_COLORS, backgroundColor: "#1A1917" },
+      theme: { primaryColor: "#112233" },
+    });
+
+    await expect(getTenantTheme("TENANT_001")).resolves.toMatchObject({
+      dark: { backgroundColor: "#1a1917" },
+      light: { primaryColor: "#112233" },
+    });
+  });
+
+  it("offers no dark theme for a dark palette missing a color", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      darkTheme: { ...DEFAULT_TENANT_THEME_COLORS, mutedColor: "" },
+    });
+
+    await expect(getTenantTheme("TENANT_001")).resolves.toMatchObject({
+      dark: undefined,
     });
   });
 

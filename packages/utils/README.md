@@ -11,7 +11,7 @@ The package that provides the shared frontend utilities.
 | `@publira/utils` | The client-safe barrel: `cn`, the `Temporal` date and time helpers, `formatPercent`, `formatPrice`, `currencyFractionDigits`, and `currencyDisplayName` for an amount in the minor unit of a currency, `listSupportedCurrencies` for a list to choose a currency from, `formatDuration`, the IANA time zone list and its validation, `decodeBase64Url`, and the tenant theme tokens and their contrast rules |
 | `@publira/utils/cn` | `cn`, the Tailwind-aware className helper, on its own |
 | `@publira/utils/format-date-time` | The tenant-time-zone-aware date and time helpers on their own |
-| `@publira/utils/theme-css-variables` | The tenant theme colors as `--publira-color-*` custom properties, and `DEFAULT_TENANT_THEME_COLORS` |
+| `@publira/utils/theme-css-variables` | The tenant theme colors as `--publira-color-*` custom properties, the `/theme.css` text that adds a dark palette under `prefers-color-scheme` and `data-theme`, and `DEFAULT_TENANT_THEME_COLORS` |
 | `@publira/utils/theme-contrast` | The WCAG AA contrast check the theme settings form and its preview share |
 | `@publira/utils/search-params` | The schema builders that validate `searchParams` (`string \| string[] \| undefined`) with zod |
 | `@publira/utils/route-params` | The schema builders that validate a dynamic route segment (`params`) with zod |
