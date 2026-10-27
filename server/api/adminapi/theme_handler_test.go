@@ -446,6 +446,78 @@ func TestNormalizeTenantThemeRejectsInsufficientContrast(t *testing.T) {
 	}
 }
 
+// testDarkThemePalette is a dark palette every pair of which clears the
+// contrast the theme RPCs hold a palette to.
+func testDarkThemePalette() *publirattypesv1.TenantThemePalette {
+	return &publirattypesv1.TenantThemePalette{
+		PrimaryColor:               "#8fb0f0",
+		SecondaryColor:             "#f08a6c",
+		AccentColor:                "#2a3550",
+		BackgroundColor:            "#121212",
+		ForegroundColor:            "#e8e6e3",
+		SurfaceColor:               "#1a1a1a",
+		SurfaceForegroundColor:     "#e8e6e3",
+		CardColor:                  "#1e1e1e",
+		CardForegroundColor:        "#e8e6e3",
+		PopoverColor:               "#1e1e1e",
+		PopoverForegroundColor:     "#e8e6e3",
+		PrimaryForegroundColor:     "#0d1b33",
+		SecondaryForegroundColor:   "#2a0d05",
+		AccentForegroundColor:      "#dfe6f5",
+		MutedColor:                 "#2a2a28",
+		MutedForegroundColor:       "#b5b3ad",
+		BorderColor:                "#3a3a37",
+		InputColor:                 "#44443f",
+		RingColor:                  "#8fb0f0",
+		SuccessColor:               "#7cc79a",
+		SuccessForegroundColor:     "#0b2414",
+		WarningColor:               "#e0b060",
+		WarningForegroundColor:     "#2a1a00",
+		DestructiveColor:           "#f08080",
+		DestructiveForegroundColor: "#2a0505",
+		InfoColor:                  "#82b0e0",
+		InfoForegroundColor:        "#0a1a2a",
+	}
+}
+
+// A dark palette is held to the light one's rules, and a violation names the
+// field under the request's dark_theme rather than theme.
+func TestNormalizeTenantDarkThemeNamesTheFieldUnderDarkTheme(t *testing.T) {
+	tests := []struct {
+		name      string
+		change    func(*publirattypesv1.TenantThemePalette)
+		wantField string
+	}{
+		{
+			name:      "color code",
+			change:    func(p *publirattypesv1.TenantThemePalette) { p.BorderColor = "#3a3a3" },
+			wantField: "dark_theme.border_color",
+		},
+		{
+			name:      "contrast",
+			change:    func(p *publirattypesv1.TenantThemePalette) { p.ForegroundColor = "#202020" },
+			wantField: "dark_theme.background_color and dark_theme.foreground_color",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			palette := testDarkThemePalette()
+			tt.change(palette)
+			_, err := normalizeTenantDarkTheme(palette)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("normalizeTenantDarkTheme code = %v, want invalid_argument", connect.CodeOf(err))
+			}
+			if !strings.Contains(err.Error(), tt.wantField) {
+				t.Fatalf("normalizeTenantDarkTheme error = %q, want it to name %s", err, tt.wantField)
+			}
+		})
+	}
+
+	if _, err := normalizeTenantDarkTheme(testDarkThemePalette()); err != nil {
+		t.Fatalf("normalizeTenantDarkTheme of the test palette: %v", err)
+	}
+}
+
 func TestUpsertTenantThemePersistsNormalizedTheme(t *testing.T) {
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()

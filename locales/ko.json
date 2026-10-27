@@ -477,6 +477,8 @@
         "tenant_reader_icon_preset_deleted": "독자 아이콘 프리셋 삭제",
         "tenant_legal_pages_updated": "이용약관 및 개인정보 처리방침 변경",
         "tenant_theme_updated": "테마 변경",
+        "tenant_dark_theme_updated": "다크 테마 변경",
+        "tenant_dark_theme_deleted": "다크 테마 삭제",
         "tenant_logo_uploaded": "로고 업로드",
         "tenant_logo_deleted": "로고 삭제",
         "tenant_icon_uploaded": "아이콘 업로드",

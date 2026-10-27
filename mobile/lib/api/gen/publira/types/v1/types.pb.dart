@@ -2884,6 +2884,392 @@ class TenantTheme extends $pb.GeneratedMessage {
   $pb.PbList<TenantImageVariant> get signInImageVariants => $_getList(34);
 }
 
+/// The colors of a tenant's dark theme, the second palette a reader reads in
+/// while reading in dark. Each field means what the field of the same name in
+/// TenantTheme means, and the same contrast holds between each color and its
+/// foreground. The fonts and the branding images are TenantTheme's alone: the
+/// two palettes share them.
+class TenantThemePalette extends $pb.GeneratedMessage {
+  factory TenantThemePalette({
+    $core.String? primaryColor,
+    $core.String? secondaryColor,
+    $core.String? accentColor,
+    $core.String? backgroundColor,
+    $core.String? foregroundColor,
+    $core.String? surfaceColor,
+    $core.String? surfaceForegroundColor,
+    $core.String? cardColor,
+    $core.String? cardForegroundColor,
+    $core.String? popoverColor,
+    $core.String? popoverForegroundColor,
+    $core.String? primaryForegroundColor,
+    $core.String? secondaryForegroundColor,
+    $core.String? accentForegroundColor,
+    $core.String? mutedColor,
+    $core.String? mutedForegroundColor,
+    $core.String? borderColor,
+    $core.String? inputColor,
+    $core.String? ringColor,
+    $core.String? successColor,
+    $core.String? successForegroundColor,
+    $core.String? warningColor,
+    $core.String? warningForegroundColor,
+    $core.String? destructiveColor,
+    $core.String? destructiveForegroundColor,
+    $core.String? infoColor,
+    $core.String? infoForegroundColor,
+  }) {
+    final result = TenantThemePalette._();
+    if (primaryColor != null) result.primaryColor = primaryColor;
+    if (secondaryColor != null) result.secondaryColor = secondaryColor;
+    if (accentColor != null) result.accentColor = accentColor;
+    if (backgroundColor != null) result.backgroundColor = backgroundColor;
+    if (foregroundColor != null) result.foregroundColor = foregroundColor;
+    if (surfaceColor != null) result.surfaceColor = surfaceColor;
+    if (surfaceForegroundColor != null)
+      result.surfaceForegroundColor = surfaceForegroundColor;
+    if (cardColor != null) result.cardColor = cardColor;
+    if (cardForegroundColor != null)
+      result.cardForegroundColor = cardForegroundColor;
+    if (popoverColor != null) result.popoverColor = popoverColor;
+    if (popoverForegroundColor != null)
+      result.popoverForegroundColor = popoverForegroundColor;
+    if (primaryForegroundColor != null)
+      result.primaryForegroundColor = primaryForegroundColor;
+    if (secondaryForegroundColor != null)
+      result.secondaryForegroundColor = secondaryForegroundColor;
+    if (accentForegroundColor != null)
+      result.accentForegroundColor = accentForegroundColor;
+    if (mutedColor != null) result.mutedColor = mutedColor;
+    if (mutedForegroundColor != null)
+      result.mutedForegroundColor = mutedForegroundColor;
+    if (borderColor != null) result.borderColor = borderColor;
+    if (inputColor != null) result.inputColor = inputColor;
+    if (ringColor != null) result.ringColor = ringColor;
+    if (successColor != null) result.successColor = successColor;
+    if (successForegroundColor != null)
+      result.successForegroundColor = successForegroundColor;
+    if (warningColor != null) result.warningColor = warningColor;
+    if (warningForegroundColor != null)
+      result.warningForegroundColor = warningForegroundColor;
+    if (destructiveColor != null) result.destructiveColor = destructiveColor;
+    if (destructiveForegroundColor != null)
+      result.destructiveForegroundColor = destructiveForegroundColor;
+    if (infoColor != null) result.infoColor = infoColor;
+    if (infoForegroundColor != null)
+      result.infoForegroundColor = infoForegroundColor;
+    return result;
+  }
+
+  TenantThemePalette._();
+
+  factory TenantThemePalette.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantThemePalette()..mergeFromBuffer(data, registry);
+  factory TenantThemePalette.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantThemePalette()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TenantThemePalette',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: TenantThemePalette.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'primaryColor')
+    ..aOS(2, _omitFieldNames ? '' : 'secondaryColor')
+    ..aOS(3, _omitFieldNames ? '' : 'accentColor')
+    ..aOS(4, _omitFieldNames ? '' : 'backgroundColor')
+    ..aOS(5, _omitFieldNames ? '' : 'foregroundColor')
+    ..aOS(6, _omitFieldNames ? '' : 'surfaceColor')
+    ..aOS(7, _omitFieldNames ? '' : 'surfaceForegroundColor')
+    ..aOS(8, _omitFieldNames ? '' : 'cardColor')
+    ..aOS(9, _omitFieldNames ? '' : 'cardForegroundColor')
+    ..aOS(10, _omitFieldNames ? '' : 'popoverColor')
+    ..aOS(11, _omitFieldNames ? '' : 'popoverForegroundColor')
+    ..aOS(12, _omitFieldNames ? '' : 'primaryForegroundColor')
+    ..aOS(13, _omitFieldNames ? '' : 'secondaryForegroundColor')
+    ..aOS(14, _omitFieldNames ? '' : 'accentForegroundColor')
+    ..aOS(15, _omitFieldNames ? '' : 'mutedColor')
+    ..aOS(16, _omitFieldNames ? '' : 'mutedForegroundColor')
+    ..aOS(17, _omitFieldNames ? '' : 'borderColor')
+    ..aOS(18, _omitFieldNames ? '' : 'inputColor')
+    ..aOS(19, _omitFieldNames ? '' : 'ringColor')
+    ..aOS(20, _omitFieldNames ? '' : 'successColor')
+    ..aOS(21, _omitFieldNames ? '' : 'successForegroundColor')
+    ..aOS(22, _omitFieldNames ? '' : 'warningColor')
+    ..aOS(23, _omitFieldNames ? '' : 'warningForegroundColor')
+    ..aOS(24, _omitFieldNames ? '' : 'destructiveColor')
+    ..aOS(25, _omitFieldNames ? '' : 'destructiveForegroundColor')
+    ..aOS(26, _omitFieldNames ? '' : 'infoColor')
+    ..aOS(27, _omitFieldNames ? '' : 'infoForegroundColor')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantThemePalette clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantThemePalette copyWith(void Function(TenantThemePalette) updates) =>
+      super.copyWith((message) => updates(message as TenantThemePalette))
+          as TenantThemePalette;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TenantThemePalette() / TenantThemePalette.new instead')
+  static TenantThemePalette create() => TenantThemePalette._();
+  static $pb.GeneratedMessage $_createMessage() => TenantThemePalette._();
+  @$core.override
+  TenantThemePalette createEmptyInstance() => TenantThemePalette._();
+  @$core.pragma('dart2js:noInline')
+  static TenantThemePalette getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TenantThemePalette>(
+          TenantThemePalette.$_createMessage);
+  static TenantThemePalette? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get primaryColor => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set primaryColor($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPrimaryColor() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPrimaryColor() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get secondaryColor => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set secondaryColor($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSecondaryColor() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSecondaryColor() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get accentColor => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set accentColor($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAccentColor() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAccentColor() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get backgroundColor => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set backgroundColor($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBackgroundColor() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBackgroundColor() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get foregroundColor => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set foregroundColor($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasForegroundColor() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearForegroundColor() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get surfaceColor => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set surfaceColor($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSurfaceColor() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSurfaceColor() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get surfaceForegroundColor => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set surfaceForegroundColor($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSurfaceForegroundColor() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSurfaceForegroundColor() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get cardColor => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set cardColor($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCardColor() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCardColor() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get cardForegroundColor => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set cardForegroundColor($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCardForegroundColor() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCardForegroundColor() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get popoverColor => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set popoverColor($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasPopoverColor() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearPopoverColor() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get popoverForegroundColor => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set popoverForegroundColor($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasPopoverForegroundColor() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearPopoverForegroundColor() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get primaryForegroundColor => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set primaryForegroundColor($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasPrimaryForegroundColor() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearPrimaryForegroundColor() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get secondaryForegroundColor => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set secondaryForegroundColor($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasSecondaryForegroundColor() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearSecondaryForegroundColor() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.String get accentForegroundColor => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set accentForegroundColor($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasAccentForegroundColor() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearAccentForegroundColor() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.String get mutedColor => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set mutedColor($core.String value) => $_setString(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasMutedColor() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearMutedColor() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.String get mutedForegroundColor => $_getSZ(15);
+  @$pb.TagNumber(16)
+  set mutedForegroundColor($core.String value) => $_setString(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasMutedForegroundColor() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearMutedForegroundColor() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.String get borderColor => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set borderColor($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasBorderColor() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearBorderColor() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $core.String get inputColor => $_getSZ(17);
+  @$pb.TagNumber(18)
+  set inputColor($core.String value) => $_setString(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasInputColor() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearInputColor() => $_clearField(18);
+
+  @$pb.TagNumber(19)
+  $core.String get ringColor => $_getSZ(18);
+  @$pb.TagNumber(19)
+  set ringColor($core.String value) => $_setString(18, value);
+  @$pb.TagNumber(19)
+  $core.bool hasRingColor() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearRingColor() => $_clearField(19);
+
+  @$pb.TagNumber(20)
+  $core.String get successColor => $_getSZ(19);
+  @$pb.TagNumber(20)
+  set successColor($core.String value) => $_setString(19, value);
+  @$pb.TagNumber(20)
+  $core.bool hasSuccessColor() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearSuccessColor() => $_clearField(20);
+
+  @$pb.TagNumber(21)
+  $core.String get successForegroundColor => $_getSZ(20);
+  @$pb.TagNumber(21)
+  set successForegroundColor($core.String value) => $_setString(20, value);
+  @$pb.TagNumber(21)
+  $core.bool hasSuccessForegroundColor() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearSuccessForegroundColor() => $_clearField(21);
+
+  @$pb.TagNumber(22)
+  $core.String get warningColor => $_getSZ(21);
+  @$pb.TagNumber(22)
+  set warningColor($core.String value) => $_setString(21, value);
+  @$pb.TagNumber(22)
+  $core.bool hasWarningColor() => $_has(21);
+  @$pb.TagNumber(22)
+  void clearWarningColor() => $_clearField(22);
+
+  @$pb.TagNumber(23)
+  $core.String get warningForegroundColor => $_getSZ(22);
+  @$pb.TagNumber(23)
+  set warningForegroundColor($core.String value) => $_setString(22, value);
+  @$pb.TagNumber(23)
+  $core.bool hasWarningForegroundColor() => $_has(22);
+  @$pb.TagNumber(23)
+  void clearWarningForegroundColor() => $_clearField(23);
+
+  @$pb.TagNumber(24)
+  $core.String get destructiveColor => $_getSZ(23);
+  @$pb.TagNumber(24)
+  set destructiveColor($core.String value) => $_setString(23, value);
+  @$pb.TagNumber(24)
+  $core.bool hasDestructiveColor() => $_has(23);
+  @$pb.TagNumber(24)
+  void clearDestructiveColor() => $_clearField(24);
+
+  @$pb.TagNumber(25)
+  $core.String get destructiveForegroundColor => $_getSZ(24);
+  @$pb.TagNumber(25)
+  set destructiveForegroundColor($core.String value) => $_setString(24, value);
+  @$pb.TagNumber(25)
+  $core.bool hasDestructiveForegroundColor() => $_has(24);
+  @$pb.TagNumber(25)
+  void clearDestructiveForegroundColor() => $_clearField(25);
+
+  @$pb.TagNumber(26)
+  $core.String get infoColor => $_getSZ(25);
+  @$pb.TagNumber(26)
+  set infoColor($core.String value) => $_setString(25, value);
+  @$pb.TagNumber(26)
+  $core.bool hasInfoColor() => $_has(25);
+  @$pb.TagNumber(26)
+  void clearInfoColor() => $_clearField(26);
+
+  @$pb.TagNumber(27)
+  $core.String get infoForegroundColor => $_getSZ(26);
+  @$pb.TagNumber(27)
+  set infoForegroundColor($core.String value) => $_setString(26, value);
+  @$pb.TagNumber(27)
+  $core.bool hasInfoForegroundColor() => $_has(26);
+  @$pb.TagNumber(27)
+  void clearInfoForegroundColor() => $_clearField(27);
+}
+
 /// A third-party mark the tenant uploaded, with when and under which terms of
 /// its owner it was accepted. The image is carried the way TenantTheme carries
 /// the logo: variants plus the image's updated_at, the variant's variant_type

@@ -578,6 +578,7 @@ type Querier interface {
 	// A locale whose copy is cleared has no row, so its readers are served the
 	// copy tenant_config_translation_for falls back to.
 	DeleteTenantConfigTranslation(ctx context.Context, arg DeleteTenantConfigTranslationParams) (int64, error)
+	DeleteTenantDarkTheme(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	DeleteTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) error
 	DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
@@ -1248,6 +1249,9 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as nothing
 	// excluded.
 	GetTenantCrawlerSettings(ctx context.Context, tenantID uuid.UUID) (TenantCrawlerSetting, error)
+	// No row is a tenant without a dark palette, which the caller answers as an
+	// absent one rather than as the light palette's defaults.
+	GetTenantDarkThemeByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantThemeDark, error)
 	// Returns no rows for a tenant that has saved nothing, which reads as the
 	// disposable-domain list off.
 	GetTenantEmailRejectionSettings(ctx context.Context, tenantID uuid.UUID) (TenantEmailRejectionSetting, error)
@@ -4065,6 +4069,7 @@ type Querier interface {
 	// The user agents and paths arrive validated, normalized, and without
 	// duplicates.
 	UpsertTenantCrawlerSettings(ctx context.Context, arg UpsertTenantCrawlerSettingsParams) (TenantCrawlerSetting, error)
+	UpsertTenantDarkTheme(ctx context.Context, arg UpsertTenantDarkThemeParams) (TenantThemeDark, error)
 	UpsertTenantEmailRejectionSettings(ctx context.Context, arg UpsertTenantEmailRejectionSettingsParams) (TenantEmailRejectionSetting, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)

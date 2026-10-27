@@ -559,6 +559,16 @@ const brandingActionName = (action: string) => {
     case "tenant_theme_updated": {
       return <Message message="admin.audit.actions.tenant_theme_updated" />;
     }
+    case "tenant_dark_theme_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_dark_theme_updated" />
+      );
+    }
+    case "tenant_dark_theme_deleted": {
+      return (
+        <Message message="admin.audit.actions.tenant_dark_theme_deleted" />
+      );
+    }
     case "tenant_logo_uploaded": {
       return <Message message="admin.audit.actions.tenant_logo_uploaded" />;
     }

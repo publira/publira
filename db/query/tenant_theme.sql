@@ -144,6 +144,111 @@ SET background_color = EXCLUDED.background_color,
     updated_at = NOW()
 RETURNING *;
 
+-- name: GetTenantDarkThemeByTenantID :one
+-- No row is a tenant without a dark palette, which the caller answers as an
+-- absent one rather than as the light palette's defaults.
+SELECT *
+FROM tenant_theme_dark
+WHERE tenant_id = $1;
+
+-- name: UpsertTenantDarkTheme :one
+INSERT INTO tenant_theme_dark (
+        tenant_id,
+        background_color,
+        foreground_color,
+        surface_color,
+        surface_foreground_color,
+        card_color,
+        card_foreground_color,
+        popover_color,
+        popover_foreground_color,
+        primary_color,
+        primary_foreground_color,
+        secondary_color,
+        secondary_foreground_color,
+        accent_color,
+        accent_foreground_color,
+        muted_color,
+        muted_foreground_color,
+        border_color,
+        input_color,
+        ring_color,
+        success_color,
+        success_foreground_color,
+        warning_color,
+        warning_foreground_color,
+        destructive_color,
+        destructive_foreground_color,
+        info_color,
+        info_foreground_color,
+        updated_at
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15,
+        $16,
+        $17,
+        $18,
+        $19,
+        $20,
+        $21,
+        $22,
+        $23,
+        $24,
+        $25,
+        $26,
+        $27,
+        $28,
+        NOW()
+    ) ON CONFLICT (tenant_id) DO
+UPDATE
+SET background_color = EXCLUDED.background_color,
+    foreground_color = EXCLUDED.foreground_color,
+    surface_color = EXCLUDED.surface_color,
+    surface_foreground_color = EXCLUDED.surface_foreground_color,
+    card_color = EXCLUDED.card_color,
+    card_foreground_color = EXCLUDED.card_foreground_color,
+    popover_color = EXCLUDED.popover_color,
+    popover_foreground_color = EXCLUDED.popover_foreground_color,
+    primary_color = EXCLUDED.primary_color,
+    primary_foreground_color = EXCLUDED.primary_foreground_color,
+    secondary_color = EXCLUDED.secondary_color,
+    secondary_foreground_color = EXCLUDED.secondary_foreground_color,
+    accent_color = EXCLUDED.accent_color,
+    accent_foreground_color = EXCLUDED.accent_foreground_color,
+    muted_color = EXCLUDED.muted_color,
+    muted_foreground_color = EXCLUDED.muted_foreground_color,
+    border_color = EXCLUDED.border_color,
+    input_color = EXCLUDED.input_color,
+    ring_color = EXCLUDED.ring_color,
+    success_color = EXCLUDED.success_color,
+    success_foreground_color = EXCLUDED.success_foreground_color,
+    warning_color = EXCLUDED.warning_color,
+    warning_foreground_color = EXCLUDED.warning_foreground_color,
+    destructive_color = EXCLUDED.destructive_color,
+    destructive_foreground_color = EXCLUDED.destructive_foreground_color,
+    info_color = EXCLUDED.info_color,
+    info_foreground_color = EXCLUDED.info_foreground_color,
+    updated_at = NOW()
+RETURNING *;
+
+-- name: DeleteTenantDarkTheme :execrows
+DELETE FROM tenant_theme_dark
+WHERE tenant_id = $1;
+
 -- name: SetTenantThemeIconImage :one
 -- The theme row is created on demand: a tenant can upload a icon before it
 -- has ever saved a color, and the colors then keep their column defaults.

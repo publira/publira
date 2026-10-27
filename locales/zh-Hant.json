@@ -477,6 +477,8 @@
         "tenant_reader_icon_preset_deleted": "刪除了讀者頭像預設",
         "tenant_legal_pages_updated": "更新了服務條款與隱私權政策",
         "tenant_theme_updated": "更新了主題",
+        "tenant_dark_theme_updated": "更新了深色主題",
+        "tenant_dark_theme_deleted": "刪除了深色主題",
         "tenant_logo_uploaded": "上傳了標誌",
         "tenant_logo_deleted": "刪除了標誌",
         "tenant_icon_uploaded": "上傳了圖示",

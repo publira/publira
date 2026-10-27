@@ -129,46 +129,81 @@ func themeColorContrastRatio(firstColor string, secondColor string) float64 {
 	return (math.Max(first, second) + 0.05) / (math.Min(first, second) + 0.05)
 }
 
-func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTenantThemeParams, error) {
+// themeColors is what the light palette (TenantTheme) and the dark one
+// (TenantThemePalette) have in common: the same colors under the same names.
+type themeColors interface {
+	GetPrimaryColor() string
+	GetSecondaryColor() string
+	GetAccentColor() string
+	GetBackgroundColor() string
+	GetForegroundColor() string
+	GetSurfaceColor() string
+	GetSurfaceForegroundColor() string
+	GetCardColor() string
+	GetCardForegroundColor() string
+	GetPopoverColor() string
+	GetPopoverForegroundColor() string
+	GetPrimaryForegroundColor() string
+	GetSecondaryForegroundColor() string
+	GetAccentForegroundColor() string
+	GetMutedColor() string
+	GetMutedForegroundColor() string
+	GetBorderColor() string
+	GetInputColor() string
+	GetRingColor() string
+	GetSuccessColor() string
+	GetSuccessForegroundColor() string
+	GetWarningColor() string
+	GetWarningForegroundColor() string
+	GetDestructiveColor() string
+	GetDestructiveForegroundColor() string
+	GetInfoColor() string
+	GetInfoForegroundColor() string
+}
+
+// normalizeThemeColors validates a palette and returns its colors lowercased,
+// in the order of themeColors. A violation names the field under prefix, the
+// request field the palette arrived in.
+func normalizeThemeColors(colors themeColors, prefix string) ([]string, error) {
 	type colorField struct {
 		value string
 		name  string
 	}
 	fields := []colorField{
-		{theme.PrimaryColor, "theme.primary_color"},
-		{theme.SecondaryColor, "theme.secondary_color"},
-		{theme.AccentColor, "theme.accent_color"},
-		{theme.BackgroundColor, "theme.background_color"},
-		{theme.ForegroundColor, "theme.foreground_color"},
-		{theme.SurfaceColor, "theme.surface_color"},
-		{theme.SurfaceForegroundColor, "theme.surface_foreground_color"},
-		{theme.CardColor, "theme.card_color"},
-		{theme.CardForegroundColor, "theme.card_foreground_color"},
-		{theme.PopoverColor, "theme.popover_color"},
-		{theme.PopoverForegroundColor, "theme.popover_foreground_color"},
-		{theme.PrimaryForegroundColor, "theme.primary_foreground_color"},
-		{theme.SecondaryForegroundColor, "theme.secondary_foreground_color"},
-		{theme.AccentForegroundColor, "theme.accent_foreground_color"},
-		{theme.MutedColor, "theme.muted_color"},
-		{theme.MutedForegroundColor, "theme.muted_foreground_color"},
-		{theme.BorderColor, "theme.border_color"},
-		{theme.InputColor, "theme.input_color"},
-		{theme.RingColor, "theme.ring_color"},
-		{theme.SuccessColor, "theme.success_color"},
-		{theme.SuccessForegroundColor, "theme.success_foreground_color"},
-		{theme.WarningColor, "theme.warning_color"},
-		{theme.WarningForegroundColor, "theme.warning_foreground_color"},
-		{theme.DestructiveColor, "theme.destructive_color"},
-		{theme.DestructiveForegroundColor, "theme.destructive_foreground_color"},
-		{theme.InfoColor, "theme.info_color"},
-		{theme.InfoForegroundColor, "theme.info_foreground_color"},
+		{colors.GetPrimaryColor(), "primary_color"},
+		{colors.GetSecondaryColor(), "secondary_color"},
+		{colors.GetAccentColor(), "accent_color"},
+		{colors.GetBackgroundColor(), "background_color"},
+		{colors.GetForegroundColor(), "foreground_color"},
+		{colors.GetSurfaceColor(), "surface_color"},
+		{colors.GetSurfaceForegroundColor(), "surface_foreground_color"},
+		{colors.GetCardColor(), "card_color"},
+		{colors.GetCardForegroundColor(), "card_foreground_color"},
+		{colors.GetPopoverColor(), "popover_color"},
+		{colors.GetPopoverForegroundColor(), "popover_foreground_color"},
+		{colors.GetPrimaryForegroundColor(), "primary_foreground_color"},
+		{colors.GetSecondaryForegroundColor(), "secondary_foreground_color"},
+		{colors.GetAccentForegroundColor(), "accent_foreground_color"},
+		{colors.GetMutedColor(), "muted_color"},
+		{colors.GetMutedForegroundColor(), "muted_foreground_color"},
+		{colors.GetBorderColor(), "border_color"},
+		{colors.GetInputColor(), "input_color"},
+		{colors.GetRingColor(), "ring_color"},
+		{colors.GetSuccessColor(), "success_color"},
+		{colors.GetSuccessForegroundColor(), "success_foreground_color"},
+		{colors.GetWarningColor(), "warning_color"},
+		{colors.GetWarningForegroundColor(), "warning_foreground_color"},
+		{colors.GetDestructiveColor(), "destructive_color"},
+		{colors.GetDestructiveForegroundColor(), "destructive_foreground_color"},
+		{colors.GetInfoColor(), "info_color"},
+		{colors.GetInfoForegroundColor(), "info_foreground_color"},
 	}
 	normalized := make([]string, len(fields))
 	byName := make(map[string]string, len(fields))
 	for i, f := range fields {
-		v, err := validateHexColorCode(f.value, f.name)
+		v, err := validateHexColorCode(f.value, prefix+"."+f.name)
 		if err != nil {
-			return dbmodels.UpsertTenantThemeParams{}, err
+			return nil, err
 		}
 		normalized[i] = v
 		byName[f.name] = v
@@ -177,27 +212,37 @@ func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTe
 		background string
 		foreground string
 	}{
-		{"theme.primary_color", "theme.primary_foreground_color"},
-		{"theme.secondary_color", "theme.secondary_foreground_color"},
-		{"theme.accent_color", "theme.accent_foreground_color"},
-		{"theme.background_color", "theme.foreground_color"},
-		{"theme.surface_color", "theme.surface_foreground_color"},
-		{"theme.card_color", "theme.card_foreground_color"},
-		{"theme.popover_color", "theme.popover_foreground_color"},
-		{"theme.muted_color", "theme.muted_foreground_color"},
-		{"theme.success_color", "theme.success_foreground_color"},
-		{"theme.warning_color", "theme.warning_foreground_color"},
-		{"theme.destructive_color", "theme.destructive_foreground_color"},
-		{"theme.info_color", "theme.info_foreground_color"},
+		{"primary_color", "primary_foreground_color"},
+		{"secondary_color", "secondary_foreground_color"},
+		{"accent_color", "accent_foreground_color"},
+		{"background_color", "foreground_color"},
+		{"surface_color", "surface_foreground_color"},
+		{"card_color", "card_foreground_color"},
+		{"popover_color", "popover_foreground_color"},
+		{"muted_color", "muted_foreground_color"},
+		{"success_color", "success_foreground_color"},
+		{"warning_color", "warning_foreground_color"},
+		{"destructive_color", "destructive_foreground_color"},
+		{"info_color", "info_foreground_color"},
 	} {
 		ratio := themeColorContrastRatio(byName[pair.background], byName[pair.foreground])
 		if ratio < minimumThemeTextContrastRatio {
-			return dbmodels.UpsertTenantThemeParams{}, rpcerrors.NewFieldViolationError(
+			background := prefix + "." + pair.background
+			foreground := prefix + "." + pair.foreground
+			return nil, rpcerrors.NewFieldViolationError(
 				connect.CodeInvalidArgument,
-				fmt.Errorf("%s and %s must have a contrast ratio of at least %.1f:1 (got %.2f:1)", pair.background, pair.foreground, minimumThemeTextContrastRatio, ratio),
-				pair.background,
+				fmt.Errorf("%s and %s must have a contrast ratio of at least %.1f:1 (got %.2f:1)", background, foreground, minimumThemeTextContrastRatio, ratio),
+				background,
 			)
 		}
+	}
+	return normalized, nil
+}
+
+func normalizeTenantTheme(theme *publirattypesv1.TenantTheme) (dbmodels.UpsertTenantThemeParams, error) {
+	normalized, err := normalizeThemeColors(theme, "theme")
+	if err != nil {
+		return dbmodels.UpsertTenantThemeParams{}, err
 	}
 	serifFontFamily, err := validateTenantThemeFontFamily(theme.SerifFontFamily, "theme.serif_font_family")
 	if err != nil {

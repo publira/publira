@@ -23,6 +23,36 @@ message UpsertTenantThemeResponse {
   publira.types.v1.TenantTheme theme = 1;
 }
 
+message GetTenantDarkThemeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantDarkThemeResponse {
+  // Absent where the tenant has saved no dark palette.
+  publira.types.v1.TenantThemePalette dark_theme = 1;
+}
+
+// Every color is required and held to the rules UpsertTenantThemeRequest
+// holds the light palette to: a #RRGGBB code, and a contrast of at least 4.5:1
+// between each color and its foreground. A violation is invalid_argument on
+// the field, named under dark_theme.
+message UpsertTenantDarkThemeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  publira.types.v1.TenantThemePalette dark_theme = 2;
+}
+
+message UpsertTenantDarkThemeResponse {
+  publira.types.v1.TenantThemePalette dark_theme = 1;
+}
+
+// Deleting leaves the tenant without a dark palette, which is not an error
+// for a tenant that has none.
+message DeleteTenantDarkThemeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message DeleteTenantDarkThemeResponse {}
+
 // Uploading again replaces the stored icon, so there is no separate replace
 // RPC.
 message UploadTenantIconRequest {
@@ -100,4 +130,10 @@ service TenantThemeService {
   rpc UploadTenantSignInImage(UploadTenantSignInImageRequest) returns (UploadTenantSignInImageResponse) {}
   // Minimum role: tenant_admin.
   rpc DeleteTenantSignInImage(DeleteTenantSignInImageRequest) returns (DeleteTenantSignInImageResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetTenantDarkTheme(GetTenantDarkThemeRequest) returns (GetTenantDarkThemeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpsertTenantDarkTheme(UpsertTenantDarkThemeRequest) returns (UpsertTenantDarkThemeResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteTenantDarkTheme(DeleteTenantDarkThemeRequest) returns (DeleteTenantDarkThemeResponse) {}
 }

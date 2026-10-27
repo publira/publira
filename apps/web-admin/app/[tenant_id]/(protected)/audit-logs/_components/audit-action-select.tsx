@@ -469,6 +469,14 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_theme_updated",
             },
             {
+              label: t("admin.audit.actions.tenant_dark_theme_updated"),
+              value: "tenant_dark_theme_updated",
+            },
+            {
+              label: t("admin.audit.actions.tenant_dark_theme_deleted"),
+              value: "tenant_dark_theme_deleted",
+            },
+            {
               label: t("admin.audit.actions.tenant_logo_uploaded"),
               value: "tenant_logo_uploaded",
             },

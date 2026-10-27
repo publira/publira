@@ -1736,6 +1736,38 @@ type TenantTheme struct {
 	SignInImageID              uuid.NullUUID `json:"sign_in_image_id"`
 }
 
+type TenantThemeDark struct {
+	TenantID                   uuid.UUID `json:"tenant_id"`
+	BackgroundColor            string    `json:"background_color"`
+	ForegroundColor            string    `json:"foreground_color"`
+	SurfaceColor               string    `json:"surface_color"`
+	SurfaceForegroundColor     string    `json:"surface_foreground_color"`
+	CardColor                  string    `json:"card_color"`
+	CardForegroundColor        string    `json:"card_foreground_color"`
+	PopoverColor               string    `json:"popover_color"`
+	PopoverForegroundColor     string    `json:"popover_foreground_color"`
+	PrimaryColor               string    `json:"primary_color"`
+	PrimaryForegroundColor     string    `json:"primary_foreground_color"`
+	SecondaryColor             string    `json:"secondary_color"`
+	SecondaryForegroundColor   string    `json:"secondary_foreground_color"`
+	AccentColor                string    `json:"accent_color"`
+	AccentForegroundColor      string    `json:"accent_foreground_color"`
+	MutedColor                 string    `json:"muted_color"`
+	MutedForegroundColor       string    `json:"muted_foreground_color"`
+	BorderColor                string    `json:"border_color"`
+	InputColor                 string    `json:"input_color"`
+	RingColor                  string    `json:"ring_color"`
+	SuccessColor               string    `json:"success_color"`
+	SuccessForegroundColor     string    `json:"success_foreground_color"`
+	WarningColor               string    `json:"warning_color"`
+	WarningForegroundColor     string    `json:"warning_foreground_color"`
+	DestructiveColor           string    `json:"destructive_color"`
+	DestructiveForegroundColor string    `json:"destructive_foreground_color"`
+	InfoColor                  string    `json:"info_color"`
+	InfoForegroundColor        string    `json:"info_foreground_color"`
+	UpdatedAt                  time.Time `json:"updated_at"`
+}
+
 type TenantUserRole struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`

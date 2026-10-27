@@ -477,6 +477,8 @@
         "tenant_reader_icon_preset_deleted": "読者のアイコンのプリセット削除",
         "tenant_legal_pages_updated": "利用規約とプライバシーポリシー更新",
         "tenant_theme_updated": "テーマ更新",
+        "tenant_dark_theme_updated": "ダークテーマ更新",
+        "tenant_dark_theme_deleted": "ダークテーマの削除",
         "tenant_logo_uploaded": "ロゴのアップロード",
         "tenant_logo_deleted": "ロゴの削除",
         "tenant_icon_uploaded": "アイコンのアップロード",

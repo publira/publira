@@ -113,6 +113,20 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 			},
 		},
 		{
+			name: "dark theme", action: "tenant_dark_theme_updated", targetType: "tenant_branding",
+			save: func() error {
+				_, err := themes.UpsertTenantDarkTheme(ctx, &publiraadminv1.UpsertTenantDarkThemeRequest{Tenant: tenant.tenantContext(), DarkTheme: testDarkThemePalette()})
+				return err
+			},
+		},
+		{
+			name: "dark theme deleted", action: "tenant_dark_theme_deleted", targetType: "tenant_branding",
+			save: func() error {
+				_, err := themes.DeleteTenantDarkTheme(ctx, &publiraadminv1.DeleteTenantDarkThemeRequest{Tenant: tenant.tenantContext()})
+				return err
+			},
+		},
+		{
 			name: "time zone", action: "tenant_timezone_updated", targetType: "tenant_timezone",
 			save: func() error {
 				_, err := settings.UpdateTenantTimezone(ctx, &publiraadminv1.UpdateTenantTimezoneRequest{Tenant: tenant.tenantContext(), Timezone: "Europe/Berlin"})
