@@ -4,6 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
+import { brandMarkForm, uploadPlaceholderMark } from "../src/brand-marks";
 import { applyScenarioSql, querySql } from "../src/db";
 import {
   SIGN_IN_PROVIDERS_ADMIN,
@@ -11,6 +12,7 @@ import {
   SIGN_IN_PROVIDERS_TENANT,
 } from "../src/scenarios/sign-in-providers";
 import {
+  storefrontPath,
   WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL,
   WEB_STOREFRONT_SIGN_IN_PROVIDERS_BASE_URL,
 } from "../src/urls";
@@ -18,7 +20,8 @@ import {
 /**
  * A tenant administrator offering their readers Sign in with Apple and Google,
  * and switching one of them off again, and the providers the tenant's public
- * API then names.
+ * API then names. A mark uploaded for one of them is drawn on that provider's
+ * button on the site's sign-in screen.
  */
 
 const SIGN_IN_PATH = "/integrations/sign-in";
@@ -113,6 +116,39 @@ const status = (
 const toggle = (page: Page, legend: "Apple" | "Google"): Locator =>
   page.getByRole("checkbox", { name: `Offer Sign in with ${legend}` });
 
+const SITE_LOGIN_URL = `${WEB_STOREFRONT_SIGN_IN_PROVIDERS_BASE_URL}${storefrontPath("/login")}`;
+
+interface SignInButtons {
+  /** Whether the Apple button heads its label with a loaded image. */
+  appleMarked: boolean;
+  /** Whether the Google button heads its label with a loaded image. */
+  googleMarked: boolean;
+}
+
+/**
+ * What the site's sign-in screen draws on each provider's button.
+ * `naturalWidth` is what tells a delivered image from one whose request failed.
+ */
+const signInButtons = async (page: Page): Promise<SignInButtons> => {
+  await page.goto(SITE_LOGIN_URL);
+  const marked = async (name: string): Promise<boolean> => {
+    const button = page.getByRole("button", { exact: true, name });
+    await expect(button).toBeVisible();
+    return await button.evaluate((element) => {
+      const image = element.firstElementChild;
+      return (
+        image instanceof HTMLImageElement &&
+        image.complete &&
+        image.naturalWidth > 0
+      );
+    });
+  };
+  return {
+    appleMarked: await marked("Continue with Apple"),
+    googleMarked: await marked("Continue with Google"),
+  };
+};
+
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(() => {
@@ -180,6 +216,30 @@ test.describe("sign-in providers", () => {
         appleSignIn: { servicesId: SERVICES_ID },
         googleSignIn: { webClientId: WEB_CLIENT_ID },
       });
+  });
+
+  test("draws an uploaded Google mark on the site's Google button alone", async ({
+    page,
+    context,
+  }) => {
+    const site = await context.newPage();
+    expect(await signInButtons(site)).toStrictEqual({
+      appleMarked: false,
+      googleMarked: false,
+    });
+
+    await page.goto(`${WEB_ADMIN_SIGN_IN_PROVIDERS_BASE_URL}/branding`);
+    await expect(brandMarkForm(page, "google_sign_in")).toBeVisible({
+      timeout: 30_000,
+    });
+    await uploadPlaceholderMark(page, "google_sign_in");
+
+    await expect
+      .poll(() => signInButtons(site), {
+        message: `${SITE_LOGIN_URL} never drew the uploaded Google mark`,
+        timeout: 30_000,
+      })
+      .toStrictEqual({ appleMarked: false, googleMarked: true });
   });
 
   test("keeps what was typed when a value is refused", async ({ page }) => {

@@ -2,6 +2,11 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { signInAsSeedAdmin } from "../src/admin";
+import {
+  brandMarkForm,
+  expectBrandMarkStatus,
+  uploadPlaceholderMark,
+} from "../src/brand-marks";
 import { seedSeriesPublicId } from "../src/scenarios/reading-signals";
 import { serverActionAnswered } from "../src/server-action";
 import { storefrontPath, WEB_STOREFRONT_BASE_URL } from "../src/urls";
@@ -11,43 +16,8 @@ const SERIES_URL = `${WEB_STOREFRONT_BASE_URL}${storefrontPath(
   `/series/${seedSeriesPublicId(90)}`
 )}`;
 
-/** The console's form for the X mark, named by the kind it posts. */
-const xMarkForm = (page: Page): Locator =>
-  page.locator("form#tenant-brand-mark-x_share");
-
-const expectStatus = (scope: Locator, text: string): Promise<void> =>
-  expect(scope.getByRole("status").filter({ hasText: text })).toBeVisible({
-    timeout: 60_000,
-  });
-
-/**
- * A placeholder drawn for this test, so that no third party's mark is ever
- * part of the suite: diagonal stripes on a 96×96 PNG.
- */
-const drawPlaceholderMark = async (page: Page): Promise<Buffer> => {
-  const dataUrl = await page.evaluate(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 96;
-    canvas.height = 96;
-    const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("no 2d context");
-    }
-    context.fillStyle = "#f4f4f5";
-    context.fillRect(0, 0, 96, 96);
-    context.strokeStyle = "#7c3aed";
-    context.lineWidth = 8;
-    for (let offset = -96; offset < 96; offset += 24) {
-      context.beginPath();
-      context.moveTo(offset, 96);
-      context.lineTo(offset + 96, 0);
-      context.stroke();
-    }
-    return canvas.toDataURL("image/png");
-  });
-
-  return Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64");
-};
+/** The console's form for the X mark. */
+const xMarkForm = (page: Page): Locator => brandMarkForm(page, "x_share");
 
 const deleteXMarkIfSet = async (page: Page): Promise<void> => {
   const form = xMarkForm(page);
@@ -64,7 +34,7 @@ const deleteXMarkIfSet = async (page: Page): Promise<void> => {
   const answered = serverActionAnswered(page);
   await dialog.getByRole("button", { exact: true, name: "Delete" }).click();
   await answered;
-  await expectStatus(form, "The mark was deleted.");
+  await expectBrandMarkStatus(form, "The mark was deleted.");
 };
 
 /**
@@ -127,23 +97,7 @@ test.describe("admin brand marks", () => {
   test("an uploaded X mark heads the share menu's X row, and deleting it leaves the label alone", async ({
     page,
   }) => {
-    const form = xMarkForm(page);
-    await form.getByRole("button", { exact: true, name: "Upload" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog
-      .getByRole("checkbox", {
-        name: "I have read these guidelines and accept them.",
-      })
-      .check();
-    await dialog.locator('input[name="image"]').setInputFiles({
-      buffer: await drawPlaceholderMark(page),
-      mimeType: "image/png",
-      name: "placeholder-mark.png",
-    });
-    const uploaded = serverActionAnswered(page);
-    await dialog.getByRole("button", { name: "Upload the mark" }).click();
-    await uploaded;
-    await expectStatus(form, "The mark was uploaded.");
+    await uploadPlaceholderMark(page, "x_share");
 
     await expect
       .poll(async () => await xRowDrawsMark(page), {
