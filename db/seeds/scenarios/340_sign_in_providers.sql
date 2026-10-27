@@ -6,7 +6,8 @@
 -- another suite reads can absorb them.
 --
 -- Applying it is also how the suite puts the tenant back: both providers'
--- settings are deleted, and the tenant keeps the iOS app its app links name.
+-- settings and the brand marks it uploads are deleted, and the tenant keeps
+-- the iOS app its app links name.
 -- public_id values are hard-coded in e2e/src/scenarios/sign-in-providers.ts.
 --   tenant SgnnTNNTAAA1 (sign-in.localhost / admin.sign-in.localhost)
 --   admin  SgnnADMNAAA1 (sign-in-admin@example.com)
@@ -91,6 +92,9 @@ DELETE FROM tenant_apple_sign_in_config
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'SgnnTNNTAAA1');
 
 DELETE FROM tenant_google_sign_in_config
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'SgnnTNNTAAA1');
+
+DELETE FROM tenant_brand_marks
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'SgnnTNNTAAA1');
 
 -- The iOS app Sign in with Apple accepts, which the settings show read-only.
