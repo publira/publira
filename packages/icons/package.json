@@ -203,6 +203,10 @@
       "types": "./dist/shield-user-icon.d.mts",
       "default": "./dist/shield-user-icon.mjs"
     },
+    "./sun-moon-icon": {
+      "types": "./dist/sun-moon-icon.d.mts",
+      "default": "./dist/sun-moon-icon.mjs"
+    },
     "./tag-icon": {
       "types": "./dist/tag-icon.d.mts",
       "default": "./dist/tag-icon.mjs"
