@@ -403,25 +403,29 @@ FROM platform_audit_logs a
 WHERE ($1::text IS NULL OR actor_pu.public_id = $1::text)
     AND ($2::uuid IS NULL OR a.tenant_id = $2::uuid)
     AND ($3::text IS NULL OR a.action = $3::text)
+    AND ($4::timestamptz IS NULL OR a.created_at >= $4::timestamptz)
+    AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
     AND (
-        $4::uuid IS NULL
+        $6::uuid IS NULL
         OR (
-            $5::boolean
-            AND (a.created_at, a.id) >= ($6::timestamptz, $4::uuid)
+            $7::boolean
+            AND (a.created_at, a.id) >= ($8::timestamptz, $6::uuid)
         )
         OR (
-            NOT $5::boolean
-            AND (a.created_at, a.id) > ($6::timestamptz, $4::uuid)
+            NOT $7::boolean
+            AND (a.created_at, a.id) > ($8::timestamptz, $6::uuid)
         )
     )
 ORDER BY a.created_at ASC, a.id ASC
-LIMIT $7
+LIMIT $9
 `
 
 type ListPlatformAuditLogsAscParams struct {
 	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
 	FilterTenantID          uuid.NullUUID  `json:"filter_tenant_id"`
 	FilterAction            sql.NullString `json:"filter_action"`
+	FilterCreatedFrom       sql.NullTime   `json:"filter_created_from"`
+	FilterCreatedTo         sql.NullTime   `json:"filter_created_to"`
 	CursorID                uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive         bool           `json:"cursor_inclusive"`
 	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
@@ -452,6 +456,8 @@ func (q *Queries) ListPlatformAuditLogsAsc(ctx context.Context, arg ListPlatform
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantID,
 		arg.FilterAction,
+		arg.FilterCreatedFrom,
+		arg.FilterCreatedTo,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,
@@ -537,25 +543,29 @@ FROM platform_audit_logs a
 WHERE ($1::text IS NULL OR actor_pu.public_id = $1::text)
     AND ($2::uuid IS NULL OR a.tenant_id = $2::uuid)
     AND ($3::text IS NULL OR a.action = $3::text)
+    AND ($4::timestamptz IS NULL OR a.created_at >= $4::timestamptz)
+    AND ($5::timestamptz IS NULL OR a.created_at < $5::timestamptz)
     AND (
-        $4::uuid IS NULL
+        $6::uuid IS NULL
         OR (
-            $5::boolean
-            AND (a.created_at, a.id) <= ($6::timestamptz, $4::uuid)
+            $7::boolean
+            AND (a.created_at, a.id) <= ($8::timestamptz, $6::uuid)
         )
         OR (
-            NOT $5::boolean
-            AND (a.created_at, a.id) < ($6::timestamptz, $4::uuid)
+            NOT $7::boolean
+            AND (a.created_at, a.id) < ($8::timestamptz, $6::uuid)
         )
     )
 ORDER BY a.created_at DESC, a.id DESC
-LIMIT $7
+LIMIT $9
 `
 
 type ListPlatformAuditLogsDescParams struct {
 	FilterActorUserPublicID sql.NullString `json:"filter_actor_user_public_id"`
 	FilterTenantID          uuid.NullUUID  `json:"filter_tenant_id"`
 	FilterAction            sql.NullString `json:"filter_action"`
+	FilterCreatedFrom       sql.NullTime   `json:"filter_created_from"`
+	FilterCreatedTo         sql.NullTime   `json:"filter_created_to"`
 	CursorID                uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive         bool           `json:"cursor_inclusive"`
 	CursorCreatedAt         sql.NullTime   `json:"cursor_created_at"`
@@ -594,6 +604,8 @@ func (q *Queries) ListPlatformAuditLogsDesc(ctx context.Context, arg ListPlatfor
 		arg.FilterActorUserPublicID,
 		arg.FilterTenantID,
 		arg.FilterAction,
+		arg.FilterCreatedFrom,
+		arg.FilterCreatedTo,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorCreatedAt,

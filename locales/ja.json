@@ -293,6 +293,7 @@
         "access_ticket": "アクセスチケット",
         "announcement": "お知らせ",
         "audience_stats": "読者の反応",
+        "audit_log": "監査ログ",
         "campaign_banner": "キャンペーンバナー",
         "coin_pack": "コインパック",
         "coin_settings": "コイン設定",
@@ -460,6 +461,7 @@
         "royalty_statement_closed": "印税の月締め",
         "royalty_statement_exported": "印税明細のCSVダウンロード",
         "stats_exported": "アナリティクスのCSVダウンロード",
+        "audit_log_exported": "監査ログのCSVダウンロード",
         "tenant_admin_invite_accepted": "招待の承諾",
         "tenant_site_copy_updated": "公開サイト表示設定更新",
         "tenant_timezone_updated": "タイムゾーン更新",
@@ -6423,6 +6425,7 @@
     },
     "audit": {
       "actions": {
+        "audit_log_exported": "監査ログをCSVでダウンロード",
         "operator_created": "オペレーターを作成",
         "operator_deleted": "オペレーターを削除",
         "operator_mfa_disabled": "2段階認証を解除",
@@ -6479,6 +6482,7 @@
       "pagination_aria": "監査ログ一覧のページ送り",
       "showing": "{$count}件を表示",
       "targets": {
+        "audit_log": "{$period}の監査ログ",
         "platform_config": "プラットフォーム設定",
         "platform_policy": "プラットフォームのポリシー",
         "platform_retention": "保持期間の既定値",

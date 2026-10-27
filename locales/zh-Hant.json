@@ -293,6 +293,7 @@
         "access_ticket": "閱讀券",
         "announcement": "公告",
         "audience_stats": "讀者反應",
+        "audit_log": "稽核記錄",
         "campaign_banner": "活動橫幅",
         "coin_pack": "代幣包",
         "coin_settings": "代幣設定",
@@ -460,6 +461,7 @@
         "royalty_statement_closed": "結算了版稅月份",
         "royalty_statement_exported": "下載了版稅明細CSV",
         "stats_exported": "下載了分析CSV",
+        "audit_log_exported": "下載了稽核記錄CSV",
         "tenant_admin_invite_accepted": "接受了邀請",
         "tenant_site_copy_updated": "更新了公開網站呈現",
         "tenant_timezone_updated": "更新了時區",
@@ -6423,6 +6425,7 @@
     },
     "audit": {
       "actions": {
+        "audit_log_exported": "下載了稽核記錄CSV",
         "operator_created": "建立了營運人員",
         "operator_deleted": "刪除了營運人員",
         "operator_mfa_disabled": "關閉了兩步驟驗證",
@@ -6479,6 +6482,7 @@
       "pagination_aria": "稽核記錄分頁",
       "showing": "顯示{$count}筆",
       "targets": {
+        "audit_log": "{$period}的稽核記錄",
         "platform_config": "平台設定",
         "platform_policy": "平台政策",
         "platform_retention": "保留期限預設值",

@@ -44,7 +44,40 @@ message ListAuditLogsResponse {
   string next_token = 4;
 }
 
+message ExportAuditLogsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone, covering at most 366 days. A longer period is refused with
+  // invalid_argument.
+  string start_date = 2;
+  string end_date = 3;
+  // Narrow the file the way ListAuditLogsRequest's fields of the same names
+  // narrow the list. Empty leaves the file unnarrowed.
+  string actor_user_public_id = 4;
+  string action = 5;
+}
+
+message ExportAuditLogsResponse {
+  // The entries as CSV: UTF-8 with a byte order mark, CRLF line endings,
+  // RFC 4180 quoting, and a field a spreadsheet would read as a formula
+  // written with a leading apostrophe. A header row, then one row per entry
+  // of the period, oldest first, with the columns
+  //
+  //   time, actor_public_id, actor_name, actor_role, action, outcome, reason,
+  //   target_type, target_id, client_ip
+  //
+  // time is the instant the entry was recorded, in RFC 3339 with the offset
+  // of the tenant's time zone. The other columns are what AdminAuditLog's
+  // fields of the same names carry, an absent one written empty.
+  bytes csv = 1;
+}
+
 service AdminAuditLogService {
   // Minimum role: tenant_admin.
   rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse) {}
+  // Every entry of a period as one CSV file. The export is itself recorded
+  // in the tenant's audit log, after the entries it read.
+  //
+  // Minimum role: tenant_admin.
+  rpc ExportAuditLogs(ExportAuditLogsRequest) returns (ExportAuditLogsResponse) {}
 }

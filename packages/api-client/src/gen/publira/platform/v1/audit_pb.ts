@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/audit.proto.
  */
 export const file_publira_platform_v1_audit: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL2F1ZGl0LnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIrYCChBQbGF0Zm9ybUF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX3JvbGUYAiABKAkSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEhgKEHRhcmdldF9wdWJsaWNfaWQYDiABKAkSDwoHb3V0Y29tZRgHIAEoCRIOCgZyZWFzb24YCCABKAkSEQoJY2xpZW50X2lwGAkgASgJEhIKCmNyZWF0ZWRfYXQYCiABKAkSEgoKYWN0b3JfbmFtZRgLIAEoCRITCgt0ZW5hbnRfbmFtZRgMIAEoCRITCgt0YXJnZXRfbmFtZRgNIAEoCSKbAQoUTGlzdEF1ZGl0TG9nc1JlcXVlc3QSDQoFbGltaXQYASABKAUSHAoUYWN0b3JfdXNlcl9wdWJsaWNfaWQYBCABKAkSDgoGYWN0aW9uGAUgASgJEg0KBXRva2VuGAYgASgJEhEKCXRlbmFudF9pZBgHIAEoCUoECAIQA0oECAMQBFIGb2Zmc2V0UhB0ZW5hbnRfcHVibGljX2lkIn4KFUxpc3RBdWRpdExvZ3NSZXNwb25zZRI5CgphdWRpdF9sb2dzGAEgAygLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1ZGl0TG9nEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkygwEKF1BsYXRmb3JtQXVkaXRMb2dTZXJ2aWNlEmgKDUxpc3RBdWRpdExvZ3MSKS5wdWJsaXJhLnBsYXRmb3JtLnYxLkxpc3RBdWRpdExvZ3NSZXF1ZXN0GioucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0QXVkaXRMb2dzUmVzcG9uc2UiAEJdWltnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvcGxhdGZvcm0vdjE7cHVibGlyYXNwbGF0Zm9ybXYxYgZwcm90bzM");
+  fileDesc("Ch9wdWJsaXJhL3BsYXRmb3JtL3YxL2F1ZGl0LnByb3RvEhNwdWJsaXJhLnBsYXRmb3JtLnYxIrYCChBQbGF0Zm9ybUF1ZGl0TG9nEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAEgASgJEhIKCmFjdG9yX3JvbGUYAiABKAkSGAoQdGVuYW50X3B1YmxpY19pZBgDIAEoCRIOCgZhY3Rpb24YBCABKAkSEwoLdGFyZ2V0X3R5cGUYBSABKAkSEQoJdGFyZ2V0X2lkGAYgASgJEhgKEHRhcmdldF9wdWJsaWNfaWQYDiABKAkSDwoHb3V0Y29tZRgHIAEoCRIOCgZyZWFzb24YCCABKAkSEQoJY2xpZW50X2lwGAkgASgJEhIKCmNyZWF0ZWRfYXQYCiABKAkSEgoKYWN0b3JfbmFtZRgLIAEoCRITCgt0ZW5hbnRfbmFtZRgMIAEoCRITCgt0YXJnZXRfbmFtZRgNIAEoCSKbAQoUTGlzdEF1ZGl0TG9nc1JlcXVlc3QSDQoFbGltaXQYASABKAUSHAoUYWN0b3JfdXNlcl9wdWJsaWNfaWQYBCABKAkSDgoGYWN0aW9uGAUgASgJEg0KBXRva2VuGAYgASgJEhEKCXRlbmFudF9pZBgHIAEoCUoECAIQA0oECAMQBFIGb2Zmc2V0UhB0ZW5hbnRfcHVibGljX2lkIn4KFUxpc3RBdWRpdExvZ3NSZXNwb25zZRI5CgphdWRpdF9sb2dzGAEgAygLMiUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybUF1ZGl0TG9nEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkifwoWRXhwb3J0QXVkaXRMb2dzUmVxdWVzdBISCgpzdGFydF9kYXRlGAEgASgJEhAKCGVuZF9kYXRlGAIgASgJEhwKFGFjdG9yX3VzZXJfcHVibGljX2lkGAMgASgJEg4KBmFjdGlvbhgEIAEoCRIRCgl0ZW5hbnRfaWQYBSABKAkiJgoXRXhwb3J0QXVkaXRMb2dzUmVzcG9uc2USCwoDY3N2GAEgASgMMvMBChdQbGF0Zm9ybUF1ZGl0TG9nU2VydmljZRJoCg1MaXN0QXVkaXRMb2dzEikucHVibGlyYS5wbGF0Zm9ybS52MS5MaXN0QXVkaXRMb2dzUmVxdWVzdBoqLnB1YmxpcmEucGxhdGZvcm0udjEuTGlzdEF1ZGl0TG9nc1Jlc3BvbnNlIgASbgoPRXhwb3J0QXVkaXRMb2dzEisucHVibGlyYS5wbGF0Zm9ybS52MS5FeHBvcnRBdWRpdExvZ3NSZXF1ZXN0GiwucHVibGlyYS5wbGF0Zm9ybS52MS5FeHBvcnRBdWRpdExvZ3NSZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw");
 
 /**
  * @generated from message publira.platform.v1.PlatformAuditLog
@@ -171,6 +171,81 @@ export const ListAuditLogsResponseSchema: GenMessage<ListAuditLogsResponse> = /*
   messageDesc(file_publira_platform_v1_audit, 2);
 
 /**
+ * @generated from message publira.platform.v1.ExportAuditLogsRequest
+ */
+export type ExportAuditLogsRequest = Message<"publira.platform.v1.ExportAuditLogsRequest"> & {
+  /**
+   * The period, as inclusive calendar dates (YYYY-MM-DD) in the install's
+   * default time zone, covering at most 366 days. A longer period is refused
+   * with invalid_argument.
+   *
+   * @generated from field: string start_date = 1;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 2;
+   */
+  endDate: string;
+
+  /**
+   * Narrow the file the way ListAuditLogsRequest's fields of the same names
+   * narrow the list. Empty leaves the file unnarrowed.
+   *
+   * @generated from field: string actor_user_public_id = 3;
+   */
+  actorUserPublicId: string;
+
+  /**
+   * @generated from field: string action = 4;
+   */
+  action: string;
+
+  /**
+   * @generated from field: string tenant_id = 5;
+   */
+  tenantId: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.ExportAuditLogsRequest.
+ * Use `create(ExportAuditLogsRequestSchema)` to create a new message.
+ */
+export const ExportAuditLogsRequestSchema: GenMessage<ExportAuditLogsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_audit, 3);
+
+/**
+ * @generated from message publira.platform.v1.ExportAuditLogsResponse
+ */
+export type ExportAuditLogsResponse = Message<"publira.platform.v1.ExportAuditLogsResponse"> & {
+  /**
+   * The entries as CSV: UTF-8 with a byte order mark, CRLF line endings,
+   * RFC 4180 quoting, and a field a spreadsheet would read as a formula
+   * written with a leading apostrophe. A header row, then one row per entry
+   * of the period, oldest first, with the columns
+   *
+   *   time, actor_public_id, actor_name, actor_role, action, outcome, reason,
+   *   target_type, target_id, client_ip, tenant_public_id, tenant_name,
+   *   target_public_id, target_name
+   *
+   * time is the instant the entry was recorded, in RFC 3339 with the offset
+   * of the install's default time zone. The other columns are what
+   * PlatformAuditLog's fields of the same names carry, actor_public_id being
+   * its actor_user_public_id, an absent one written empty.
+   *
+   * @generated from field: bytes csv = 1;
+   */
+  csv: Uint8Array;
+};
+
+/**
+ * Describes the message publira.platform.v1.ExportAuditLogsResponse.
+ * Use `create(ExportAuditLogsResponseSchema)` to create a new message.
+ */
+export const ExportAuditLogsResponseSchema: GenMessage<ExportAuditLogsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_audit, 4);
+
+/**
  * @generated from service publira.platform.v1.PlatformAuditLogService
  */
 export const PlatformAuditLogService: GenService<{
@@ -181,6 +256,18 @@ export const PlatformAuditLogService: GenService<{
     methodKind: "unary";
     input: typeof ListAuditLogsRequestSchema;
     output: typeof ListAuditLogsResponseSchema;
+  },
+  /**
+   * Every entry of a period as one CSV file, for every operator role. The
+   * export is itself recorded in the audit log, after the entries it read,
+   * and about the tenant the file was narrowed to, if any.
+   *
+   * @generated from rpc publira.platform.v1.PlatformAuditLogService.ExportAuditLogs
+   */
+  exportAuditLogs: {
+    methodKind: "unary";
+    input: typeof ExportAuditLogsRequestSchema;
+    output: typeof ExportAuditLogsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_platform_v1_audit, 0);

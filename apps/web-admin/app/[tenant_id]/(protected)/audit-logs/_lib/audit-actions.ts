@@ -90,6 +90,7 @@ export const auditActions = [
   "royalty_statement_closed",
   "royalty_statement_exported",
   "stats_exported",
+  "audit_log_exported",
   "tenant_member_added",
   "tenant_member_role_updated",
   "tenant_member_removed",

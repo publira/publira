@@ -293,6 +293,7 @@
         "access_ticket": "Access ticket",
         "announcement": "Announcement",
         "audience_stats": "Audience",
+        "audit_log": "Audit log",
         "campaign_banner": "Campaign banner",
         "coin_pack": "Coin pack",
         "coin_settings": "Coin settings",
@@ -460,6 +461,7 @@
         "royalty_statement_closed": "Royalty month closed",
         "royalty_statement_exported": "Royalty statement CSV downloaded",
         "stats_exported": "Analytics CSV downloaded",
+        "audit_log_exported": "Audit log CSV downloaded",
         "tenant_admin_invite_accepted": "Invitation accepted",
         "tenant_site_copy_updated": "Public site display updated",
         "tenant_timezone_updated": "Time zone updated",
@@ -6423,6 +6425,7 @@
     },
     "audit": {
       "actions": {
+        "audit_log_exported": "Downloaded the audit log as CSV",
         "operator_created": "Created an operator",
         "operator_deleted": "Deleted an operator",
         "operator_mfa_disabled": "Turned off two-step verification",
@@ -6479,6 +6482,7 @@
       "pagination_aria": "Audit log pagination",
       "showing": "Showing {$count}",
       "targets": {
+        "audit_log": "Audit log for {$period}",
         "platform_config": "Platform settings",
         "platform_policy": "Platform policy",
         "platform_retention": "Retention defaults",

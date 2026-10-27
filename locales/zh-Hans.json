@@ -293,6 +293,7 @@
         "access_ticket": "阅读券",
         "announcement": "公告",
         "audience_stats": "读者反响",
+        "audit_log": "审计日志",
         "campaign_banner": "活动横幅",
         "coin_pack": "代币包",
         "coin_settings": "代币设置",
@@ -460,6 +461,7 @@
         "royalty_statement_closed": "结算了版税月份",
         "royalty_statement_exported": "下载了版税明细CSV",
         "stats_exported": "下载了分析CSV",
+        "audit_log_exported": "下载了审计日志CSV",
         "tenant_admin_invite_accepted": "接受了邀请",
         "tenant_site_copy_updated": "更新了公开站点展示",
         "tenant_timezone_updated": "更新了时区",
@@ -6423,6 +6425,7 @@
     },
     "audit": {
       "actions": {
+        "audit_log_exported": "下载了审计日志CSV",
         "operator_created": "创建了运营人员",
         "operator_deleted": "删除了运营人员",
         "operator_mfa_disabled": "关闭了两步验证",
@@ -6479,6 +6482,7 @@
       "pagination_aria": "审计日志分页",
       "showing": "显示{$count}条",
       "targets": {
+        "audit_log": "{$period}的审计日志",
         "platform_config": "平台设置",
         "platform_policy": "平台策略",
         "platform_retention": "保留期限默认值",

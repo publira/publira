@@ -378,6 +378,26 @@ const coinActionName = (action: string) => {
   }
 };
 
+/** A CSV download: a royalty statement, an analytics report, or the log. */
+const exportActionName = (action: string) => {
+  switch (action) {
+    case "royalty_statement_exported": {
+      return (
+        <Message message="admin.audit.actions.royalty_statement_exported" />
+      );
+    }
+    case "stats_exported": {
+      return <Message message="admin.audit.actions.stats_exported" />;
+    }
+    case "audit_log_exported": {
+      return <Message message="admin.audit.actions.audit_log_exported" />;
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on readers, access tickets, royalties, or members. */
 const readerActionName = (action: string) => {
   switch (action) {
@@ -414,14 +434,6 @@ const readerActionName = (action: string) => {
     }
     case "royalty_statement_closed": {
       return <Message message="admin.audit.actions.royalty_statement_closed" />;
-    }
-    case "royalty_statement_exported": {
-      return (
-        <Message message="admin.audit.actions.royalty_statement_exported" />
-      );
-    }
-    case "stats_exported": {
-      return <Message message="admin.audit.actions.stats_exported" />;
     }
     case "tenant_member_added": {
       return <Message message="admin.audit.actions.tenant_member_added" />;
@@ -691,6 +703,7 @@ const actionName = (action: string) =>
   campaignBannerActionName(action) ??
   contactMessageActionName(action) ??
   readerActionName(action) ??
+  exportActionName(action) ??
   purchaseActionName(action) ??
   subscriptionPlanActionName(action) ??
   coinActionName(action) ??
@@ -842,13 +855,16 @@ const settingTargetName = (targetType: string) => {
 };
 
 /**
- * The name of an integration, subscription plan, coin, royalty, analytics, or
- * account target type.
+ * The name of an integration, subscription plan, coin, royalty, analytics,
+ * audit log, or account target type.
  */
 const tenantTargetName = (targetType: string) => {
   switch (targetType) {
     case "audience_stats": {
       return <Message message="admin.audit.targets.audience_stats" />;
+    }
+    case "audit_log": {
+      return <Message message="admin.audit.targets.audit_log" />;
     }
     case "coin_pack": {
       return <Message message="admin.audit.targets.coin_pack" />;

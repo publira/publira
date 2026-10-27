@@ -2,9 +2,10 @@
 title: Audit logs
 description: What the Platform Console's audit log and a tenant's audit log record, who can read each, and what neither records.
 published: 2026-10-21
+updated: 2026-10-27
 ---
 
-An install keeps two audit logs that never share entries: the Platform Console's, for what operators and `publiractl` change, and each tenant's, for what its staff change in the tenant console. Entries are never deleted, and neither log can be exported.
+An install keeps two audit logs that never share entries: the Platform Console's, for what operators and `publiractl` change, and each tenant's, for what its staff change in the tenant console. Entries are never deleted, and either log can be [exported as CSV](#exporting-a-log) a period at a time.
 
 ## The Platform Console's log
 
@@ -18,10 +19,19 @@ It records:
 - **Platform settings and services**: each save of the general settings, the security and community policy, the retention defaults, the email, storage, and search settings, and the Web Push contact, and each test of the email, storage, and search connections, with its outcome.
 - **Tenants and their staff**: tenants created, changed, suspended, and resumed; administrators invited, and invitations resent and canceled; members added, created with a password, given a new role, and removed.
 - **Readers**: accounts suspended, restored, and deleted by an operator.
+- **The log itself**: each export of it, with the period it covered and the tenant it was narrowed to.
 
 ## A tenant's log
 
 Each tenant's **Audit logs**, under **Administration** in its console, records what its staff do there, two-step verification included, and only its Tenant admins can read it. What it records is in [Audit log](../../4-console/3-setup/8-audit-log.md). It cannot be read from the Platform Console, and what you change for a tenant from the Platform Console or `publiractl` is recorded in the Platform Console's log, not the tenant's.
+
+## Exporting a log
+
+Either log can be exported as one CSV file covering at most 366 days, by the people who can read it: a tenant's log by its Tenant admins, the Platform Console's by every operator, an **Auditor** included. The period is whole days, in the tenant's time zone for a tenant's log and in the platform's **Default time zone** for the Platform Console's, and the actor, the action, and for the Platform Console's log the tenant narrow the file the way they narrow the list.
+
+The file holds every entry of the period, oldest first, one row to an entry: the time it was recorded, with the offset of the zone the period is in; the actor's public ID, name, and role; the action, its outcome, and its reason; the kind and ID of what it acted on; and the client address. A file of the Platform Console's log also names each entry's tenant, by public ID and name, and the public ID and name of what the entry acted on. The file is UTF-8 with a byte order mark, which is what makes a spreadsheet read it as UTF-8, and a value a spreadsheet would read as a formula is written with a leading apostrophe, so that it stays text.
+
+An export is itself an entry in the log it read, so the log shows who took a copy of which period, and when.
 
 ## What neither log records
 
