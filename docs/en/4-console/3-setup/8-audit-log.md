@@ -18,9 +18,15 @@ Each entry shows:
 
 The newest entries come first, 20 to a page. To narrow the list, set **From** and **To**, which are whole days in the tenant's time zone, an **Action**, or an **Actor**, and choose **Apply**. **Reset** clears them.
 
-![The Audit log narrowed to April 2026: the From, To, Action, and Actor filters with Apply and Reset, and entries giving the date and time, the actor with their public ID and role, the action with what it acted on, and the outcome.](./audit-log-list.png)
+![The Audit log narrowed to April 2026: the From, To, Action, and Actor filters with Apply and Reset, Download CSV beside them, and entries giving the date and time, the actor with their public ID and role, the action with what it acted on, and the outcome.](./audit-log-list.png)
 
-The log cannot be exported, and its entries are never deleted. An entry keeps the name and public ID of a member of staff whose account has since been deleted.
+Entries are never deleted. An entry keeps the name and public ID of a member of staff whose account has since been deleted.
+
+## Downloading the log
+
+**Download CSV**, beside the filters, saves the entries of the period and the **Action** and **Actor** shown as one CSV file, oldest first, named after the tenant's public ID and the period, such as `audit-log-<tenant>-2026-04-01--2026-04-30.csv`. One file covers at most 366 days. Without a **To**, the period ends today; without a **From**, it is the 366 days ending on **To**, or today. A period longer than that, or one whose **From** is after its **To**, cannot be downloaded until you narrow it.
+
+The columns, and how the file is encoded so that a spreadsheet opens it as text, are described in [Exporting a log](../../3-operations/12-security/3-audit-logs.md#exporting-a-log). Each download is itself recorded in the log, as **Audit log CSV downloaded**, so the log shows who took a copy of which period.
 
 ## What is recorded
 
@@ -32,6 +38,7 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 | Readers | Readers suspended, restored, and deleted, their dates of birth changed or cleared, their icons removed, access tickets issued and revoked, and refunds of their purchases requested and made. Contact messages handled, reopened, assigned, annotated, and answered |
 | Royalties | Closing settings changed, months closed, and statements downloaded as CSV |
 | Analytics | Reports downloaded as CSV from **Revenue**, **Audience**, and **Drop-off** |
+| Audit log | The log downloaded as CSV, with the period it covered |
 | Staff | Members invited, invitations resent, canceled, and accepted, roles changed, and members removed |
 | Branding | The theme changed, and the logo, the icon, the image beside the sign-in form, and the brand marks uploaded and removed |
 | Settings | On the **General** tab, the public site display, the time zone, the default language, reader comments, age verification, the terms of service and privacy policy, and refused email addresses; on **Limits and retention**, community limits and retention periods; and what readers may show as an icon, with the preset icons added and deleted |

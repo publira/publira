@@ -363,6 +363,10 @@
         "reset": "重設",
         "actor_remove": "移除操作者"
       },
+      "export": {
+        "button": "下載CSV",
+        "period_invalid": "可下載為CSV的期間最長366天，且開始日期不晚於結束日期。縮小期間後即可下載。"
+      },
       "actions": {
         "all": "全部",
         "series_created": "建立了系列",

@@ -1,12 +1,18 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAccessToken, mockGetTenantDisplayTimeZone, mockListAuditLogs } =
-  vi.hoisted(() => ({
-    mockGetAccessToken: vi.fn(),
-    mockGetTenantDisplayTimeZone: vi.fn(),
-    mockListAuditLogs: vi.fn(),
-  }));
+const {
+  mockExportAuditLogs,
+  mockGetAccessToken,
+  mockGetTenantDisplayTimeZone,
+  mockListAuditLogs,
+} = vi.hoisted(() => ({
+  mockExportAuditLogs: vi.fn(),
+  mockGetAccessToken: vi.fn(),
+  mockGetTenantDisplayTimeZone: vi.fn(),
+  mockListAuditLogs: vi.fn(),
+}));
 
 vi.mock("./session", () => ({
   getAccessToken: mockGetAccessToken,
@@ -19,6 +25,7 @@ vi.mock("./tenant-timezone", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     audit: {
+      exportAuditLogs: mockExportAuditLogs,
       listAuditLogs: mockListAuditLogs,
     },
   },
@@ -139,6 +146,114 @@ describe("audit lib", () => {
         token: "",
       },
       { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+});
+
+const january = {
+  action: "",
+  actor: "",
+  end: "2026-01-31",
+  start: "2026-01-01",
+} as const;
+
+describe("auditLogCsvPath", () => {
+  it("spells out the period and only the filters that narrow the file", async () => {
+    const { auditLogCsvPath, auditLogsHref } = await import("./audit");
+
+    expect(auditLogCsvPath(january)).toBe(
+      "/api/v1/audit-logs/csv?from=2026-01-01&to=2026-01-31"
+    );
+    expect(
+      auditLogsHref({ ...january, action: "label_created", actor: "ADMIN001" })
+    ).toBe(
+      "/audit-logs?action=label_created&actor=ADMIN001&from=2026-01-01&to=2026-01-31"
+    );
+  });
+});
+
+describe("exportAuditLogs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("asks for the period and the filters, and answers the file byte for byte", async () => {
+    const csv = new TextEncoder().encode("\uFEFFtime,actor_public_id\r\n");
+    mockExportAuditLogs.mockResolvedValueOnce({ csv });
+
+    const { exportAuditLogs } = await import("./audit");
+
+    await expect(
+      exportAuditLogs("TENANT001", {
+        ...january,
+        action: "label_created",
+        actor: "ADMIN001",
+      })
+    ).resolves.toEqual({ csv, ok: true });
+    expect(mockExportAuditLogs).toHaveBeenCalledWith(
+      {
+        action: "label_created",
+        actorUserPublicId: "ADMIN001",
+        endDate: "2026-01-31",
+        startDate: "2026-01-01",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("answers signed out without a session, and asks the API nothing", async () => {
+    mockGetAccessToken.mockResolvedValueOnce(undefined);
+
+    const { exportAuditLogs } = await import("./audit");
+
+    await expect(exportAuditLogs("TENANT001", january)).resolves.toEqual({
+      ok: false,
+      reason: "signedOut",
+    });
+    expect(mockExportAuditLogs).not.toHaveBeenCalled();
+  });
+
+  it("answers signed out for a session the API rejects", async () => {
+    mockExportAuditLogs.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    const { exportAuditLogs } = await import("./audit");
+
+    await expect(exportAuditLogs("TENANT001", january)).resolves.toEqual({
+      ok: false,
+      reason: "signedOut",
+    });
+  });
+
+  it.each([
+    ["a role below tenant admin", Code.PermissionDenied],
+    ["a period the API refuses", Code.InvalidArgument],
+  ])("answers missing for %s", async (_label, code) => {
+    mockExportAuditLogs.mockRejectedValueOnce(
+      new ConnectError("refused", code)
+    );
+
+    const { exportAuditLogs } = await import("./audit");
+
+    await expect(exportAuditLogs("TENANT001", january)).resolves.toEqual({
+      ok: false,
+      reason: "missing",
+    });
+  });
+
+  it("lets any other failure reach the error boundary", async () => {
+    mockExportAuditLogs.mockRejectedValueOnce(
+      new ConnectError("database down", Code.Unavailable)
+    );
+
+    const { exportAuditLogs } = await import("./audit");
+
+    await expect(exportAuditLogs("TENANT001", january)).rejects.toThrow(
+      "database down"
     );
   });
 });

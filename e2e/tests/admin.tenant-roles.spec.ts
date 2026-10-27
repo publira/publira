@@ -193,6 +193,12 @@ test.describe("tenant roles in the console", () => {
     ).toBeDisabled();
 
     await expectNotFound(page, "/audit-logs");
+    // The download behind the audit log's button is refused as well, so a
+    // link copied from an administrator's screen saves nothing either.
+    const auditCsv = await page.request.get(
+      adminUrl("/api/v1/audit-logs/csv?from=2026-01-01&to=2026-01-31")
+    );
+    expect(auditCsv.status()).toBe(404);
     await expectNotFound(page, "/integrations/sign-in");
     await expectNotFound(page, "/integrations/google-tag");
     await expectNotFound(page, "/purchases");

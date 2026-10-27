@@ -16,7 +16,11 @@ import {
   TenantAdminRoute,
   TenantRoleRouteSkeleton,
 } from "#components/tenant-role-gate";
-import { listAuditActorCandidates, listAuditLogs } from "#lib/audit";
+import {
+  auditLogCsvPath,
+  listAuditActorCandidates,
+  listAuditLogs,
+} from "#lib/audit";
 import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
@@ -36,6 +40,7 @@ import {
   AuditLogOutcomeCell,
 } from "./_components/audit-log-cells";
 import { auditActions } from "./_lib/audit-actions";
+import { resolveAuditLogExportPeriod } from "./_lib/export-period";
 import { parseAuditLogFilters } from "./_lib/search-params";
 
 const pageSize = 20;
@@ -120,6 +125,8 @@ const AuditLogsContent = async ({
 
   await redirectToLoginIfSessionRejected(result, actorCandidatesResult);
 
+  const exportPeriod = resolveAuditLogExportPeriod(filters, timeZone);
+
   const previousHref = result.previousToken
     ? buildQueryString({
         action: filters.action,
@@ -154,16 +161,40 @@ const AuditLogsContent = async ({
   return (
     <ConsoleSection.Stack>
       <section className="grid gap-3">
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-            <Message
-              message="admin.audit.filter.description"
-              values={{
-                time_zone: timeZone,
-              }}
-            />
-          </Suspense>
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message
+                message="admin.audit.filter.description"
+                values={{
+                  time_zone: timeZone,
+                }}
+              />
+            </Suspense>
+          </p>
+          {exportPeriod.ok ? (
+            <LinkButton
+              href={auditLogCsvPath({
+                action: filters.action,
+                actor: filters.actor,
+                end: exportPeriod.end,
+                start: exportPeriod.start,
+              })}
+              size="sm"
+              variant="outline"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.audit.export.button" />
+              </Suspense>
+            </LinkButton>
+          ) : (
+            <p className="max-w-xs text-sm text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                <Message message="admin.audit.export.period_invalid" />
+              </Suspense>
+            </p>
+          )}
+        </div>
         <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Field.Root>
             <Field.Label>
