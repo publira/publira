@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { TenantContext, TenantTheme } from "../../types/v1/types_pb";
+import type { TenantContext, TenantTheme, TenantThemePalette } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/theme.proto.
  */
 export const file_publira_admin_v1_theme: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL3RoZW1lLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIkgKFUdldFRlbmFudFRoZW1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiRgoWR2V0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieQoYVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIsCgV0aGVtZRgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiSQoZVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieAoXVXBsb2FkVGVuYW50SWNvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCWljb25fZGF0YRgCIAEoDBIZChFpY29uX2NvbnRlbnRfdHlwZRgDIAEoCSJIChhVcGxvYWRUZW5hbnRJY29uUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lIkoKF0RlbGV0ZVRlbmFudEljb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJIChhEZWxldGVUZW5hbnRJY29uUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lIngKF1VwbG9hZFRlbmFudExvZ29SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglsb2dvX2RhdGEYAiABKAwSGQoRbG9nb19jb250ZW50X3R5cGUYAyABKAkiSAoYVXBsb2FkVGVuYW50TG9nb1Jlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJKChdEZWxldGVUZW5hbnRMb2dvUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiSAoYRGVsZXRlVGVuYW50TG9nb1Jlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSKBAQoeVXBsb2FkVGVuYW50U2lnbkluSW1hZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgppbWFnZV9kYXRhGAIgASgMEhoKEmltYWdlX2NvbnRlbnRfdHlwZRgDIAEoCSJPCh9VcGxvYWRUZW5hbnRTaWduSW5JbWFnZVJlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJRCh5EZWxldGVUZW5hbnRTaWduSW5JbWFnZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ik8KH0RlbGV0ZVRlbmFudFNpZ25JbkltYWdlUmVzcG9uc2USLAoFdGhlbWUYASABKAsyHS5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudFRoZW1lMqUHChJUZW5hbnRUaGVtZVNlcnZpY2USZQoOR2V0VGVuYW50VGhlbWUSJy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRoZW1lUmVxdWVzdBooLnB1YmxpcmEuYWRtaW4udjEuR2V0VGVuYW50VGhlbWVSZXNwb25zZSIAEm4KEVVwc2VydFRlbmFudFRoZW1lEioucHVibGlyYS5hZG1pbi52MS5VcHNlcnRUZW5hbnRUaGVtZVJlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLlVwc2VydFRlbmFudFRoZW1lUmVzcG9uc2UiABJrChBVcGxvYWRUZW5hbnRJY29uEikucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRJY29uUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50SWNvblJlc3BvbnNlIgASawoQRGVsZXRlVGVuYW50SWNvbhIpLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50SWNvblJlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudEljb25SZXNwb25zZSIAEmsKEFVwbG9hZFRlbmFudExvZ28SKS5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZFRlbmFudExvZ29SZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRMb2dvUmVzcG9uc2UiABJrChBEZWxldGVUZW5hbnRMb2dvEikucHVibGlyYS5hZG1pbi52MS5EZWxldGVUZW5hbnRMb2dvUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50TG9nb1Jlc3BvbnNlIgASgAEKF1VwbG9hZFRlbmFudFNpZ25JbkltYWdlEjAucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRTaWduSW5JbWFnZVJlcXVlc3QaMS5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZFRlbmFudFNpZ25JbkltYWdlUmVzcG9uc2UiABKAAQoXRGVsZXRlVGVuYW50U2lnbkluSW1hZ2USMC5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudFNpZ25JbkltYWdlUmVxdWVzdBoxLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50U2lnbkluSW1hZ2VSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL3RoZW1lLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIkgKFUdldFRlbmFudFRoZW1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiRgoWR2V0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUieQoYVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIsCgV0aGVtZRgCIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiSQoZVXBzZXJ0VGVuYW50VGhlbWVSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiTAoZR2V0VGVuYW50RGFya1RoZW1lUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiVgoaR2V0VGVuYW50RGFya1RoZW1lUmVzcG9uc2USOAoKZGFya190aGVtZRgBIAEoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWVQYWxldHRlIokBChxVcHNlcnRUZW5hbnREYXJrVGhlbWVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI4CgpkYXJrX3RoZW1lGAIgASgLMiQucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZVBhbGV0dGUiWQodVXBzZXJ0VGVuYW50RGFya1RoZW1lUmVzcG9uc2USOAoKZGFya190aGVtZRgBIAEoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWVQYWxldHRlIk8KHERlbGV0ZVRlbmFudERhcmtUaGVtZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Ih8KHURlbGV0ZVRlbmFudERhcmtUaGVtZVJlc3BvbnNlIngKF1VwbG9hZFRlbmFudEljb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglpY29uX2RhdGEYAiABKAwSGQoRaWNvbl9jb250ZW50X3R5cGUYAyABKAkiSAoYVXBsb2FkVGVuYW50SWNvblJlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJKChdEZWxldGVUZW5hbnRJY29uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiSAoYRGVsZXRlVGVuYW50SWNvblJlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZSJ4ChdVcGxvYWRUZW5hbnRMb2dvUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJbG9nb19kYXRhGAIgASgMEhkKEWxvZ29fY29udGVudF90eXBlGAMgASgJIkgKGFVwbG9hZFRlbmFudExvZ29SZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiSgoXRGVsZXRlVGVuYW50TG9nb1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IkgKGERlbGV0ZVRlbmFudExvZ29SZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUigQEKHlVwbG9hZFRlbmFudFNpZ25JbkltYWdlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEgoKaW1hZ2VfZGF0YRgCIAEoDBIaChJpbWFnZV9jb250ZW50X3R5cGUYAyABKAkiTwofVXBsb2FkVGVuYW50U2lnbkluSW1hZ2VSZXNwb25zZRIsCgV0aGVtZRgBIAEoCzIdLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWUiUQoeRGVsZXRlVGVuYW50U2lnbkluSW1hZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJPCh9EZWxldGVUZW5hbnRTaWduSW5JbWFnZVJlc3BvbnNlEiwKBXRoZW1lGAEgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZTKQCgoSVGVuYW50VGhlbWVTZXJ2aWNlEmUKDkdldFRlbmFudFRoZW1lEicucHVibGlyYS5hZG1pbi52MS5HZXRUZW5hbnRUaGVtZVJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudFRoZW1lUmVzcG9uc2UiABJuChFVcHNlcnRUZW5hbnRUaGVtZRIqLnB1YmxpcmEuYWRtaW4udjEuVXBzZXJ0VGVuYW50VGhlbWVSZXF1ZXN0GisucHVibGlyYS5hZG1pbi52MS5VcHNlcnRUZW5hbnRUaGVtZVJlc3BvbnNlIgASawoQVXBsb2FkVGVuYW50SWNvbhIpLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50SWNvblJlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLlVwbG9hZFRlbmFudEljb25SZXNwb25zZSIAEmsKEERlbGV0ZVRlbmFudEljb24SKS5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudEljb25SZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5EZWxldGVUZW5hbnRJY29uUmVzcG9uc2UiABJrChBVcGxvYWRUZW5hbnRMb2dvEikucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRMb2dvUmVxdWVzdBoqLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50TG9nb1Jlc3BvbnNlIgASawoQRGVsZXRlVGVuYW50TG9nbxIpLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50TG9nb1JlcXVlc3QaKi5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudExvZ29SZXNwb25zZSIAEoABChdVcGxvYWRUZW5hbnRTaWduSW5JbWFnZRIwLnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkVGVuYW50U2lnbkluSW1hZ2VSZXF1ZXN0GjEucHVibGlyYS5hZG1pbi52MS5VcGxvYWRUZW5hbnRTaWduSW5JbWFnZVJlc3BvbnNlIgASgAEKF0RlbGV0ZVRlbmFudFNpZ25JbkltYWdlEjAucHVibGlyYS5hZG1pbi52MS5EZWxldGVUZW5hbnRTaWduSW5JbWFnZVJlcXVlc3QaMS5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVRlbmFudFNpZ25JbkltYWdlUmVzcG9uc2UiABJxChJHZXRUZW5hbnREYXJrVGhlbWUSKy5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERhcmtUaGVtZVJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkdldFRlbmFudERhcmtUaGVtZVJlc3BvbnNlIgASegoVVXBzZXJ0VGVuYW50RGFya1RoZW1lEi4ucHVibGlyYS5hZG1pbi52MS5VcHNlcnRUZW5hbnREYXJrVGhlbWVSZXF1ZXN0Gi8ucHVibGlyYS5hZG1pbi52MS5VcHNlcnRUZW5hbnREYXJrVGhlbWVSZXNwb25zZSIAEnoKFURlbGV0ZVRlbmFudERhcmtUaGVtZRIuLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50RGFya1RoZW1lUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlVGVuYW50RGFya1RoZW1lUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.GetTenantThemeRequest
@@ -88,6 +88,119 @@ export const UpsertTenantThemeResponseSchema: GenMessage<UpsertTenantThemeRespon
   messageDesc(file_publira_admin_v1_theme, 3);
 
 /**
+ * @generated from message publira.admin.v1.GetTenantDarkThemeRequest
+ */
+export type GetTenantDarkThemeRequest = Message<"publira.admin.v1.GetTenantDarkThemeRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantDarkThemeRequest.
+ * Use `create(GetTenantDarkThemeRequestSchema)` to create a new message.
+ */
+export const GetTenantDarkThemeRequestSchema: GenMessage<GetTenantDarkThemeRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 4);
+
+/**
+ * @generated from message publira.admin.v1.GetTenantDarkThemeResponse
+ */
+export type GetTenantDarkThemeResponse = Message<"publira.admin.v1.GetTenantDarkThemeResponse"> & {
+  /**
+   * Absent where the tenant has saved no dark palette.
+   *
+   * @generated from field: publira.types.v1.TenantThemePalette dark_theme = 1;
+   */
+  darkTheme?: TenantThemePalette | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.GetTenantDarkThemeResponse.
+ * Use `create(GetTenantDarkThemeResponseSchema)` to create a new message.
+ */
+export const GetTenantDarkThemeResponseSchema: GenMessage<GetTenantDarkThemeResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 5);
+
+/**
+ * Every color is required and held to the rules UpsertTenantThemeRequest
+ * holds the light palette to: a #RRGGBB code, and a contrast of at least 4.5:1
+ * between each color and its foreground. A violation is invalid_argument on
+ * the field, named under dark_theme.
+ *
+ * @generated from message publira.admin.v1.UpsertTenantDarkThemeRequest
+ */
+export type UpsertTenantDarkThemeRequest = Message<"publira.admin.v1.UpsertTenantDarkThemeRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: publira.types.v1.TenantThemePalette dark_theme = 2;
+   */
+  darkTheme?: TenantThemePalette | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpsertTenantDarkThemeRequest.
+ * Use `create(UpsertTenantDarkThemeRequestSchema)` to create a new message.
+ */
+export const UpsertTenantDarkThemeRequestSchema: GenMessage<UpsertTenantDarkThemeRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 6);
+
+/**
+ * @generated from message publira.admin.v1.UpsertTenantDarkThemeResponse
+ */
+export type UpsertTenantDarkThemeResponse = Message<"publira.admin.v1.UpsertTenantDarkThemeResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantThemePalette dark_theme = 1;
+   */
+  darkTheme?: TenantThemePalette | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.UpsertTenantDarkThemeResponse.
+ * Use `create(UpsertTenantDarkThemeResponseSchema)` to create a new message.
+ */
+export const UpsertTenantDarkThemeResponseSchema: GenMessage<UpsertTenantDarkThemeResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 7);
+
+/**
+ * Deleting leaves the tenant without a dark palette, which is not an error
+ * for a tenant that has none.
+ *
+ * @generated from message publira.admin.v1.DeleteTenantDarkThemeRequest
+ */
+export type DeleteTenantDarkThemeRequest = Message<"publira.admin.v1.DeleteTenantDarkThemeRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteTenantDarkThemeRequest.
+ * Use `create(DeleteTenantDarkThemeRequestSchema)` to create a new message.
+ */
+export const DeleteTenantDarkThemeRequestSchema: GenMessage<DeleteTenantDarkThemeRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 8);
+
+/**
+ * @generated from message publira.admin.v1.DeleteTenantDarkThemeResponse
+ */
+export type DeleteTenantDarkThemeResponse = Message<"publira.admin.v1.DeleteTenantDarkThemeResponse"> & {
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteTenantDarkThemeResponse.
+ * Use `create(DeleteTenantDarkThemeResponseSchema)` to create a new message.
+ */
+export const DeleteTenantDarkThemeResponseSchema: GenMessage<DeleteTenantDarkThemeResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_theme, 9);
+
+/**
  * Uploading again replaces the stored icon, so there is no separate replace
  * RPC.
  *
@@ -115,7 +228,7 @@ export type UploadTenantIconRequest = Message<"publira.admin.v1.UploadTenantIcon
  * Use `create(UploadTenantIconRequestSchema)` to create a new message.
  */
 export const UploadTenantIconRequestSchema: GenMessage<UploadTenantIconRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 4);
+  messageDesc(file_publira_admin_v1_theme, 10);
 
 /**
  * @generated from message publira.admin.v1.UploadTenantIconResponse
@@ -132,7 +245,7 @@ export type UploadTenantIconResponse = Message<"publira.admin.v1.UploadTenantIco
  * Use `create(UploadTenantIconResponseSchema)` to create a new message.
  */
 export const UploadTenantIconResponseSchema: GenMessage<UploadTenantIconResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 5);
+  messageDesc(file_publira_admin_v1_theme, 11);
 
 /**
  * @generated from message publira.admin.v1.DeleteTenantIconRequest
@@ -149,7 +262,7 @@ export type DeleteTenantIconRequest = Message<"publira.admin.v1.DeleteTenantIcon
  * Use `create(DeleteTenantIconRequestSchema)` to create a new message.
  */
 export const DeleteTenantIconRequestSchema: GenMessage<DeleteTenantIconRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 6);
+  messageDesc(file_publira_admin_v1_theme, 12);
 
 /**
  * @generated from message publira.admin.v1.DeleteTenantIconResponse
@@ -166,7 +279,7 @@ export type DeleteTenantIconResponse = Message<"publira.admin.v1.DeleteTenantIco
  * Use `create(DeleteTenantIconResponseSchema)` to create a new message.
  */
 export const DeleteTenantIconResponseSchema: GenMessage<DeleteTenantIconResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 7);
+  messageDesc(file_publira_admin_v1_theme, 13);
 
 /**
  * Uploading again replaces the stored logo, so there is no separate replace
@@ -196,7 +309,7 @@ export type UploadTenantLogoRequest = Message<"publira.admin.v1.UploadTenantLogo
  * Use `create(UploadTenantLogoRequestSchema)` to create a new message.
  */
 export const UploadTenantLogoRequestSchema: GenMessage<UploadTenantLogoRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 8);
+  messageDesc(file_publira_admin_v1_theme, 14);
 
 /**
  * @generated from message publira.admin.v1.UploadTenantLogoResponse
@@ -213,7 +326,7 @@ export type UploadTenantLogoResponse = Message<"publira.admin.v1.UploadTenantLog
  * Use `create(UploadTenantLogoResponseSchema)` to create a new message.
  */
 export const UploadTenantLogoResponseSchema: GenMessage<UploadTenantLogoResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 9);
+  messageDesc(file_publira_admin_v1_theme, 15);
 
 /**
  * @generated from message publira.admin.v1.DeleteTenantLogoRequest
@@ -230,7 +343,7 @@ export type DeleteTenantLogoRequest = Message<"publira.admin.v1.DeleteTenantLogo
  * Use `create(DeleteTenantLogoRequestSchema)` to create a new message.
  */
 export const DeleteTenantLogoRequestSchema: GenMessage<DeleteTenantLogoRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 10);
+  messageDesc(file_publira_admin_v1_theme, 16);
 
 /**
  * @generated from message publira.admin.v1.DeleteTenantLogoResponse
@@ -247,7 +360,7 @@ export type DeleteTenantLogoResponse = Message<"publira.admin.v1.DeleteTenantLog
  * Use `create(DeleteTenantLogoResponseSchema)` to create a new message.
  */
 export const DeleteTenantLogoResponseSchema: GenMessage<DeleteTenantLogoResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 11);
+  messageDesc(file_publira_admin_v1_theme, 17);
 
 /**
  * Uploading again replaces the stored sign-in image, so there is no separate
@@ -277,7 +390,7 @@ export type UploadTenantSignInImageRequest = Message<"publira.admin.v1.UploadTen
  * Use `create(UploadTenantSignInImageRequestSchema)` to create a new message.
  */
 export const UploadTenantSignInImageRequestSchema: GenMessage<UploadTenantSignInImageRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 12);
+  messageDesc(file_publira_admin_v1_theme, 18);
 
 /**
  * @generated from message publira.admin.v1.UploadTenantSignInImageResponse
@@ -294,7 +407,7 @@ export type UploadTenantSignInImageResponse = Message<"publira.admin.v1.UploadTe
  * Use `create(UploadTenantSignInImageResponseSchema)` to create a new message.
  */
 export const UploadTenantSignInImageResponseSchema: GenMessage<UploadTenantSignInImageResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 13);
+  messageDesc(file_publira_admin_v1_theme, 19);
 
 /**
  * @generated from message publira.admin.v1.DeleteTenantSignInImageRequest
@@ -311,7 +424,7 @@ export type DeleteTenantSignInImageRequest = Message<"publira.admin.v1.DeleteTen
  * Use `create(DeleteTenantSignInImageRequestSchema)` to create a new message.
  */
 export const DeleteTenantSignInImageRequestSchema: GenMessage<DeleteTenantSignInImageRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 14);
+  messageDesc(file_publira_admin_v1_theme, 20);
 
 /**
  * @generated from message publira.admin.v1.DeleteTenantSignInImageResponse
@@ -328,7 +441,7 @@ export type DeleteTenantSignInImageResponse = Message<"publira.admin.v1.DeleteTe
  * Use `create(DeleteTenantSignInImageResponseSchema)` to create a new message.
  */
 export const DeleteTenantSignInImageResponseSchema: GenMessage<DeleteTenantSignInImageResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_theme, 15);
+  messageDesc(file_publira_admin_v1_theme, 21);
 
 /**
  * @generated from service publira.admin.v1.TenantThemeService
@@ -413,6 +526,36 @@ export const TenantThemeService: GenService<{
     methodKind: "unary";
     input: typeof DeleteTenantSignInImageRequestSchema;
     output: typeof DeleteTenantSignInImageResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_auditor.
+   *
+   * @generated from rpc publira.admin.v1.TenantThemeService.GetTenantDarkTheme
+   */
+  getTenantDarkTheme: {
+    methodKind: "unary";
+    input: typeof GetTenantDarkThemeRequestSchema;
+    output: typeof GetTenantDarkThemeResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.TenantThemeService.UpsertTenantDarkTheme
+   */
+  upsertTenantDarkTheme: {
+    methodKind: "unary";
+    input: typeof UpsertTenantDarkThemeRequestSchema;
+    output: typeof UpsertTenantDarkThemeResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.TenantThemeService.DeleteTenantDarkTheme
+   */
+  deleteTenantDarkTheme: {
+    methodKind: "unary";
+    input: typeof DeleteTenantDarkThemeRequestSchema;
+    output: typeof DeleteTenantDarkThemeResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_theme, 0);

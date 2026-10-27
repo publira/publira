@@ -108,6 +108,8 @@ export const auditActions = [
   "tenant_reader_icon_preset_deleted",
   "tenant_legal_pages_updated",
   "tenant_theme_updated",
+  "tenant_dark_theme_updated",
+  "tenant_dark_theme_deleted",
   "tenant_logo_uploaded",
   "tenant_logo_deleted",
   "tenant_icon_uploaded",

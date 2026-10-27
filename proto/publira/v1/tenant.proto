@@ -135,6 +135,10 @@ message GetTenantResponse {
   // the storefront shows its text alone then. Who accepted a mark's terms is
   // the console's to know and never answered here.
   repeated publira.types.v1.TenantBrandMark brand_marks = 27;
+  // The colors the storefront and the app read in while the reader reads in
+  // dark. Absent where the tenant has saved no dark palette, and a client then
+  // derives one of its own or stays on theme's.
+  publira.types.v1.TenantThemePalette dark_theme = 28;
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own

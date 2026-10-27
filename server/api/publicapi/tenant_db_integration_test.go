@@ -75,6 +75,64 @@ func TestDBGetTenantReturnsItsOwnBranding(t *testing.T) {
 	}
 }
 
+// The dark palette is a row of its own that a tenant may not have, and the
+// storefront reads each tenant's alone: a tenant without one is answered
+// without one, not with another tenant's or with the light palette.
+func TestDBGetTenantAnswersItsOwnDarkTheme(t *testing.T) {
+	t.Parallel()
+
+	env := newPublicDBEnv(t)
+	first, second := env.seedTwoTenants(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO tenant_theme_dark (
+			tenant_id,
+			background_color, foreground_color, surface_color, surface_foreground_color,
+			card_color, card_foreground_color, popover_color, popover_foreground_color,
+			primary_color, primary_foreground_color, secondary_color, secondary_foreground_color,
+			accent_color, accent_foreground_color, muted_color, muted_foreground_color,
+			border_color, input_color, ring_color,
+			success_color, success_foreground_color, warning_color, warning_foreground_color,
+			destructive_color, destructive_foreground_color, info_color, info_foreground_color
+		) VALUES (
+			$1,
+			'#121212', '#e8e6e3', '#1a1a1a', '#e8e6e3',
+			'#1e1e1e', '#e8e6e3', '#1e1e1e', '#e8e6e3',
+			'#8fb0f0', '#0d1b33', '#f08a6c', '#2a0d05',
+			'#2a3550', '#dfe6f5', '#2a2a28', '#b5b3ad',
+			'#3a3a37', '#44443f', '#8fb0f0',
+			'#7cc79a', '#0b2414', '#e0b060', '#2a1a00',
+			'#f08080', '#2a0505', '#82b0e0', '#0a1a2a'
+		)
+	`, first.ID); err != nil {
+		t.Fatalf("insert tenant_theme_dark for %s: %v", first.PublicID, err)
+	}
+
+	resp, err := env.tenantAPIClient().GetTenant(context.Background(), &publirav1.GetTenantRequest{
+		Tenant: tenantContext(first),
+	})
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.DarkTheme == nil || resp.DarkTheme.BackgroundColor != "#121212" || resp.DarkTheme.PrimaryColor != "#8fb0f0" || resp.DarkTheme.InfoForegroundColor != "#0a1a2a" {
+		t.Fatalf("dark_theme = %+v, want the row of tenant A", resp.DarkTheme)
+	}
+	if resp.Theme == nil || resp.Theme.BackgroundColor == "#121212" {
+		t.Fatalf("theme = %+v, want the light palette beside the dark one", resp.Theme)
+	}
+
+	other, err := env.tenantAPIClient().GetTenant(context.Background(), &publirav1.GetTenantRequest{
+		Tenant: tenantContext(second),
+	})
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if other.DarkTheme != nil {
+		t.Fatalf("dark_theme of tenant B = %+v, want none", other.DarkTheme)
+	}
+}
+
 // A reader in a locale the tenant wrote no copy in is served the copy of the
 // tenant's default locale, and a reader in a locale it did write is served
 // that one.

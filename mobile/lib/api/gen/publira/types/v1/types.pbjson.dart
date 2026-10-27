@@ -1127,6 +1127,138 @@ final $typed_data.Uint8List tenantThemeDescriptor = $convert.base64Decode(
     'dmFyaWFudHMYJSADKAsyJC5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudEltYWdlVmFyaWFudFITc2'
     'lnbkluSW1hZ2VWYXJpYW50c0oECAQQBUoECB0QHlIIbG9nb191cmxSCGljb25fdXJs');
 
+@$core.Deprecated('Use tenantThemePaletteDescriptor instead')
+const TenantThemePalette$json = {
+  '1': 'TenantThemePalette',
+  '2': [
+    {'1': 'primary_color', '3': 1, '4': 1, '5': 9, '10': 'primaryColor'},
+    {'1': 'secondary_color', '3': 2, '4': 1, '5': 9, '10': 'secondaryColor'},
+    {'1': 'accent_color', '3': 3, '4': 1, '5': 9, '10': 'accentColor'},
+    {'1': 'background_color', '3': 4, '4': 1, '5': 9, '10': 'backgroundColor'},
+    {'1': 'foreground_color', '3': 5, '4': 1, '5': 9, '10': 'foregroundColor'},
+    {'1': 'surface_color', '3': 6, '4': 1, '5': 9, '10': 'surfaceColor'},
+    {
+      '1': 'surface_foreground_color',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'surfaceForegroundColor'
+    },
+    {'1': 'card_color', '3': 8, '4': 1, '5': 9, '10': 'cardColor'},
+    {
+      '1': 'card_foreground_color',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'cardForegroundColor'
+    },
+    {'1': 'popover_color', '3': 10, '4': 1, '5': 9, '10': 'popoverColor'},
+    {
+      '1': 'popover_foreground_color',
+      '3': 11,
+      '4': 1,
+      '5': 9,
+      '10': 'popoverForegroundColor'
+    },
+    {
+      '1': 'primary_foreground_color',
+      '3': 12,
+      '4': 1,
+      '5': 9,
+      '10': 'primaryForegroundColor'
+    },
+    {
+      '1': 'secondary_foreground_color',
+      '3': 13,
+      '4': 1,
+      '5': 9,
+      '10': 'secondaryForegroundColor'
+    },
+    {
+      '1': 'accent_foreground_color',
+      '3': 14,
+      '4': 1,
+      '5': 9,
+      '10': 'accentForegroundColor'
+    },
+    {'1': 'muted_color', '3': 15, '4': 1, '5': 9, '10': 'mutedColor'},
+    {
+      '1': 'muted_foreground_color',
+      '3': 16,
+      '4': 1,
+      '5': 9,
+      '10': 'mutedForegroundColor'
+    },
+    {'1': 'border_color', '3': 17, '4': 1, '5': 9, '10': 'borderColor'},
+    {'1': 'input_color', '3': 18, '4': 1, '5': 9, '10': 'inputColor'},
+    {'1': 'ring_color', '3': 19, '4': 1, '5': 9, '10': 'ringColor'},
+    {'1': 'success_color', '3': 20, '4': 1, '5': 9, '10': 'successColor'},
+    {
+      '1': 'success_foreground_color',
+      '3': 21,
+      '4': 1,
+      '5': 9,
+      '10': 'successForegroundColor'
+    },
+    {'1': 'warning_color', '3': 22, '4': 1, '5': 9, '10': 'warningColor'},
+    {
+      '1': 'warning_foreground_color',
+      '3': 23,
+      '4': 1,
+      '5': 9,
+      '10': 'warningForegroundColor'
+    },
+    {
+      '1': 'destructive_color',
+      '3': 24,
+      '4': 1,
+      '5': 9,
+      '10': 'destructiveColor'
+    },
+    {
+      '1': 'destructive_foreground_color',
+      '3': 25,
+      '4': 1,
+      '5': 9,
+      '10': 'destructiveForegroundColor'
+    },
+    {'1': 'info_color', '3': 26, '4': 1, '5': 9, '10': 'infoColor'},
+    {
+      '1': 'info_foreground_color',
+      '3': 27,
+      '4': 1,
+      '5': 9,
+      '10': 'infoForegroundColor'
+    },
+  ],
+};
+
+/// Descriptor for `TenantThemePalette`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tenantThemePaletteDescriptor = $convert.base64Decode(
+    'ChJUZW5hbnRUaGVtZVBhbGV0dGUSIwoNcHJpbWFyeV9jb2xvchgBIAEoCVIMcHJpbWFyeUNvbG'
+    '9yEicKD3NlY29uZGFyeV9jb2xvchgCIAEoCVIOc2Vjb25kYXJ5Q29sb3ISIQoMYWNjZW50X2Nv'
+    'bG9yGAMgASgJUgthY2NlbnRDb2xvchIpChBiYWNrZ3JvdW5kX2NvbG9yGAQgASgJUg9iYWNrZ3'
+    'JvdW5kQ29sb3ISKQoQZm9yZWdyb3VuZF9jb2xvchgFIAEoCVIPZm9yZWdyb3VuZENvbG9yEiMK'
+    'DXN1cmZhY2VfY29sb3IYBiABKAlSDHN1cmZhY2VDb2xvchI4ChhzdXJmYWNlX2ZvcmVncm91bm'
+    'RfY29sb3IYByABKAlSFnN1cmZhY2VGb3JlZ3JvdW5kQ29sb3ISHQoKY2FyZF9jb2xvchgIIAEo'
+    'CVIJY2FyZENvbG9yEjIKFWNhcmRfZm9yZWdyb3VuZF9jb2xvchgJIAEoCVITY2FyZEZvcmVncm'
+    '91bmRDb2xvchIjCg1wb3BvdmVyX2NvbG9yGAogASgJUgxwb3BvdmVyQ29sb3ISOAoYcG9wb3Zl'
+    'cl9mb3JlZ3JvdW5kX2NvbG9yGAsgASgJUhZwb3BvdmVyRm9yZWdyb3VuZENvbG9yEjgKGHByaW'
+    '1hcnlfZm9yZWdyb3VuZF9jb2xvchgMIAEoCVIWcHJpbWFyeUZvcmVncm91bmRDb2xvchI8Chpz'
+    'ZWNvbmRhcnlfZm9yZWdyb3VuZF9jb2xvchgNIAEoCVIYc2Vjb25kYXJ5Rm9yZWdyb3VuZENvbG'
+    '9yEjYKF2FjY2VudF9mb3JlZ3JvdW5kX2NvbG9yGA4gASgJUhVhY2NlbnRGb3JlZ3JvdW5kQ29s'
+    'b3ISHwoLbXV0ZWRfY29sb3IYDyABKAlSCm11dGVkQ29sb3ISNAoWbXV0ZWRfZm9yZWdyb3VuZF'
+    '9jb2xvchgQIAEoCVIUbXV0ZWRGb3JlZ3JvdW5kQ29sb3ISIQoMYm9yZGVyX2NvbG9yGBEgASgJ'
+    'Ugtib3JkZXJDb2xvchIfCgtpbnB1dF9jb2xvchgSIAEoCVIKaW5wdXRDb2xvchIdCgpyaW5nX2'
+    'NvbG9yGBMgASgJUglyaW5nQ29sb3ISIwoNc3VjY2Vzc19jb2xvchgUIAEoCVIMc3VjY2Vzc0Nv'
+    'bG9yEjgKGHN1Y2Nlc3NfZm9yZWdyb3VuZF9jb2xvchgVIAEoCVIWc3VjY2Vzc0ZvcmVncm91bm'
+    'RDb2xvchIjCg13YXJuaW5nX2NvbG9yGBYgASgJUgx3YXJuaW5nQ29sb3ISOAoYd2FybmluZ19m'
+    'b3JlZ3JvdW5kX2NvbG9yGBcgASgJUhZ3YXJuaW5nRm9yZWdyb3VuZENvbG9yEisKEWRlc3RydW'
+    'N0aXZlX2NvbG9yGBggASgJUhBkZXN0cnVjdGl2ZUNvbG9yEkAKHGRlc3RydWN0aXZlX2ZvcmVn'
+    'cm91bmRfY29sb3IYGSABKAlSGmRlc3RydWN0aXZlRm9yZWdyb3VuZENvbG9yEh0KCmluZm9fY2'
+    '9sb3IYGiABKAlSCWluZm9Db2xvchIyChVpbmZvX2ZvcmVncm91bmRfY29sb3IYGyABKAlSE2lu'
+    'Zm9Gb3JlZ3JvdW5kQ29sb3I=');
+
 @$core.Deprecated('Use tenantBrandMarkDescriptor instead')
 const TenantBrandMark$json = {
   '1': 'TenantBrandMark',

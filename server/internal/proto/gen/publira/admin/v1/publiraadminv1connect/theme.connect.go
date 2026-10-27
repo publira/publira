@@ -48,6 +48,15 @@ const (
 	// TenantThemeServiceDeleteTenantSignInImageProcedure is the procedure name of the
 	// TenantThemeService's DeleteTenantSignInImage RPC.
 	TenantThemeServiceDeleteTenantSignInImageProcedure = "/publira.admin.v1.TenantThemeService/DeleteTenantSignInImage"
+	// TenantThemeServiceGetTenantDarkThemeProcedure is the procedure name of the TenantThemeService's
+	// GetTenantDarkTheme RPC.
+	TenantThemeServiceGetTenantDarkThemeProcedure = "/publira.admin.v1.TenantThemeService/GetTenantDarkTheme"
+	// TenantThemeServiceUpsertTenantDarkThemeProcedure is the procedure name of the
+	// TenantThemeService's UpsertTenantDarkTheme RPC.
+	TenantThemeServiceUpsertTenantDarkThemeProcedure = "/publira.admin.v1.TenantThemeService/UpsertTenantDarkTheme"
+	// TenantThemeServiceDeleteTenantDarkThemeProcedure is the procedure name of the
+	// TenantThemeService's DeleteTenantDarkTheme RPC.
+	TenantThemeServiceDeleteTenantDarkThemeProcedure = "/publira.admin.v1.TenantThemeService/DeleteTenantDarkTheme"
 )
 
 var (
@@ -107,6 +116,27 @@ var (
 			Procedure:  TenantThemeServiceDeleteTenantSignInImageProcedure,
 		}
 	})
+	tenantThemeServiceGetTenantDarkThemeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_theme_proto.Services().ByName("TenantThemeService").Methods().ByName("GetTenantDarkTheme"),
+			Procedure:  TenantThemeServiceGetTenantDarkThemeProcedure,
+		}
+	})
+	tenantThemeServiceUpsertTenantDarkThemeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_theme_proto.Services().ByName("TenantThemeService").Methods().ByName("UpsertTenantDarkTheme"),
+			Procedure:  TenantThemeServiceUpsertTenantDarkThemeProcedure,
+		}
+	})
+	tenantThemeServiceDeleteTenantDarkThemeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_theme_proto.Services().ByName("TenantThemeService").Methods().ByName("DeleteTenantDarkTheme"),
+			Procedure:  TenantThemeServiceDeleteTenantDarkThemeProcedure,
+		}
+	})
 )
 
 // TenantThemeServiceClient is a client for the publira.admin.v1.TenantThemeService service.
@@ -127,6 +157,12 @@ type TenantThemeServiceClient interface {
 	UploadTenantSignInImage(context.Context, *v1.UploadTenantSignInImageRequest) (*v1.UploadTenantSignInImageResponse, error)
 	// Minimum role: tenant_admin.
 	DeleteTenantSignInImage(context.Context, *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error)
+	// Minimum role: tenant_auditor.
+	GetTenantDarkTheme(context.Context, *v1.GetTenantDarkThemeRequest) (*v1.GetTenantDarkThemeResponse, error)
+	// Minimum role: tenant_admin.
+	UpsertTenantDarkTheme(context.Context, *v1.UpsertTenantDarkThemeRequest) (*v1.UpsertTenantDarkThemeResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteTenantDarkTheme(context.Context, *v1.DeleteTenantDarkThemeRequest) (*v1.DeleteTenantDarkThemeResponse, error)
 }
 
 // NewTenantThemeServiceClient constructs a client for the publira.admin.v1.TenantThemeService
@@ -154,6 +190,12 @@ type TenantThemeServiceHandler interface {
 	UploadTenantSignInImage(context.Context, *v1.UploadTenantSignInImageRequest) (*v1.UploadTenantSignInImageResponse, error)
 	// Minimum role: tenant_admin.
 	DeleteTenantSignInImage(context.Context, *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error)
+	// Minimum role: tenant_auditor.
+	GetTenantDarkTheme(context.Context, *v1.GetTenantDarkThemeRequest) (*v1.GetTenantDarkThemeResponse, error)
+	// Minimum role: tenant_admin.
+	UpsertTenantDarkTheme(context.Context, *v1.UpsertTenantDarkThemeRequest) (*v1.UpsertTenantDarkThemeResponse, error)
+	// Minimum role: tenant_admin.
+	DeleteTenantDarkTheme(context.Context, *v1.DeleteTenantDarkThemeRequest) (*v1.DeleteTenantDarkThemeResponse, error)
 }
 
 // RegisterTenantThemeServiceHandler registers svc as the publira.admin.v1.TenantThemeService
@@ -169,6 +211,9 @@ func RegisterTenantThemeServiceHandler(server *connect.Server, svc TenantThemeSe
 		connect.Method{Spec: tenantThemeServiceDeleteTenantLogoSpec(), Handler: adapter.deleteTenantLogo},
 		connect.Method{Spec: tenantThemeServiceUploadTenantSignInImageSpec(), Handler: adapter.uploadTenantSignInImage},
 		connect.Method{Spec: tenantThemeServiceDeleteTenantSignInImageSpec(), Handler: adapter.deleteTenantSignInImage},
+		connect.Method{Spec: tenantThemeServiceGetTenantDarkThemeSpec(), Handler: adapter.getTenantDarkTheme},
+		connect.Method{Spec: tenantThemeServiceUpsertTenantDarkThemeSpec(), Handler: adapter.upsertTenantDarkTheme},
+		connect.Method{Spec: tenantThemeServiceDeleteTenantDarkThemeSpec(), Handler: adapter.deleteTenantDarkTheme},
 	)
 }
 
@@ -205,6 +250,18 @@ func (UnimplementedTenantThemeServiceHandler) UploadTenantSignInImage(context.Co
 
 func (UnimplementedTenantThemeServiceHandler) DeleteTenantSignInImage(context.Context, *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantThemeService.DeleteTenantSignInImage is not implemented")
+}
+
+func (UnimplementedTenantThemeServiceHandler) GetTenantDarkTheme(context.Context, *v1.GetTenantDarkThemeRequest) (*v1.GetTenantDarkThemeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantThemeService.GetTenantDarkTheme is not implemented")
+}
+
+func (UnimplementedTenantThemeServiceHandler) UpsertTenantDarkTheme(context.Context, *v1.UpsertTenantDarkThemeRequest) (*v1.UpsertTenantDarkThemeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantThemeService.UpsertTenantDarkTheme is not implemented")
+}
+
+func (UnimplementedTenantThemeServiceHandler) DeleteTenantDarkTheme(context.Context, *v1.DeleteTenantDarkThemeRequest) (*v1.DeleteTenantDarkThemeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantThemeService.DeleteTenantDarkTheme is not implemented")
 }
 
 type tenantThemeServiceClient struct {
@@ -270,6 +327,30 @@ func (c *tenantThemeServiceClient) UploadTenantSignInImage(ctx context.Context, 
 func (c *tenantThemeServiceClient) DeleteTenantSignInImage(ctx context.Context, req *v1.DeleteTenantSignInImageRequest) (*v1.DeleteTenantSignInImageResponse, error) {
 	var res v1.DeleteTenantSignInImageResponse
 	if err := c.client.CallUnary(ctx, tenantThemeServiceDeleteTenantSignInImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantThemeServiceClient) GetTenantDarkTheme(ctx context.Context, req *v1.GetTenantDarkThemeRequest) (*v1.GetTenantDarkThemeResponse, error) {
+	var res v1.GetTenantDarkThemeResponse
+	if err := c.client.CallUnary(ctx, tenantThemeServiceGetTenantDarkThemeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantThemeServiceClient) UpsertTenantDarkTheme(ctx context.Context, req *v1.UpsertTenantDarkThemeRequest) (*v1.UpsertTenantDarkThemeResponse, error) {
+	var res v1.UpsertTenantDarkThemeResponse
+	if err := c.client.CallUnary(ctx, tenantThemeServiceUpsertTenantDarkThemeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantThemeServiceClient) DeleteTenantDarkTheme(ctx context.Context, req *v1.DeleteTenantDarkThemeRequest) (*v1.DeleteTenantDarkThemeResponse, error) {
+	var res v1.DeleteTenantDarkThemeResponse
+	if err := c.client.CallUnary(ctx, tenantThemeServiceDeleteTenantDarkThemeSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -367,6 +448,42 @@ func (h tenantThemeServiceHandler) deleteTenantSignInImage(ctx context.Context, 
 		return err
 	}
 	res, err := h.svc.DeleteTenantSignInImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantThemeServiceHandler) getTenantDarkTheme(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantDarkThemeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantDarkTheme(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantThemeServiceHandler) upsertTenantDarkTheme(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpsertTenantDarkThemeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpsertTenantDarkTheme(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantThemeServiceHandler) deleteTenantDarkTheme(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteTenantDarkThemeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteTenantDarkTheme(ctx, &req)
 	if err != nil {
 		return err
 	}

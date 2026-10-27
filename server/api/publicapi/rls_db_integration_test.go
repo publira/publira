@@ -159,6 +159,7 @@ var publicDataTables = []struct {
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
 	{name: "tenant_config_translations", count: "SELECT count(*) FROM tenant_config_translations"},
 	{name: "tenant_themes", count: "SELECT count(*) FROM tenant_themes"},
+	{name: "tenant_theme_dark", count: "SELECT count(*) FROM tenant_theme_dark"},
 	{name: "tenant_brand_marks", count: "SELECT count(*) FROM tenant_brand_marks"},
 	{name: "tenant_community_limit_overrides", count: "SELECT count(*) FROM tenant_community_limit_overrides"},
 	{name: "series_listings", count: "SELECT count(*) FROM series_listings"},
@@ -408,6 +409,18 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("tenant config", "INSERT INTO tenant_config (tenant_id) VALUES ($1)", first.ID)
 	seed("tenant site copy", "INSERT INTO tenant_config_translations (id, tenant_id, locale, site_tagline) VALUES ($1, $2, 'ja', 'Read on')", uuid.Must(uuid.NewV7()), first.ID)
 	seed("tenant theme", "INSERT INTO tenant_themes (tenant_id) VALUES ($1)", first.ID)
+	seed("tenant dark theme", `INSERT INTO tenant_theme_dark (tenant_id,
+		background_color, foreground_color, surface_color, surface_foreground_color,
+		card_color, card_foreground_color, popover_color, popover_foreground_color,
+		primary_color, primary_foreground_color, secondary_color, secondary_foreground_color,
+		accent_color, accent_foreground_color, muted_color, muted_foreground_color,
+		border_color, input_color, ring_color,
+		success_color, success_foreground_color, warning_color, warning_foreground_color,
+		destructive_color, destructive_foreground_color, info_color, info_foreground_color)
+		VALUES ($1, '#000000', '#ffffff', '#000000', '#ffffff', '#000000', '#ffffff', '#000000', '#ffffff',
+			'#000000', '#ffffff', '#000000', '#ffffff', '#000000', '#ffffff', '#000000', '#ffffff',
+			'#000000', '#000000', '#ffffff',
+			'#000000', '#ffffff', '#000000', '#ffffff', '#000000', '#ffffff', '#000000', '#ffffff')`, first.ID)
 	seed("tenant brand mark", "INSERT INTO tenant_brand_marks (tenant_id, kind, image_id, terms_url, terms_accepted_at) VALUES ($1, 'x_share', $2, 'https://example.com/guidelines', NOW())", first.ID, tenantImageID)
 	seed("community limit overrides", "INSERT INTO tenant_community_limit_overrides (tenant_id) VALUES ($1)", first.ID)
 	seed("ranking snapshot", `INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface, items)

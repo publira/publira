@@ -3146,6 +3146,263 @@ func (x *TenantTheme) GetSignInImageVariants() []*TenantImageVariant {
 	return nil
 }
 
+// The colors of a tenant's dark theme, the second palette a reader reads in
+// while reading in dark. Each field means what the field of the same name in
+// TenantTheme means, and the same contrast holds between each color and its
+// foreground. The fonts and the branding images are TenantTheme's alone: the
+// two palettes share them.
+type TenantThemePalette struct {
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	PrimaryColor               string                 `protobuf:"bytes,1,opt,name=primary_color,json=primaryColor,proto3" json:"primary_color,omitempty"`
+	SecondaryColor             string                 `protobuf:"bytes,2,opt,name=secondary_color,json=secondaryColor,proto3" json:"secondary_color,omitempty"`
+	AccentColor                string                 `protobuf:"bytes,3,opt,name=accent_color,json=accentColor,proto3" json:"accent_color,omitempty"`
+	BackgroundColor            string                 `protobuf:"bytes,4,opt,name=background_color,json=backgroundColor,proto3" json:"background_color,omitempty"`
+	ForegroundColor            string                 `protobuf:"bytes,5,opt,name=foreground_color,json=foregroundColor,proto3" json:"foreground_color,omitempty"`
+	SurfaceColor               string                 `protobuf:"bytes,6,opt,name=surface_color,json=surfaceColor,proto3" json:"surface_color,omitempty"`
+	SurfaceForegroundColor     string                 `protobuf:"bytes,7,opt,name=surface_foreground_color,json=surfaceForegroundColor,proto3" json:"surface_foreground_color,omitempty"`
+	CardColor                  string                 `protobuf:"bytes,8,opt,name=card_color,json=cardColor,proto3" json:"card_color,omitempty"`
+	CardForegroundColor        string                 `protobuf:"bytes,9,opt,name=card_foreground_color,json=cardForegroundColor,proto3" json:"card_foreground_color,omitempty"`
+	PopoverColor               string                 `protobuf:"bytes,10,opt,name=popover_color,json=popoverColor,proto3" json:"popover_color,omitempty"`
+	PopoverForegroundColor     string                 `protobuf:"bytes,11,opt,name=popover_foreground_color,json=popoverForegroundColor,proto3" json:"popover_foreground_color,omitempty"`
+	PrimaryForegroundColor     string                 `protobuf:"bytes,12,opt,name=primary_foreground_color,json=primaryForegroundColor,proto3" json:"primary_foreground_color,omitempty"`
+	SecondaryForegroundColor   string                 `protobuf:"bytes,13,opt,name=secondary_foreground_color,json=secondaryForegroundColor,proto3" json:"secondary_foreground_color,omitempty"`
+	AccentForegroundColor      string                 `protobuf:"bytes,14,opt,name=accent_foreground_color,json=accentForegroundColor,proto3" json:"accent_foreground_color,omitempty"`
+	MutedColor                 string                 `protobuf:"bytes,15,opt,name=muted_color,json=mutedColor,proto3" json:"muted_color,omitempty"`
+	MutedForegroundColor       string                 `protobuf:"bytes,16,opt,name=muted_foreground_color,json=mutedForegroundColor,proto3" json:"muted_foreground_color,omitempty"`
+	BorderColor                string                 `protobuf:"bytes,17,opt,name=border_color,json=borderColor,proto3" json:"border_color,omitempty"`
+	InputColor                 string                 `protobuf:"bytes,18,opt,name=input_color,json=inputColor,proto3" json:"input_color,omitempty"`
+	RingColor                  string                 `protobuf:"bytes,19,opt,name=ring_color,json=ringColor,proto3" json:"ring_color,omitempty"`
+	SuccessColor               string                 `protobuf:"bytes,20,opt,name=success_color,json=successColor,proto3" json:"success_color,omitempty"`
+	SuccessForegroundColor     string                 `protobuf:"bytes,21,opt,name=success_foreground_color,json=successForegroundColor,proto3" json:"success_foreground_color,omitempty"`
+	WarningColor               string                 `protobuf:"bytes,22,opt,name=warning_color,json=warningColor,proto3" json:"warning_color,omitempty"`
+	WarningForegroundColor     string                 `protobuf:"bytes,23,opt,name=warning_foreground_color,json=warningForegroundColor,proto3" json:"warning_foreground_color,omitempty"`
+	DestructiveColor           string                 `protobuf:"bytes,24,opt,name=destructive_color,json=destructiveColor,proto3" json:"destructive_color,omitempty"`
+	DestructiveForegroundColor string                 `protobuf:"bytes,25,opt,name=destructive_foreground_color,json=destructiveForegroundColor,proto3" json:"destructive_foreground_color,omitempty"`
+	InfoColor                  string                 `protobuf:"bytes,26,opt,name=info_color,json=infoColor,proto3" json:"info_color,omitempty"`
+	InfoForegroundColor        string                 `protobuf:"bytes,27,opt,name=info_foreground_color,json=infoForegroundColor,proto3" json:"info_foreground_color,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *TenantThemePalette) Reset() {
+	*x = TenantThemePalette{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantThemePalette) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantThemePalette) ProtoMessage() {}
+
+func (x *TenantThemePalette) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantThemePalette.ProtoReflect.Descriptor instead.
+func (*TenantThemePalette) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *TenantThemePalette) GetPrimaryColor() string {
+	if x != nil {
+		return x.PrimaryColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetSecondaryColor() string {
+	if x != nil {
+		return x.SecondaryColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetAccentColor() string {
+	if x != nil {
+		return x.AccentColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetBackgroundColor() string {
+	if x != nil {
+		return x.BackgroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetForegroundColor() string {
+	if x != nil {
+		return x.ForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetSurfaceColor() string {
+	if x != nil {
+		return x.SurfaceColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetSurfaceForegroundColor() string {
+	if x != nil {
+		return x.SurfaceForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetCardColor() string {
+	if x != nil {
+		return x.CardColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetCardForegroundColor() string {
+	if x != nil {
+		return x.CardForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetPopoverColor() string {
+	if x != nil {
+		return x.PopoverColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetPopoverForegroundColor() string {
+	if x != nil {
+		return x.PopoverForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetPrimaryForegroundColor() string {
+	if x != nil {
+		return x.PrimaryForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetSecondaryForegroundColor() string {
+	if x != nil {
+		return x.SecondaryForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetAccentForegroundColor() string {
+	if x != nil {
+		return x.AccentForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetMutedColor() string {
+	if x != nil {
+		return x.MutedColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetMutedForegroundColor() string {
+	if x != nil {
+		return x.MutedForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetBorderColor() string {
+	if x != nil {
+		return x.BorderColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetInputColor() string {
+	if x != nil {
+		return x.InputColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetRingColor() string {
+	if x != nil {
+		return x.RingColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetSuccessColor() string {
+	if x != nil {
+		return x.SuccessColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetSuccessForegroundColor() string {
+	if x != nil {
+		return x.SuccessForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetWarningColor() string {
+	if x != nil {
+		return x.WarningColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetWarningForegroundColor() string {
+	if x != nil {
+		return x.WarningForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetDestructiveColor() string {
+	if x != nil {
+		return x.DestructiveColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetDestructiveForegroundColor() string {
+	if x != nil {
+		return x.DestructiveForegroundColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetInfoColor() string {
+	if x != nil {
+		return x.InfoColor
+	}
+	return ""
+}
+
+func (x *TenantThemePalette) GetInfoForegroundColor() string {
+	if x != nil {
+		return x.InfoForegroundColor
+	}
+	return ""
+}
+
 // A third-party mark the tenant uploaded, with when and under which terms of
 // its owner it was accepted. The image is carried the way TenantTheme carries
 // the logo: variants plus the image's updated_at, the variant's variant_type
@@ -3165,7 +3422,7 @@ type TenantBrandMark struct {
 
 func (x *TenantBrandMark) Reset() {
 	*x = TenantBrandMark{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	mi := &file_publira_types_v1_types_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3177,7 +3434,7 @@ func (x *TenantBrandMark) String() string {
 func (*TenantBrandMark) ProtoMessage() {}
 
 func (x *TenantBrandMark) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[17]
+	mi := &file_publira_types_v1_types_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3190,7 +3447,7 @@ func (x *TenantBrandMark) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantBrandMark.ProtoReflect.Descriptor instead.
 func (*TenantBrandMark) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{17}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *TenantBrandMark) GetKind() TenantBrandMarkKind {
@@ -3249,7 +3506,7 @@ type Page struct {
 
 func (x *Page) Reset() {
 	*x = Page{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[18]
+	mi := &file_publira_types_v1_types_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3261,7 +3518,7 @@ func (x *Page) String() string {
 func (*Page) ProtoMessage() {}
 
 func (x *Page) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[18]
+	mi := &file_publira_types_v1_types_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3274,7 +3531,7 @@ func (x *Page) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Page.ProtoReflect.Descriptor instead.
 func (*Page) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{18}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Page) GetId() string {
@@ -3350,7 +3607,7 @@ type PageTranslation struct {
 
 func (x *PageTranslation) Reset() {
 	*x = PageTranslation{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	mi := &file_publira_types_v1_types_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3362,7 +3619,7 @@ func (x *PageTranslation) String() string {
 func (*PageTranslation) ProtoMessage() {}
 
 func (x *PageTranslation) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	mi := &file_publira_types_v1_types_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3375,7 +3632,7 @@ func (x *PageTranslation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageTranslation.ProtoReflect.Descriptor instead.
 func (*PageTranslation) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{19}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PageTranslation) GetId() string {
@@ -3448,7 +3705,7 @@ type PageVersion struct {
 
 func (x *PageVersion) Reset() {
 	*x = PageVersion{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[20]
+	mi := &file_publira_types_v1_types_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3460,7 +3717,7 @@ func (x *PageVersion) String() string {
 func (*PageVersion) ProtoMessage() {}
 
 func (x *PageVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[20]
+	mi := &file_publira_types_v1_types_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3473,7 +3730,7 @@ func (x *PageVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageVersion.ProtoReflect.Descriptor instead.
 func (*PageVersion) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{20}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PageVersion) GetId() string {
@@ -3574,7 +3831,7 @@ type Volume struct {
 
 func (x *Volume) Reset() {
 	*x = Volume{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[21]
+	mi := &file_publira_types_v1_types_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3586,7 +3843,7 @@ func (x *Volume) String() string {
 func (*Volume) ProtoMessage() {}
 
 func (x *Volume) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[21]
+	mi := &file_publira_types_v1_types_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3599,7 +3856,7 @@ func (x *Volume) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Volume.ProtoReflect.Descriptor instead.
 func (*Volume) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{21}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Volume) GetId() string {
@@ -3677,7 +3934,7 @@ type SeriesBundle struct {
 
 func (x *SeriesBundle) Reset() {
 	*x = SeriesBundle{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[22]
+	mi := &file_publira_types_v1_types_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3689,7 +3946,7 @@ func (x *SeriesBundle) String() string {
 func (*SeriesBundle) ProtoMessage() {}
 
 func (x *SeriesBundle) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[22]
+	mi := &file_publira_types_v1_types_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3702,7 +3959,7 @@ func (x *SeriesBundle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeriesBundle.ProtoReflect.Descriptor instead.
 func (*SeriesBundle) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{22}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SeriesBundle) GetId() string {
@@ -3743,7 +4000,7 @@ type PurchasedCoinPack struct {
 
 func (x *PurchasedCoinPack) Reset() {
 	*x = PurchasedCoinPack{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	mi := &file_publira_types_v1_types_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3755,7 +4012,7 @@ func (x *PurchasedCoinPack) String() string {
 func (*PurchasedCoinPack) ProtoMessage() {}
 
 func (x *PurchasedCoinPack) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[23]
+	mi := &file_publira_types_v1_types_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3768,7 +4025,7 @@ func (x *PurchasedCoinPack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchasedCoinPack.ProtoReflect.Descriptor instead.
 func (*PurchasedCoinPack) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{23}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *PurchasedCoinPack) GetId() string {
@@ -3813,7 +4070,7 @@ type ReaderIconPreset struct {
 
 func (x *ReaderIconPreset) Reset() {
 	*x = ReaderIconPreset{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[24]
+	mi := &file_publira_types_v1_types_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3825,7 +4082,7 @@ func (x *ReaderIconPreset) String() string {
 func (*ReaderIconPreset) ProtoMessage() {}
 
 func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[24]
+	mi := &file_publira_types_v1_types_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3838,7 +4095,7 @@ func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReaderIconPreset.ProtoReflect.Descriptor instead.
 func (*ReaderIconPreset) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{24}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ReaderIconPreset) GetId() string {
@@ -3885,7 +4142,7 @@ type RetentionPeriods struct {
 
 func (x *RetentionPeriods) Reset() {
 	*x = RetentionPeriods{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[25]
+	mi := &file_publira_types_v1_types_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3897,7 +4154,7 @@ func (x *RetentionPeriods) String() string {
 func (*RetentionPeriods) ProtoMessage() {}
 
 func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[25]
+	mi := &file_publira_types_v1_types_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3910,7 +4167,7 @@ func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetentionPeriods.ProtoReflect.Descriptor instead.
 func (*RetentionPeriods) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{25}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RetentionPeriods) GetWithdrawnCommentDays() int32 {
@@ -4136,7 +4393,41 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x11serif_font_family\x18\" \x01(\tR\x0fserifFontFamily\x12(\n" +
 	"\x10sans_font_family\x18# \x01(\tR\x0esansFontFamily\x126\n" +
 	"\x18sign_in_image_updated_at\x18$ \x01(\tR\x14signInImageUpdatedAt\x12Y\n" +
-	"\x16sign_in_image_variants\x18% \x03(\v2$.publira.types.v1.TenantImageVariantR\x13signInImageVariantsJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\x8c\x02\n" +
+	"\x16sign_in_image_variants\x18% \x03(\v2$.publira.types.v1.TenantImageVariantR\x13signInImageVariantsJ\x04\b\x04\x10\x05J\x04\b\x1d\x10\x1eR\blogo_urlR\bicon_url\"\xd6\t\n" +
+	"\x12TenantThemePalette\x12#\n" +
+	"\rprimary_color\x18\x01 \x01(\tR\fprimaryColor\x12'\n" +
+	"\x0fsecondary_color\x18\x02 \x01(\tR\x0esecondaryColor\x12!\n" +
+	"\faccent_color\x18\x03 \x01(\tR\vaccentColor\x12)\n" +
+	"\x10background_color\x18\x04 \x01(\tR\x0fbackgroundColor\x12)\n" +
+	"\x10foreground_color\x18\x05 \x01(\tR\x0fforegroundColor\x12#\n" +
+	"\rsurface_color\x18\x06 \x01(\tR\fsurfaceColor\x128\n" +
+	"\x18surface_foreground_color\x18\a \x01(\tR\x16surfaceForegroundColor\x12\x1d\n" +
+	"\n" +
+	"card_color\x18\b \x01(\tR\tcardColor\x122\n" +
+	"\x15card_foreground_color\x18\t \x01(\tR\x13cardForegroundColor\x12#\n" +
+	"\rpopover_color\x18\n" +
+	" \x01(\tR\fpopoverColor\x128\n" +
+	"\x18popover_foreground_color\x18\v \x01(\tR\x16popoverForegroundColor\x128\n" +
+	"\x18primary_foreground_color\x18\f \x01(\tR\x16primaryForegroundColor\x12<\n" +
+	"\x1asecondary_foreground_color\x18\r \x01(\tR\x18secondaryForegroundColor\x126\n" +
+	"\x17accent_foreground_color\x18\x0e \x01(\tR\x15accentForegroundColor\x12\x1f\n" +
+	"\vmuted_color\x18\x0f \x01(\tR\n" +
+	"mutedColor\x124\n" +
+	"\x16muted_foreground_color\x18\x10 \x01(\tR\x14mutedForegroundColor\x12!\n" +
+	"\fborder_color\x18\x11 \x01(\tR\vborderColor\x12\x1f\n" +
+	"\vinput_color\x18\x12 \x01(\tR\n" +
+	"inputColor\x12\x1d\n" +
+	"\n" +
+	"ring_color\x18\x13 \x01(\tR\tringColor\x12#\n" +
+	"\rsuccess_color\x18\x14 \x01(\tR\fsuccessColor\x128\n" +
+	"\x18success_foreground_color\x18\x15 \x01(\tR\x16successForegroundColor\x12#\n" +
+	"\rwarning_color\x18\x16 \x01(\tR\fwarningColor\x128\n" +
+	"\x18warning_foreground_color\x18\x17 \x01(\tR\x16warningForegroundColor\x12+\n" +
+	"\x11destructive_color\x18\x18 \x01(\tR\x10destructiveColor\x12@\n" +
+	"\x1cdestructive_foreground_color\x18\x19 \x01(\tR\x1adestructiveForegroundColor\x12\x1d\n" +
+	"\n" +
+	"info_color\x18\x1a \x01(\tR\tinfoColor\x122\n" +
+	"\x15info_foreground_color\x18\x1b \x01(\tR\x13infoForegroundColor\"\x8c\x02\n" +
 	"\x0fTenantBrandMark\x129\n" +
 	"\x04kind\x18\x01 \x01(\x0e2%.publira.types.v1.TenantBrandMarkKindR\x04kind\x12(\n" +
 	"\x10image_updated_at\x18\x02 \x01(\tR\x0eimageUpdatedAt\x12K\n" +
@@ -4312,7 +4603,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 17)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
 	(SeriesStatus)(0),             // 1: publira.types.v1.SeriesStatus
@@ -4348,15 +4639,16 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*EpisodeImage)(nil),          // 31: publira.types.v1.EpisodeImage
 	(*TenantImageVariant)(nil),    // 32: publira.types.v1.TenantImageVariant
 	(*TenantTheme)(nil),           // 33: publira.types.v1.TenantTheme
-	(*TenantBrandMark)(nil),       // 34: publira.types.v1.TenantBrandMark
-	(*Page)(nil),                  // 35: publira.types.v1.Page
-	(*PageTranslation)(nil),       // 36: publira.types.v1.PageTranslation
-	(*PageVersion)(nil),           // 37: publira.types.v1.PageVersion
-	(*Volume)(nil),                // 38: publira.types.v1.Volume
-	(*SeriesBundle)(nil),          // 39: publira.types.v1.SeriesBundle
-	(*PurchasedCoinPack)(nil),     // 40: publira.types.v1.PurchasedCoinPack
-	(*ReaderIconPreset)(nil),      // 41: publira.types.v1.ReaderIconPreset
-	(*RetentionPeriods)(nil),      // 42: publira.types.v1.RetentionPeriods
+	(*TenantThemePalette)(nil),    // 34: publira.types.v1.TenantThemePalette
+	(*TenantBrandMark)(nil),       // 35: publira.types.v1.TenantBrandMark
+	(*Page)(nil),                  // 36: publira.types.v1.Page
+	(*PageTranslation)(nil),       // 37: publira.types.v1.PageTranslation
+	(*PageVersion)(nil),           // 38: publira.types.v1.PageVersion
+	(*Volume)(nil),                // 39: publira.types.v1.Volume
+	(*SeriesBundle)(nil),          // 40: publira.types.v1.SeriesBundle
+	(*PurchasedCoinPack)(nil),     // 41: publira.types.v1.PurchasedCoinPack
+	(*ReaderIconPreset)(nil),      // 42: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 43: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	19, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
@@ -4403,7 +4695,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      17,
-			NumMessages:   26,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

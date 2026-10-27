@@ -215,6 +215,14 @@ const GetTenantResponse$json = {
       '6': '.publira.types.v1.TenantBrandMark',
       '10': 'brandMarks'
     },
+    {
+      '1': 'dark_theme',
+      '3': 28,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantThemePalette',
+      '10': 'darkTheme'
+    },
   ],
   '9': [
     {'1': 16, '2': 17},
@@ -247,8 +255,9 @@ final $typed_data.Uint8List getTenantResponseDescriptor = $convert.base64Decode(
     'N1cnJlbmN5EisKEXN1cHBvcnRlZF9sb2NhbGVzGBggAygJUhBzdXBwb3J0ZWRMb2NhbGVzEiAK'
     'DHNpZ25fdXBfb3BlbhgZIAEoCFIKc2lnblVwT3BlbhIzChZzaWduX3VwX2Nsb3NlZF9tZXNzYW'
     'dlGBogASgJUhNzaWduVXBDbG9zZWRNZXNzYWdlEkIKC2JyYW5kX21hcmtzGBsgAygLMiEucHVi'
-    'bGlyYS50eXBlcy52MS5UZW5hbnRCcmFuZE1hcmtSCmJyYW5kTWFya3NKBAgQEBFKBAgREBJSCn'
-    'Rlcm1zX3BhZ2VSDHByaXZhY3lfcGFnZQ==');
+    'bGlyYS50eXBlcy52MS5UZW5hbnRCcmFuZE1hcmtSCmJyYW5kTWFya3MSQwoKZGFya190aGVtZR'
+    'gcIAEoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW50VGhlbWVQYWxldHRlUglkYXJrVGhlbWVK'
+    'BAgQEBFKBAgREBJSCnRlcm1zX3BhZ2VSDHByaXZhY3lfcGFnZQ==');
 
 @$core.Deprecated('Use tenantAppleSignInDescriptor instead')
 const TenantAppleSignIn$json = {
@@ -639,6 +648,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.TenantAppleSignIn': TenantAppleSignIn$json,
   '.publira.v1.TenantGoogleSignIn': TenantGoogleSignIn$json,
   '.publira.types.v1.TenantBrandMark': $0.TenantBrandMark$json,
+  '.publira.types.v1.TenantThemePalette': $0.TenantThemePalette$json,
   '.publira.v1.GetTenantLegalPagesRequest': GetTenantLegalPagesRequest$json,
   '.publira.v1.GetTenantLegalPagesResponse': GetTenantLegalPagesResponse$json,
   '.publira.v1.TenantLegalPage': TenantLegalPage$json,

@@ -477,6 +477,8 @@
         "tenant_reader_icon_preset_deleted": "Reader icon preset deleted",
         "tenant_legal_pages_updated": "Terms and privacy policy updated",
         "tenant_theme_updated": "Theme updated",
+        "tenant_dark_theme_updated": "Dark theme updated",
+        "tenant_dark_theme_deleted": "Dark theme removed",
         "tenant_logo_uploaded": "Logo uploaded",
         "tenant_logo_deleted": "Logo removed",
         "tenant_icon_uploaded": "Icon uploaded",

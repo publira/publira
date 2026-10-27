@@ -389,6 +389,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     $core.bool? signUpOpen,
     $core.String? signUpClosedMessage,
     $core.Iterable<$0.TenantBrandMark>? brandMarks,
+    $0.TenantThemePalette? darkTheme,
   }) {
     final result = GetTenantResponse._();
     if (tenantPublicId != null) result.tenantPublicId = tenantPublicId;
@@ -421,6 +422,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     if (signUpClosedMessage != null)
       result.signUpClosedMessage = signUpClosedMessage;
     if (brandMarks != null) result.brandMarks.addAll(brandMarks);
+    if (darkTheme != null) result.darkTheme = darkTheme;
     return result;
   }
 
@@ -469,6 +471,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     ..aOS(26, _omitFieldNames ? '' : 'signUpClosedMessage')
     ..pPM<$0.TenantBrandMark>(27, _omitFieldNames ? '' : 'brandMarks',
         subBuilder: $0.TenantBrandMark.$_createMessage)
+    ..aOM<$0.TenantThemePalette>(28, _omitFieldNames ? '' : 'darkTheme',
+        subBuilder: $0.TenantThemePalette.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -768,6 +772,20 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   /// the console's to know and never answered here.
   @$pb.TagNumber(27)
   $pb.PbList<$0.TenantBrandMark> get brandMarks => $_getList(24);
+
+  /// The colors the storefront and the app read in while the reader reads in
+  /// dark. Absent where the tenant has saved no dark palette, and a client then
+  /// derives one of its own or stays on theme's.
+  @$pb.TagNumber(28)
+  $0.TenantThemePalette get darkTheme => $_getN(25);
+  @$pb.TagNumber(28)
+  set darkTheme($0.TenantThemePalette value) => $_setField(28, value);
+  @$pb.TagNumber(28)
+  $core.bool hasDarkTheme() => $_has(25);
+  @$pb.TagNumber(28)
+  void clearDarkTheme() => $_clearField(28);
+  @$pb.TagNumber(28)
+  $0.TenantThemePalette ensureDarkTheme() => $_ensure(25);
 }
 
 /// How a client signs a reader in with Apple. The iOS app signs in with its own

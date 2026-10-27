@@ -134,6 +134,13 @@ func tenantThemeSelectRowWithBrandingImages(
 	}
 }
 
+// expectNoDarkTheme answers the dark palette of a tenant that has saved none.
+func expectNoDarkTheme(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantDarkThemeByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+}
+
 // expectNoBrandMarks answers the brand marks of a tenant that has uploaded
 // none.
 func expectNoBrandMarks(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
@@ -248,6 +255,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -278,6 +286,9 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 	if len(resp.Theme.SignInImageVariants) != 0 || resp.Theme.SignInImageUpdatedAt != "" {
 		t.Fatalf("theme sign-in image = %d variants updated at %q, want none", len(resp.Theme.SignInImageVariants), resp.Theme.SignInImageUpdatedAt)
 	}
+	if resp.DarkTheme != nil {
+		t.Fatalf("dark_theme = %+v, want nil for a tenant without one", resp.DarkTheme)
+	}
 	if resp.Timezone != "UTC" {
 		t.Fatalf("timezone = %q, want UTC", resp.Timezone)
 	}
@@ -307,6 +318,7 @@ func TestGetTenantReadsTheSiteCopyInTheReadersLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -405,6 +417,7 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 			AddRow(iconImageID, "icon", "original", "image/png", int64(2048), int32(512), int32(512)).
 			AddRow(logoImageID, "logo", "original", "image/png", int64(4096), int32(1024), int32(256)).
 			AddRow(signInImageID, "sign_in", "original", "image/jpeg", int64(8192), int32(1920), int32(2560)))
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -481,6 +494,7 @@ func TestGetTenantAnswersNoThemeWithoutAThemeRow(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -517,6 +531,7 @@ func TestGetTenantAnswersTheBrandMarksWithoutWhoAcceptedThem(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoDarkTheme(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublicTenantBrandMarks)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"kind", "image_id", "image_updated_at", "terms_url", "terms_accepted_at"}).
@@ -571,6 +586,19 @@ func TestGetTenantFailsWhenTheBrandingCannotBeRead(t *testing.T) {
 			wantLog: "failed to read the tenant theme",
 			expectTheme: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, _ time.Time) {
 				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
+					WithArgs(tenantID).
+					WillReturnError(readFailure)
+			},
+		},
+		{
+			name:    "dark theme",
+			wantLog: "failed to read the tenant dark theme",
+			expectTheme: func(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.Time) {
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
+					WithArgs(tenantID).
+					WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
+						AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+				mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantDarkThemeByTenantID)).
 					WithArgs(tenantID).
 					WillReturnError(readFailure)
 			},
@@ -643,6 +671,7 @@ func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -677,6 +706,7 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -711,6 +741,7 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -779,6 +810,7 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectNoDarkTheme(env.mock, tenantID)
 	expectNoBrandMarks(env.mock, tenantID)
 	expectSignInProvidersUnavailable(env.mock, tenantID)
 	expectNoSignUpSettings(env.mock, tenantID)
@@ -816,6 +848,7 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectNoDarkTheme(env.mock, tenantID)
 	expectNoBrandMarks(env.mock, tenantID)
 	expectSignInProvidersUnavailable(env.mock, tenantID)
 	expectNoSignUpSettings(env.mock, tenantID)
@@ -860,6 +893,7 @@ func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+			expectNoDarkTheme(mock, tenantID)
 			expectNoBrandMarks(mock, tenantID)
 			expectSignInProvidersUnavailable(mock, tenantID)
 			expectNoSignUpSettings(mock, tenantID)
@@ -895,6 +929,7 @@ func TestGetTenantReportsCommentingOffWithoutAConfigRow(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+	expectNoDarkTheme(mock, tenantID)
 	expectNoBrandMarks(mock, tenantID)
 	expectSignInProvidersUnavailable(mock, tenantID)
 	expectNoSignUpSettings(mock, tenantID)
@@ -988,6 +1023,7 @@ func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+			expectNoDarkTheme(mock, tenantID)
 			expectNoBrandMarks(mock, tenantID)
 			expectSignInProvidersUnavailable(mock, tenantID)
 			expectNoSignUpSettings(mock, tenantID)
@@ -1062,6 +1098,7 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 				WithArgs(tenantID).
 				WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 					AddRow(tenantThemeSelectRow(tenantID, "#112233", now)...))
+			expectNoDarkTheme(mock, tenantID)
 			expectNoBrandMarks(mock, tenantID)
 			expectSignInProvidersUnavailable(mock, tenantID)
 			expectNoSignUpSettings(mock, tenantID)

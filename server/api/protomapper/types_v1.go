@@ -462,6 +462,39 @@ func TenantThemeFromGetRow(
 	return theme
 }
 
+// TenantThemePaletteFromDarkRow carries a tenant's dark palette.
+func TenantThemePaletteFromDarkRow(row dbmodels.TenantThemeDark) *publirattypesv1.TenantThemePalette {
+	return &publirattypesv1.TenantThemePalette{
+		PrimaryColor:               row.PrimaryColor,
+		SecondaryColor:             row.SecondaryColor,
+		AccentColor:                row.AccentColor,
+		BackgroundColor:            row.BackgroundColor,
+		ForegroundColor:            row.ForegroundColor,
+		SurfaceColor:               row.SurfaceColor,
+		SurfaceForegroundColor:     row.SurfaceForegroundColor,
+		CardColor:                  row.CardColor,
+		CardForegroundColor:        row.CardForegroundColor,
+		PopoverColor:               row.PopoverColor,
+		PopoverForegroundColor:     row.PopoverForegroundColor,
+		PrimaryForegroundColor:     row.PrimaryForegroundColor,
+		SecondaryForegroundColor:   row.SecondaryForegroundColor,
+		AccentForegroundColor:      row.AccentForegroundColor,
+		MutedColor:                 row.MutedColor,
+		MutedForegroundColor:       row.MutedForegroundColor,
+		BorderColor:                row.BorderColor,
+		InputColor:                 row.InputColor,
+		RingColor:                  row.RingColor,
+		SuccessColor:               row.SuccessColor,
+		SuccessForegroundColor:     row.SuccessForegroundColor,
+		WarningColor:               row.WarningColor,
+		WarningForegroundColor:     row.WarningForegroundColor,
+		DestructiveColor:           row.DestructiveColor,
+		DestructiveForegroundColor: row.DestructiveForegroundColor,
+		InfoColor:                  row.InfoColor,
+		InfoForegroundColor:        row.InfoForegroundColor,
+	}
+}
+
 // TenantImageVariantsByImageID groups the variants of the branding images by
 // the image they belong to, so one read of tenant_image_variants serves every
 // slot of the theme.

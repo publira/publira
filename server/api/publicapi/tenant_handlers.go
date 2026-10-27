@@ -122,6 +122,17 @@ func (s *apiServer) GetTenant(
 		return nil, s.internalError(ctx, "failed to read the tenant theme", err, "tenant_id", tenant.ID.String())
 	}
 
+	// Failed rather than answered without a dark palette, which web-storefront
+	// would cache as a tenant that saved none.
+	var darkTheme *publirattypesv1.TenantThemePalette
+	darkThemeRow, err := queries.GetTenantDarkThemeByTenantID(ctx, tenant.ID)
+	switch {
+	case err == nil:
+		darkTheme = protomapper.TenantThemePaletteFromDarkRow(darkThemeRow)
+	case !errors.Is(err, sql.ErrNoRows):
+		return nil, s.internalError(ctx, "failed to read the tenant dark theme", err, "tenant_id", tenant.ID.String())
+	}
+
 	// Failed rather than answered without marks, which web-storefront would
 	// cache as a tenant that uploaded none.
 	brandMarks, err := s.tenantBrandMarks(ctx, queries, tenant)
@@ -168,6 +179,7 @@ func (s *apiServer) GetTenant(
 		SiteDescription:           siteCopy.SiteDescription,
 		SiteTagline:               siteCopy.SiteTagline,
 		Theme:                     theme,
+		DarkTheme:                 darkTheme,
 		Timezone:                  tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:             defaultLocale,
 		SupportedLocales:          supportedLocales,

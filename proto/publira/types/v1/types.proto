@@ -499,6 +499,41 @@ message TenantTheme {
   repeated TenantImageVariant sign_in_image_variants = 37;
 }
 
+// The colors of a tenant's dark theme, the second palette a reader reads in
+// while reading in dark. Each field means what the field of the same name in
+// TenantTheme means, and the same contrast holds between each color and its
+// foreground. The fonts and the branding images are TenantTheme's alone: the
+// two palettes share them.
+message TenantThemePalette {
+  string primary_color = 1;
+  string secondary_color = 2;
+  string accent_color = 3;
+  string background_color = 4;
+  string foreground_color = 5;
+  string surface_color = 6;
+  string surface_foreground_color = 7;
+  string card_color = 8;
+  string card_foreground_color = 9;
+  string popover_color = 10;
+  string popover_foreground_color = 11;
+  string primary_foreground_color = 12;
+  string secondary_foreground_color = 13;
+  string accent_foreground_color = 14;
+  string muted_color = 15;
+  string muted_foreground_color = 16;
+  string border_color = 17;
+  string input_color = 18;
+  string ring_color = 19;
+  string success_color = 20;
+  string success_foreground_color = 21;
+  string warning_color = 22;
+  string warning_foreground_color = 23;
+  string destructive_color = 24;
+  string destructive_foreground_color = 25;
+  string info_color = 26;
+  string info_foreground_color = 27;
+}
+
 // Which third-party mark a tenant brand mark is, which also says where the
 // storefront draws it. The repository ships none of them: each is the tenant's
 // own upload, accepted under the terms of the mark's owner.
