@@ -197,6 +197,58 @@ describe("EpisodeAccessGate", () => {
       }
     });
 
+    it("Draw the badge the tenant uploaded for a store, keeping its name as the link's", () => {
+      render(
+        <EpisodeAccessGate
+          {...appOnly}
+          appStoreBadge={{
+            contentType: "image/png",
+            fileSizeBytes: 1024,
+            height: 40,
+            label: "original",
+            url: "/images/tenants/media-1/app_store_badge",
+            variantType: "app_store_badge",
+            width: 120,
+          }}
+        />
+      );
+
+      const appStore = screen.getByRole("link", {
+        name: "storefront.episode.gate.app_store",
+      });
+      const badge = appStore.querySelector("img");
+      expect(appStore.getAttribute("href")).toBe(
+        "https://apps.apple.com/app/id123"
+      );
+      expect(badge?.getAttribute("alt")).toBe("");
+      expect(badge?.getAttribute("width")).toBe("120");
+      expect(badge?.getAttribute("height")).toBe("40");
+      expect(decodeURIComponent(badge?.getAttribute("src") ?? "")).toContain(
+        "/images/tenants/media-1/app_store_badge"
+      );
+
+      const googlePlay = screen.getByRole("link", {
+        name: "storefront.episode.gate.google_play",
+      });
+      expect(googlePlay.querySelector("img")).toBeNull();
+      expect(googlePlay.textContent).toBe(
+        "storefront.episode.gate.google_play"
+      );
+    });
+
+    it("Read each store's name as a text link while no badge is uploaded", () => {
+      render(<EpisodeAccessGate {...appOnly} />);
+
+      for (const name of [
+        "storefront.episode.gate.app_store",
+        "storefront.episode.gate.google_play",
+      ]) {
+        const link = screen.getByRole("link", { name });
+        expect(link.querySelector("img")).toBeNull();
+        expect(link.textContent).toBe(name);
+      }
+    });
+
     it("Leave out a store the app is not listed in", () => {
       render(<EpisodeAccessGate {...appOnly} googlePlayUrl={undefined} />);
 

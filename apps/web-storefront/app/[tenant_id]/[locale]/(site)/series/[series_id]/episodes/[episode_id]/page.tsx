@@ -32,6 +32,7 @@ import {
   getTenantSiteLabel,
   tenantSales,
 } from "#lib/tenant";
+import { resolveTenantBrandMarkVariant } from "#lib/tenant-brand-mark";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -318,6 +319,10 @@ const EpisodeContent = async (
     googlePlay: false,
   };
   const sales = tenantSales(tenant);
+  const appStoreBadge =
+    resolveTenantBrandMarkVariant(tenant, "app_store_badge") ?? undefined;
+  const googlePlayBadge =
+    resolveTenantBrandMarkVariant(tenant, "google_play_badge") ?? undefined;
   // Empty where the episode carries no such moment, and the colophon leaves
   // the fact out rather than standing "Not set" where a date would be.
   const publishedAt = formatDateTime(episode.publishedAt, {
@@ -389,12 +394,14 @@ const EpisodeContent = async (
                     access={access}
                     acceptsPayments={tenant?.acceptsPayments ?? false}
                     appPayments={appPayments}
+                    appStoreBadge={appStoreBadge}
                     appStoreUrl={tenant?.appStoreUrl}
                     checkoutSessionId={checkoutSessionId}
                     commentMode={commentMode}
                     commentToken={commentSearchParams[COMMENT_TOKEN_PARAM]}
                     currency={sales.currency}
                     episode={episode}
+                    googlePlayBadge={googlePlayBadge}
                     googlePlayUrl={tenant?.googlePlayUrl}
                     images={images}
                     labelPublicId={labelPublicId}

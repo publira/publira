@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import {
   AgeVerification,
   AppPurchaseRoute,
+  TenantBrandMarkKind,
 } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -456,6 +457,57 @@ describe("tenant", () => {
     const info = await getTenantSiteInfo("TENANT_001");
 
     expect(info?.signInImageVariants).toBeUndefined();
+  });
+
+  it("Carry the brand marks the tenant uploaded by kind", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      brandMarks: [
+        {
+          imageVariants: [brandingVariant("/images/tenants/media-1/x_share")],
+          kind: TenantBrandMarkKind.X_SHARE,
+        },
+        {
+          imageVariants: [
+            brandingVariant("/images/tenants/media-2/app_store_badge"),
+          ],
+          kind: TenantBrandMarkKind.APP_STORE_BADGE,
+        },
+      ],
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.brandMarks).toEqual({
+      app_store_badge: [
+        brandingVariant("/images/tenants/media-2/app_store_badge"),
+      ],
+      x_share: [brandingVariant("/images/tenants/media-1/x_share")],
+    });
+  });
+
+  it("Drop a brand mark of a kind this build has no name for", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      brandMarks: [
+        {
+          imageVariants: [brandingVariant("/images/tenants/media-1/unknown")],
+          kind: TenantBrandMarkKind.UNSPECIFIED,
+        },
+      ],
+    });
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.brandMarks).toBeUndefined();
+  });
+
+  it("Carry no brand marks while the tenant has uploaded none", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    const info = await getTenantSiteInfo("TENANT_001");
+
+    expect(info?.brandMarks).toBeUndefined();
   });
 
   it("Fallback to default time zone when field is empty", async () => {

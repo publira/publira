@@ -7,6 +7,7 @@ import {
   formatDuration,
   formatPrice,
 } from "@publira/utils";
+import Image from "next/image";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
@@ -27,6 +28,7 @@ import type {
   EpisodePurchaseSurface,
 } from "#lib/catalog";
 import { coinPackTotal } from "#lib/coins";
+import type { TenantImageVariant } from "#lib/tenant";
 
 import { episodeLoginHref } from "../_lib/access-gate";
 import {
@@ -55,17 +57,63 @@ const sellingStoreUrls = (
   sellingGooglePlayUrl: appPayments.googlePlay ? googlePlayUrl : undefined,
 });
 
+/** The height a store badge is drawn at, which Apple sets as its minimum. */
+const STORE_BADGE_HEIGHT_PX = 40;
+
+/**
+ * One store's link: the badge the tenant uploaded for it, or a button with the
+ * store's name where it uploaded none. The badge is drawn at its master's own
+ * aspect ratio, and the store's name stays the link's accessible name, since
+ * the words on a badge are a picture.
+ */
+const StoreLink = ({
+  badge,
+  children,
+  href,
+  variant,
+}: {
+  badge?: TenantImageVariant;
+  /** The store's name. */
+  children: ReactNode;
+  href: string;
+  variant: "outline" | "secondary";
+}) =>
+  badge ? (
+    <a
+      className="inline-flex rounded-control focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+      href={href}
+    >
+      <Image
+        alt=""
+        className="h-10 w-auto"
+        height={badge.height}
+        sizes={`${Math.ceil((STORE_BADGE_HEIGHT_PX * badge.width) / badge.height)}px`}
+        src={badge.url}
+        width={badge.width}
+      />
+      <span className="sr-only">{children}</span>
+    </a>
+  ) : (
+    <LinkButton href={href} size="lg" variant={variant}>
+      {children}
+    </LinkButton>
+  );
+
 /**
  * The stores the tenant's app is listed in: each one's link, and above it a
  * code a phone can scan from a wider screen. A phone gets the links alone,
  * because it cannot scan a code on its own screen.
  */
 const AppStoreLinks = ({
+  appStoreBadge,
   appStoreUrl,
+  googlePlayBadge,
   googlePlayUrl,
   variant,
 }: {
+  appStoreBadge?: TenantImageVariant;
   appStoreUrl?: string;
+  googlePlayBadge?: TenantImageVariant;
   googlePlayUrl?: string;
   variant: "outline" | "secondary";
 }) => (
@@ -76,11 +124,11 @@ const AppStoreLinks = ({
           {...toQrCodePath(appStoreUrl)}
           className="hidden size-32 md:block"
         />
-        <LinkButton href={appStoreUrl} size="lg" variant={variant}>
+        <StoreLink badge={appStoreBadge} href={appStoreUrl} variant={variant}>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="storefront.episode.gate.app_store" />
           </Suspense>
-        </LinkButton>
+        </StoreLink>
       </div>
     ) : null}
     {googlePlayUrl ? (
@@ -89,11 +137,15 @@ const AppStoreLinks = ({
           {...toQrCodePath(googlePlayUrl)}
           className="hidden size-32 md:block"
         />
-        <LinkButton href={googlePlayUrl} size="lg" variant={variant}>
+        <StoreLink
+          badge={googlePlayBadge}
+          href={googlePlayUrl}
+          variant={variant}
+        >
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
             <Message message="storefront.episode.gate.google_play" />
           </Suspense>
-        </LinkButton>
+        </StoreLink>
       </div>
     ) : null}
   </div>
@@ -656,12 +708,14 @@ const WaitFreeSection = ({
 export const EpisodeAccessGate = ({
   acceptsPayments,
   appPayments,
+  appStoreBadge,
   appStoreUrl,
   campaign,
   coinOffer,
   currency,
   episodeId,
   episodePublicId,
+  googlePlayBadge,
   googlePlayUrl,
   locale,
   nextFreeEpisode,
@@ -678,6 +732,11 @@ export const EpisodeAccessGate = ({
 }: {
   acceptsPayments: boolean;
   appPayments: TenantAppPayments;
+  /**
+   * The badge the tenant uploaded for each store's link; absent where it
+   * uploaded none, and the link reads as the store's name.
+   */
+  appStoreBadge?: TenantImageVariant;
   /** Where the tenant's app is listed; absent where it is not. */
   appStoreUrl?: string;
   /** The campaign price open on the episode; absent when none is. */
@@ -691,6 +750,7 @@ export const EpisodeAccessGate = ({
   currency: string | null;
   episodeId: string;
   episodePublicId: string;
+  googlePlayBadge?: TenantImageVariant;
   googlePlayUrl?: string;
   locale: Locale;
   /** Absent when no later episode of the series is free right now. */
@@ -827,7 +887,9 @@ export const EpisodeAccessGate = ({
           keeps it. */}
         {soldInApp && (sellingAppStoreUrl || sellingGooglePlayUrl) ? (
           <AppStoreLinks
+            appStoreBadge={appStoreBadge}
             appStoreUrl={sellingAppStoreUrl}
+            googlePlayBadge={googlePlayBadge}
             googlePlayUrl={sellingGooglePlayUrl}
             variant={signedIn && !shuTaken ? "secondary" : "outline"}
           />

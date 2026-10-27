@@ -617,6 +617,8 @@ Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and 
 
 `pnpm check` fails on a `lucide-react` import (`no-restricted-imports`, with a `packages/icons/src/**` override). `pnpm jsx-svg:check` fails on `<svg>` in JSX outside `packages/icons` and the exceptions `scripts/check-jsx-svg.ts` lists with their reasons.
 
+Third-party brand marks — a service's logo, a store badge, a sign-in provider's mark — are never committed, in code or in fixtures, and `@publira/icons` does not carry them. Each owner hands its mark out under its own guidelines to the party that displays it, which is the tenant, so a mark is a tenant-uploaded asset that the screen draws when present and replaces with its text label when absent.
+
 The reason is not line count. A hand-written icon is drawn in its own coordinate system and stroke width, so it never matches the lucide icons standing next to it. And a path written into JSX gets copy-pasted instead of imported, so the same glyph drifts between files while the shared component that already covers it goes unused. Neither shows up in review — the markup looks fine on its own.
 
 ### NG (do not)

@@ -6,6 +6,7 @@ import * as Popover from "@publira/ui-components/popover";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import { useState } from "react";
+import type { ReactNode } from "react";
 
 import { useClientMessages } from "./client-message";
 
@@ -26,6 +27,16 @@ type CopyOutcome = "copied" | "failed" | null;
 
 const SHARE_ROW = cn(
   "flex items-center gap-2 rounded-control px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden"
+);
+
+/**
+ * Where a row's mark sits, and the same width left empty on a row without one.
+ * The mark the caller hands over fills it at its own aspect ratio.
+ */
+const MarkSlot = ({ children }: { children?: ReactNode }) => (
+  <span aria-hidden="true" className="flex size-4 shrink-0 items-center">
+    {children}
+  </span>
 );
 
 /** Same footprint as the rendered trigger, so the action row does not shift. */
@@ -57,21 +68,32 @@ export const ShareMenuSkeleton = () => <Skeleton className="h-10 w-28" />;
  * its credits today, and whatever else a screen decides to say tomorrow.
  * Composing it here instead would put a decision about wording, and the list
  * joining a reader's language asks for, inside a control that renders a button.
+ *
+ * `xMark` and `lineMark` are the services' own marks, which only a tenant that
+ * uploaded them has: the repository ships neither. A row without one is its
+ * label alone.
  */
 export const ShareMenu = ({
+  lineMark,
   text,
   title,
   url,
+  xMark,
 }: {
+  /** LINE's mark, drawn at the head of the LINE row; absent where none is. */
+  lineMark?: ReactNode;
   /** The message a share carries, already worded for this reader. */
   text: string;
   /** What this page is called, and nothing else. */
   title: string;
   url: string;
+  /** X's mark, drawn at the head of the X row; absent where none is. */
+  xMark?: ReactNode;
 }) => {
   const t = useClientMessages();
   const [open, setOpen] = useState(false);
   const [copyOutcome, setCopyOutcome] = useState<CopyOutcome>(null);
+  const marked = Boolean(xMark || lineMark);
 
   const openShareSheet = async () => {
     try {
@@ -137,6 +159,7 @@ export const ShareMenu = ({
             rel="noopener noreferrer"
             target="_blank"
           >
+            {marked ? <MarkSlot>{xMark}</MarkSlot> : null}
             {t("storefront.share.x")}
           </a>
           <a
@@ -145,12 +168,15 @@ export const ShareMenu = ({
             rel="noopener noreferrer"
             target="_blank"
           >
+            {marked ? <MarkSlot>{lineMark}</MarkSlot> : null}
             {t("storefront.share.line")}
           </a>
-          {/* No icon, though a copy control usually carries one: the two rows
-              above it are brand marks this repository does not ship, so an icon
-              here would indent one row of three. */}
+          {/* An empty slot of the marks' width rather than a copy icon: once
+              either row above carries a mark, every row keeps a slot so the
+              three labels start on one line. With no mark, no row reserves
+              one, and the labels already do. */}
           <button className={SHARE_ROW} onClick={handleCopy} type="button">
+            {marked ? <MarkSlot /> : null}
             {t("storefront.share.copy_link")}
           </button>
         </div>
