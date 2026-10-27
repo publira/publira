@@ -79,20 +79,14 @@ func (q *Queries) GetPublishedEpisodeForFollowerNotification(ctx context.Context
 }
 
 const ListEpisodesByPublicationTimeForTenantAsc = `-- name: ListEpisodesByPublicationTimeForTenantAsc :many
-SELECT e.id,
+SELECT el.episode_id AS id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
     s.public_id AS series_public_id,
     str.title AS series_title,
     el.status,
-    pt.published_at::timestamptz AS published_at
+    (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END)::timestamptz AS published_at
 FROM episode_listings el
-    CROSS JOIN LATERAL (
-        SELECT CASE
-                WHEN el.status = 'published' THEN el.published_at
-                ELSE el.scheduled_at
-            END AS published_at
-    ) pt
     JOIN episodes e ON e.tenant_id = el.tenant_id
         AND e.id = el.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -101,21 +95,21 @@ FROM episode_listings el
     CROSS JOIN LATERAL series_translation_for(s.id, '') str
 WHERE el.tenant_id = $1
     AND el.status IN ('scheduled', 'published')
-    AND pt.published_at >= $2::timestamptz
-    AND pt.published_at < $3::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) >= $2::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) < $3::timestamptz
     AND (
         $4::uuid IS NULL
         OR (
             $5::boolean
-            AND (pt.published_at, e.id) >= ($6::timestamptz, $4::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) >= ($6::timestamptz, $4::uuid)
         )
         OR (
             NOT $5::boolean
-            AND (pt.published_at, e.id) > ($6::timestamptz, $4::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) > ($6::timestamptz, $4::uuid)
         )
     )
-ORDER BY pt.published_at ASC,
-    e.id ASC
+ORDER BY (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) ASC,
+    el.episode_id ASC
 LIMIT $7
 `
 
@@ -149,6 +143,10 @@ type ListEpisodesByPublicationTimeForTenantAscRow struct {
 // keeps episodes published at one instant in creation order. The Desc query
 // reads the page before a token, and the handler flips its rows back. Cursor
 // rules: proto/README.md.
+//
+// Both queries spell the publication time as the CASE that
+// idx_episode_listings_tenant_publication indexes, and key on el.episode_id
+// rather than e.id, so a page reads the index in order and stops at its limit.
 func (q *Queries) ListEpisodesByPublicationTimeForTenantAsc(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantAscParams) ([]ListEpisodesByPublicationTimeForTenantAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListEpisodesByPublicationTimeForTenantAsc,
 		arg.TenantID,
@@ -189,20 +187,14 @@ func (q *Queries) ListEpisodesByPublicationTimeForTenantAsc(ctx context.Context,
 }
 
 const ListEpisodesByPublicationTimeForTenantDesc = `-- name: ListEpisodesByPublicationTimeForTenantDesc :many
-SELECT e.id,
+SELECT el.episode_id AS id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
     s.public_id AS series_public_id,
     str.title AS series_title,
     el.status,
-    pt.published_at::timestamptz AS published_at
+    (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END)::timestamptz AS published_at
 FROM episode_listings el
-    CROSS JOIN LATERAL (
-        SELECT CASE
-                WHEN el.status = 'published' THEN el.published_at
-                ELSE el.scheduled_at
-            END AS published_at
-    ) pt
     JOIN episodes e ON e.tenant_id = el.tenant_id
         AND e.id = el.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -211,21 +203,21 @@ FROM episode_listings el
     CROSS JOIN LATERAL series_translation_for(s.id, '') str
 WHERE el.tenant_id = $1
     AND el.status IN ('scheduled', 'published')
-    AND pt.published_at >= $2::timestamptz
-    AND pt.published_at < $3::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) >= $2::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) < $3::timestamptz
     AND (
         $4::uuid IS NULL
         OR (
             $5::boolean
-            AND (pt.published_at, e.id) <= ($6::timestamptz, $4::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) <= ($6::timestamptz, $4::uuid)
         )
         OR (
             NOT $5::boolean
-            AND (pt.published_at, e.id) < ($6::timestamptz, $4::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) < ($6::timestamptz, $4::uuid)
         )
     )
-ORDER BY pt.published_at DESC,
-    e.id DESC
+ORDER BY (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) DESC,
+    el.episode_id DESC
 LIMIT $7
 `
 

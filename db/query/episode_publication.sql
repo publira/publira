@@ -171,20 +171,18 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 -- keeps episodes published at one instant in creation order. The Desc query
 -- reads the page before a token, and the handler flips its rows back. Cursor
 -- rules: proto/README.md.
-SELECT e.id,
+--
+-- Both queries spell the publication time as the CASE that
+-- idx_episode_listings_tenant_publication indexes, and key on el.episode_id
+-- rather than e.id, so a page reads the index in order and stops at its limit.
+SELECT el.episode_id AS id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
     s.public_id AS series_public_id,
     str.title AS series_title,
     el.status,
-    pt.published_at::timestamptz AS published_at
+    (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END)::timestamptz AS published_at
 FROM episode_listings el
-    CROSS JOIN LATERAL (
-        SELECT CASE
-                WHEN el.status = 'published' THEN el.published_at
-                ELSE el.scheduled_at
-            END AS published_at
-    ) pt
     JOIN episodes e ON e.tenant_id = el.tenant_id
         AND e.id = el.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -193,39 +191,33 @@ FROM episode_listings el
     CROSS JOIN LATERAL series_translation_for(s.id, '') str
 WHERE el.tenant_id = sqlc.arg('tenant_id')
     AND el.status IN ('scheduled', 'published')
-    AND pt.published_at >= sqlc.arg('from_time')::timestamptz
-    AND pt.published_at < sqlc.arg('to_time')::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) >= sqlc.arg('from_time')::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) < sqlc.arg('to_time')::timestamptz
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (pt.published_at, e.id) >= (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) >= (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (pt.published_at, e.id) > (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) > (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
         )
     )
-ORDER BY pt.published_at ASC,
-    e.id ASC
+ORDER BY (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) ASC,
+    el.episode_id ASC
 LIMIT sqlc.arg('limit');
 
 -- name: ListEpisodesByPublicationTimeForTenantDesc :many
 -- ListEpisodesByPublicationTimeForTenantAsc read backwards from a token.
-SELECT e.id,
+SELECT el.episode_id AS id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
     s.public_id AS series_public_id,
     str.title AS series_title,
     el.status,
-    pt.published_at::timestamptz AS published_at
+    (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END)::timestamptz AS published_at
 FROM episode_listings el
-    CROSS JOIN LATERAL (
-        SELECT CASE
-                WHEN el.status = 'published' THEN el.published_at
-                ELSE el.scheduled_at
-            END AS published_at
-    ) pt
     JOIN episodes e ON e.tenant_id = el.tenant_id
         AND e.id = el.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, '') et
@@ -234,19 +226,19 @@ FROM episode_listings el
     CROSS JOIN LATERAL series_translation_for(s.id, '') str
 WHERE el.tenant_id = sqlc.arg('tenant_id')
     AND el.status IN ('scheduled', 'published')
-    AND pt.published_at >= sqlc.arg('from_time')::timestamptz
-    AND pt.published_at < sqlc.arg('to_time')::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) >= sqlc.arg('from_time')::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) < sqlc.arg('to_time')::timestamptz
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (pt.published_at, e.id) <= (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) <= (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (pt.published_at, e.id) < (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) < (sqlc.narg('cursor_published_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
         )
     )
-ORDER BY pt.published_at DESC,
-    e.id DESC
+ORDER BY (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) DESC,
+    el.episode_id DESC
 LIMIT sqlc.arg('limit');

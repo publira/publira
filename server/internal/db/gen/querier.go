@@ -2005,6 +2005,10 @@ type Querier interface {
 	// keeps episodes published at one instant in creation order. The Desc query
 	// reads the page before a token, and the handler flips its rows back. Cursor
 	// rules: proto/README.md.
+	//
+	// Both queries spell the publication time as the CASE that
+	// idx_episode_listings_tenant_publication indexes, and key on el.episode_id
+	// rather than e.id, so a page reads the index in order and stops at its limit.
 	ListEpisodesByPublicationTimeForTenantAsc(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantAscParams) ([]ListEpisodesByPublicationTimeForTenantAscRow, error)
 	// ListEpisodesByPublicationTimeForTenantAsc read backwards from a token.
 	ListEpisodesByPublicationTimeForTenantDesc(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantDescParams) ([]ListEpisodesByPublicationTimeForTenantDescRow, error)
