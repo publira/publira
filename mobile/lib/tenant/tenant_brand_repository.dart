@@ -33,12 +33,13 @@ class HttpTenantBrandRepository implements TenantBrandRepository {
         pb.GetTenantRequest(tenant: pb.TenantContext(tenantId: tenantId)),
       );
       final theme = body.theme;
+      // Both messages name their colours the way TenantColor.wireName does.
       return TenantBrand(
         name: body.tenantName.trim(),
-        palette: TenantPalette.fromHex({
-          for (final color in TenantColor.values)
-            color: _themeColor(theme, color),
-        }),
+        palette: TenantPalette.fromWire(theme.toProto3Json()),
+        darkPalette: body.hasDarkTheme()
+            ? TenantPalette.darkFromWire(body.darkTheme.toProto3Json())
+            : null,
         logo: _image(theme.logoImageVariants),
         signInImage: _image(theme.signInImageVariants),
       );
@@ -64,37 +65,5 @@ class HttpTenantBrandRepository implements TenantBrandRepository {
       width: variant.width,
       height: variant.height,
     );
-  }
-
-  static String _themeColor(pb.TenantTheme theme, TenantColor color) {
-    return switch (color) {
-      TenantColor.primary => theme.primaryColor,
-      TenantColor.primaryForeground => theme.primaryForegroundColor,
-      TenantColor.secondary => theme.secondaryColor,
-      TenantColor.secondaryForeground => theme.secondaryForegroundColor,
-      TenantColor.accent => theme.accentColor,
-      TenantColor.accentForeground => theme.accentForegroundColor,
-      TenantColor.background => theme.backgroundColor,
-      TenantColor.foreground => theme.foregroundColor,
-      TenantColor.surface => theme.surfaceColor,
-      TenantColor.surfaceForeground => theme.surfaceForegroundColor,
-      TenantColor.card => theme.cardColor,
-      TenantColor.cardForeground => theme.cardForegroundColor,
-      TenantColor.popover => theme.popoverColor,
-      TenantColor.popoverForeground => theme.popoverForegroundColor,
-      TenantColor.muted => theme.mutedColor,
-      TenantColor.mutedForeground => theme.mutedForegroundColor,
-      TenantColor.border => theme.borderColor,
-      TenantColor.input => theme.inputColor,
-      TenantColor.ring => theme.ringColor,
-      TenantColor.success => theme.successColor,
-      TenantColor.successForeground => theme.successForegroundColor,
-      TenantColor.warning => theme.warningColor,
-      TenantColor.warningForeground => theme.warningForegroundColor,
-      TenantColor.destructive => theme.destructiveColor,
-      TenantColor.destructiveForeground => theme.destructiveForegroundColor,
-      TenantColor.info => theme.infoColor,
-      TenantColor.infoForeground => theme.infoForegroundColor,
-    };
   }
 }

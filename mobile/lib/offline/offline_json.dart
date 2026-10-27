@@ -131,6 +131,7 @@ class OfflineIndex {
 Map<String, Object?> _tenantToJson(TenantBrand brand) => {
   'name': brand.name,
   'theme': brand.palette.toWire(),
+  if (brand.darkPalette case final palette?) 'darkTheme': palette.toWire(),
   if (brand.logo case final logo?) 'logo': _tenantImageToJson(logo),
   if (brand.signInImage case final image?)
     'signInImage': _tenantImageToJson(image),
@@ -149,6 +150,7 @@ TenantBrand? _tenantFromJson(Object? decoded) {
   return TenantBrand(
     name: _string(decoded['name']),
     palette: TenantPalette.fromWire(decoded['theme']),
+    darkPalette: TenantPalette.darkFromWire(decoded['darkTheme']),
     logo: _tenantImageFromJson(decoded['logo']),
     signInImage: _tenantImageFromJson(decoded['signInImage']),
   );

@@ -32,6 +32,15 @@ final _harbor = TenantBrand(
   ),
 );
 
+/// A dark palette the way the server stores one: every colour set.
+final _harborDarkPalette = TenantPalette.fromWire({
+  for (final color in TenantColor.values) color.wireName: '#1a2b3c',
+  'primaryColor': '#6fd3a8',
+  'backgroundColor': '#0c1a15',
+  'foregroundColor': '#e3f2ec',
+  'successColor': '#7bd88f',
+});
+
 final _ember = TenantBrand(
   name: 'Ember Press',
   palette: TenantPalette.fromWire(const {
@@ -69,6 +78,24 @@ void main() {
       }
     });
 
+    test('a dark palette is read only when every colour is usable', () {
+      final whole = _harborDarkPalette.toWire();
+
+      expect(
+        TenantPalette.darkFromWire(whole)?[TenantColor.primary],
+        const Color(0xFF6FD3A8),
+      );
+      expect(
+        TenantPalette.darkFromWire({...whole}..remove('mutedColor')),
+        isNull,
+      );
+      expect(
+        TenantPalette.darkFromWire({...whole, 'ringColor': 'teal'}),
+        isNull,
+      );
+      expect(TenantPalette.darkFromWire(null), isNull);
+    });
+
     test('what it writes reads back as the same colours', () {
       final written = TenantPalette.fromWire(const {
         'primaryColor': '#0b6e4f',
@@ -95,15 +122,33 @@ void main() {
       );
     });
 
-    test('the dark theme is derived from the tenant primary colour', () {
-      final other = TenantPalette.fromWire(const {'primaryColor': '#9c2a00'});
+    test('the dark theme is the tenant dark palette', () {
+      final theme = tenantDarkTheme(_harborPalette, _harborDarkPalette);
 
-      final harbor = tenantDarkTheme(_harborPalette).colorScheme;
-      final ember = tenantDarkTheme(other).colorScheme;
-
-      expect(harbor.brightness, Brightness.dark);
-      expect(harbor.primary, isNot(ember.primary));
+      expect(theme.colorScheme.brightness, Brightness.dark);
+      expect(theme.colorScheme.primary, const Color(0xFF6FD3A8));
+      expect(theme.colorScheme.surface, const Color(0xFF0C1A15));
+      expect(theme.colorScheme.onSurface, const Color(0xFFE3F2EC));
+      expect(theme.colorScheme.surfaceContainer, const Color(0xFF1A2B3C));
+      expect(
+        theme.extension<TenantStatusColors>()?.success,
+        const Color(0xFF7BD88F),
+      );
     });
+
+    test(
+      'without a dark palette the dark theme is derived from the primary',
+      () {
+        final other = TenantPalette.fromWire(const {'primaryColor': '#9c2a00'});
+
+        final harbor = tenantDarkTheme(_harborPalette, null).colorScheme;
+        final ember = tenantDarkTheme(other, null).colorScheme;
+
+        expect(harbor.brightness, Brightness.dark);
+        expect(harbor.primary, isNot(ember.primary));
+        expect(harbor.primary, isNot(const Color(0xFF0B6E4F)));
+      },
+    );
   });
 
   group('TenantBrandController', () {
@@ -296,6 +341,63 @@ void main() {
 
       expect(replacement.reads, 1);
       expect(catalogColors(tester).primary, const Color(0xFF9C2A00));
+    });
+
+    group('under a dark device setting', () {
+      setUp(() {
+        TestWidgetsFlutterBinding
+                .instance
+                .platformDispatcher
+                .platformBrightnessTestValue =
+            Brightness.dark;
+      });
+
+      tearDown(() {
+        TestWidgetsFlutterBinding.instance.platformDispatcher
+            .clearPlatformBrightnessTestValue();
+      });
+
+      testWidgets('a tenant with a dark palette is shown in it', (
+        tester,
+      ) async {
+        await pumpApp(
+          tester,
+          tenantBrand: TenantBrandController(
+            tenantHost: _tenantHost,
+            repository: FakeTenantBrandRepository(
+              brand: TenantBrand(
+                name: _harbor.name,
+                palette: _harborPalette,
+                darkPalette: _harborDarkPalette,
+              ),
+            ),
+          ),
+        );
+
+        final colors = catalogColors(tester);
+        expect(colors.brightness, Brightness.dark);
+        expect(colors.primary, const Color(0xFF6FD3A8));
+        expect(colors.surface, const Color(0xFF0C1A15));
+      });
+
+      testWidgets('a tenant without one is shown in the derived theme', (
+        tester,
+      ) async {
+        await pumpApp(
+          tester,
+          tenantBrand: TenantBrandController(
+            tenantHost: _tenantHost,
+            repository: FakeTenantBrandRepository(brand: _harbor),
+          ),
+        );
+
+        final colors = catalogColors(tester);
+        expect(colors.brightness, Brightness.dark);
+        expect(
+          colors.primary,
+          tenantDarkTheme(_harborPalette, null).colorScheme.primary,
+        );
+      });
     });
 
     testWidgets('a launch without a network is in the saved tenant colours', (

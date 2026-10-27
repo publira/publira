@@ -76,8 +76,48 @@ void main() {
     );
   });
 
+  test('reads the dark palette the tenant stored', () async {
+    server.tenantDarkTheme = pb.TenantThemePalette(
+      primaryColor: '#6fd3a8',
+      primaryForegroundColor: '#0c1a15',
+      secondaryColor: '#f08a5d',
+      secondaryForegroundColor: '#0c1a15',
+      accentColor: '#1f3a30',
+      accentForegroundColor: '#e3f2ec',
+      backgroundColor: '#0c1a15',
+      foregroundColor: '#e3f2ec',
+      surfaceColor: '#12241d',
+      surfaceForegroundColor: '#e3f2ec',
+      cardColor: '#152a22',
+      cardForegroundColor: '#e3f2ec',
+      popoverColor: '#152a22',
+      popoverForegroundColor: '#e3f2ec',
+      mutedColor: '#1f3a30',
+      mutedForegroundColor: '#a9c4b9',
+      borderColor: '#2b4a3e',
+      inputColor: '#2b4a3e',
+      ringColor: '#6fd3a8',
+      successColor: '#7bd88f',
+      successForegroundColor: '#0c1a15',
+      warningColor: '#f2c14e',
+      warningForegroundColor: '#0c1a15',
+      destructiveColor: '#f28b82',
+      destructiveForegroundColor: '#0c1a15',
+      infoColor: '#8ab4f8',
+      infoForegroundColor: '#0c1a15',
+    );
+
+    final dark = (await repository().read())?.darkPalette;
+
+    expect(dark?[TenantColor.primary], const Color(0xFF6FD3A8));
+    expect(dark?[TenantColor.background], const Color(0xFF0C1A15));
+    expect(dark?[TenantColor.infoForeground], const Color(0xFF0C1A15));
+  });
+
   test('a tenant with no theme reads as the brand defaults', () async {
     final brand = await repository().read();
+
+    expect(brand?.darkPalette, isNull);
 
     expect(brand?.logo, isNull);
     expect(brand?.signInImage, isNull);
