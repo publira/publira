@@ -3,13 +3,19 @@ import type {
   AdminTenantUser,
 } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  Code,
+  isMissingResourceRpcError,
+  isRpcError,
+  rethrowUnclassifiedRpcError,
+} from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { endOfDayIsoString, startOfDayIsoString } from "@publira/utils";
 
 import { isUnauthenticatedError } from "./admin-auth-shared";
 import { apiClient, withSessionHeaders } from "./api";
 import { getMessagesFor } from "./messages";
+import { buildQueryString } from "./query-string";
 import { getAccessToken } from "./session";
 import { getTenantDisplayTimeZone } from "./tenant-timezone";
 
@@ -243,5 +249,80 @@ export const listAuditLogs = async (
       previousToken: "",
       requiresSignIn: isUnauthenticatedError(error),
     };
+  }
+};
+
+/**
+ * What one download of the audit log covers: inclusive calendar days of the
+ * tenant, narrowed by the list's own filters, an empty one leaving the file
+ * unnarrowed.
+ */
+export interface AuditLogExport {
+  action: string;
+  actor: string;
+  end: string;
+  start: string;
+}
+
+export type ExportAuditLogsResult =
+  | { ok: true; csv: Uint8Array<ArrayBuffer> }
+  | { ok: false; reason: "missing" | "signedOut" };
+
+const auditLogExportQuery = (request: AuditLogExport): string =>
+  buildQueryString({
+    action: request.action,
+    actor: request.actor,
+    from: request.start,
+    to: request.end,
+  });
+
+/** The audit log narrowed to what a download covers, as its own links spell it. */
+export const auditLogsHref = (request: AuditLogExport): string =>
+  `/audit-logs${auditLogExportQuery(request)}`;
+
+/**
+ * Where a download is served: the period spelled out rather than left to a
+ * default, so the file covers the days the screen named whenever it is opened.
+ */
+export const auditLogCsvPath = (request: AuditLogExport): string =>
+  `/api/v1/audit-logs/csv${auditLogExportQuery(request)}`;
+
+/**
+ * Every entry of a period as the CSV the API encodes, byte for byte. A period
+ * the API refuses is answered like a caller below tenant admin: there is no
+ * such file.
+ */
+export const exportAuditLogs = async (
+  tenantId: string,
+  request: AuditLogExport
+): Promise<ExportAuditLogsResult> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return { ok: false, reason: "signedOut" };
+  }
+
+  try {
+    const response = await apiClient.audit.exportAuditLogs(
+      {
+        action: request.action,
+        actorUserPublicId: request.actor,
+        endDate: request.end,
+        startDate: request.start,
+        tenant: { tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { csv: new Uint8Array(response.csv), ok: true };
+  } catch (error) {
+    if (isUnauthenticatedError(error)) {
+      return { ok: false, reason: "signedOut" };
+    }
+    if (
+      isMissingResourceRpcError(error) ||
+      isRpcError(error, Code.InvalidArgument)
+    ) {
+      return { ok: false, reason: "missing" };
+    }
+    throw error;
   }
 };

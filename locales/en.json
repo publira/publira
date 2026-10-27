@@ -363,6 +363,10 @@
         "reset": "Reset",
         "actor_remove": "Remove actor"
       },
+      "export": {
+        "button": "Download CSV",
+        "period_invalid": "Download CSV covers at most 366 days, with From on or before To. Narrow the period to download it."
+      },
       "actions": {
         "all": "All",
         "series_created": "Series created",

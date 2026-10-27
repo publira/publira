@@ -363,6 +363,10 @@
         "reset": "リセット",
         "actor_remove": "実行者の選択を解除"
       },
+      "export": {
+        "button": "CSVをダウンロード",
+        "period_invalid": "CSVでダウンロードできるのは、開始日が終了日以前の最長366日の期間です。期間を絞り込むとダウンロードできます。"
+      },
       "actions": {
         "all": "すべて",
         "series_created": "シリーズ作成",

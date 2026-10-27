@@ -1,5 +1,7 @@
 import "temporal-polyfill/global";
-import type { Locator, Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+import type { Download, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import {
@@ -26,6 +28,7 @@ import {
 import {
   MULTI_TENANT_SCENARIO,
   OTHER_TENANT,
+  SEED_TENANT,
 } from "../src/scenarios/multi-tenant";
 import {
   WEB_ADMIN_BASE_URL,
@@ -107,6 +110,19 @@ const moveAuditPage = async (
       return ids.length > 0 && ids[0] !== fromLeadingId;
     })
     .toBe(true);
+};
+
+/** Clicks **Download CSV** and waits for the file it saves. */
+const downloadAuditCsv = async (page: Page): Promise<Download> => {
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("link", { exact: true, name: "Download CSV" }).click();
+  return downloading;
+};
+
+/** A downloaded CSV's header and body rows, split on its CRLF endings. */
+const csvRows = async (download: Download): Promise<string[]> => {
+  const csv = await readFile(await download.path(), "utf-8");
+  return csv.split("\r\n").filter((row) => row !== "");
 };
 
 /** The read-through table's row for one episode, by its title cell. */
@@ -479,6 +495,85 @@ test.describe("admin reporting screens", () => {
     await moveAuditPage(page, "Previous");
     await expect.poll(() => auditTargetIds(page)).toEqual(firstPage);
     await expect(auditPageLink(page, "Previous")).toHaveCount(0);
+  });
+
+  test("Download CSV saves the period and filters shown, and the download joins the log", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/audit-logs");
+    await page.goto(
+      auditLogsUrl({
+        action: "label_updated",
+        from: REPORTING_AUDIT.from,
+        to: REPORTING_AUDIT.to,
+      })
+    );
+    await expect(auditRows(page)).toHaveCount(
+      REPORTING_AUDIT.labelUpdatedCount
+    );
+    const listed = await auditTargetIds(page);
+
+    const download = await downloadAuditCsv(page);
+    expect(download.suggestedFilename()).toBe(
+      `audit-log-${SEED_TENANT.publicId}-${REPORTING_AUDIT.from}--${REPORTING_AUDIT.to}.csv`
+    );
+    const [header, ...rows] = await csvRows(download);
+    expect(header).toBe(
+      "\uFEFFtime,actor_public_id,actor_name,actor_role,action,outcome,reason,target_type,target_id,client_ip"
+    );
+    // The same entries the list shows, oldest first rather than newest.
+    const columns = rows.map((row) => row.split(","));
+    expect(columns.map((cells) => cells[8])).toEqual(listed.toReversed());
+    expect(new Set(columns.map((cells) => cells[4]))).toEqual(
+      new Set(["label_updated"])
+    );
+
+    // The download is an entry of the log itself, written by the same
+    // asynchronous recorder as every other one, so the read polls.
+    const period = `${REPORTING_AUDIT.from}/${REPORTING_AUDIT.to}`;
+    await expect(async () => {
+      await page.goto(auditLogsUrl({ action: "audit_log_exported" }));
+      await expect(auditRow(page, period).first()).toBeVisible({
+        timeout: 5000,
+      });
+    }).toPass({ timeout: 30_000 });
+    const row = auditRow(page, period).first();
+    await expect(row).toContainText("Audit log CSV downloaded");
+    await expect(row).toContainText(SEED_ADMIN.name);
+    await expect(row).toContainText("Success");
+  });
+
+  test("Download CSV is offered only for a period one file can cover", async ({
+    page,
+  }) => {
+    await signInAsSeedAdmin(page, "/audit-logs");
+    const downloadLink = page.getByRole("link", {
+      exact: true,
+      name: "Download CSV",
+    });
+
+    // The unfiltered list: the 366 days ending today in the tenant's zone.
+    const today = Temporal.Now.plainDateISO(SEED_TENANT_TIME_ZONE);
+    await expect(downloadLink).toHaveAttribute(
+      "href",
+      `/api/v1/audit-logs/csv?${new URLSearchParams({
+        from: today.subtract({ days: 365 }).toString(),
+        to: today.toString(),
+      })}`
+    );
+
+    // A period longer than one file offers no download, and neither does a
+    // reversed one.
+    const periodNote = page.getByText("Download CSV covers at most 366 days");
+    await page.goto(auditLogsUrl({ from: "2025-01-01", to: "2026-01-02" }));
+    await expect(periodNote).toBeVisible();
+    await expect(downloadLink).toHaveCount(0);
+
+    await page.goto(
+      auditLogsUrl({ from: REPORTING_AUDIT.to, to: REPORTING_AUDIT.from })
+    );
+    await expect(periodNote).toBeVisible();
+    await expect(downloadLink).toHaveCount(0);
   });
 
   test("the read-through report shows the figures for its period", async ({
