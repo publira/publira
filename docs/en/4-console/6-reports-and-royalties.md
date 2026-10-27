@@ -2,7 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and the Analytics screens, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 Several screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands. Under **Analytics**, **Revenue** shows what sold, **Audience** how readers followed, read, and reacted to each series, **Episodes** how far members read each episode and the page at which readers leave it, and **Cohorts** how the readers who signed up each week kept coming back and how many of them bought. **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -30,9 +30,9 @@ Changing the time zone after a statement has been closed leaves that statement a
 | **Draft episodes**     | Episodes saved as a draft                          |
 | **Scheduled releases** | Episodes with a release date that has not come yet |
 
-**Publishing queue** lists up to ten of those episodes: the scheduled ones first, soonest release first, then the drafts, newest first. **Scheduled for** is shown in the tenant's time zone, and **Not set** on a draft with no date.
+**Publishing queue** lists up to ten of those episodes: the scheduled ones first, soonest release first, then the drafts, newest first. **Scheduled for** is shown in the tenant's time zone, and **Not set** on a draft with no date. **Open calendar**, beside it, opens the [Calendar](./1-catalog/2-episodes.md#what-goes-out-when), which shows every scheduled and published episode by the day it goes out.
 
-![The Dashboard: one published series, one draft episode, and one scheduled release, and the Publishing queue listing the scheduled episode with its time first and the draft, Not set, after it.](./reports-and-royalties-dashboard.png)
+![The Dashboard: one published series, one draft episode, and one scheduled release, and the Publishing queue, with Open calendar beside its title, listing the scheduled episode with its time first and the draft, Not set, after it.](./reports-and-royalties-dashboard.png)
 
 The screen updates as soon as a member of the staff saves a series or an episode, and when a scheduled episode goes live on its own, which then leaves the queue.
 

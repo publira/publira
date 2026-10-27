@@ -1,5 +1,8 @@
+import { CalendarIcon } from "@publira/icons";
 import * as ConsolePage from "@publira/layouts/admin/console-page";
+import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import { Badge } from "@publira/ui-components/badge";
+import { LinkButton } from "@publira/ui-components/button";
 import * as EmptyState from "@publira/ui-components/empty-state";
 import * as FigureLine from "@publira/ui-components/figure-line";
 import * as SectionError from "@publira/ui-components/section-error";
@@ -8,6 +11,7 @@ import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -50,20 +54,33 @@ const QueueStatusMessage = ({ status }: { status: "draft" | "scheduled" }) => {
   return <Message message="admin.dashboard.status_draft" />;
 };
 
-/** The heading of the section the queue is, whether or not the queue arrived. */
+/**
+ * The heading of the section the queue is, whether or not the queue arrived,
+ * with the way to the calendar that shows the same releases by day.
+ */
 const QueueHeading = () => (
-  <div className="grid gap-1">
-    <h2 className="text-xl leading-tight font-medium text-foreground">
-      <Suspense fallback={<SkeletonLine className="h-5 w-44" />}>
-        <Message message="admin.dashboard.queue_title" />
-      </Suspense>
-    </h2>
-    <p className="text-sm text-muted-foreground">
-      <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
-        <Message message="admin.dashboard.queue_description" />
-      </Suspense>
-    </p>
-  </div>
+  <ConsoleSection.Header>
+    <ConsoleSection.Heading>
+      <ConsoleSection.Title>
+        <Suspense fallback={<SkeletonLine className="h-5 w-44" />}>
+          <Message message="admin.dashboard.queue_title" />
+        </Suspense>
+      </ConsoleSection.Title>
+      <ConsoleSection.Description>
+        <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
+          <Message message="admin.dashboard.queue_description" />
+        </Suspense>
+      </ConsoleSection.Description>
+    </ConsoleSection.Heading>
+    <ConsoleSection.Actions>
+      <LinkButton render={<Link href="/calendar" />} variant="outline">
+        <CalendarIcon aria-hidden="true" className="size-4" />
+        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+          <Message message="admin.dashboard.calendar_link" />
+        </Suspense>
+      </LinkButton>
+    </ConsoleSection.Actions>
+  </ConsoleSection.Header>
 );
 
 /**

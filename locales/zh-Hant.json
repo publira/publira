@@ -665,6 +665,20 @@
         "period_invalid": "結束時間必須晚於開始時間，且尚未到來。"
       }
     },
+    "calendar": {
+      "title": "行事曆",
+      "page_description": "在發布當天顯示所有已預約與已發布的章節。",
+      "time_zone_description": "日期依租戶時區（{$time_zone}）劃分。選擇章節即可開啟該章節。",
+      "section_error": "無法顯示行事曆",
+      "load_error": "無法載入行事曆。請稍後再試。",
+      "previous_month": "上個月",
+      "next_month": "下個月",
+      "this_month": "本月",
+      "empty_title": "該月沒有要發布的章節",
+      "empty_description": "該月沒有已預約或已發布的章節。",
+      "status_scheduled": "已預約",
+      "status_published": "已發布"
+    },
     "comments": {
       "title": "留言",
       "page_description": "處理讀者留下的留言，包括留言者自行撤回的留言。",
@@ -1191,6 +1205,7 @@
       "scheduled_episodes": "預約發布",
       "queue_title": "發布佇列",
       "queue_description": "需要留意的章節與即將進行的發布。",
+      "calendar_link": "開啟行事曆",
       "queue_empty_title": "發布佇列是空的",
       "queue_empty_description": "沒有草稿章節，也沒有預約發布的章節。",
       "columns": {
@@ -1487,6 +1502,7 @@
       "administration": "管理",
       "announcements_label": "公告",
       "campaign_banners_label": "活動橫幅",
+      "calendar_label": "行事曆",
       "app_links_label": "應用程式連結",
       "audit_label": "稽核記錄",
       "branding_label": "品牌",
