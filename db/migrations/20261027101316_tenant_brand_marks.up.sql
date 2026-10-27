@@ -47,6 +47,38 @@ ALTER TABLE tenant_brand_marks ENABLE ROW LEVEL SECURITY;
 -- POLICY: tenant_brand_marks tenant_brand_marks_tenant_isolation
 CREATE POLICY tenant_brand_marks_tenant_isolation ON tenant_brand_marks USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
+-- FUNCTION: tenant_image_shown_by_brand_mark
+-- Whether a brand mark shows the tenant image, for the policy below.
+--
+-- SECURITY DEFINER so the policy holds for a role that has no grant on
+-- tenant_brand_marks yet: between this migration and the `db roles` run that
+-- grants the table, a delete from tenant_images would otherwise fail on the
+-- policy instead of being decided by it. It reads nothing but the one row its
+-- arguments name, and search_path is fixed so the body cannot be pointed at
+-- another schema's table.
+CREATE FUNCTION tenant_image_shown_by_brand_mark(image_tenant_id uuid, tenant_image_id uuid) RETURNS boolean
+    LANGUAGE sql
+    STABLE
+    SECURITY DEFINER
+    SET search_path = pg_catalog, public
+    AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM tenant_brand_marks bm
+        WHERE bm.tenant_id = image_tenant_id
+            AND bm.image_id = tenant_image_id
+    );
+$$;
+
+-- POLICY: tenant_images tenant_images_keep_brand_mark_images
+-- A tenant image a brand mark shows is never deleted from under it. The
+-- previous release's orphan image sweep knows only the theme's slots, and it
+-- would take a mark's image for unreferenced; a restrictive policy leaves the
+-- row out of that delete without failing it. The console deletes a mark's row
+-- before its image, and a tenant's deletion reaches the image through foreign
+-- keys, which row-level security does not apply to.
+CREATE POLICY tenant_images_keep_brand_mark_images ON tenant_images AS RESTRICTIVE FOR DELETE USING ((NOT tenant_image_shown_by_brand_mark(tenant_id, id)));
+
 -- CONSTRAINT: tenant_image_variants tenant_image_variants_variant_type_check
 -- A mark's image is a tenant image whose variant names the mark's kind. Added
 -- NOT VALID and validated by the next migration, so the scan of the existing

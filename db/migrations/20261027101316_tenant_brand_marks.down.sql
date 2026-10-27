@@ -1,3 +1,7 @@
+DROP POLICY tenant_images_keep_brand_mark_images ON tenant_images;
+
+DROP FUNCTION tenant_image_shown_by_brand_mark(uuid, uuid);
+
 -- The marks' images go with the table: the restored check refuses their
 -- variant rows, and the images hold nothing else.
 DELETE FROM tenant_images
