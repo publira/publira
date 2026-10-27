@@ -59,9 +59,20 @@ func ParsePeriod(rawStart, rawEnd string, zone *time.Location) (Period, error) {
 	return Period{
 		start: start,
 		end:   end,
-		From:  time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, zone),
-		To:    time.Date(end.Year(), end.Month(), end.Day()+1, 0, 0, 0, 0, zone),
+		From:  startOfDay(start, zone),
+		To:    startOfDay(end.AddDate(0, 0, 1), zone),
 	}, nil
+}
+
+// startOfDay is the first instant of day in zone. Where the clocks go forward
+// at midnight, that midnight does not exist and time.Date resolves it into the
+// day before, so the day starts where the zone that skipped it ends.
+func startOfDay(day time.Time, zone *time.Location) time.Time {
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, zone)
+	if start.Day() != day.Day() {
+		_, start = start.ZoneBounds()
+	}
+	return start
 }
 
 // ID names the period in the audit log, as an ISO 8601 interval of its two

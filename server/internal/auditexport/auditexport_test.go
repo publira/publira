@@ -30,6 +30,31 @@ func TestParsePeriodBoundsTheDaysInTheZone(t *testing.T) {
 	}
 }
 
+func TestParsePeriodStartsADayWhoseMidnightIsSkipped(t *testing.T) {
+	santiago, err := time.LoadLocation("America/Santiago")
+	if err != nil {
+		t.Fatalf("load the zone: %v", err)
+	}
+
+	// Chile's clocks go from 00:00 to 01:00 on 2026-09-06, so that day starts
+	// at 01:00 -03 and the day before ends there too.
+	skipped := time.Date(2026, 9, 6, 4, 0, 0, 0, time.UTC)
+	starting, err := ParsePeriod("2026-09-06", "2026-09-07", santiago)
+	if err != nil {
+		t.Fatalf("ParsePeriod from the skipped midnight: %v", err)
+	}
+	if !starting.From.Equal(skipped) {
+		t.Fatalf("From = %s, want %s", starting.From.UTC(), skipped)
+	}
+	ending, err := ParsePeriod("2026-09-01", "2026-09-05", santiago)
+	if err != nil {
+		t.Fatalf("ParsePeriod up to the skipped midnight: %v", err)
+	}
+	if !ending.To.Equal(skipped) {
+		t.Fatalf("To = %s, want %s", ending.To.UTC(), skipped)
+	}
+}
+
 func TestParsePeriodRefusesWhatOneFileDoesNotCover(t *testing.T) {
 	for _, accepted := range []struct{ start, end string }{
 		{"2026-01-10", "2026-01-10"},
