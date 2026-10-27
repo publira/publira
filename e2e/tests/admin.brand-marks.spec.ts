@@ -49,22 +49,32 @@ const drawPlaceholderMark = async (page: Page): Promise<Buffer> => {
   return Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64");
 };
 
-const deleteXMarkIfSet = async (page: Page): Promise<void> => {
+const xMarkDeleteButton = (page: Page): Locator =>
+  xMarkForm(page).getByRole("button", { exact: true, name: "Delete" });
+
+const deleteXMark = async (page: Page): Promise<void> => {
   const form = xMarkForm(page);
-  const deleteButton = form.getByRole("button", {
-    exact: true,
-    name: "Delete",
-  });
-  if (!(await deleteButton.isVisible())) {
-    return;
-  }
-  await deleteButton.click();
+  await expect(xMarkDeleteButton(page)).toBeVisible({ timeout: 30_000 });
+  await xMarkDeleteButton(page).click();
   const dialog = page.getByRole("alertdialog");
   await expect(dialog).toBeVisible();
   const answered = serverActionAnswered(page);
   await dialog.getByRole("button", { exact: true, name: "Delete" }).click();
   await answered;
   await expectStatus(form, "The mark was deleted.");
+};
+
+/**
+ * Deletes the X mark when the tenant has one. `isVisible` does not wait, so
+ * the form is waited for first: a Delete asked for before the screen has
+ * drawn would be read as no mark at all.
+ */
+const deleteXMarkIfSet = async (page: Page): Promise<void> => {
+  await expect(xMarkForm(page)).toBeVisible({ timeout: 30_000 });
+  if (!(await xMarkDeleteButton(page).isVisible())) {
+    return;
+  }
+  await deleteXMark(page);
 };
 
 /**
@@ -114,13 +124,11 @@ test.describe("admin brand marks", () => {
       });
     });
     await signInAsSeedAdmin(page, "/branding");
-    await expect(xMarkForm(page)).toBeVisible({ timeout: 30_000 });
     await deleteXMarkIfSet(page);
   });
 
   test.afterEach(async ({ page }) => {
     await signInAsSeedAdmin(page, "/branding");
-    await expect(xMarkForm(page)).toBeVisible({ timeout: 30_000 });
     await deleteXMarkIfSet(page);
   });
 
@@ -153,7 +161,7 @@ test.describe("admin brand marks", () => {
       .toBe(true);
 
     await signInAsSeedAdmin(page, "/branding");
-    await deleteXMarkIfSet(page);
+    await deleteXMark(page);
 
     await expect
       .poll(async () => await xRowIsLabelAlone(page), {
