@@ -103,6 +103,7 @@ class ConnectFixtureServer {
     this.tenantTimeZone = 'UTC',
     this.tenantName = seedTenantName,
     this.tenantTheme,
+    this.tenantDarkTheme,
     this.encryptImages = true,
     this.listResponse,
     this.detailResponse,
@@ -1034,10 +1035,12 @@ class ConnectFixtureServer {
   /// The versions `AgreeToLegalPages` was sent, one list per call.
   final legalPageAgreements = <List<String>>[];
 
-  /// The tenant's name and theme, as `GetTenant` answers them. A `null` theme
-  /// is a tenant that has stored none, which the API omits.
+  /// The tenant's name, theme, and dark palette, as `GetTenant` answers them.
+  /// A `null` theme or dark palette is one the tenant has stored none of,
+  /// which the API omits.
   String tenantName;
   pb.TenantTheme? tenantTheme;
+  pb.TenantThemePalette? tenantDarkTheme;
 
   /// Whether a page leaves as ciphertext. Set it to false to act out a
   /// server instance a rolling deploy has not replaced yet, which the
@@ -2096,6 +2099,7 @@ class ConnectFixtureServer {
           tenantPublicId: tenantId,
           tenantName: tenantName,
           theme: tenantTheme,
+          darkTheme: tenantDarkTheme,
           defaultLocale: defaultLocale,
           commentMode: commentMode,
           ageVerification: ageVerification,

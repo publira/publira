@@ -925,7 +925,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       supportedLocales: AppMessages.supportedLocales,
       localizationsDelegates: appLocalizationsDelegates,
       theme: tenantLightTheme(brand?.palette ?? TenantPalette.standard),
-      darkTheme: tenantDarkTheme(brand?.palette ?? TenantPalette.standard),
+      darkTheme: tenantDarkTheme(
+        brand?.palette ?? TenantPalette.standard,
+        brand?.darkPalette,
+      ),
       routerConfig: widget.router,
       // In place of the navigator rather than over it, so the screens a
       // resumed tenant comes back to are built again and read afresh, not left

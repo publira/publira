@@ -146,6 +146,10 @@ void main() {
       TenantBrand(
         name: 'Harbor Comics',
         palette: TenantPalette.fromWire(const {'primaryColor': '#0b6e4f'}),
+        darkPalette: TenantPalette.darkFromWire({
+          for (final color in TenantColor.values) color.wireName: '#0c1a15',
+          'primaryColor': '#6fd3a8',
+        }),
         logo: TenantImage(
           url: Uri.parse('http://images.test/images/tenants/LOGO/logo'),
           width: 320,
@@ -167,6 +171,11 @@ void main() {
       restored.palette[TenantColor.secondary],
       TenantColor.secondary.fallback,
     );
+    expect(restored.darkPalette?[TenantColor.primary], const Color(0xFF6FD3A8));
+    expect(
+      restored.darkPalette?[TenantColor.background],
+      const Color(0xFF0C1A15),
+    );
     expect(
       restored.logo?.url,
       Uri.parse('http://images.test/images/tenants/LOGO/logo'),
@@ -177,6 +186,17 @@ void main() {
       Uri.parse('http://images.test/images/tenants/SIGNIN/sign_in'),
     );
     expect(restored.signInImage?.width, 1600);
+  });
+
+  test('a brand with no dark palette is read back with none', () async {
+    await open().writeTenantBrand(
+      _tenantHost,
+      const TenantBrand(name: 'Harbor Comics'),
+    );
+
+    final restored = await open().readTenantBrand(_tenantHost);
+
+    expect(restored?.darkPalette, isNull);
   });
 
   test('clearing the library forgets the tenant brand', () async {

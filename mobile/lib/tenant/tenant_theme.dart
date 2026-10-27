@@ -68,9 +68,36 @@ class TenantStatusColors extends ThemeExtension<TenantStatusColors> {
 /// tenant's own: the page background is Material's `surface`, and the web's
 /// card, surface, and popover are the containers Material puts cards,
 /// navigation bars, and menus on.
-ThemeData tenantLightTheme(TenantPalette palette) {
-  final scheme = ColorScheme.fromSeed(seedColor: palette[TenantColor.primary])
-      .copyWith(
+ThemeData tenantLightTheme(TenantPalette palette) =>
+    _tenantTheme(palette, Brightness.light);
+
+/// The dark theme: [dark], the tenant's dark palette, drawn the way
+/// [tenantLightTheme] draws [light], or derived from [light]'s primary colour
+/// while the tenant has saved no dark palette.
+///
+/// The light palette's backgrounds and foregrounds cannot be reused as they
+/// are, so the derivation gives every slot the dark tone of the primary
+/// colour's tonal palette; only the status colours stay the tenant's.
+ThemeData tenantDarkTheme(TenantPalette light, TenantPalette? dark) {
+  if (dark != null) {
+    return _tenantTheme(dark, Brightness.dark);
+  }
+  return ThemeData(
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: light[TenantColor.primary],
+      brightness: Brightness.dark,
+    ),
+    useMaterial3: true,
+    extensions: [TenantStatusColors.of(light)],
+  );
+}
+
+ThemeData _tenantTheme(TenantPalette palette, Brightness brightness) {
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: palette[TenantColor.primary],
+        brightness: brightness,
+      ).copyWith(
         primary: palette[TenantColor.primary],
         onPrimary: palette[TenantColor.primaryForeground],
         secondary: palette[TenantColor.secondary],
@@ -94,23 +121,6 @@ ThemeData tenantLightTheme(TenantPalette palette) {
     colorScheme: scheme,
     useMaterial3: true,
     focusColor: palette[TenantColor.ring].withValues(alpha: 0.12),
-    extensions: [TenantStatusColors.of(palette)],
-  );
-}
-
-/// The dark theme, derived from the tenant's primary colour until the tenant
-/// can store a dark palette of its own (#1783).
-///
-/// The light palette's backgrounds and foregrounds cannot be reused as they
-/// are, so every slot takes the dark tone of the primary colour's tonal
-/// palette; only the status colours stay the tenant's.
-ThemeData tenantDarkTheme(TenantPalette palette) {
-  return ThemeData(
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: palette[TenantColor.primary],
-      brightness: Brightness.dark,
-    ),
-    useMaterial3: true,
     extensions: [TenantStatusColors.of(palette)],
   );
 }

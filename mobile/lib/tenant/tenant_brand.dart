@@ -36,8 +36,9 @@ enum TenantColor {
 
   const TenantColor(this.wireName, this.fallback);
 
-  /// The protojson name of the `TenantTheme` field that carries this colour,
-  /// which [TenantPalette.toWire] writes it under as well.
+  /// The protojson name of the `TenantTheme` and `TenantThemePalette` field
+  /// that carries this colour, which [TenantPalette.toWire] writes it under as
+  /// well.
   final String wireName;
 
   final Color fallback;
@@ -50,15 +51,6 @@ class TenantPalette {
   /// The brand defaults, for a tenant that has stored no theme.
   static const standard = TenantPalette._({});
 
-  /// The palette [colors] names, each as `#rrggbb`. A colour that is missing
-  /// or not `#rrggbb` is its fallback.
-  factory TenantPalette.fromHex(Map<TenantColor, String> colors) {
-    return TenantPalette._({
-      for (final MapEntry(key: color, :value) in colors.entries)
-        color: ?_parseHex(value),
-    });
-  }
-
   /// Reads the shape written by [toWire], which names each colour the way
   /// `TenantTheme`'s protojson does. A colour that is missing or not
   /// `#rrggbb` is its fallback.
@@ -70,6 +62,21 @@ class TenantPalette {
       for (final color in TenantColor.values)
         color: ?_parseHex(theme[color.wireName]),
     });
+  }
+
+  /// Reads a dark palette in the shape [TenantPalette.fromWire] reads, or
+  /// `null` unless every colour in it is `#rrggbb`.
+  ///
+  /// The fallbacks are the light brand defaults, so filling a gap with one
+  /// would set a light colour among dark ones and undo the contrast the
+  /// tenant's palette was checked for. The server stores a dark palette whole,
+  /// so one with a gap is not a palette the tenant designed.
+  static TenantPalette? darkFromWire(Object? palette) {
+    if (palette is! Map) {
+      return null;
+    }
+    final read = TenantPalette.fromWire(palette);
+    return read._colors.length == TenantColor.values.length ? read : null;
   }
 
   final Map<TenantColor, Color> _colors;
@@ -120,12 +127,17 @@ class TenantBrand {
   const TenantBrand({
     required this.name,
     this.palette = TenantPalette.standard,
+    this.darkPalette,
     this.logo,
     this.signInImage,
   });
 
   final String name;
   final TenantPalette palette;
+
+  /// The palette the app reads in under a dark device setting, or `null`
+  /// while the tenant has saved none and the app derives one from [palette].
+  final TenantPalette? darkPalette;
 
   /// `null` while the tenant has uploaded no logo.
   final TenantImage? logo;
