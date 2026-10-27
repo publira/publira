@@ -128,10 +128,26 @@ func auditTenantFilter(raw string) (uuid.NullUUID, error) {
 	return uuid.NullUUID{UUID: parsed, Valid: true}, nil
 }
 
+// auditTimeFilter reads an RFC3339 instant the list may be narrowed by,
+// answering NULL for an empty one.
+func auditTimeFilter(name, value string) (sql.NullTime, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return sql.NullTime{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return sql.NullTime{}, connect.NewError(connect.CodeInvalidArgument, name+" must be RFC3339")
+	}
+	return sql.NullTime{Time: parsed.UTC(), Valid: true}, nil
+}
+
 type platformAuditLogQueryFilters struct {
 	tenantID          uuid.NullUUID
 	actorUserPublicID sql.NullString
 	action            sql.NullString
+	createdFrom       sql.NullTime
+	createdTo         sql.NullTime
 }
 
 func (s *platformServer) platformAuditLogPage(
@@ -147,6 +163,8 @@ func (s *platformServer) platformAuditLogPage(
 			FilterTenantID:          filters.tenantID,
 			FilterActorUserPublicID: filters.actorUserPublicID,
 			FilterAction:            filters.action,
+			FilterCreatedFrom:       filters.createdFrom,
+			FilterCreatedTo:         filters.createdTo,
 			CursorID:                uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive:         keys.Inclusive,
 			CursorCreatedAt:         sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -163,6 +181,8 @@ func (s *platformServer) platformAuditLogPage(
 		FilterTenantID:          filters.tenantID,
 		FilterActorUserPublicID: filters.actorUserPublicID,
 		FilterAction:            filters.action,
+		FilterCreatedFrom:       filters.createdFrom,
+		FilterCreatedTo:         filters.createdTo,
 		CursorID:                uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive:         keys.Inclusive,
 		CursorCreatedAt:         sql.NullTime{Time: keys.Time, Valid: keys.Valid},
@@ -193,6 +213,17 @@ func (s *platformServer) ListAuditLogs(
 	if err != nil {
 		return nil, err
 	}
+	createdFrom, err := auditTimeFilter("created_from", req.CreatedFrom)
+	if err != nil {
+		return nil, err
+	}
+	createdTo, err := auditTimeFilter("created_to", req.CreatedTo)
+	if err != nil {
+		return nil, err
+	}
+	if createdFrom.Valid && createdTo.Valid && !createdFrom.Time.Before(createdTo.Time) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "created_from must be before created_to")
+	}
 	tenantIDKey := ""
 	if tenantID.Valid {
 		tenantIDKey = tenantID.UUID.String()
@@ -201,11 +232,15 @@ func (s *platformServer) ListAuditLogs(
 		tenantID:          tenantID,
 		actorUserPublicID: nullStringFilter(req.ActorUserPublicId),
 		action:            nullStringFilter(req.Action),
+		createdFrom:       createdFrom,
+		createdTo:         createdTo,
 	}
 	listKey := pagination.NewListKey("created_at_desc").
 		Value("tenant_id", tenantIDKey).
 		Value("actor_user_public_id", filters.actorUserPublicID.String).
-		Value("action", filters.action.String)
+		Value("action", filters.action.String).
+		Time("created_from", createdFrom.Time, createdFrom.Valid).
+		Time("created_to", createdTo.Time, createdTo.Valid)
 	var keys pagination.TimeUUIDKeys
 	if !cursor.IsZero() {
 		keys, err = listKey.DecodeTimeUUID(cursor)
