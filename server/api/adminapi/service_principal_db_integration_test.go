@@ -95,6 +95,12 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 			_, err := seriesClient.ListEpisodes(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListEpisodesRequest{Tenant: tenantCtx, SeriesId: series.ID.String()})
 			return err
 		},
+		publiraadminv1connect.AdminSeriesServiceListEpisodesByPublicationDateProcedure: func(ctx context.Context) error {
+			_, err := seriesClient.ListEpisodesByPublicationDate(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListEpisodesByPublicationDateRequest{
+				Tenant: tenantCtx, StartDate: "2026-01-01", EndDate: "2026-01-31",
+			})
+			return err
+		},
 		publiraadminv1connect.AdminSeriesServiceGetEpisodeProcedure: func(ctx context.Context) error {
 			_, err := seriesClient.GetEpisode(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetEpisodeRequest{Tenant: tenantCtx, SeriesPublicId: series.PublicID, PublicId: episode.PublicID})
 			return err

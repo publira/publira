@@ -39,6 +39,9 @@ const (
 	// AdminSeriesServiceListEpisodesProcedure is the procedure name of the AdminSeriesService's
 	// ListEpisodes RPC.
 	AdminSeriesServiceListEpisodesProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodes"
+	// AdminSeriesServiceListEpisodesByPublicationDateProcedure is the procedure name of the
+	// AdminSeriesService's ListEpisodesByPublicationDate RPC.
+	AdminSeriesServiceListEpisodesByPublicationDateProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodesByPublicationDate"
 	// AdminSeriesServiceGetEpisodeProcedure is the procedure name of the AdminSeriesService's
 	// GetEpisode RPC.
 	AdminSeriesServiceGetEpisodeProcedure = "/publira.admin.v1.AdminSeriesService/GetEpisode"
@@ -204,6 +207,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodes"),
 			Procedure:  AdminSeriesServiceListEpisodesProcedure,
+		}
+	})
+	adminSeriesServiceListEpisodesByPublicationDateSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodesByPublicationDate"),
+			Procedure:  AdminSeriesServiceListEpisodesByPublicationDateProcedure,
 		}
 	})
 	adminSeriesServiceGetEpisodeSpec = sync.OnceValue(func() connect.Spec {
@@ -522,6 +532,8 @@ type AdminSeriesServiceClient interface {
 	// Minimum role: tenant_auditor.
 	ListEpisodes(context.Context, *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error)
 	// Minimum role: tenant_auditor.
+	ListEpisodesByPublicationDate(context.Context, *v1.ListEpisodesByPublicationDateRequest) (*v1.ListEpisodesByPublicationDateResponse, error)
+	// Minimum role: tenant_auditor.
 	GetEpisode(context.Context, *v1.GetEpisodeRequest) (*v1.GetEpisodeResponse, error)
 	// Minimum role: tenant_editor.
 	ReorderEpisodes(context.Context, *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error)
@@ -641,6 +653,8 @@ type AdminSeriesServiceHandler interface {
 	// Minimum role: tenant_auditor.
 	ListEpisodes(context.Context, *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error)
 	// Minimum role: tenant_auditor.
+	ListEpisodesByPublicationDate(context.Context, *v1.ListEpisodesByPublicationDateRequest) (*v1.ListEpisodesByPublicationDateResponse, error)
+	// Minimum role: tenant_auditor.
 	GetEpisode(context.Context, *v1.GetEpisodeRequest) (*v1.GetEpisodeResponse, error)
 	// Minimum role: tenant_editor.
 	ReorderEpisodes(context.Context, *v1.ReorderEpisodesRequest) (*v1.ReorderEpisodesResponse, error)
@@ -750,6 +764,7 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceListSeriesSpec(), Handler: adapter.listSeries},
 		connect.Method{Spec: adminSeriesServiceGetSeriesSpec(), Handler: adapter.getSeries},
 		connect.Method{Spec: adminSeriesServiceListEpisodesSpec(), Handler: adapter.listEpisodes},
+		connect.Method{Spec: adminSeriesServiceListEpisodesByPublicationDateSpec(), Handler: adapter.listEpisodesByPublicationDate},
 		connect.Method{Spec: adminSeriesServiceGetEpisodeSpec(), Handler: adapter.getEpisode},
 		connect.Method{Spec: adminSeriesServiceReorderEpisodesSpec(), Handler: adapter.reorderEpisodes},
 		connect.Method{Spec: adminSeriesServiceCreateEpisodeSpec(), Handler: adapter.createEpisode},
@@ -817,6 +832,10 @@ func (UnimplementedAdminSeriesServiceHandler) GetSeries(context.Context, *v1.Get
 
 func (UnimplementedAdminSeriesServiceHandler) ListEpisodes(context.Context, *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodes is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodesByPublicationDate(context.Context, *v1.ListEpisodesByPublicationDateRequest) (*v1.ListEpisodesByPublicationDateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodesByPublicationDate is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) GetEpisode(context.Context, *v1.GetEpisodeRequest) (*v1.GetEpisodeResponse, error) {
@@ -1030,6 +1049,14 @@ func (c *adminSeriesServiceClient) GetSeries(ctx context.Context, req *v1.GetSer
 func (c *adminSeriesServiceClient) ListEpisodes(ctx context.Context, req *v1.ListEpisodesRequest) (*v1.ListEpisodesResponse, error) {
 	var res v1.ListEpisodesResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListEpisodesByPublicationDate(ctx context.Context, req *v1.ListEpisodesByPublicationDateRequest) (*v1.ListEpisodesByPublicationDateResponse, error) {
+	var res v1.ListEpisodesByPublicationDateResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodesByPublicationDateSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1435,6 +1462,18 @@ func (h adminSeriesServiceHandler) listEpisodes(ctx context.Context, _ connect.S
 		return err
 	}
 	res, err := h.svc.ListEpisodes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listEpisodesByPublicationDate(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEpisodesByPublicationDateRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEpisodesByPublicationDate(ctx, &req)
 	if err != nil {
 		return err
 	}

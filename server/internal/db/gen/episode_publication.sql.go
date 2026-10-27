@@ -78,6 +78,209 @@ func (q *Queries) GetPublishedEpisodeForFollowerNotification(ctx context.Context
 	return i, err
 }
 
+const ListEpisodesByPublicationTimeForTenantAsc = `-- name: ListEpisodesByPublicationTimeForTenantAsc :many
+SELECT el.episode_id AS id,
+    e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    s.public_id AS series_public_id,
+    str.title AS series_title,
+    el.status,
+    (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END)::timestamptz AS published_at
+FROM episode_listings el
+    JOIN episodes e ON e.tenant_id = el.tenant_id
+        AND e.id = el.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
+WHERE el.tenant_id = $1
+    AND el.status IN ('scheduled', 'published')
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) >= $2::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) < $3::timestamptz
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) >= ($6::timestamptz, $4::uuid)
+        )
+        OR (
+            NOT $5::boolean
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) > ($6::timestamptz, $4::uuid)
+        )
+    )
+ORDER BY (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) ASC,
+    el.episode_id ASC
+LIMIT $7
+`
+
+type ListEpisodesByPublicationTimeForTenantAscParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	FromTime          time.Time     `json:"from_time"`
+	ToTime            time.Time     `json:"to_time"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
+	Limit             int32         `json:"limit"`
+}
+
+type ListEpisodesByPublicationTimeForTenantAscRow struct {
+	ID              uuid.UUID `json:"id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+	Status          string    `json:"status"`
+	PublishedAt     time.Time `json:"published_at"`
+}
+
+// The console's publishing schedule: every episode of the tenant, across its
+// series, whose publication falls in [from_time, to_time). A scheduled episode
+// is placed at the time it is to be published, and a published one at the
+// time it was, which is later than the time it was scheduled for when the
+// worker reached it late.
+//
+// The list is (publication time, id) ascending; the id is the UUIDv7 that
+// keeps episodes published at one instant in creation order. The Desc query
+// reads the page before a token, and the handler flips its rows back. Cursor
+// rules: proto/README.md.
+//
+// Both queries spell the publication time as the CASE that
+// idx_episode_listings_tenant_publication indexes, and key on el.episode_id
+// rather than e.id, so a page reads the index in order and stops at its limit.
+func (q *Queries) ListEpisodesByPublicationTimeForTenantAsc(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantAscParams) ([]ListEpisodesByPublicationTimeForTenantAscRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodesByPublicationTimeForTenantAsc,
+		arg.TenantID,
+		arg.FromTime,
+		arg.ToTime,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorPublishedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesByPublicationTimeForTenantAscRow
+	for rows.Next() {
+		var i ListEpisodesByPublicationTimeForTenantAscRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.Status,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListEpisodesByPublicationTimeForTenantDesc = `-- name: ListEpisodesByPublicationTimeForTenantDesc :many
+SELECT el.episode_id AS id,
+    e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    s.public_id AS series_public_id,
+    str.title AS series_title,
+    el.status,
+    (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END)::timestamptz AS published_at
+FROM episode_listings el
+    JOIN episodes e ON e.tenant_id = el.tenant_id
+        AND e.id = el.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
+WHERE el.tenant_id = $1
+    AND el.status IN ('scheduled', 'published')
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) >= $2::timestamptz
+    AND (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) < $3::timestamptz
+    AND (
+        $4::uuid IS NULL
+        OR (
+            $5::boolean
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) <= ($6::timestamptz, $4::uuid)
+        )
+        OR (
+            NOT $5::boolean
+            AND ((CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END), el.episode_id) < ($6::timestamptz, $4::uuid)
+        )
+    )
+ORDER BY (CASE WHEN el.status = 'published' THEN el.published_at ELSE el.scheduled_at END) DESC,
+    el.episode_id DESC
+LIMIT $7
+`
+
+type ListEpisodesByPublicationTimeForTenantDescParams struct {
+	TenantID          uuid.UUID     `json:"tenant_id"`
+	FromTime          time.Time     `json:"from_time"`
+	ToTime            time.Time     `json:"to_time"`
+	CursorID          uuid.NullUUID `json:"cursor_id"`
+	CursorInclusive   bool          `json:"cursor_inclusive"`
+	CursorPublishedAt sql.NullTime  `json:"cursor_published_at"`
+	Limit             int32         `json:"limit"`
+}
+
+type ListEpisodesByPublicationTimeForTenantDescRow struct {
+	ID              uuid.UUID `json:"id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+	Status          string    `json:"status"`
+	PublishedAt     time.Time `json:"published_at"`
+}
+
+// ListEpisodesByPublicationTimeForTenantAsc read backwards from a token.
+func (q *Queries) ListEpisodesByPublicationTimeForTenantDesc(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantDescParams) ([]ListEpisodesByPublicationTimeForTenantDescRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodesByPublicationTimeForTenantDesc,
+		arg.TenantID,
+		arg.FromTime,
+		arg.ToTime,
+		arg.CursorID,
+		arg.CursorInclusive,
+		arg.CursorPublishedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesByPublicationTimeForTenantDescRow
+	for rows.Next() {
+		var i ListEpisodesByPublicationTimeForTenantDescRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.Status,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListEpisodesReadyToPublish = `-- name: ListEpisodesReadyToPublish :many
 SELECT el.episode_id
 FROM episode_listings el

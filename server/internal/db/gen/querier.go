@@ -1995,6 +1995,23 @@ type Querier interface {
 	ListEpisodeRevenueDesc(ctx context.Context, arg ListEpisodeRevenueDescParams) ([]ListEpisodeRevenueDescRow, error)
 	// Oldest first, the order episode_translation_for falls back through.
 	ListEpisodeTranslationsForTenant(ctx context.Context, arg ListEpisodeTranslationsForTenantParams) ([]EpisodeTranslation, error)
+	// The console's publishing schedule: every episode of the tenant, across its
+	// series, whose publication falls in [from_time, to_time). A scheduled episode
+	// is placed at the time it is to be published, and a published one at the
+	// time it was, which is later than the time it was scheduled for when the
+	// worker reached it late.
+	//
+	// The list is (publication time, id) ascending; the id is the UUIDv7 that
+	// keeps episodes published at one instant in creation order. The Desc query
+	// reads the page before a token, and the handler flips its rows back. Cursor
+	// rules: proto/README.md.
+	//
+	// Both queries spell the publication time as the CASE that
+	// idx_episode_listings_tenant_publication indexes, and key on el.episode_id
+	// rather than e.id, so a page reads the index in order and stops at its limit.
+	ListEpisodesByPublicationTimeForTenantAsc(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantAscParams) ([]ListEpisodesByPublicationTimeForTenantAscRow, error)
+	// ListEpisodesByPublicationTimeForTenantAsc read backwards from a token.
+	ListEpisodesByPublicationTimeForTenantDesc(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantDescParams) ([]ListEpisodesByPublicationTimeForTenantDescRow, error)
 	// Reordering has to see every episode under the series, so this stays a list
 	// without pagination. The list on screen uses the keyset scan below.
 	// The order is (order_index, id), the same as ListEpisodes: ReorderEpisodes
