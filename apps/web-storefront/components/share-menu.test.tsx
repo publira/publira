@@ -143,4 +143,64 @@ describe("ShareMenu", () => {
       );
     });
   });
+
+  it("renders each row as its label alone while no mark is uploaded", () => {
+    render(<ShareMenu text={TEXT} title={TITLE} url={URL_UNDER_TEST} />);
+    fireEvent.click(trigger());
+
+    for (const row of [
+      screen.getByRole("link", { name: "Share on X" }),
+      screen.getByRole("link", { name: "Share on LINE" }),
+      screen.getByRole("button", { name: "Copy link" }),
+    ]) {
+      expect(row.childElementCount).toBe(0);
+    }
+  });
+
+  it("draws both marks at the head of their rows and leaves the copy row an empty slot", () => {
+    render(
+      <ShareMenu
+        lineMark={<span data-testid="line-mark" />}
+        text={TEXT}
+        title={TITLE}
+        url={URL_UNDER_TEST}
+        xMark={<span data-testid="x-mark" />}
+      />
+    );
+    fireEvent.click(trigger());
+
+    const x = screen.getByRole("link", { name: "Share on X" });
+    const line = screen.getByRole("link", { name: "Share on LINE" });
+    const copy = screen.getByRole("button", { name: "Copy link" });
+
+    expect(x.firstElementChild?.firstElementChild).toBe(
+      screen.getByTestId("x-mark")
+    );
+    expect(line.firstElementChild?.firstElementChild).toBe(
+      screen.getByTestId("line-mark")
+    );
+    expect(copy.firstElementChild?.className).toBe(
+      x.firstElementChild?.className
+    );
+    expect(copy.firstElementChild?.childElementCount).toBe(0);
+    expect(copy.textContent).toBe("Copy link");
+  });
+
+  it("keeps an empty slot on the row whose mark is missing when only one is uploaded", () => {
+    render(
+      <ShareMenu
+        text={TEXT}
+        title={TITLE}
+        url={URL_UNDER_TEST}
+        xMark={<span data-testid="x-mark" />}
+      />
+    );
+    fireEvent.click(trigger());
+
+    const line = screen.getByRole("link", { name: "Share on LINE" });
+
+    expect(screen.getByTestId("x-mark")).toBeDefined();
+    expect(line.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    expect(line.firstElementChild?.childElementCount).toBe(0);
+  });
 });

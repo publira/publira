@@ -1,6 +1,13 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
-import { AgeVerification, CommentMode } from "@publira/api-client/public/types";
-import type { TenantImageVariant as TenantImageVariantMessage } from "@publira/api-client/public/types";
+import {
+  AgeVerification,
+  CommentMode,
+  TenantBrandMarkKind as TenantBrandMarkKindMessage,
+} from "@publira/api-client/public/types";
+import type {
+  TenantBrandMark as TenantBrandMarkMessage,
+  TenantImageVariant as TenantImageVariantMessage,
+} from "@publira/api-client/public/types";
 import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { DEFAULT_TIME_ZONE } from "@publira/utils";
@@ -122,6 +129,27 @@ export interface TenantImageVariant {
 }
 
 /**
+ * Which third-party mark the tenant uploaded, in the site's own words. The
+ * kind is also where the site draws it: the share menu's X and LINE rows, the
+ * links to the tenant's app in each store, and the social sign-in buttons.
+ */
+export type TenantBrandMarkKind =
+  | "app_store_badge"
+  | "apple_sign_in"
+  | "google_play_badge"
+  | "google_sign_in"
+  | "line_share"
+  | "x_share";
+
+/**
+ * The marks the tenant uploaded, by kind. A kind it uploaded nothing for is
+ * absent, and the site shows that control's text alone.
+ */
+export type TenantBrandMarks = Partial<
+  Record<TenantBrandMarkKind, TenantImageVariant[]>
+>;
+
+/**
  * A published page the tenant names as its terms of service or privacy policy.
  * `versionId` is the published version, which a sign-up sends back as the text
  * the reader agreed to.
@@ -155,6 +183,8 @@ export interface TenantSiteInfo {
    * buy an episode in the app. Absent where the app is not listed in that store.
    */
   appStoreUrl?: string;
+  /** The third-party marks the tenant uploaded; absent while it has none. */
+  brandMarks?: TenantBrandMarks;
   /** Whether episode pages offer a comment section, and how a post reaches it. */
   commentMode: TenantCommentMode;
   /**
@@ -273,6 +303,33 @@ const toTenantImageVariants = (
   return mapped.length > 0 ? mapped : undefined;
 };
 
+const brandMarkKinds: Partial<
+  Record<TenantBrandMarkKindMessage, TenantBrandMarkKind>
+> = {
+  [TenantBrandMarkKindMessage.APP_STORE_BADGE]: "app_store_badge",
+  [TenantBrandMarkKindMessage.APPLE_SIGN_IN]: "apple_sign_in",
+  [TenantBrandMarkKindMessage.GOOGLE_PLAY_BADGE]: "google_play_badge",
+  [TenantBrandMarkKindMessage.GOOGLE_SIGN_IN]: "google_sign_in",
+  [TenantBrandMarkKindMessage.LINE_SHARE]: "line_share",
+  [TenantBrandMarkKindMessage.X_SHARE]: "x_share",
+};
+
+/**
+ * A kind this build has no name for — one a newer server added — is dropped
+ * rather than drawn somewhere it was never meant to go.
+ */
+const toTenantBrandMarks = (
+  marks: Pick<TenantBrandMarkMessage, "imageVariants" | "kind">[] | undefined
+): TenantBrandMarks | undefined => {
+  const entries = (marks ?? []).flatMap((mark) => {
+    const kind = brandMarkKinds[mark.kind];
+    const variants = toTenantImageVariants(mark.imageVariants);
+    return kind && variants ? [[kind, variants] as const] : [];
+  });
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
 /**
  * `null` when the tenant does not exist, is not readable, or could not be
  * fetched at all.
@@ -325,6 +382,7 @@ export const getTenantSiteInfo = async (
       appPayments: toTenantAppPayments(response),
       appStoreUrl: nonEmpty(response.appStoreUrl),
       appleServicesId: nonEmpty(response.appleSignIn?.servicesId),
+      brandMarks: toTenantBrandMarks(response.brandMarks),
       commentMode: toTenantCommentMode(response.commentMode),
       currency: requireCurrency(response.currency),
       defaultLocale,

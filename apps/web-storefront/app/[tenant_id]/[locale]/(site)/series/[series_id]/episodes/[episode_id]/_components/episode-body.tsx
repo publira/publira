@@ -19,6 +19,7 @@ import type {
 import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getCoinSettings, getMyCoinBalance } from "#lib/coins";
 import { getLocale } from "#lib/locale";
+import type { TenantImageVariant } from "#lib/tenant";
 import { getMyWaitFreeTicketState } from "#lib/wait-free";
 
 import { episodeOffersCoins, toCoinOffer } from "../_lib/coin-offer";
@@ -37,12 +38,14 @@ export const EpisodeBody = async ({
   acceptsPayments,
   access,
   appPayments,
+  appStoreBadge,
   appStoreUrl,
   checkoutSessionId,
   commentMode,
   commentToken,
   currency,
   episode,
+  googlePlayBadge,
   googlePlayUrl,
   images,
   labelPublicId,
@@ -59,6 +62,8 @@ export const EpisodeBody = async ({
   access: EpisodeAccessState;
   /** Where the tenant's app can sell an episode the site sends there. */
   appPayments: TenantAppPayments;
+  /** The badge the tenant uploaded for each store's link, where it did. */
+  appStoreBadge?: TenantImageVariant;
   /** Where the tenant's app is listed, for an episode the site sends there. */
   appStoreUrl?: string;
   checkoutSessionId: string;
@@ -72,6 +77,7 @@ export const EpisodeBody = async ({
    */
   currency: string | null;
   episode: EpisodeDetail;
+  googlePlayBadge?: TenantImageVariant;
   googlePlayUrl?: string;
   images: EpisodeImageItem[];
   /**
@@ -127,11 +133,13 @@ export const EpisodeBody = async ({
         <EpisodeAccessGate
           acceptsPayments={acceptsPayments}
           appPayments={appPayments}
+          appStoreBadge={appStoreBadge}
           appStoreUrl={appStoreUrl}
           campaign={episode.campaign}
           currency={currency}
           episodeId={episode.id}
           episodePublicId={episode.publicId}
+          googlePlayBadge={googlePlayBadge}
           googlePlayUrl={googlePlayUrl}
           locale={locale}
           nextFreeEpisode={nextFreeEpisode}
@@ -253,12 +261,14 @@ export const EpisodeBody = async ({
       <EpisodeAccessGate
         acceptsPayments={acceptsPayments}
         appPayments={appPayments}
+        appStoreBadge={appStoreBadge}
         appStoreUrl={appStoreUrl}
         campaign={episode.campaign}
         coinOffer={coinOffer}
         currency={currency}
         episodeId={episode.id}
         episodePublicId={episode.publicId}
+        googlePlayBadge={googlePlayBadge}
         googlePlayUrl={googlePlayUrl}
         locale={locale}
         nextFreeEpisode={nextFreeEpisode}

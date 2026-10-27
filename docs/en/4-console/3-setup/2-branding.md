@@ -46,6 +46,8 @@ The image is held to the logo's limits except its minimum: a JPEG, PNG, or WebP 
 
 Once a mark is uploaded, its card shows it, who accepted the guidelines and when, and a link to **Accepted guidelines**, the page the dialog showed at that moment. Publira records that page with the mark, so when a later release of Publira links the dialog to a different page, the marks already uploaded keep the page they were accepted under. When the account that accepted has since been deleted, the card says so instead of naming it. **Replace** uploads another image under a new acceptance, and **Delete** removes the mark and the record of its acceptance after you confirm.
 
+The site draws an uploaded X or LINE mark at the head of that service's row in the share menu, beside the words the row already carries. An uploaded App Store or Google Play badge takes the place of that store's button on an episode sold in the app, at the image's own proportions. Where a mark is not uploaded, the site shows the words alone, as it does before anything is uploaded.
+
 Publira does not check what an uploaded image shows. Whether it is the owner's current artwork, used as the guidelines allow, is the tenant's responsibility.
 
 ## Theme colors and typefaces
