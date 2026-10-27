@@ -9,6 +9,7 @@ export default defineConfig({
     "src/bell-icon.tsx",
     "src/book-open-icon.tsx",
     "src/building-icon.tsx",
+    "src/calendar-icon.tsx",
     "src/chart-icon.tsx",
     "src/check-icon.tsx",
     "src/chevron-down-icon.tsx",

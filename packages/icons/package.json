@@ -31,6 +31,10 @@
       "types": "./dist/building-icon.d.mts",
       "default": "./dist/building-icon.mjs"
     },
+    "./calendar-icon": {
+      "types": "./dist/calendar-icon.d.mts",
+      "default": "./dist/calendar-icon.mjs"
+    },
     "./chart-icon": {
       "types": "./dist/chart-icon.d.mts",
       "default": "./dist/chart-icon.mjs"
