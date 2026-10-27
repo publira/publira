@@ -38,6 +38,11 @@ message ListAuditLogsRequest {
   string token = 6;
   // Restricts the list to entries about this tenant, by primary key.
   string tenant_id = 7;
+  // Restricts the list to entries recorded from created_from (inclusive) to
+  // created_to (exclusive), each an RFC 3339 instant. Empty leaves that end
+  // open.
+  string created_from = 8;
+  string created_to = 9;
 }
 
 message ListAuditLogsResponse {

@@ -4,9 +4,11 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
 
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
@@ -278,5 +280,84 @@ func TestDBListAuditLogsFillsTheTenantOfAnEntryWrittenWithoutOne(t *testing.T) {
 	}
 	if strings.Contains(got, "operator_updated") {
 		t.Fatalf("entries for tenant A =\n%s\nwant no operator entry", got)
+	}
+}
+
+// A period keeps the entries recorded from its start up to, not including, its
+// end, on every page in either direction, and a token handed out for one
+// period does not page another.
+func TestDBListAuditLogsNarrowsToAPeriod(t *testing.T) {
+	t.Parallel()
+
+	ts, pg := newDBIntegrationEnv(t)
+	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
+	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	ctx := testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator))
+	for _, entry := range []struct {
+		action string
+		at     time.Time
+	}{
+		{"operator_created", time.Date(2026, 1, 9, 14, 59, 59, 0, time.UTC)},
+		{"operator_updated", time.Date(2026, 1, 9, 15, 0, 0, 0, time.UTC)},
+		{"operator_role_changed", time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)},
+		{"operator_suspended", time.Date(2026, 1, 11, 14, 59, 59, 0, time.UTC)},
+		{"operator_unsuspended", time.Date(2026, 1, 11, 15, 0, 0, 0, time.UTC)},
+	} {
+		if _, err := pg.DB.ExecContext(ctx, `
+			INSERT INTO platform_audit_logs (id, actor_platform_user_id, actor_role, action, target_type, target_id, outcome, created_at)
+			VALUES ($1, $2, 'platform_operator', $3, 'operator', $4, 'success', $5)
+		`, uuid.New(), operator.ID, entry.action, operator.ID.String(), entry.at); err != nil {
+			t.Fatalf("seed the %s entry: %v", entry.action, err)
+		}
+	}
+	const from, to = "2026-01-10T00:00:00+09:00", "2026-01-12T00:00:00+09:00"
+	list := func(token string) *publirasplatformv1.ListAuditLogsResponse {
+		t.Helper()
+		res, err := audit.ListAuditLogs(ctx, &publirasplatformv1.ListAuditLogsRequest{
+			Limit: 1, Token: token, CreatedFrom: from, CreatedTo: to,
+		})
+		if err != nil {
+			t.Fatalf("ListAuditLogs: %v", err)
+		}
+		return res
+	}
+
+	var forward []string
+	page := list("")
+	pages := []*publirasplatformv1.ListAuditLogsResponse{page}
+	for {
+		for _, log := range page.AuditLogs {
+			forward = append(forward, log.GetAction())
+		}
+		if page.NextToken == "" {
+			break
+		}
+		page = list(page.NextToken)
+		pages = append(pages, page)
+	}
+	want := "operator_suspended operator_role_changed operator_updated"
+	if got := strings.Join(forward, " "); got != want {
+		t.Fatalf("entries of the period = %s, want %s", got, want)
+	}
+	if got := list(pages[len(pages)-1].PreviousToken).AuditLogs[0].GetAction(); got != "operator_role_changed" {
+		t.Fatalf("previous page = %s, want operator_role_changed", got)
+	}
+
+	_, err := audit.ListAuditLogs(ctx, &publirasplatformv1.ListAuditLogsRequest{
+		Limit: 1, Token: pages[0].NextToken, CreatedFrom: from,
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("ListAuditLogs with another period's token error = %v, want invalid_argument", err)
+	}
+	for _, period := range []struct{ from, to string }{
+		{"2026-01-10", ""},
+		{"", "yesterday"},
+		{to, from},
+		{from, from},
+	} {
+		_, err := audit.ListAuditLogs(ctx, &publirasplatformv1.ListAuditLogsRequest{CreatedFrom: period.from, CreatedTo: period.to})
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("ListAuditLogs %q..%q error = %v, want invalid_argument", period.from, period.to, err)
+		}
 	}
 }

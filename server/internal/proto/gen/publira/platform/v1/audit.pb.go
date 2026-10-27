@@ -179,7 +179,12 @@ type ListAuditLogsRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,6,opt,name=token,proto3" json:"token,omitempty"`
 	// Restricts the list to entries about this tenant, by primary key.
-	TenantId      string `protobuf:"bytes,7,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	TenantId string `protobuf:"bytes,7,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// Restricts the list to entries recorded from created_from (inclusive) to
+	// created_to (exclusive), each an RFC 3339 instant. Empty leaves that end
+	// open.
+	CreatedFrom   string `protobuf:"bytes,8,opt,name=created_from,json=createdFrom,proto3" json:"created_from,omitempty"`
+	CreatedTo     string `protobuf:"bytes,9,opt,name=created_to,json=createdTo,proto3" json:"created_to,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -245,6 +250,20 @@ func (x *ListAuditLogsRequest) GetToken() string {
 func (x *ListAuditLogsRequest) GetTenantId() string {
 	if x != nil {
 		return x.TenantId
+	}
+	return ""
+}
+
+func (x *ListAuditLogsRequest) GetCreatedFrom() string {
+	if x != nil {
+		return x.CreatedFrom
+	}
+	return ""
+}
+
+func (x *ListAuditLogsRequest) GetCreatedTo() string {
+	if x != nil {
+		return x.CreatedTo
 	}
 	return ""
 }
@@ -475,13 +494,16 @@ const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"\vtenant_name\x18\f \x01(\tR\n" +
 	"tenantName\x12\x1f\n" +
 	"\vtarget_name\x18\r \x01(\tR\n" +
-	"targetName\"\xce\x01\n" +
+	"targetName\"\x90\x02\n" +
 	"\x14ListAuditLogsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12/\n" +
 	"\x14actor_user_public_id\x18\x04 \x01(\tR\x11actorUserPublicId\x12\x16\n" +
 	"\x06action\x18\x05 \x01(\tR\x06action\x12\x14\n" +
 	"\x05token\x18\x06 \x01(\tR\x05token\x12\x1b\n" +
-	"\ttenant_id\x18\a \x01(\tR\btenantIdJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\x06offsetR\x10tenant_public_id\"\xa3\x01\n" +
+	"\ttenant_id\x18\a \x01(\tR\btenantId\x12!\n" +
+	"\fcreated_from\x18\b \x01(\tR\vcreatedFrom\x12\x1d\n" +
+	"\n" +
+	"created_to\x18\t \x01(\tR\tcreatedToJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\x06offsetR\x10tenant_public_id\"\xa3\x01\n" +
 	"\x15ListAuditLogsResponse\x12D\n" +
 	"\n" +
 	"audit_logs\x18\x01 \x03(\v2%.publira.platform.v1.PlatformAuditLogR\tauditLogs\x12%\n" +
