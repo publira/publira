@@ -3643,6 +3643,28 @@
         "gateway_tag_id": "代码ID",
         "gateway_tag_id_unset": "请先保存跟踪代码管理器容器ID或GA4衡量ID。",
         "gateway_tag_id_description": "网关向Google转发时所对应的代码：设置了跟踪代码管理器容器时为该容器，否则为GA4衡量ID。请在Google跟踪代码管理器中，用上面的路径为此代码设置Google代码网关。",
+        "consent_mode": "读者同意",
+        "consent_modes": {
+          "not_required": {
+            "label": "不需要",
+            "description": "页面加载后代码立即运行。请在网站的隐私政策页面上公示。"
+          },
+          "opt_in": {
+            "label": "先征求读者同意",
+            "description": "网站显示同意横幅，在读者同意之前不运行代码。"
+          },
+          "external": {
+            "label": "由我在跟踪代码管理器中的同意工具处理",
+            "description": "网站不显示自己的横幅，并告知Google在跟踪代码管理器容器内的同意工具记录读者的回答之前不存储任何内容。",
+            "unavailable": "请先输入跟踪代码管理器容器ID再选择此项。同意工具在容器内运行。"
+          }
+        },
+        "consent_guidance": {
+          "readership": "日本的外部传送规定仅凭公示即可满足。如有EEA或英国的读者，或使用要求Google Consent Mode v2的广告产品，则需要另外两种之一。",
+          "privacy_page": "横幅会链接到在“设置 › 服务条款与隐私政策”中选择的隐私政策页面。",
+          "view_counting": "选择“先征求读者同意”后，对未登录的读者，网站自身的浏览计数也会在其同意之前暂停，因此统计和排行中计入的读者会减少。"
+        },
+        "consent_privacy_page_missing": "尚未在“设置 › 服务条款与隐私政策”中选择已发布的隐私政策页面，横幅没有可链接的页面。",
         "guidance": {
           "title": "保存之前",
           "other_tags": "广告像素等其他代码，请添加到跟踪代码管理器容器中。除这些ID外，控制台不接受其他代码。",
@@ -3657,7 +3679,9 @@
           "measurement_id_invalid": "请以G-后接字母和数字的形式输入衡量ID，例如G-ABC123DEF4。",
           "universal_analytics_id": "Google已不再为Universal Analytics ID（UA-）收集数据。请输入以G-开头的Google Analytics 4衡量ID。",
           "container_id_invalid": "请以GTM-后接字母和数字的形式输入容器ID，例如GTM-ABC1234。",
+          "container_id_required": "请输入供同意工具运行的跟踪代码管理器容器ID，或在“读者同意”中选择其他选项。",
           "serving_mode_invalid": "请选择代码的加载来源。",
+          "consent_mode_invalid": "请选择运行代码前是否征求读者同意。",
           "server_container_url_invalid": "请输入域名的https地址，不含路径，例如https://sgtm.example.com。",
           "server_container_url_required": "要从服务器容器加载代码，请输入服务器容器URL。"
         }

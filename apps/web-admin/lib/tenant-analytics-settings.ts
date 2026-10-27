@@ -1,4 +1,7 @@
-import { GoogleTagServingMode as RpcGoogleTagServingMode } from "@publira/api-client/admin/types";
+import {
+  GoogleTagConsentMode as RpcGoogleTagConsentMode,
+  GoogleTagServingMode as RpcGoogleTagServingMode,
+} from "@publira/api-client/admin/types";
 import type { TenantAnalyticsSettings as RpcTenantAnalyticsSettings } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
@@ -20,6 +23,7 @@ import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 import type {
+  GoogleTagConsentMode,
   GoogleTagServingMode,
   TenantAnalyticsSettings,
 } from "./tenant-analytics-settings-shared";
@@ -32,6 +36,7 @@ export interface UpdateTenantAnalyticsSettingsInput {
 }
 
 export type TenantAnalyticsSettingsField =
+  | "consentMode"
   | "ga4MeasurementId"
   | "gtmContainerId"
   | "serverContainerUrl"
@@ -56,6 +61,7 @@ export const tenantAnalyticsSettingsCacheTag = (tenantId: string): string =>
 
 type RawTenantAnalyticsSettings = Pick<
   RpcTenantAnalyticsSettings,
+  | "consentMode"
   | "gatewayPath"
   | "ga4MeasurementId"
   | "gtmContainerId"
@@ -104,6 +110,43 @@ const toRpcServingMode = (
   }
 };
 
+/**
+ * A server of the release before this one has no consent mode and answers
+ * `GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED`, and the storefront it serves runs the
+ * tag without asking, so the answer reads as `not_required`.
+ */
+const toConsentMode = (
+  mode: RpcGoogleTagConsentMode | undefined
+): GoogleTagConsentMode => {
+  switch (mode) {
+    case RpcGoogleTagConsentMode.OPT_IN: {
+      return "opt_in";
+    }
+    case RpcGoogleTagConsentMode.EXTERNAL: {
+      return "external";
+    }
+    default: {
+      return "not_required";
+    }
+  }
+};
+
+const toRpcConsentMode = (
+  mode: GoogleTagConsentMode
+): RpcGoogleTagConsentMode => {
+  switch (mode) {
+    case "opt_in": {
+      return RpcGoogleTagConsentMode.OPT_IN;
+    }
+    case "external": {
+      return RpcGoogleTagConsentMode.EXTERNAL;
+    }
+    default: {
+      return RpcGoogleTagConsentMode.NOT_REQUIRED;
+    }
+  }
+};
+
 const toTenantAnalyticsSettings = (
   settings: RawTenantAnalyticsSettings | undefined
 ): TenantAnalyticsSettings | undefined => {
@@ -112,6 +155,7 @@ const toTenantAnalyticsSettings = (
     return undefined;
   }
   return {
+    consentMode: toConsentMode(settings?.consentMode),
     ga4MeasurementId: settings?.ga4MeasurementId ?? "",
     gatewayPath: settings?.gatewayPath ?? "",
     gtmContainerId: settings?.gtmContainerId ?? "",
@@ -197,13 +241,20 @@ const refusedFieldErrors = (
       : t("admin.settings.google_tag.validation.measurement_id_invalid");
   }
   if (rpcErrorHasFieldViolation(error, "settings.gtm_container_id")) {
-    fieldErrors.gtmContainerId = t(
-      "admin.settings.google_tag.validation.container_id_invalid"
-    );
+    fieldErrors.gtmContainerId =
+      input.settings.gtmContainerId === "" &&
+      input.settings.consentMode === "external"
+        ? t("admin.settings.google_tag.validation.container_id_required")
+        : t("admin.settings.google_tag.validation.container_id_invalid");
   }
   if (rpcErrorHasFieldViolation(error, "settings.serving_mode")) {
     fieldErrors.servingMode = t(
       "admin.settings.google_tag.validation.serving_mode_invalid"
+    );
+  }
+  if (rpcErrorHasFieldViolation(error, "settings.consent_mode")) {
+    fieldErrors.consentMode = t(
+      "admin.settings.google_tag.validation.consent_mode_invalid"
     );
   }
   if (rpcErrorHasFieldViolation(error, "settings.server_container_url")) {
@@ -234,6 +285,7 @@ export const updateTenantAnalyticsSettings = async (
         {
           regenerateGatewayPath: input.regenerateGatewayPath,
           settings: {
+            consentMode: toRpcConsentMode(input.settings.consentMode),
             ga4MeasurementId: input.settings.ga4MeasurementId,
             gtmContainerId: input.settings.gtmContainerId,
             serverContainerUrl: input.settings.serverContainerUrl,

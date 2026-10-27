@@ -1,12 +1,14 @@
 -- Scenario: a tenant whose Google tag the E2E may set in every serving mode
 --
 -- `admin.google-tag.spec.ts` saves this tenant's Google tag settings from
--- `/integrations/google-tag` in each serving mode and regenerates its gateway
--- path. The settings decide which tag the tenant's site loads and where from,
--- so no tenant another suite reads can absorb them.
+-- `/integrations/google-tag` in each serving mode and each reader consent
+-- mode, and regenerates its gateway path. The settings decide which tag the
+-- tenant's site loads and where from, so no tenant another suite reads can
+-- absorb them.
 --
 -- Applying it is also how the suite puts the tenant back: the stored settings
--- are deleted, which leaves the tenant loading no tag.
+-- are deleted, which leaves the tenant loading no tag, and the privacy policy
+-- page is left unnamed.
 -- public_id values are hard-coded in e2e/src/scenarios/google-tag.ts.
 --   tenant GtagTNNTAAA1 (google-tag.localhost / admin.google-tag.localhost)
 --   admin  GtagADMNAAA1 (google-tag-admin@example.com)
@@ -89,3 +91,57 @@ ON CONFLICT (user_id, role) DO NOTHING;
 
 DELETE FROM tenant_analytics_settings
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'GtagTNNTAAA1');
+
+-- A published privacy policy page the suite names as the tenant's, to see the
+-- console's warning that the consent banner has none to link to go away.
+-- Applying the file leaves it unnamed.
+INSERT INTO pages (id, tenant_id, slug)
+SELECT '018f1110-0004-7000-8000-000000000001'::uuid, t.id, '/privacy'
+FROM tenants t
+WHERE t.public_id = 'GtagTNNTAAA1'
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO page_translations (id, page_id, tenant_id, locale, title)
+SELECT
+    '018f1110-0005-7000-8000-000000000001'::uuid,
+    '018f1110-0004-7000-8000-000000000001'::uuid,
+    t.id,
+    t.default_locale,
+    'Privacy policy'
+FROM tenants t
+WHERE t.public_id = 'GtagTNNTAAA1'
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO page_versions (
+    id,
+    page_id,
+    translation_id,
+    tenant_id,
+    version_number,
+    content_markdown,
+    status,
+    published_at
+)
+SELECT
+    '018f1110-0006-7000-8000-000000000001'::uuid,
+    pt.page_id,
+    pt.id,
+    pt.tenant_id,
+    1,
+    E'## Privacy\n\nThe privacy policy.',
+    'published',
+    NOW()
+FROM page_translations pt
+WHERE pt.id = '018f1110-0005-7000-8000-000000000001'::uuid
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE page_translations
+SET published_version_id = '018f1110-0006-7000-8000-000000000001'::uuid
+WHERE id = '018f1110-0005-7000-8000-000000000001'::uuid;
+
+INSERT INTO tenant_config (tenant_id, privacy_page_id)
+SELECT t.id, NULL
+FROM tenants t
+WHERE t.public_id = 'GtagTNNTAAA1'
+ON CONFLICT (tenant_id) DO UPDATE
+SET privacy_page_id = NULL;

@@ -4,7 +4,10 @@ import { z } from "zod";
 import { checkboxOnFormSchema, requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import type { UpdateTenantAnalyticsSettingsInput } from "#lib/tenant-analytics-settings";
-import { GOOGLE_TAG_SERVING_MODES } from "#lib/tenant-analytics-settings-shared";
+import {
+  GOOGLE_TAG_CONSENT_MODES,
+  GOOGLE_TAG_SERVING_MODES,
+} from "#lib/tenant-analytics-settings-shared";
 
 // The API's patterns (server/internal/googletag), which it applies after
 // trimming and capitalizing.
@@ -44,6 +47,7 @@ export const isServerContainerOrigin = (value: string): boolean => {
 };
 
 export const googleTagFormFields = {
+  consentMode: { kind: "value", name: "consent_mode" },
   ga4MeasurementId: { kind: "value", name: "ga4_measurement_id" },
   gtmContainerId: { kind: "value", name: "gtm_container_id" },
   regenerateGatewayPath: { kind: "value", name: "regenerate_gateway_path" },
@@ -67,6 +71,9 @@ export const googleTagFormSchema = async (
 
   return z
     .object({
+      consentMode: z.enum(GOOGLE_TAG_CONSENT_MODES, {
+        error: t("admin.settings.google_tag.validation.consent_mode_invalid"),
+      }),
       ga4MeasurementId: z.preprocess(
         (value) => trimmed(value).toUpperCase(),
         z.string()
@@ -111,6 +118,16 @@ export const googleTagFormSchema = async (
           ),
           path: ["gtmContainerId"],
         });
+      } else if (!value.gtmContainerId && value.consentMode === "external") {
+        // The API names the container ID too, since clearing it under a saved
+        // external mode is refused the same way.
+        ctx.addIssue({
+          code: "custom",
+          message: t(
+            "admin.settings.google_tag.validation.container_id_required"
+          ),
+          path: ["gtmContainerId"],
+        });
       }
       if (
         value.serverContainerUrl &&
@@ -139,6 +156,7 @@ export const googleTagFormSchema = async (
     .transform((value) => ({
       regenerateGatewayPath: value.regenerateGatewayPath,
       settings: {
+        consentMode: value.consentMode,
         ga4MeasurementId: value.ga4MeasurementId,
         gtmContainerId: value.gtmContainerId,
         serverContainerUrl: value.serverContainerUrl,

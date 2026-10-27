@@ -3643,6 +3643,28 @@
         "gateway_tag_id": "태그 ID",
         "gateway_tag_id_unset": "먼저 태그 관리자 컨테이너 ID나 GA4 측정 ID를 저장하세요.",
         "gateway_tag_id_description": "게이트웨이가 Google로 전달하는 대상 태그입니다. 태그 관리자 컨테이너가 있으면 그 ID, 없으면 GA4 측정 ID입니다. Google 태그 관리자에서 이 태그의 Google 태그 게이트웨이를 위 경로로 설정하세요.",
+        "consent_mode": "독자 동의",
+        "consent_modes": {
+          "not_required": {
+            "label": "필요 없음",
+            "description": "페이지를 열면 바로 태그가 실행됩니다. 사이트의 개인정보 처리방침 페이지에 밝히세요."
+          },
+          "opt_in": {
+            "label": "독자에게 먼저 묻기",
+            "description": "사이트가 동의 배너를 표시하고 독자가 동의할 때까지 태그를 실행하지 않습니다."
+          },
+          "external": {
+            "label": "태그 관리자의 자체 동의 도구로 처리",
+            "description": "사이트는 자체 배너를 표시하지 않으며, 태그 관리자 컨테이너 안의 동의 도구가 독자의 답을 기록할 때까지 Google에 아무것도 저장하지 않도록 알립니다.",
+            "unavailable": "선택하려면 태그 관리자 컨테이너 ID를 입력하세요. 동의 도구는 컨테이너 안에서 실행됩니다."
+          }
+        },
+        "consent_guidance": {
+          "readership": "일본의 외부 전송 규율은 공표만으로 충족됩니다. EEA나 영국의 독자가 있거나 Google Consent Mode v2를 요구하는 광고 상품을 쓴다면 다른 두 가지 중 하나가 필요합니다.",
+          "privacy_page": "배너는 설정 › 이용약관 및 개인정보 처리방침에서 선택한 개인정보 처리방침 페이지로 연결됩니다.",
+          "view_counting": "독자에게 먼저 묻기를 선택하면 로그인하지 않은 독자에 대한 사이트 자체 조회수 집계도 동의할 때까지 멈추므로, 통계와 랭킹에 집계되는 독자가 줄어듭니다."
+        },
+        "consent_privacy_page_missing": "설정 › 이용약관 및 개인정보 처리방침에서 공개된 개인정보 처리방침 페이지를 선택하지 않아 배너에서 연결할 페이지가 없습니다.",
         "guidance": {
           "title": "저장하기 전에",
           "other_tags": "광고 픽셀 등 다른 태그는 태그 관리자 컨테이너에 추가하세요. 콘솔은 이 ID 외의 태그를 받지 않습니다.",
@@ -3657,7 +3679,9 @@
           "measurement_id_invalid": "측정 ID는 G-ABC123DEF4처럼 G- 뒤에 영문자와 숫자로 입력하세요.",
           "universal_analytics_id": "유니버설 애널리틱스 ID(UA-)로는 Google이 더 이상 데이터를 수집하지 않습니다. G-로 시작하는 Google 애널리틱스 4 측정 ID를 입력하세요.",
           "container_id_invalid": "컨테이너 ID는 GTM-ABC1234처럼 GTM- 뒤에 영문자와 숫자로 입력하세요.",
+          "container_id_required": "동의 도구가 실행될 태그 관리자 컨테이너 ID를 입력하거나, 독자 동의에서 다른 항목을 선택하세요.",
           "serving_mode_invalid": "태그를 불러오는 곳을 선택하세요.",
+          "consent_mode_invalid": "태그를 실행하기 전에 독자에게 물을지 선택하세요.",
           "server_container_url_invalid": "https://sgtm.example.com처럼 도메인 이름의 https 주소를 경로 없이 입력하세요.",
           "server_container_url_required": "서버 컨테이너에서 태그를 불러오려면 서버 컨테이너 URL을 입력하세요."
         }

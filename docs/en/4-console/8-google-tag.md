@@ -1,11 +1,11 @@
 ---
 title: Google tag
-description: Measure the site with Google Analytics or Google Tag Manager, choose where the tag is loaded from, and set up what Google needs for each choice.
+description: Measure the site with Google Analytics or Google Tag Manager, choose where the tag is loaded from and whether readers are asked first, and set up what Google needs for each choice.
 published: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-27
 ---
 
-**Integrations** › **Google tag** has the tenant's site load the Google tag: Google Analytics 4 for a measurement ID, Google Tag Manager for a container ID, or both. This page takes a Tenant admin through the IDs, the three places the tag can be loaded from, and what each of them needs set up in Google Analytics and Google Tag Manager.
+**Integrations** › **Google tag** has the tenant's site load the Google tag: Google Analytics 4 for a measurement ID, Google Tag Manager for a container ID, or both. This page takes a Tenant admin through the IDs, the three places the tag can be loaded from, what each of them needs set up in Google Analytics and Google Tag Manager, and whether readers are asked before the tag runs.
 
 Only a Tenant admin sees **Google tag**, and every saved change is recorded in **Audit logs** as **Google tag updated**. The setting covers the site in the browser. The tenant's app loads no Google tag.
 
@@ -16,7 +16,7 @@ Only a Tenant admin sees **Google tag**, and every saved change is recorded in *
 
 ## The IDs
 
-![The Google tag screen with Google chosen: its description, GA4 measurement ID, Tag Manager container ID, Where the tag is loaded from with Google, Server container, and Google tag gateway, the Save the Google tag button, and Before you save beside them.](./google-tag-form.png)
+![The Google tag screen with Google chosen: its description, GA4 measurement ID, Tag Manager container ID, Where the tag is loaded from with Google, Server container, and Google tag gateway, Reader consent with its three choices, the Save the Google tag button, and Before you save beside them.](./google-tag-form.png)
 
 - **GA4 measurement ID**: the ID of the site's web data stream, starting `G-`. Google Analytics shows it under **Admin** › **Data collection and modification** › **Data streams**, in the details of the stream. A Universal Analytics ID, starting `UA-`, is refused, since Google no longer collects data for one.
 - **Tag Manager container ID**: the ID of the site's web container, starting `GTM-`. Google Tag Manager shows it at the top of the container's workspace.
@@ -91,6 +91,35 @@ Google's [setup guide](https://developers.google.com/tag-platform/tag-manager/ga
 
 ![Generate a new gateway path? asking to confirm: the form is saved with a new path, and the current path stops answering at once, with Cancel and Generate and save.](./google-tag-regenerate.png)
 
+## Reader consent
+
+**Reader consent** decides whether the site asks a reader before the tag runs. It applies to every reader of the site, wherever they read from.
+
+![Reader consent with Ask readers first chosen, the warning that no published privacy policy page is chosen, and the guidance below the choices.](./google-tag-consent.png)
+
+| Choice | What the site does | It needs |
+| --- | --- | --- |
+| **Not required** | Runs the tag as soon as a page loads | The tag disclosed on the privacy policy page |
+| **Ask readers first** | Shows a consent banner, and holds the tag back until the reader agrees | A privacy policy page for the banner to link to |
+| **Handled by my own consent tool in Tag Manager** | Shows no banner of its own, and tells Google to store nothing until the publisher's consent tool records the reader's answer | A **Tag Manager container ID**, and a consent tool in that container |
+
+**Not required** is the default. Which choice fits depends on who reads the site:
+
+- **Readers in Japan alone**: disclosing the tag on the privacy policy page meets the external transmission rules of Japan's Telecommunications Business Act, so **Not required** is enough.
+- **Readers in the EEA or the UK**, or **an advertising product that requires Google Consent Mode v2**: choose one of the other two. Both send Google Consent Mode v2 signals that follow the reader's answer.
+
+### Ask readers first
+
+The banner links to the page chosen as the privacy policy under [Settings › Terms and privacy policy](./3-setup/1-settings.md#terms-and-privacy-policy). While no published page is chosen there, the form warns that the banner has no page to link to when **Ask readers first** is chosen. The warning goes away once a published page is chosen, and the setting can be saved either way.
+
+Until a signed-out reader agrees, the site also does not count their views, which it otherwise does with the identifier [Pages](./3-setup/3-pages.md#what-the-site-stores-in-a-readers-browser) lists for signed-out readers. Statistics and rankings on a site that asks first therefore count fewer readers than the same site would without asking.
+
+### Handled by my own consent tool in Tag Manager
+
+This choice is for a publisher that already runs a consent management platform as a tag inside its Tag Manager container. The site sets every Consent Mode v2 signal to `denied` before the container loads, and the consent tool in the container shows its own banner and updates the signals with the reader's answer.
+
+The choice is offered only while a **Tag Manager container ID** is entered, since there is nowhere else for the tool to run, and the form says so under the choice until one is. Clearing the container ID while this choice is saved is refused in the same way, next to the ID.
+
 ## Pages that load no tag
 
 The site loads the tag on every page except the ones where a reader gives it a password, a passkey, or a link from a mail:
@@ -107,7 +136,7 @@ One of these pages opened directly, or reloaded, loads no tag. A tag already run
 
 **Before you save** asks for the site's privacy policy page to say what the site sends to Google, and what for. The tag sets Google's cookies and sends what it collects to Google, or to the server container, and so does every tag the container fires. [Pages](./3-setup/3-pages.md#what-the-site-stores-in-a-readers-browser) lists what Publira itself keeps in a reader's browser, and the policy covers the tag in addition to that list, from Google's documentation and that of each tag in the container.
 
-Consent Mode, and a consent banner that asks readers before the tag runs, are not part of this setting.
+Whichever choice is made under [Reader consent](#reader-consent), the policy says what the tag sends: asking first decides when the tag runs, not what it sends.
 
 ## When a change reaches the site
 

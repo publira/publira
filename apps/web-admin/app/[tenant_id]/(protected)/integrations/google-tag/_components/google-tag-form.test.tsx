@@ -71,9 +71,19 @@ const hiddenValue = (name: string) =>
     `input[type="hidden"][name="${name}"]`
   )?.value;
 
+const CONSENT_TOOL = "Handled by my own consent tool in Tag Manager";
+const PRIVACY_PAGE_MISSING =
+  "No published privacy policy page is chosen under Settings › Terms and privacy policy, so the banner has no page to link to.";
+
+const containerIdField = () =>
+  screen.getByRole<HTMLInputElement>("textbox", {
+    name: "Tag Manager container ID",
+  });
+
 const savedSettings = (
   settings: Partial<TenantAnalyticsSettings> = {}
 ): TenantAnalyticsSettings => ({
+  consentMode: "not_required",
   ga4MeasurementId: "G-ABC123",
   gatewayPath: "",
   gtmContainerId: "",
@@ -278,6 +288,102 @@ describe("GoogleTagForm", () => {
 
     expect(screen.getByText(/advertising pixels/u)).toBeDefined();
     expect(screen.getByText(/counts every page view twice/u)).toBeDefined();
-    expect(screen.getByText(/privacy policy page/u)).toBeDefined();
+    expect(screen.getByText(/what the site sends to Google/u)).toBeDefined();
+  });
+
+  it("starts from the saved consent mode and posts the one chosen", async () => {
+    await renderForm(
+      <GoogleTagForm
+        initialSettings={savedSettings({
+          consentMode: "opt_in",
+          gtmContainerId: "GTM-XYZ789",
+        })}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(
+      screen
+        .getByRole("radio", { name: "Ask readers first" })
+        .getAttribute("aria-checked")
+    ).toBe("true");
+    expect(hiddenValue("consent_mode")).toBe("opt_in");
+
+    fireEvent.click(screen.getByRole("radio", { name: CONSENT_TOOL }));
+
+    await waitFor(() => {
+      expect(hiddenValue("consent_mode")).toBe("external");
+    });
+  });
+
+  it("offers a consent tool only while a container ID is entered, and says why", async () => {
+    await renderForm(
+      <GoogleTagForm initialSettings={savedSettings()} tenantId="TENANT001" />
+    );
+    const unavailable =
+      "Enter a Tag Manager container ID to choose this. Your consent tool runs inside the container.";
+
+    expect(
+      screen
+        .getByRole("radio", { name: CONSENT_TOOL })
+        .getAttribute("aria-disabled")
+    ).toBe("true");
+    expect(screen.getByText(unavailable)).toBeDefined();
+
+    fireEvent.change(containerIdField(), { target: { value: "GTM-XYZ789" } });
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole("radio", { name: CONSENT_TOOL })
+          .getAttribute("aria-disabled")
+      ).not.toBe("true");
+    });
+    expect(screen.queryByText(unavailable)).toBeNull();
+  });
+
+  it("warns while Ask readers first is chosen without a privacy page", async () => {
+    await renderForm(
+      <GoogleTagForm
+        initialSettings={savedSettings()}
+        privacyPageMissing
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(screen.queryByText(PRIVACY_PAGE_MISSING)).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Ask readers first" }));
+    expect(await screen.findByText(PRIVACY_PAGE_MISSING)).toBeDefined();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Not required" }));
+    await waitFor(() => {
+      expect(screen.queryByText(PRIVACY_PAGE_MISSING)).toBeNull();
+    });
+  });
+
+  it("raises no privacy page warning once the tenant names one", async () => {
+    await renderForm(
+      <GoogleTagForm
+        initialSettings={savedSettings({ consentMode: "opt_in" })}
+        tenantId="TENANT001"
+      />
+    );
+
+    expect(screen.queryByText(PRIVACY_PAGE_MISSING)).toBeNull();
+  });
+
+  it("explains which consent choice fits which readers", async () => {
+    await renderForm(
+      <GoogleTagForm initialSettings={savedSettings()} tenantId="TENANT001" />
+    );
+
+    expect(
+      screen.getByText(/Disclosure alone meets Japan's rules/u)
+    ).toBeDefined();
+    expect(
+      screen.getByText(/The banner links to the privacy policy page/u)
+    ).toBeDefined();
+    expect(screen.getByText(/count fewer readers/u)).toBeDefined();
   });
 });

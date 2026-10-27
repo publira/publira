@@ -3643,6 +3643,28 @@
         "gateway_tag_id": "タグID",
         "gateway_tag_id_unset": "先にタグマネージャーのコンテナIDかGA4の測定IDを保存してください。",
         "gateway_tag_id_description": "ゲートウェイがGoogleに転送する先のタグです。タグマネージャーのコンテナがあればそのID、なければGA4の測定IDです。Googleタグマネージャーで、このタグのGoogleタグゲートウェイを上のパスで設定してください。",
+        "consent_mode": "読者の同意",
+        "consent_modes": {
+          "not_required": {
+            "label": "不要",
+            "description": "ページを開くとすぐにタグが動きます。サイトのプライバシーポリシーのページで公表してください。"
+          },
+          "opt_in": {
+            "label": "先に読者に尋ねる",
+            "description": "サイトが同意バナーを表示し、読者が同意するまでタグを止めておきます。"
+          },
+          "external": {
+            "label": "タグマネージャー内の独自の同意ツールで扱う",
+            "description": "サイトは独自のバナーを表示せず、タグマネージャーのコンテナ内の同意ツールが読者の回答を記録するまで、Googleに何も保存しないよう伝えます。",
+            "unavailable": "選ぶにはタグマネージャーのコンテナIDを入力してください。同意ツールはコンテナの中で動きます。"
+          }
+        },
+        "consent_guidance": {
+          "readership": "日本の外部送信規律は公表だけで満たせます。EEAや英国の読者がいる場合や、Google Consent Mode v2を必須とする広告サービスを使う場合は、ほかの2つのどちらかが必要です。",
+          "privacy_page": "バナーには「設定」›「利用規約とプライバシーポリシー」で選んだプライバシーポリシーのページへのリンクが入ります。",
+          "view_counting": "「先に読者に尋ねる」では、ログインしていない読者についてサイト独自の閲覧数の計測も同意を得るまで止めるため、統計やランキングに数えられる読者が減ります。"
+        },
+        "consent_privacy_page_missing": "「設定」›「利用規約とプライバシーポリシー」で公開中のプライバシーポリシーのページが選ばれていないため、バナーからリンクするページがありません。",
         "guidance": {
           "title": "保存する前に",
           "other_tags": "広告のピクセルなど、ほかのタグはタグマネージャーのコンテナに追加してください。コンソールではこれらのID以外のタグは受け付けません。",
@@ -3657,7 +3679,9 @@
           "measurement_id_invalid": "測定IDは、G-ABC123DEF4のようにG-に続けて英数字で入力してください。",
           "universal_analytics_id": "ユニバーサルアナリティクスのID（UA-）では、Googleはデータを収集していません。G-で始まるGoogleアナリティクス4の測定IDを入力してください。",
           "container_id_invalid": "コンテナIDは、GTM-ABC1234のようにGTM-に続けて英数字で入力してください。",
+          "container_id_required": "同意ツールを動かすタグマネージャーのコンテナIDを入力するか、「読者の同意」でほかの選択肢を選んでください。",
           "serving_mode_invalid": "タグの読み込み元を選んでください。",
+          "consent_mode_invalid": "タグを動かす前に読者に尋ねるかどうかを選んでください。",
           "server_container_url_invalid": "https://sgtm.example.comのように、ドメイン名のhttpsのアドレスをパスを含めずに入力してください。",
           "server_container_url_required": "サーバーコンテナからタグを読み込むには、サーバーコンテナのURLを入力してください。"
         }

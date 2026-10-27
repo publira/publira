@@ -87,12 +87,19 @@ interface GoogleTagFormProps {
   /** The saved settings, absent when the read failed. */
   initialSettings?: TenantAnalyticsSettings;
   loadErrorMessage?: string;
+  /**
+   * Whether the tenant names no published privacy policy page for the consent
+   * banner to link to. False when that could not be read, so a failed read
+   * raises no warning.
+   */
+  privacyPageMissing?: boolean;
   tenantId: string;
 }
 
 export const GoogleTagForm = ({
   initialSettings: settings,
   loadErrorMessage,
+  privacyPageMissing = false,
   tenantId,
 }: GoogleTagFormProps) => {
   const tagId = settings === undefined ? "" : gatewayTagId(settings);
@@ -121,6 +128,8 @@ export const GoogleTagForm = ({
             // fields on what the API stored instead of changing a mounted
             // default.
             <GoogleTagMode.Root
+              initialConsentMode={settings.consentMode}
+              initialGtmContainerId={settings.gtmContainerId}
               initialServerContainerUrl={settings.serverContainerUrl}
               initialServingMode={settings.servingMode}
               key={JSON.stringify(settings)}
@@ -159,15 +168,7 @@ export const GoogleTagForm = ({
                     </Suspense>
                   </Field.Label>
                   <Field.Content>
-                    <Input
-                      autoCapitalize="characters"
-                      autoComplete="off"
-                      defaultValue={settings.gtmContainerId}
-                      name="gtm_container_id"
-                      placeholder="GTM-XXXXXXX"
-                      spellCheck={false}
-                      type="text"
-                    />
+                    <GoogleTagMode.ContainerIdInput />
                     <ActionForm.FieldError name="gtmContainerId" />
                     <Field.Description>
                       <Suspense
@@ -344,6 +345,121 @@ export const GoogleTagForm = ({
                   </ActionForm.Fieldset>
                 </div>
               </GoogleTagMode.While>
+
+              <ActionForm.Fieldset>
+                <Field.Root>
+                  <Field.Label>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                      <Message message="admin.settings.google_tag.consent_mode" />
+                    </Suspense>
+                  </Field.Label>
+                  <Field.Content>
+                    <GoogleTagMode.ConsentRadioGroup
+                      items={[
+                        {
+                          description: (
+                            <Suspense
+                              fallback={<SkeletonLine className="h-4 w-64" />}
+                            >
+                              <Message message="admin.settings.google_tag.consent_modes.not_required.description" />
+                            </Suspense>
+                          ),
+                          label: (
+                            <Suspense
+                              fallback={<SkeletonLine className="h-4 w-32" />}
+                            >
+                              <Message message="admin.settings.google_tag.consent_modes.not_required.label" />
+                            </Suspense>
+                          ),
+                          value: "not_required",
+                        },
+                        {
+                          description: (
+                            <Suspense
+                              fallback={<SkeletonLine className="h-4 w-64" />}
+                            >
+                              <Message message="admin.settings.google_tag.consent_modes.opt_in.description" />
+                            </Suspense>
+                          ),
+                          label: (
+                            <Suspense
+                              fallback={<SkeletonLine className="h-4 w-32" />}
+                            >
+                              <Message message="admin.settings.google_tag.consent_modes.opt_in.label" />
+                            </Suspense>
+                          ),
+                          value: "opt_in",
+                        },
+                        {
+                          description: (
+                            <>
+                              <GoogleTagMode.WithContainerId>
+                                <Suspense
+                                  fallback={
+                                    <SkeletonLine className="h-4 w-64" />
+                                  }
+                                >
+                                  <Message message="admin.settings.google_tag.consent_modes.external.description" />
+                                </Suspense>
+                              </GoogleTagMode.WithContainerId>
+                              <GoogleTagMode.WithoutContainerId>
+                                <Suspense
+                                  fallback={
+                                    <SkeletonLine className="h-4 w-64" />
+                                  }
+                                >
+                                  <Message message="admin.settings.google_tag.consent_modes.external.unavailable" />
+                                </Suspense>
+                              </GoogleTagMode.WithoutContainerId>
+                            </>
+                          ),
+                          label: (
+                            <Suspense
+                              fallback={<SkeletonLine className="h-4 w-64" />}
+                            >
+                              <Message message="admin.settings.google_tag.consent_modes.external.label" />
+                            </Suspense>
+                          ),
+                          value: "external",
+                        },
+                      ]}
+                    />
+                    <ActionForm.FieldError name="consentMode" />
+                    {privacyPageMissing ? (
+                      <GoogleTagMode.WhileConsent mode="opt_in">
+                        <FormMessage variant="warning">
+                          <Suspense
+                            fallback={<SkeletonLine className="h-4 w-64" />}
+                          >
+                            <Message message="admin.settings.google_tag.consent_privacy_page_missing" />
+                          </Suspense>
+                        </FormMessage>
+                      </GoogleTagMode.WhileConsent>
+                    ) : null}
+                    <Field.Description>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-3/4" />}
+                      >
+                        <Message message="admin.settings.google_tag.consent_guidance.readership" />
+                      </Suspense>
+                    </Field.Description>
+                    <Field.Description>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-3/4" />}
+                      >
+                        <Message message="admin.settings.google_tag.consent_guidance.privacy_page" />
+                      </Suspense>
+                    </Field.Description>
+                    <Field.Description>
+                      <Suspense
+                        fallback={<SkeletonLine className="h-4 w-3/4" />}
+                      >
+                        <Message message="admin.settings.google_tag.consent_guidance.view_counting" />
+                      </Suspense>
+                    </Field.Description>
+                  </Field.Content>
+                </Field.Root>
+              </ActionForm.Fieldset>
             </GoogleTagMode.Root>
           )}
 
