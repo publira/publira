@@ -134,28 +134,28 @@ const GoogleTagModeContainerIdInput = () => {
   );
 };
 
+/** Whether a container ID is entered, which `external` needs. */
+const useHasContainerId = () => useGoogleTagMode().gtmContainerId.trim() !== "";
+
 /**
  * The consent picker; `items` carry the rendered wording of each mode. With no
- * container ID entered, `external` is disabled and described by
- * `externalWithoutContainer` instead, as the API refuses it then. A saved
- * `external` stays chosen while the ID is cleared, so the save is refused next
- * to the ID rather than switching the tenant's choice behind its back.
+ * container ID entered, `external` is disabled, as the API refuses it then. A
+ * saved `external` stays chosen while the ID is cleared, so the save is refused
+ * next to the ID rather than switching the tenant's choice behind its back.
  */
 const GoogleTagConsentRadioGroup = ({
-  externalWithoutContainer,
   items,
 }: {
-  externalWithoutContainer: ReactNode;
   items: RadioGroupProps["items"];
 }) => {
-  const { consentMode, gtmContainerId, setConsentMode } = useGoogleTagMode();
-  const hasContainer = gtmContainerId.trim() !== "";
+  const { consentMode, setConsentMode } = useGoogleTagMode();
+  const hasContainerId = useHasContainerId();
 
   return (
     <RadioGroup
       items={items.map((item) =>
-        item.value === "external" && !hasContainer
-          ? { ...item, description: externalWithoutContainer, disabled: true }
+        item.value === "external" && !hasContainerId
+          ? { ...item, disabled: true }
           : item
       )}
       onValueChange={(value) => {
@@ -167,6 +167,17 @@ const GoogleTagConsentRadioGroup = ({
     />
   );
 };
+
+/** Renders its children only while a container ID is entered. */
+const GoogleTagModeWithContainerId = ({ children }: { children: ReactNode }) =>
+  useHasContainerId() ? children : null;
+
+/** Renders its children only while no container ID is entered. */
+const GoogleTagModeWithoutContainerId = ({
+  children,
+}: {
+  children: ReactNode;
+}) => (useHasContainerId() ? null : children);
 
 /** Renders its children only while `mode` is the consent mode chosen. */
 const GoogleTagConsentWhile = ({
@@ -207,4 +218,6 @@ export {
   GoogleTagModeRadioGroup as RadioGroup,
   GoogleTagModeServerContainerUrlInput as ServerContainerUrlInput,
   GoogleTagModeWhile as While,
+  GoogleTagModeWithContainerId as WithContainerId,
+  GoogleTagModeWithoutContainerId as WithoutContainerId,
 };

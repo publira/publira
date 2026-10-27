@@ -355,13 +355,6 @@ export const GoogleTagForm = ({
                   </Field.Label>
                   <Field.Content>
                     <GoogleTagMode.ConsentRadioGroup
-                      externalWithoutContainer={
-                        <Suspense
-                          fallback={<SkeletonLine className="h-4 w-64" />}
-                        >
-                          <Message message="admin.settings.google_tag.consent_modes.external.unavailable" />
-                        </Suspense>
-                      }
                       items={[
                         {
                           description: (
@@ -399,11 +392,26 @@ export const GoogleTagForm = ({
                         },
                         {
                           description: (
-                            <Suspense
-                              fallback={<SkeletonLine className="h-4 w-64" />}
-                            >
-                              <Message message="admin.settings.google_tag.consent_modes.external.description" />
-                            </Suspense>
+                            <>
+                              <GoogleTagMode.WithContainerId>
+                                <Suspense
+                                  fallback={
+                                    <SkeletonLine className="h-4 w-64" />
+                                  }
+                                >
+                                  <Message message="admin.settings.google_tag.consent_modes.external.description" />
+                                </Suspense>
+                              </GoogleTagMode.WithContainerId>
+                              <GoogleTagMode.WithoutContainerId>
+                                <Suspense
+                                  fallback={
+                                    <SkeletonLine className="h-4 w-64" />
+                                  }
+                                >
+                                  <Message message="admin.settings.google_tag.consent_modes.external.unavailable" />
+                                </Suspense>
+                              </GoogleTagMode.WithoutContainerId>
+                            </>
                           ),
                           label: (
                             <Suspense
