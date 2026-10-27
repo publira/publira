@@ -1,9 +1,21 @@
+import "temporal-polyfill/global";
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 
-import type { Locator, Page } from "@playwright/test";
+import type { Download, Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import { applyScenarioSql } from "../src/db";
+import {
+  signInAsPlatformOperator,
+  signInAsSeedPlatformSuperAdmin,
+} from "../src/platform";
+import {
+  PLATFORM_AUDIT_LOG_EXPORT_AUDITOR,
+  PLATFORM_AUDIT_LOG_EXPORT_OPERATOR,
+  PLATFORM_AUDIT_LOG_EXPORT_SCENARIO,
+  PLATFORM_AUDIT_LOG_EXPORT_WEEK,
+} from "../src/scenarios/platform-audit-log-export";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 /** Every locale the console ships, as `locales/index.json` registers them. */
@@ -131,4 +143,125 @@ test.describe("web-platform audit log action filter", () => {
       });
     }
   }
+});
+
+const auditLogsUrl = (query: Record<string, string>): string =>
+  `${WEB_PLATFORM_BASE_URL}/audit-logs?${new URLSearchParams(query)}`;
+
+const auditRows = (page: Page): Locator => page.locator("table tbody tr");
+
+const downloadLink = (page: Page): Locator =>
+  page.getByRole("link", { exact: true, name: "Download CSV" });
+
+/** Clicks **Download CSV** and waits for the file it saves. */
+const downloadAuditCsv = async (page: Page): Promise<Download> => {
+  const downloading = page.waitForEvent("download");
+  await downloadLink(page).click();
+  return downloading;
+};
+
+/** A downloaded CSV's header and body rows, split on its CRLF endings. */
+const csvRows = async (download: Download): Promise<string[]> => {
+  const csv = await readFile(await download.path(), "utf-8");
+  return csv.split("\r\n").filter((row) => row !== "");
+};
+
+/**
+ * **Download CSV** on the audit log saves the period and the filters the list
+ * shows, for every operator role, an Auditor included, and the download is
+ * itself an entry of the log.
+ */
+test.describe("web-platform audit log download", () => {
+  test.beforeAll(() => {
+    applyScenarioSql(PLATFORM_AUDIT_LOG_EXPORT_SCENARIO);
+  });
+
+  test("an Auditor narrows the list to a week and downloads it", async ({
+    page,
+  }) => {
+    const week = PLATFORM_AUDIT_LOG_EXPORT_WEEK;
+    await signInAsPlatformOperator(
+      page,
+      PLATFORM_AUDIT_LOG_EXPORT_AUDITOR,
+      `/audit-logs?${new URLSearchParams({
+        actor_user_public_id: PLATFORM_AUDIT_LOG_EXPORT_OPERATOR.publicId,
+      })}`
+    );
+    await expect(auditRows(page)).toHaveCount(week.actions.length + 2);
+
+    await page.getByLabel("From", { exact: true }).fill(week.from);
+    await page.getByLabel("To", { exact: true }).fill(week.to);
+    await page.getByRole("button", { exact: true, name: "Filter" }).click();
+    await page.waitForURL(
+      (url) =>
+        url.searchParams.get("created_from") === week.from &&
+        url.searchParams.get("created_to") === week.to
+    );
+    await expect(auditRows(page)).toHaveCount(week.actions.length);
+
+    const download = await downloadAuditCsv(page);
+    expect(download.suggestedFilename()).toBe(
+      `platform-audit-log-${week.from}--${week.to}.csv`
+    );
+    const [header, ...rows] = await csvRows(download);
+    expect(header).toBe(
+      "\uFEFFtime,actor_public_id,actor_name,actor_role,action,outcome,reason,target_type,target_id,client_ip,tenant_public_id,tenant_name,target_public_id,target_name"
+    );
+    // The week's entries oldest first, and none of the two just outside it.
+    const columns = rows.map((row) => row.split(","));
+    expect(columns.map((cells) => cells[4])).toEqual(week.actions);
+    expect(new Set(columns.map((cells) => cells[1]))).toEqual(
+      new Set([PLATFORM_AUDIT_LOG_EXPORT_OPERATOR.publicId])
+    );
+
+    // The download is an entry of the log itself, written by the same
+    // asynchronous recorder as every other one, so the read polls.
+    const period = `${week.from}/${week.to}`;
+    const exportedRow = auditRows(page).filter({ hasText: period }).first();
+    await expect(async () => {
+      await page.goto(
+        auditLogsUrl({
+          action: "audit_log_exported",
+          actor_user_public_id: PLATFORM_AUDIT_LOG_EXPORT_AUDITOR.publicId,
+        })
+      );
+      await expect(exportedRow).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30_000 });
+    await expect(exportedRow).toContainText("Downloaded the audit log as CSV");
+    await expect(exportedRow).toContainText(
+      PLATFORM_AUDIT_LOG_EXPORT_AUDITOR.name
+    );
+  });
+
+  test("Download CSV is offered only for a period one file can cover", async ({
+    page,
+  }) => {
+    await signInAsSeedPlatformSuperAdmin(page, "/audit-logs");
+
+    // The unfiltered list: the 366 days ending today in the platform's zone,
+    // which the development seed sets to UTC.
+    const today = Temporal.Now.plainDateISO("UTC");
+    await expect(downloadLink(page)).toHaveAttribute(
+      "href",
+      `/api/v1/audit-logs/csv?${new URLSearchParams({
+        created_from: today.subtract({ days: 365 }).toString(),
+        created_to: today.toString(),
+      })}`
+    );
+
+    // A period longer than one file offers no download, and neither does a
+    // reversed one.
+    const periodNote = page.getByText("Download CSV covers at most 366 days");
+    await page.goto(
+      auditLogsUrl({ created_from: "2025-01-01", created_to: "2026-01-02" })
+    );
+    await expect(periodNote).toBeVisible();
+    await expect(downloadLink(page)).toHaveCount(0);
+
+    await page.goto(
+      auditLogsUrl({ created_from: "2025-03-09", created_to: "2025-03-03" })
+    );
+    await expect(periodNote).toBeVisible();
+    await expect(downloadLink(page)).toHaveCount(0);
+  });
 });

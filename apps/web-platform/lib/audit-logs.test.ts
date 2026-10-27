@@ -1,18 +1,26 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { listPlatformAuditLogs, platformAuditLogsCacheTag } from "./audit-logs";
+import {
+  buildAuditLogCsvPath,
+  buildAuditLogsPath,
+  exportPlatformAuditLogs,
+  listPlatformAuditLogs,
+  platformAuditLogsCacheTag,
+} from "./audit-logs";
 
 const {
   mockBuildSessionHeaders,
   mockCacheLife,
   mockCacheTag,
+  mockExportAuditLogs,
   mockListAuditLogs,
   mockResolveSessionId,
 } = vi.hoisted(() => ({
   mockBuildSessionHeaders: vi.fn(),
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockExportAuditLogs: vi.fn(),
   mockListAuditLogs: vi.fn(),
   mockResolveSessionId: vi.fn(),
 }));
@@ -25,6 +33,7 @@ vi.mock("next/cache", () => ({
 vi.mock("./api-client", () => ({
   apiClient: {
     auditLogs: {
+      exportAuditLogs: mockExportAuditLogs,
       listAuditLogs: mockListAuditLogs,
     },
   },
@@ -89,6 +98,8 @@ describe("listPlatformAuditLogs", () => {
       {
         action: "",
         actorUserPublicId: "",
+        createdFrom: "",
+        createdTo: "",
         limit: 100,
         tenantId: "",
         token: "",
@@ -149,6 +160,8 @@ describe("listPlatformAuditLogs", () => {
       {
         action: "",
         actorUserPublicId: "",
+        createdFrom: "",
+        createdTo: "",
         limit: 100,
         tenantId: "",
         token: "current-page",
@@ -157,13 +170,15 @@ describe("listPlatformAuditLogs", () => {
     );
   });
 
-  it("passes tenant, actor, and action filters to the API", async () => {
+  it("passes tenant, actor, action, and period filters to the API", async () => {
     mockListAuditLogs.mockResolvedValueOnce({ auditLogs: [] });
 
     await expect(
       listPlatformAuditLogs({
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
+        createdFrom: "2026-01-09T15:00:00Z",
+        createdTo: "2026-01-11T15:00:00Z",
         limit: 20,
         locale: "en",
         tenantId: "tenant_999",
@@ -180,6 +195,8 @@ describe("listPlatformAuditLogs", () => {
       {
         action: "tenant.status.updated",
         actorUserPublicId: "op_123",
+        createdFrom: "2026-01-09T15:00:00Z",
+        createdTo: "2026-01-11T15:00:00Z",
         limit: 20,
         tenantId: "tenant_999",
         token: "page-2",
@@ -302,5 +319,126 @@ describe("audit log cache tag", () => {
 
     expect(platformAuditLogsCacheTag).toBe("platform:audit-logs");
     expect(mockCacheTag).toHaveBeenCalledWith(platformAuditLogsCacheTag);
+  });
+});
+
+const unfiltered = {
+  action: "",
+  actorUserPublicId: "",
+  createdFrom: "",
+  createdTo: "",
+  tenantPublicId: "",
+};
+
+describe("buildAuditLogsPath", () => {
+  it("keeps the filters and the page token in the URL", () => {
+    expect(
+      buildAuditLogsPath(
+        {
+          action: "operator_created",
+          actorUserPublicId: "user_1",
+          createdFrom: "2026-01-01",
+          createdTo: "2026-01-31",
+          tenantPublicId: "tenant_a",
+        },
+        "next-page"
+      )
+    ).toBe(
+      "/audit-logs?tenant_id=tenant_a&actor_user_public_id=user_1&action=operator_created&created_from=2026-01-01&created_to=2026-01-31&token=next-page"
+    );
+  });
+
+  it("returns the list root when there are no conditions", () => {
+    expect(buildAuditLogsPath(unfiltered)).toBe("/audit-logs");
+  });
+});
+
+describe("buildAuditLogCsvPath", () => {
+  it("names only the filters that narrow the file", () => {
+    expect(
+      buildAuditLogCsvPath({
+        ...unfiltered,
+        createdFrom: "2026-01-01",
+        createdTo: "2026-01-31",
+      })
+    ).toBe(
+      "/api/v1/audit-logs/csv?created_from=2026-01-01&created_to=2026-01-31"
+    );
+  });
+});
+
+describe("exportPlatformAuditLogs", () => {
+  const january = {
+    action: "",
+    actorUserPublicId: "",
+    end: "2026-01-31",
+    start: "2026-01-01",
+    tenantId: "",
+  };
+
+  it("asks for the period and the filters, and answers the file byte for byte", async () => {
+    const csv = new TextEncoder().encode("\uFEFFtime,actor_public_id\r\n");
+    mockExportAuditLogs.mockResolvedValueOnce({ csv });
+
+    await expect(
+      exportPlatformAuditLogs({
+        ...january,
+        action: "tenant_created",
+        actorUserPublicId: "op_001",
+        tenantId: "tenant_001",
+      })
+    ).resolves.toEqual({ csv, ok: true });
+    expect(mockExportAuditLogs).toHaveBeenCalledWith(
+      {
+        action: "tenant_created",
+        actorUserPublicId: "op_001",
+        endDate: "2026-01-31",
+        startDate: "2026-01-01",
+        tenantId: "tenant_001",
+      },
+      { headers: { Authorization: "Bearer sess_abc" } }
+    );
+  });
+
+  it("answers signed out without a session, and asks the API nothing", async () => {
+    mockResolveSessionId.mockResolvedValueOnce("");
+
+    await expect(exportPlatformAuditLogs(january)).resolves.toEqual({
+      ok: false,
+      reason: "signedOut",
+    });
+    expect(mockExportAuditLogs).not.toHaveBeenCalled();
+  });
+
+  it("answers signed out for a session the API rejects", async () => {
+    mockExportAuditLogs.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    await expect(exportPlatformAuditLogs(january)).resolves.toEqual({
+      ok: false,
+      reason: "signedOut",
+    });
+  });
+
+  it("answers missing for a period the API refuses", async () => {
+    mockExportAuditLogs.mockRejectedValueOnce(
+      new ConnectError("refused", Code.InvalidArgument)
+    );
+
+    await expect(exportPlatformAuditLogs(january)).resolves.toEqual({
+      ok: false,
+      reason: "missing",
+    });
+  });
+
+  it("lets any other failure reach the error boundary", async () => {
+    mockExportAuditLogs.mockRejectedValueOnce(
+      new ConnectError("database down", Code.Unavailable)
+    );
+
+    await expect(exportPlatformAuditLogs(january)).rejects.toThrow(
+      "database down"
+    );
   });
 });

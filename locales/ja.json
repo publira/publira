@@ -6559,11 +6559,17 @@
       },
       "empty": "監査ログはまだ記録されていません。",
       "empty_filtered": "条件に一致する監査ログが見つかりませんでした。",
+      "export": {
+        "button": "CSVをダウンロード",
+        "period_invalid": "CSVでダウンロードできるのは、開始日が終了日以前の最長366日の期間です。期間を絞り込むとダウンロードできます。"
+      },
       "heading": "監査ログ",
       "list_failed": "監査ログの取得に失敗しました。時間をおいて再試行してください。",
       "load_failed": "監査ログを表示できませんでした",
       "page_description": "重要操作を横断的に追跡し、対象リソースの詳細へ遷移できる監査ログ画面です。",
       "pagination_aria": "監査ログ一覧のページ送り",
+      "period_from": "開始日",
+      "period_to": "終了日",
       "showing": "{$count}件を表示",
       "targets": {
         "audit_log": "{$period}の監査ログ",

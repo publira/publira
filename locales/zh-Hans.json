@@ -6559,11 +6559,17 @@
       },
       "empty": "尚未记录任何审计日志。",
       "empty_filtered": "没有符合这些筛选条件的审计日志。",
+      "export": {
+        "button": "下载CSV",
+        "period_invalid": "可下载为CSV的期间最长366天，且开始日期不晚于结束日期。缩小期间后即可下载。"
+      },
       "heading": "审计日志",
       "list_failed": "无法加载审计日志。请稍后再试。",
       "load_failed": "无法显示审计日志",
       "page_description": "追踪跨租户的重要操作，并打开受影响的资源。",
       "pagination_aria": "审计日志分页",
+      "period_from": "开始",
+      "period_to": "结束",
       "showing": "显示{$count}条",
       "targets": {
         "audit_log": "{$period}的审计日志",

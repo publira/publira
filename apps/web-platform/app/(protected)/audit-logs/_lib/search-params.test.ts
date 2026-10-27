@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAuditLogsPath, parseAuditLogFilters } from "./search-params";
+import { parseAuditLogFilters } from "./search-params";
 
 const allowedActions = new Set(["operator_created", "tenant_created"]);
 
@@ -11,6 +11,8 @@ describe("parseAuditLogFilters", () => {
         {
           action: " operator_created ",
           actor_user_public_id: " user_1 ",
+          created_from: " 2026-01-01 ",
+          created_to: "2026-01-31",
           tenant_id: " tenant_a ",
           token: "next-page",
         },
@@ -19,6 +21,8 @@ describe("parseAuditLogFilters", () => {
     ).toEqual({
       action: "operator_created",
       actorUserPublicId: "user_1",
+      createdFrom: "2026-01-01",
+      createdTo: "2026-01-31",
       tenantPublicId: "tenant_a",
       token: "next-page",
     });
@@ -30,6 +34,8 @@ describe("parseAuditLogFilters", () => {
         {
           action: "unknown",
           actor_user_public_id: ["a", "b"],
+          created_from: "2026-02-30",
+          created_to: "yesterday",
           tenant_id: ["tenant_a", "tenant_b"],
           token: ["first", "second"],
         },
@@ -38,34 +44,10 @@ describe("parseAuditLogFilters", () => {
     ).toEqual({
       action: "",
       actorUserPublicId: "",
+      createdFrom: "",
+      createdTo: "",
       tenantPublicId: "",
       token: "",
     });
-  });
-});
-
-describe("buildAuditLogsPath", () => {
-  it("keeps filters and page token in the URL", () => {
-    expect(
-      buildAuditLogsPath({
-        action: "operator_created",
-        actorUserPublicId: "user_1",
-        tenantPublicId: "tenant_a",
-        token: "next-page",
-      })
-    ).toBe(
-      "/audit-logs?tenant_id=tenant_a&actor_user_public_id=user_1&action=operator_created&token=next-page"
-    );
-  });
-
-  it("returns the list root when there are no conditions", () => {
-    expect(
-      buildAuditLogsPath({
-        action: "",
-        actorUserPublicId: "",
-        tenantPublicId: "",
-        token: "",
-      })
-    ).toBe("/audit-logs");
   });
 });

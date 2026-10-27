@@ -6559,11 +6559,17 @@
       },
       "empty": "尚未記錄任何稽核記錄。",
       "empty_filtered": "沒有符合這些篩選條件的稽核記錄。",
+      "export": {
+        "button": "下載CSV",
+        "period_invalid": "可下載為CSV的期間最長366天，且開始日期不晚於結束日期。縮小期間後即可下載。"
+      },
       "heading": "稽核記錄",
       "list_failed": "無法載入稽核記錄。請稍後再試。",
       "load_failed": "無法顯示稽核記錄",
       "page_description": "追蹤跨租戶的重要操作，並開啟受影響的資源。",
       "pagination_aria": "稽核記錄分頁",
+      "period_from": "開始",
+      "period_to": "結束",
       "showing": "顯示{$count}筆",
       "targets": {
         "audit_log": "{$period}的稽核記錄",
