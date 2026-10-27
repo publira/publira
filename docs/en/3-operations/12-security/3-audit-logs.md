@@ -9,9 +9,9 @@ An install keeps two audit logs that never share entries: the Platform Console's
 
 ## The Platform Console's log
 
-**Audit logs**, under **Governance** in the Platform Console, lists the newest entries first, 20 to a page. Every operator can read it, an **Auditor** included. Each entry shows the **Time**, the **Actor** with their role, the action with its outcome, and the **Target**. A change made from `publiractl` names no operator: its actor is **Command line**. The list can be narrowed to one actor by public ID and to one kind of action, but not to a date. **View audit logs** on a tenant's page opens it narrowed to that tenant as well: the entries that changed the tenant, its invitations, or the accounts of its staff and readers. The tenant is named above the list, and its close button drops that filter alone; **Clear** drops every filter.
+**Audit logs**, under **Governance** in the Platform Console, lists the newest entries first, 20 to a page. Every operator can read it, an **Auditor** included. Each entry shows the **Time**, the **Actor** with their role, the action with its outcome, and the **Target**. A change made from `publiractl` names no operator: its actor is **Command line**. The list can be narrowed to a period with **From** and **To**, whole days in the platform's **Default time zone**, to one actor by public ID, and to one kind of action. **View audit logs** on a tenant's page opens it narrowed to that tenant as well: the entries that changed the tenant, its invitations, or the accounts of its staff and readers. The tenant is named above the list, and its close button drops that filter alone; **Clear** drops every filter.
 
-![The Platform Console's audit log narrowed to one tenant: Tenant: Platform Docs Tenant with its close button, the actor and event filters, Filter, and Clear, and six entries, each with its time, its actor and their role or Command line, its action and outcome, and its target.](./audit-logs-tenant-filter.png)
+![The Platform Console's audit log narrowed to one tenant: Tenant: Platform Docs Tenant with its close button, the From and To dates, the actor and event filters, Filter, and Clear, Download CSV beside them, and six entries, each with its time, its actor and their role or Command line, its action and outcome, and its target.](./audit-logs-tenant-filter.png)
 
 It records:
 
@@ -32,6 +32,8 @@ Either log can be exported as one CSV file covering at most 366 days, by the peo
 The file holds every entry of the period, oldest first, one row to an entry: the time it was recorded, with the offset of the zone the period is in; the actor's public ID, name, and role; the action, its outcome, and its reason; the kind and ID of what it acted on; and the client address. A file of the Platform Console's log also names each entry's tenant, by public ID and name, and the public ID and name of what the entry acted on. The file is UTF-8 with a byte order mark, which is what makes a spreadsheet read it as UTF-8, and a value a spreadsheet would read as a formula is written with a leading apostrophe, so that it stays text.
 
 An export is itself an entry in the log it read, so the log shows who took a copy of which period, and when.
+
+In the Platform Console, **Download CSV** beside the filters on **Audit logs** saves the entries of the period, the tenant, the actor, and the action shown, as a file named after the period, such as `platform-audit-log-2026-04-01--2026-04-30.csv`. Without a **To**, the period ends today; without a **From**, it is the 366 days ending on **To**, or today. A period longer than that, or one whose **From** is after its **To**, cannot be downloaded until you narrow it. Each download appears in the log as **Downloaded the audit log as CSV**.
 
 ## What neither log records
 

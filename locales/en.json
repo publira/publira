@@ -6557,11 +6557,17 @@
       },
       "empty": "No audit logs have been recorded yet.",
       "empty_filtered": "No audit logs match these filters.",
+      "export": {
+        "button": "Download CSV",
+        "period_invalid": "Download CSV covers at most 366 days, with From on or before To. Narrow the period to download it."
+      },
       "heading": "Audit logs",
       "list_failed": "Could not load audit logs. Please try again later.",
       "load_failed": "Could not display audit logs",
       "page_description": "Track important operations across tenants and open the affected resource.",
       "pagination_aria": "Audit log pagination",
+      "period_from": "From",
+      "period_to": "To",
       "showing": "Showing {$count}",
       "targets": {
         "audit_log": "Audit log for {$period}",

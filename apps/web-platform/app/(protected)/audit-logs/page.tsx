@@ -3,7 +3,7 @@ import type { Locale } from "@publira/i18n";
 import { CloseIcon } from "@publira/icons";
 import * as ConsolePage from "@publira/layouts/admin/console-page";
 import { Badge } from "@publira/ui-components/badge";
-import { Button } from "@publira/ui-components/button";
+import { Button, LinkButton } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
 import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
@@ -22,8 +22,13 @@ import {
   getActorRoleLabel,
   getAuditActionOptions,
 } from "#lib/audit-log-labels";
-import { listPlatformAuditLogs } from "#lib/audit-logs";
+import {
+  buildAuditLogCsvPath,
+  buildAuditLogsPath,
+  listPlatformAuditLogs,
+} from "#lib/audit-logs";
 import type {
+  AuditLogsPathInput,
   ListPlatformAuditLogsInput,
   ListPlatformAuditLogsResult,
   PlatformAuditLogSummary,
@@ -40,7 +45,10 @@ import { getPlatformTenant } from "#lib/tenants";
 import { AuditActionName } from "./_components/audit-action-name";
 import { AuditLogTarget } from "./_components/audit-log-target";
 import {
-  buildAuditLogsPath,
+  resolveAuditLogExportPeriod,
+  resolveAuditLogListPeriod,
+} from "./_lib/period";
+import {
   parseAuditLogFilters,
   toAllowedActionValues,
 } from "./_lib/search-params";
@@ -157,17 +165,13 @@ const AuditLogsTenantFilter = async ({
 };
 
 const AuditLogsFilters = async ({
-  actionFilter,
-  actorFilter,
+  filters,
   hasFilter,
   tenantFilter,
-  tenantPublicId,
 }: {
-  actionFilter: string;
-  actorFilter: string;
+  filters: AuditLogsPathInput;
   hasFilter: boolean;
   tenantFilter: AuditLogTenantFilter;
-  tenantPublicId: string;
 }) => {
   const locale = await getPlatformLocale();
   const [t, actionItems] = await Promise.all([
@@ -179,25 +183,45 @@ const AuditLogsFilters = async ({
     <Form
       action="/audit-logs"
       className="flex flex-wrap items-center gap-3"
-      key={`${tenantPublicId}::${actorFilter}::${actionFilter}`}
+      key={`${filters.tenantPublicId}::${filters.actorUserPublicId}::${filters.action}::${filters.createdFrom}::${filters.createdTo}`}
     >
       {tenantFilter.kind === "none" ? null : (
         <>
-          <input name="tenant_id" type="hidden" value={tenantPublicId} />
+          <input
+            name="tenant_id"
+            type="hidden"
+            value={filters.tenantPublicId}
+          />
           <AuditLogsTenantFilter
             removeHref={buildAuditLogsPath({
-              action: actionFilter,
-              actorUserPublicId: actorFilter,
+              ...filters,
               tenantPublicId: "",
-              token: "",
             })}
             tenantFilter={tenantFilter}
           />
         </>
       )}
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        {t("platform.audit.period_from")}
+        <Input
+          className="w-44"
+          defaultValue={filters.createdFrom}
+          name="created_from"
+          type="date"
+        />
+      </label>
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        {t("platform.audit.period_to")}
+        <Input
+          className="w-44"
+          defaultValue={filters.createdTo}
+          name="created_to"
+          type="date"
+        />
+      </label>
       <Input
         className="w-48"
-        defaultValue={actorFilter}
+        defaultValue={filters.actorUserPublicId}
         name="actor_user_public_id"
         placeholder={t("platform.audit.actor_filter_placeholder")}
         type="search"
@@ -206,7 +230,7 @@ const AuditLogsFilters = async ({
           takes the width of the one chosen rather than wrapping it. */}
       <Select
         className="w-auto max-w-full min-w-56"
-        defaultValue={actionFilter || undefined}
+        defaultValue={filters.action || undefined}
         items={actionItems}
         name="action"
         placeholder={t("platform.audit.all_events")}
@@ -424,58 +448,80 @@ const AuditLogsContent = async ({
     getPlatformLocale(),
   ]);
   const actionItems = await getAuditActionOptions(locale);
-  const {
-    action: actionFilter,
-    actorUserPublicId: actorFilter,
-    tenantPublicId,
-    token,
-  } = parseAuditLogFilters(search, toAllowedActionValues(actionItems));
-
-  const hasFilter = Boolean(actorFilter || actionFilter || tenantPublicId);
-  const tenantFilter = resolveAuditLogTenantFilter(
-    tenantPublicId,
-    tenantPublicId
-      ? await getPlatformTenant(tenantPublicId)
-      : { ok: true, tenant: null }
+  const { token, ...filters } = parseAuditLogFilters(
+    search,
+    toAllowedActionValues(actionItems)
   );
 
-  // Timestamps follow the platform default time zone, not the host's or the
-  // browser's, so every operator reads the same wall clock.
-  const [result, timeZone] = await Promise.all([
-    readAuditLogs(tenantFilter, {
-      action: actionFilter || undefined,
-      actorUserPublicId: actorFilter || undefined,
-      limit: pageSize,
-      locale,
-      token: token || undefined,
-    }),
+  const hasFilter = Boolean(
+    filters.actorUserPublicId ||
+    filters.action ||
+    filters.createdFrom ||
+    filters.createdTo ||
+    filters.tenantPublicId
+  );
+  // Timestamps and the period's days follow the platform default time zone,
+  // not the host's or the browser's, so every operator reads the same wall
+  // clock.
+  const [tenant, timeZone] = await Promise.all([
+    filters.tenantPublicId
+      ? getPlatformTenant(filters.tenantPublicId)
+      : ({ ok: true, tenant: null } as const),
     getPlatformDisplayTimeZone(),
   ]);
+  const tenantFilter = resolveAuditLogTenantFilter(
+    filters.tenantPublicId,
+    tenant
+  );
+  const result = await readAuditLogs(tenantFilter, {
+    ...resolveAuditLogListPeriod(filters, timeZone),
+    action: filters.action || undefined,
+    actorUserPublicId: filters.actorUserPublicId || undefined,
+    limit: pageSize,
+    locale,
+    token: token || undefined,
+  });
 
   await redirectToLoginIfSessionRejected(result);
 
-  const filterParams = {
-    action: actionFilter,
-    actorUserPublicId: actorFilter,
-    tenantPublicId,
-  };
+  const exportPeriod = resolveAuditLogExportPeriod(filters, timeZone);
   const previousHref = result.previousToken
-    ? buildAuditLogsPath({ ...filterParams, token: result.previousToken })
+    ? buildAuditLogsPath(filters, result.previousToken)
     : undefined;
   const nextHref = result.nextToken
-    ? buildAuditLogsPath({ ...filterParams, token: result.nextToken })
+    ? buildAuditLogsPath(filters, result.nextToken)
     : undefined;
   return (
     <div className="grid gap-4">
-      <Suspense fallback={<AuditLogsFiltersSkeleton />}>
-        <AuditLogsFilters
-          actionFilter={actionFilter}
-          actorFilter={actorFilter}
-          hasFilter={hasFilter}
-          tenantFilter={tenantFilter}
-          tenantPublicId={tenantPublicId}
-        />
-      </Suspense>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <Suspense fallback={<AuditLogsFiltersSkeleton />}>
+          <AuditLogsFilters
+            filters={filters}
+            hasFilter={hasFilter}
+            tenantFilter={tenantFilter}
+          />
+        </Suspense>
+        {exportPeriod.ok ? (
+          <LinkButton
+            href={buildAuditLogCsvPath({
+              ...filters,
+              createdFrom: exportPeriod.start,
+              createdTo: exportPeriod.end,
+            })}
+            variant="outline"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="platform.audit.export.button" />
+            </Suspense>
+          </LinkButton>
+        ) : (
+          <p className="max-w-xs text-sm text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="platform.audit.export.period_invalid" />
+            </Suspense>
+          </p>
+        )}
+      </div>
 
       {result.ok ? null : (
         <SectionError.Root>
