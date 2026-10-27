@@ -1,6 +1,7 @@
 // Package googletag validates and reads the Google tag a tenant's storefront
 // loads (tenant_analytics_settings): a Google Analytics 4 measurement ID, a
-// Google Tag Manager container ID, and where the tag is served from.
+// Google Tag Manager container ID, where the tag is served from, and whether
+// the reader is asked before it stores anything.
 //
 // A tenant that names neither ID loads no tag, whatever its serving mode
 // holds, so clearing both IDs is how measurement is switched off. Every value
@@ -41,6 +42,19 @@ const (
 	ServingModeGateway = "gateway"
 )
 
+// The stored consent modes, matching the CHECK constraint on
+// tenant_analytics_settings.consent_mode.
+const (
+	// ConsentModeNotRequired runs the tag as soon as the page loads. It is what
+	// a tenant that has never chosen gets.
+	ConsentModeNotRequired = "not_required"
+	// ConsentModeOptIn asks the reader before the tag runs.
+	ConsentModeOptIn = "opt_in"
+	// ConsentModeExternal denies by default and leaves the asking to a consent
+	// tool in the tenant's Tag Manager container.
+	ConsentModeExternal = "external"
+)
+
 const (
 	// ActionSettingsUpdated is the audit action of a change to the settings.
 	ActionSettingsUpdated = "tenant_analytics_settings_updated"
@@ -58,6 +72,9 @@ const (
 // SupportedServingModes lists every serving mode this build can act on.
 var SupportedServingModes = []string{ServingModeGoogle, ServingModeServerContainer, ServingModeGateway}
 
+// SupportedConsentModes lists every consent mode this build can act on.
+var SupportedConsentModes = []string{ConsentModeNotRequired, ConsentModeOptIn, ConsentModeExternal}
+
 var (
 	// ErrInvalidMeasurementID refuses a value that is not a GA4 measurement ID.
 	ErrInvalidMeasurementID = errors.New("measurement ID must be G- followed by letters and digits")
@@ -73,11 +90,18 @@ var (
 	// ErrServerContainerURLRequired refuses ServingModeServerContainer without
 	// a server container URL to serve from.
 	ErrServerContainerURLRequired = errors.New("server container URL is required to serve the tag from a server container")
+	// ErrContainerIDRequired refuses ConsentModeExternal without a Tag Manager
+	// container for the tenant's consent tool to run in.
+	ErrContainerIDRequired = errors.New("a Tag Manager container ID is required to leave consent to a consent tool in the container")
 	// ErrUnresolvedServingMode is a stored serving mode this build does not
 	// know. There is no stand-in: loading the tag from Google for a tenant that
 	// chose its own container would send its readers' hits somewhere it did not
 	// choose.
 	ErrUnresolvedServingMode = errors.New("stored serving_mode names no supported mode")
+	// ErrUnresolvedConsentMode is a stored consent mode this build does not
+	// know. There is no stand-in: running the tag without asking for a tenant
+	// that chose to ask would store what its readers did not agree to.
+	ErrUnresolvedConsentMode = errors.New("stored consent_mode names no supported mode")
 )
 
 var (
@@ -101,12 +125,13 @@ type Settings struct {
 	ServingMode        string
 	ServerContainerURL string
 	GatewayPath        string
+	ConsentMode        string
 }
 
 // Default is what a tenant that has saved nothing reads as: no tag, loaded
-// from Google once one is named.
+// from Google without asking once one is named.
 func Default() Settings {
-	return Settings{ServingMode: ServingModeGoogle}
+	return Settings{ServingMode: ServingModeGoogle, ConsentMode: ConsentModeNotRequired}
 }
 
 // Measures reports whether the settings load a tag at all.
@@ -121,7 +146,8 @@ type Querier interface {
 
 // Get reads the tenant's settings, and Default for a tenant that has saved
 // nothing. A stored serving mode this build does not know is
-// ErrUnresolvedServingMode.
+// ErrUnresolvedServingMode, and a stored consent mode
+// ErrUnresolvedConsentMode.
 func Get(ctx context.Context, q Querier, tenantID uuid.UUID) (Settings, error) {
 	row, err := q.GetTenantAnalyticsSettings(ctx, tenantID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -138,12 +164,16 @@ func FromRow(row dbmodels.TenantAnalyticsSetting) (Settings, error) {
 	if !slices.Contains(SupportedServingModes, row.ServingMode) {
 		return Settings{}, fmt.Errorf("%w: %q", ErrUnresolvedServingMode, row.ServingMode)
 	}
+	if !slices.Contains(SupportedConsentModes, row.ConsentMode) {
+		return Settings{}, fmt.Errorf("%w: %q", ErrUnresolvedConsentMode, row.ConsentMode)
+	}
 	return Settings{
 		GA4MeasurementID:   row.Ga4MeasurementID.String,
 		GTMContainerID:     row.GtmContainerID.String,
 		ServingMode:        row.ServingMode,
 		ServerContainerURL: row.ServerContainerUrl.String,
 		GatewayPath:        row.GatewayPath.String,
+		ConsentMode:        row.ConsentMode,
 	}, nil
 }
 

@@ -13,6 +13,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/googletag"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -33,17 +34,31 @@ func (s *adminServer) tenantAnalyticsSettingsToProto(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant analytics serving mode is not a supported mode", err, "tenant_id", tenantID.String())
 	}
+	consentMode, err := protomapper.GoogleTagConsentModeFromStored(settings.ConsentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant analytics consent mode is not a supported mode", err, "tenant_id", tenantID.String())
+	}
 	return &publiraadminv1.TenantAnalyticsSettings{
 		Ga4MeasurementId:   settings.GA4MeasurementID,
 		GtmContainerId:     settings.GTMContainerID,
 		ServingMode:        mode,
 		ServerContainerUrl: settings.ServerContainerURL,
 		GatewayPath:        settings.GatewayPath,
+		ConsentMode:        consentMode,
 	}, nil
 }
 
+// isUnresolvedAnalyticsMode reports whether reading the settings failed on a
+// stored mode this build does not know rather than on the database.
+func isUnresolvedAnalyticsMode(err error) bool {
+	return errors.Is(err, googletag.ErrUnresolvedServingMode) || errors.Is(err, googletag.ErrUnresolvedConsentMode)
+}
+
 // normalizeTenantAnalyticsSettings validates a requested save and answers it
-// ready to store, with the gateway path left for the caller to decide.
+// ready to store, with the gateway path left for the caller to decide, and the
+// consent mode too where the request leaves it unspecified: a console that
+// predates the field sends none, and saving its other fields must not reset
+// the tenant's choice.
 func normalizeTenantAnalyticsSettings(requested *publiraadminv1.TenantAnalyticsSettings) (googletag.Settings, error) {
 	measurementID, err := googletag.NormalizeMeasurementID(requested.GetGa4MeasurementId())
 	if err != nil {
@@ -65,11 +80,19 @@ func normalizeTenantAnalyticsSettings(requested *publiraadminv1.TenantAnalyticsS
 		return googletag.Settings{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument,
 			googletag.ErrServerContainerURLRequired, "settings.server_container_url")
 	}
+	var consentMode string
+	if requested.GetConsentMode() != publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED {
+		consentMode, err = protomapper.GoogleTagConsentModeToStored(requested.GetConsentMode())
+		if err != nil {
+			return googletag.Settings{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "settings.consent_mode")
+		}
+	}
 	return googletag.Settings{
 		GA4MeasurementID:   measurementID,
 		GTMContainerID:     containerID,
 		ServingMode:        mode,
 		ServerContainerURL: serverContainerURL,
+		ConsentMode:        consentMode,
 	}, nil
 }
 
@@ -82,8 +105,8 @@ func (s *adminServer) lockTenantAnalyticsSettings(txCtx context.Context, tenantI
 		return googletag.Settings{}, s.internalDBError(txCtx, "failed to lock tenant analytics settings", err, "tenant_id", tenantID.String())
 	}
 	settings, err := googletag.Get(txCtx, queries, tenantID)
-	if errors.Is(err, googletag.ErrUnresolvedServingMode) {
-		return googletag.Settings{}, s.internalError(txCtx, "tenant analytics serving mode is not a supported mode", err, "tenant_id", tenantID.String())
+	if isUnresolvedAnalyticsMode(err) {
+		return googletag.Settings{}, s.internalError(txCtx, "tenant analytics settings name an unsupported mode", err, "tenant_id", tenantID.String())
 	}
 	if err != nil {
 		return googletag.Settings{}, s.internalDBError(txCtx, "failed to get tenant analytics settings", err, "tenant_id", tenantID.String())
@@ -104,8 +127,8 @@ func (s *adminServer) GetTenantAnalyticsSettings(
 	}
 	settings, err := googletag.Get(ctx, s.queriesFor(ctx), tenant.ID)
 	if err != nil {
-		if errors.Is(err, googletag.ErrUnresolvedServingMode) {
-			return nil, s.internalError(ctx, "tenant analytics serving mode is not a supported mode", err, "tenant_id", tenant.ID.String())
+		if isUnresolvedAnalyticsMode(err) {
+			return nil, s.internalError(ctx, "tenant analytics settings name an unsupported mode", err, "tenant_id", tenant.ID.String())
 		}
 		return nil, s.internalDBError(ctx, "failed to get tenant analytics settings", err, "tenant_id", tenant.ID.String())
 	}
@@ -151,6 +174,16 @@ func (s *adminServer) UpdateTenantAnalyticsSettings(
 	// The path outlives a switch to another mode, so switching back serves the
 	// tag where it was served before; only a regeneration replaces it.
 	next.GatewayPath = current.GatewayPath
+	if next.ConsentMode == "" {
+		next.ConsentMode = current.ConsentMode
+	}
+	// Checked against the mode the save leaves, so clearing the container ID
+	// under a stored external mode is refused as setting the mode without one
+	// is.
+	if next.ConsentMode == googletag.ConsentModeExternal && next.GTMContainerID == "" {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument,
+			googletag.ErrContainerIDRequired, "settings.gtm_container_id")
+	}
 	if req.GetRegenerateGatewayPath() || (next.ServingMode == googletag.ServingModeGateway && next.GatewayPath == "") {
 		next.GatewayPath, err = googletag.NewGatewayPath()
 		if err != nil {
@@ -172,13 +205,14 @@ func (s *adminServer) UpdateTenantAnalyticsSettings(
 		ServingMode:        next.ServingMode,
 		ServerContainerUrl: nullableString(next.ServerContainerURL),
 		GatewayPath:        nullableString(next.GatewayPath),
+		ConsentMode:        next.ConsentMode,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update tenant analytics settings", err, "tenant_id", tenant.ID.String())
 	}
 	saved, err := googletag.FromRow(row)
 	if err != nil {
-		return nil, s.internalError(ctx, "tenant analytics serving mode is not a supported mode", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalError(ctx, "tenant analytics settings name an unsupported mode", err, "tenant_id", tenant.ID.String())
 	}
 	if err := s.writeTenantSettingAudit(txCtx, tenant, session, googletag.ActionSettingsUpdated, googletag.AuditTargetType); err != nil {
 		return nil, err

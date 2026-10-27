@@ -511,6 +511,10 @@ message TenantAnalyticsSettings {
   // and keeps it across later saves, so it is never typed and an update
   // ignores it. Empty until then.
   string gateway_path = 5;
+  // Never GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED on a read: a tenant that has
+  // chosen nothing reads GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED. An update that
+  // leaves it unspecified keeps the stored mode.
+  publira.types.v1.GoogleTagConsentMode consent_mode = 6;
 }
 
 message GetTenantAnalyticsSettingsRequest {
@@ -523,9 +527,11 @@ message GetTenantAnalyticsSettingsResponse {
 
 message UpdateTenantAnalyticsSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
-  // Every field but gateway_path is written, and an empty one is cleared. A
-  // malformed ID or server container URL, and
+  // Every field but gateway_path is written, and an empty one is cleared,
+  // except an unspecified consent_mode, which keeps the stored one. A
+  // malformed ID or server container URL,
   // GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER without a server container URL,
+  // and GOOGLE_TAG_CONSENT_MODE_EXTERNAL without a Tag Manager container ID
   // are invalid_argument naming the field.
   TenantAnalyticsSettings settings = 2;
   // Replaces gateway_path with a newly generated one, after which the gateway

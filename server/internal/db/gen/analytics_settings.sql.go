@@ -13,7 +13,7 @@ import (
 )
 
 const GetTenantAnalyticsSettings = `-- name: GetTenantAnalyticsSettings :one
-SELECT tenant_id, ga4_measurement_id, gtm_container_id, serving_mode, server_container_url, gateway_path, created_at, updated_at
+SELECT tenant_id, ga4_measurement_id, gtm_container_id, serving_mode, server_container_url, gateway_path, created_at, updated_at, consent_mode
 FROM tenant_analytics_settings
 WHERE tenant_id = $1
 `
@@ -31,6 +31,7 @@ func (q *Queries) GetTenantAnalyticsSettings(ctx context.Context, tenantID uuid.
 		&i.GatewayPath,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ConsentMode,
 	)
 	return i, err
 }
@@ -65,7 +66,8 @@ INSERT INTO tenant_analytics_settings (
         gtm_container_id,
         serving_mode,
         server_container_url,
-        gateway_path
+        gateway_path,
+        consent_mode
     )
 VALUES (
         $1,
@@ -73,7 +75,8 @@ VALUES (
         $3,
         $4,
         $5,
-        $6
+        $6,
+        $7
     ) ON CONFLICT (tenant_id) DO
 UPDATE
 SET ga4_measurement_id = EXCLUDED.ga4_measurement_id,
@@ -81,8 +84,9 @@ SET ga4_measurement_id = EXCLUDED.ga4_measurement_id,
     serving_mode = EXCLUDED.serving_mode,
     server_container_url = EXCLUDED.server_container_url,
     gateway_path = EXCLUDED.gateway_path,
+    consent_mode = EXCLUDED.consent_mode,
     updated_at = NOW()
-RETURNING tenant_id, ga4_measurement_id, gtm_container_id, serving_mode, server_container_url, gateway_path, created_at, updated_at
+RETURNING tenant_id, ga4_measurement_id, gtm_container_id, serving_mode, server_container_url, gateway_path, created_at, updated_at, consent_mode
 `
 
 type UpsertTenantAnalyticsSettingsParams struct {
@@ -92,6 +96,7 @@ type UpsertTenantAnalyticsSettingsParams struct {
 	ServingMode        string         `json:"serving_mode"`
 	ServerContainerUrl sql.NullString `json:"server_container_url"`
 	GatewayPath        sql.NullString `json:"gateway_path"`
+	ConsentMode        string         `json:"consent_mode"`
 }
 
 func (q *Queries) UpsertTenantAnalyticsSettings(ctx context.Context, arg UpsertTenantAnalyticsSettingsParams) (TenantAnalyticsSetting, error) {
@@ -102,6 +107,7 @@ func (q *Queries) UpsertTenantAnalyticsSettings(ctx context.Context, arg UpsertT
 		arg.ServingMode,
 		arg.ServerContainerUrl,
 		arg.GatewayPath,
+		arg.ConsentMode,
 	)
 	var i TenantAnalyticsSetting
 	err := row.Scan(
@@ -113,6 +119,7 @@ func (q *Queries) UpsertTenantAnalyticsSettings(ctx context.Context, arg UpsertT
 		&i.GatewayPath,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ConsentMode,
 	)
 	return i, err
 }

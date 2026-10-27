@@ -211,6 +211,9 @@ message TenantGoogleTag {
   // The first path segment the gateway answers on: set in
   // GOOGLE_TAG_SERVING_MODE_GATEWAY alone.
   string gateway_path = 5;
+  // Whether the reader is asked before the tag stores anything. Never
+  // GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED.
+  publira.types.v1.GoogleTagConsentMode consent_mode = 6;
 }
 
 // The codes the storefront writes into every page as <meta> tags, each one

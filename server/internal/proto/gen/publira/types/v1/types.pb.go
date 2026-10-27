@@ -661,6 +661,69 @@ func (GoogleTagServingMode) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{10}
 }
 
+// Whether a tenant's storefront asks a reader before its Google tag stores
+// anything (tenant_analytics_settings.consent_mode). The mode applies to every
+// reader of the tenant, wherever they read from.
+type GoogleTagConsentMode int32
+
+const (
+	GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED GoogleTagConsentMode = 0
+	// The tag runs as soon as the page loads, and the tenant discloses it on its
+	// privacy page. This is what a tenant that has never chosen gets.
+	GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED GoogleTagConsentMode = 1
+	// The storefront asks the reader before the tag runs, and sends Google
+	// Consent Mode v2 signals that match the answer.
+	GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_OPT_IN GoogleTagConsentMode = 2
+	// The storefront sends Google Consent Mode v2 defaults of denied and shows
+	// no banner of its own: the tenant's consent tool, running inside its Tag
+	// Manager container, collects the answer and updates the signals. Requires
+	// a Tag Manager container ID.
+	GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_EXTERNAL GoogleTagConsentMode = 3
+)
+
+// Enum value maps for GoogleTagConsentMode.
+var (
+	GoogleTagConsentMode_name = map[int32]string{
+		0: "GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED",
+		1: "GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED",
+		2: "GOOGLE_TAG_CONSENT_MODE_OPT_IN",
+		3: "GOOGLE_TAG_CONSENT_MODE_EXTERNAL",
+	}
+	GoogleTagConsentMode_value = map[string]int32{
+		"GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED":  0,
+		"GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED": 1,
+		"GOOGLE_TAG_CONSENT_MODE_OPT_IN":       2,
+		"GOOGLE_TAG_CONSENT_MODE_EXTERNAL":     3,
+	}
+)
+
+func (x GoogleTagConsentMode) Enum() *GoogleTagConsentMode {
+	p := new(GoogleTagConsentMode)
+	*p = x
+	return p
+}
+
+func (x GoogleTagConsentMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GoogleTagConsentMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[11].Descriptor()
+}
+
+func (GoogleTagConsentMode) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[11]
+}
+
+func (x GoogleTagConsentMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GoogleTagConsentMode.Descriptor instead.
+func (GoogleTagConsentMode) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
+}
+
 // Which of a tenant's age ratings a reader has to prove an age for
 // (tenant_config.age_verification). The values are the rungs of one ladder
 // rather than a switch per rating: a tenant that gated `r15` while leaving
@@ -707,11 +770,11 @@ func (x AgeVerification) String() string {
 }
 
 func (AgeVerification) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[11].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[12].Descriptor()
 }
 
 func (AgeVerification) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[11]
+	return &file_publira_types_v1_types_proto_enumTypes[12]
 }
 
 func (x AgeVerification) Number() protoreflect.EnumNumber {
@@ -720,7 +783,7 @@ func (x AgeVerification) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AgeVerification.Descriptor instead.
 func (AgeVerification) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{11}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{12}
 }
 
 // What a subscription plan opens while it is paid
@@ -766,11 +829,11 @@ func (x SubscriptionPlanScope) String() string {
 }
 
 func (SubscriptionPlanScope) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[12].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[13].Descriptor()
 }
 
 func (SubscriptionPlanScope) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[12]
+	return &file_publira_types_v1_types_proto_enumTypes[13]
 }
 
 func (x SubscriptionPlanScope) Number() protoreflect.EnumNumber {
@@ -779,7 +842,7 @@ func (x SubscriptionPlanScope) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SubscriptionPlanScope.Descriptor instead.
 func (SubscriptionPlanScope) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{12}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{13}
 }
 
 // The unit a subscription plan's recurring price is billed every so many of,
@@ -823,11 +886,11 @@ func (x SubscriptionInterval) String() string {
 }
 
 func (SubscriptionInterval) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[13].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[14].Descriptor()
 }
 
 func (SubscriptionInterval) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[13]
+	return &file_publira_types_v1_types_proto_enumTypes[14]
 }
 
 func (x SubscriptionInterval) Number() protoreflect.EnumNumber {
@@ -836,7 +899,7 @@ func (x SubscriptionInterval) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SubscriptionInterval.Descriptor instead.
 func (SubscriptionInterval) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{13}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{14}
 }
 
 // A subscription's state, as Stripe last reported it (subscriptions.status).
@@ -901,11 +964,11 @@ func (x SubscriptionStatus) String() string {
 }
 
 func (SubscriptionStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[14].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[15].Descriptor()
 }
 
 func (SubscriptionStatus) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[14]
+	return &file_publira_types_v1_types_proto_enumTypes[15]
 }
 
 func (x SubscriptionStatus) Number() protoreflect.EnumNumber {
@@ -914,7 +977,7 @@ func (x SubscriptionStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SubscriptionStatus.Descriptor instead.
 func (SubscriptionStatus) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{14}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{15}
 }
 
 // TenantContext identifies a tenant for internal RPC wiring.
@@ -4037,7 +4100,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"#GOOGLE_TAG_SERVING_MODE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eGOOGLE_TAG_SERVING_MODE_GOOGLE\x10\x01\x12,\n" +
 	"(GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER\x10\x02\x12#\n" +
-	"\x1fGOOGLE_TAG_SERVING_MODE_GATEWAY\x10\x03*\x8a\x01\n" +
+	"\x1fGOOGLE_TAG_SERVING_MODE_GATEWAY\x10\x03*\xb3\x01\n" +
+	"\x14GoogleTagConsentMode\x12'\n" +
+	"#GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED\x10\x00\x12(\n" +
+	"$GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED\x10\x01\x12\"\n" +
+	"\x1eGOOGLE_TAG_CONSENT_MODE_OPT_IN\x10\x02\x12$\n" +
+	" GOOGLE_TAG_CONSENT_MODE_EXTERNAL\x10\x03*\x8a\x01\n" +
 	"\x0fAgeVerification\x12 \n" +
 	"\x1cAGE_VERIFICATION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15AGE_VERIFICATION_NONE\x10\x01\x12\x18\n" +
@@ -4077,7 +4145,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 15)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 16)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
@@ -4091,61 +4159,62 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(PurchaseKind)(0),             // 8: publira.types.v1.PurchaseKind
 	(ReaderIconPolicy)(0),         // 9: publira.types.v1.ReaderIconPolicy
 	(GoogleTagServingMode)(0),     // 10: publira.types.v1.GoogleTagServingMode
-	(AgeVerification)(0),          // 11: publira.types.v1.AgeVerification
-	(SubscriptionPlanScope)(0),    // 12: publira.types.v1.SubscriptionPlanScope
-	(SubscriptionInterval)(0),     // 13: publira.types.v1.SubscriptionInterval
-	(SubscriptionStatus)(0),       // 14: publira.types.v1.SubscriptionStatus
-	(*TenantContext)(nil),         // 15: publira.types.v1.TenantContext
-	(*User)(nil),                  // 16: publira.types.v1.User
-	(*UserIconVariant)(nil),       // 17: publira.types.v1.UserIconVariant
-	(*AccessToken)(nil),           // 18: publira.types.v1.AccessToken
-	(*CreatorRole)(nil),           // 19: publira.types.v1.CreatorRole
-	(*Creator)(nil),               // 20: publira.types.v1.Creator
-	(*Label)(nil),                 // 21: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 22: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 23: publira.types.v1.ImageCropRect
-	(*Genre)(nil),                 // 24: publira.types.v1.Genre
-	(*GenreTranslation)(nil),      // 25: publira.types.v1.GenreTranslation
-	(*Tag)(nil),                   // 26: publira.types.v1.Tag
-	(*Series)(nil),                // 27: publira.types.v1.Series
-	(*Episode)(nil),               // 28: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 29: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 30: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 31: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 32: publira.types.v1.Page
-	(*PageTranslation)(nil),       // 33: publira.types.v1.PageTranslation
-	(*PageVersion)(nil),           // 34: publira.types.v1.PageVersion
-	(*Volume)(nil),                // 35: publira.types.v1.Volume
-	(*SeriesBundle)(nil),          // 36: publira.types.v1.SeriesBundle
-	(*PurchasedCoinPack)(nil),     // 37: publira.types.v1.PurchasedCoinPack
-	(*ReaderIconPreset)(nil),      // 38: publira.types.v1.ReaderIconPreset
-	(*RetentionPeriods)(nil),      // 39: publira.types.v1.RetentionPeriods
+	(GoogleTagConsentMode)(0),     // 11: publira.types.v1.GoogleTagConsentMode
+	(AgeVerification)(0),          // 12: publira.types.v1.AgeVerification
+	(SubscriptionPlanScope)(0),    // 13: publira.types.v1.SubscriptionPlanScope
+	(SubscriptionInterval)(0),     // 14: publira.types.v1.SubscriptionInterval
+	(SubscriptionStatus)(0),       // 15: publira.types.v1.SubscriptionStatus
+	(*TenantContext)(nil),         // 16: publira.types.v1.TenantContext
+	(*User)(nil),                  // 17: publira.types.v1.User
+	(*UserIconVariant)(nil),       // 18: publira.types.v1.UserIconVariant
+	(*AccessToken)(nil),           // 19: publira.types.v1.AccessToken
+	(*CreatorRole)(nil),           // 20: publira.types.v1.CreatorRole
+	(*Creator)(nil),               // 21: publira.types.v1.Creator
+	(*Label)(nil),                 // 22: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 23: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 24: publira.types.v1.ImageCropRect
+	(*Genre)(nil),                 // 25: publira.types.v1.Genre
+	(*GenreTranslation)(nil),      // 26: publira.types.v1.GenreTranslation
+	(*Tag)(nil),                   // 27: publira.types.v1.Tag
+	(*Series)(nil),                // 28: publira.types.v1.Series
+	(*Episode)(nil),               // 29: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 30: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 31: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 32: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 33: publira.types.v1.Page
+	(*PageTranslation)(nil),       // 34: publira.types.v1.PageTranslation
+	(*PageVersion)(nil),           // 35: publira.types.v1.PageVersion
+	(*Volume)(nil),                // 36: publira.types.v1.Volume
+	(*SeriesBundle)(nil),          // 37: publira.types.v1.SeriesBundle
+	(*PurchasedCoinPack)(nil),     // 38: publira.types.v1.PurchasedCoinPack
+	(*ReaderIconPreset)(nil),      // 39: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 40: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	17, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
-	19, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
+	18, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
+	20, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
 	0,  // 2: publira.types.v1.Creator.source:type_name -> publira.types.v1.CreatorCreditSource
-	22, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	22, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	25, // 5: publira.types.v1.Genre.translations:type_name -> publira.types.v1.GenreTranslation
-	21, // 6: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	20, // 7: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	22, // 8: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	23, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	23, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	26, // 5: publira.types.v1.Genre.translations:type_name -> publira.types.v1.GenreTranslation
+	22, // 6: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	21, // 7: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	23, // 8: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	1,  // 9: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	2,  // 10: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	24, // 11: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	26, // 12: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	25, // 11: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	27, // 12: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
 	7,  // 13: publira.types.v1.Series.availability:type_name -> publira.types.v1.SurfaceAvailability
-	20, // 14: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	21, // 14: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
 	3,  // 15: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	7,  // 16: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
 	7,  // 17: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	22, // 18: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	30, // 19: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	30, // 20: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	30, // 21: publira.types.v1.TenantTheme.sign_in_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	22, // 22: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	17, // 23: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	23, // 18: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	31, // 19: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	31, // 20: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	31, // 21: publira.types.v1.TenantTheme.sign_in_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	23, // 22: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	18, // 23: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
 	24, // [24:24] is the sub-list for method output_type
 	24, // [24:24] is the sub-list for method input_type
 	24, // [24:24] is the sub-list for extension type_name
@@ -4163,7 +4232,7 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      15,
+			NumEnums:      16,
 			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,

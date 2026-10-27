@@ -8,8 +8,9 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// A tenant's row loads the tag from Google until it says otherwise, and the
-// checks keep out every value the storefront could not build a tag from.
+// A tenant's row loads the tag from Google without asking until it says
+// otherwise, and the checks keep out every value the storefront could not
+// build a tag from.
 func TestTenantAnalyticsSettingsDefaultsAndChecks(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -21,18 +22,22 @@ func TestTenantAnalyticsSettingsDefaultsAndChecks(t *testing.T) {
 	if _, err := pg.DB.ExecContext(ctx, `INSERT INTO tenant_analytics_settings (tenant_id) VALUES ($1)`, tenantID); err != nil {
 		t.Fatalf("insert tenant_analytics_settings: %v", err)
 	}
-	var servingMode string
-	if err := pg.DB.QueryRowContext(ctx, `SELECT serving_mode FROM tenant_analytics_settings WHERE tenant_id = $1`, tenantID).Scan(&servingMode); err != nil {
+	var servingMode, consentMode string
+	if err := pg.DB.QueryRowContext(ctx, `SELECT serving_mode, consent_mode FROM tenant_analytics_settings WHERE tenant_id = $1`, tenantID).Scan(&servingMode, &consentMode); err != nil {
 		t.Fatalf("read tenant_analytics_settings: %v", err)
 	}
 	if servingMode != "google" {
 		t.Fatalf("serving_mode = %q, want google", servingMode)
 	}
+	if consentMode != "not_required" {
+		t.Fatalf("consent_mode = %q, want not_required", consentMode)
+	}
 
 	if _, err := pg.DB.ExecContext(ctx, `
 		UPDATE tenant_analytics_settings
 		SET ga4_measurement_id = 'G-ABC123', gtm_container_id = 'GTM-ABC123', serving_mode = 'gateway',
-			server_container_url = 'https://sgtm.example.com:8443', gateway_path = '_abcdefghijklmn27'
+			server_container_url = 'https://sgtm.example.com:8443', gateway_path = '_abcdefghijklmn27',
+			consent_mode = 'external'
 		WHERE tenant_id = $1
 	`, tenantID); err != nil {
 		t.Fatalf("store every value: %v", err)
@@ -42,6 +47,7 @@ func TestTenantAnalyticsSettingsDefaultsAndChecks(t *testing.T) {
 		"a lowercase measurement ID":          {"ga4_measurement_id = 'G-abc123'", "tenant_analytics_settings_ga4_measurement_id_check"},
 		"a container ID without its prefix":   {"gtm_container_id = 'ABC123'", "tenant_analytics_settings_gtm_container_id_check"},
 		"an unknown serving mode":             {"serving_mode = 'proxy'", "tenant_analytics_settings_serving_mode_check"},
+		"an unknown consent mode":             {"consent_mode = 'banner'", "tenant_analytics_settings_consent_mode_check"},
 		"an http server container URL":        {"server_container_url = 'http://sgtm.example.com'", "tenant_analytics_settings_server_container_url_check"},
 		"a server container URL with a path":  {"server_container_url = 'https://sgtm.example.com/gtm'", "tenant_analytics_settings_server_container_url_check"},
 		"a gateway path a page slug could be": {"gateway_path = 'abcdefghijklmnop'", "tenant_analytics_settings_gateway_path_check"},

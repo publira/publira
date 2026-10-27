@@ -704,6 +704,24 @@ enum GoogleTagServingMode {
   GOOGLE_TAG_SERVING_MODE_GATEWAY = 3;
 }
 
+// Whether a tenant's storefront asks a reader before its Google tag stores
+// anything (tenant_analytics_settings.consent_mode). The mode applies to every
+// reader of the tenant, wherever they read from.
+enum GoogleTagConsentMode {
+  GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED = 0;
+  // The tag runs as soon as the page loads, and the tenant discloses it on its
+  // privacy page. This is what a tenant that has never chosen gets.
+  GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED = 1;
+  // The storefront asks the reader before the tag runs, and sends Google
+  // Consent Mode v2 signals that match the answer.
+  GOOGLE_TAG_CONSENT_MODE_OPT_IN = 2;
+  // The storefront sends Google Consent Mode v2 defaults of denied and shows
+  // no banner of its own: the tenant's consent tool, running inside its Tag
+  // Manager container, collects the answer and updates the signals. Requires
+  // a Tag Manager container ID.
+  GOOGLE_TAG_CONSENT_MODE_EXTERNAL = 3;
+}
+
 // An icon the tenant provides for its readers to pick. A reader's account
 // that shows it carries the same variants in User.icon_image_variants.
 message ReaderIconPreset {

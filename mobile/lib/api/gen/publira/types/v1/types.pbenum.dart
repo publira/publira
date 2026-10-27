@@ -399,6 +399,49 @@ class GoogleTagServingMode extends $pb.ProtobufEnum {
   const GoogleTagServingMode._(super.value, super.name);
 }
 
+/// Whether a tenant's storefront asks a reader before its Google tag stores
+/// anything (tenant_analytics_settings.consent_mode). The mode applies to every
+/// reader of the tenant, wherever they read from.
+class GoogleTagConsentMode extends $pb.ProtobufEnum {
+  static const GoogleTagConsentMode GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED =
+      GoogleTagConsentMode._(
+          0, _omitEnumNames ? '' : 'GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED');
+
+  /// The tag runs as soon as the page loads, and the tenant discloses it on its
+  /// privacy page. This is what a tenant that has never chosen gets.
+  static const GoogleTagConsentMode GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED =
+      GoogleTagConsentMode._(
+          1, _omitEnumNames ? '' : 'GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED');
+
+  /// The storefront asks the reader before the tag runs, and sends Google
+  /// Consent Mode v2 signals that match the answer.
+  static const GoogleTagConsentMode GOOGLE_TAG_CONSENT_MODE_OPT_IN =
+      GoogleTagConsentMode._(
+          2, _omitEnumNames ? '' : 'GOOGLE_TAG_CONSENT_MODE_OPT_IN');
+
+  /// The storefront sends Google Consent Mode v2 defaults of denied and shows
+  /// no banner of its own: the tenant's consent tool, running inside its Tag
+  /// Manager container, collects the answer and updates the signals. Requires
+  /// a Tag Manager container ID.
+  static const GoogleTagConsentMode GOOGLE_TAG_CONSENT_MODE_EXTERNAL =
+      GoogleTagConsentMode._(
+          3, _omitEnumNames ? '' : 'GOOGLE_TAG_CONSENT_MODE_EXTERNAL');
+
+  static const $core.List<GoogleTagConsentMode> values = <GoogleTagConsentMode>[
+    GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED,
+    GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED,
+    GOOGLE_TAG_CONSENT_MODE_OPT_IN,
+    GOOGLE_TAG_CONSENT_MODE_EXTERNAL,
+  ];
+
+  static final $core.List<GoogleTagConsentMode?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static GoogleTagConsentMode? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const GoogleTagConsentMode._(super.value, super.name);
+}
+
 /// Which of a tenant's age ratings a reader has to prove an age for
 /// (tenant_config.age_verification). The values are the rungs of one ladder
 /// rather than a switch per rating: a tenant that gated `r15` while leaving

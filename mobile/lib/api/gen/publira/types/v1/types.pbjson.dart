@@ -196,6 +196,24 @@ final $typed_data.Uint8List googleTagServingModeDescriptor = $convert.base64Deco
     'QUdfU0VSVklOR19NT0RFX1NFUlZFUl9DT05UQUlORVIQAhIjCh9HT09HTEVfVEFHX1NFUlZJTk'
     'dfTU9ERV9HQVRFV0FZEAM=');
 
+@$core.Deprecated('Use googleTagConsentModeDescriptor instead')
+const GoogleTagConsentMode$json = {
+  '1': 'GoogleTagConsentMode',
+  '2': [
+    {'1': 'GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED', '2': 0},
+    {'1': 'GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED', '2': 1},
+    {'1': 'GOOGLE_TAG_CONSENT_MODE_OPT_IN', '2': 2},
+    {'1': 'GOOGLE_TAG_CONSENT_MODE_EXTERNAL', '2': 3},
+  ],
+};
+
+/// Descriptor for `GoogleTagConsentMode`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List googleTagConsentModeDescriptor = $convert.base64Decode(
+    'ChRHb29nbGVUYWdDb25zZW50TW9kZRInCiNHT09HTEVfVEFHX0NPTlNFTlRfTU9ERV9VTlNQRU'
+    'NJRklFRBAAEigKJEdPT0dMRV9UQUdfQ09OU0VOVF9NT0RFX05PVF9SRVFVSVJFRBABEiIKHkdP'
+    'T0dMRV9UQUdfQ09OU0VOVF9NT0RFX09QVF9JThACEiQKIEdPT0dMRV9UQUdfQ09OU0VOVF9NT0'
+    'RFX0VYVEVSTkFMEAM=');
+
 @$core.Deprecated('Use ageVerificationDescriptor instead')
 const AgeVerification$json = {
   '1': 'AgeVerification',
