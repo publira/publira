@@ -6,8 +6,14 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { resolveTenantThemeColors } from "@publira/utils/theme-css-variables";
-import type { TenantTheme } from "@publira/utils/theme-css-variables";
+import {
+  DEFAULT_TENANT_THEME_COLORS,
+  resolveTenantThemeColors,
+} from "@publira/utils/theme-css-variables";
+import type {
+  TenantTheme,
+  TenantThemeColors,
+} from "@publira/utils/theme-css-variables";
 import { cacheTag } from "next/cache";
 
 import {
@@ -48,6 +54,23 @@ export type TenantThemeSettingsResult =
        * the login redirect. The save path throws instead, so only
        * {@link getTenantThemeSettings} ever sets it.
        */
+      requiresSignIn?: boolean;
+    };
+
+export interface UpdateTenantDarkThemeSettingsInput extends TenantThemeColors {
+  tenantId: string;
+}
+
+export type TenantDarkThemeSettingsResult =
+  | {
+      ok: true;
+      /** `null` while the tenant has saved no dark palette. */
+      darkTheme: TenantThemeColors | null;
+    }
+  | {
+      ok: false;
+      message: string;
+      /** As {@link TenantThemeSettingsResult}'s: only the read sets it. */
       requiresSignIn?: boolean;
     };
 
@@ -180,6 +203,23 @@ const parseSignInImageErrorMessage = async (
 
 const toTenantTheme = (theme?: Partial<TenantTheme> | null): TenantTheme =>
   resolveTenantThemeColors(theme);
+
+const toTenantThemeColors = (
+  palette?: Partial<TenantThemeColors> | null
+): TenantThemeColors | null => {
+  if (!palette) {
+    return null;
+  }
+
+  const theme = resolveTenantThemeColors(palette);
+  const colors = { ...DEFAULT_TENANT_THEME_COLORS };
+  for (const key of Object.keys(
+    DEFAULT_TENANT_THEME_COLORS
+  ) as (keyof TenantThemeColors)[]) {
+    colors[key] = theme[key];
+  }
+  return colors;
+};
 
 const getTenantThemeSettingsForSession = async (
   tenantId: string,
@@ -344,6 +384,131 @@ export const updateTenantThemeSettings = async (
       message: parseErrorMessage(
         error,
         t("admin.settings.theme.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * The read never throws, unlike the light palette's: a server of the release
+ * before this console answers `GetTenantDarkTheme` with `unimplemented`, and the
+ * branding screen has to keep the light palette, the images, and the marks
+ * editable while only the dark palette is unavailable.
+ */
+const getTenantDarkThemeSettingsForSession = async (
+  tenantId: string,
+  locale: Locale,
+  sessionId: string
+): Promise<TenantDarkThemeSettingsResult> => {
+  "use cache: private";
+
+  cacheTag(tenantThemeCacheTag(tenantId));
+
+  const t = await getMessagesFor(locale);
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    dropFailedCacheEntry();
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+      requiresSignIn: !sessionId,
+    };
+  }
+
+  try {
+    const response = await apiClient.theme.getTenantDarkTheme(
+      { tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { darkTheme: toTenantThemeColors(response.darkTheme), ok: true };
+  } catch (error) {
+    dropFailedCacheEntry();
+    return {
+      message: parseErrorMessage(
+        error,
+        t("admin.settings.theme.dark.load_failed"),
+        locale
+      ),
+      ok: false,
+      requiresSignIn: isUnauthenticatedError(error),
+    };
+  }
+};
+
+export const getTenantDarkThemeSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantDarkThemeSettingsResult> =>
+  getTenantDarkThemeSettingsForSession(
+    tenantId,
+    locale,
+    await getAccessToken()
+  );
+
+export const updateTenantDarkThemeSettings = async (
+  { tenantId, ...darkTheme }: UpdateTenantDarkThemeSettingsInput,
+  locale: Locale
+): Promise<TenantDarkThemeSettingsResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    const response = await apiClient.theme.upsertTenantDarkTheme(
+      { darkTheme, tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { darkTheme: toTenantThemeColors(response.darkTheme), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: parseErrorMessage(
+        error,
+        t("admin.settings.theme.dark.save_failed"),
+        locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+export const deleteTenantDarkThemeSettings = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantDarkThemeSettingsResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId || !sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.theme.deleteTenantDarkTheme(
+      { tenant: { tenantId: normalizedTenantId } },
+      withSessionHeaders(sessionId)
+    );
+
+    return { darkTheme: null, ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: parseErrorMessage(
+        error,
+        t("admin.settings.theme.dark.delete_failed"),
         locale
       ),
       ok: false,

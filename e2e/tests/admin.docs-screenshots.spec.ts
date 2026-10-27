@@ -271,6 +271,20 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      test("the theme's dark palette", async ({ page }) => {
+        await openScreen(page, locale, "/branding");
+        await page
+          .getByRole("tab", { name: t("admin.settings.theme.tabs.dark") })
+          .click();
+
+        await expectDocsScreenshot(page, {
+          element: docsSection(page, t("admin.settings.theme.dark.title")),
+          locale,
+          page: "console/setup/branding",
+          subject: "dark-palette",
+        });
+      });
+
       test("the brand marks", async ({ page }) => {
         await openScreen(page, locale, "/branding");
 

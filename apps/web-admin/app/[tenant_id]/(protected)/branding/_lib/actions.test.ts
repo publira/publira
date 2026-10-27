@@ -4,11 +4,13 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAssertSameOrigin,
   mockDeleteTenantBrandMark,
+  mockDeleteTenantDarkThemeSettings,
   mockDeleteTenantIcon,
   mockDeleteTenantLogo,
   mockDeleteTenantSignInImage,
   mockGetAccessToken,
   mockUpdateTag,
+  mockUpdateTenantDarkThemeSettings,
   mockUpdateTenantThemeSettings,
   mockUploadTenantBrandMark,
   mockUploadTenantIcon,
@@ -17,11 +19,13 @@ const {
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockDeleteTenantBrandMark: vi.fn(),
+  mockDeleteTenantDarkThemeSettings: vi.fn(),
   mockDeleteTenantIcon: vi.fn(),
   mockDeleteTenantLogo: vi.fn(),
   mockDeleteTenantSignInImage: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockUpdateTenantDarkThemeSettings: vi.fn(),
   mockUpdateTenantThemeSettings: vi.fn(),
   mockUploadTenantBrandMark: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
@@ -65,11 +69,13 @@ vi.mock("#lib/brand-marks", () => ({
 }));
 
 vi.mock("#lib/theme-settings", () => ({
+  deleteTenantDarkThemeSettings: mockDeleteTenantDarkThemeSettings,
   deleteTenantIcon: mockDeleteTenantIcon,
   deleteTenantLogo: mockDeleteTenantLogo,
   deleteTenantSignInImage: mockDeleteTenantSignInImage,
   tenantThemeCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:theme-settings`,
+  updateTenantDarkThemeSettings: mockUpdateTenantDarkThemeSettings,
   updateTenantThemeSettings: mockUpdateTenantThemeSettings,
   uploadTenantIcon: mockUploadTenantIcon,
   uploadTenantLogo: mockUploadTenantLogo,
@@ -192,6 +198,157 @@ describe("updateTenantThemeSettingsAction", () => {
     });
     expect(mockUpdateTenantThemeSettings).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+/** A dark palette that passes the contrast check: the defaults' ink on paper. */
+const DARK_COLORS = {
+  ...DEFAULT_TENANT_THEME_COLORS,
+  backgroundColor: "#1f1d1a",
+  foregroundColor: "#f5f5f2",
+};
+
+describe("updateTenantDarkThemeAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("saves the colors alone and revalidates the public site and the screen", async () => {
+    mockUpdateTenantDarkThemeSettings.mockResolvedValueOnce({
+      darkTheme: DARK_COLORS,
+      ok: true,
+    });
+
+    const { updateTenantDarkThemeAction } = await import("./actions");
+
+    const result = await updateTenantDarkThemeAction(
+      null,
+      themeFormData(DARK_COLORS)
+    );
+
+    expect(result).toEqual({
+      darkTheme: DARK_COLORS,
+      message: "The dark palette was saved.",
+      ok: true,
+    });
+    // The dark palette has no typefaces, so the posted stacks are not sent.
+    expect(mockUpdateTenantDarkThemeSettings).toHaveBeenCalledWith(
+      { ...DARK_COLORS, tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
+  });
+
+  it("holds the dark palette to the light palette's contrast check", async () => {
+    const { updateTenantDarkThemeAction } = await import("./actions");
+
+    const result = await updateTenantDarkThemeAction(
+      null,
+      themeFormData({ ...DARK_COLORS, foregroundColor: "#2a2825" })
+    );
+
+    expect(result).toMatchObject({
+      fieldErrors: {
+        backgroundColor: expect.stringContaining(
+          "Background color and Text color"
+        ),
+        foregroundColor: expect.stringContaining(
+          "Background color and Text color"
+        ),
+      },
+      message: "Check these color pairs so the text stays readable.",
+      ok: false,
+    });
+    expect(mockUpdateTenantDarkThemeSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("keeps a color that is not #RRGGBB out of the API", async () => {
+    const { updateTenantDarkThemeAction } = await import("./actions");
+
+    const result = await updateTenantDarkThemeAction(
+      null,
+      themeFormData({ ...DARK_COLORS, primaryColor: "blue" })
+    );
+
+    expect(result).toMatchObject({
+      fieldErrors: { primaryColor: "Enter a color in #RRGGBB form." },
+      ok: false,
+    });
+    expect(mockUpdateTenantDarkThemeSettings).not.toHaveBeenCalled();
+  });
+
+  it("leaves the cache alone when the save fails", async () => {
+    mockUpdateTenantDarkThemeSettings.mockResolvedValueOnce({
+      message: "Could not save the dark palette. Please try again later.",
+      ok: false,
+    });
+
+    const { updateTenantDarkThemeAction } = await import("./actions");
+
+    const result = await updateTenantDarkThemeAction(
+      null,
+      themeFormData(DARK_COLORS)
+    );
+
+    expect(result).toEqual({
+      message: "Could not save the dark palette. Please try again later.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteTenantDarkThemeAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("deletes the dark palette and revalidates the public site and the screen", async () => {
+    mockDeleteTenantDarkThemeSettings.mockResolvedValueOnce({
+      darkTheme: null,
+      ok: true,
+    });
+
+    const { deleteTenantDarkThemeAction } = await import("./actions");
+
+    const result = await deleteTenantDarkThemeAction(
+      null,
+      textFormData({ tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      darkTheme: null,
+      message: "The dark palette was deleted.",
+      ok: true,
+    });
+    expect(mockDeleteTenantDarkThemeSettings).toHaveBeenCalledWith(
+      "TENANT001",
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
+  });
+
+  it("does not call the API without a tenant", async () => {
+    const { deleteTenantDarkThemeAction } = await import("./actions");
+
+    const result = await deleteTenantDarkThemeAction(null, textFormData({}));
+
+    expect(result).toEqual({
+      message: "The tenant ID is missing.",
+      ok: false,
+    });
+    expect(mockDeleteTenantDarkThemeSettings).not.toHaveBeenCalled();
   });
 });
 

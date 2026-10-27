@@ -2576,8 +2576,27 @@
       "theme": {
         "color_picker": "Color picker",
         "tabs": {
-          "edit": "Edit",
+          "light": "Light",
+          "dark": "Dark",
           "preview": "Preview"
+        },
+        "dark": {
+          "title": "Dark palette",
+          "description": "A second set of the theme's 27 colors, for a dark screen. It is held to the same contrast check as the light palette and uses its typefaces.",
+          "unsaved": "No dark palette is saved. The colors below are derived from the light palette as a starting point, and none of them is stored until you save the dark palette.",
+          "derive": "Derive from light",
+          "derive_description": "Replaces every color below with one made from the palette on the Light tab: dark where it is light and light where it is dark, in the same hues.",
+          "submit": "Save the dark palette",
+          "saved": "The dark palette was saved.",
+          "deleted": "The dark palette was deleted.",
+          "delete_title": "Delete the dark palette?",
+          "delete_description": "The theme keeps only its light palette. The dark colors cannot be restored afterwards.",
+          "load_failed": "Could not load the dark palette. Please try again later.",
+          "save_failed": "Could not save the dark palette. Please try again later.",
+          "delete_failed": "Could not delete the dark palette. Please try again later.",
+          "section_error": "Could not display the dark palette",
+          "preview_title": "Dark palette preview",
+          "preview_description": "The colors on the Dark tab, shown on the same parts of a public site. It follows every edit, and nothing is stored until you save the dark palette."
         },
         "typefaces": {
           "title": "Typefaces",

@@ -1,4 +1,7 @@
-import type { TenantTheme } from "@publira/utils/theme-css-variables";
+import type {
+  TenantTheme,
+  TenantThemeColors,
+} from "@publira/utils/theme-css-variables";
 
 export type ThemeSettingsFieldErrors = Partial<
   Record<
@@ -40,6 +43,23 @@ export type ThemeSettingsActionState =
       ok: true;
       message: string;
       theme: TenantTheme;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: ThemeSettingsFieldErrors;
+    }
+  | null;
+
+/**
+ * What a save or a delete of the dark palette answers. `darkTheme` is `null`
+ * once the tenant has none, which is what a delete leaves.
+ */
+export type DarkThemeSettingsActionState =
+  | {
+      ok: true;
+      message: string;
+      darkTheme: TenantThemeColors | null;
     }
   | {
       ok: false;

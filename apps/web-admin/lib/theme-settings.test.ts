@@ -8,26 +8,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockCacheLife,
   mockCacheTag,
+  mockDeleteTenantDarkThemeApi,
   mockDeleteTenantIconApi,
   mockDeleteTenantLogoApi,
   mockDeleteTenantSignInImageApi,
   mockGetSessionId,
+  mockGetTenantDarkThemeApi,
   mockGetTenantThemeApi,
   mockUploadTenantIconApi,
   mockUploadTenantLogoApi,
   mockUploadTenantSignInImageApi,
+  mockUpsertTenantDarkThemeApi,
   mockUpsertTenantThemeApi,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockDeleteTenantDarkThemeApi: vi.fn(),
   mockDeleteTenantIconApi: vi.fn(),
   mockDeleteTenantLogoApi: vi.fn(),
   mockDeleteTenantSignInImageApi: vi.fn(),
   mockGetSessionId: vi.fn(),
+  mockGetTenantDarkThemeApi: vi.fn(),
   mockGetTenantThemeApi: vi.fn(),
   mockUploadTenantIconApi: vi.fn(),
   mockUploadTenantLogoApi: vi.fn(),
   mockUploadTenantSignInImageApi: vi.fn(),
+  mockUpsertTenantDarkThemeApi: vi.fn(),
   mockUpsertTenantThemeApi: vi.fn(),
 }));
 
@@ -43,13 +49,16 @@ vi.mock("./session", () => ({
 vi.mock("@publira/api-client/admin/client", () => ({
   createAdminApiClient: () => ({
     theme: {
+      deleteTenantDarkTheme: mockDeleteTenantDarkThemeApi,
       deleteTenantIcon: mockDeleteTenantIconApi,
       deleteTenantLogo: mockDeleteTenantLogoApi,
       deleteTenantSignInImage: mockDeleteTenantSignInImageApi,
+      getTenantDarkTheme: mockGetTenantDarkThemeApi,
       getTenantTheme: mockGetTenantThemeApi,
       uploadTenantIcon: mockUploadTenantIconApi,
       uploadTenantLogo: mockUploadTenantLogoApi,
       uploadTenantSignInImage: mockUploadTenantSignInImageApi,
+      upsertTenantDarkTheme: mockUpsertTenantDarkThemeApi,
       upsertTenantTheme: mockUpsertTenantThemeApi,
     },
   }),
@@ -127,6 +136,18 @@ const fullTheme = {
   surfaceForegroundColor: "#1f1d1a",
   warningColor: "#8a5a0b",
   warningForegroundColor: "#ffffff",
+};
+
+const {
+  sansFontFamily: _sans,
+  serifFontFamily: _serif,
+  ...fullColors
+} = fullTheme;
+
+const darkColors = {
+  ...fullColors,
+  backgroundColor: "#1f1d1a",
+  foregroundColor: "#f5f5f2",
 };
 
 describe("theme-settings", () => {
@@ -627,5 +648,124 @@ describe("theme-settings", () => {
         "The image could not be read. Choose a JPEG, PNG, or WebP whose shorter side is at least 512px.",
       ok: false,
     });
+  });
+  it("returns null for a tenant with no dark palette", async () => {
+    mockGetTenantDarkThemeApi.mockResolvedValueOnce({});
+
+    const { getTenantDarkThemeSettings } = await import("./theme-settings");
+
+    await expect(
+      getTenantDarkThemeSettings("TENANT001", "en")
+    ).resolves.toEqual({ darkTheme: null, ok: true });
+    expect(mockCacheTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:theme-settings"
+    );
+    expect(mockGetTenantDarkThemeApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("returns the colors of a saved dark palette", async () => {
+    mockGetTenantDarkThemeApi.mockResolvedValueOnce({
+      darkTheme: { ...darkColors, primaryColor: "#8FB0F0" },
+    });
+
+    const { getTenantDarkThemeSettings } = await import("./theme-settings");
+
+    await expect(
+      getTenantDarkThemeSettings("TENANT001", "en")
+    ).resolves.toEqual({
+      darkTheme: { ...darkColors, primaryColor: "#8fb0f0" },
+      ok: true,
+    });
+  });
+
+  // A server of the release before this console has no GetTenantDarkTheme, and
+  // the rest of the branding screen has to stay usable against it.
+  it("answers a dark palette read the server does not implement without throwing", async () => {
+    mockGetTenantDarkThemeApi.mockRejectedValueOnce(
+      new ConnectError("not implemented", Code.Unimplemented)
+    );
+
+    const { getTenantDarkThemeSettings } = await import("./theme-settings");
+
+    await expect(
+      getTenantDarkThemeSettings("TENANT001", "en")
+    ).resolves.toMatchObject({ ok: false, requiresSignIn: false });
+    expect(mockCacheLife).toHaveBeenCalledWith({
+      expire: 0,
+      revalidate: 0,
+      stale: 0,
+    });
+  });
+
+  it("asks for a sign-in when the dark palette is read without a session", async () => {
+    mockGetSessionId.mockResolvedValue("");
+
+    const { getTenantDarkThemeSettings } = await import("./theme-settings");
+
+    await expect(
+      getTenantDarkThemeSettings("TENANT001", "en")
+    ).resolves.toEqual({
+      message: "Your session is no longer valid. Please sign in again.",
+      ok: false,
+      requiresSignIn: true,
+    });
+    expect(mockGetTenantDarkThemeApi).not.toHaveBeenCalled();
+  });
+
+  it("sends the dark palette's colors and returns the ones stored", async () => {
+    mockUpsertTenantDarkThemeApi.mockResolvedValueOnce({
+      darkTheme: darkColors,
+    });
+
+    const { updateTenantDarkThemeSettings } = await import("./theme-settings");
+
+    const result = await updateTenantDarkThemeSettings(
+      { ...darkColors, tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(result).toEqual({ darkTheme: darkColors, ok: true });
+    expect(mockUpsertTenantDarkThemeApi).toHaveBeenCalledWith(
+      { darkTheme: darkColors, tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("returns an invalid_argument error from a dark palette save as it is", async () => {
+    mockUpsertTenantDarkThemeApi.mockRejectedValueOnce(
+      new ConnectError(
+        "dark_theme.primary_color must be a hex color",
+        Code.InvalidArgument
+      )
+    );
+
+    const { updateTenantDarkThemeSettings } = await import("./theme-settings");
+
+    await expect(
+      updateTenantDarkThemeSettings(
+        { ...darkColors, tenantId: "TENANT001" },
+        "en"
+      )
+    ).resolves.toEqual({
+      message: "dark_theme.primary_color must be a hex color",
+      ok: false,
+    });
+  });
+
+  it("returns no dark palette once it is deleted", async () => {
+    mockDeleteTenantDarkThemeApi.mockResolvedValueOnce({});
+
+    const { deleteTenantDarkThemeSettings } = await import("./theme-settings");
+
+    await expect(
+      deleteTenantDarkThemeSettings("TENANT001", "en")
+    ).resolves.toEqual({ darkTheme: null, ok: true });
+    expect(mockDeleteTenantDarkThemeApi).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
   });
 });

@@ -14,7 +14,10 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
-import { getTenantThemeSettings } from "#lib/theme-settings";
+import {
+  getTenantDarkThemeSettings,
+  getTenantThemeSettings,
+} from "#lib/theme-settings";
 
 import { TenantBrandMarksSection } from "./_components/tenant-brand-marks-section";
 import { TenantIconForm } from "./_components/tenant-icon-form";
@@ -54,13 +57,19 @@ const BrandingForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
 
-  const [themeResult, brandMarksResult, timeZone] = await Promise.all([
-    getTenantThemeSettings(tenantId, locale),
-    getTenantBrandMarks(tenantId, locale),
-    getTenantDisplayTimeZone(tenantId),
-  ]);
+  const [themeResult, darkThemeResult, brandMarksResult, timeZone] =
+    await Promise.all([
+      getTenantThemeSettings(tenantId, locale),
+      getTenantDarkThemeSettings(tenantId, locale),
+      getTenantBrandMarks(tenantId, locale),
+      getTenantDisplayTimeZone(tenantId),
+    ]);
 
-  await redirectToLoginIfSessionRejected(themeResult, brandMarksResult);
+  await redirectToLoginIfSessionRejected(
+    themeResult,
+    darkThemeResult,
+    brandMarksResult
+  );
 
   if (!themeResult.ok) {
     return (
@@ -108,7 +117,11 @@ const BrandingForms = async () => {
           </SectionError.Heading>
         </SectionError.Root>
       )}
-      <ThemeSettingsForm initialTheme={themeResult.theme} tenantId={tenantId} />
+      <ThemeSettingsForm
+        darkTheme={darkThemeResult}
+        initialTheme={themeResult.theme}
+        tenantId={tenantId}
+      />
     </>
   );
 };

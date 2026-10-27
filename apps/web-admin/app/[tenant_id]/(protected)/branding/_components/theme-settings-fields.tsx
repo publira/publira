@@ -1,8 +1,12 @@
 "use client";
 
 import * as ActionForm from "@publira/ui-components/action-form";
+import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
-import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
+import {
+  DEFAULT_TENANT_THEME_COLORS,
+  toPubliraThemeCssVariables,
+} from "@publira/utils/theme-css-variables";
 import type {
   TenantTheme,
   TenantThemeColors,
@@ -13,7 +17,11 @@ import type { ChangeEvent, ReactNode } from "react";
 
 import { useClientMessages } from "#components/client-message";
 
-import type { ThemeSettingsActionState } from "../branding-types";
+import { deriveDarkPalette } from "../_lib/dark-palette";
+import type {
+  DarkThemeSettingsActionState,
+  ThemeSettingsActionState,
+} from "../branding-types";
 import { ThemePreviewThemeContext } from "./theme-preview-frame";
 
 type ThemeKey = keyof TenantTheme;
@@ -21,11 +29,29 @@ type ThemeKey = keyof TenantTheme;
 interface ThemeSettingsContextValue {
   theme: TenantTheme;
   setTheme: (update: (theme: TenantTheme) => TenantTheme) => void;
+  /**
+   * Whether an edit repaints the console itself. Only the light palette does:
+   * the console is drawn in light colors, so the dark palette is seen in its
+   * preview alone.
+   */
+  paintsDocument: boolean;
 }
 
+/** The palette the fields below it edit: the light one, or the dark one inside `DarkScope`. */
 const ThemeSettingsContext = createContext<ThemeSettingsContextValue | null>(
   null
 );
+
+interface DarkThemeContextValue {
+  darkTheme: TenantThemeColors;
+  setDarkTheme: (
+    update: (darkTheme: TenantThemeColors) => TenantThemeColors
+  ) => void;
+  /** The light palette the form holds, which the dark one is derived from. */
+  lightTheme: TenantTheme;
+}
+
+const DarkThemeContext = createContext<DarkThemeContextValue | null>(null);
 
 const useThemeSettings = () => {
   const context = use(ThemeSettingsContext);
@@ -34,6 +60,26 @@ const useThemeSettings = () => {
   }
 
   return context;
+};
+
+const useDarkTheme = () => {
+  const context = use(DarkThemeContext);
+  if (!context) {
+    throw new Error("ThemeSettingsScope is required.");
+  }
+
+  return context;
+};
+
+/** The colors of a theme, without the typefaces the dark palette has none of. */
+const pickThemeColors = (theme: TenantThemeColors): TenantThemeColors => {
+  const colors = { ...DEFAULT_TENANT_THEME_COLORS };
+  for (const key of Object.keys(
+    DEFAULT_TENANT_THEME_COLORS
+  ) as (keyof TenantThemeColors)[]) {
+    colors[key] = theme[key];
+  }
+  return colors;
 };
 
 const applyThemePreview = (theme: TenantTheme) => {
@@ -45,22 +91,75 @@ const applyThemePreview = (theme: TenantTheme) => {
 };
 
 /**
- * The palette the form holds, shared by its fields and the preview tab. Seeded
- * once per mount; a save replaces it with the palette the server stored.
+ * The palettes the forms hold, shared by their fields and the preview tab, so
+ * switching tabs keeps what was typed. Seeded once per mount; a save replaces
+ * a palette with the one the server stored.
+ *
+ * A tenant with no dark palette starts from one derived from its light
+ * palette, so the dark fields always have colors to edit.
  */
 const ThemeSettingsScope = ({
   children,
+  initialDarkTheme,
   initialTheme,
 }: {
   children: ReactNode;
+  initialDarkTheme: TenantThemeColors | null;
   initialTheme: TenantTheme;
 }) => {
   const [theme, setTheme] = useState<TenantTheme>(initialTheme);
-  const context = useMemo(() => ({ setTheme, theme }), [theme]);
+  const [darkTheme, setDarkTheme] = useState<TenantThemeColors>(
+    () => initialDarkTheme ?? deriveDarkPalette(initialTheme)
+  );
+  const context = useMemo(
+    () => ({ paintsDocument: true, setTheme, theme }),
+    [theme]
+  );
+  const darkContext = useMemo(
+    () => ({ darkTheme, lightTheme: theme, setDarkTheme }),
+    [darkTheme, theme]
+  );
 
   return (
     <ThemeSettingsContext value={context}>
-      <ThemePreviewThemeContext value={theme}>
+      <DarkThemeContext value={darkContext}>
+        <ThemePreviewThemeContext value={theme}>
+          {children}
+        </ThemePreviewThemeContext>
+      </DarkThemeContext>
+    </ThemeSettingsContext>
+  );
+};
+
+/**
+ * Points the fields and the preview below it at the dark palette. The dark
+ * palette carries no typefaces of its own, so it is shown in the light
+ * palette's.
+ */
+const DarkThemeScope = ({ children }: { children: ReactNode }) => {
+  const { darkTheme, lightTheme, setDarkTheme } = useDarkTheme();
+  const { sansFontFamily, serifFontFamily } = lightTheme;
+  const context = useMemo(() => {
+    const withTypefaces = (colors: TenantThemeColors): TenantTheme => ({
+      ...colors,
+      sansFontFamily,
+      serifFontFamily,
+    });
+
+    return {
+      paintsDocument: false,
+      setTheme: (update: (theme: TenantTheme) => TenantTheme) => {
+        setDarkTheme((previous) =>
+          pickThemeColors(update(withTypefaces(previous)))
+        );
+      },
+      theme: withTypefaces(darkTheme),
+    };
+  }, [darkTheme, sansFontFamily, serifFontFamily, setDarkTheme]);
+
+  return (
+    <ThemeSettingsContext value={context}>
+      <ThemePreviewThemeContext value={context.theme}>
         {children}
       </ThemePreviewThemeContext>
     </ThemeSettingsContext>
@@ -79,13 +178,47 @@ const ThemeSettingsSaved = () => {
   return null;
 };
 
+/**
+ * Adopts the dark palette a save stored, or, once a delete leaves none, the one
+ * derived from the light palette that a tenant without one starts from.
+ */
+const DarkThemeSettingsSaved = () => {
+  const { lightTheme, setDarkTheme } = useDarkTheme();
+  ActionForm.useSettled<NonNullable<DarkThemeSettingsActionState>>((state) => {
+    if (state?.ok) {
+      setDarkTheme(() => state.darkTheme ?? deriveDarkPalette(lightTheme));
+    }
+  });
+
+  return null;
+};
+
+/** Replaces every dark color with the one derived from the light palette the form holds. */
+const DeriveDarkThemeFromLight = ({ children }: { children: ReactNode }) => {
+  const { lightTheme, setDarkTheme } = useDarkTheme();
+
+  return (
+    <Button
+      onClick={() => {
+        setDarkTheme(() => deriveDarkPalette(lightTheme));
+      }}
+      type="button"
+      variant="outline"
+    >
+      {children}
+    </Button>
+  );
+};
+
 const useThemeField = (field: ThemeKey) => {
-  const { setTheme, theme } = useThemeSettings();
+  const { paintsDocument, setTheme, theme } = useThemeSettings();
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value;
     setTheme((previous) => {
       const next = { ...previous, [field]: nextValue };
-      applyThemePreview(next);
+      if (paintsDocument) {
+        applyThemePreview(next);
+      }
       return next;
     });
   };
@@ -165,4 +298,7 @@ export {
   ThemeSettingsColorInput as ColorInput,
   ThemeSettingsFontFamilyInput as FontFamilyInput,
   ThemeSettingsSaved as Saved,
+  DarkThemeScope as DarkScope,
+  DarkThemeSettingsSaved as DarkSaved,
+  DeriveDarkThemeFromLight as DeriveFromLight,
 };

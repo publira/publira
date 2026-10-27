@@ -257,6 +257,33 @@ const restoreFontFamilies = async (page: Page): Promise<void> => {
   await saveTheme(page);
 };
 
+const DARK_PALETTE_UNSAVED = "No dark palette is saved.";
+
+const openDarkTab = async (page: Page): Promise<void> => {
+  await page.getByRole("tab", { name: "Dark" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save the dark palette" })
+  ).toBeVisible();
+};
+
+/** The tab has a Delete only while a dark palette is saved. */
+const deleteDarkPaletteIfSet = async (page: Page): Promise<void> => {
+  await openDarkTab(page);
+  const deleteButton = page.getByRole("button", {
+    exact: true,
+    name: "Delete",
+  });
+  if (await deleteButton.isVisible()) {
+    await deleteButton.click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { exact: true, name: "Delete" }).click();
+    await expectStatus(page, "The dark palette was deleted.");
+  }
+  await page.getByRole("tab", { name: "Light" }).click();
+  await expect(primaryColorField(page)).toBeVisible();
+};
+
 const deleteBrandingIfSet = async (
   page: Page,
   fileInputName: string,
@@ -385,6 +412,7 @@ test.describe("admin brand settings", () => {
   test.describe.configure({ mode: "serial" });
 
   let restoreTheme = false;
+  let restoreDarkTheme = false;
   let restoreLogo = false;
   let restoreIcon = false;
   let restoreSignInImage = false;
@@ -395,6 +423,7 @@ test.describe("admin brand settings", () => {
 
   test.beforeEach(async ({ page, request }) => {
     restoreTheme = false;
+    restoreDarkTheme = false;
     restoreLogo = false;
     restoreIcon = false;
     restoreSignInImage = false;
@@ -411,7 +440,15 @@ test.describe("admin brand settings", () => {
   });
 
   test.afterEach(async ({ page, request }) => {
-    if (!(restoreTheme || restoreLogo || restoreIcon || restoreSignInImage)) {
+    if (
+      !(
+        restoreTheme ||
+        restoreDarkTheme ||
+        restoreLogo ||
+        restoreIcon ||
+        restoreSignInImage
+      )
+    ) {
       return;
     }
     await signInAsSeedAdmin(page, "/branding");
@@ -432,6 +469,9 @@ test.describe("admin brand settings", () => {
     if (restoreTheme) {
       await restorePrimaryColor(page, request);
       await restoreFontFamilies(page);
+    }
+    if (restoreDarkTheme) {
+      await deleteDarkPaletteIfSet(page);
     }
   });
 
@@ -501,6 +541,51 @@ test.describe("admin brand settings", () => {
     ).toHaveCount(2);
 
     expect(themePrimaryDeclaration(await fetchThemeCss(request))).toBe(before);
+  });
+
+  test("a dark palette derived from the light one is saved apart from it and can be deleted", async ({
+    page,
+  }) => {
+    restoreDarkTheme = true;
+    await deleteDarkPaletteIfSet(page);
+    const lightBackground = await page
+      .locator('input[name="background_color"]')
+      .inputValue();
+
+    await openDarkTab(page);
+    await expect(page.getByText(DARK_PALETTE_UNSAVED)).toBeVisible();
+    await fillField(page.locator('input[name="background_color"]'), "#ffffff");
+    await page.getByRole("button", { name: "Derive from light" }).click();
+    const darkBackground = await page
+      .locator('input[name="background_color"]')
+      .inputValue();
+    expect(darkBackground).not.toBe("#ffffff");
+    expect(darkBackground).not.toBe(lightBackground);
+
+    const saved = serverActionAnswered(page);
+    await page.getByRole("button", { name: "Save the dark palette" }).click();
+    await saved;
+    await expectStatus(page, "The dark palette was saved.");
+
+    await openThemeSettings(page);
+    await expect(page.locator('input[name="background_color"]')).toHaveValue(
+      lightBackground
+    );
+    await openDarkTab(page);
+    await expect(page.getByText(DARK_PALETTE_UNSAVED)).toHaveCount(0);
+    await expect(page.locator('input[name="background_color"]')).toHaveValue(
+      darkBackground
+    );
+
+    await page.getByRole("button", { exact: true, name: "Delete" }).click();
+    const dialog = page.getByRole("alertdialog");
+    await dialog.getByRole("button", { exact: true, name: "Delete" }).click();
+    await expectStatus(page, "The dark palette was deleted.");
+    await expect(page.getByText(DARK_PALETTE_UNSAVED)).toBeVisible();
+
+    await openThemeSettings(page);
+    await openDarkTab(page);
+    await expect(page.getByText(DARK_PALETTE_UNSAVED)).toBeVisible();
   });
 
   test("a theme change on one tenant does not affect another tenant's /theme.css", async ({
