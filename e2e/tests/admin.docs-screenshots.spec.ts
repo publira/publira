@@ -270,6 +270,34 @@ for (const locale of DOCS_LOCALES) {
           subject: "preview",
         });
       });
+
+      test("the brand marks", async ({ page }) => {
+        await openScreen(page, locale, "/branding");
+
+        await expectDocsScreenshot(page, {
+          element: docsSection(page, t("admin.settings.brand_marks.title")),
+          locale,
+          page: "console/setup/branding",
+          subject: "brand-marks",
+        });
+      });
+
+      test("the guidelines a brand mark is uploaded under", async ({
+        page,
+      }) => {
+        await openScreen(page, locale, "/branding");
+        await docsSection(page, t("admin.settings.brand_marks.title"))
+          .getByRole("button", { name: t("admin.settings.brand_marks.upload") })
+          .first()
+          .click();
+
+        await expectDocsScreenshot(page, {
+          element: page.getByRole("dialog"),
+          locale,
+          page: "console/setup/branding",
+          subject: "brand-marks-consent",
+        });
+      });
     });
 
     test.describe("pages", () => {

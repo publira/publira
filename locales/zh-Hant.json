@@ -3033,6 +3033,60 @@
         "upload_failed": "無法上傳登入頁面圖片。請稍後再試。",
         "delete_failed": "無法刪除登入頁面圖片。請稍後再試。"
       },
+      "brand_marks": {
+        "title": "品牌標誌",
+        "description": "用於網站分享、應用程式商店與登入連結的其他公司標誌。每個標誌都需要先同意其所有者的指南才能上傳。",
+        "section_error": "無法顯示品牌標誌",
+        "kinds": {
+          "x_share": {
+            "title": "X分享按鈕",
+            "guideline": "X品牌工具包"
+          },
+          "line_share": {
+            "title": "LINE分享按鈕",
+            "guideline": "LINE標誌指南"
+          },
+          "app_store_badge": {
+            "title": "App Store徽章",
+            "guideline": "App Store行銷指南"
+          },
+          "google_play_badge": {
+            "title": "Google Play徽章",
+            "guideline": "Google Play徽章指南"
+          },
+          "apple_sign_in": {
+            "title": "使用Apple登入",
+            "guideline": "使用Apple登入指南"
+          },
+          "google_sign_in": {
+            "title": "使用Google帳戶登入",
+            "guideline": "Google登入品牌指南"
+          }
+        },
+        "current": "目前的標誌",
+        "unset": "尚未上傳標誌。",
+        "accepted_by": "{$name}於{$accepted_at}同意了指南。",
+        "accepted_by_deleted_account": "一個已刪除的帳戶於{$accepted_at}同意了指南。",
+        "accepted_terms": "已同意的指南",
+        "upload": "上傳",
+        "replace": "替換",
+        "consent_title": "同意所有者的指南",
+        "consent_description": "上傳前，請閱讀該標誌所有者發布的指南。下方連結的頁面與你同意的時間會與標誌一起記錄。",
+        "consent_accept": "我已閱讀並同意這些指南。",
+        "file": "標誌圖片",
+        "file_description": "請選擇所有者提供的圖片，格式為不超過10MB的JPEG、PNG或WebP。長邊超過1024px的圖片會被縮小。",
+        "submit": "上傳標誌",
+        "delete_title": "要刪除此標誌嗎？",
+        "delete_description": "標誌及其已同意指南的紀錄將被刪除。",
+        "saved": "標誌已上傳。",
+        "deleted": "標誌已刪除。",
+        "rejected": "無法讀取該圖片。請選擇JPEG、PNG或WebP圖片。",
+        "terms_required": "上傳標誌前，請先同意所有者的指南。",
+        "kind_invalid": "無法上傳此標誌。",
+        "load_failed": "無法載入品牌標誌。請稍後再試。",
+        "upload_failed": "無法上傳標誌。請稍後再試。",
+        "delete_failed": "無法刪除標誌。請稍後再試。"
+      },
       "email": {
         "title": "寄件",
         "description": "未設定或未啟用時，郵件會由平台自己的寄件人寄出。",
@@ -3770,7 +3824,7 @@
     },
     "branding": {
       "title": "品牌",
-      "page_description": "管理該租戶的主題顏色、標誌、圖示與登入頁面圖片。",
+      "page_description": "管理該租戶的主題顏色、標誌、圖示、登入頁面圖片與品牌標誌。",
       "section_error": "無法顯示品牌設定"
     },
     "integrations": {

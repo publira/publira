@@ -1,11 +1,11 @@
 ---
 title: Branding
-description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, and check them in the preview before readers see them.
+description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, upload other companies' marks under their guidelines, and check the theme in the preview before readers see it.
 published: 2026-10-07
-updated: 2026-10-25
+updated: 2026-10-27
 ---
 
-**Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, its colors, and the faces its text is set in. The screen has four cards: **Logo**, **Icon**, **Sign-in image**, and the theme's colors and typefaces. Each card is saved on its own, and saving one leaves the others as they are.
+**Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, the marks of other companies, its colors, and the faces its text is set in. The screen has **Logo**, **Icon**, **Sign-in image**, **Brand marks**, and the theme's colors and typefaces. Each is saved on its own, and saving one leaves the others as they are.
 
 Only a Tenant admin can change branding. Editors and Auditors see the same screen with its controls turned off.
 
@@ -31,6 +31,22 @@ Give the sign-in image a picture that still works with its edges cut away: keep 
 An upload of any of the three is refused with "Images cannot be uploaded because image storage has not been set up on the platform yet. Ask a platform operator to set it up." when the operator has not set up object storage for the install, as [Object storage](../../3-operations/5-object-storage.md) describes.
 
 None of the three is used in the tenant's mail, which is sent in Publira's own colors, or as the picture shown when a link to the site is shared, which comes from the series being linked.
+
+## Brand marks
+
+**Brand marks** holds the marks of other companies, for the site's share, app store, and sign-in links: **X share button**, **LINE share button**, **App Store badge**, **Google Play badge**, **Sign in with Apple**, and **Sign in with Google**. Publira ships none of this artwork. Each mark belongs to its owner, who publishes the conditions it may be used under, so the tenant uploads the artwork the owner provides after accepting those conditions.
+
+![The Brand marks section: a card for each of the six marks, each saying no mark is uploaded and offering Upload.](./branding-brand-marks.png)
+
+Each mark has a card of its own. A card with nothing uploaded says "No mark is uploaded." and offers **Upload**. **Upload** opens a dialog that links to the owner's guideline page, such as the **X brand toolkit**. The **Mark image** field and **Upload the mark** stay off until you tick "I have read these guidelines and accept them." The tick lasts only while the dialog is open, so every upload, including a replacement, asks for it again.
+
+![The dialog for the X share button: the link to the X brand toolkit, the box accepting it, and the Mark image field and Upload the mark, both off until the box is ticked.](./branding-brand-marks-consent.png)
+
+The image is held to the logo's limits except its minimum: a JPEG, PNG, or WebP of at most 10MB, stored as PNG and scaled down when wider or taller than 1024px. A badge much wider than it is tall is accepted. Like the logo, it is refused while the operator has not set up object storage.
+
+Once a mark is uploaded, its card shows it, who accepted the guidelines and when, and a link to **Accepted guidelines**, the page the dialog showed at that moment. Publira records that page with the mark, so when a later release of Publira links the dialog to a different page, the marks already uploaded keep the page they were accepted under. When the account that accepted has since been deleted, the card says so instead of naming it. **Replace** uploads another image under a new acceptance, and **Delete** removes the mark and the record of its acceptance after you confirm.
+
+Publira does not check what an uploaded image shows. Whether it is the owner's current artwork, used as the guidelines allow, is the tenant's responsibility.
 
 ## Theme colors and typefaces
 

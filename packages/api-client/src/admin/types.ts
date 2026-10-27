@@ -5,6 +5,7 @@ export * from "../gen/publira/types/v1/types_pb.js";
 export type { AdminAccessTicket } from "../gen/publira/admin/v1/access_ticket_pb.js";
 export type { AdminAnnouncement } from "../gen/publira/admin/v1/announcement_pb.js";
 export type { AdminAuditLog } from "../gen/publira/admin/v1/audit_pb.js";
+export type { AdminTenantBrandMark } from "../gen/publira/admin/v1/brand_mark_pb.js";
 export type { AdminCampaignBanner } from "../gen/publira/admin/v1/campaign_banner_pb.js";
 export type {
   CoinNameTranslation,

@@ -9,11 +9,14 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantAdminFieldset } from "#components/tenant-role-gate";
 import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
+import { getTenantBrandMarks } from "#lib/brand-marks";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { getTenantThemeSettings } from "#lib/theme-settings";
 
+import { TenantBrandMarksSection } from "./_components/tenant-brand-marks-section";
 import { TenantIconForm } from "./_components/tenant-icon-form";
 import { TenantLogoForm } from "./_components/tenant-logo-form";
 import { TenantSignInImageForm } from "./_components/tenant-sign-in-image-form";
@@ -51,9 +54,13 @@ const BrandingForms = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
 
-  const themeResult = await getTenantThemeSettings(tenantId, locale);
+  const [themeResult, brandMarksResult, timeZone] = await Promise.all([
+    getTenantThemeSettings(tenantId, locale),
+    getTenantBrandMarks(tenantId, locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
-  await redirectToLoginIfSessionRejected(themeResult);
+  await redirectToLoginIfSessionRejected(themeResult, brandMarksResult);
 
   if (!themeResult.ok) {
     return (
@@ -80,6 +87,27 @@ const BrandingForms = async () => {
         signInImage={themeResult.signInImage}
         tenantId={tenantId}
       />
+      {brandMarksResult.ok ? (
+        <TenantBrandMarksSection
+          locale={locale}
+          marks={brandMarksResult.marks}
+          tenantId={tenantId}
+          timeZone={timeZone}
+        />
+      ) : (
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
+              <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                <Message message="admin.settings.brand_marks.section_error" />
+              </Suspense>
+            </SectionError.Title>
+            <SectionError.Description>
+              {brandMarksResult.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
+      )}
       <ThemeSettingsForm initialTheme={themeResult.theme} tenantId={tenantId} />
     </>
   );

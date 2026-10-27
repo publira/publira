@@ -3033,6 +3033,60 @@
         "upload_failed": "로그인 화면 이미지를 업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         "delete_failed": "로그인 화면 이미지를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."
       },
+      "brand_marks": {
+        "title": "브랜드 마크",
+        "description": "사이트의 공유, 앱 스토어, 로그인 링크에 쓰는 다른 회사의 마크입니다. 각 마크는 소유자의 가이드라인에 동의한 뒤에 업로드할 수 있습니다.",
+        "section_error": "브랜드 마크를 표시할 수 없습니다",
+        "kinds": {
+          "x_share": {
+            "title": "X 공유 버튼",
+            "guideline": "X 브랜드 툴킷"
+          },
+          "line_share": {
+            "title": "LINE 공유 버튼",
+            "guideline": "LINE 로고 가이드라인"
+          },
+          "app_store_badge": {
+            "title": "App Store 배지",
+            "guideline": "App Store 마케팅 가이드라인"
+          },
+          "google_play_badge": {
+            "title": "Google Play 배지",
+            "guideline": "Google Play 배지 가이드라인"
+          },
+          "apple_sign_in": {
+            "title": "Apple로 로그인",
+            "guideline": "Apple로 로그인 가이드라인"
+          },
+          "google_sign_in": {
+            "title": "Google로 로그인",
+            "guideline": "Google로 로그인 브랜딩 가이드라인"
+          }
+        },
+        "current": "현재 마크",
+        "unset": "업로드된 마크가 없습니다.",
+        "accepted_by": "{$name} 님이 {$accepted_at}에 가이드라인에 동의했습니다.",
+        "accepted_by_deleted_account": "{$accepted_at}에 지금은 삭제된 계정이 가이드라인에 동의했습니다.",
+        "accepted_terms": "동의한 가이드라인",
+        "upload": "업로드",
+        "replace": "교체",
+        "consent_title": "소유자의 가이드라인에 동의",
+        "consent_description": "업로드하기 전에 이 마크의 소유자가 공개한 가이드라인을 읽어 주세요. 아래에 링크된 페이지와 동의한 시각이 마크와 함께 기록됩니다.",
+        "consent_accept": "가이드라인을 읽었으며 이에 동의합니다.",
+        "file": "마크 이미지",
+        "file_description": "소유자가 제공하는 이미지를 JPEG, PNG, WebP 형식, 10MB 이하로 선택해 주세요. 긴 변이 1024px을 넘으면 축소해 저장합니다.",
+        "submit": "마크 업로드",
+        "delete_title": "이 마크를 삭제할까요?",
+        "delete_description": "마크와 동의한 가이드라인의 기록이 삭제됩니다.",
+        "saved": "마크를 업로드했습니다.",
+        "deleted": "마크를 삭제했습니다.",
+        "rejected": "이미지를 읽지 못했습니다. JPEG, PNG, WebP 이미지를 선택해 주세요.",
+        "terms_required": "마크를 업로드하기 전에 소유자의 가이드라인에 동의해 주세요.",
+        "kind_invalid": "이 마크는 업로드할 수 없습니다.",
+        "load_failed": "브랜드 마크를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "upload_failed": "마크를 업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "delete_failed": "마크를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."
+      },
       "email": {
         "title": "발신 메일",
         "description": "설정하지 않거나 사용하지 않으면 플랫폼에 설정된 발신자로 메일을 보냅니다.",
@@ -3770,7 +3824,7 @@
     },
     "branding": {
       "title": "브랜딩",
-      "page_description": "이 테넌트의 테마 색상, 로고, 아이콘, 로그인 화면 이미지를 관리합니다.",
+      "page_description": "이 테넌트의 테마 색상, 로고, 아이콘, 로그인 화면 이미지, 브랜드 마크를 관리합니다.",
       "section_error": "브랜딩 설정을 표시할 수 없습니다"
     },
     "integrations": {

@@ -80,3 +80,14 @@ export type TenantSignInImageActionState =
       message: string;
     }
   | null;
+
+export type TenantBrandMarkActionState =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    }
+  | null;
