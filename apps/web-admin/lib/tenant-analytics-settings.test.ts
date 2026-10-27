@@ -1,4 +1,7 @@
-import { GoogleTagServingMode } from "@publira/api-client/admin/types";
+import {
+  GoogleTagConsentMode,
+  GoogleTagServingMode,
+} from "@publira/api-client/admin/types";
 import {
   BadRequestSchema,
   Code,
@@ -60,6 +63,7 @@ const updateInput = (
 ): UpdateTenantAnalyticsSettingsInput => ({
   regenerateGatewayPath,
   settings: {
+    consentMode: "not_required",
     ga4MeasurementId: "G-ABC123",
     gtmContainerId: "",
     serverContainerUrl: "",
@@ -79,6 +83,7 @@ describe("tenant-analytics-settings", () => {
   it("reads the settings under the tenant's tag", async () => {
     mockGetTenantAnalyticsSettingsApi.mockResolvedValueOnce({
       settings: {
+        consentMode: GoogleTagConsentMode.OPT_IN,
         ga4MeasurementId: "G-ABC123",
         gatewayPath: "_abcdefghijklmnop",
         gtmContainerId: "GTM-XYZ789",
@@ -94,6 +99,7 @@ describe("tenant-analytics-settings", () => {
     expect(result).toEqual({
       ok: true,
       settings: {
+        consentMode: "opt_in",
         ga4MeasurementId: "G-ABC123",
         gatewayPath: "_abcdefghijklmnop",
         gtmContainerId: "GTM-XYZ789",
@@ -127,6 +133,28 @@ describe("tenant-analytics-settings", () => {
     expect(result).toMatchObject({
       ok: true,
       settings: { servingMode: expected },
+    });
+  });
+
+  it.each([
+    [GoogleTagConsentMode.NOT_REQUIRED, "not_required"],
+    [GoogleTagConsentMode.OPT_IN, "opt_in"],
+    [GoogleTagConsentMode.EXTERNAL, "external"],
+    // The server of the release before has no consent mode, and runs the tag
+    // without asking.
+    [GoogleTagConsentMode.UNSPECIFIED, "not_required"],
+  ])("reads consent mode %s as %s", async (consentMode, expected) => {
+    mockGetTenantAnalyticsSettingsApi.mockResolvedValueOnce({
+      settings: { consentMode, servingMode: GoogleTagServingMode.GOOGLE },
+    });
+
+    const { getTenantAnalyticsSettings } =
+      await import("./tenant-analytics-settings");
+    const result = await getTenantAnalyticsSettings("TENANT001", "en");
+
+    expect(result).toMatchObject({
+      ok: true,
+      settings: { consentMode: expected },
     });
   });
 
@@ -181,6 +209,7 @@ describe("tenant-analytics-settings", () => {
   it("writes every field but the gateway path, and the regeneration", async () => {
     mockUpdateTenantAnalyticsSettingsApi.mockResolvedValueOnce({
       settings: {
+        consentMode: GoogleTagConsentMode.EXTERNAL,
         ga4MeasurementId: "",
         gatewayPath: "_qrstuvwxyz234567",
         gtmContainerId: "GTM-XYZ789",
@@ -194,6 +223,7 @@ describe("tenant-analytics-settings", () => {
     const result = await updateTenantAnalyticsSettings(
       updateInput(
         {
+          consentMode: "external",
           ga4MeasurementId: "",
           gtmContainerId: "GTM-XYZ789",
           serverContainerUrl: "https://sgtm.example.com",
@@ -207,6 +237,7 @@ describe("tenant-analytics-settings", () => {
     expect(result).toEqual({
       ok: true,
       settings: {
+        consentMode: "external",
         ga4MeasurementId: "",
         gatewayPath: "_qrstuvwxyz234567",
         gtmContainerId: "GTM-XYZ789",
@@ -218,6 +249,7 @@ describe("tenant-analytics-settings", () => {
       {
         regenerateGatewayPath: true,
         settings: {
+          consentMode: GoogleTagConsentMode.EXTERNAL,
           ga4MeasurementId: "",
           gtmContainerId: "GTM-XYZ789",
           serverContainerUrl: "https://sgtm.example.com",
@@ -252,6 +284,21 @@ describe("tenant-analytics-settings", () => {
       {
         gtmContainerId:
           "Enter the container ID as GTM- followed by letters and digits, such as GTM-ABC1234.",
+      },
+    ],
+    [
+      "settings.gtm_container_id",
+      updateInput({ consentMode: "external" }),
+      {
+        gtmContainerId:
+          "Enter a Tag Manager container ID for your consent tool to run in, or choose another option under Reader consent.",
+      },
+    ],
+    [
+      "settings.consent_mode",
+      updateInput(),
+      {
+        consentMode: "Choose whether readers are asked before the tag runs.",
       },
     ],
     [

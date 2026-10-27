@@ -3587,6 +3587,28 @@
         "gateway_tag_id": "Tag ID",
         "gateway_tag_id_unset": "Save a Tag Manager container ID or a GA4 measurement ID first.",
         "gateway_tag_id_description": "The tag the gateway forwards to Google for: the Tag Manager container when one is set, and the GA4 measurement ID otherwise. In Google Tag Manager, set up Google tag gateway for this tag with the path above.",
+        "consent_mode": "Reader consent",
+        "consent_modes": {
+          "not_required": {
+            "label": "Not required",
+            "description": "The tag runs as soon as a page loads. Disclose it on the site's privacy policy page."
+          },
+          "opt_in": {
+            "label": "Ask readers first",
+            "description": "The site shows a consent banner and holds the tag back until the reader agrees."
+          },
+          "external": {
+            "label": "Handled by my own consent tool in Tag Manager",
+            "description": "The site shows no banner of its own and tells Google to store nothing until your consent tool in the Tag Manager container records the reader's answer.",
+            "unavailable": "Enter a Tag Manager container ID to choose this. Your consent tool runs inside the container."
+          }
+        },
+        "consent_guidance": {
+          "readership": "Disclosure alone meets Japan's rules on sending readers' information to outside services. Readers in the EEA or the UK, and advertising products that require Google Consent Mode v2, need one of the other two choices.",
+          "privacy_page": "The banner links to the privacy policy page chosen under Settings › Terms and privacy policy.",
+          "view_counting": "Ask readers first also holds back the site's own view counting for signed-out readers until they agree, so the site's statistics and rankings count fewer readers."
+        },
+        "consent_privacy_page_missing": "No published privacy policy page is chosen under Settings › Terms and privacy policy, so the banner has no page to link to.",
         "guidance": {
           "title": "Before you save",
           "other_tags": "Add any other tags, such as advertising pixels, to your Tag Manager container. The console takes no tags of its own beyond these IDs.",
@@ -3601,7 +3623,9 @@
           "measurement_id_invalid": "Enter the measurement ID as G- followed by letters and digits, such as G-ABC123DEF4.",
           "universal_analytics_id": "Google no longer collects data for a Universal Analytics ID (UA-). Enter a Google Analytics 4 measurement ID, starting G-.",
           "container_id_invalid": "Enter the container ID as GTM- followed by letters and digits, such as GTM-ABC1234.",
+          "container_id_required": "Enter a Tag Manager container ID for your consent tool to run in, or choose another option under Reader consent.",
           "serving_mode_invalid": "Choose where the tag is loaded from.",
+          "consent_mode_invalid": "Choose whether readers are asked before the tag runs.",
           "server_container_url_invalid": "Enter an https address on a domain name, with no path, such as https://sgtm.example.com.",
           "server_container_url_required": "Enter the server container URL to load the tag from your server container."
         }

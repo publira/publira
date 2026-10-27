@@ -18,6 +18,7 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantAnalyticsSettings } from "#lib/tenant-analytics-settings";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 
 import { GoogleTagForm } from "./_components/google-tag-form";
 
@@ -53,13 +54,21 @@ const GoogleTagSkeleton = () => (
 const GoogleTagSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
-  const result = await getTenantAnalyticsSettings(tenantId, locale);
+  const [result, legalPages] = await Promise.all([
+    getTenantAnalyticsSettings(tenantId, locale),
+    getTenantLegalPages(tenantId, locale),
+  ]);
   await redirectToLoginIfSessionRejected(result);
 
   return (
     <GoogleTagForm
       initialSettings={result.ok ? result.settings : undefined}
       loadErrorMessage={result.ok ? undefined : result.message}
+      // An unpublished nomination is no page either: the storefront links to
+      // nothing for it.
+      privacyPageMissing={
+        legalPages.ok && legalPages.pages.privacyPage?.published !== true
+      }
       tenantId={tenantId}
     />
   );

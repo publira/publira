@@ -3587,6 +3587,28 @@
         "gateway_tag_id": "代碼ID",
         "gateway_tag_id_unset": "請先儲存代碼管理工具容器ID或GA4評估ID。",
         "gateway_tag_id_description": "閘道向Google轉送時所對應的代碼：設定了代碼管理工具容器時為該容器，否則為GA4評估ID。請在Google代碼管理工具中，用上方的路徑為此代碼設定Google代碼閘道。",
+        "consent_mode": "讀者同意",
+        "consent_modes": {
+          "not_required": {
+            "label": "不需要",
+            "description": "頁面載入後代碼立即執行。請在網站的隱私權政策頁面上公告。"
+          },
+          "opt_in": {
+            "label": "先徵求讀者同意",
+            "description": "網站顯示同意橫幅，在讀者同意之前不執行代碼。"
+          },
+          "external": {
+            "label": "由我在代碼管理工具中的同意工具處理",
+            "description": "網站不顯示自己的橫幅，並告知Google在代碼管理工具容器內的同意工具記錄讀者的回答之前不儲存任何內容。",
+            "unavailable": "請先輸入代碼管理工具容器ID再選擇此項。同意工具在容器內執行。"
+          }
+        },
+        "consent_guidance": {
+          "readership": "日本的外部傳送規範僅憑公告即可滿足。如有EEA或英國的讀者，或使用要求Google Consent Mode v2的廣告產品，則需要另外兩種之一。",
+          "privacy_page": "橫幅會連結到在「設定 › 服務條款與隱私權政策」中選擇的隱私權政策頁面。",
+          "view_counting": "選擇「先徵求讀者同意」後，對未登入的讀者，網站自身的瀏覽計數也會在其同意之前暫停，因此統計和排行中計入的讀者會減少。"
+        },
+        "consent_privacy_page_missing": "尚未在「設定 › 服務條款與隱私權政策」中選擇已發布的隱私權政策頁面，橫幅沒有可連結的頁面。",
         "guidance": {
           "title": "儲存之前",
           "other_tags": "廣告像素等其他代碼，請加入代碼管理工具容器。除這些ID外，主控台不接受其他代碼。",
@@ -3601,7 +3623,9 @@
           "measurement_id_invalid": "請以G-後接英文字母與數字的形式輸入評估ID，例如G-ABC123DEF4。",
           "universal_analytics_id": "Google已不再為Universal Analytics ID（UA-）收集資料。請輸入以G-開頭的Google Analytics 4評估ID。",
           "container_id_invalid": "請以GTM-後接英文字母與數字的形式輸入容器ID，例如GTM-ABC1234。",
+          "container_id_required": "請輸入供同意工具執行的代碼管理工具容器ID，或在「讀者同意」中選擇其他選項。",
           "serving_mode_invalid": "請選擇代碼的載入來源。",
+          "consent_mode_invalid": "請選擇執行代碼前是否徵求讀者同意。",
           "server_container_url_invalid": "請輸入網域名稱的https位址，不含路徑，例如https://sgtm.example.com。",
           "server_container_url_required": "要從伺服器容器載入代碼，請輸入伺服器容器URL。"
         }

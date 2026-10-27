@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { signInAsAdmin } from "../src/admin";
-import { applyScenarioSql, querySql } from "../src/db";
+import { applyScenarioSql, querySql, runSql } from "../src/db";
 import {
   GOOGLE_TAG_ADMIN,
   GOOGLE_TAG_SCENARIO,
@@ -12,7 +12,8 @@ import { WEB_ADMIN_GOOGLE_TAG_BASE_URL } from "../src/urls";
 
 /**
  * A tenant administrator entering the Google tag their site loads, in each of
- * the three places it can be loaded from, and regenerating the gateway path.
+ * the three places it can be loaded from, regenerating the gateway path, and
+ * choosing whether readers are asked before the tag runs.
  */
 
 const GOOGLE_TAG_PATH = "/integrations/google-tag";
@@ -47,6 +48,20 @@ const storedSettings = (): string =>
     ), 'none');
   `);
 
+const TENANT_ID_SQL = `(SELECT id FROM tenants WHERE public_id = '${GOOGLE_TAG_TENANT.publicId}')`;
+
+const storedConsentMode = (): string =>
+  querySql(`
+    SELECT consent_mode FROM tenant_analytics_settings
+    WHERE tenant_id = ${TENANT_ID_SQL};
+  `);
+
+/** The published page `570_google_tag.sql` seeds without naming it. */
+const PRIVACY_PAGE_ID = "018f1110-0004-7000-8000-000000000001";
+
+const PRIVACY_PAGE_MISSING =
+  "No published privacy policy page is chosen under Settings › Terms and privacy policy, so the banner has no page to link to.";
+
 const openGoogleTagSettings = async (page: Page): Promise<void> => {
   await page.goto(`${WEB_ADMIN_GOOGLE_TAG_BASE_URL}${GOOGLE_TAG_PATH}`);
   await expect(
@@ -60,7 +75,8 @@ const containerId = (page: Page) =>
   page.getByRole("textbox", { name: "Tag Manager container ID" });
 const serverContainerUrl = (page: Page) =>
   page.getByRole("textbox", { name: /^Server container URL/u });
-const servingMode = (page: Page, name: string) =>
+/** A serving mode or a reader consent choice, by its label. */
+const choice = (page: Page, name: string) =>
   page.getByRole("radio", { exact: true, name });
 
 /** The gateway path the form shows, read off the copyable value. */
@@ -94,7 +110,7 @@ test.describe("Google tag settings", () => {
     page,
   }) => {
     await openGoogleTagSettings(page);
-    await expect(servingMode(page, "Google")).toBeChecked();
+    await expect(choice(page, "Google")).toBeChecked();
     await expect(serverContainerUrl(page)).toHaveCount(0);
 
     await measurementId(page).fill(" g-abc123def4 ");
@@ -109,7 +125,7 @@ test.describe("Google tag settings", () => {
     await page.reload();
     await expect(measurementId(page)).toHaveValue(MEASUREMENT_ID);
     await expect(containerId(page)).toHaveValue(CONTAINER_ID);
-    await expect(servingMode(page, "Google")).toBeChecked();
+    await expect(choice(page, "Google")).toBeChecked();
   });
 
   test("reports an invalid value next to its field and saves nothing", async ({
@@ -135,7 +151,7 @@ test.describe("Google tag settings", () => {
   }) => {
     await openGoogleTagSettings(page);
 
-    await servingMode(page, "Server container").click();
+    await choice(page, "Server container").click();
     await page.getByRole("button", { name: SUBMIT }).click();
     await expect(
       page.getByText(
@@ -153,7 +169,7 @@ test.describe("Google tag settings", () => {
     );
 
     await page.reload();
-    await expect(servingMode(page, "Server container")).toBeChecked();
+    await expect(choice(page, "Server container")).toBeChecked();
     await expect(serverContainerUrl(page)).toHaveValue(SERVER_CONTAINER_URL);
   });
 
@@ -162,7 +178,7 @@ test.describe("Google tag settings", () => {
   }) => {
     await openGoogleTagSettings(page);
 
-    await servingMode(page, "Google tag gateway").click();
+    await choice(page, "Google tag gateway").click();
     await expect(
       page.getByText("A path is generated when you save in this mode.")
     ).toBeVisible();
@@ -180,7 +196,7 @@ test.describe("Google tag settings", () => {
     );
 
     await page.reload();
-    await expect(servingMode(page, "Google tag gateway")).toBeChecked();
+    await expect(choice(page, "Google tag gateway")).toBeChecked();
     expect(await shownGatewayPath(page)).toBe(path);
 
     await page.getByRole("button", { name: "Generate a new path" }).click();
@@ -198,5 +214,78 @@ test.describe("Google tag settings", () => {
     const regenerated = await shownGatewayPath(page);
     expect(regenerated).not.toBe(path);
     expect(storedSettings().split("|")[4]).toBe(regenerated.slice(1));
+  });
+
+  // In this order, so the last one saved leaves the tenant asking no one.
+  for (const [name, stored] of [
+    ["Ask readers first", "opt_in"],
+    ["Handled by my own consent tool in Tag Manager", "external"],
+    ["Not required", "not_required"],
+  ] as const) {
+    test(`saves the reader consent choice ${name} and shows it after a reload`, async ({
+      page,
+    }) => {
+      await openGoogleTagSettings(page);
+      await choice(page, name).click();
+      await page.getByRole("button", { name: SUBMIT }).click();
+
+      await expect(page.getByText(SAVED)).toBeVisible();
+      expect(storedConsentMode()).toBe(stored);
+
+      await page.reload();
+      await expect(choice(page, name)).toBeChecked();
+    });
+  }
+
+  test("offers a consent tool only with a Tag Manager container ID", async ({
+    page,
+  }) => {
+    const consentTool = "Handled by my own consent tool in Tag Manager";
+    await openGoogleTagSettings(page);
+    await expect(choice(page, consentTool)).toBeEnabled();
+
+    await containerId(page).fill("");
+    await expect(choice(page, consentTool)).toBeDisabled();
+    await expect(
+      page.getByText(
+        "Enter a Tag Manager container ID to choose this. Your consent tool runs inside the container."
+      )
+    ).toBeVisible();
+
+    // A consent tool already chosen stays chosen while the ID is cleared, and
+    // the save is refused next to the ID.
+    await containerId(page).fill(CONTAINER_ID);
+    await choice(page, consentTool).click();
+    await containerId(page).fill("");
+    await expect(choice(page, consentTool)).toBeChecked();
+    await page.getByRole("button", { name: SUBMIT }).click();
+
+    await expect(
+      page.getByText(
+        "Enter a Tag Manager container ID for your consent tool to run in, or choose another option under Reader consent."
+      )
+    ).toBeVisible();
+    expect(storedConsentMode()).toBe("not_required");
+  });
+
+  test("warns that the banner has no privacy page until one is named", async ({
+    page,
+  }) => {
+    await openGoogleTagSettings(page);
+    await expect(page.getByText(PRIVACY_PAGE_MISSING)).toHaveCount(0);
+
+    await choice(page, "Ask readers first").click();
+    await expect(page.getByText(PRIVACY_PAGE_MISSING)).toBeVisible();
+    await choice(page, "Not required").click();
+    await expect(page.getByText(PRIVACY_PAGE_MISSING)).toHaveCount(0);
+
+    runSql(`
+      UPDATE tenant_config SET privacy_page_id = '${PRIVACY_PAGE_ID}'
+      WHERE tenant_id = ${TENANT_ID_SQL};
+    `);
+    await page.reload();
+    await choice(page, "Ask readers first").click();
+    await expect(choice(page, "Ask readers first")).toBeChecked();
+    await expect(page.getByText(PRIVACY_PAGE_MISSING)).toHaveCount(0);
   });
 });

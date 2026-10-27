@@ -18,13 +18,15 @@ import { WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL } from "../src/urls";
  * The tenant console's Google tag form, as
  * `docs/<locale>/4-console/8-google-tag.md` shows it: the IDs and the serving
  * modes, the server container URL, the gateway path with the tag it is set up
- * for, and the dialog that generates a new path.
+ * for, the dialog that generates a new path, and the reader consent choices.
  *
  * It is photographed on the tenant of
  * `db/seeds/scenarios/600_docs_google_tag.sql`, which saves a Tag Manager
  * container in the gateway mode under a gateway path written as a literal, so
  * the path on screen is the same on every run. The other modes are chosen on
- * the form and never saved.
+ * the form and never saved. The tenant names no privacy policy page, so
+ * choosing to ask readers first shows the warning that the banner has none to
+ * link to.
  */
 test.use({ baseURL: WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL });
 
@@ -112,6 +114,26 @@ for (const locale of DOCS_LOCALES) {
         locale,
         page: PAGE,
         subject: "regenerate",
+      });
+    });
+
+    test("the reader consent choices", async ({ page }) => {
+      const askFirst = page.getByRole("radio", {
+        exact: true,
+        name: t("admin.settings.google_tag.consent_modes.opt_in.label"),
+      });
+      await askFirst.click();
+      await expect(
+        page.getByText(
+          t("admin.settings.google_tag.consent_privacy_page_missing")
+        )
+      ).toBeVisible();
+
+      await expectDocsScreenshot(page, {
+        element: docsField(askFirst),
+        locale,
+        page: PAGE,
+        subject: "consent",
       });
     });
   });

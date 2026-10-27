@@ -33,6 +33,7 @@ vi.mock("#lib/tenant-analytics-settings", () => ({
 const googleTagFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
   for (const [name, value] of Object.entries({
+    consent_mode: "not_required",
     serving_mode: "google",
     tenant_id: "TENANT001",
     ...values,
@@ -85,6 +86,7 @@ describe("updateGoogleTagAction", () => {
       {
         regenerateGatewayPath: false,
         settings: {
+          consentMode: "not_required",
           ga4MeasurementId: "G-ABC123DEF4",
           gtmContainerId: "GTM-XYZ789",
           serverContainerUrl: "https://sgtm.example.com",
@@ -110,6 +112,7 @@ describe("updateGoogleTagAction", () => {
       {
         regenerateGatewayPath: false,
         settings: {
+          consentMode: "not_required",
           ga4MeasurementId: "",
           gtmContainerId: "",
           serverContainerUrl: "",
@@ -117,6 +120,27 @@ describe("updateGoogleTagAction", () => {
         },
         tenantId: "TENANT001",
       },
+      "en"
+    );
+  });
+
+  it("saves the consent mode chosen", async () => {
+    const { updateGoogleTagAction } = await import("./actions");
+    await updateGoogleTagAction(
+      null,
+      googleTagFormData({
+        consent_mode: "external",
+        gtm_container_id: "GTM-XYZ789",
+      })
+    );
+
+    expect(mockUpdateTenantAnalyticsSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          consentMode: "external",
+          gtmContainerId: "GTM-XYZ789",
+        }),
+      }),
       "en"
     );
   });
@@ -179,6 +203,19 @@ describe("updateGoogleTagAction", () => {
         serving_mode: "gateway",
       },
       { serverContainerUrl: URL_INVALID },
+    ],
+    [
+      { consent_mode: "external", gtm_container_id: " " },
+      {
+        gtmContainerId:
+          "Enter a Tag Manager container ID for your consent tool to run in, or choose another option under Reader consent.",
+      },
+    ],
+    [
+      { consent_mode: "always" },
+      {
+        consentMode: "Choose whether readers are asked before the tag runs.",
+      },
     ],
     [
       { serving_mode: "proxy" },
