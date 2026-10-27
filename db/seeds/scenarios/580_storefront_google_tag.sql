@@ -7,12 +7,15 @@
 -- suite reads can absorb them; `570_google_tag.sql` is the console suite's,
 -- which saves its own tenant's settings while this one runs.
 --
--- The reader signs in to open the account settings, which load no tag.
+-- The reader signs in to open the account settings, which load no tag. The
+-- published series is the page whose view the site counts, which a tenant
+-- that asks first holds back until the reader agrees.
 -- Applying the file deletes the stored settings, which leaves the tenant
 -- loading no tag. The password hash matches the dev seed's `memberpass`.
 -- public_id values are hard-coded in e2e/src/scenarios/storefront-google-tag.ts.
 --   tenant MsrdTNNTAAA1 (measure.localhost / admin.measure.localhost)
 --   reader MsrdMMBRAAA1 (measure-reader@example.com)
+--   series MsrdSERSAAA1
 
 WITH tenant_seed AS (
     SELECT '018f1120-0001-7000-8000-000000000001'::uuid AS id
@@ -79,6 +82,58 @@ SET tenant_id = EXCLUDED.tenant_id,
     name = EXCLUDED.name,
     status = EXCLUDED.status,
     email_verified_at = EXCLUDED.email_verified_at;
+
+INSERT INTO labels (id, tenant_id, public_id, name)
+SELECT
+    '018f1120-0003-7000-8000-000000000001'::uuid,
+    t.id,
+    'MsrdLABLAAA1',
+    'Measured Label'
+FROM tenants t
+WHERE t.public_id = 'MsrdTNNTAAA1'
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    name = EXCLUDED.name;
+
+INSERT INTO series (id, tenant_id, label_id, public_id, is_published, published_at)
+SELECT
+    '018f1120-0004-7000-8000-000000000001'::uuid,
+    t.id,
+    '018f1120-0003-7000-8000-000000000001'::uuid,
+    'MsrdSERSAAA1',
+    true,
+    NOW() - INTERVAL '1 day'
+FROM tenants t
+WHERE t.public_id = 'MsrdTNNTAAA1'
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    label_id = EXCLUDED.label_id,
+    is_published = EXCLUDED.is_published,
+    published_at = EXCLUDED.published_at,
+    updated_at = NOW();
+
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+SELECT
+    '018f1120-0005-7000-8000-000000000001'::uuid,
+    s.id,
+    s.tenant_id,
+    'en',
+    'Measured Series',
+    'The series whose views the site counts.'
+FROM series s
+WHERE s.public_id = 'MsrdSERSAAA1'
+ON CONFLICT (series_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    synopsis = EXCLUDED.synopsis;
+
+INSERT INTO series_listings (series_id, reading_period_hours, age_rating, tenant_id)
+SELECT s.id, 72, 'all', s.tenant_id
+FROM series s
+WHERE s.public_id = 'MsrdSERSAAA1'
+ON CONFLICT (series_id) DO UPDATE
+SET reading_period_hours = EXCLUDED.reading_period_hours,
+    age_rating = EXCLUDED.age_rating,
+    tenant_id = EXCLUDED.tenant_id;
 
 DELETE FROM tenant_analytics_settings
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'MsrdTNNTAAA1');

@@ -8,6 +8,13 @@ export type GoogleTagServing =
 
 /** The Google tag a tenant's pages load. At least one of the IDs is set. */
 export interface GoogleTagSettings {
+  /**
+   * Whether a reader is asked before the tag runs: `not_required` runs it at
+   * once, `opt_in` holds it back until the reader agrees on the site's own
+   * banner, and `external` starts it with every signal denied for the consent
+   * tool inside the tenant's container to update.
+   */
+  consentMode: "external" | "not_required" | "opt_in";
   /** `G-…`, or empty where the tenant has no GA4 stream of its own. */
   ga4MeasurementId: string;
   /** `GTM-…`, or empty where the tenant has no Tag Manager container. */
@@ -149,3 +156,49 @@ export const gtagInitScript = ({
     `gtag('config',${configArguments});`,
   ].join("");
 };
+
+/** Every signal of Google Consent Mode v2 set to one answer. */
+export const consentSignals = (answer: "denied" | "granted") => ({
+  ad_personalization: answer,
+  ad_storage: answer,
+  ad_user_data: answer,
+  analytics_storage: answer,
+});
+
+/**
+ * How long the tag holds its first hit for an `update`, in milliseconds. The
+ * stored answer follows the default in the same script, so this only covers a
+ * consent tool inside the container that answers once it has loaded.
+ */
+const CONSENT_WAIT_FOR_UPDATE_MS = 500;
+
+/**
+ * The Consent Mode v2 defaults, which have to reach the `dataLayer` before
+ * the tag does: every signal `denied`, for every reader, since the site has
+ * no region it could trust to tell readers apart.
+ *
+ * `grantCookieName` is the cookie a reader's answer on the site's own banner
+ * is kept in. A stored grant is sent as an `update` straight after the
+ * default, so a returning reader's first hit is measured as granted. A browser
+ * sending Global Privacy Control is never treated as having granted, whatever
+ * the cookie says.
+ */
+export const gtagConsentDefaultScript = (
+  grantCookieName: string | null
+): string =>
+  [
+    "window.dataLayer=window.dataLayer||[];",
+    "function gtag(){dataLayer.push(arguments);}",
+    `gtag('consent','default',${scriptLiteral({
+      ...consentSignals("denied"),
+      wait_for_update: CONSENT_WAIT_FOR_UPDATE_MS,
+    })});`,
+    ...(grantCookieName
+      ? [
+          `if(navigator.globalPrivacyControl!==true&&document.cookie.split('; ').includes(${scriptLiteral(
+            `${grantCookieName}=granted`
+          )}))`,
+          `gtag('consent','update',${scriptLiteral(consentSignals("granted"))});`,
+        ]
+      : []),
+  ].join("");

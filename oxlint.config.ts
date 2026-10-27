@@ -95,13 +95,16 @@ export default defineConfig({
     },
     {
       /**
-       * `LOCALE_LANG_SCRIPT` ships as JavaScript source, so the only test that
-       * proves anything runs it: asserting on the string would still pass on a
-       * script the browser cannot execute. The "dynamic" code is a constant of
-       * the module under test, evaluated in a fresh context against a
-       * `document` stub.
+       * `LOCALE_LANG_SCRIPT` and the Google tag's consent defaults ship as
+       * JavaScript source, so the only test that proves anything runs it:
+       * asserting on the string would still pass on a script the browser
+       * cannot execute. The "dynamic" code is built by the module under test,
+       * evaluated in a fresh context against a `document` stub.
        */
-      files: ["packages/i18n/src/i18n.test.ts"],
+      files: [
+        "packages/i18n/src/i18n.test.ts",
+        "apps/web-storefront/lib/google-tag-scripts.test.ts",
+      ],
       rules: {
         "sonarjs/code-eval": "off",
       },

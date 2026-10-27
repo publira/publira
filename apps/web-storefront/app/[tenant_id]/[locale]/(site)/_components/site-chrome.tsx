@@ -16,9 +16,11 @@ import * as NotificationBell from "#components/notification-bell";
 import { NotificationBellErrorBoundary } from "#components/notification-bell-error-boundary";
 import { SignOutForm } from "#components/sign-out-form";
 import { TenantBrandLogo } from "#components/tenant-brand-logo";
+import { ANALYTICS_CONSENT_COOKIE_NAME } from "#lib/analytics-consent-cookie";
 import { getMyAccount } from "#lib/auth";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getMessages } from "#lib/get-messages";
+import { getTenantGoogleTag } from "#lib/google-tag";
 import { getLocale, tenantDefaultLocale } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
 import { logoutAction } from "#lib/logout-action";
@@ -34,6 +36,8 @@ import {
 import { getTenantId } from "#lib/tenant-id";
 import { resolveTenantLogoVariant } from "#lib/tenant-logo";
 
+import { AnalyticsConsentBanner } from "./analytics-consent-banner";
+import { AnalyticsConsentSettingsButton } from "./analytics-consent-settings-button";
 import { LegalPageAgreementGate } from "./legal-page-agreement-gate";
 import { PinnedAnnouncementBanner } from "./pinned-announcement-banner";
 
@@ -281,14 +285,16 @@ const HeaderActions = async () => {
 
 /**
  * The tenant's published pages, then the contact form. The form is the one
- * link every site has, so the row is never empty.
+ * link every site has, so the row is never empty. A tenant that asks before
+ * its Google tag runs ends the row with **Cookie settings**.
  */
 const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [defaultLocale, links, t] = await Promise.all([
+  const [defaultLocale, links, t, googleTag] = await Promise.all([
     getTenantLinkDefaultLocale(tenantId),
     listPublishedPageLinks(tenantId, locale),
     getMessagesFor(locale),
+    getTenantGoogleTag(tenantId),
   ]);
 
   return (
@@ -306,6 +312,13 @@ const TenantFooterLinks = async () => {
       >
         {t("storefront.nav.contact")}
       </SiteLayout.FooterLink>
+      {googleTag?.consentMode === "opt_in" ? (
+        <AnalyticsConsentSettingsButton
+          cookieName={ANALYTICS_CONSENT_COOKIE_NAME}
+        >
+          {t("storefront.analytics_consent.settings")}
+        </AnalyticsConsentSettingsButton>
+      ) : null}
     </SiteLayout.FooterLinks>
   );
 };
@@ -647,5 +660,12 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
         </Suspense>
       </SiteLayout.FooterContent>
     </SiteLayout.Footer>
+    {/*
+      Last in the chrome and sticky, so it sits at the foot of the window
+      without covering the footer. A tenant that does not ask draws nothing.
+    */}
+    <Suspense fallback={null}>
+      <AnalyticsConsentBanner />
+    </Suspense>
   </SiteLayout.Root>
 );

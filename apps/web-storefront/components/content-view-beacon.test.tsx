@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ContentViewTracker } from "./content-view-tracker";
+import { answerAnalyticsConsent } from "#lib/analytics-consent";
+
+import { ContentViewBeacon } from "./content-view-beacon";
+
+const COOKIE = "publira_web_storefront_analytics_consent";
 
 const sendBeacon = vi.fn((_url: string, _body: Blob) => true);
 
@@ -14,6 +18,9 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  sendBeacon.mockClear();
+  // oxlint-disable-next-line unicorn/no-document-cookie -- the test plays the browser the banner writes to
+  document.cookie = `${COOKIE}=; Max-Age=0; Path=/`;
 });
 
 const sentBody = async (call: number): Promise<unknown> => {
@@ -21,16 +28,16 @@ const sentBody = async (call: number): Promise<unknown> => {
   return JSON.parse(await blob.text());
 };
 
-describe("ContentViewTracker", () => {
+describe("ContentViewBeacon", () => {
   it("reports the open page once, however often it re-renders", async () => {
     const { rerender } = render(
-      <ContentViewTracker
+      <ContentViewBeacon
         kind="episode"
         id="e0000000-0000-4000-8000-000000000001"
       />
     );
     rerender(
-      <ContentViewTracker
+      <ContentViewBeacon
         kind="episode"
         id="e0000000-0000-4000-8000-000000000001"
       />
@@ -47,13 +54,13 @@ describe("ContentViewTracker", () => {
 
   it("reports again once the reader moves to another episode", async () => {
     const { rerender } = render(
-      <ContentViewTracker
+      <ContentViewBeacon
         kind="episode"
         id="e0000000-0000-4000-8000-000000000001"
       />
     );
     rerender(
-      <ContentViewTracker
+      <ContentViewBeacon
         kind="episode"
         id="e0000000-0000-4000-8000-000000000002"
       />
@@ -71,11 +78,54 @@ describe("ContentViewTracker", () => {
 
     expect(() =>
       render(
-        <ContentViewTracker
+        <ContentViewBeacon
           kind="series"
           id="5e000000-0000-4000-8000-000000000001"
         />
       )
     ).not.toThrow();
+  });
+
+  it("waits for the reader to agree where the site asks first, then reports once", () => {
+    render(
+      <ContentViewBeacon
+        consentCookieName={COOKIE}
+        id="5e000000-0000-4000-8000-000000000001"
+        kind="series"
+      />
+    );
+    expect(sendBeacon).not.toHaveBeenCalled();
+
+    act(() => {
+      answerAnalyticsConsent(COOKIE, "granted");
+    });
+
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
+  });
+
+  it("never reports for a reader who declined", () => {
+    answerAnalyticsConsent(COOKIE, "denied");
+    render(
+      <ContentViewBeacon
+        consentCookieName={COOKIE}
+        id="5e000000-0000-4000-8000-000000000001"
+        kind="series"
+      />
+    );
+
+    expect(sendBeacon).not.toHaveBeenCalled();
+  });
+
+  it("reports at once for a reader who agreed before", () => {
+    answerAnalyticsConsent(COOKIE, "granted");
+    render(
+      <ContentViewBeacon
+        consentCookieName={COOKIE}
+        id="5e000000-0000-4000-8000-000000000001"
+        kind="series"
+      />
+    );
+
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
   });
 });

@@ -20,3 +20,9 @@ export const STOREFRONT_GOOGLE_TAG_READER = {
   password: "memberpass",
   publicId: "MsrdMMBRAAA1",
 } as const;
+
+/** Published series of that tenant, the page whose view the site counts. */
+export const STOREFRONT_GOOGLE_TAG_SERIES = {
+  publicId: "MsrdSERSAAA1",
+  title: "Measured Series",
+} as const;

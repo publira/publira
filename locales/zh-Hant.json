@@ -4591,6 +4591,14 @@
     }
   },
   "storefront": {
+    "analytics_consent": {
+      "accept": "同意",
+      "change": "你可以隨時透過頁面底部的「Cookie設定」變更你的選擇。撤回同意後，Google已儲存的Cookie仍會保留至到期為止。",
+      "decline": "不同意",
+      "description": "本網站會統計作品的瀏覽次數，Google也會為網站營運方衡量網站的使用情況。",
+      "settings": "Cookie設定",
+      "title": "關於網站的使用統計"
+    },
     "announcements": {
       "back_to_list": "返回公告列表",
       "banner_dismiss": "關閉該公告",

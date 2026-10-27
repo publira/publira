@@ -4591,6 +4591,14 @@
     }
   },
   "storefront": {
+    "analytics_consent": {
+      "accept": "同意する",
+      "change": "回答はページ下部の「Cookie設定」からいつでも変更できます。同意を取り消しても、Googleがすでに保存したCookieは有効期限まで残ります。",
+      "decline": "同意しない",
+      "description": "このサイトは作品の閲覧数を数えています。また、サイト運営者のためにGoogleがサイトの利用状況を計測します。",
+      "settings": "Cookie設定",
+      "title": "閲覧の計測について"
+    },
     "announcements": {
       "back_to_list": "お知らせ一覧へ戻る",
       "banner_dismiss": "このお知らせを閉じる",

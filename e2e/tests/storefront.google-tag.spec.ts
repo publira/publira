@@ -11,6 +11,7 @@ import { revalidateStorefrontTags } from "../src/revalidate";
 import {
   STOREFRONT_GOOGLE_TAG_READER,
   STOREFRONT_GOOGLE_TAG_SCENARIO,
+  STOREFRONT_GOOGLE_TAG_SERIES,
   STOREFRONT_GOOGLE_TAG_TENANT,
 } from "../src/scenarios/storefront-google-tag";
 import { signInAsMember } from "../src/storefront";
@@ -37,6 +38,8 @@ const siteUrl = (pathname: string): string =>
 const MEASUREMENT_ID = "G-E2EMEASURE1";
 const CONTAINER_ID = "GTM-E2EMSRD";
 const SERVER_CONTAINER_URL = "https://sgtm.example.com";
+/** The page whose view the site counts. */
+const SERIES_PATH = `/series/${STOREFRONT_GOOGLE_TAG_SERIES.publicId}`;
 /** A gateway path in the shape the server generates. */
 const GATEWAY_PATH = "_measuregatewayaa";
 
@@ -112,6 +115,8 @@ const standInTagOrigins = async (context: BrowserContext): Promise<void> => {
 
 type ServingMode = "gateway" | "google" | "server_container";
 
+type ConsentMode = "external" | "not_required" | "opt_in";
+
 /** The tag the storefront holds the tenant's Google tag read under. */
 const analyticsSettingsTag = `tenant:${STOREFRONT_GOOGLE_TAG_TENANT.id}:analytics-settings`;
 
@@ -119,10 +124,12 @@ const sqlLiteral = (value: string | undefined): string =>
   value ? quoteSqlLiteral(value) : "NULL";
 
 const storeGoogleTag = async ({
+  consentMode = "not_required",
   ga4MeasurementId,
   gtmContainerId,
   mode,
 }: {
+  consentMode?: ConsentMode;
   ga4MeasurementId?: string;
   gtmContainerId?: string;
   mode: ServingMode;
@@ -130,7 +137,7 @@ const storeGoogleTag = async ({
   runSql(`
     INSERT INTO tenant_analytics_settings (
       tenant_id, ga4_measurement_id, gtm_container_id, serving_mode,
-      server_container_url, gateway_path
+      server_container_url, gateway_path, consent_mode
     )
     VALUES (
       '${STOREFRONT_GOOGLE_TAG_TENANT.id}',
@@ -138,14 +145,16 @@ const storeGoogleTag = async ({
       ${sqlLiteral(gtmContainerId)},
       '${mode}',
       ${sqlLiteral(mode === "server_container" ? SERVER_CONTAINER_URL : undefined)},
-      ${sqlLiteral(mode === "gateway" ? GATEWAY_PATH : undefined)}
+      ${sqlLiteral(mode === "gateway" ? GATEWAY_PATH : undefined)},
+      '${consentMode}'
     )
     ON CONFLICT (tenant_id) DO UPDATE
     SET ga4_measurement_id = EXCLUDED.ga4_measurement_id,
         gtm_container_id = EXCLUDED.gtm_container_id,
         serving_mode = EXCLUDED.serving_mode,
         server_container_url = EXCLUDED.server_container_url,
-        gateway_path = EXCLUDED.gateway_path;
+        gateway_path = EXCLUDED.gateway_path,
+        consent_mode = EXCLUDED.consent_mode;
   `);
   await revalidateStorefrontTags([analyticsSettingsTag]);
 };
@@ -207,6 +216,80 @@ const pageViews = (page: Page): Promise<string[]> =>
 
 const hasDataLayer = (page: Page): Promise<boolean> =>
   page.evaluate(() => "dataLayer" in window);
+
+/**
+ * The `consent` commands on the page's `dataLayer`, in the order given. A
+ * command is an `arguments` object, which spreads; the container's start is
+ * an event object beside them, which does not.
+ */
+const consentCommands = (page: Page): Promise<unknown[][]> =>
+  page.evaluate(() =>
+    (
+      (
+        window as unknown as {
+          dataLayer?: (Iterable<unknown> & Record<number, unknown>)[];
+        }
+      ).dataLayer ?? []
+    )
+      .filter((entry) => entry[0] === "consent")
+      .map((entry) => [...entry])
+  );
+
+const CONSENT_COOKIE = "publira_web_storefront_analytics_consent";
+const VIEW_ACTOR_COOKIE = "publira_web_storefront_view_actor";
+
+const signals = (answer: "denied" | "granted") => ({
+  ad_personalization: answer,
+  ad_storage: answer,
+  ad_user_data: answer,
+  analytics_storage: answer,
+});
+
+const CONSENT_DEFAULT = [
+  "consent",
+  "default",
+  { ...signals("denied"), wait_for_update: 500 },
+];
+
+const consentBanner = (page: Page) =>
+  page.getByRole("region", { name: "How this site is measured" });
+
+const cookieSettings = (page: Page) =>
+  page.getByRole("button", { exact: true, name: "Cookie settings" });
+
+/** The view beacons the page sends, one entry per request. */
+const recordViewBeacons = (page: Page): string[] => {
+  const sent: string[] = [];
+  page.on("request", (request: Request) => {
+    if (
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === "/api/v1/views"
+    ) {
+      sent.push(request.postData() ?? "");
+    }
+  });
+  return sent;
+};
+
+const storedCookie = async (
+  context: BrowserContext,
+  name: string
+): Promise<string | undefined> => {
+  const cookies = await context.cookies(siteUrl("/"));
+  return cookies.find((cookie) => cookie.name === name)?.value;
+};
+
+/**
+ * Opens `pathname` until the page shows the consent banner, which only a
+ * tenant that asks first draws: the first load after a change may still
+ * render the previous settings, as {@link openUntilRequested} describes.
+ */
+const openUntilAsked = async (page: Page, pathname: string): Promise<void> => {
+  await expect(async () => {
+    await page.goto(siteUrl(pathname));
+    await expect(consentBanner(page)).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 30_000 });
+};
 
 const headerLink = (page: Page, name: string) =>
   page.getByRole("navigation").getByRole("link", { exact: true, name }).first();
@@ -338,44 +421,343 @@ test.describe("the tenant's Google tag on its site", () => {
     ).toHaveLength(1);
   });
 
-  test("the pages that take credentials load no tag", async ({ page }) => {
+  for (const consentMode of ["not_required", "external", "opt_in"] as const) {
+    test(`the pages that take credentials load no tag and ask nothing (${consentMode})`, async ({
+      page,
+    }) => {
+      await storeGoogleTag({
+        consentMode,
+        ga4MeasurementId: MEASUREMENT_ID,
+        gtmContainerId: CONTAINER_ID,
+        mode: "google",
+      });
+      // The catalogue loads the tag, or asks for consent first, so the pages
+      // below do neither because they are left out, not because the settings
+      // have yet to reach the site.
+      await (consentMode === "opt_in"
+        ? openUntilAsked(page, "/")
+        : openUntilRequested(page, "/", gtmLoader(GOOGLE_TAG_ORIGIN)));
+
+      const requested = recordTagRequests(page);
+      const expectNothing = async (pathname: string) => {
+        await page.goto(siteUrl(pathname));
+        await settle(page);
+        expect(requested, `${pathname} asks for no tag`).toEqual([]);
+        expect(await hasDataLayer(page), `${pathname} starts no tag`).toBe(
+          false
+        );
+        await expect(
+          consentBanner(page),
+          `${pathname} shows no banner`
+        ).toHaveCount(0);
+        await expect(cookieSettings(page)).toHaveCount(0);
+      };
+
+      await expectNothing("/login");
+      await expectNothing("/signup");
+      await expectNothing("/reset-password");
+      await expectNothing("/resend-verification");
+
+      await signInAsMember(
+        page,
+        STOREFRONT_GOOGLE_TAG_READER,
+        "/settings/security",
+        WEB_STOREFRONT_GOOGLE_TAG_BASE_URL
+      );
+      await expect(page).toHaveURL(siteUrl("/settings/security"));
+      await settle(page);
+      expect(
+        requested,
+        "signing in and landing on settings asks for no tag"
+      ).toEqual([]);
+
+      await expectNothing("/settings");
+      await expectNothing("/settings/security");
+    });
+  }
+
+  test("a tenant that does not ask adds nothing of consent to the page", async ({
+    page,
+  }) => {
     await storeGoogleTag({
       ga4MeasurementId: MEASUREMENT_ID,
       gtmContainerId: CONTAINER_ID,
       mode: "google",
     });
-    // The catalogue loads the tag, so the pages below load none because they
-    // are left out, not because the settings have yet to reach the site.
     await openUntilRequested(page, "/", gtmLoader(GOOGLE_TAG_ORIGIN));
 
-    const requested = recordTagRequests(page);
-    const expectNoTag = async (pathname: string) => {
-      await page.goto(siteUrl(pathname));
-      await settle(page);
-      expect(requested, `${pathname} asks for no tag`).toEqual([]);
-      expect(await hasDataLayer(page), `${pathname} starts no tag`).toBe(false);
-    };
+    const response = await page.goto(siteUrl(SERIES_PATH));
+    const html = (await response?.text()) ?? "";
+    await settle(page);
 
-    await expectNoTag("/login");
-    await expectNoTag("/signup");
-    await expectNoTag("/reset-password");
-    await expectNoTag("/resend-verification");
+    expect(html).not.toContain("publira-gtag-consent");
+    expect(html).not.toContain("gtag('consent'");
+    expect(await consentCommands(page)).toEqual([]);
+    await expect(consentBanner(page)).toHaveCount(0);
+    await expect(cookieSettings(page)).toHaveCount(0);
+  });
+});
+
+test.describe("a tenant that asks readers first", () => {
+  test.beforeAll(async ({ browser }) => {
+    await resetGoogleTag();
+    await storeGoogleTag({
+      consentMode: "opt_in",
+      ga4MeasurementId: MEASUREMENT_ID,
+      gtmContainerId: CONTAINER_ID,
+      mode: "google",
+    });
+    // Waits in a browser of its own: a load that still renders the previous
+    // settings runs the tag and counts the view, which would leave its
+    // cookies behind in the browser a test then looks into.
+    const context = await browser.newContext();
+    await standInTagOrigins(context);
+    await openUntilAsked(await context.newPage(), "/");
+    await context.close();
+  });
+
+  test.afterAll(async () => {
+    await resetGoogleTag();
+  });
+
+  test.beforeEach(async ({ context }) => {
+    await standInTagOrigins(context);
+  });
+
+  test("a first visit asks, and nothing is requested, counted, or stored", async ({
+    context,
+    page,
+  }) => {
+    const requested = recordTagRequests(page);
+    const beacons = recordViewBeacons(page);
+
+    const response = await page.goto(siteUrl(SERIES_PATH));
+    const html = (await response?.text()) ?? "";
+    await expect(consentBanner(page)).toBeVisible();
+    await expect(
+      consentBanner(page).getByRole("button", { name: "Accept" })
+    ).toBeVisible();
+    await expect(
+      consentBanner(page).getByRole("button", { name: "Decline" })
+    ).toBeVisible();
+    await settle(page);
+
+    // The loader URLs travel to the page as data, but no element asks the
+    // browser to fetch one ahead of the answer.
+    expect(html).not.toMatch(/<link[^>]+googletagmanager/u);
+    expect(requested).toEqual([]);
+    expect(beacons).toEqual([]);
+    expect(await storedCookie(context, VIEW_ACTOR_COOKIE)).toBeUndefined();
+    expect(await storedCookie(context, CONSENT_COOKIE)).toBeUndefined();
+    expect(await consentCommands(page)).toEqual([CONSENT_DEFAULT]);
+  });
+
+  test("accepting loads the tag, grants every signal, and counts the open page once", async ({
+    context,
+    page,
+  }) => {
+    const beacons = recordViewBeacons(page);
+    await page.goto(siteUrl(SERIES_PATH));
+
+    const loaders = Promise.all([
+      page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN)),
+      page.waitForRequest(gtagLoader(GOOGLE_TAG_ORIGIN)),
+    ]);
+    await consentBanner(page).getByRole("button", { name: "Accept" }).click();
+    await loaders;
+    await expect(consentBanner(page)).toHaveCount(0);
+    await settle(page);
+
+    expect(await consentCommands(page)).toEqual([
+      CONSENT_DEFAULT,
+      ["consent", "update", signals("granted")],
+    ]);
+    expect(beacons).toHaveLength(1);
+    expect(await storedCookie(context, CONSENT_COOKIE)).toBe("granted");
+    expect(await storedCookie(context, VIEW_ACTOR_COOKIE)).toBeDefined();
+
+    const reloaded = page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN));
+    await page.reload();
+    await reloaded;
+    await settle(page);
+    await expect(consentBanner(page)).toHaveCount(0);
+    expect(await consentCommands(page)).toEqual([
+      CONSENT_DEFAULT,
+      ["consent", "update", signals("granted")],
+    ]);
+  });
+
+  test("declining requests nothing, counts nothing, and is remembered", async ({
+    context,
+    page,
+  }) => {
+    const requested = recordTagRequests(page);
+    const beacons = recordViewBeacons(page);
+    await page.goto(siteUrl(SERIES_PATH));
+
+    await consentBanner(page).getByRole("button", { name: "Decline" }).click();
+    await expect(consentBanner(page)).toHaveCount(0);
+    await settle(page);
+
+    expect(requested).toEqual([]);
+    expect(beacons).toEqual([]);
+    expect(await consentCommands(page)).toEqual([CONSENT_DEFAULT]);
+    expect(await storedCookie(context, CONSENT_COOKIE)).toBe("denied");
+    expect(await storedCookie(context, VIEW_ACTOR_COOKIE)).toBeUndefined();
+
+    await page.reload();
+    await settle(page);
+    await expect(consentBanner(page)).toHaveCount(0);
+    expect(requested).toEqual([]);
+    expect(beacons).toEqual([]);
+  });
+
+  test("a browser with Global Privacy Control is not asked, and nothing is requested or stored", async ({
+    context,
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, "globalPrivacyControl", {
+        get: () => true,
+      });
+    });
+    const requested = recordTagRequests(page);
+    const beacons = recordViewBeacons(page);
+
+    await page.goto(siteUrl(SERIES_PATH));
+    await expect(
+      page.getByRole("heading", { name: STOREFRONT_GOOGLE_TAG_SERIES.title })
+    ).toBeVisible();
+    await settle(page);
+
+    await expect(consentBanner(page)).toHaveCount(0);
+    await expect(cookieSettings(page)).toHaveCount(0);
+    expect(requested).toEqual([]);
+    expect(beacons).toEqual([]);
+    expect(await storedCookie(context, CONSENT_COOKIE)).toBeUndefined();
+    expect(await storedCookie(context, VIEW_ACTOR_COOKIE)).toBeUndefined();
+  });
+
+  test("Cookie settings brings the banner back, and a changed answer is sent", async ({
+    page,
+  }) => {
+    await page.goto(siteUrl(SERIES_PATH));
+    await consentBanner(page).getByRole("button", { name: "Decline" }).click();
+    await expect(consentBanner(page)).toHaveCount(0);
+
+    await cookieSettings(page).click();
+    await expect(consentBanner(page)).toBeVisible();
+    const loaded = page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN));
+    await consentBanner(page).getByRole("button", { name: "Accept" }).click();
+    await loaded;
+    expect(await consentCommands(page)).toEqual([
+      CONSENT_DEFAULT,
+      ["consent", "update", signals("granted")],
+    ]);
+
+    await cookieSettings(page).click();
+    await consentBanner(page).getByRole("button", { name: "Decline" }).click();
+    await expect(consentBanner(page)).toHaveCount(0);
+    expect(await consentCommands(page)).toEqual([
+      CONSENT_DEFAULT,
+      ["consent", "update", signals("granted")],
+      ["consent", "update", signals("denied")],
+    ]);
+  });
+
+  test("a withdrawal in one tab reaches the tag already running in another", async ({
+    context,
+    page,
+  }) => {
+    await page.goto(siteUrl(SERIES_PATH));
+    const loaded = page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN));
+    await consentBanner(page).getByRole("button", { name: "Accept" }).click();
+    await loaded;
+
+    const other = await context.newPage();
+    const otherLoaded = other.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN));
+    await other.goto(siteUrl(SERIES_PATH));
+    await otherLoaded;
+
+    await cookieSettings(page).click();
+    await consentBanner(page).getByRole("button", { name: "Decline" }).click();
+
+    await expect
+      .poll(() => consentCommands(other))
+      .toEqual([
+        CONSENT_DEFAULT,
+        ["consent", "update", signals("granted")],
+        ["consent", "update", signals("denied")],
+      ]);
+  });
+
+  test("a signed-in reader's view is counted under their account without an answer", async ({
+    page,
+  }) => {
+    const beacons = recordViewBeacons(page);
+    const counted = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/v1/views"
+    );
 
     await signInAsMember(
       page,
       STOREFRONT_GOOGLE_TAG_READER,
-      "/settings/security",
+      SERIES_PATH,
       WEB_STOREFRONT_GOOGLE_TAG_BASE_URL
     );
-    await expect(page).toHaveURL(siteUrl("/settings/security"));
-    await settle(page);
-    expect(
-      requested,
-      "signing in and landing on settings asks for no tag"
-    ).toEqual([]);
+    await counted;
 
-    await expectNoTag("/settings");
-    await expectNoTag("/settings/security");
+    await expect(consentBanner(page)).toBeVisible();
+    expect(beacons).toHaveLength(1);
+  });
+});
+
+test.describe("a tenant whose own consent tool asks", () => {
+  test.beforeAll(async () => {
+    await resetGoogleTag();
+    await storeGoogleTag({
+      consentMode: "external",
+      ga4MeasurementId: MEASUREMENT_ID,
+      gtmContainerId: CONTAINER_ID,
+      mode: "google",
+    });
+  });
+
+  test.afterAll(async () => {
+    await resetGoogleTag();
+  });
+
+  test.beforeEach(async ({ context }) => {
+    await standInTagOrigins(context);
+  });
+
+  test("the tag loads with every signal denied first, and the site shows no banner", async ({
+    page,
+  }) => {
+    await expect(async () => {
+      const requested = page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN), {
+        timeout: 5000,
+      });
+      await page.goto(siteUrl(SERIES_PATH));
+      await requested;
+      expect(await consentCommands(page)).toEqual([CONSENT_DEFAULT]);
+    }).toPass({ timeout: 30_000 });
+    await settle(page);
+
+    // A command is an `arguments` object and the container's start an event
+    // object, so each is named by what it is.
+    const order = await page.evaluate(() =>
+      (
+        window as unknown as { dataLayer: Record<string, unknown>[] }
+      ).dataLayer.map((entry) =>
+        entry[0] === "consent" ? "consent" : entry.event
+      )
+    );
+    expect(order.indexOf("consent")).toBeLessThan(order.indexOf("gtm.js"));
+    await expect(consentBanner(page)).toHaveCount(0);
+    await expect(cookieSettings(page)).toHaveCount(0);
   });
 });
 

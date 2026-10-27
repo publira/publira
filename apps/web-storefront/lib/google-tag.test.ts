@@ -1,5 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { GoogleTagServingMode } from "@publira/api-client/public/types";
+import {
+  GoogleTagConsentMode,
+  GoogleTagServingMode,
+} from "@publira/api-client/public/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockCacheLife, mockCacheTag, mockGetTenantAnalyticsSettings } =
@@ -37,6 +40,7 @@ describe("getTenantGoogleTag", () => {
   it("answers the tenant's IDs and serving mode", async () => {
     mockGetTenantAnalyticsSettings.mockResolvedValueOnce({
       googleTag: {
+        consentMode: GoogleTagConsentMode.NOT_REQUIRED,
         ga4MeasurementId: "G-ABC123DEF4",
         gatewayPath: "",
         gtmContainerId: "GTM-ABC1234",
@@ -46,6 +50,7 @@ describe("getTenantGoogleTag", () => {
     });
 
     await expect(getTenantGoogleTag(" TENANT001 ")).resolves.toEqual({
+      consentMode: "not_required",
       ga4MeasurementId: "G-ABC123DEF4",
       gtmContainerId: "GTM-ABC1234",
       serving: {
@@ -77,6 +82,7 @@ describe("getTenantGoogleTag", () => {
   it("answers no tag for a mode this build does not know", async () => {
     mockGetTenantAnalyticsSettings.mockResolvedValueOnce({
       googleTag: {
+        consentMode: GoogleTagConsentMode.NOT_REQUIRED,
         ga4MeasurementId: "G-ABC123DEF4",
         gatewayPath: "",
         gtmContainerId: "",
@@ -88,9 +94,50 @@ describe("getTenantGoogleTag", () => {
     await expect(getTenantGoogleTag("TENANT001")).resolves.toBeNull();
   });
 
+  it.each([
+    [GoogleTagConsentMode.UNSPECIFIED, "not_required"],
+    [GoogleTagConsentMode.NOT_REQUIRED, "not_required"],
+    [GoogleTagConsentMode.OPT_IN, "opt_in"],
+    [GoogleTagConsentMode.EXTERNAL, "external"],
+  ] as const)(
+    "answers consent mode %s as %s, the unset one being what a server from before the setting sends",
+    async (consentMode, expected) => {
+      mockGetTenantAnalyticsSettings.mockResolvedValueOnce({
+        googleTag: {
+          consentMode,
+          ga4MeasurementId: "",
+          gatewayPath: "",
+          gtmContainerId: "GTM-ABC1234",
+          serverContainerUrl: "",
+          servingMode: GoogleTagServingMode.GOOGLE,
+        },
+      });
+
+      await expect(getTenantGoogleTag("TENANT001")).resolves.toMatchObject({
+        consentMode: expected,
+      });
+    }
+  );
+
+  it("answers no tag for a consent mode this build does not know", async () => {
+    mockGetTenantAnalyticsSettings.mockResolvedValueOnce({
+      googleTag: {
+        consentMode: 99 as GoogleTagConsentMode,
+        ga4MeasurementId: "",
+        gatewayPath: "",
+        gtmContainerId: "GTM-ABC1234",
+        serverContainerUrl: "",
+        servingMode: GoogleTagServingMode.GOOGLE,
+      },
+    });
+
+    await expect(getTenantGoogleTag("TENANT001")).resolves.toBeNull();
+  });
+
   it("answers no tag for a gateway without its path", async () => {
     mockGetTenantAnalyticsSettings.mockResolvedValueOnce({
       googleTag: {
+        consentMode: GoogleTagConsentMode.NOT_REQUIRED,
         ga4MeasurementId: "",
         gatewayPath: "",
         gtmContainerId: "GTM-ABC1234",

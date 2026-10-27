@@ -110,9 +110,13 @@ Google's [setup guide](https://developers.google.com/tag-platform/tag-manager/ga
 
 ### Ask readers first
 
+A reader's first visit shows a banner at the foot of the window. It says that the site counts views and that Google measures the site for the publisher, and offers **Accept** and **Decline** side by side, neither more prominent than the other. The rest of the page stays usable while it is open, and nothing from Google is loaded until the reader chooses **Accept**.
+
+The answer is kept in the reader's browser for six months, under the cookie [Pages](./3-setup/3-pages.md#what-the-site-stores-in-a-readers-browser) lists, and the banner is not shown again until it expires. **Cookie settings** at the end of the footer links brings the banner back, so a reader can change their answer. Withdrawing a grant tells Google to store nothing more, but the cookies Google's tag already set stay until they expire, which the banner tells the reader. A browser that sends Global Privacy Control is treated as having declined: it is shown neither the banner nor **Cookie settings**, and nothing is stored for it.
+
 The banner links to the page chosen as the privacy policy under [Settings › Terms and privacy policy](./3-setup/1-settings.md#terms-and-privacy-policy). While no published page is chosen there, the form warns that the banner has no page to link to when **Ask readers first** is chosen. The warning goes away once a published page is chosen, and the setting can be saved either way.
 
-Until a signed-out reader agrees, the site also does not count their views, which it otherwise does with the identifier [Pages](./3-setup/3-pages.md#what-the-site-stores-in-a-readers-browser) lists for signed-out readers. Statistics and rankings on a site that asks first therefore count fewer readers than the same site would without asking.
+Until a signed-out reader agrees, the site also does not count their views, which it otherwise does with the identifier [Pages](./3-setup/3-pages.md#what-the-site-stores-in-a-readers-browser) lists for signed-out readers. A signed-in reader's views are counted under their account whatever they answer, since that leaves nothing new in their browser. Statistics and rankings on a site that asks first therefore count fewer readers than the same site would without asking.
 
 ### Handled by my own consent tool in Tag Manager
 
@@ -130,7 +134,7 @@ The site loads the tag on every page except the ones where a reader gives it a p
 
 Payment is taken on the payment provider's checkout page, which loads none of the site's tags. The reader comes back from it to a page of the site that loads the tag as usual, so a purchase can be measured on the page they return to.
 
-One of these pages opened directly, or reloaded, loads no tag. A tag already running when a reader moves to one of these pages from another page of the site keeps running, since the site does not reload the page in between.
+None of them shows the consent banner either. One of these pages opened directly, or reloaded, loads no tag. A tag already running when a reader moves to one of these pages from another page of the site keeps running, since the site does not reload the page in between.
 
 ## What the privacy policy has to say
 

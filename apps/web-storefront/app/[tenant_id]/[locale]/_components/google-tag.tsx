@@ -1,3 +1,4 @@
+import { ANALYTICS_CONSENT_COOKIE_NAME } from "#lib/analytics-consent-cookie";
 import { getTenantGoogleTag } from "#lib/google-tag";
 import { googleTagScripts } from "#lib/google-tag-scripts";
 import { getTenantPublicOrigin } from "#lib/tenant";
@@ -22,5 +23,18 @@ export const GoogleTag = async () => {
       ? await getTenantPublicOrigin(tenantId)
       : null;
   const scripts = googleTagScripts(settings, origin);
-  return scripts ? <GoogleTagLoader {...scripts} /> : null;
+  if (!scripts) {
+    return null;
+  }
+  return settings.consentMode === "not_required" ? (
+    <GoogleTagLoader {...scripts} />
+  ) : (
+    <GoogleTagLoader
+      {...scripts}
+      consent={{
+        cookieName: ANALYTICS_CONSENT_COOKIE_NAME,
+        mode: settings.consentMode,
+      }}
+    />
+  );
 };
