@@ -1,0 +1,2 @@
+ALTER TABLE ONLY tenant_analytics_settings
+    DROP CONSTRAINT tenant_analytics_settings_external_container_required_check;
