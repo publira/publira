@@ -78,6 +78,84 @@ func (q *Queries) GetPublishedEpisodeForFollowerNotification(ctx context.Context
 	return i, err
 }
 
+const ListEpisodesByPublicationTimeForTenant = `-- name: ListEpisodesByPublicationTimeForTenant :many
+SELECT e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    s.public_id AS series_public_id,
+    str.title AS series_title,
+    el.status,
+    pt.published_at::timestamptz AS published_at
+FROM episode_listings el
+    CROSS JOIN LATERAL (
+        SELECT CASE
+                WHEN el.status = 'published' THEN el.published_at
+                ELSE el.scheduled_at
+            END AS published_at
+    ) pt
+    JOIN episodes e ON e.tenant_id = el.tenant_id
+        AND e.id = el.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
+WHERE el.tenant_id = $1
+    AND el.status IN ('scheduled', 'published')
+    AND pt.published_at >= $2::timestamptz
+    AND pt.published_at < $3::timestamptz
+ORDER BY pt.published_at ASC,
+    e.id ASC
+`
+
+type ListEpisodesByPublicationTimeForTenantParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	FromTime time.Time `json:"from_time"`
+	ToTime   time.Time `json:"to_time"`
+}
+
+type ListEpisodesByPublicationTimeForTenantRow struct {
+	EpisodePublicID string    `json:"episode_public_id"`
+	EpisodeTitle    string    `json:"episode_title"`
+	SeriesPublicID  string    `json:"series_public_id"`
+	SeriesTitle     string    `json:"series_title"`
+	Status          string    `json:"status"`
+	PublishedAt     time.Time `json:"published_at"`
+}
+
+// The console's publishing schedule: every episode of the tenant, across its
+// series, whose publication falls in [from_time, to_time). A scheduled episode
+// is placed at the time it is to be published, and a published one at the
+// time it was, which is later than the time it was scheduled for when the
+// worker reached it late.
+func (q *Queries) ListEpisodesByPublicationTimeForTenant(ctx context.Context, arg ListEpisodesByPublicationTimeForTenantParams) ([]ListEpisodesByPublicationTimeForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodesByPublicationTimeForTenant, arg.TenantID, arg.FromTime, arg.ToTime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesByPublicationTimeForTenantRow
+	for rows.Next() {
+		var i ListEpisodesByPublicationTimeForTenantRow
+		if err := rows.Scan(
+			&i.EpisodePublicID,
+			&i.EpisodeTitle,
+			&i.SeriesPublicID,
+			&i.SeriesTitle,
+			&i.Status,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListEpisodesReadyToPublish = `-- name: ListEpisodesReadyToPublish :many
 SELECT el.episode_id
 FROM episode_listings el

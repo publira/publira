@@ -159,3 +159,35 @@ UPDATE episode_listings
 SET announcement_owed = false
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND episode_id = ANY(sqlc.arg('episode_ids')::uuid[]);
+
+-- name: ListEpisodesByPublicationTimeForTenant :many
+-- The console's publishing schedule: every episode of the tenant, across its
+-- series, whose publication falls in [from_time, to_time). A scheduled episode
+-- is placed at the time it is to be published, and a published one at the
+-- time it was, which is later than the time it was scheduled for when the
+-- worker reached it late.
+SELECT e.public_id AS episode_public_id,
+    et.title AS episode_title,
+    s.public_id AS series_public_id,
+    str.title AS series_title,
+    el.status,
+    pt.published_at::timestamptz AS published_at
+FROM episode_listings el
+    CROSS JOIN LATERAL (
+        SELECT CASE
+                WHEN el.status = 'published' THEN el.published_at
+                ELSE el.scheduled_at
+            END AS published_at
+    ) pt
+    JOIN episodes e ON e.tenant_id = el.tenant_id
+        AND e.id = el.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+    JOIN series s ON s.tenant_id = e.tenant_id
+        AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
+WHERE el.tenant_id = sqlc.arg('tenant_id')
+    AND el.status IN ('scheduled', 'published')
+    AND pt.published_at >= sqlc.arg('from_time')::timestamptz
+    AND pt.published_at < sqlc.arg('to_time')::timestamptz
+ORDER BY pt.published_at ASC,
+    e.id ASC;

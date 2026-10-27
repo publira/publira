@@ -372,7 +372,7 @@ On the admin API the call runs as a service principal of the tenant the request 
 - `AdminCreatorRoleService/ListCreatorRoles`
 - `AdminCreatorService/ListCreators`
 - `AdminLabelService/ListLabels`, `GetLabel`
-- `AdminSeriesService/ListSeries`, `GetSeries`, `ListEpisodes`, `GetEpisode`, `ListEpisodeCredits`
+- `AdminSeriesService/ListSeries`, `GetSeries`, `ListEpisodes`, `ListEpisodesByPublicationDate`, `GetEpisode`, `ListEpisodeCredits`
 - `AdminDashboardService/GetDashboard`
 
 On the platform API it runs as a service principal with no operator and no platform role, and only on these RPCs; any other behind the platform session answers `permission_denied`:

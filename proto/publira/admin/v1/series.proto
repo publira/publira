@@ -313,6 +313,37 @@ message ListEpisodesResponse {
   string next_token = 3;
 }
 
+// Every episode of the tenant, of whichever series, that is published or
+// scheduled at an instant within a period of the tenant's days. A draft has no
+// such instant and is never answered. The period is read whole rather than
+// paged, which its bound keeps to a size one answer can carry.
+message ListEpisodesByPublicationDateRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
+  // zone, covering at most 62 days: any two months. A longer period is refused
+  // with invalid_argument.
+  string start_date = 2;
+  string end_date = 3;
+}
+
+// One episode within the period, with what a schedule shows of it.
+message EpisodePublication {
+  string series_public_id = 1;
+  string series_title = 2;
+  string episode_public_id = 3;
+  string episode_title = 4;
+  // "scheduled" or "published".
+  string status = 5;
+  // The RFC 3339 instant a published episode was published, or a scheduled
+  // one is to be.
+  string published_at = 6;
+}
+
+message ListEpisodesByPublicationDateResponse {
+  // Ordered by published_at, then by when each episode was created.
+  repeated EpisodePublication episodes = 1;
+}
+
 message GetEpisodeRequest {
   publira.types.v1.TenantContext tenant = 1;
   string series_public_id = 2;
@@ -1281,6 +1312,8 @@ service AdminSeriesService {
   rpc GetSeries(GetSeriesRequest) returns (GetSeriesResponse) {}
   // Minimum role: tenant_auditor.
   rpc ListEpisodes(ListEpisodesRequest) returns (ListEpisodesResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc ListEpisodesByPublicationDate(ListEpisodesByPublicationDateRequest) returns (ListEpisodesByPublicationDateResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetEpisode(GetEpisodeRequest) returns (GetEpisodeResponse) {}
   // Minimum role: tenant_editor.
