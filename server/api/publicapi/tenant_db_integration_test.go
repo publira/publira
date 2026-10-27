@@ -164,3 +164,59 @@ func TestDBGetTenantByDomainResolvesTheFirstMatchingHost(t *testing.T) {
 		t.Fatalf("GetTenantByDomain for an unknown host code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 }
+
+// The marks are read without a session, each tenant's own, and a tenant that
+// uploaded none answers none.
+func TestDBGetTenantAnswersItsOwnBrandMarks(t *testing.T) {
+	t.Parallel()
+
+	env := newPublicDBEnv(t)
+	first, second := env.seedTwoTenants(t)
+	admin := env.PG.SeedTenantAdmin(t, first.ID, "ADMINA000001", "admin@tenant-a.example.com", "Admin")
+	imageID := uuid.Must(uuid.NewV7())
+	acceptedAt := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
+	ctx := context.Background()
+	for _, statement := range []struct {
+		query string
+		args  []any
+	}{
+		{"INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)", []any{imageID, first.ID}},
+		{`INSERT INTO tenant_image_variants
+			(id, tenant_id, tenant_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+			VALUES ($1, $2, $3, 'original', 'line_share', 's3', 'tenants/brand-marks/line.png', 'image/png', 1, 64, 64)`,
+			[]any{uuid.Must(uuid.NewV7()), first.ID, imageID}},
+		{`INSERT INTO tenant_brand_marks (tenant_id, kind, image_id, terms_url, terms_accepted_by_user_id, terms_accepted_at)
+			VALUES ($1, 'line_share', $2, 'https://example.com/line-guidelines', $3, $4)`,
+			[]any{first.ID, imageID, admin.ID, acceptedAt}},
+	} {
+		if _, err := env.PG.DB.ExecContext(ctx, statement.query, statement.args...); err != nil {
+			t.Fatalf("seed brand mark: %v", err)
+		}
+	}
+
+	resp, err := env.tenantAPIClient().GetTenant(ctx, &publirav1.GetTenantRequest{Tenant: tenantContext(first)})
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if len(resp.BrandMarks) != 1 {
+		t.Fatalf("brand_marks = %v, want the LINE mark alone", resp.BrandMarks)
+	}
+	mark := resp.BrandMarks[0]
+	if mark.Kind != publirattypesv1.TenantBrandMarkKind_TENANT_BRAND_MARK_KIND_LINE_SHARE {
+		t.Fatalf("kind = %s, want LINE_SHARE", mark.Kind)
+	}
+	if mark.TermsUrl != "https://example.com/line-guidelines" || mark.TermsAcceptedAt != acceptedAt.Format(time.RFC3339) {
+		t.Fatalf("consent = %q at %q, want the stored URL and time", mark.TermsUrl, mark.TermsAcceptedAt)
+	}
+	if len(mark.ImageVariants) != 1 || mark.ImageVariants[0].VariantType != "line_share" {
+		t.Fatalf("image_variants = %v, want the line_share variant", mark.ImageVariants)
+	}
+
+	other, err := env.tenantAPIClient().GetTenant(ctx, &publirav1.GetTenantRequest{Tenant: tenantContext(second)})
+	if err != nil {
+		t.Fatalf("GetTenant (no marks): %v", err)
+	}
+	if len(other.BrandMarks) != 0 {
+		t.Fatalf("brand_marks of a tenant that uploaded none = %v, want none", other.BrandMarks)
+	}
+}

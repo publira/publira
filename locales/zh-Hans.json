@@ -477,6 +477,8 @@
         "tenant_icon_deleted": "删除了图标",
         "tenant_sign_in_image_uploaded": "上传了登录图片",
         "tenant_sign_in_image_deleted": "删除了登录图片",
+        "tenant_brand_mark_uploaded": "上传了品牌标志",
+        "tenant_brand_mark_deleted": "删除了品牌标志",
         "tenant_email_settings_updated": "更新了邮件设置",
         "tenant_smtp_test_email_sent": "测试了SMTP连接",
         "tenant_inbound_email_settings_updated": "更新了收件设置",

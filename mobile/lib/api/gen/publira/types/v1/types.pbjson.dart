@@ -81,6 +81,29 @@ final $typed_data.Uint8List readingDirectionDescriptor = $convert.base64Decode(
     'ofUkVBRElOR19ESVJFQ1RJT05fUklHSFRfVE9fTEVGVBABEiMKH1JFQURJTkdfRElSRUNUSU9O'
     'X0xFRlRfVE9fUklHSFQQAg==');
 
+@$core.Deprecated('Use tenantBrandMarkKindDescriptor instead')
+const TenantBrandMarkKind$json = {
+  '1': 'TenantBrandMarkKind',
+  '2': [
+    {'1': 'TENANT_BRAND_MARK_KIND_UNSPECIFIED', '2': 0},
+    {'1': 'TENANT_BRAND_MARK_KIND_X_SHARE', '2': 1},
+    {'1': 'TENANT_BRAND_MARK_KIND_LINE_SHARE', '2': 2},
+    {'1': 'TENANT_BRAND_MARK_KIND_APP_STORE_BADGE', '2': 3},
+    {'1': 'TENANT_BRAND_MARK_KIND_GOOGLE_PLAY_BADGE', '2': 4},
+    {'1': 'TENANT_BRAND_MARK_KIND_APPLE_SIGN_IN', '2': 5},
+    {'1': 'TENANT_BRAND_MARK_KIND_GOOGLE_SIGN_IN', '2': 6},
+  ],
+};
+
+/// Descriptor for `TenantBrandMarkKind`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List tenantBrandMarkKindDescriptor = $convert.base64Decode(
+    'ChNUZW5hbnRCcmFuZE1hcmtLaW5kEiYKIlRFTkFOVF9CUkFORF9NQVJLX0tJTkRfVU5TUEVDSU'
+    'ZJRUQQABIiCh5URU5BTlRfQlJBTkRfTUFSS19LSU5EX1hfU0hBUkUQARIlCiFURU5BTlRfQlJB'
+    'TkRfTUFSS19LSU5EX0xJTkVfU0hBUkUQAhIqCiZURU5BTlRfQlJBTkRfTUFSS19LSU5EX0FQUF'
+    '9TVE9SRV9CQURHRRADEiwKKFRFTkFOVF9CUkFORF9NQVJLX0tJTkRfR09PR0xFX1BMQVlfQkFE'
+    'R0UQBBIoCiRURU5BTlRfQlJBTkRfTUFSS19LSU5EX0FQUExFX1NJR05fSU4QBRIpCiVURU5BTl'
+    'RfQlJBTkRfTUFSS19LSU5EX0dPT0dMRV9TSUdOX0lOEAY=');
+
 @$core.Deprecated('Use commentModeDescriptor instead')
 const CommentMode$json = {
   '1': 'CommentMode',
@@ -1103,6 +1126,40 @@ final $typed_data.Uint8List tenantThemeDescriptor = $convert.base64Decode(
     'VwZGF0ZWRfYXQYJCABKAlSFHNpZ25JbkltYWdlVXBkYXRlZEF0ElkKFnNpZ25faW5faW1hZ2Vf'
     'dmFyaWFudHMYJSADKAsyJC5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudEltYWdlVmFyaWFudFITc2'
     'lnbkluSW1hZ2VWYXJpYW50c0oECAQQBUoECB0QHlIIbG9nb191cmxSCGljb25fdXJs');
+
+@$core.Deprecated('Use tenantBrandMarkDescriptor instead')
+const TenantBrandMark$json = {
+  '1': 'TenantBrandMark',
+  '2': [
+    {
+      '1': 'kind',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.TenantBrandMarkKind',
+      '10': 'kind'
+    },
+    {'1': 'image_updated_at', '3': 2, '4': 1, '5': 9, '10': 'imageUpdatedAt'},
+    {
+      '1': 'image_variants',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.TenantImageVariant',
+      '10': 'imageVariants'
+    },
+    {'1': 'terms_url', '3': 4, '4': 1, '5': 9, '10': 'termsUrl'},
+    {'1': 'terms_accepted_at', '3': 5, '4': 1, '5': 9, '10': 'termsAcceptedAt'},
+  ],
+};
+
+/// Descriptor for `TenantBrandMark`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tenantBrandMarkDescriptor = $convert.base64Decode(
+    'Cg9UZW5hbnRCcmFuZE1hcmsSOQoEa2luZBgBIAEoDjIlLnB1YmxpcmEudHlwZXMudjEuVGVuYW'
+    '50QnJhbmRNYXJrS2luZFIEa2luZBIoChBpbWFnZV91cGRhdGVkX2F0GAIgASgJUg5pbWFnZVVw'
+    'ZGF0ZWRBdBJLCg5pbWFnZV92YXJpYW50cxgDIAMoCzIkLnB1YmxpcmEudHlwZXMudjEuVGVuYW'
+    '50SW1hZ2VWYXJpYW50Ug1pbWFnZVZhcmlhbnRzEhsKCXRlcm1zX3VybBgEIAEoCVIIdGVybXNV'
+    'cmwSKgoRdGVybXNfYWNjZXB0ZWRfYXQYBSABKAlSD3Rlcm1zQWNjZXB0ZWRBdA==');
 
 @$core.Deprecated('Use pageDescriptor instead')
 const Page$json = {

@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// A brand mark as the console sees it: what the storefront is answered, and
+// the account that accepted the owner's terms.
+message AdminTenantBrandMark {
+  publira.types.v1.TenantBrandMark mark = 1;
+  // The account that accepted the terms. Both empty once the account is
+  // deleted.
+  string terms_accepted_by_user_public_id = 2;
+  string terms_accepted_by_user_name = 3;
+}
+
+message ListTenantBrandMarksRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every mark the tenant has uploaded, at most one per kind, so the list is
+// never paged. A kind is absent where the tenant has uploaded none.
+message ListTenantBrandMarksResponse {
+  repeated AdminTenantBrandMark brand_marks = 1;
+}
+
+// Stores the image as the tenant's mark of that kind, replacing the image and
+// the consent record of one already there, so there is no separate replace
+// RPC. The image is held to what a logo is — an image/* of at most 10 MiB,
+// stored as PNG within 1024 px on its longest edge — without the logo's floor
+// on the shortest edge, which a wide badge cannot clear; a refusal is
+// invalid_argument on image_data.
+//
+// terms_accepted false is failed_precondition with the ErrorInfo reason
+// BRAND_MARK_TERMS_NOT_ACCEPTED and stores nothing. A kind that is
+// TENANT_BRAND_MARK_KIND_UNSPECIFIED or unknown, and a terms_url that is not an
+// https URL, are invalid_argument on that field.
+message UploadTenantBrandMarkRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  publira.types.v1.TenantBrandMarkKind kind = 2;
+  bytes image_data = 3;
+  // Empty is detected from image_data.
+  string image_content_type = 4;
+  // The owner's guideline page the console showed beside the consent, which
+  // is recorded as the terms the mark was accepted under.
+  string terms_url = 5;
+  // Whether the administrator accepted the terms at terms_url.
+  bool terms_accepted = 6;
+}
+
+message UploadTenantBrandMarkResponse {
+  AdminTenantBrandMark brand_mark = 1;
+}
+
+// Deletes the mark of that kind together with its consent record. Deleting a
+// kind the tenant has not uploaded changes nothing and succeeds.
+message DeleteTenantBrandMarkRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  publira.types.v1.TenantBrandMarkKind kind = 2;
+}
+
+message DeleteTenantBrandMarkResponse {}
+
+service TenantBrandMarkService {
+  // Minimum role: tenant_auditor.
+  rpc ListTenantBrandMarks(ListTenantBrandMarksRequest) returns (ListTenantBrandMarksResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UploadTenantBrandMark(UploadTenantBrandMarkRequest) returns (UploadTenantBrandMarkResponse) {}
+  // Minimum role: tenant_admin.
+  rpc DeleteTenantBrandMark(DeleteTenantBrandMarkRequest) returns (DeleteTenantBrandMarkResponse) {}
+}

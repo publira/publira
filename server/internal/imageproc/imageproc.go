@@ -777,6 +777,25 @@ const (
 // background colors, so encoding it as JPEG would drop its transparency and
 // leave a rectangle around it.
 func BuildLogo(raw []byte, contentType string) (Variant, error) {
+	return buildLogoLike(raw, contentType, TenantVariantTypeLogo, "logo", LogoMinDimension)
+}
+
+// BuildBrandMark derives the single variant of a tenant's brand mark from an
+// upload, with variantType naming the mark's kind.
+//
+// A mark is held to everything a logo is but the floor on its shortest edge.
+// The owner decides the size of the master it hands out, and a wide badge cut
+// to the height it is drawn at leaves its short edge below LogoMinDimension.
+// The output is PNG for the logo's reason: a mark sits on backgrounds of the
+// tenant's colors.
+func BuildBrandMark(raw []byte, contentType string, variantType string) (Variant, error) {
+	return buildLogoLike(raw, contentType, variantType, "brand mark", 0)
+}
+
+// buildLogoLike validates and encodes an upload the way BuildLogo describes,
+// holding its shortest edge to minShortEdge, both on upload and after
+// scaling. name says which image an error is about.
+func buildLogoLike(raw []byte, contentType string, variantType string, name string, minShortEdge int) (Variant, error) {
 	if len(raw) == 0 {
 		return Variant{}, errors.New("image data is required")
 	}
@@ -805,8 +824,8 @@ func BuildLogo(raw []byte, contentType string) (Variant, error) {
 	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
 		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
 	}
-	if cfg.Width < LogoMinDimension || cfg.Height < LogoMinDimension {
-		return Variant{}, fmt.Errorf("logo image must be at least %dx%d", LogoMinDimension, LogoMinDimension)
+	if cfg.Width < minShortEdge || cfg.Height < minShortEdge {
+		return Variant{}, fmt.Errorf("%s image must be at least %dx%d", name, minShortEdge, minShortEdge)
 	}
 
 	src, _, err := image.Decode(bytes.NewReader(raw))
@@ -819,17 +838,17 @@ func BuildLogo(raw []byte, contentType string) (Variant, error) {
 	// something like 20000x40 within 1024 px crushes the short edge to a few
 	// pixels, storing an image no longer usable as a logo.
 	width, height := fitWithinLongestEdge(cfg.Width, cfg.Height, LogoMaxDimension)
-	if width < LogoMinDimension || height < LogoMinDimension {
-		return Variant{}, fmt.Errorf("logo image aspect ratio is too extreme: %dx%d after scaling is below %dpx", width, height, LogoMinDimension)
+	if width < minShortEdge || height < minShortEdge {
+		return Variant{}, fmt.Errorf("%s image aspect ratio is too extreme: %dx%d after scaling is below %dpx", name, width, height, minShortEdge)
 	}
 
 	encoded, err := encode(src, width, height, "image/png")
 	if err != nil {
-		return Variant{}, fmt.Errorf("encode logo: %w", err)
+		return Variant{}, fmt.Errorf("encode %s: %w", name, err)
 	}
 
 	return Variant{
-		VariantType: TenantVariantTypeLogo,
+		VariantType: variantType,
 		Label:       "original",
 		ContentType: "image/png",
 		Extension:   ".png",

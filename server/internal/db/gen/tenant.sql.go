@@ -675,9 +675,10 @@ WHERE id = $1
 FOR UPDATE
 `
 
-// Lock the tenant row so concurrent writes to the tenant theme serialize: the
-// branding image uploads and deletes (icon, logo, sign-in image), and the
-// theme saves, each of which reads the theme first to decide what it changes.
+// Lock the tenant row so concurrent writes to the tenant's branding
+// serialize: the branding image uploads and deletes (icon, logo, sign-in
+// image, brand marks), and the theme saves, each of which reads the image or
+// the theme in use first to decide what it changes.
 // That read must be a separate statement: READ COMMITTED freezes its snapshot
 // at statement start, so waiting for the lock in the same statement would
 // still see the pre-wait row.

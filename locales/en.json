@@ -477,6 +477,8 @@
         "tenant_icon_deleted": "Icon removed",
         "tenant_sign_in_image_uploaded": "Sign-in image uploaded",
         "tenant_sign_in_image_deleted": "Sign-in image removed",
+        "tenant_brand_mark_uploaded": "Brand mark uploaded",
+        "tenant_brand_mark_deleted": "Brand mark removed",
         "tenant_email_settings_updated": "Email settings updated",
         "tenant_smtp_test_email_sent": "SMTP connection tested",
         "tenant_inbound_email_settings_updated": "Inbound email settings updated",

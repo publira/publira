@@ -569,6 +569,16 @@ const brandingActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_sign_in_image_deleted" />
       );
     }
+    case "tenant_brand_mark_uploaded": {
+      return (
+        <Message message="admin.audit.actions.tenant_brand_mark_uploaded" />
+      );
+    }
+    case "tenant_brand_mark_deleted": {
+      return (
+        <Message message="admin.audit.actions.tenant_brand_mark_deleted" />
+      );
+    }
     default: {
       return null;
     }

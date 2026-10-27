@@ -1445,6 +1445,18 @@ type TenantAppleSignInConfig struct {
 	UpdatedAt           time.Time      `json:"updated_at"`
 }
 
+type TenantBrandMark struct {
+	TenantID              uuid.UUID      `json:"tenant_id"`
+	Kind                  string         `json:"kind"`
+	ImageID               uuid.NullUUID  `json:"image_id"`
+	TermsUrl              string         `json:"terms_url"`
+	TermsAcceptedByUserID uuid.NullUUID  `json:"terms_accepted_by_user_id"`
+	TermsAcceptedAt       time.Time      `json:"terms_accepted_at"`
+	Locale                sql.NullString `json:"locale"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+}
+
 type TenantCoinConfig struct {
 	TenantID       uuid.UUID     `json:"tenant_id"`
 	Enabled        bool          `json:"enabled"`

@@ -7,6 +7,7 @@ import { AdminAccessTicketService } from "../gen/publira/admin/v1/access_ticket_
 import { AdminAnnouncementService } from "../gen/publira/admin/v1/announcement_pb.js";
 import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
+import { TenantBrandMarkService } from "../gen/publira/admin/v1/brand_mark_pb.js";
 import { AdminCampaignBannerService } from "../gen/publira/admin/v1/campaign_banner_pb.js";
 import { AdminCoinService } from "../gen/publira/admin/v1/coin_pb.js";
 import { AdminCommentService } from "../gen/publira/admin/v1/comment_pb.js";
@@ -49,6 +50,7 @@ export interface AdminApiClient {
   accessTickets: Client<typeof AdminAccessTicketService>;
   audit: Client<typeof AdminAuditLogService>;
   auth: Client<typeof AdminAuthService>;
+  brandMarks: Client<typeof TenantBrandMarkService>;
   campaignBanners: Client<typeof AdminCampaignBannerService>;
   coins: Client<typeof AdminCoinService>;
   comments: Client<typeof AdminCommentService>;
@@ -113,6 +115,7 @@ export const createAdminApiClient = (
     announcement: createClient(AdminAnnouncementService, transportInstance),
     audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
+    brandMarks: createClient(TenantBrandMarkService, transportInstance),
     campaignBanners: createClient(
       AdminCampaignBannerService,
       transportInstance

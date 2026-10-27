@@ -130,6 +130,11 @@ message GetTenantResponse {
   // plain text. Empty where the storefront shows its default copy, and always
   // empty while sign_up_open is true.
   string sign_up_closed_message = 26;
+  // The third-party marks the tenant uploaded, at most one per kind and in no
+  // particular order. A kind is absent where the tenant has uploaded none, and
+  // the storefront shows its text alone then. Who accepted a mark's terms is
+  // the console's to know and never answered here.
+  repeated publira.types.v1.TenantBrandMark brand_marks = 27;
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own

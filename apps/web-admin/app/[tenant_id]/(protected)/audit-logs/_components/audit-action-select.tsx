@@ -489,6 +489,14 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_sign_in_image_deleted",
             },
             {
+              label: t("admin.audit.actions.tenant_brand_mark_uploaded"),
+              value: "tenant_brand_mark_uploaded",
+            },
+            {
+              label: t("admin.audit.actions.tenant_brand_mark_deleted"),
+              value: "tenant_brand_mark_deleted",
+            },
+            {
               label: t("admin.audit.actions.tenant_email_settings_updated"),
               value: "tenant_email_settings_updated",
             },

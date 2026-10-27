@@ -499,6 +499,39 @@ message TenantTheme {
   repeated TenantImageVariant sign_in_image_variants = 37;
 }
 
+// Which third-party mark a tenant brand mark is, which also says where the
+// storefront draws it. The repository ships none of them: each is the tenant's
+// own upload, accepted under the terms of the mark's owner.
+enum TenantBrandMarkKind {
+  TENANT_BRAND_MARK_KIND_UNSPECIFIED = 0;
+  // X's mark, on the share menu's X row.
+  TENANT_BRAND_MARK_KIND_X_SHARE = 1;
+  // LINE's mark, on the share menu's LINE row.
+  TENANT_BRAND_MARK_KIND_LINE_SHARE = 2;
+  // The App Store badge, on the link to the tenant's app there.
+  TENANT_BRAND_MARK_KIND_APP_STORE_BADGE = 3;
+  // The Google Play badge, on the link to the tenant's app there.
+  TENANT_BRAND_MARK_KIND_GOOGLE_PLAY_BADGE = 4;
+  // Apple's mark, on the Sign in with Apple button.
+  TENANT_BRAND_MARK_KIND_APPLE_SIGN_IN = 5;
+  // Google's mark, on the Sign in with Google button.
+  TENANT_BRAND_MARK_KIND_GOOGLE_SIGN_IN = 6;
+}
+
+// A third-party mark the tenant uploaded, with when and under which terms of
+// its owner it was accepted. The image is carried the way TenantTheme carries
+// the logo: variants plus the image's updated_at, the variant's variant_type
+// being the kind's name in lower snake case (`x_share`).
+message TenantBrandMark {
+  TenantBrandMarkKind kind = 1;
+  string image_updated_at = 2;
+  repeated TenantImageVariant image_variants = 3;
+  // The owner's guideline page the console showed when the terms were
+  // accepted.
+  string terms_url = 4;
+  string terms_accepted_at = 5;
+}
+
 // A page as seen through one of its translations, which supplies the title and
 // the published version.
 message Page {

@@ -110,11 +110,15 @@ WHERE ti.created_at < $1
             OR t.logo_image_id = ti.id
             OR t.sign_in_image_id = ti.id
     )
+    AND NOT EXISTS (
+        SELECT 1 FROM tenant_brand_marks bm
+        WHERE bm.tenant_id = ti.tenant_id
+            AND bm.image_id = ti.id
+    )
 `
 
-// A tenant image is reachable from any of the branding slots, and the theme
-// holds them all, so one row can be the icon of one theme and nothing else
-// anywhere.
+// A tenant image is reachable from any of the branding slots the theme holds,
+// or as the image of one of the tenant's brand marks.
 func (q *Queries) DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error) {
 	result, err := q.db.ExecContext(ctx, DeleteUnreferencedTenantImages, createdBefore)
 	if err != nil {

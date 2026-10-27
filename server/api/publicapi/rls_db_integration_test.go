@@ -159,6 +159,7 @@ var publicDataTables = []struct {
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
 	{name: "tenant_config_translations", count: "SELECT count(*) FROM tenant_config_translations"},
 	{name: "tenant_themes", count: "SELECT count(*) FROM tenant_themes"},
+	{name: "tenant_brand_marks", count: "SELECT count(*) FROM tenant_brand_marks"},
 	{name: "tenant_community_limit_overrides", count: "SELECT count(*) FROM tenant_community_limit_overrides"},
 	{name: "series_listings", count: "SELECT count(*) FROM series_listings"},
 	{name: "episode_free_windows", count: "SELECT count(*) FROM episode_free_windows"},
@@ -407,6 +408,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("tenant config", "INSERT INTO tenant_config (tenant_id) VALUES ($1)", first.ID)
 	seed("tenant site copy", "INSERT INTO tenant_config_translations (id, tenant_id, locale, site_tagline) VALUES ($1, $2, 'ja', 'Read on')", uuid.Must(uuid.NewV7()), first.ID)
 	seed("tenant theme", "INSERT INTO tenant_themes (tenant_id) VALUES ($1)", first.ID)
+	seed("tenant brand mark", "INSERT INTO tenant_brand_marks (tenant_id, kind, image_id, terms_url, terms_accepted_at) VALUES ($1, 'x_share', $2, 'https://example.com/guidelines', NOW())", first.ID, tenantImageID)
 	seed("community limit overrides", "INSERT INTO tenant_community_limit_overrides (tenant_id) VALUES ($1)", first.ID)
 	seed("ranking snapshot", `INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface, items)
 		VALUES ($1, $2, 'daily', CURRENT_DATE, CURRENT_DATE, 'series', 'web', '[]')`, uuid.Must(uuid.NewV7()), first.ID)

@@ -63,6 +63,13 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	seedTenantImage(t, env.DB, tenant.ID, "icon", liveTenantIcon, true)
 	liveTenantSignInImage := "tenants/TENANT001/sign-in-images/live-original.jpg"
 	seedTenantImage(t, env.DB, tenant.ID, "sign_in", liveTenantSignInImage, true)
+	// A brand mark's image, which the mark points at rather than the theme.
+	liveBrandMark := "tenants/TENANT001/brand-marks/live-original.png"
+	brandMarkImageID := seedTenantImage(t, env.DB, tenant.ID, "x_share", liveBrandMark, false)
+	exec(t, env.DB, `
+		INSERT INTO tenant_brand_marks (tenant_id, kind, image_id, terms_url, terms_accepted_at)
+		VALUES ($1, 'x_share', $2, 'https://example.com/guidelines', NOW())
+	`, tenant.ID, brandMarkImageID)
 	liveEpisodePage := "tenants/TENANT001/episodes/EPISODE00001/live-original.webp"
 	seedEpisodeImage(t, env.DB, tenant.ID, episode.ID, liveEpisodePage)
 	liveEpisodeEyeCatch := "tenants/TENANT001/episode-eye-catches/EPISODE00001/live-portrait.webp"
@@ -119,7 +126,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon,
 		liveEpisodePage, liveEpisodeEyeCatch, liveReaderIcon, supersededCreatorIcon, clearedGenreEyeCatch,
 		removedEpisodeEyeCatch, supersededReaderIcon, removedReaderIcon, abandonedObject, unpickedPreset, deletedPreset,
-		liveBannerImage, replacedBannerImage, liveTenantSignInImage, removedTenantSignInImage,
+		liveBannerImage, replacedBannerImage, liveTenantSignInImage, removedTenantSignInImage, liveBrandMark,
 	}
 	for _, key := range stored {
 		if _, err := store.Upload(ctx, storage.UploadRequest{
@@ -172,7 +179,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 
 	want := slices.Sorted(slices.Values([]string{
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon, liveEpisodePage,
-		liveEpisodeEyeCatch, liveReaderIcon, unpickedPreset, liveBannerImage, liveTenantSignInImage,
+		liveEpisodeEyeCatch, liveReaderIcon, unpickedPreset, liveBannerImage, liveTenantSignInImage, liveBrandMark,
 	}))
 	if got := listKeys(t, ctx, store); !slices.Equal(got, want) {
 		t.Fatalf("stored keys = %v, want %v", got, want)

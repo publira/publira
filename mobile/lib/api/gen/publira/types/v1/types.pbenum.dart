@@ -136,6 +136,62 @@ class ReadingDirection extends $pb.ProtobufEnum {
   const ReadingDirection._(super.value, super.name);
 }
 
+/// Which third-party mark a tenant brand mark is, which also says where the
+/// storefront draws it. The repository ships none of them: each is the tenant's
+/// own upload, accepted under the terms of the mark's owner.
+class TenantBrandMarkKind extends $pb.ProtobufEnum {
+  static const TenantBrandMarkKind TENANT_BRAND_MARK_KIND_UNSPECIFIED =
+      TenantBrandMarkKind._(
+          0, _omitEnumNames ? '' : 'TENANT_BRAND_MARK_KIND_UNSPECIFIED');
+
+  /// X's mark, on the share menu's X row.
+  static const TenantBrandMarkKind TENANT_BRAND_MARK_KIND_X_SHARE =
+      TenantBrandMarkKind._(
+          1, _omitEnumNames ? '' : 'TENANT_BRAND_MARK_KIND_X_SHARE');
+
+  /// LINE's mark, on the share menu's LINE row.
+  static const TenantBrandMarkKind TENANT_BRAND_MARK_KIND_LINE_SHARE =
+      TenantBrandMarkKind._(
+          2, _omitEnumNames ? '' : 'TENANT_BRAND_MARK_KIND_LINE_SHARE');
+
+  /// The App Store badge, on the link to the tenant's app there.
+  static const TenantBrandMarkKind TENANT_BRAND_MARK_KIND_APP_STORE_BADGE =
+      TenantBrandMarkKind._(
+          3, _omitEnumNames ? '' : 'TENANT_BRAND_MARK_KIND_APP_STORE_BADGE');
+
+  /// The Google Play badge, on the link to the tenant's app there.
+  static const TenantBrandMarkKind TENANT_BRAND_MARK_KIND_GOOGLE_PLAY_BADGE =
+      TenantBrandMarkKind._(
+          4, _omitEnumNames ? '' : 'TENANT_BRAND_MARK_KIND_GOOGLE_PLAY_BADGE');
+
+  /// Apple's mark, on the Sign in with Apple button.
+  static const TenantBrandMarkKind TENANT_BRAND_MARK_KIND_APPLE_SIGN_IN =
+      TenantBrandMarkKind._(
+          5, _omitEnumNames ? '' : 'TENANT_BRAND_MARK_KIND_APPLE_SIGN_IN');
+
+  /// Google's mark, on the Sign in with Google button.
+  static const TenantBrandMarkKind TENANT_BRAND_MARK_KIND_GOOGLE_SIGN_IN =
+      TenantBrandMarkKind._(
+          6, _omitEnumNames ? '' : 'TENANT_BRAND_MARK_KIND_GOOGLE_SIGN_IN');
+
+  static const $core.List<TenantBrandMarkKind> values = <TenantBrandMarkKind>[
+    TENANT_BRAND_MARK_KIND_UNSPECIFIED,
+    TENANT_BRAND_MARK_KIND_X_SHARE,
+    TENANT_BRAND_MARK_KIND_LINE_SHARE,
+    TENANT_BRAND_MARK_KIND_APP_STORE_BADGE,
+    TENANT_BRAND_MARK_KIND_GOOGLE_PLAY_BADGE,
+    TENANT_BRAND_MARK_KIND_APPLE_SIGN_IN,
+    TENANT_BRAND_MARK_KIND_GOOGLE_SIGN_IN,
+  ];
+
+  static final $core.List<TenantBrandMarkKind?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
+  static TenantBrandMarkKind? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const TenantBrandMarkKind._(super.value, super.name);
+}
+
 /// How comments a reader writes on an episode are published. The tenant states
 /// it once (tenant_config.comment_mode) and one series may state its own
 /// instead (series_listings.comment_mode), so a storefront deciding whether an

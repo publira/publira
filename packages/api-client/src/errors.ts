@@ -15,6 +15,7 @@ export const RPC_ERROR_REASON = {
   archiveInvalidEPUB: "ARCHIVE_INVALID_EPUB",
   archiveInvalidEPUBSpine: "ARCHIVE_INVALID_EPUB_SPINE",
   archiveInvalidPath: "ARCHIVE_INVALID_PATH",
+  brandMarkTermsNotAccepted: "BRAND_MARK_TERMS_NOT_ACCEPTED",
   campaignBannerLimit: "CAMPAIGN_BANNER_LIMIT",
   coinBalanceInsufficient: "COIN_BALANCE_INSUFFICIENT",
   coinBalancesOutstanding: "COIN_BALANCES_OUTSTANDING",

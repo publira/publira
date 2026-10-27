@@ -207,6 +207,14 @@ const GetTenantResponse$json = {
       '5': 9,
       '10': 'signUpClosedMessage'
     },
+    {
+      '1': 'brand_marks',
+      '3': 27,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.TenantBrandMark',
+      '10': 'brandMarks'
+    },
   ],
   '9': [
     {'1': 16, '2': 17},
@@ -238,8 +246,9 @@ final $typed_data.Uint8List getTenantResponseDescriptor = $convert.base64Decode(
     'djEuVGVuYW50R29vZ2xlU2lnbkluUgxnb29nbGVTaWduSW4SGgoIY3VycmVuY3kYFyABKAlSCG'
     'N1cnJlbmN5EisKEXN1cHBvcnRlZF9sb2NhbGVzGBggAygJUhBzdXBwb3J0ZWRMb2NhbGVzEiAK'
     'DHNpZ25fdXBfb3BlbhgZIAEoCFIKc2lnblVwT3BlbhIzChZzaWduX3VwX2Nsb3NlZF9tZXNzYW'
-    'dlGBogASgJUhNzaWduVXBDbG9zZWRNZXNzYWdlSgQIEBARSgQIERASUgp0ZXJtc19wYWdlUgxw'
-    'cml2YWN5X3BhZ2U=');
+    'dlGBogASgJUhNzaWduVXBDbG9zZWRNZXNzYWdlEkIKC2JyYW5kX21hcmtzGBsgAygLMiEucHVi'
+    'bGlyYS50eXBlcy52MS5UZW5hbnRCcmFuZE1hcmtSCmJyYW5kTWFya3NKBAgQEBFKBAgREBJSCn'
+    'Rlcm1zX3BhZ2VSDHByaXZhY3lfcGFnZQ==');
 
 @$core.Deprecated('Use tenantAppleSignInDescriptor instead')
 const TenantAppleSignIn$json = {
@@ -629,6 +638,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.TenantImageVariant': $0.TenantImageVariant$json,
   '.publira.v1.TenantAppleSignIn': TenantAppleSignIn$json,
   '.publira.v1.TenantGoogleSignIn': TenantGoogleSignIn$json,
+  '.publira.types.v1.TenantBrandMark': $0.TenantBrandMark$json,
   '.publira.v1.GetTenantLegalPagesRequest': GetTenantLegalPagesRequest$json,
   '.publira.v1.GetTenantLegalPagesResponse': GetTenantLegalPagesResponse$json,
   '.publira.v1.TenantLegalPage': TenantLegalPage$json,

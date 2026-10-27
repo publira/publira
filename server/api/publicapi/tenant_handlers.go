@@ -122,6 +122,13 @@ func (s *apiServer) GetTenant(
 		return nil, s.internalError(ctx, "failed to read the tenant theme", err, "tenant_id", tenant.ID.String())
 	}
 
+	// Failed rather than answered without marks, which web-storefront would
+	// cache as a tenant that uploaded none.
+	brandMarks, err := s.tenantBrandMarks(ctx, queries, tenant)
+	if err != nil {
+		return nil, err
+	}
+
 	// Failed rather than answered without providers, which web-storefront would
 	// cache as a tenant whose readers cannot sign in with them.
 	signIn, err := signin.NewSettings(queries, s.encryptor).Get(ctx, tenant.ID)
@@ -178,6 +185,7 @@ func (s *apiServer) GetTenant(
 		GoogleSignIn:              googleSignIn,
 		SignUpOpen:                signUp.Open,
 		SignUpClosedMessage:       signUpClosedMessage,
+		BrandMarks:                brandMarks,
 	}, nil
 }
 
@@ -299,6 +307,47 @@ func tenantBrandingImageVariants(
 	byImageID := protomapper.TenantImageVariantsByImageID(images, variantRows)
 
 	return byImageID[row.IconImageID.UUID], byImageID[row.LogoImageID.UUID], byImageID[row.SignInImageID.UUID], nil
+}
+
+// tenantBrandMarks reads the marks the tenant uploaded, without who accepted
+// their terms, which the storefront has no use for.
+func (s *apiServer) tenantBrandMarks(ctx context.Context, queries Querier, tenant dbmodels.Tenant) ([]*publirattypesv1.TenantBrandMark, error) {
+	rows, err := queries.ListPublicTenantBrandMarks(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read the tenant brand marks", err, "tenant_id", tenant.ID.String())
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	images, err := s.imageOrigin(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
+	imageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		imageIDs = append(imageIDs, row.ImageID.UUID)
+	}
+	variantRows, err := queries.ListTenantImageVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read the tenant brand mark variants", err, "tenant_id", tenant.ID.String())
+	}
+	variantsByImageID := protomapper.TenantImageVariantsByImageID(images, variantRows)
+
+	marks := make([]*publirattypesv1.TenantBrandMark, 0, len(rows))
+	for _, row := range rows {
+		mark, err := protomapper.TenantBrandMark(protomapper.TenantBrandMarkRow{
+			Kind:            row.Kind,
+			ImageID:         row.ImageID.UUID,
+			ImageUpdatedAt:  row.ImageUpdatedAt,
+			TermsURL:        row.TermsUrl,
+			TermsAcceptedAt: row.TermsAcceptedAt,
+		}, variantsByImageID)
+		if err != nil {
+			return nil, s.internalError(ctx, "stored brand mark kind is not a supported kind", err, "tenant_id", tenant.ID.String())
+		}
+		marks = append(marks, mark)
+	}
+	return marks, nil
 }
 
 // publishedWebPushPublicKey answers the key GetTenant publishes. A failed read

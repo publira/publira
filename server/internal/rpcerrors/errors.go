@@ -24,6 +24,9 @@ const (
 	ReasonArchiveInvalidEPUB      = "ARCHIVE_INVALID_EPUB"
 	ReasonArchiveInvalidEPUBSpine = "ARCHIVE_INVALID_EPUB_SPINE"
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
+	// ReasonBrandMarkTermsNotAccepted refuses uploading a brand mark the
+	// administrator has not accepted the owner's terms for, and stores nothing.
+	ReasonBrandMarkTermsNotAccepted = "BRAND_MARK_TERMS_NOT_ACCEPTED"
 	// ReasonCampaignBannerLimit refuses creating a campaign banner for a
 	// tenant that holds as many as it may.
 	ReasonCampaignBannerLimit = "CAMPAIGN_BANNER_LIMIT"
