@@ -570,6 +570,9 @@ type Querier interface {
 	DeleteSeriesTranslation(ctx context.Context, arg DeleteSeriesTranslationParams) (int64, error)
 	DeleteSubscriptionPlan(ctx context.Context, arg DeleteSubscriptionPlanParams) (int64, error)
 	DeleteSubscriptionPlanTargets(ctx context.Context, arg DeleteSubscriptionPlanTargetsParams) error
+	// Deletes the mark and its consent record, answering the image it held so the
+	// caller can delete that too.
+	DeleteTenantBrandMark(ctx context.Context, arg DeleteTenantBrandMarkParams) (uuid.NullUUID, error)
 	// Removes the names of every locale a save no longer names.
 	DeleteTenantCoinNamesExcept(ctx context.Context, arg DeleteTenantCoinNamesExceptParams) error
 	// A locale whose copy is cleared has no row, so its readers are served the
@@ -593,9 +596,8 @@ type Querier interface {
 	DeleteUnreferencedGenreImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error)
-	// A tenant image is reachable from any of the branding slots, and the theme
-	// holds them all, so one row can be the icon of one theme and nothing else
-	// anywhere.
+	// A tenant image is reachable from any of the branding slots the theme holds,
+	// or as the image of one of the tenant's brand marks.
 	DeleteUnreferencedTenantImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	// A reader's upload elects the new icon and leaves the previous user_images
 	// row behind, and removing the icon leaves the one it cleared, both referenced
@@ -1217,6 +1219,10 @@ type Querier interface {
 	// Returns no rows for a tenant that has saved nothing, which reads as Apple
 	// sign-in disabled.
 	GetTenantAppleSignInConfig(ctx context.Context, tenantID uuid.UUID) (TenantAppleSignInConfig, error)
+	// The image a kind holds now, which an upload replaces. The caller holds the
+	// tenant's row lock, so no other write to the tenant's marks runs between this
+	// read and its own.
+	GetTenantBrandMarkImageID(ctx context.Context, arg GetTenantBrandMarkImageIDParams) (uuid.NullUUID, error)
 	// Return the first tenant that matches, keeping the order of the candidate
 	// host names.
 	GetTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
@@ -2280,6 +2286,10 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListPlatformOperatorsDesc(ctx context.Context, arg ListPlatformOperatorsDescParams) ([]ListPlatformOperatorsDescRow, error)
 	ListPlatformUserRoles(ctx context.Context, platformUserID uuid.UUID) ([]string, error)
+	// What the storefront draws a mark from: its image, and when and under which
+	// page its owner's terms were accepted. Who accepted them is the console's
+	// alone, so this reads no account.
+	ListPublicTenantBrandMarks(ctx context.Context, tenantID uuid.UUID) ([]ListPublicTenantBrandMarksRow, error)
 	ListPublishedCreatorFollowTargetPublicIDsByIDs(ctx context.Context, arg ListPublishedCreatorFollowTargetPublicIDsByIDsParams) ([]ListPublishedCreatorFollowTargetPublicIDsByIDsRow, error)
 	// The cursor pagination of the published creator list runs in two stages.
 	//
@@ -2839,6 +2849,11 @@ type Querier interface {
 	// The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListTenantAdminInvitationsDesc(ctx context.Context, arg ListTenantAdminInvitationsDescParams) ([]TenantAdminInvitation, error)
+	// Every mark the tenant holds an image for, with the account that accepted its
+	// owner's terms, for the console. A mark whose image is gone shows nothing on
+	// the storefront and is left out here too, so the console offers the upload
+	// again. The account's columns are NULL once it is deleted.
+	ListTenantBrandMarks(ctx context.Context, tenantID uuid.UUID) ([]ListTenantBrandMarksRow, error)
 	// Every locale's name of the tenant's coin, oldest first.
 	ListTenantCoinNames(ctx context.Context, tenantID uuid.UUID) ([]TenantCoinNameTranslation, error)
 	ListTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) ([]string, error)
@@ -3199,9 +3214,10 @@ type Querier interface {
 	// does not hold back the foreign key checks every write naming the tenant
 	// makes.
 	LockTenantForSubscriptionPlans(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
-	// Lock the tenant row so concurrent writes to the tenant theme serialize: the
-	// branding image uploads and deletes (icon, logo, sign-in image), and the
-	// theme saves, each of which reads the theme first to decide what it changes.
+	// Lock the tenant row so concurrent writes to the tenant's branding
+	// serialize: the branding image uploads and deletes (icon, logo, sign-in
+	// image, brand marks), and the theme saves, each of which reads the image or
+	// the theme in use first to decide what it changes.
 	// That read must be a separate statement: READ COMMITTED freezes its snapshot
 	// at statement start, so waiting for the lock in the same statement would
 	// still see the pre-wait row.
@@ -4031,6 +4047,9 @@ type Querier interface {
 	UpsertTenantAppPurchaseRoute(ctx context.Context, arg UpsertTenantAppPurchaseRouteParams) (string, error)
 	UpsertTenantAppStoreConfig(ctx context.Context, arg UpsertTenantAppStoreConfigParams) (TenantAppStoreConfig, error)
 	UpsertTenantAppleSignInConfig(ctx context.Context, arg UpsertTenantAppleSignInConfigParams) (TenantAppleSignInConfig, error)
+	// Uploading a kind again replaces its image and its consent together: the
+	// terms were accepted for the image being stored, at the time of the upload.
+	UpsertTenantBrandMark(ctx context.Context, arg UpsertTenantBrandMarkParams) error
 	// Writes one locale's name. A name saved again as it was keeps its updated_at.
 	UpsertTenantCoinName(ctx context.Context, arg UpsertTenantCoinNameParams) error
 	// The settings screen can save what the tenant has decided about commenting

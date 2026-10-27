@@ -345,8 +345,13 @@ type GetTenantResponse struct {
 	// plain text. Empty where the storefront shows its default copy, and always
 	// empty while sign_up_open is true.
 	SignUpClosedMessage string `protobuf:"bytes,26,opt,name=sign_up_closed_message,json=signUpClosedMessage,proto3" json:"sign_up_closed_message,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The third-party marks the tenant uploaded, at most one per kind and in no
+	// particular order. A kind is absent where the tenant has uploaded none, and
+	// the storefront shows its text alone then. Who accepted a mark's terms is
+	// the console's to know and never answered here.
+	BrandMarks    []*v1.TenantBrandMark `protobuf:"bytes,27,rep,name=brand_marks,json=brandMarks,proto3" json:"brand_marks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -545,6 +550,13 @@ func (x *GetTenantResponse) GetSignUpClosedMessage() string {
 		return x.SignUpClosedMessage
 	}
 	return ""
+}
+
+func (x *GetTenantResponse) GetBrandMarks() []*v1.TenantBrandMark {
+	if x != nil {
+		return x.BrandMarks
+	}
+	return nil
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own
@@ -1339,7 +1351,8 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1bGetTenantLegalPagesResponse\x12:\n" +
 	"\n" +
 	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xd0\t\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\x94\n" +
+	"\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -1367,7 +1380,9 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x11supported_locales\x18\x18 \x03(\tR\x10supportedLocales\x12 \n" +
 	"\fsign_up_open\x18\x19 \x01(\bR\n" +
 	"signUpOpen\x123\n" +
-	"\x16sign_up_closed_message\x18\x1a \x01(\tR\x13signUpClosedMessageJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
+	"\x16sign_up_closed_message\x18\x1a \x01(\tR\x13signUpClosedMessage\x12B\n" +
+	"\vbrand_marks\x18\x1b \x03(\v2!.publira.types.v1.TenantBrandMarkR\n" +
+	"brandMarksJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
 	"terms_pageR\fprivacy_page\"4\n" +
 	"\x11TenantAppleSignIn\x12\x1f\n" +
 	"\vservices_id\x18\x01 \x01(\tR\n" +
@@ -1458,10 +1473,11 @@ var file_publira_v1_tenant_proto_goTypes = []any{
 	(v1.CommentMode)(0),                           // 21: publira.types.v1.CommentMode
 	(v1.AgeVerification)(0),                       // 22: publira.types.v1.AgeVerification
 	(v1.AppPurchaseRoute)(0),                      // 23: publira.types.v1.AppPurchaseRoute
-	(v1.ReaderIconPolicy)(0),                      // 24: publira.types.v1.ReaderIconPolicy
-	(*v1.ReaderIconPreset)(nil),                   // 25: publira.types.v1.ReaderIconPreset
-	(v1.GoogleTagServingMode)(0),                  // 26: publira.types.v1.GoogleTagServingMode
-	(v1.GoogleTagConsentMode)(0),                  // 27: publira.types.v1.GoogleTagConsentMode
+	(*v1.TenantBrandMark)(nil),                    // 24: publira.types.v1.TenantBrandMark
+	(v1.ReaderIconPolicy)(0),                      // 25: publira.types.v1.ReaderIconPolicy
+	(*v1.ReaderIconPreset)(nil),                   // 26: publira.types.v1.ReaderIconPreset
+	(v1.GoogleTagServingMode)(0),                  // 27: publira.types.v1.GoogleTagServingMode
+	(v1.GoogleTagConsentMode)(0),                  // 28: publira.types.v1.GoogleTagConsentMode
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
 	19, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
@@ -1474,35 +1490,36 @@ var file_publira_v1_tenant_proto_depIdxs = []int32{
 	23, // 7: publira.v1.GetTenantResponse.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
 	5,  // 8: publira.v1.GetTenantResponse.apple_sign_in:type_name -> publira.v1.TenantAppleSignIn
 	6,  // 9: publira.v1.GetTenantResponse.google_sign_in:type_name -> publira.v1.TenantGoogleSignIn
-	19, // 10: publira.v1.GetTenantReaderIconPolicyRequest.tenant:type_name -> publira.types.v1.TenantContext
-	24, // 11: publira.v1.GetTenantReaderIconPolicyResponse.policy:type_name -> publira.types.v1.ReaderIconPolicy
-	25, // 12: publira.v1.GetTenantReaderIconPolicyResponse.presets:type_name -> publira.types.v1.ReaderIconPreset
-	19, // 13: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10, // 14: publira.v1.GetTenantMobileAppAssociationResponse.android:type_name -> publira.v1.TenantAndroidAppAssociation
-	11, // 15: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
-	19, // 16: publira.v1.GetTenantAnalyticsSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	26, // 17: publira.v1.TenantGoogleTag.serving_mode:type_name -> publira.types.v1.GoogleTagServingMode
-	27, // 18: publira.v1.TenantGoogleTag.consent_mode:type_name -> publira.types.v1.GoogleTagConsentMode
-	14, // 19: publira.v1.GetTenantAnalyticsSettingsResponse.google_tag:type_name -> publira.v1.TenantGoogleTag
-	15, // 20: publira.v1.GetTenantAnalyticsSettingsResponse.site_verification:type_name -> publira.v1.TenantSiteVerification
-	19, // 21: publira.v1.GetTenantCrawlerSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 22: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	1,  // 23: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
-	9,  // 24: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
-	7,  // 25: publira.v1.TenantService.GetTenantReaderIconPolicy:input_type -> publira.v1.GetTenantReaderIconPolicyRequest
-	13, // 26: publira.v1.TenantService.GetTenantAnalyticsSettings:input_type -> publira.v1.GetTenantAnalyticsSettingsRequest
-	17, // 27: publira.v1.TenantService.GetTenantCrawlerSettings:input_type -> publira.v1.GetTenantCrawlerSettingsRequest
-	4,  // 28: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	3,  // 29: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
-	12, // 30: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
-	8,  // 31: publira.v1.TenantService.GetTenantReaderIconPolicy:output_type -> publira.v1.GetTenantReaderIconPolicyResponse
-	16, // 32: publira.v1.TenantService.GetTenantAnalyticsSettings:output_type -> publira.v1.GetTenantAnalyticsSettingsResponse
-	18, // 33: publira.v1.TenantService.GetTenantCrawlerSettings:output_type -> publira.v1.GetTenantCrawlerSettingsResponse
-	28, // [28:34] is the sub-list for method output_type
-	22, // [22:28] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	24, // 10: publira.v1.GetTenantResponse.brand_marks:type_name -> publira.types.v1.TenantBrandMark
+	19, // 11: publira.v1.GetTenantReaderIconPolicyRequest.tenant:type_name -> publira.types.v1.TenantContext
+	25, // 12: publira.v1.GetTenantReaderIconPolicyResponse.policy:type_name -> publira.types.v1.ReaderIconPolicy
+	26, // 13: publira.v1.GetTenantReaderIconPolicyResponse.presets:type_name -> publira.types.v1.ReaderIconPreset
+	19, // 14: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10, // 15: publira.v1.GetTenantMobileAppAssociationResponse.android:type_name -> publira.v1.TenantAndroidAppAssociation
+	11, // 16: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
+	19, // 17: publira.v1.GetTenantAnalyticsSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	27, // 18: publira.v1.TenantGoogleTag.serving_mode:type_name -> publira.types.v1.GoogleTagServingMode
+	28, // 19: publira.v1.TenantGoogleTag.consent_mode:type_name -> publira.types.v1.GoogleTagConsentMode
+	14, // 20: publira.v1.GetTenantAnalyticsSettingsResponse.google_tag:type_name -> publira.v1.TenantGoogleTag
+	15, // 21: publira.v1.GetTenantAnalyticsSettingsResponse.site_verification:type_name -> publira.v1.TenantSiteVerification
+	19, // 22: publira.v1.GetTenantCrawlerSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 23: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	1,  // 24: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
+	9,  // 25: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
+	7,  // 26: publira.v1.TenantService.GetTenantReaderIconPolicy:input_type -> publira.v1.GetTenantReaderIconPolicyRequest
+	13, // 27: publira.v1.TenantService.GetTenantAnalyticsSettings:input_type -> publira.v1.GetTenantAnalyticsSettingsRequest
+	17, // 28: publira.v1.TenantService.GetTenantCrawlerSettings:input_type -> publira.v1.GetTenantCrawlerSettingsRequest
+	4,  // 29: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	3,  // 30: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
+	12, // 31: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
+	8,  // 32: publira.v1.TenantService.GetTenantReaderIconPolicy:output_type -> publira.v1.GetTenantReaderIconPolicyResponse
+	16, // 33: publira.v1.TenantService.GetTenantAnalyticsSettings:output_type -> publira.v1.GetTenantAnalyticsSettingsResponse
+	18, // 34: publira.v1.TenantService.GetTenantCrawlerSettings:output_type -> publira.v1.GetTenantCrawlerSettingsResponse
+	29, // [29:35] is the sub-list for method output_type
+	23, // [23:29] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }

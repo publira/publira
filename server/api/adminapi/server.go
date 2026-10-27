@@ -401,7 +401,8 @@ func handlerFromServer(server *adminServer) http.Handler {
 const (
 	// maxUploadedImageBytes is the largest image a procedure that carries one
 	// takes: a cover, a label's or genre's eye-catch, an author's icon, the
-	// tenant's icon, logo, or sign-in image, a reader icon preset.
+	// tenant's icon, logo, sign-in image, or brand marks, a reader icon
+	// preset.
 	maxUploadedImageBytes = max(imageproc.EyeCatchMaxBytes, imageproc.IconMaxBytes, imageproc.LogoMaxBytes, imageproc.SignInImageMaxBytes, creatorIconMaxUploadBytes, imageproc.UserIconMaxBytes)
 	// imageUploadReadMaxBytes is what a procedure that carries one image reads
 	// of a request: that image as the JSON encoding carries it, in base64 and
@@ -444,6 +445,7 @@ var readLimits = map[string]int{
 	publiraadminv1connect.TenantThemeServiceUploadTenantIconProcedure:                        imageUploadReadMaxBytes,
 	publiraadminv1connect.TenantThemeServiceUploadTenantLogoProcedure:                        imageUploadReadMaxBytes,
 	publiraadminv1connect.TenantThemeServiceUploadTenantSignInImageProcedure:                 imageUploadReadMaxBytes,
+	publiraadminv1connect.TenantBrandMarkServiceUploadTenantBrandMarkProcedure:               imageUploadReadMaxBytes,
 	publiraadminv1connect.TenantSettingsServiceUploadReaderIconPresetProcedure:               imageUploadReadMaxBytes,
 }
 
@@ -464,6 +466,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 	publiraadminv1connect.RegisterAdminAuditLogServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminUserServiceHandler(services, server)
 	publiraadminv1connect.RegisterTenantThemeServiceHandler(services, server)
+	publiraadminv1connect.RegisterTenantBrandMarkServiceHandler(services, server)
 	publiraadminv1connect.RegisterTenantSettingsServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminEmailSettingsServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminPaymentSettingsServiceHandler(services, server)

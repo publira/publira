@@ -663,6 +663,62 @@ func TestBuildLogo_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
 	}
 }
 
+// --- TestBuildBrandMark ---
+
+func TestBuildBrandMark_KeepsAWideBadgeTheLogoWouldRefuse(t *testing.T) {
+	// A badge cut to the height it is drawn at, whose short edge the logo's
+	// floor would refuse.
+	raw := makePNG(t, 120, 20)
+	if _, err := imageproc.BuildLogo(raw, "image/png"); err == nil {
+		t.Fatal("BuildLogo accepted a 120x20 image; the test no longer shows what the brand mark lifts")
+	}
+
+	variant, err := imageproc.BuildBrandMark(raw, "image/png", "app_store_badge")
+	if err != nil {
+		t.Fatalf("BuildBrandMark: %v", err)
+	}
+	if variant.VariantType != "app_store_badge" {
+		t.Fatalf("variant_type = %q, want app_store_badge", variant.VariantType)
+	}
+	if variant.Width != 120 || variant.Height != 20 {
+		t.Fatalf("size = %dx%d, want 120x20", variant.Width, variant.Height)
+	}
+}
+
+func TestBuildBrandMark_EncodesPNGWithinTheLogoLongestEdge(t *testing.T) {
+	raw := makeJPEG(t, 3000, 1000)
+	variant, err := imageproc.BuildBrandMark(raw, "image/jpeg", "google_play_badge")
+	if err != nil {
+		t.Fatalf("BuildBrandMark: %v", err)
+	}
+	if variant.ContentType != "image/png" || variant.Extension != ".png" {
+		t.Fatalf("content_type = %q, extension = %q, want image/png and .png", variant.ContentType, variant.Extension)
+	}
+	if variant.Width != imageproc.LogoMaxDimension || variant.Height != 341 {
+		t.Fatalf("size = %dx%d, want %dx341", variant.Width, variant.Height, imageproc.LogoMaxDimension)
+	}
+}
+
+func TestBuildBrandMark_RejectsWhatTheLogoRejectsBeyondTheFloor(t *testing.T) {
+	cases := map[string]struct {
+		raw         []byte
+		contentType string
+	}{
+		"empty data":           {raw: nil, contentType: "image/png"},
+		"non-image type":       {raw: makePNG(t, 120, 40), contentType: "application/pdf"},
+		"oversized byte count": {raw: make([]byte, imageproc.LogoMaxBytes+1), contentType: "image/png"},
+		"oversized canvas":     {raw: pngHeaderWithDeclaredSize(40_000, 40_000), contentType: "image/png"},
+		"undecodable":          {raw: []byte("not an image"), contentType: "image/png"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := imageproc.BuildBrandMark(tc.raw, tc.contentType, "x_share"); err == nil {
+				t.Fatal("want an error")
+			}
+		})
+	}
+}
+
 // --- TestBuildSignInImage ---
 
 func TestBuildSignInImage_KeepsJPEGAndAspectRatio(t *testing.T) {

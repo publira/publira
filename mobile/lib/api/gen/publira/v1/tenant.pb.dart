@@ -388,6 +388,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? supportedLocales,
     $core.bool? signUpOpen,
     $core.String? signUpClosedMessage,
+    $core.Iterable<$0.TenantBrandMark>? brandMarks,
   }) {
     final result = GetTenantResponse._();
     if (tenantPublicId != null) result.tenantPublicId = tenantPublicId;
@@ -419,6 +420,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     if (signUpOpen != null) result.signUpOpen = signUpOpen;
     if (signUpClosedMessage != null)
       result.signUpClosedMessage = signUpClosedMessage;
+    if (brandMarks != null) result.brandMarks.addAll(brandMarks);
     return result;
   }
 
@@ -465,6 +467,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     ..pPS(24, _omitFieldNames ? '' : 'supportedLocales')
     ..aOB(25, _omitFieldNames ? '' : 'signUpOpen')
     ..aOS(26, _omitFieldNames ? '' : 'signUpClosedMessage')
+    ..pPM<$0.TenantBrandMark>(27, _omitFieldNames ? '' : 'brandMarks',
+        subBuilder: $0.TenantBrandMark.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -757,6 +761,13 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   $core.bool hasSignUpClosedMessage() => $_has(23);
   @$pb.TagNumber(26)
   void clearSignUpClosedMessage() => $_clearField(26);
+
+  /// The third-party marks the tenant uploaded, at most one per kind and in no
+  /// particular order. A kind is absent where the tenant has uploaded none, and
+  /// the storefront shows its text alone then. Who accepted a mark's terms is
+  /// the console's to know and never answered here.
+  @$pb.TagNumber(27)
+  $pb.PbList<$0.TenantBrandMark> get brandMarks => $_getList(24);
 }
 
 /// How a client signs a reader in with Apple. The iOS app signs in with its own

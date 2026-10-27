@@ -2884,6 +2884,114 @@ class TenantTheme extends $pb.GeneratedMessage {
   $pb.PbList<TenantImageVariant> get signInImageVariants => $_getList(34);
 }
 
+/// A third-party mark the tenant uploaded, with when and under which terms of
+/// its owner it was accepted. The image is carried the way TenantTheme carries
+/// the logo: variants plus the image's updated_at, the variant's variant_type
+/// being the kind's name in lower snake case (`x_share`).
+class TenantBrandMark extends $pb.GeneratedMessage {
+  factory TenantBrandMark({
+    TenantBrandMarkKind? kind,
+    $core.String? imageUpdatedAt,
+    $core.Iterable<TenantImageVariant>? imageVariants,
+    $core.String? termsUrl,
+    $core.String? termsAcceptedAt,
+  }) {
+    final result = TenantBrandMark._();
+    if (kind != null) result.kind = kind;
+    if (imageUpdatedAt != null) result.imageUpdatedAt = imageUpdatedAt;
+    if (imageVariants != null) result.imageVariants.addAll(imageVariants);
+    if (termsUrl != null) result.termsUrl = termsUrl;
+    if (termsAcceptedAt != null) result.termsAcceptedAt = termsAcceptedAt;
+    return result;
+  }
+
+  TenantBrandMark._();
+
+  factory TenantBrandMark.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantBrandMark()..mergeFromBuffer(data, registry);
+  factory TenantBrandMark.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantBrandMark()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TenantBrandMark',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: TenantBrandMark.$_createMessage)
+    ..aE<TenantBrandMarkKind>(1, _omitFieldNames ? '' : 'kind',
+        enumValues: TenantBrandMarkKind.values)
+    ..aOS(2, _omitFieldNames ? '' : 'imageUpdatedAt')
+    ..pPM<TenantImageVariant>(3, _omitFieldNames ? '' : 'imageVariants',
+        subBuilder: TenantImageVariant.$_createMessage)
+    ..aOS(4, _omitFieldNames ? '' : 'termsUrl')
+    ..aOS(5, _omitFieldNames ? '' : 'termsAcceptedAt')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantBrandMark clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantBrandMark copyWith(void Function(TenantBrandMark) updates) =>
+      super.copyWith((message) => updates(message as TenantBrandMark))
+          as TenantBrandMark;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TenantBrandMark() / TenantBrandMark.new instead')
+  static TenantBrandMark create() => TenantBrandMark._();
+  static $pb.GeneratedMessage $_createMessage() => TenantBrandMark._();
+  @$core.override
+  TenantBrandMark createEmptyInstance() => TenantBrandMark._();
+  @$core.pragma('dart2js:noInline')
+  static TenantBrandMark getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TenantBrandMark>(
+          TenantBrandMark.$_createMessage);
+  static TenantBrandMark? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  TenantBrandMarkKind get kind => $_getN(0);
+  @$pb.TagNumber(1)
+  set kind(TenantBrandMarkKind value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKind() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get imageUpdatedAt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set imageUpdatedAt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasImageUpdatedAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearImageUpdatedAt() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<TenantImageVariant> get imageVariants => $_getList(2);
+
+  /// The owner's guideline page the console showed when the terms were
+  /// accepted.
+  @$pb.TagNumber(4)
+  $core.String get termsUrl => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set termsUrl($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTermsUrl() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTermsUrl() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get termsAcceptedAt => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set termsAcceptedAt($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTermsAcceptedAt() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTermsAcceptedAt() => $_clearField(5);
+}
+
 /// A page as seen through one of its translations, which supplies the title and
 /// the published version.
 class Page extends $pb.GeneratedMessage {

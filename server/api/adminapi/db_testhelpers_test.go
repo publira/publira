@@ -233,6 +233,10 @@ func (e *adminDBEnv) themeClient() publiraadminv1connect.TenantThemeServiceClien
 	return publiraadminv1connect.NewTenantThemeServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
 
+func (e *adminDBEnv) brandMarkClient() publiraadminv1connect.TenantBrandMarkServiceClient {
+	return publiraadminv1connect.NewTenantBrandMarkServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
+}
+
 func (e *adminDBEnv) tenantSettingsClient() publiraadminv1connect.TenantSettingsServiceClient {
 	return publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(e.Server.Client(), e.Server.URL)))
 }
