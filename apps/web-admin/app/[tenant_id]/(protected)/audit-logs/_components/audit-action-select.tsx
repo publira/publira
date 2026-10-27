@@ -395,6 +395,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "stats_exported",
             },
             {
+              label: t("admin.audit.actions.audit_log_exported"),
+              value: "audit_log_exported",
+            },
+            {
               label: t("admin.audit.actions.tenant_member_added"),
               value: "tenant_member_added",
             },

@@ -8,6 +8,7 @@ const ja = "ja" as const;
 
 describe("getAuditActionOptions", () => {
   it.each([
+    ["audit_log_exported", "Downloaded the audit log as CSV"],
     ["platform_search_settings_updated", "Updated search settings"],
     ["platform_search_connection_tested", "Tested the search connection"],
     ["platform_storage_settings_updated", "Updated storage settings"],

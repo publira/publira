@@ -27,6 +27,9 @@ const (
 	// AdminAuditLogServiceListAuditLogsProcedure is the procedure name of the AdminAuditLogService's
 	// ListAuditLogs RPC.
 	AdminAuditLogServiceListAuditLogsProcedure = "/publira.admin.v1.AdminAuditLogService/ListAuditLogs"
+	// AdminAuditLogServiceExportAuditLogsProcedure is the procedure name of the AdminAuditLogService's
+	// ExportAuditLogs RPC.
+	AdminAuditLogServiceExportAuditLogsProcedure = "/publira.admin.v1.AdminAuditLogService/ExportAuditLogs"
 )
 
 var (
@@ -37,12 +40,24 @@ var (
 			Procedure:  AdminAuditLogServiceListAuditLogsProcedure,
 		}
 	})
+	adminAuditLogServiceExportAuditLogsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_audit_proto.Services().ByName("AdminAuditLogService").Methods().ByName("ExportAuditLogs"),
+			Procedure:  AdminAuditLogServiceExportAuditLogsProcedure,
+		}
+	})
 )
 
 // AdminAuditLogServiceClient is a client for the publira.admin.v1.AdminAuditLogService service.
 type AdminAuditLogServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListAuditLogs(context.Context, *v1.ListAuditLogsRequest) (*v1.ListAuditLogsResponse, error)
+	// Every entry of a period as one CSV file. The export is itself recorded
+	// in the tenant's audit log, after the entries it read.
+	//
+	// Minimum role: tenant_admin.
+	ExportAuditLogs(context.Context, *v1.ExportAuditLogsRequest) (*v1.ExportAuditLogsResponse, error)
 }
 
 // NewAdminAuditLogServiceClient constructs a client for the publira.admin.v1.AdminAuditLogService
@@ -56,6 +71,11 @@ func NewAdminAuditLogServiceClient(client *connect.Client) AdminAuditLogServiceC
 type AdminAuditLogServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListAuditLogs(context.Context, *v1.ListAuditLogsRequest) (*v1.ListAuditLogsResponse, error)
+	// Every entry of a period as one CSV file. The export is itself recorded
+	// in the tenant's audit log, after the entries it read.
+	//
+	// Minimum role: tenant_admin.
+	ExportAuditLogs(context.Context, *v1.ExportAuditLogsRequest) (*v1.ExportAuditLogsResponse, error)
 }
 
 // RegisterAdminAuditLogServiceHandler registers svc as the publira.admin.v1.AdminAuditLogService
@@ -64,6 +84,7 @@ func RegisterAdminAuditLogServiceHandler(server *connect.Server, svc AdminAuditL
 	adapter := adminAuditLogServiceHandler{svc: svc}
 	server.Register(
 		connect.Method{Spec: adminAuditLogServiceListAuditLogsSpec(), Handler: adapter.listAuditLogs},
+		connect.Method{Spec: adminAuditLogServiceExportAuditLogsSpec(), Handler: adapter.exportAuditLogs},
 	)
 }
 
@@ -72,6 +93,10 @@ type UnimplementedAdminAuditLogServiceHandler struct{}
 
 func (UnimplementedAdminAuditLogServiceHandler) ListAuditLogs(context.Context, *v1.ListAuditLogsRequest) (*v1.ListAuditLogsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuditLogService.ListAuditLogs is not implemented")
+}
+
+func (UnimplementedAdminAuditLogServiceHandler) ExportAuditLogs(context.Context, *v1.ExportAuditLogsRequest) (*v1.ExportAuditLogsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuditLogService.ExportAuditLogs is not implemented")
 }
 
 type adminAuditLogServiceClient struct {
@@ -86,6 +111,14 @@ func (c *adminAuditLogServiceClient) ListAuditLogs(ctx context.Context, req *v1.
 	return &res, nil
 }
 
+func (c *adminAuditLogServiceClient) ExportAuditLogs(ctx context.Context, req *v1.ExportAuditLogsRequest) (*v1.ExportAuditLogsResponse, error) {
+	var res v1.ExportAuditLogsResponse
+	if err := c.client.CallUnary(ctx, adminAuditLogServiceExportAuditLogsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 type adminAuditLogServiceHandler struct{ svc AdminAuditLogServiceHandler }
 
 func (h adminAuditLogServiceHandler) listAuditLogs(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
@@ -94,6 +127,18 @@ func (h adminAuditLogServiceHandler) listAuditLogs(ctx context.Context, _ connec
 		return err
 	}
 	res, err := h.svc.ListAuditLogs(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuditLogServiceHandler) exportAuditLogs(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ExportAuditLogsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ExportAuditLogs(ctx, &req)
 	if err != nil {
 		return err
 	}

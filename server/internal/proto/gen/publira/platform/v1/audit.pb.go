@@ -311,6 +311,144 @@ func (x *ListAuditLogsResponse) GetNextToken() string {
 	return ""
 }
 
+type ExportAuditLogsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The period, as inclusive calendar dates (YYYY-MM-DD) in the install's
+	// default time zone, covering at most 366 days. A longer period is refused
+	// with invalid_argument.
+	StartDate string `protobuf:"bytes,1,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,2,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// Narrow the file the way ListAuditLogsRequest's fields of the same names
+	// narrow the list. Empty leaves the file unnarrowed.
+	ActorUserPublicId string `protobuf:"bytes,3,opt,name=actor_user_public_id,json=actorUserPublicId,proto3" json:"actor_user_public_id,omitempty"`
+	Action            string `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	TenantId          string `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ExportAuditLogsRequest) Reset() {
+	*x = ExportAuditLogsRequest{}
+	mi := &file_publira_platform_v1_audit_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportAuditLogsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportAuditLogsRequest) ProtoMessage() {}
+
+func (x *ExportAuditLogsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_audit_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportAuditLogsRequest.ProtoReflect.Descriptor instead.
+func (*ExportAuditLogsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_audit_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ExportAuditLogsRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *ExportAuditLogsRequest) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *ExportAuditLogsRequest) GetActorUserPublicId() string {
+	if x != nil {
+		return x.ActorUserPublicId
+	}
+	return ""
+}
+
+func (x *ExportAuditLogsRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ExportAuditLogsRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+type ExportAuditLogsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The entries as CSV: UTF-8 with a byte order mark, CRLF line endings,
+	// RFC 4180 quoting, and a field a spreadsheet would read as a formula
+	// written with a leading apostrophe. A header row, then one row per entry
+	// of the period, oldest first, with the columns
+	//
+	//	time, actor_public_id, actor_name, actor_role, action, outcome, reason,
+	//	target_type, target_id, client_ip, tenant_public_id, tenant_name,
+	//	target_public_id, target_name
+	//
+	// time is the instant the entry was recorded, in RFC 3339 with the offset
+	// of the install's default time zone. The other columns are what
+	// PlatformAuditLog's fields of the same names carry, actor_public_id being
+	// its actor_user_public_id, an absent one written empty.
+	Csv           []byte `protobuf:"bytes,1,opt,name=csv,proto3" json:"csv,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportAuditLogsResponse) Reset() {
+	*x = ExportAuditLogsResponse{}
+	mi := &file_publira_platform_v1_audit_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportAuditLogsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportAuditLogsResponse) ProtoMessage() {}
+
+func (x *ExportAuditLogsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_audit_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportAuditLogsResponse.ProtoReflect.Descriptor instead.
+func (*ExportAuditLogsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_audit_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ExportAuditLogsResponse) GetCsv() []byte {
+	if x != nil {
+		return x.Csv
+	}
+	return nil
+}
+
 var File_publira_platform_v1_audit_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_audit_proto_rawDesc = "" +
@@ -349,9 +487,19 @@ const file_publira_platform_v1_audit_proto_rawDesc = "" +
 	"audit_logs\x18\x01 \x03(\v2%.publira.platform.v1.PlatformAuditLogR\tauditLogs\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken2\x83\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xb8\x01\n" +
+	"\x16ExportAuditLogsRequest\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x01 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x02 \x01(\tR\aendDate\x12/\n" +
+	"\x14actor_user_public_id\x18\x03 \x01(\tR\x11actorUserPublicId\x12\x16\n" +
+	"\x06action\x18\x04 \x01(\tR\x06action\x12\x1b\n" +
+	"\ttenant_id\x18\x05 \x01(\tR\btenantId\"+\n" +
+	"\x17ExportAuditLogsResponse\x12\x10\n" +
+	"\x03csv\x18\x01 \x01(\fR\x03csv2\xf3\x01\n" +
 	"\x17PlatformAuditLogService\x12h\n" +
-	"\rListAuditLogs\x12).publira.platform.v1.ListAuditLogsRequest\x1a*.publira.platform.v1.ListAuditLogsResponse\"\x00B]Z[github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
+	"\rListAuditLogs\x12).publira.platform.v1.ListAuditLogsRequest\x1a*.publira.platform.v1.ListAuditLogsResponse\"\x00\x12n\n" +
+	"\x0fExportAuditLogs\x12+.publira.platform.v1.ExportAuditLogsRequest\x1a,.publira.platform.v1.ExportAuditLogsResponse\"\x00B]Z[github.com/publira/publira/server/internal/proto/gen/publira/platform/v1;publirasplatformv1b\x06proto3"
 
 var (
 	file_publira_platform_v1_audit_proto_rawDescOnce sync.Once
@@ -365,18 +513,22 @@ func file_publira_platform_v1_audit_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_audit_proto_rawDescData
 }
 
-var file_publira_platform_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_publira_platform_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_publira_platform_v1_audit_proto_goTypes = []any{
-	(*PlatformAuditLog)(nil),      // 0: publira.platform.v1.PlatformAuditLog
-	(*ListAuditLogsRequest)(nil),  // 1: publira.platform.v1.ListAuditLogsRequest
-	(*ListAuditLogsResponse)(nil), // 2: publira.platform.v1.ListAuditLogsResponse
+	(*PlatformAuditLog)(nil),        // 0: publira.platform.v1.PlatformAuditLog
+	(*ListAuditLogsRequest)(nil),    // 1: publira.platform.v1.ListAuditLogsRequest
+	(*ListAuditLogsResponse)(nil),   // 2: publira.platform.v1.ListAuditLogsResponse
+	(*ExportAuditLogsRequest)(nil),  // 3: publira.platform.v1.ExportAuditLogsRequest
+	(*ExportAuditLogsResponse)(nil), // 4: publira.platform.v1.ExportAuditLogsResponse
 }
 var file_publira_platform_v1_audit_proto_depIdxs = []int32{
 	0, // 0: publira.platform.v1.ListAuditLogsResponse.audit_logs:type_name -> publira.platform.v1.PlatformAuditLog
 	1, // 1: publira.platform.v1.PlatformAuditLogService.ListAuditLogs:input_type -> publira.platform.v1.ListAuditLogsRequest
-	2, // 2: publira.platform.v1.PlatformAuditLogService.ListAuditLogs:output_type -> publira.platform.v1.ListAuditLogsResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	3, // 2: publira.platform.v1.PlatformAuditLogService.ExportAuditLogs:input_type -> publira.platform.v1.ExportAuditLogsRequest
+	2, // 3: publira.platform.v1.PlatformAuditLogService.ListAuditLogs:output_type -> publira.platform.v1.ListAuditLogsResponse
+	4, // 4: publira.platform.v1.PlatformAuditLogService.ExportAuditLogs:output_type -> publira.platform.v1.ExportAuditLogsResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -393,7 +545,7 @@ func file_publira_platform_v1_audit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_audit_proto_rawDesc), len(file_publira_platform_v1_audit_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -12,6 +12,10 @@ export const getAuditActionOptions = async (
 
   return [
     {
+      label: t("platform.audit.actions.audit_log_exported"),
+      value: "audit_log_exported",
+    },
+    {
       label: t("platform.audit.actions.operator_created"),
       value: "operator_created",
     },

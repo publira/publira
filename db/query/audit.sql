@@ -102,6 +102,8 @@ FROM platform_audit_logs a
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR a.tenant_id = sqlc.narg('filter_tenant_id')::uuid)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
+    AND (sqlc.narg('filter_created_from')::timestamptz IS NULL OR a.created_at >= sqlc.narg('filter_created_from')::timestamptz)
+    AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
@@ -158,6 +160,8 @@ FROM platform_audit_logs a
 WHERE (sqlc.narg('filter_actor_user_public_id')::text IS NULL OR actor_pu.public_id = sqlc.narg('filter_actor_user_public_id')::text)
     AND (sqlc.narg('filter_tenant_id')::uuid IS NULL OR a.tenant_id = sqlc.narg('filter_tenant_id')::uuid)
     AND (sqlc.narg('filter_action')::text IS NULL OR a.action = sqlc.narg('filter_action')::text)
+    AND (sqlc.narg('filter_created_from')::timestamptz IS NULL OR a.created_at >= sqlc.narg('filter_created_from')::timestamptz)
+    AND (sqlc.narg('filter_created_to')::timestamptz IS NULL OR a.created_at < sqlc.narg('filter_created_to')::timestamptz)
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (

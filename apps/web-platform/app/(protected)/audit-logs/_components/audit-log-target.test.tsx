@@ -120,6 +120,32 @@ describe("AuditLogTarget", () => {
     ).toBe("/tenants/acme");
   });
 
+  it("names an export by its period and links the tenant it was narrowed to", async () => {
+    const { container } = await renderTarget({
+      targetId: "2026-01-10/2026-01-11",
+      targetType: "audit_log",
+      tenantId: "acme",
+      tenantName: "Acme Comics",
+    });
+
+    expect(container.textContent).toBe(
+      "Audit log for 2026-01-10/2026-01-11Acme Comics"
+    );
+    expect(
+      screen.getByRole("link", { name: "Acme Comics" }).getAttribute("href")
+    ).toBe("/tenants/acme");
+  });
+
+  it("names an export of the whole log by its period alone", async () => {
+    const { container } = await renderTarget({
+      targetId: "2026-01-10/2026-01-11",
+      targetType: "audit_log",
+    });
+
+    expect(container.textContent).toBe("Audit log for 2026-01-10/2026-01-11");
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
   it("names a platform-wide setting", async () => {
     const { container } = await renderTarget({
       targetId: "platform",

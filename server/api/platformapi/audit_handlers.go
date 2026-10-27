@@ -114,6 +114,20 @@ func nullStringFilter(value string) sql.NullString {
 	return sql.NullString{String: trimmed, Valid: true}
 }
 
+// auditTenantFilter reads the tenant a request narrows the log to, answering
+// NULL for an empty one.
+func auditTenantFilter(raw string) (uuid.NullUUID, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return uuid.NullUUID{}, nil
+	}
+	parsed, err := uuid.Parse(trimmed)
+	if err != nil {
+		return uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, "tenant_id is not an identifier")
+	}
+	return uuid.NullUUID{UUID: parsed, Valid: true}, nil
+}
+
 type platformAuditLogQueryFilters struct {
 	tenantID          uuid.NullUUID
 	actorUserPublicID sql.NullString
@@ -175,15 +189,13 @@ func (s *platformServer) ListAuditLogs(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
-	var tenantID uuid.NullUUID
+	tenantID, err := auditTenantFilter(req.TenantId)
+	if err != nil {
+		return nil, err
+	}
 	tenantIDKey := ""
-	if raw := strings.TrimSpace(req.TenantId); raw != "" {
-		parsed, err := uuid.Parse(raw)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, "tenant_id is not an identifier")
-		}
-		tenantID = uuid.NullUUID{UUID: parsed, Valid: true}
-		tenantIDKey = parsed.String()
+	if tenantID.Valid {
+		tenantIDKey = tenantID.UUID.String()
 	}
 	filters := platformAuditLogQueryFilters{
 		tenantID:          tenantID,

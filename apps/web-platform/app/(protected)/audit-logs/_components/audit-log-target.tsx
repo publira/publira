@@ -73,6 +73,28 @@ const InvitationTarget = ({ log }: { log: PlatformAuditLogSummary }) => (
   </>
 );
 
+/**
+ * An export of the log itself, named by the period it covered, which the API
+ * records as the target ID, and linked to the tenant it was narrowed to.
+ */
+const ExportTarget = ({ log }: { log: PlatformAuditLogSummary }) => (
+  <>
+    <p>
+      <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+        <Message
+          message="platform.audit.targets.audit_log"
+          values={{ period: log.targetId }}
+        />
+      </Suspense>
+    </p>
+    {log.tenantId ? (
+      <Link className={linkClassName} href={`/tenants/${log.tenantId}`}>
+        {log.tenantName || log.tenantId}
+      </Link>
+    ) : null}
+  </>
+);
+
 /** What an audit entry acted on, linked to its page when it has one. */
 export const AuditLogTarget = ({ log }: { log: PlatformAuditLogSummary }) => {
   if (log.targetPublicId && log.targetType === "operator") {
@@ -93,6 +115,10 @@ export const AuditLogTarget = ({ log }: { log: PlatformAuditLogSummary }) => {
 
   if (log.targetType === "tenant_admin_invitation") {
     return <InvitationTarget log={log} />;
+  }
+
+  if (log.targetType === "audit_log") {
+    return <ExportTarget log={log} />;
   }
 
   if (log.tenantId) {

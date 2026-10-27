@@ -1,5 +1,11 @@
 import { Message } from "#components/message";
 
+/** An action on the audit log itself. */
+const auditLogActionName = (action: string) =>
+  action === "audit_log_exported" ? (
+    <Message message="platform.audit.actions.audit_log_exported" />
+  ) : null;
+
 /** An action on an operator. */
 const operatorActionName = (action: string) => {
   switch (action) {
@@ -184,6 +190,7 @@ export const AuditActionName = ({ action }: { action: string }) => {
   }
 
   return (
+    auditLogActionName(normalized) ??
     operatorActionName(normalized) ??
     platformActionName(normalized) ??
     tenantActionName(normalized) ??
