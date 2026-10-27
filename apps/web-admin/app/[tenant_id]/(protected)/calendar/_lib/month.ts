@@ -77,19 +77,14 @@ export const groupByDay = (
   episodes: readonly EpisodePublicationItem[],
   timeZone: string
 ): Map<string, EpisodePublicationItem[]> => {
-  const days = new Map<string, EpisodePublicationItem[]>();
-  for (const episode of episodes) {
-    const instant = parseInstant(episode.publishedAt);
-    if (!instant) {
-      continue;
-    }
-    const day = instant.toZonedDateTimeISO(timeZone).toPlainDate().toString();
-    const entries = days.get(day);
-    if (entries) {
-      entries.push(episode);
-    } else {
-      days.set(day, [episode]);
-    }
-  }
+  const days = Map.groupBy(
+    episodes,
+    (episode) =>
+      parseInstant(episode.publishedAt)
+        ?.toZonedDateTimeISO(timeZone)
+        .toPlainDate()
+        .toString() ?? ""
+  );
+  days.delete("");
   return days;
 };
