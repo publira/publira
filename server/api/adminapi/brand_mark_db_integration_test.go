@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect/v2"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -136,6 +137,67 @@ func TestDBTenantBrandMarkUploadReplaceAndDelete(t *testing.T) {
 			"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = $2 AND target_type = 'tenant_branding' AND target_id = 'app_store_badge'",
 			tenant.Tenant.ID, action); got != want {
 			t.Fatalf("%s audit entries = %d, want %d", action, got, want)
+		}
+	}
+}
+
+// The image variant of a mark is named after its kind, so every kind the enum
+// declares has to fit tenant_image_variants.variant_type.
+func TestDBTenantBrandMarkOfEveryKindIsStored(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	marks := env.brandMarkClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	values := publirattypesv1.TenantBrandMarkKind_TENANT_BRAND_MARK_KIND_UNSPECIFIED.Descriptor().Values()
+	for i := range values.Len() {
+		kind := publirattypesv1.TenantBrandMarkKind(values.Get(i).Number())
+		if kind == publirattypesv1.TenantBrandMarkKind_TENANT_BRAND_MARK_KIND_UNSPECIFIED {
+			continue
+		}
+		stored, err := protomapper.TenantBrandMarkKindToStored(kind)
+		if err != nil {
+			t.Fatalf("TenantBrandMarkKindToStored(%s): %v", kind, err)
+		}
+
+		var urls []string
+		for _, width := range []int{120, 240} {
+			uploaded, err := marks.UploadTenantBrandMark(ctx, &publiraadminv1.UploadTenantBrandMarkRequest{
+				Tenant:           tenant.tenantContext(),
+				Kind:             kind,
+				ImageData:        brandingSourcePNG(t, width, 40),
+				ImageContentType: "image/png",
+				TermsUrl:         testBadgeGuidelinesURL,
+				TermsAccepted:    true,
+			})
+			if err != nil {
+				t.Fatalf("UploadTenantBrandMark(%s, %dpx): %v", kind, width, err)
+			}
+			url := brandingImageURL(uploaded.BrandMark.GetMark().GetImageVariants())
+			if !strings.HasSuffix(url, "/"+stored) {
+				t.Fatalf("%s variant url = %q, want one ending in /%s", kind, url, stored)
+			}
+			urls = append(urls, url)
+		}
+		if urls[0] == urls[1] {
+			t.Fatalf("%s variant url did not change on replace: %q", kind, urls[1])
+		}
+		if got := env.countRows(t,
+			"SELECT count(*) FROM tenant_image_variants WHERE tenant_id = $1 AND variant_type = $2 AND width = 240",
+			tenant.Tenant.ID, stored); got != 1 {
+			t.Fatalf("%s variants of the replacement = %d, want 1", stored, got)
+		}
+
+		if _, err := marks.DeleteTenantBrandMark(ctx, &publiraadminv1.DeleteTenantBrandMarkRequest{
+			Tenant: tenant.tenantContext(),
+			Kind:   kind,
+		}); err != nil {
+			t.Fatalf("DeleteTenantBrandMark(%s): %v", kind, err)
+		}
+		if got := env.countRows(t, "SELECT count(*) FROM tenant_image_variants WHERE tenant_id = $1", tenant.Tenant.ID); got != 0 {
+			t.Fatalf("tenant_image_variants rows after deleting %s = %d, want 0", stored, got)
 		}
 	}
 }
