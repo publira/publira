@@ -149,7 +149,7 @@ No lint covers this. `git grep` cannot tell which of the two senses an `author` 
 
 Every environment variable that **only this repository's own code reads** is named `PUBLIRA_*`. A variable keeps its outside name only when the software that consumes the value looks that name up itself — the AWS SDK, `NODE_ENV`, `PORT`. That test, who performs the lookup, is the whole rule: `S3_*`, `AUTH_SECRET`, `REDIS_URL`, and the cache-related `NEXT_*` names are all ours, so all of them carry the prefix.
 
-A variable a GitHub Actions workflow declares only for its own step's inline `run:` script, or only for `${{ env.* }}` expressions, is outside the rule and keeps a plain name: nothing else looks it up. Once a program or script the step runs reads the value from its environment, it is `PUBLIRA_*` again.
+A variable a GitHub Actions workflow declares only for its own step's inline `run:` script, or only for `${{ env.* }}` expressions, is outside the rule and keeps a plain name: nothing else looks it up. So is the version pin of an outside tool a workflow installs, which keeps its `<TOOL>_VERSION` name whether an expression, an action, or a script reads it: it only says which release of someone else's software to fetch. Any other value a program or script the step runs reads from its environment is `PUBLIRA_*` again.
 
 Nothing fails on a wrong name. `turbo.jsonc` passes `PUBLIRA_*` through and turbo runs in strict env mode, so a non-conforming variable silently does nothing while every service still starts. Do not add a `passThroughEnv` exception to keep such a name — rename the variable. An entry there is for a name that is genuinely someone else's, which is why `PORT` has one.
 
