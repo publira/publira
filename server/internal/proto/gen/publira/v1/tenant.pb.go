@@ -1021,7 +1021,10 @@ type TenantGoogleTag struct {
 	ServerContainerUrl string `protobuf:"bytes,4,opt,name=server_container_url,json=serverContainerUrl,proto3" json:"server_container_url,omitempty"`
 	// The first path segment the gateway answers on: set in
 	// GOOGLE_TAG_SERVING_MODE_GATEWAY alone.
-	GatewayPath   string `protobuf:"bytes,5,opt,name=gateway_path,json=gatewayPath,proto3" json:"gateway_path,omitempty"`
+	GatewayPath string `protobuf:"bytes,5,opt,name=gateway_path,json=gatewayPath,proto3" json:"gateway_path,omitempty"`
+	// Whether the reader is asked before the tag stores anything. Never
+	// GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED.
+	ConsentMode   v1.GoogleTagConsentMode `protobuf:"varint,6,opt,name=consent_mode,json=consentMode,proto3,enum=publira.types.v1.GoogleTagConsentMode" json:"consent_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1089,6 +1092,13 @@ func (x *TenantGoogleTag) GetGatewayPath() string {
 		return x.GatewayPath
 	}
 	return ""
+}
+
+func (x *TenantGoogleTag) GetConsentMode() v1.GoogleTagConsentMode {
+	if x != nil {
+		return x.ConsentMode
+	}
+	return v1.GoogleTagConsentMode(0)
 }
 
 // The codes the storefront writes into every page as <meta> tags, each one
@@ -1382,13 +1392,14 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\aandroid\x18\x01 \x01(\v2'.publira.v1.TenantAndroidAppAssociationR\aandroid\x125\n" +
 	"\x03ios\x18\x02 \x01(\v2#.publira.v1.TenantIosAppAssociationR\x03ios\"\\\n" +
 	"!GetTenantAnalyticsSettingsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x89\x02\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xd4\x02\n" +
 	"\x0fTenantGoogleTag\x12,\n" +
 	"\x12ga4_measurement_id\x18\x01 \x01(\tR\x10ga4MeasurementId\x12(\n" +
 	"\x10gtm_container_id\x18\x02 \x01(\tR\x0egtmContainerId\x12I\n" +
 	"\fserving_mode\x18\x03 \x01(\x0e2&.publira.types.v1.GoogleTagServingModeR\vservingMode\x120\n" +
 	"\x14server_container_url\x18\x04 \x01(\tR\x12serverContainerUrl\x12!\n" +
-	"\fgateway_path\x18\x05 \x01(\tR\vgatewayPath\"\x88\x01\n" +
+	"\fgateway_path\x18\x05 \x01(\tR\vgatewayPath\x12I\n" +
+	"\fconsent_mode\x18\x06 \x01(\x0e2&.publira.types.v1.GoogleTagConsentModeR\vconsentMode\"\x88\x01\n" +
 	"\x16TenantSiteVerification\x128\n" +
 	"\x18google_site_verification\x18\x01 \x01(\tR\x16googleSiteVerification\x124\n" +
 	"\x16bing_site_verification\x18\x02 \x01(\tR\x14bingSiteVerification\"\xb1\x01\n" +
@@ -1450,6 +1461,7 @@ var file_publira_v1_tenant_proto_goTypes = []any{
 	(v1.ReaderIconPolicy)(0),                      // 24: publira.types.v1.ReaderIconPolicy
 	(*v1.ReaderIconPreset)(nil),                   // 25: publira.types.v1.ReaderIconPreset
 	(v1.GoogleTagServingMode)(0),                  // 26: publira.types.v1.GoogleTagServingMode
+	(v1.GoogleTagConsentMode)(0),                  // 27: publira.types.v1.GoogleTagConsentMode
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
 	19, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
@@ -1470,26 +1482,27 @@ var file_publira_v1_tenant_proto_depIdxs = []int32{
 	11, // 15: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
 	19, // 16: publira.v1.GetTenantAnalyticsSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	26, // 17: publira.v1.TenantGoogleTag.serving_mode:type_name -> publira.types.v1.GoogleTagServingMode
-	14, // 18: publira.v1.GetTenantAnalyticsSettingsResponse.google_tag:type_name -> publira.v1.TenantGoogleTag
-	15, // 19: publira.v1.GetTenantAnalyticsSettingsResponse.site_verification:type_name -> publira.v1.TenantSiteVerification
-	19, // 20: publira.v1.GetTenantCrawlerSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 21: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	1,  // 22: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
-	9,  // 23: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
-	7,  // 24: publira.v1.TenantService.GetTenantReaderIconPolicy:input_type -> publira.v1.GetTenantReaderIconPolicyRequest
-	13, // 25: publira.v1.TenantService.GetTenantAnalyticsSettings:input_type -> publira.v1.GetTenantAnalyticsSettingsRequest
-	17, // 26: publira.v1.TenantService.GetTenantCrawlerSettings:input_type -> publira.v1.GetTenantCrawlerSettingsRequest
-	4,  // 27: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	3,  // 28: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
-	12, // 29: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
-	8,  // 30: publira.v1.TenantService.GetTenantReaderIconPolicy:output_type -> publira.v1.GetTenantReaderIconPolicyResponse
-	16, // 31: publira.v1.TenantService.GetTenantAnalyticsSettings:output_type -> publira.v1.GetTenantAnalyticsSettingsResponse
-	18, // 32: publira.v1.TenantService.GetTenantCrawlerSettings:output_type -> publira.v1.GetTenantCrawlerSettingsResponse
-	27, // [27:33] is the sub-list for method output_type
-	21, // [21:27] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	27, // 18: publira.v1.TenantGoogleTag.consent_mode:type_name -> publira.types.v1.GoogleTagConsentMode
+	14, // 19: publira.v1.GetTenantAnalyticsSettingsResponse.google_tag:type_name -> publira.v1.TenantGoogleTag
+	15, // 20: publira.v1.GetTenantAnalyticsSettingsResponse.site_verification:type_name -> publira.v1.TenantSiteVerification
+	19, // 21: publira.v1.GetTenantCrawlerSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 22: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	1,  // 23: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
+	9,  // 24: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
+	7,  // 25: publira.v1.TenantService.GetTenantReaderIconPolicy:input_type -> publira.v1.GetTenantReaderIconPolicyRequest
+	13, // 26: publira.v1.TenantService.GetTenantAnalyticsSettings:input_type -> publira.v1.GetTenantAnalyticsSettingsRequest
+	17, // 27: publira.v1.TenantService.GetTenantCrawlerSettings:input_type -> publira.v1.GetTenantCrawlerSettingsRequest
+	4,  // 28: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	3,  // 29: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
+	12, // 30: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
+	8,  // 31: publira.v1.TenantService.GetTenantReaderIconPolicy:output_type -> publira.v1.GetTenantReaderIconPolicyResponse
+	16, // 32: publira.v1.TenantService.GetTenantAnalyticsSettings:output_type -> publira.v1.GetTenantAnalyticsSettingsResponse
+	18, // 33: publira.v1.TenantService.GetTenantCrawlerSettings:output_type -> publira.v1.GetTenantCrawlerSettingsResponse
+	28, // [28:34] is the sub-list for method output_type
+	22, // [22:28] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }

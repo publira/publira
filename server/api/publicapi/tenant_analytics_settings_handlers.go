@@ -47,11 +47,16 @@ func (s *apiServer) GetTenantAnalyticsSettings(
 	if err != nil {
 		return nil, s.internalError(ctx, "tenant analytics serving mode is not a supported mode", err, "tenant_id", tenant.ID.String())
 	}
+	consentMode, err := protomapper.GoogleTagConsentModeFromStored(settings.ConsentMode)
+	if err != nil {
+		return nil, s.internalError(ctx, "tenant analytics consent mode is not a supported mode", err, "tenant_id", tenant.ID.String())
+	}
 
 	tag := &publirav1.TenantGoogleTag{
 		Ga4MeasurementId: settings.GA4MeasurementID,
 		GtmContainerId:   settings.GTMContainerID,
 		ServingMode:      mode,
+		ConsentMode:      consentMode,
 	}
 	switch settings.ServingMode {
 	case googletag.ServingModeServerContainer:

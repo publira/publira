@@ -461,6 +461,14 @@ const TenantGoogleTag$json = {
       '10': 'serverContainerUrl'
     },
     {'1': 'gateway_path', '3': 5, '4': 1, '5': 9, '10': 'gatewayPath'},
+    {
+      '1': 'consent_mode',
+      '3': 6,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.GoogleTagConsentMode',
+      '10': 'consentMode'
+    },
   ],
 };
 
@@ -470,7 +478,9 @@ final $typed_data.Uint8List tenantGoogleTagDescriptor = $convert.base64Decode(
     'JlbWVudElkEigKEGd0bV9jb250YWluZXJfaWQYAiABKAlSDmd0bUNvbnRhaW5lcklkEkkKDHNl'
     'cnZpbmdfbW9kZRgDIAEoDjImLnB1YmxpcmEudHlwZXMudjEuR29vZ2xlVGFnU2VydmluZ01vZG'
     'VSC3NlcnZpbmdNb2RlEjAKFHNlcnZlcl9jb250YWluZXJfdXJsGAQgASgJUhJzZXJ2ZXJDb250'
-    'YWluZXJVcmwSIQoMZ2F0ZXdheV9wYXRoGAUgASgJUgtnYXRld2F5UGF0aA==');
+    'YWluZXJVcmwSIQoMZ2F0ZXdheV9wYXRoGAUgASgJUgtnYXRld2F5UGF0aBJJCgxjb25zZW50X2'
+    '1vZGUYBiABKA4yJi5wdWJsaXJhLnR5cGVzLnYxLkdvb2dsZVRhZ0NvbnNlbnRNb2RlUgtjb25z'
+    'ZW50TW9kZQ==');
 
 @$core.Deprecated('Use tenantSiteVerificationDescriptor instead')
 const TenantSiteVerification$json = {

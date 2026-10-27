@@ -1415,6 +1415,7 @@ class TenantGoogleTag extends $pb.GeneratedMessage {
     $0.GoogleTagServingMode? servingMode,
     $core.String? serverContainerUrl,
     $core.String? gatewayPath,
+    $0.GoogleTagConsentMode? consentMode,
   }) {
     final result = TenantGoogleTag._();
     if (ga4MeasurementId != null) result.ga4MeasurementId = ga4MeasurementId;
@@ -1423,6 +1424,7 @@ class TenantGoogleTag extends $pb.GeneratedMessage {
     if (serverContainerUrl != null)
       result.serverContainerUrl = serverContainerUrl;
     if (gatewayPath != null) result.gatewayPath = gatewayPath;
+    if (consentMode != null) result.consentMode = consentMode;
     return result;
   }
 
@@ -1445,6 +1447,8 @@ class TenantGoogleTag extends $pb.GeneratedMessage {
         enumValues: $0.GoogleTagServingMode.values)
     ..aOS(4, _omitFieldNames ? '' : 'serverContainerUrl')
     ..aOS(5, _omitFieldNames ? '' : 'gatewayPath')
+    ..aE<$0.GoogleTagConsentMode>(6, _omitFieldNames ? '' : 'consentMode',
+        enumValues: $0.GoogleTagConsentMode.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1521,6 +1525,17 @@ class TenantGoogleTag extends $pb.GeneratedMessage {
   $core.bool hasGatewayPath() => $_has(4);
   @$pb.TagNumber(5)
   void clearGatewayPath() => $_clearField(5);
+
+  /// Whether the reader is asked before the tag stores anything. Never
+  /// GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED.
+  @$pb.TagNumber(6)
+  $0.GoogleTagConsentMode get consentMode => $_getN(5);
+  @$pb.TagNumber(6)
+  set consentMode($0.GoogleTagConsentMode value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConsentMode() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConsentMode() => $_clearField(6);
 }
 
 /// The codes the storefront writes into every page as <meta> tags, each one

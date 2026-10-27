@@ -1419,6 +1419,7 @@ type TenantAnalyticsSetting struct {
 	GatewayPath        sql.NullString `json:"gateway_path"`
 	CreatedAt          time.Time      `json:"created_at"`
 	UpdatedAt          time.Time      `json:"updated_at"`
+	ConsentMode        string         `json:"consent_mode"`
 }
 
 type TenantAppStoreConfig struct {

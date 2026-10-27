@@ -18,6 +18,10 @@ const (
 	googleServing          = publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_GOOGLE
 	serverContainerServing = publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER
 	gatewayServing         = publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_GATEWAY
+
+	notRequiredConsent = publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED
+	optInConsent       = publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_OPT_IN
+	externalConsent    = publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_EXTERNAL
 )
 
 func getDBTenantAnalyticsSettings(t *testing.T, env *adminDBEnv, tenant adminDBTenant) *publiraadminv1.TenantAnalyticsSettings {
@@ -55,13 +59,14 @@ func assertAnalyticsSettings(t *testing.T, label string, got *publiraadminv1.Ten
 	if got.GetGa4MeasurementId() != want.GetGa4MeasurementId() ||
 		got.GetGtmContainerId() != want.GetGtmContainerId() ||
 		got.GetServingMode() != want.GetServingMode() ||
-		got.GetServerContainerUrl() != want.GetServerContainerUrl() {
+		got.GetServerContainerUrl() != want.GetServerContainerUrl() ||
+		got.GetConsentMode() != want.GetConsentMode() {
 		t.Fatalf("%s: settings = %v, want %v", label, got, want)
 	}
 }
 
-// A tenant that has saved nothing reads as loading no tag from Google, and
-// each field is stored normalized, read back, and cleared.
+// A tenant that has saved nothing reads as loading no tag from Google without
+// asking, and each field is stored normalized, read back, and cleared.
 func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
 	t.Parallel()
 
@@ -70,6 +75,7 @@ func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
 
 	assertAnalyticsSettings(t, "initial", getDBTenantAnalyticsSettings(t, env, tenant), &publiraadminv1.TenantAnalyticsSettings{
 		ServingMode: googleServing,
+		ConsentMode: notRequiredConsent,
 	})
 
 	saved, err := updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
@@ -77,6 +83,7 @@ func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
 		GtmContainerId:     "gtm-abc1234",
 		ServingMode:        serverContainerServing,
 		ServerContainerUrl: "HTTPS://Sgtm.Example.com/",
+		ConsentMode:        optInConsent,
 	}, false)
 	if err != nil {
 		t.Fatalf("UpdateTenantAnalyticsSettings: %v", err)
@@ -86,6 +93,7 @@ func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
 		GtmContainerId:     "GTM-ABC1234",
 		ServingMode:        serverContainerServing,
 		ServerContainerUrl: "https://sgtm.example.com",
+		ConsentMode:        optInConsent,
 	}
 	assertAnalyticsSettings(t, "saved", saved, want)
 	assertAnalyticsSettings(t, "read", getDBTenantAnalyticsSettings(t, env, tenant), want)
@@ -98,11 +106,14 @@ func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
 	cleared, err := updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
 		ServingMode:        serverContainerServing,
 		ServerContainerUrl: "https://sgtm.example.com",
+		ConsentMode:        notRequiredConsent,
 	}, false)
 	if err != nil {
 		t.Fatalf("UpdateTenantAnalyticsSettings clearing both IDs: %v", err)
 	}
-	want = &publiraadminv1.TenantAnalyticsSettings{ServingMode: serverContainerServing, ServerContainerUrl: "https://sgtm.example.com"}
+	want = &publiraadminv1.TenantAnalyticsSettings{
+		ServingMode: serverContainerServing, ServerContainerUrl: "https://sgtm.example.com", ConsentMode: notRequiredConsent,
+	}
 	assertAnalyticsSettings(t, "cleared", cleared, want)
 	assertAnalyticsSettings(t, "read after clearing", getDBTenantAnalyticsSettings(t, env, tenant), want)
 
@@ -111,7 +122,98 @@ func TestDBTenantAnalyticsSettingsAreStoredReadBackAndCleared(t *testing.T) {
 	}
 	assertAnalyticsSettings(t, "read after clearing the URL", getDBTenantAnalyticsSettings(t, env, tenant), &publiraadminv1.TenantAnalyticsSettings{
 		ServingMode: googleServing,
+		ConsentMode: notRequiredConsent,
 	})
+}
+
+// Each consent mode is stored, read back, and audited as a change of the
+// settings, and a save that leaves the mode unspecified, as a console that
+// predates it does, keeps the stored one.
+func TestDBTenantAnalyticsConsentModeIsStoredAndKeptWhenUnspecified(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	settings := func(consentMode publirattypesv1.GoogleTagConsentMode) *publiraadminv1.TenantAnalyticsSettings {
+		return &publiraadminv1.TenantAnalyticsSettings{GtmContainerId: "GTM-ABC1234", ServingMode: googleServing, ConsentMode: consentMode}
+	}
+
+	for i, consentMode := range []publirattypesv1.GoogleTagConsentMode{optInConsent, externalConsent, notRequiredConsent} {
+		saved, err := updateDBTenantAnalyticsSettings(env, tenant, settings(consentMode), false)
+		if err != nil {
+			t.Fatalf("UpdateTenantAnalyticsSettings with %s: %v", consentMode, err)
+		}
+		assertAnalyticsSettings(t, "saved "+consentMode.String(), saved, settings(consentMode))
+		assertAnalyticsSettings(t, "read "+consentMode.String(), getDBTenantAnalyticsSettings(t, env, tenant), settings(consentMode))
+		if got := tenantSettingAuditCount(t, env, tenant, "tenant_analytics_settings_updated", "tenant_analytics_settings"); got != i+1 {
+			t.Fatalf("audit entries after saving %s = %d, want %d", consentMode, got, i+1)
+		}
+	}
+
+	if _, err := updateDBTenantAnalyticsSettings(env, tenant, settings(optInConsent), false); err != nil {
+		t.Fatalf("UpdateTenantAnalyticsSettings with opt-in: %v", err)
+	}
+	unspecified := settings(publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED)
+	unspecified.Ga4MeasurementId = "G-ABC123XYZ9"
+	saved, err := updateDBTenantAnalyticsSettings(env, tenant, unspecified, false)
+	if err != nil {
+		t.Fatalf("UpdateTenantAnalyticsSettings leaving the consent mode unspecified: %v", err)
+	}
+	want := settings(optInConsent)
+	want.Ga4MeasurementId = "G-ABC123XYZ9"
+	assertAnalyticsSettings(t, "saved without a consent mode", saved, want)
+	assertAnalyticsSettings(t, "read after saving without a consent mode", getDBTenantAnalyticsSettings(t, env, tenant), want)
+}
+
+// The external mode leaves the asking to a consent tool in the tenant's Tag
+// Manager container, so it is refused without one, whether the save names the
+// mode or clears the container ID under the stored mode.
+func TestDBTenantAnalyticsExternalConsentModeRequiresAContainer(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+
+	if _, err := updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
+		Ga4MeasurementId: "G-ABC123XYZ9", ServingMode: googleServing, ConsentMode: externalConsent,
+	}, false); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("saving external without a container: code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertAnalyticsSettings(t, "after the refused first save", getDBTenantAnalyticsSettings(t, env, tenant), &publiraadminv1.TenantAnalyticsSettings{
+		ServingMode: googleServing,
+		ConsentMode: notRequiredConsent,
+	})
+
+	external := &publiraadminv1.TenantAnalyticsSettings{
+		Ga4MeasurementId: "G-ABC123XYZ9", GtmContainerId: "GTM-ABC1234", ServingMode: googleServing, ConsentMode: externalConsent,
+	}
+	if _, err := updateDBTenantAnalyticsSettings(env, tenant, external, false); err != nil {
+		t.Fatalf("UpdateTenantAnalyticsSettings with external and a container: %v", err)
+	}
+	for name, consentMode := range map[string]publirattypesv1.GoogleTagConsentMode{
+		"naming external":              externalConsent,
+		"leaving the mode unspecified": publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_UNSPECIFIED,
+	} {
+		if _, err := updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
+			Ga4MeasurementId: "G-ABC123XYZ9", ServingMode: googleServing, ConsentMode: consentMode,
+		}, false); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("clearing the container %s: code = %v, want invalid_argument (err=%v)", name, connect.CodeOf(err), err)
+		}
+	}
+	if _, err := updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
+		Ga4MeasurementId: "G-ABC123XYZ9", GtmContainerId: "GTM-ABC1234", ServingMode: googleServing,
+		ConsentMode: publirattypesv1.GoogleTagConsentMode(99),
+	}, false); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("saving a consent mode naming no mode: code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertAnalyticsSettings(t, "after the refused saves", getDBTenantAnalyticsSettings(t, env, tenant), external)
+
+	// Leaving external clears the way to clearing the container.
+	if _, err := updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
+		Ga4MeasurementId: "G-ABC123XYZ9", ServingMode: googleServing, ConsentMode: optInConsent,
+	}, false); err != nil {
+		t.Fatalf("UpdateTenantAnalyticsSettings leaving external and clearing the container: %v", err)
+	}
 }
 
 // A refused save leaves what was stored alone.
@@ -126,6 +228,7 @@ func TestDBTenantAnalyticsSettingsRefuseAMalformedValue(t *testing.T) {
 			GtmContainerId:     "GTM-ABC1234",
 			ServingMode:        serverContainerServing,
 			ServerContainerUrl: "https://sgtm.example.com",
+			ConsentMode:        notRequiredConsent,
 		}
 	}
 	if _, err := updateDBTenantAnalyticsSettings(env, tenant, valid(), false); err != nil {
@@ -261,14 +364,14 @@ func TestDBTenantAnalyticsSettingsRequireTenantAdmin(t *testing.T) {
 			t.Fatalf("GetTenantAnalyticsSettings as %s: code = %v, want permission_denied (err=%v)", seat.User.Role, connect.CodeOf(err), err)
 		}
 		_, err = updateDBTenantAnalyticsSettings(env, seat, &publiraadminv1.TenantAnalyticsSettings{
-			Ga4MeasurementId: "G-ABC123XYZ9", ServingMode: googleServing,
+			Ga4MeasurementId: "G-ABC123XYZ9", ServingMode: googleServing, ConsentMode: optInConsent,
 		}, false)
 		if connect.CodeOf(err) != connect.CodePermissionDenied {
 			t.Fatalf("UpdateTenantAnalyticsSettings as %s: code = %v, want permission_denied (err=%v)", seat.User.Role, connect.CodeOf(err), err)
 		}
 	}
-	if got := getDBTenantAnalyticsSettings(t, env, tenant); got.Ga4MeasurementId != "" {
-		t.Fatalf("measurement ID after refused saves = %q, want none", got.Ga4MeasurementId)
+	if got := getDBTenantAnalyticsSettings(t, env, tenant); got.Ga4MeasurementId != "" || got.ConsentMode != notRequiredConsent {
+		t.Fatalf("settings after refused saves = %v, want none saved", got)
 	}
 }
 

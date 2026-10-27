@@ -32,6 +32,21 @@ func seedAnalyticsSettings(
 	}
 }
 
+// seedAnalyticsConsentMode sets the consent mode of a tenant whose settings
+// seedAnalyticsSettings stored.
+func seedAnalyticsConsentMode(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, consentMode string) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := env.PG.DB.ExecContext(ctx,
+		`UPDATE tenant_analytics_settings SET consent_mode = $2 WHERE tenant_id = $1`, tenant.ID, consentMode,
+	); err != nil {
+		t.Fatalf("update tenant_analytics_settings.consent_mode for %s: %v", tenant.PublicID, err)
+	}
+}
+
 func getDBAnalyticsSettings(t *testing.T, env *publicDBEnv, tenant testutil.Tenant) *publirav1.TenantGoogleTag {
 	t.Helper()
 
@@ -51,7 +66,8 @@ func assertGoogleTag(t *testing.T, label string, got, want *publirav1.TenantGoog
 		got.GetGtmContainerId() != want.GetGtmContainerId() ||
 		got.GetServingMode() != want.GetServingMode() ||
 		got.GetServerContainerUrl() != want.GetServerContainerUrl() ||
-		got.GetGatewayPath() != want.GetGatewayPath() {
+		got.GetGatewayPath() != want.GetGatewayPath() ||
+		got.GetConsentMode() != want.GetConsentMode() {
 		t.Fatalf("%s: google tag = %v, want %v", label, got, want)
 	}
 }
@@ -63,17 +79,21 @@ func TestDBGetTenantAnalyticsSettingsAnswersEachTenantItsOwnTag(t *testing.T) {
 	env := newPublicDBEnv(t)
 	first, second := env.seedTwoTenants(t)
 	seedAnalyticsSettings(t, env, first, "G-TENANTA1", "GTM-TENANTA", "server_container", "https://sgtm.tenant-a.example.com", "")
+	seedAnalyticsConsentMode(t, env, first, "external")
 	seedAnalyticsSettings(t, env, second, "G-TENANTB1", "", "google", "", "")
+	seedAnalyticsConsentMode(t, env, second, "opt_in")
 
 	assertGoogleTag(t, "tenant A", getDBAnalyticsSettings(t, env, first), &publirav1.TenantGoogleTag{
 		Ga4MeasurementId:   "G-TENANTA1",
 		GtmContainerId:     "GTM-TENANTA",
 		ServingMode:        publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER,
 		ServerContainerUrl: "https://sgtm.tenant-a.example.com",
+		ConsentMode:        publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_EXTERNAL,
 	})
 	assertGoogleTag(t, "tenant B", getDBAnalyticsSettings(t, env, second), &publirav1.TenantGoogleTag{
 		Ga4MeasurementId: "G-TENANTB1",
 		ServingMode:      publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_GOOGLE,
+		ConsentMode:      publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_OPT_IN,
 	})
 }
 
@@ -89,17 +109,20 @@ func TestDBGetTenantAnalyticsSettingsAnswersOnlyWhatTheModeUses(t *testing.T) {
 		"google": {mode: "google", want: &publirav1.TenantGoogleTag{
 			GtmContainerId: "GTM-ABC123",
 			ServingMode:    publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_GOOGLE,
+			ConsentMode:    publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED,
 		}},
 		"server container": {mode: "server_container", want: &publirav1.TenantGoogleTag{
 			GtmContainerId:     "GTM-ABC123",
 			ServingMode:        publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER,
 			ServerContainerUrl: "https://sgtm.example.com",
+			ConsentMode:        publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED,
 		}},
 		"gateway": {mode: "gateway", want: &publirav1.TenantGoogleTag{
 			GtmContainerId:     "GTM-ABC123",
 			ServingMode:        publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_GATEWAY,
 			ServerContainerUrl: "https://sgtm.example.com",
 			GatewayPath:        "_abcdefghijklmn27",
+			ConsentMode:        publirattypesv1.GoogleTagConsentMode_GOOGLE_TAG_CONSENT_MODE_NOT_REQUIRED,
 		}},
 	} {
 		t.Run(name, func(t *testing.T) {

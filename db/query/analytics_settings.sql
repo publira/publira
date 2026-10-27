@@ -26,7 +26,8 @@ INSERT INTO tenant_analytics_settings (
         gtm_container_id,
         serving_mode,
         server_container_url,
-        gateway_path
+        gateway_path,
+        consent_mode
     )
 VALUES (
         sqlc.arg('tenant_id'),
@@ -34,7 +35,8 @@ VALUES (
         sqlc.narg('gtm_container_id'),
         sqlc.arg('serving_mode'),
         sqlc.narg('server_container_url'),
-        sqlc.narg('gateway_path')
+        sqlc.narg('gateway_path'),
+        sqlc.arg('consent_mode')
     ) ON CONFLICT (tenant_id) DO
 UPDATE
 SET ga4_measurement_id = EXCLUDED.ga4_measurement_id,
@@ -42,5 +44,6 @@ SET ga4_measurement_id = EXCLUDED.ga4_measurement_id,
     serving_mode = EXCLUDED.serving_mode,
     server_container_url = EXCLUDED.server_container_url,
     gateway_path = EXCLUDED.gateway_path,
+    consent_mode = EXCLUDED.consent_mode,
     updated_at = NOW()
 RETURNING *;
