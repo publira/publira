@@ -665,6 +665,32 @@ test.describe("a tenant that asks readers first", () => {
     ]);
   });
 
+  test("a withdrawal in one tab reaches the tag already running in another", async ({
+    context,
+    page,
+  }) => {
+    await page.goto(siteUrl(SERIES_PATH));
+    const loaded = page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN));
+    await consentBanner(page).getByRole("button", { name: "Accept" }).click();
+    await loaded;
+
+    const other = await context.newPage();
+    const otherLoaded = other.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN));
+    await other.goto(siteUrl(SERIES_PATH));
+    await otherLoaded;
+
+    await cookieSettings(page).click();
+    await consentBanner(page).getByRole("button", { name: "Decline" }).click();
+
+    await expect
+      .poll(() => consentCommands(other))
+      .toEqual([
+        CONSENT_DEFAULT,
+        ["consent", "update", signals("granted")],
+        ["consent", "update", signals("denied")],
+      ]);
+  });
+
   test("a signed-in reader's view is counted under their account without an answer", async ({
     page,
   }) => {

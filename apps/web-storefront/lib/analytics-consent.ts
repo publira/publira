@@ -23,7 +23,11 @@ export type AnalyticsConsentState =
  */
 const ANALYTICS_CONSENT_MAX_AGE_SECONDS = 183 * 24 * 60 * 60;
 
-/** Same-tab signal. A cookie written by script fires no event of its own. */
+/**
+ * Signal to this tab's subscribers. A cookie written by script fires no event
+ * of its own; another tab's answer arrives on the channel below and is
+ * re-dispatched here.
+ */
 const CHANGE_EVENT = "publira:analytics-consent";
 
 /** Sent by **Cookie settings** in the footer for the banner to come back. */
@@ -72,19 +76,73 @@ function gtag(..._command: unknown[]): void {
 }
 
 /**
- * Stores the reader's answer and tells Google what changed.
- *
- * A grant sends an `update` of `granted`. A refusal sends nothing unless it
- * withdraws a grant, which sends an `update` of `denied`: before a grant, the
- * defaults already say `denied`. Cookies the tag set before a withdrawal stay
- * until Google's own expiry, which the banner tells the reader.
+ * What this document last told Google, read off its own `dataLayer`, or
+ * `undefined` before the defaults have run. The cookie cannot answer this:
+ * another tab may have changed it since this one last sent anything.
+ */
+const signalledConsent = (): AnalyticsConsentAnswer | undefined => {
+  const { dataLayer = [] } = window as unknown as {
+    dataLayer?: Record<number, unknown>[];
+  };
+  const command = dataLayer.findLast((entry) => entry[0] === "consent");
+  if (!command) {
+    return undefined;
+  }
+  return (command[2] as { analytics_storage?: string } | undefined)
+    ?.analytics_storage === "granted"
+    ? "granted"
+    : "denied";
+};
+
+/**
+ * Sends Google an `update` when `answer` differs from what this document last
+ * told it. A refusal before any grant therefore sends nothing, since the
+ * defaults already say `denied`. A document whose defaults have not run yet
+ * is left alone: they read the stored answer themselves when they do.
+ */
+const signalConsent = (answer: AnalyticsConsentAnswer): void => {
+  const signalled = signalledConsent();
+  if (signalled === undefined || signalled === answer) {
+    return;
+  }
+  if (answer === "granted" && sendsGlobalPrivacyControl()) {
+    return;
+  }
+  gtag("consent", "update", consentSignals(answer));
+};
+
+/**
+ * Carries an answer to the site's other tabs, which share the cookie but not
+ * the `dataLayer`: a withdrawal in one tab has to reach a tag already running
+ * in another.
+ */
+const CHANNEL_NAME = "publira:analytics-consent";
+
+let channel: BroadcastChannel | undefined;
+
+const openChannel = (): BroadcastChannel | undefined => {
+  if (channel || typeof BroadcastChannel === "undefined") {
+    return channel;
+  }
+  channel = new BroadcastChannel(CHANNEL_NAME);
+  channel.addEventListener("message", (event: MessageEvent<unknown>) => {
+    if (typeof event.data === "string" && isAnswer(event.data)) {
+      signalConsent(event.data);
+      window.dispatchEvent(new Event(CHANGE_EVENT));
+    }
+  });
+  return channel;
+};
+
+/**
+ * Stores the reader's answer and tells Google what changed, in this tab and
+ * in every other tab of the site. Cookies the tag set before a withdrawal
+ * stay until Google's own expiry, which the banner tells the reader.
  */
 export const answerAnalyticsConsent = (
   cookieName: string,
   answer: AnalyticsConsentAnswer
 ): void => {
-  const previous = readStoredAnswer(cookieName);
-
   // oxlint-disable-next-line unicorn/no-document-cookie -- the answer decides what this page loads now, before any request could carry it
   document.cookie = [
     `${cookieName}=${answer}`,
@@ -94,14 +152,13 @@ export const answerAnalyticsConsent = (
     ...(process.env.NODE_ENV === "production" ? ["Secure"] : []),
   ].join("; ");
 
-  if (answer === "granted" ? previous !== "granted" : previous === "granted") {
-    gtag("consent", "update", consentSignals(answer));
-  }
-
+  signalConsent(answer);
   window.dispatchEvent(new Event(CHANGE_EVENT));
+  openChannel()?.postMessage(answer);
 };
 
 const subscribe = (onChange: () => void): (() => void) => {
+  openChannel();
   window.addEventListener(CHANGE_EVENT, onChange);
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange);

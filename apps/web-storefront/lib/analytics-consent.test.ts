@@ -25,6 +25,18 @@ const signals = (answer: "denied" | "granted") => ({
   analytics_storage: answer,
 });
 
+/** A command the way `gtag()` pushes it: an `arguments` object. */
+// oxlint-disable-next-line func-style -- an arrow function has no `arguments`
+function asCommand(..._args: unknown[]): Iterable<unknown> {
+  // oxlint-disable-next-line prefer-rest-params, sonarjs/arguments-usage -- see above
+  return arguments;
+}
+
+/** What the defaults script leaves for a reader who has not agreed. */
+const runDefaults = () => {
+  page.dataLayer = [asCommand("consent", "default", signals("denied"))];
+};
+
 const clearCookie = () => {
   // oxlint-disable-next-line unicorn/no-document-cookie -- the test plays the browser the module writes to
   document.cookie = `${COOKIE}=; Max-Age=0; Path=/`;
@@ -68,29 +80,55 @@ describe("answerAnalyticsConsent", () => {
   });
 
   it("sends a grant to Google, and a refusal only when it withdraws one", () => {
+    runDefaults();
+
     answerAnalyticsConsent(COOKIE, "denied");
-    expect(commands()).toEqual([]);
+    expect(commands()).toHaveLength(1);
 
     answerAnalyticsConsent(COOKIE, "granted");
     answerAnalyticsConsent(COOKIE, "granted");
-    expect(commands()).toEqual([["consent", "update", signals("granted")]]);
-
     answerAnalyticsConsent(COOKIE, "denied");
     answerAnalyticsConsent(COOKIE, "denied");
-    expect(commands()).toEqual([
+    expect(commands().slice(1)).toEqual([
       ["consent", "update", signals("granted")],
       ["consent", "update", signals("denied")],
     ]);
   });
 
-  it("pushes onto the dataLayer the page already has", () => {
-    const existing: Iterable<unknown>[] = [];
-    page.dataLayer = existing;
+  it("withdraws what this tab sent, whatever another tab left in the cookie", () => {
+    runDefaults();
+    answerAnalyticsConsent(COOKIE, "granted");
+    // Another tab declined: the cookie says so, this tab's tag does not know.
+    // oxlint-disable-next-line unicorn/no-document-cookie -- the test plays the other tab
+    document.cookie = `${COOKIE}=denied; Path=/`;
 
+    answerAnalyticsConsent(COOKIE, "denied");
+
+    expect(commands().at(-1)).toEqual(["consent", "update", signals("denied")]);
+  });
+
+  it("leaves a page whose defaults have not run to read the cookie itself", () => {
     answerAnalyticsConsent(COOKIE, "granted");
 
-    expect(page.dataLayer).toBe(existing);
-    expect(existing).toHaveLength(1);
+    expect(commands()).toEqual([]);
+  });
+
+  it("reaches the tag running in another tab", async () => {
+    runDefaults();
+    answerAnalyticsConsent(COOKIE, "granted");
+    const otherTab = new BroadcastChannel("publira:analytics-consent");
+
+    // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a BroadcastChannel takes no origin
+    otherTab.postMessage("denied");
+
+    await vi.waitFor(() => {
+      expect(commands().at(-1)).toEqual([
+        "consent",
+        "update",
+        signals("denied"),
+      ]);
+    });
+    otherTab.close();
   });
 });
 

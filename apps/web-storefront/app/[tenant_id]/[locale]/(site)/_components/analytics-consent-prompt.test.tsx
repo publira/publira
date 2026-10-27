@@ -71,6 +71,10 @@ describe("AnalyticsConsentPrompt", () => {
   });
 
   it("comes back from Cookie settings, and the changed answer is sent to Google", async () => {
+    // The defaults the loader runs, which the answers are sent against.
+    (window as unknown as { dataLayer: unknown[] }).dataLayer = [
+      { 0: "consent", 1: "default", 2: { analytics_storage: "denied" } },
+    ];
     await renderChrome();
     fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     expect(banner()).toBeNull();
@@ -83,9 +87,17 @@ describe("AnalyticsConsentPrompt", () => {
     const { dataLayer = [] } = window as unknown as {
       dataLayer?: Iterable<unknown>[];
     };
-    expect(dataLayer.map((entry) => [...entry].slice(0, 2))).toEqual([
-      ["consent", "update"],
-      ["consent", "update"],
+    expect(dataLayer.slice(1).map((entry) => [...entry].slice(0, 3))).toEqual([
+      [
+        "consent",
+        "update",
+        expect.objectContaining({ analytics_storage: "granted" }),
+      ],
+      [
+        "consent",
+        "update",
+        expect.objectContaining({ analytics_storage: "denied" }),
+      ],
     ]);
   });
 
