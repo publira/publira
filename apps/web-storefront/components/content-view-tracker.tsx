@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
 import { Suspense } from "react";
 
 import { ANALYTICS_CONSENT_COOKIE_NAME } from "#lib/analytics-consent-cookie";
-import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
+import { resolveAccessToken } from "#lib/api-client";
 import { getTenantGoogleTag } from "#lib/google-tag";
 import { getTenantId } from "#lib/tenant-id";
 import type { ContentViewKind } from "#lib/view-events";
@@ -16,10 +15,14 @@ interface ContentViewTrackerProps {
 }
 
 /**
- * The session cookie is read only where the tenant asks first, so a detail
- * page of any other tenant still reads nothing per request. A signed-in
- * reader's view is filed under their account and leaves nothing new in the
- * browser, so it is sent without waiting for the banner.
+ * The session is read only where the tenant asks first, so a detail page of
+ * any other tenant still reads nothing per request. A signed-in reader's view
+ * is filed under their account and leaves nothing new in the browser, so it
+ * is sent without waiting for the banner.
+ *
+ * Signed in means a session the beacon's endpoint can use, which it resolves
+ * the same way: a cookie it cannot open would make it mint the anonymous
+ * actor in its place, before the reader has agreed.
  */
 const ConsentAwareBeacon = async ({ id, kind }: ContentViewTrackerProps) => {
   const settings = await getTenantGoogleTag(await getTenantId());
@@ -27,8 +30,7 @@ const ConsentAwareBeacon = async ({ id, kind }: ContentViewTrackerProps) => {
     return <ContentViewBeacon id={id} kind={kind} />;
   }
 
-  const cookieStore = await cookies();
-  const signedIn = Boolean(cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value);
+  const signedIn = (await resolveAccessToken()) !== "";
   return signedIn ? (
     <ContentViewBeacon id={id} kind={kind} />
   ) : (
