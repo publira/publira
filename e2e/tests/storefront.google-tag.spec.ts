@@ -217,15 +217,22 @@ const pageViews = (page: Page): Promise<string[]> =>
 const hasDataLayer = (page: Page): Promise<boolean> =>
   page.evaluate(() => "dataLayer" in window);
 
-/** The `consent` commands on the page's `dataLayer`, in the order given. */
+/**
+ * The `consent` commands on the page's `dataLayer`, in the order given. A
+ * command is an `arguments` object, which spreads; the container's start is
+ * an event object beside them, which does not.
+ */
 const consentCommands = (page: Page): Promise<unknown[][]> =>
   page.evaluate(() =>
-    [
-      ...((window as unknown as { dataLayer?: Iterable<unknown>[] })
-        .dataLayer ?? []),
-    ]
-      .map((entry) => [...entry])
+    (
+      (
+        window as unknown as {
+          dataLayer?: (Iterable<unknown> & Record<number, unknown>)[];
+        }
+      ).dataLayer ?? []
+    )
       .filter((entry) => entry[0] === "consent")
+      .map((entry) => [...entry])
   );
 
 const CONSENT_COOKIE = "publira_web_storefront_analytics_consent";
