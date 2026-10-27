@@ -4589,6 +4589,14 @@
     }
   },
   "storefront": {
+    "analytics_consent": {
+      "accept": "동의",
+      "change": "답변은 페이지 하단의 ‘쿠키 설정’에서 언제든지 바꿀 수 있습니다. 동의를 철회해도 Google이 이미 저장한 쿠키는 만료될 때까지 남습니다.",
+      "decline": "동의 안 함",
+      "description": "이 사이트는 작품 조회수를 집계하며, 사이트 운영자를 위해 Google이 사이트 이용 현황을 측정합니다.",
+      "settings": "쿠키 설정",
+      "title": "사이트 이용 측정 안내"
+    },
     "announcements": {
       "back_to_list": "공지사항 목록으로",
       "banner_dismiss": "이 공지사항 닫기",

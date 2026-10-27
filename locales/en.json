@@ -4589,6 +4589,14 @@
     }
   },
   "storefront": {
+    "analytics_consent": {
+      "accept": "Accept",
+      "change": "You can change your answer at any time from Cookie settings at the bottom of the page. Withdrawing it leaves the cookies Google has already stored until they expire.",
+      "decline": "Decline",
+      "description": "This site counts how often its works are viewed, and Google measures how the site is used for the site operator.",
+      "settings": "Cookie settings",
+      "title": "How this site is measured"
+    },
     "announcements": {
       "back_to_list": "All announcements",
       "banner_dismiss": "Close this announcement",

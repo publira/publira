@@ -1,7 +1,10 @@
+import { runInNewContext } from "node:vm";
+
 import { describe, expect, it } from "vitest";
 
 import {
   googleTagScripts,
+  gtagConsentDefaultScript,
   gtagInitScript,
   loadsGoogleTagOn,
 } from "./google-tag-scripts";
@@ -10,6 +13,7 @@ import type { GoogleTagServing } from "./google-tag-scripts";
 const ORIGIN = "https://comics.example.com";
 
 const both = (serving: GoogleTagServing) => ({
+  consentMode: "not_required" as const,
   ga4MeasurementId: "G-ABC123DEF4",
   gtmContainerId: "GTM-ABC1234",
   serving,
@@ -79,6 +83,7 @@ describe("googleTagScripts", () => {
     expect(
       googleTagScripts(
         {
+          consentMode: "not_required",
           ga4MeasurementId: "",
           gtmContainerId: "GTM-ABC1234",
           serving: { mode: "google" },
@@ -89,6 +94,7 @@ describe("googleTagScripts", () => {
     expect(
       googleTagScripts(
         {
+          consentMode: "not_required",
           ga4MeasurementId: "G-ABC123DEF4",
           gtmContainerId: "",
           serving: { mode: "google" },
@@ -157,5 +163,76 @@ describe("gtagInitScript", () => {
         src: "https://www.googletagmanager.com/gtag/js",
       })
     ).not.toContain("<");
+  });
+});
+
+/** What `script` leaves in the `dataLayer` of a page holding `cookie`. */
+const runConsentScript = (
+  script: string,
+  { cookie = "", gpc = false }: { cookie?: string; gpc?: boolean } = {}
+): unknown[][] => {
+  const page: Record<string, unknown> = {
+    document: { cookie },
+    navigator: { globalPrivacyControl: gpc },
+  };
+  page.window = page;
+  runInNewContext(script, page);
+  return (page.dataLayer as Iterable<unknown>[]).map((entry) => [...entry]);
+};
+
+describe("gtagConsentDefaultScript", () => {
+  const COOKIE = "publira_web_storefront_analytics_consent";
+
+  const denied = {
+    ad_personalization: "denied",
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    analytics_storage: "denied",
+  };
+  const granted = {
+    ad_personalization: "granted",
+    ad_storage: "granted",
+    ad_user_data: "granted",
+    analytics_storage: "granted",
+  };
+
+  it("denies every signal by default and waits briefly for an update", () => {
+    expect(runConsentScript(gtagConsentDefaultScript(null))).toEqual([
+      ["consent", "default", { ...denied, wait_for_update: 500 }],
+    ]);
+  });
+
+  it("restores a stored grant straight after the default", () => {
+    expect(
+      runConsentScript(gtagConsentDefaultScript(COOKIE), {
+        cookie: `other=1; ${COOKIE}=granted`,
+      })
+    ).toEqual([
+      ["consent", "default", { ...denied, wait_for_update: 500 }],
+      ["consent", "update", granted],
+    ]);
+  });
+
+  it.each([
+    ["no answer", ""],
+    ["a refusal", `${COOKIE}=denied`],
+    ["another cookie that ends in the name", `x${COOKIE}=granted`],
+  ])("sends no update for %s", (_, cookie) => {
+    expect(
+      runConsentScript(gtagConsentDefaultScript(COOKIE), { cookie })
+    ).toHaveLength(1);
+  });
+
+  it("sends no update to a browser with Global Privacy Control, whatever is stored", () => {
+    expect(
+      runConsentScript(gtagConsentDefaultScript(COOKIE), {
+        cookie: `${COOKIE}=granted`,
+        gpc: true,
+      })
+    ).toHaveLength(1);
+  });
+
+  it("cannot close the script element whatever the cookie name holds", () => {
+    expect(gtagConsentDefaultScript("</script>")).not.toContain("<");
   });
 });

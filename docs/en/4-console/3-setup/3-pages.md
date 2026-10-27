@@ -2,7 +2,7 @@
 title: Pages
 description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
 published: 2026-10-07
-updated: 2026-10-22
+updated: 2026-10-27
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in Markdown, kept in versions, and can be translated into each of the site's languages.
@@ -100,7 +100,8 @@ A privacy policy says what the site keeps in its readers' browsers. These are al
 | `publira_web_storefront_sign_up` | A reader signing in with Apple or Google for the first time is shown **Finish signing up** | What Apple or Google returned about the reader, encrypted, until they agree to the terms | Four minutes |
 | `publira_web_storefront_dismissed_announcement` | The reader chooses **Close this announcement** | The identifier of the announcement they closed | A year |
 | `publira_resolved_locale` | A visit, whenever the cookie does not already hold the site's default language | The site's default language code, such as `en`, and nothing about the reader | A year |
-| `publira_web_storefront_view_actor` | A signed-out reader opens a series or an episode | A random identifier that counts their views and nothing else. It is not tied to an account, and nothing on the site is personalised by it | 180 days |
+| `publira_web_storefront_view_actor` | A signed-out reader opens a series or an episode, once they have agreed on the consent banner where the site asks first | A random identifier that counts their views and nothing else. It is not tied to an account, and nothing on the site is personalised by it | 180 days |
+| `publira_web_storefront_analytics_consent` | The reader chooses **Accept** or **Decline** on the consent banner, which the site shows only when **Reader consent** under **Integrations** › **Google tag** is **Ask readers first** | The answer, `granted` or `denied`, and nothing else | Six months |
 
 | Browser storage | Set when | Holds | Kept for |
 | --- | --- | --- | --- |

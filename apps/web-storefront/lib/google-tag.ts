@@ -1,5 +1,8 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
-import { GoogleTagServingMode } from "@publira/api-client/public/types";
+import {
+  GoogleTagConsentMode,
+  GoogleTagServingMode,
+} from "@publira/api-client/public/types";
 import type { TenantGoogleTag } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
@@ -10,6 +13,7 @@ import type { GoogleTagServing, GoogleTagSettings } from "./google-tag-scripts";
 
 type RawTenantGoogleTag = Pick<
   TenantGoogleTag,
+  | "consentMode"
   | "ga4MeasurementId"
   | "gatewayPath"
   | "gtmContainerId"
@@ -43,6 +47,32 @@ const toServing = (tag: RawTenantGoogleTag): GoogleTagServing | null => {
   }
 };
 
+/**
+ * `UNSPECIFIED` is what a server of the release before the setting existed
+ * sends, and that release runs the tag without asking. A mode this build does
+ * not know loads no tag, for the same reason an unknown serving mode does: it
+ * may ask for less of the reader than the tenant chose.
+ */
+const toConsentMode = (
+  mode: GoogleTagConsentMode
+): GoogleTagSettings["consentMode"] | null => {
+  switch (mode) {
+    case GoogleTagConsentMode.UNSPECIFIED:
+    case GoogleTagConsentMode.NOT_REQUIRED: {
+      return "not_required";
+    }
+    case GoogleTagConsentMode.OPT_IN: {
+      return "opt_in";
+    }
+    case GoogleTagConsentMode.EXTERNAL: {
+      return "external";
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
 export const toGoogleTagSettings = (
   tag: RawTenantGoogleTag | undefined
 ): GoogleTagSettings | null => {
@@ -52,10 +82,11 @@ export const toGoogleTagSettings = (
   const ga4MeasurementId = tag.ga4MeasurementId?.trim() ?? "";
   const gtmContainerId = tag.gtmContainerId?.trim() ?? "";
   const serving = toServing(tag);
-  if (!(ga4MeasurementId || gtmContainerId) || !serving) {
+  const consentMode = toConsentMode(tag.consentMode);
+  if (!(ga4MeasurementId || gtmContainerId) || !serving || !consentMode) {
     return null;
   }
-  return { ga4MeasurementId, gtmContainerId, serving };
+  return { consentMode, ga4MeasurementId, gtmContainerId, serving };
 };
 
 /**
