@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -89,9 +90,71 @@ func TestDBAdminListEpisodesByPublicationDateAnswersThePeriodAcrossSeries(t *tes
 			t.Fatalf("episodes[%d] = %v, want %v", i, got, want[i])
 		}
 	}
+	if res.PreviousToken != "" || res.NextToken != "" {
+		t.Fatalf("tokens = %q, %q, want none on a period that fits one page", res.PreviousToken, res.NextToken)
+	}
 }
 
-// A period the calendar would not draw in one answer is refused.
+// The period is paged on (publication time, id), so episodes published at
+// one instant are neither repeated nor skipped across a page boundary, and a
+// token only reads the period it was issued for.
+func TestDBAdminListEpisodesByPublicationDatePagesThePeriod(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "PUBPAG", "pubpag.example.com", "Publication Pages", "PUBPAGADMIN1", "admin@pubpag.example.com")
+	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "PUBPAGSER001", Title: "Series", Published: true})
+	at := time.Date(2026, 4, 10, 3, 0, 0, 0, time.UTC)
+	for _, publicID := range []string{"PUBPAGEP0001", "PUBPAGEP0002", "PUBPAGEP0003"} {
+		env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: publicID, Status: testutil.EpisodeStatusScheduled, ScheduledAt: at})
+	}
+	env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "PUBPAGEP0004", Status: testutil.EpisodeStatusScheduled, ScheduledAt: at.Add(time.Hour)})
+
+	list := func(token, end string) (*publiraadminv1.ListEpisodesByPublicationDateResponse, error) {
+		return env.seriesClient().ListEpisodesByPublicationDate(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.ListEpisodesByPublicationDateRequest{
+			Tenant:    tenant.tenantContext(),
+			StartDate: "2026-04-01",
+			EndDate:   end,
+			Limit:     2,
+			Token:     token,
+		})
+	}
+	publicIDs := func(res *publiraadminv1.ListEpisodesByPublicationDateResponse) []string {
+		ids := make([]string, 0, len(res.Episodes))
+		for _, episode := range res.Episodes {
+			ids = append(ids, episode.EpisodePublicId)
+		}
+		return ids
+	}
+
+	first, err := list("", "2026-04-30")
+	if err != nil {
+		t.Fatalf("first page: %v", err)
+	}
+	if got := publicIDs(first); !slices.Equal(got, []string{"PUBPAGEP0001", "PUBPAGEP0002"}) || first.PreviousToken != "" || first.NextToken == "" {
+		t.Fatalf("first page = %v (previous %q, next %q), want the first two and a next token", got, first.PreviousToken, first.NextToken)
+	}
+	second, err := list(first.NextToken, "2026-04-30")
+	if err != nil {
+		t.Fatalf("second page: %v", err)
+	}
+	if got := publicIDs(second); !slices.Equal(got, []string{"PUBPAGEP0003", "PUBPAGEP0004"}) || second.PreviousToken == "" || second.NextToken != "" {
+		t.Fatalf("second page = %v (previous %q, next %q), want the last two and a previous token", got, second.PreviousToken, second.NextToken)
+	}
+	back, err := list(second.PreviousToken, "2026-04-30")
+	if err != nil {
+		t.Fatalf("back to the first page: %v", err)
+	}
+	if got := publicIDs(back); !slices.Equal(got, []string{"PUBPAGEP0001", "PUBPAGEP0002"}) || back.PreviousToken != "" {
+		t.Fatalf("page before the second = %v (previous %q), want the first page again", got, back.PreviousToken)
+	}
+
+	if _, err := list(first.NextToken, "2026-04-29"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a token presented with another period: error = %v, want invalid_argument", err)
+	}
+}
+
+// A period past two months is refused.
 func TestDBAdminListEpisodesByPublicationDateRefusesAPeriodPast62Days(t *testing.T) {
 	t.Parallel()
 

@@ -315,8 +315,11 @@ message ListEpisodesResponse {
 
 // Every episode of the tenant, of whichever series, that is published or
 // scheduled at an instant within a period of the tenant's days. A draft has no
-// such instant and is never answered. The period is read whole rather than
-// paged, which its bound keeps to a size one answer can carry.
+// such instant and is never answered.
+//
+// Cursor pagination. Field shape and token rules: proto/README.md. A token
+// names the period it was issued for, and one presented with another period
+// is invalid_argument.
 message ListEpisodesByPublicationDateRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
@@ -324,6 +327,10 @@ message ListEpisodesByPublicationDateRequest {
   // with invalid_argument.
   string start_date = 2;
   string end_date = 3;
+  // Max items in one page. <= 0 or > 100 falls back to 100.
+  int32 limit = 4;
+  // Opaque token from a previous response. Empty for the first page.
+  string token = 5;
 }
 
 // One episode within the period, with what a schedule shows of it.
@@ -342,6 +349,10 @@ message EpisodePublication {
 message ListEpisodesByPublicationDateResponse {
   // Ordered by published_at, then by when each episode was created.
   repeated EpisodePublication episodes = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
 }
 
 message GetEpisodeRequest {

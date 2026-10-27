@@ -1514,16 +1514,23 @@ func (x *ListEpisodesResponse) GetNextToken() string {
 
 // Every episode of the tenant, of whichever series, that is published or
 // scheduled at an instant within a period of the tenant's days. A draft has no
-// such instant and is never answered. The period is read whole rather than
-// paged, which its bound keeps to a size one answer can carry.
+// such instant and is never answered.
+//
+// Cursor pagination. Field shape and token rules: proto/README.md. A token
+// names the period it was issued for, and one presented with another period
+// is invalid_argument.
 type ListEpisodesByPublicationDateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// The period, as inclusive calendar dates (YYYY-MM-DD) in the tenant's time
 	// zone, covering at most 62 days: any two months. A longer period is refused
 	// with invalid_argument.
-	StartDate     string `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
-	EndDate       string `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	StartDate string `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate   string `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	// Max items in one page. <= 0 or > 100 falls back to 100.
+	Limit int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque token from a previous response. Empty for the first page.
+	Token         string `protobuf:"bytes,5,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1575,6 +1582,20 @@ func (x *ListEpisodesByPublicationDateRequest) GetStartDate() string {
 func (x *ListEpisodesByPublicationDateRequest) GetEndDate() string {
 	if x != nil {
 		return x.EndDate
+	}
+	return ""
+}
+
+func (x *ListEpisodesByPublicationDateRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListEpisodesByPublicationDateRequest) GetToken() string {
+	if x != nil {
+		return x.Token
 	}
 	return ""
 }
@@ -1670,7 +1691,11 @@ func (x *EpisodePublication) GetPublishedAt() string {
 type ListEpisodesByPublicationDateResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Ordered by published_at, then by when each episode was created.
-	Episodes      []*EpisodePublication `protobuf:"bytes,1,rep,name=episodes,proto3" json:"episodes,omitempty"`
+	Episodes []*EpisodePublication `protobuf:"bytes,1,rep,name=episodes,proto3" json:"episodes,omitempty"`
+	// Token for the previous page. Empty on the first page.
+	PreviousToken string `protobuf:"bytes,2,opt,name=previous_token,json=previousToken,proto3" json:"previous_token,omitempty"`
+	// Token for the next page. Empty on the last page.
+	NextToken     string `protobuf:"bytes,3,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1710,6 +1735,20 @@ func (x *ListEpisodesByPublicationDateResponse) GetEpisodes() []*EpisodePublicat
 		return x.Episodes
 	}
 	return nil
+}
+
+func (x *ListEpisodesByPublicationDateResponse) GetPreviousToken() string {
+	if x != nil {
+		return x.PreviousToken
+	}
+	return ""
+}
+
+func (x *ListEpisodesByPublicationDateResponse) GetNextToken() string {
+	if x != nil {
+		return x.NextToken
+	}
+	return ""
 }
 
 type GetEpisodeRequest struct {
@@ -8134,21 +8173,26 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\bepisodes\x18\x01 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x99\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc5\x01\n" +
 	"$ListEpisodesByPublicationDateRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1d\n" +
 	"\n" +
 	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
-	"\bend_date\x18\x03 \x01(\tR\aendDate\"\xed\x01\n" +
+	"\bend_date\x18\x03 \x01(\tR\aendDate\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05token\x18\x05 \x01(\tR\x05token\"\xed\x01\n" +
 	"\x12EpisodePublication\x12(\n" +
 	"\x10series_public_id\x18\x01 \x01(\tR\x0eseriesPublicId\x12!\n" +
 	"\fseries_title\x18\x02 \x01(\tR\vseriesTitle\x12*\n" +
 	"\x11episode_public_id\x18\x03 \x01(\tR\x0fepisodePublicId\x12#\n" +
 	"\repisode_title\x18\x04 \x01(\tR\fepisodeTitle\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12!\n" +
-	"\fpublished_at\x18\x06 \x01(\tR\vpublishedAt\"i\n" +
+	"\fpublished_at\x18\x06 \x01(\tR\vpublishedAt\"\xaf\x01\n" +
 	"%ListEpisodesByPublicationDateResponse\x12@\n" +
-	"\bepisodes\x18\x01 \x03(\v2$.publira.admin.v1.EpisodePublicationR\bepisodes\"\x93\x01\n" +
+	"\bepisodes\x18\x01 \x03(\v2$.publira.admin.v1.EpisodePublicationR\bepisodes\x12%\n" +
+	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
+	"\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x93\x01\n" +
 	"\x11GetEpisodeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12(\n" +
 	"\x10series_public_id\x18\x02 \x01(\tR\x0eseriesPublicId\x12\x1b\n" +
