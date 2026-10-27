@@ -3035,6 +3035,60 @@
         "upload_failed": "ログイン画面の画像のアップロードに失敗しました。時間をおいて再試行してください。",
         "delete_failed": "ログイン画面の画像の削除に失敗しました。時間をおいて再試行してください。"
       },
+      "brand_marks": {
+        "title": "外部サービスのロゴ",
+        "description": "サイトの共有、アプリストア、ログインのリンクに使う他社のロゴです。それぞれ、権利者のガイドラインに同意してからアップロードできます。",
+        "section_error": "外部サービスのロゴを表示できませんでした",
+        "kinds": {
+          "x_share": {
+            "title": "Xの共有ボタン",
+            "guideline": "Xのブランドツールキット"
+          },
+          "line_share": {
+            "title": "LINEの共有ボタン",
+            "guideline": "LINEのロゴガイドライン"
+          },
+          "app_store_badge": {
+            "title": "App Storeのバッジ",
+            "guideline": "App Storeのマーケティングガイドライン"
+          },
+          "google_play_badge": {
+            "title": "Google Playのバッジ",
+            "guideline": "Google Playのバッジガイドライン"
+          },
+          "apple_sign_in": {
+            "title": "Appleでサインイン",
+            "guideline": "Appleでサインインのガイドライン"
+          },
+          "google_sign_in": {
+            "title": "Googleでログイン",
+            "guideline": "Googleでログインのブランドガイドライン"
+          }
+        },
+        "current": "現在のロゴ",
+        "unset": "アップロードされていません。",
+        "accepted_by": "{$accepted_at}に{$name}がガイドラインに同意しました。",
+        "accepted_by_deleted_account": "{$accepted_at}に、削除済みのアカウントがガイドラインに同意しました。",
+        "accepted_terms": "同意したガイドライン",
+        "upload": "アップロード",
+        "replace": "差し替え",
+        "consent_title": "権利者のガイドラインへの同意",
+        "consent_description": "アップロードする前に、このロゴの権利者が公開しているガイドラインを読んでください。下のリンク先のページと同意した日時がロゴとともに記録されます。",
+        "consent_accept": "ガイドラインを読み、同意します。",
+        "file": "ロゴ画像",
+        "file_description": "権利者が提供している画像を、JPEG/PNG/WebP、10MB以下で選択してください。長辺が1024pxを超える場合は縮小して保存します。",
+        "submit": "ロゴをアップロード",
+        "delete_title": "このロゴを削除しますか？",
+        "delete_description": "ロゴと、同意したガイドラインの記録が削除されます。",
+        "saved": "ロゴをアップロードしました。",
+        "deleted": "ロゴを削除しました。",
+        "rejected": "画像を読み込めませんでした。JPEG / PNG / WebPの画像を選択してください。",
+        "terms_required": "アップロードする前に権利者のガイドラインに同意してください。",
+        "kind_invalid": "このロゴはアップロードできません。",
+        "load_failed": "外部サービスのロゴを読み込めませんでした。時間をおいて再試行してください。",
+        "upload_failed": "ロゴのアップロードに失敗しました。時間をおいて再試行してください。",
+        "delete_failed": "ロゴの削除に失敗しました。時間をおいて再試行してください。"
+      },
       "email": {
         "title": "送信メール",
         "description": "未設定または無効時はプラットフォームで設定された送信元で送信されます。",
@@ -3772,7 +3826,7 @@
     },
     "branding": {
       "title": "ブランディング",
-      "page_description": "テナントごとのテーマカラー、ロゴ、アイコン、ログイン画面の画像を管理します。",
+      "page_description": "テナントごとのテーマカラー、ロゴ、アイコン、ログイン画面の画像、外部サービスのロゴを管理します。",
       "section_error": "ブランディングの設定を表示できませんでした"
     },
     "integrations": {

@@ -3035,6 +3035,60 @@
         "upload_failed": "Could not upload the sign-in image. Please try again later.",
         "delete_failed": "Could not delete the sign-in image. Please try again later."
       },
+      "brand_marks": {
+        "title": "Brand marks",
+        "description": "Marks that belong to other companies, for the site's share, app store, and sign-in links. Each one can be uploaded only after you accept its owner's guidelines.",
+        "section_error": "Could not display the brand marks",
+        "kinds": {
+          "x_share": {
+            "title": "X share button",
+            "guideline": "X brand toolkit"
+          },
+          "line_share": {
+            "title": "LINE share button",
+            "guideline": "LINE logo guidelines"
+          },
+          "app_store_badge": {
+            "title": "App Store badge",
+            "guideline": "App Store marketing guidelines"
+          },
+          "google_play_badge": {
+            "title": "Google Play badge",
+            "guideline": "Google Play badge guidelines"
+          },
+          "apple_sign_in": {
+            "title": "Sign in with Apple",
+            "guideline": "Sign in with Apple guidelines"
+          },
+          "google_sign_in": {
+            "title": "Sign in with Google",
+            "guideline": "Sign in with Google branding guidelines"
+          }
+        },
+        "current": "Current mark",
+        "unset": "No mark is uploaded.",
+        "accepted_by": "Guidelines accepted by {$name} on {$accepted_at}.",
+        "accepted_by_deleted_account": "Guidelines accepted on {$accepted_at} by an account that has since been deleted.",
+        "accepted_terms": "Accepted guidelines",
+        "upload": "Upload",
+        "replace": "Replace",
+        "consent_title": "Accept the owner's guidelines",
+        "consent_description": "Read the guidelines this mark's owner publishes before you upload it. The page linked below and the time you accept are recorded with the mark.",
+        "consent_accept": "I have read these guidelines and accept them.",
+        "file": "Mark image",
+        "file_description": "Choose the artwork the owner provides, as a JPEG, PNG, or WebP image of at most 10MB. An image whose longer side exceeds 1024px is scaled down.",
+        "submit": "Upload the mark",
+        "delete_title": "Delete this mark?",
+        "delete_description": "The mark and the record of the guidelines it was accepted under are removed.",
+        "saved": "The mark was uploaded.",
+        "deleted": "The mark was deleted.",
+        "rejected": "The image could not be read. Choose a JPEG, PNG, or WebP image.",
+        "terms_required": "Accept the owner's guidelines before you upload the mark.",
+        "kind_invalid": "This mark cannot be uploaded.",
+        "load_failed": "Could not load the brand marks. Please try again later.",
+        "upload_failed": "Could not upload the mark. Please try again later.",
+        "delete_failed": "Could not delete the mark. Please try again later."
+      },
       "email": {
         "title": "Outgoing email",
         "description": "Left unset or disabled, mail is sent from the platform's own sender.",
@@ -3772,7 +3826,7 @@
     },
     "branding": {
       "title": "Branding",
-      "page_description": "Manage this tenant's theme colors, logo, icon, and sign-in image.",
+      "page_description": "Manage this tenant's theme colors, logo, icon, sign-in image, and brand marks.",
       "section_error": "Could not display the branding settings"
     },
     "integrations": {

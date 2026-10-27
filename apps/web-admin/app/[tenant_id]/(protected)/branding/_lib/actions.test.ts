@@ -3,23 +3,27 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockDeleteTenantBrandMark,
   mockDeleteTenantIcon,
   mockDeleteTenantLogo,
   mockDeleteTenantSignInImage,
   mockGetAccessToken,
   mockUpdateTag,
   mockUpdateTenantThemeSettings,
+  mockUploadTenantBrandMark,
   mockUploadTenantIcon,
   mockUploadTenantLogo,
   mockUploadTenantSignInImage,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockDeleteTenantBrandMark: vi.fn(),
   mockDeleteTenantIcon: vi.fn(),
   mockDeleteTenantLogo: vi.fn(),
   mockDeleteTenantSignInImage: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUpdateTenantThemeSettings: vi.fn(),
+  mockUploadTenantBrandMark: vi.fn(),
   mockUploadTenantIcon: vi.fn(),
   mockUploadTenantLogo: vi.fn(),
   mockUploadTenantSignInImage: vi.fn(),
@@ -43,6 +47,21 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
+}));
+
+vi.mock("#lib/brand-marks", () => ({
+  BRAND_MARK_KINDS: [
+    "x_share",
+    "line_share",
+    "app_store_badge",
+    "google_play_badge",
+    "apple_sign_in",
+    "google_sign_in",
+  ],
+  deleteTenantBrandMark: mockDeleteTenantBrandMark,
+  tenantBrandMarksCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:brand-marks`,
+  uploadTenantBrandMark: mockUploadTenantBrandMark,
 }));
 
 vi.mock("#lib/theme-settings", () => ({
@@ -641,6 +660,187 @@ describe("updateTenantSignInImageAction", () => {
 
     expect(result).toEqual({
       message: "Could not upload the sign-in image.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+const brandMarkFormData = (
+  values: Record<string, string>,
+  file?: File
+): FormData => {
+  const formData = new FormData();
+  for (const [name, value] of Object.entries(values)) {
+    formData.set(name, value);
+  }
+  if (file) {
+    formData.set("image", file);
+  }
+  return formData;
+};
+
+const BRAND_MARK_TERMS_URL = "https://example.com/brand/guidelines";
+
+describe("updateTenantBrandMarkAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("uploads the chosen image with the guidelines shown and revalidates the public site and the screen", async () => {
+    mockUploadTenantBrandMark.mockResolvedValueOnce({ mark: null, ok: true });
+
+    const { updateTenantBrandMarkAction } = await import("./actions");
+
+    const result = await updateTenantBrandMarkAction(
+      null,
+      brandMarkFormData(
+        {
+          intent: "upload",
+          kind: "line_share",
+          tenant_id: "TENANT001",
+          terms_accepted: "true",
+          terms_url: BRAND_MARK_TERMS_URL,
+        },
+        pngFile()
+      )
+    );
+
+    expect(result).toEqual({ message: "The mark was uploaded.", ok: true });
+    expect(mockUploadTenantBrandMark).toHaveBeenCalledWith(
+      {
+        imageContentType: "image/png",
+        imageData: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        kind: "line_share",
+        tenantId: "TENANT001",
+        termsUrl: BRAND_MARK_TERMS_URL,
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:brand-marks");
+  });
+
+  it("does not read or send the image until the guidelines are accepted", async () => {
+    const file = pngFile();
+    const arrayBuffer = vi.spyOn(file, "arrayBuffer");
+
+    const { updateTenantBrandMarkAction } = await import("./actions");
+
+    const result = await updateTenantBrandMarkAction(
+      null,
+      brandMarkFormData(
+        {
+          intent: "upload",
+          kind: "x_share",
+          tenant_id: "TENANT001",
+          terms_url: BRAND_MARK_TERMS_URL,
+        },
+        file
+      )
+    );
+
+    expect(result).toEqual({
+      message: "Accept the owner's guidelines before you upload the mark.",
+      ok: false,
+    });
+    expect(arrayBuffer).not.toHaveBeenCalled();
+    expect(mockUploadTenantBrandMark).not.toHaveBeenCalled();
+  });
+
+  it("refuses guidelines that are not an https page", async () => {
+    const { updateTenantBrandMarkAction } = await import("./actions");
+
+    const result = await updateTenantBrandMarkAction(
+      null,
+      brandMarkFormData(
+        {
+          intent: "upload",
+          kind: "x_share",
+          tenant_id: "TENANT001",
+          terms_accepted: "true",
+          terms_url: "http://example.com/brand/guidelines",
+        },
+        pngFile()
+      )
+    );
+
+    expect(result).toEqual({
+      message: "Accept the owner's guidelines before you upload the mark.",
+      ok: false,
+    });
+    expect(mockUploadTenantBrandMark).not.toHaveBeenCalled();
+  });
+
+  it("refuses a kind the console does not offer", async () => {
+    const { updateTenantBrandMarkAction } = await import("./actions");
+
+    const result = await updateTenantBrandMarkAction(
+      null,
+      brandMarkFormData({
+        intent: "delete",
+        kind: "facebook_share",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "This mark cannot be uploaded.",
+      ok: false,
+    });
+    expect(mockDeleteTenantBrandMark).not.toHaveBeenCalled();
+  });
+
+  it("deletes the mark without asking for the guidelines or an image", async () => {
+    mockDeleteTenantBrandMark.mockResolvedValueOnce({ mark: null, ok: true });
+
+    const { updateTenantBrandMarkAction } = await import("./actions");
+
+    const result = await updateTenantBrandMarkAction(
+      null,
+      brandMarkFormData({
+        intent: "delete",
+        kind: "apple_sign_in",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({ message: "The mark was deleted.", ok: true });
+    expect(mockDeleteTenantBrandMark).toHaveBeenCalledWith(
+      "TENANT001",
+      "apple_sign_in",
+      "en"
+    );
+    expect(mockUploadTenantBrandMark).not.toHaveBeenCalled();
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:brand-marks");
+  });
+
+  it("leaves the cache alone when the upload fails", async () => {
+    mockUploadTenantBrandMark.mockResolvedValueOnce({
+      message: "Could not upload the mark. Please try again later.",
+      ok: false,
+    });
+
+    const { updateTenantBrandMarkAction } = await import("./actions");
+
+    const result = await updateTenantBrandMarkAction(
+      null,
+      brandMarkFormData(
+        {
+          intent: "upload",
+          kind: "google_play_badge",
+          tenant_id: "TENANT001",
+          terms_accepted: "true",
+          terms_url: BRAND_MARK_TERMS_URL,
+        },
+        pngFile()
+      )
+    );
+
+    expect(result).toEqual({
+      message: "Could not upload the mark. Please try again later.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

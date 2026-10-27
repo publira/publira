@@ -14,6 +14,12 @@ import { z } from "zod";
 
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
+import {
+  BRAND_MARK_KINDS,
+  deleteTenantBrandMark,
+  tenantBrandMarksCacheTag,
+  uploadTenantBrandMark,
+} from "#lib/brand-marks";
 import { assertSameOrigin } from "#lib/csrf";
 import { requiredTrimmedString } from "#lib/form-schemas";
 import type { AdminMessageAccessor } from "#lib/messages";
@@ -30,6 +36,7 @@ import {
 } from "#lib/theme-settings";
 
 import type {
+  TenantBrandMarkActionState,
   TenantIconActionState,
   TenantLogoActionState,
   TenantSignInImageActionState,
@@ -254,6 +261,41 @@ const tenantSignInImageSchema = async (locale: Locale) => {
     z.object({
       intent: z.literal("delete"),
       tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+    }),
+  ]);
+};
+
+/**
+ * Upload and delete share one Action, told apart by `intent`. An upload carries
+ * the guideline page the dialog showed and the box the administrator ticked
+ * there; the API refuses one without the acceptance, and the check here keeps
+ * the file from being read and sent first.
+ */
+const tenantBrandMarkSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const kind = z.enum(BRAND_MARK_KINDS, {
+    error: t("admin.settings.brand_marks.kind_invalid"),
+  });
+  const tenantId = requiredTrimmedString(t("admin.settings.tenant_missing"));
+
+  return z.discriminatedUnion("intent", [
+    z.object({
+      image: await brandingImageFileSchema(locale),
+      intent: z.literal("upload"),
+      kind,
+      tenantId,
+      termsAccepted: z.literal("true", {
+        error: t("admin.settings.brand_marks.terms_required"),
+      }),
+      termsUrl: z.url({
+        error: t("admin.settings.brand_marks.terms_required"),
+        protocol: /^https$/u,
+      }),
+    }),
+    z.object({
+      intent: z.literal("delete"),
+      kind,
+      tenantId,
     }),
   ]);
 };
@@ -583,6 +625,77 @@ export const updateTenantSignInImageAction = async (
     message: isDelete
       ? t("admin.settings.sign_in_image.deleted")
       : t("admin.settings.sign_in_image.saved"),
+    ok: true,
+  };
+};
+
+export const updateTenantBrandMarkAction = async (
+  _prevState: TenantBrandMarkActionState,
+  formData: FormData
+): Promise<TenantBrandMarkActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantBrandMarkSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      image: { kind: "file", name: "image" },
+      intent: { kind: "value", name: "intent" },
+      kind: { kind: "value", name: "kind" },
+      tenantId: { kind: "value", name: "tenant_id" },
+      termsAccepted: { kind: "value", name: "terms_accepted" },
+      termsUrl: { kind: "value", name: "terms_url" },
+    })
+  );
+  if (!parsed.success) {
+    // The fields sit in a dialog that has closed by the time this answers, so
+    // the message is the form's.
+    return {
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const input = parsed.data;
+  const isDelete = input.intent === "delete";
+
+  // The file is read into memory inside the callback, so an unauthorized caller
+  // never gets a 10MB upload buffered on its behalf.
+  const result = await withAdminSessionReauth(async () => {
+    if (input.intent === "delete") {
+      return deleteTenantBrandMark(input.tenantId, input.kind, locale);
+    }
+
+    return uploadTenantBrandMark(
+      {
+        imageContentType: input.image.type,
+        imageData: new Uint8Array(await input.image.arrayBuffer()),
+        kind: input.kind,
+        tenantId: input.tenantId,
+        termsUrl: input.termsUrl,
+      },
+      locale
+    );
+  });
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The public site's tenant read carries the marks, and this screen reads
+  // them through its own private cache.
+  updateTag(`tenant:${input.tenantId}:site`);
+  updateTag(tenantBrandMarksCacheTag(input.tenantId));
+
+  return {
+    message: isDelete
+      ? t("admin.settings.brand_marks.deleted")
+      : t("admin.settings.brand_marks.saved"),
     ok: true,
   };
 };

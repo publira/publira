@@ -3035,6 +3035,60 @@
         "upload_failed": "无法上传登录页面图片。请稍后再试。",
         "delete_failed": "无法删除登录页面图片。请稍后再试。"
       },
+      "brand_marks": {
+        "title": "品牌标志",
+        "description": "用于网站分享、应用商店和登录链接的其他公司的标志。每个标志都需要先同意其所有者的指南才能上传。",
+        "section_error": "无法显示品牌标志",
+        "kinds": {
+          "x_share": {
+            "title": "X分享按钮",
+            "guideline": "X品牌工具包"
+          },
+          "line_share": {
+            "title": "LINE分享按钮",
+            "guideline": "LINE标志指南"
+          },
+          "app_store_badge": {
+            "title": "App Store徽章",
+            "guideline": "App Store营销指南"
+          },
+          "google_play_badge": {
+            "title": "Google Play徽章",
+            "guideline": "Google Play徽章指南"
+          },
+          "apple_sign_in": {
+            "title": "通过Apple登录",
+            "guideline": "通过Apple登录指南"
+          },
+          "google_sign_in": {
+            "title": "使用Google账号登录",
+            "guideline": "Google登录品牌指南"
+          }
+        },
+        "current": "当前的标志",
+        "unset": "尚未上传标志。",
+        "accepted_by": "{$name}于{$accepted_at}同意了指南。",
+        "accepted_by_deleted_account": "一个已删除的账号于{$accepted_at}同意了指南。",
+        "accepted_terms": "已同意的指南",
+        "upload": "上传",
+        "replace": "替换",
+        "consent_title": "同意所有者的指南",
+        "consent_description": "上传前，请阅读该标志所有者发布的指南。下方链接的页面和你同意的时间会与标志一起记录。",
+        "consent_accept": "我已阅读并同意这些指南。",
+        "file": "标志图片",
+        "file_description": "请选择所有者提供的图片，格式为不超过10MB的JPEG、PNG或WebP。长边超过1024px的图片会被缩小。",
+        "submit": "上传标志",
+        "delete_title": "删除此标志？",
+        "delete_description": "标志及其已同意指南的记录将被删除。",
+        "saved": "标志已上传。",
+        "deleted": "标志已删除。",
+        "rejected": "无法读取该图片。请选择JPEG、PNG或WebP图片。",
+        "terms_required": "上传标志前，请先同意所有者的指南。",
+        "kind_invalid": "无法上传此标志。",
+        "load_failed": "无法加载品牌标志。请稍后再试。",
+        "upload_failed": "无法上传标志。请稍后再试。",
+        "delete_failed": "无法删除标志。请稍后再试。"
+      },
       "email": {
         "title": "发件",
         "description": "未设置或未启用时，邮件将由平台自身的发件人发送。",
@@ -3772,7 +3826,7 @@
     },
     "branding": {
       "title": "品牌",
-      "page_description": "管理该租户的主题颜色、标志、图标和登录页面图片。",
+      "page_description": "管理该租户的主题颜色、标志、图标、登录页面图片和品牌标志。",
       "section_error": "无法显示品牌设置"
     },
     "integrations": {
