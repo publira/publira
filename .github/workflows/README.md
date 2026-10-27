@@ -153,7 +153,7 @@ Implementation:
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports, then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-storefront. | [`AGENTS.md`](../../AGENTS.md) |
 | `Check` | Locale-catalog, `sqlc`, and buf-generated drift; `buf breaking` against the newest release tag through `scripts/check-proto-compat.sh`; the `<svg>`-in-JSX guard, the design-token guard, the `docs/en/` contract, and `pnpm typecheck`. Saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`proto/README.md`](../../proto/README.md#compatibility-with-the-previous-release), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
-| `Test / Go` | Builds the OpenSearch and Elasticsearch images the search integration tests run on, then `go test -count=1 ./...` in `server/`; on `main`, saves the `test` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
+| `Test / Go (<share>)` | `go test -count=1` in `server/` on one share of the packages `go test ./...` finds, as [`scripts/go-test-share.sh`](../../scripts/go-test-share.sh) assigns them: `search`, which first builds the OpenSearch and Elasticsearch images its tests run on, `api`, or `other`. On `main`, saves the share's `test-<share>` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
 | `Test / Bash` | ShellCheck and shfmt across tracked Bash files, then `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` for the isolated development-profile and E2E-stack Bash libraries and the device ports the mobile integration tests use. | This file |
 | `Test / DB Migrations` | Append-only and version-ordering guards on `db/migrations/`, then empty Postgres: `migrate up` → `down -all` → `up`. | [`db/AGENTS.md`](../../db/AGENTS.md) |
@@ -206,7 +206,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
 | `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**`, every Markdown file, and a deletion or a rename of any file |
 | `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
-| `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, and `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**` |
+| `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**`, and `scripts/go-test-share.sh` |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
@@ -285,7 +285,7 @@ The job then runs against its own Postgres service and must succeed through `mig
    | --- | --- |
    | `Lint and Format` | `pnpm check` and `pnpm reader-parity:check` |
    | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `scripts/check-proto-compat.sh`, `pnpm jsx-svg:check`, `pnpm design-tokens:check`, `pnpm docs:check` (the pages under `docs/en/`, and the links from them and between the repository's Markdown to a file and a heading), and `pnpm typecheck` |
-   | `Test / Go` | `task server:test-short` then `task server:test` |
+   | `Test / Go (<share>)` | `task server:test-short` then `task server:test`, or one share alone with `go test -count=1 $(../scripts/go-test-share.sh <share>)` in `server/` |
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
    | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |
    | `Test / DB Migrations` | `task db:reset`; use `task db:rollback` for down only. `scripts/check-migration-order.sh` reproduces the ordering guard; an append-only failure is not reproduced locally — restore the migration and add a new one instead |

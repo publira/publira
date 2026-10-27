@@ -167,6 +167,7 @@ jobs:
               # The images the search-engine integration tests run on.
               - 'infra/docker/opensearch/**'
               - 'infra/docker/elasticsearch/**'
+              - 'scripts/go-test-share.sh'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/apt-install/**'
@@ -642,10 +643,19 @@ jobs:
           working-directory: server
 
   test-go:
-    name: Test / Go
+    name: Test / Go (${{ matrix.share }})
     needs: changes
     if: needs.changes.outputs.test_go == 'true'
     runs-on: ubuntu-26.04
+    # `go test ./...` keeps all four cores of one runner busy from start to
+    # end, so the packages are spread over runners instead:
+    # scripts/go-test-share.sh says which package runs in which entry, and
+    # every package runs in exactly one. `Summary` reads the entries as the
+    # one result `Test / Go`, which fails when any of them fails.
+    strategy:
+      fail-fast: false
+      matrix:
+        share: [search, api, other]
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -656,19 +666,20 @@ jobs:
         id: go
         uses: ./.github/actions/go-setup
         with:
-          build-cache: test
+          build-cache: test-${{ matrix.share }}
 
       - name: Setup / libvips
         uses: ./.github/actions/apt-install
         with:
           packages: libvips-dev pkg-config
 
-      # Five packages start an OpenSearch and an Elasticsearch node of their
-      # own, the OpenSearch one on an image that carries the analysis plugins.
-      # Building the images here, once, keeps the plugin downloads out of
-      # every container start, and a download the network cuts off is tried
-      # again.
+      # The packages of the `search` share start an OpenSearch and an
+      # Elasticsearch node of their own, the OpenSearch one on an image that
+      # carries the analysis plugins. Building the images here, once, keeps
+      # the plugin downloads out of every container start, and a download the
+      # network cuts off is tried again.
       - name: Setup / Search engine images
+        if: matrix.share == 'search'
         run: |
           set -euo pipefail
           for engine in opensearch elasticsearch; do
@@ -689,9 +700,14 @@ jobs:
       - name: Validate / Go Tests
         working-directory: server
         env:
-          PUBLIRA_TEST_OPENSEARCH_IMAGE: publira/opensearch:ci
-          PUBLIRA_TEST_ELASTICSEARCH_IMAGE: publira/elasticsearch:ci
-        run: go test -count=1 ./...
+          PUBLIRA_TEST_OPENSEARCH_IMAGE: ${{ matrix.share == 'search' && 'publira/opensearch:ci' || '' }}
+          PUBLIRA_TEST_ELASTICSEARCH_IMAGE: ${{ matrix.share == 'search' && 'publira/elasticsearch:ci' || '' }}
+          SHARE: ${{ matrix.share }}
+        run: |
+          set -euo pipefail
+          share_packages="$(../scripts/go-test-share.sh "${SHARE}")"
+          mapfile -t packages <<< "${share_packages}"
+          go test -count=1 "${packages[@]}"
 
       - name: Cache / Save Go build
         if: github.ref == 'refs/heads/main' && steps.go.outputs.build-cache-hit != 'true'
@@ -1712,8 +1728,10 @@ jobs:
 
   # Every push to main that changes server/ saves one more build cache entry
   # of each kind, and `restore-keys` only ever reads the newest; the rest are
-  # 150 MB (`build`) and 200 MB (`test`) each that would crowd the Gradle and
-  # Playwright entries out of the repository's 10 GB. Keeping the newest by
+  # 150 MB (`build`) and up to 200 MB (a `test-<share>` of `Test / Go`) each
+  # that would crowd the Gradle and Playwright entries out of the repository's
+  # 10 GB. Each kind is named in full, since `go-build-test-` would match
+  # every share's entries and keep only one of them. Keeping the newest by
   # creation time keeps the newest commit's, because a run that is no longer
   # main's tip does not save (`main-cache-save`). A job of its own, so the
   # jobs that run the tree's code never hold a token that can delete caches.
@@ -1732,7 +1750,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          for kind in build test; do
+          for kind in build test-search test-api test-other; do
             gh cache list --ref refs/heads/main --key "go-build-${kind}-" \
               --sort created_at --order desc --limit 100 --json id --jq '.[1:][].id' |
               xargs -r -n 1 gh cache delete
