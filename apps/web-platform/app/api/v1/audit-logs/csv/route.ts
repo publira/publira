@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { buildAuditLogsPath, exportPlatformAuditLogs } from "#lib/audit-logs";
+import { getPlatformCurrentOperator } from "#lib/auth";
 import { buildLoginPath } from "#lib/auth-shared";
 import { getPlatformTenant } from "#lib/tenants";
 
@@ -47,8 +48,17 @@ export const GET = async (request: Request) => {
     createdTo: query.data.created_to,
     tenantPublicId: query.data.tenant_id ?? "",
   };
+  const loginPath = buildLoginPath(buildAuditLogsPath(filters), {
+    revoked: true,
+  });
   let tenantId = "";
   if (filters.tenantPublicId) {
+    // The tenant lookup checks the session too, but a rejected one would come
+    // back to this download after login rather than to the list.
+    const operator = await getPlatformCurrentOperator();
+    if (!operator.ok && operator.requiresSignIn) {
+      redirect(loginPath);
+    }
     const tenant = await getPlatformTenant(filters.tenantPublicId);
     if (!(tenant.ok && tenant.tenant)) {
       return notFound();
@@ -65,7 +75,7 @@ export const GET = async (request: Request) => {
   });
   if (!file.ok) {
     if (file.reason === "signedOut") {
-      redirect(buildLoginPath(buildAuditLogsPath(filters), { revoked: true }));
+      redirect(loginPath);
     }
     return notFound();
   }

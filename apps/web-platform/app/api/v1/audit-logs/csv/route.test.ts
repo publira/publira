@@ -1,15 +1,21 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockExportAuditLogs, mockGetPlatformTenant, mockRedirect, mockToken } =
-  vi.hoisted(() => ({
-    mockExportAuditLogs: vi.fn(),
-    mockGetPlatformTenant: vi.fn(),
-    mockRedirect: vi.fn((path: string) => {
-      throw new Error(`NEXT_REDIRECT ${path}`);
-    }),
-    mockToken: vi.fn(),
-  }));
+const {
+  mockExportAuditLogs,
+  mockGetCurrentOperator,
+  mockGetPlatformTenant,
+  mockRedirect,
+  mockToken,
+} = vi.hoisted(() => ({
+  mockExportAuditLogs: vi.fn(),
+  mockGetCurrentOperator: vi.fn(),
+  mockGetPlatformTenant: vi.fn(),
+  mockRedirect: vi.fn((path: string) => {
+    throw new Error(`NEXT_REDIRECT ${path}`);
+  }),
+  mockToken: vi.fn(),
+}));
 
 vi.mock("#lib/api-client", () => ({
   apiClient: { auditLogs: { exportAuditLogs: mockExportAuditLogs } },
@@ -17,6 +23,10 @@ vi.mock("#lib/api-client", () => ({
     headers: { Authorization: `Bearer ${token}` },
   }),
   resolveAccessToken: mockToken,
+}));
+
+vi.mock("#lib/auth", () => ({
+  getPlatformCurrentOperator: mockGetCurrentOperator,
 }));
 
 vi.mock("#lib/tenants", () => ({
@@ -47,6 +57,14 @@ describe("GET /api/v1/audit-logs/csv", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockToken.mockResolvedValue("session-token");
+    mockGetCurrentOperator.mockResolvedValue({
+      ok: true,
+      operator: {
+        name: "Auditor",
+        publicId: "SeedPFUSAAA1",
+        role: "platform_auditor",
+      },
+    });
     mockGetPlatformTenant.mockResolvedValue({
       ok: true,
       tenant: { id: "0190f5e2-0000-7000-8000-000000000001", name: "Press" },
@@ -151,5 +169,26 @@ describe("GET /api/v1/audit-logs/csv", () => {
         reason: "session_revoked",
       })}`
     );
+  });
+
+  it("sends a session rejected before the tenant is read back to the same list", async () => {
+    mockGetCurrentOperator.mockResolvedValueOnce({
+      ok: false,
+      requiresSignIn: true,
+    });
+
+    await expect(
+      download(
+        "?tenant_id=PressTNNTAAA1&created_from=2026-01-01&created_to=2026-01-31"
+      )
+    ).rejects.toThrow("NEXT_REDIRECT");
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/login?${new URLSearchParams({
+        next: "/audit-logs?tenant_id=PressTNNTAAA1&created_from=2026-01-01&created_to=2026-01-31",
+        reason: "session_revoked",
+      })}`
+    );
+    expect(mockGetPlatformTenant).not.toHaveBeenCalled();
+    expect(mockExportAuditLogs).not.toHaveBeenCalled();
   });
 });
