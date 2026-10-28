@@ -7,11 +7,10 @@ name: Release notes
 # once the release's images are pushed.
 
 on:
-  # Not `pull_request`: the check reads the body, so it has to run on `edited`,
-  # and `pull_request_target` runs the check as merged on the base branch
-  # rather than the one the pull request proposes. Nothing here checks out or
-  # executes the head branch.
-  pull_request_target:
+  # The check reads the body, so it runs on `edited` as well as on a push. It
+  # needs no more than a read-only token, which is what a fork's pull request
+  # gets, and nothing here checks out or executes the head branch.
+  pull_request:
     types: [opened, edited, reopened, synchronize]
   push:
     tags:
@@ -23,7 +22,7 @@ permissions: {}
 jobs:
   check:
     name: Check upgrade notes
-    if: github.event_name == 'pull_request_target'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     concurrency:
@@ -33,11 +32,14 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      # The base branch: the check, and the tree it searches for the
-      # environment variables the diff names.
+      # The base branch, not the merge commit `pull_request` checks out by
+      # default: the check, and the tree it searches for the environment
+      # variables the diff names, are the ones that were reviewed and merged
+      # rather than the ones the pull request proposes.
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.base.ref }}
           persist-credentials: false
 
       # scripts/upgrade-notes.ts reads the section with a Markdown parser

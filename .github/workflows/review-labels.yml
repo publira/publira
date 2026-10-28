@@ -1,0 +1,159 @@
+name: Review labels
+
+# The jobs of `Review` that write to the pull request. `workflow_run` runs
+# them from the default branch with this repository's token once a `Review`
+# run succeeds, so a pull request from a fork is labelled like any other.
+# Nothing here checks out or executes the head branch, and nothing the run
+# being followed produced is read: the pull request is looked up through the
+# API from the branch that run was for.
+
+on:
+  workflow_run:
+    workflows: [Review]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  size-label:
+    name: Label review size
+    if: >-
+      github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      # A job's `permissions` replaces the workflow's `{}` outright rather than
+      # adding to it, so the checkout needs `contents: read` spelled out here.
+      contents: read
+      pull-requests: write
+    steps:
+      # `workflow_run` resolves to the default branch, so this is the scorer
+      # as it was reviewed and merged, not the one the pull request proposes.
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+
+      - name: Collect the pull request diff
+        id: diff
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DIFF_PATH: ${{ runner.temp }}/pull-request.diff
+        with:
+          script: |
+            const { writeFileSync } = require('node:fs');
+            const { owner, repo } = context.repo;
+            const run = context.payload.workflow_run;
+
+            // Not `run.pull_requests`: it is empty when the head branch lives
+            // in a fork. A branch is named by its owner as well, so the
+            // lookup finds a fork's pull request as readily as one of ours.
+            if (!run.head_repository) {
+              core.info(`The head repository of ${run.head_branch} is gone: nothing to label`);
+              core.setOutput('skip', 'true');
+              return;
+            }
+            const pulls = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: `${run.head_repository.owner.login}:${run.head_branch}`,
+            });
+            if (pulls.data.length !== 1) {
+              core.info(
+                `${run.head_repository.full_name}:${run.head_branch} heads ${pulls.data.length} open pull requests: nothing to label`,
+              );
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            // Not the event's payload: the pull request as it is now. One
+            // turned back into a draft since the run asked for review is no
+            // longer asking, and `gh pr create --label` applies its label in a
+            // second request a moment after the pull request exists.
+            const { data: pull } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pulls.data[0].number,
+            });
+            core.setOutput('number', pull.number);
+            if (pull.draft) {
+              core.info(`#${pull.number} is a draft again: leaving it alone`);
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            // A label the author set — an agent following skills/create-pr, or
+            // a human who has judged the review load — wins over the
+            // mechanical score.
+            const existing = pull.labels
+              .map((label) => label.name)
+              .find((name) => name.startsWith('size/'));
+            if (existing) {
+              core.info(`#${pull.number} already carries ${existing}: leaving it alone`);
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            const files = await github.paginate(
+              'GET /repos/{owner}/{repo}/pulls/{pull_number}/files',
+              { owner, repo, pull_number: pull.number, per_page: 100 },
+            );
+
+            const lines = [];
+            for (const file of files) {
+              const before = file.previous_filename ?? file.filename;
+              lines.push(`diff --git a/${before} b/${file.filename}`);
+              lines.push(file.status === 'added' ? '--- /dev/null' : `--- a/${before}`);
+              lines.push(file.status === 'removed' ? '+++ /dev/null' : `+++ b/${file.filename}`);
+              if (file.patch) {
+                lines.push(file.patch);
+                continue;
+              }
+              // A binary or oversized file arrives without a patch. Stand in
+              // one significant line for each one the API counted: the score
+              // is what reading them would have produced, and only the
+              // breakdown is blank.
+              lines.push('@@');
+              lines.push(...Array(file.additions).fill('+unavailable'));
+              lines.push(...Array(file.deletions).fill('-unavailable'));
+            }
+
+            writeFileSync(process.env.DIFF_PATH, `${lines.join('\n')}\n`);
+            core.info(`Collected ${files.length} changed files of #${pull.number}`);
+            core.setOutput('skip', 'false');
+
+      - name: Score the diff
+        id: score
+        if: steps.diff.outputs.skip != 'true'
+        env:
+          DIFF_PATH: ${{ runner.temp }}/pull-request.diff
+        run: |
+          result="$(node scripts/pr-size.ts --json < "${DIFF_PATH}")"
+          echo "${result}"
+          {
+            echo "score=$(printf '%s' "${result}" | jq -r '.score')"
+            echo "label=$(printf '%s' "${result}" | jq -r '.label')"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Add the label
+        if: steps.diff.outputs.skip != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          LABEL: ${{ steps.score.outputs.label }}
+          NUMBER: ${{ steps.diff.outputs.number }}
+          SCORE: ${{ steps.score.outputs.score }}
+        with:
+          script: |
+            const label = process.env.LABEL;
+            core.info(`Score ${process.env.SCORE}: ${label}`);
+            await github.rest.issues.addLabels({
+              ...context.repo,
+              issue_number: Number(process.env.NUMBER),
+              labels: [label],
+            });
