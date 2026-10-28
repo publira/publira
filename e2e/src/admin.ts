@@ -559,12 +559,18 @@ export const createCreatorViaUi = async (
   return publicId;
 };
 
+/** A page body as a writer enters it: an optional heading over one paragraph. */
+export interface PageBody {
+  heading?: string;
+  text: string;
+}
+
 export interface CreatePageInput {
   /** Admin form input; stored and displayed as `/slug`. */
   slug: string;
   title: string;
   /** First version's body. Omitted leaves the page with no version at all. */
-  contentMarkdown?: string;
+  body?: PageBody;
   /** Footer link once published. Off by default, like the form itself. */
   displayInFooter?: boolean;
 }
@@ -592,6 +598,41 @@ export const pageFormFields = (page: Page): PageFormFields => ({
 });
 
 /**
+ * Write `body` into the page editor on the page the router currently shows, in
+ * place of what it held, the way a writer does: the heading through the
+ * toolbar's Heading button, and the text as the paragraph under it.
+ *
+ * The editor is built once the screen has hydrated, so the click on it also
+ * waits for that.
+ */
+export const writePageBody = async (
+  page: Page,
+  body: PageBody
+): Promise<void> => {
+  const editor = pageFormFields(page).body;
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.press("Delete");
+
+  if (body.heading !== undefined) {
+    await page
+      .getByRole("toolbar", { name: "Formatting" })
+      .getByRole("button", { exact: true, name: "Heading" })
+      .click();
+    // The button hands the caret back to the editor on the next frame, and a
+    // key pressed before that lands on the button.
+    await expect(editor).toBeFocused();
+    await page.keyboard.type(body.heading);
+    await page.keyboard.press("Enter");
+    await expect(
+      editor.getByRole("heading", { level: 2, name: body.heading })
+    ).toBeVisible();
+  }
+  await page.keyboard.type(body.text);
+  await expect(editor).toContainText(body.text);
+};
+
+/**
  * Fill and submit the page create form. Resolves after the redirect to the
  * edit URL (`/pages/<pageId>?created=1`) and returns the page id, which is the
  * row's uuid rather than a Base58 public_id.
@@ -608,8 +649,8 @@ export const createPageViaUi = async (
   const fields = pageFormFields(page);
   await fillField(fields.slug, input.slug);
   await fillField(fields.title, input.title);
-  if (input.contentMarkdown !== undefined) {
-    await fillField(fields.body, input.contentMarkdown);
+  if (input.body !== undefined) {
+    await writePageBody(page, input.body);
   }
   if (input.displayInFooter === true) {
     await fields.displayInFooter.check();

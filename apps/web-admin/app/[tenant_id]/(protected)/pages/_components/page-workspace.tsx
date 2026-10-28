@@ -9,7 +9,6 @@ import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import * as Table from "@publira/ui-components/table";
-import * as Tabs from "@publira/ui-components/tabs";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -289,31 +288,7 @@ export const PageWorkspace = ({
                 </Suspense>
               </Field.Label>
               <Field.Content>
-                <Tabs.Root defaultValue="write">
-                  <Tabs.List>
-                    <Tabs.Tab value="write">
-                      <Suspense
-                        fallback={<SkeletonLine className="h-4 w-10" />}
-                      >
-                        <Message message="admin.pages.workspace.tab_write" />
-                      </Suspense>
-                    </Tabs.Tab>
-                    <Tabs.Tab value="preview">
-                      <Suspense
-                        fallback={<SkeletonLine className="h-4 w-14" />}
-                      >
-                        <Message message="admin.pages.workspace.tab_preview" />
-                      </Suspense>
-                    </Tabs.Tab>
-                  </Tabs.List>
-                  {/* The textarea is the form control, so it stays mounted behind the preview tab: an unmounted one submits nothing and loses the caret. */}
-                  <Tabs.Panel keepMounted value="write">
-                    <PageDraft.Textarea />
-                  </Tabs.Panel>
-                  <Tabs.Panel className="min-h-72" value="preview">
-                    <PageDraft.Preview />
-                  </Tabs.Panel>
-                </Tabs.Root>
+                <PageDraft.Editor />
                 <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.pages.workspace.body_description" />

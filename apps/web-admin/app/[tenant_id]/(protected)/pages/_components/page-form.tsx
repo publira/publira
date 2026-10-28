@@ -5,13 +5,13 @@ import { Checkbox } from "@publira/ui-components/checkbox";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { Textarea } from "@publira/ui-components/textarea";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
 import type { PageFormState } from "../page-types";
+import { MarkdownEditor } from "./markdown-editor";
 import { PageSlugField } from "./page-slug-field";
 
 interface PageFormProps {
@@ -98,10 +98,10 @@ export const PageForm = async ({
             </Suspense>
           </Field.Label>
           <Field.Content>
-            <Textarea
+            <MarkdownEditor
+              aria-label={t("admin.pages.form.body")}
+              defaultValue=""
               name="content_markdown"
-              placeholder={t("admin.pages.form.body_placeholder")}
-              rows={16}
             />
             <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>

@@ -22,6 +22,7 @@
     "typegen": "next typegen"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@dnd-kit/dom": "0.5.1",
     "@dnd-kit/helpers": "0.5.1",
     "@dnd-kit/react": "0.5.1",
@@ -39,6 +40,13 @@
     "@publira/utils": "workspace:*",
     "@publira/web-session": "workspace:*",
     "@simplewebauthn/browser": "catalog:",
+    "@tiptap/extension-image": "catalog:",
+    "@tiptap/extension-list": "catalog:",
+    "@tiptap/extension-table": "catalog:",
+    "@tiptap/markdown": "catalog:",
+    "@tiptap/pm": "catalog:",
+    "@tiptap/react": "catalog:",
+    "@tiptap/starter-kit": "catalog:",
     "lru-cache": "catalog:",
     "next": "catalog:",
     "react": "catalog:",

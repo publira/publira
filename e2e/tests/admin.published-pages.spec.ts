@@ -6,6 +6,7 @@ import {
   fillField,
   pageFormFields,
   signInAsSeedAdmin,
+  writePageBody,
 } from "../src/admin";
 import { applyScenarioSql, deletePagesByIds } from "../src/db";
 import { uniqueSuffix } from "../src/scenarios/admin-publish";
@@ -118,7 +119,7 @@ test.describe("admin published pages", () => {
 
     const pageId = trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## Draft\n\nDraft body ${suffix}`,
+        body: { heading: "Draft", text: `Draft body ${suffix}` },
         slug,
         title,
       })
@@ -152,7 +153,7 @@ test.describe("admin published pages", () => {
 
     trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## Heading\n\n${body}`,
+        body: { heading: "Heading", text: body },
         slug,
         title,
       })
@@ -161,6 +162,11 @@ test.describe("admin published pages", () => {
     await publishVersion(page, 1);
 
     await expectPublicPageHeading(page, slug, title);
+    // The toolbar's heading reaches the site as one, through the Markdown the
+    // editor saved.
+    await expect(
+      page.getByRole("heading", { exact: true, level: 2, name: "Heading" })
+    ).toBeVisible();
     await expect(page.getByText(body)).toBeVisible();
   });
 
@@ -174,7 +180,7 @@ test.describe("admin published pages", () => {
 
     const pageId = trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## Heading\n\n${body}`,
+        body: { heading: "Heading", text: body },
         displayInFooter: true,
         slug,
         title,
@@ -224,7 +230,7 @@ test.describe("admin published pages", () => {
 
     const pageId = trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## Heading\n\nFooter body ${suffix}`,
+        body: { heading: "Heading", text: `Footer body ${suffix}` },
         slug,
         title,
       })
@@ -278,7 +284,7 @@ test.describe("admin published pages", () => {
 
     const pageId = trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## First version\n\n${body}`,
+        body: { heading: "First version", text: body },
         slug,
         title,
       })
@@ -313,17 +319,7 @@ test.describe("admin published pages", () => {
     // and only publishing that draft moves the public page.
     const editedBody = `Revised body ${suffix}`;
     await page.goto(adminUrl(`/pages/${pageId}`));
-    await fillField(
-      page.getByRole("textbox", { name: "Content" }),
-      `## Revision\n\n${editedBody}`
-    );
-    // The preview tab renders what is in the editor, before any of it is
-    // saved. It is asserted through the rendered heading: the body text is
-    // also the editor's own value, which `getByText` would match as well.
-    await page.getByRole("tab", { name: "Preview" }).click();
-    await expect(
-      page.getByRole("heading", { exact: true, name: "Revision" })
-    ).toBeVisible();
+    await writePageBody(page, { heading: "Revision", text: editedBody });
 
     await page.getByRole("button", { name: "Save page" }).click();
     await expect(versionStatus(page, 2, "Draft")).toBeVisible({
@@ -354,7 +350,7 @@ test.describe("admin published pages", () => {
 
     const pageId = trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: `## English\n\nEnglish body ${suffix}`,
+        body: { heading: "English", text: `English body ${suffix}` },
         slug,
         title,
       })
@@ -386,10 +382,10 @@ test.describe("admin published pages", () => {
       page.getByText("No versions yet.", { exact: false })
     ).toBeVisible();
 
-    await fillField(
-      page.getByRole("textbox", { name: "Content" }),
-      `## 日本語\n\n日本語の本文 ${suffix}`
-    );
+    await writePageBody(page, {
+      heading: "日本語",
+      text: `日本語の本文 ${suffix}`,
+    });
     await page.getByRole("button", { name: "Save page" }).click();
     await expect(versionStatus(page, 1, "Draft")).toBeVisible({
       timeout: 30_000,
@@ -465,7 +461,7 @@ test.describe("admin published pages", () => {
 
     trackPage(
       await createPageViaUi(page, {
-        contentMarkdown: body,
+        body: { text: body },
         displayInFooter: true,
         slug,
         title,
