@@ -2,7 +2,7 @@
 title: Episodes
 description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, publish it now or on time, and see what goes out when on the calendar.
 published: 2026-10-07
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -108,7 +108,7 @@ Everyone who can open the episode can turn its pages in the preview, including t
 
 ## The cover image
 
-An episode without a cover image of its own shows its series' [cover image](./1-series.md#the-cover-image) wherever the site and the app picture it, so a new episode needs nothing here. Give an episode one of its own where it should look different from its series.
+An episode without a cover image of its own shows its series' [cover image](./1-series.md#the-cover-image) wherever the site and the app picture it, so a new episode needs nothing here. Give an episode one of its own where it should look different from its series. Where neither has a **Link preview (1200:630)** image, a link to the episode is shared with a card the site draws from the episode's title, as [Link previews](../3-setup/2-branding.md#link-previews) describes.
 
 The **Cover image** tab of the episode's edit screen sets it. Under **Cover image**, select a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels, and choose **Update cover image**. Saving cuts it into the same four shapes as a series' cover, at the same sizes, which **Aspect ratio images** shows: **Portrait (3:4)**, **Square (1:1)**, **Landscape (16:9)**, and **Link preview (1200:630)**. The line under each slot says where that shape of an episode's cover is used.
 

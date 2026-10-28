@@ -30,7 +30,17 @@ Give the sign-in image a picture that still works with its edges cut away: keep 
 
 An upload of any of the three is refused with "Images cannot be uploaded because image storage has not been set up on the platform yet. Ask a platform operator to set it up." when the operator has not set up object storage for the install, as [Object storage](../../3-operations/5-object-storage.md) describes.
 
-None of the three is used in the tenant's mail, which is sent in Publira's own colors, or as the picture shown when a link to the site is shared, which comes from the series being linked.
+None of the three is used in the tenant's mail, which is sent in Publira's own colors. The logo is used in the picture shown when a link to the site is shared, as [Link previews](#link-previews) describes; the icon and the sign-in image are not.
+
+## Link previews
+
+A link to any page of the site, shared in a chat or a post, unfurls with a picture. A series or an episode with a **Link preview (1200:630)** image shows that image as it was uploaded, as [Series](../1-catalog/1-series.md#the-cover-image) describes. Every other page, and a series or episode without one, shows a card the site draws for it:
+
+- The page's own name, large: the series' or the episode's title, the name of the label, genre, tag, or Author, or the title of a page under **Pages**. An episode's card has its series' title above it, and a label's, genre's, or Author's card the name of the list it belongs to. The home page, and every page that names nothing of its own such as the ranking, shows the **Site tagline** from [Settings](./1-settings.md), or the site's name where there is none.
+- The logo at the bottom, or the site's name in its place where no logo is uploaded.
+- The light palette's background and text colors, with a band of its primary color along the top.
+
+The card is in the language of the page linked. Text the site cannot draw, such as an emoji, is left out of the picture, though the title shared beside it keeps it. A new logo, a change of color, or a renamed series reaches the card the way it reaches the page, but a service that has already shown a link may keep its earlier picture for a while, since each keeps its own copy.
 
 ## Brand marks
 

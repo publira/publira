@@ -10,6 +10,8 @@ const publishedSlugs = new Set([
   "/ja",
   "/legal/terms",
   "/logout",
+  "/og",
+  "/og/series/SeedSERSAAA1",
   "/privacy",
   "/series",
 ]);
@@ -34,6 +36,19 @@ describe("getPublishedPageSlugFromPathname", () => {
     expect(getPublishedPageSlugFromPathname("/series", publishedSlugs)).toBe(
       "series"
     );
+  });
+
+  it("leaves the Open Graph cards to their Route Handlers", () => {
+    expect(getPublishedPageSlugFromPathname("/og", publishedSlugs)).toBeNull();
+    expect(
+      getPublishedPageSlugFromPathname(
+        "/og/series/SeedSERSAAA1",
+        publishedSlugs
+      )
+    ).toBeNull();
+    expect(
+      buildTenantRewritePathname("tenant-id", "en", "/og", publishedSlugs)
+    ).toBe("/tenant-id/en/og");
   });
 
   it("returns null for a path no published page has", () => {

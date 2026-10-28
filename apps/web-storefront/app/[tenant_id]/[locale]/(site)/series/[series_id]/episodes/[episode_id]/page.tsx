@@ -22,10 +22,15 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { adultContentMetadata } from "#lib/age-rating";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
 import type { EpisodeSeriesSummary } from "#lib/catalog";
+import { episodeDisplayTitle } from "#lib/episode-title";
 import { breadcrumbJsonLd, episodeJsonLd, jsonLdSiteIn } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { resolveEpisodeOpenGraphImage } from "#lib/open-graph";
+import {
+  openGraphMetadata,
+  resolveEpisodeOpenGraphImage,
+} from "#lib/open-graph";
+import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
 import { shareText } from "#lib/share-text";
 import {
   getTenantSiteInfo,
@@ -48,7 +53,6 @@ import {
   parseCommentSearchParams,
 } from "./_lib/comment-search-params";
 import { episodePath } from "./_lib/episode-path";
-import { episodeDisplayTitle } from "./_lib/episode-title";
 import { parsePurchaseSearchParams } from "./_lib/purchase-search-params";
 import { VIEWER_HEIGHT_CLASS } from "./_lib/viewer-layout";
 
@@ -67,10 +71,10 @@ const NEIGHBOR_SKELETON_COUNT = 2;
  * The card a link to this episode unfurls into, and the `<title>` above it.
  *
  * The episode names itself the way its running head does, and the work's own
- * words and artwork stand behind it: an episode carries neither a synopsis nor
- * an eye-catch of its own anywhere in the data model. Both reads are
- * `"use cache"` and keyed on their arguments, so passing what the page body
- * passes costs one RPC each for the two of them.
+ * words stand behind it: an episode carries no synopsis of its own. Its picture
+ * is its own eye-catch, else the work's, else the card the storefront draws
+ * for it. Both reads are `"use cache"` and keyed on their arguments, so passing
+ * what the page body passes costs one RPC each for the two of them.
  */
 export const generateMetadata = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]/episodes/[episode_id]">
@@ -104,44 +108,46 @@ export const generateMetadata = async (
   const { episode, publishedLocales, series } = detail;
   // Alternates wait on the episode, as a series page's do on the series: its
   // own title is what the languages of this URL are decided by.
-  const alternates = await tenantPublishedLocaleAlternates(
-    tenantId,
-    episodePath(series_id, episode_id),
-    publishedLocales,
-    episode.locale
-  );
+  const [alternates, cardPath] = await Promise.all([
+    tenantPublishedLocaleAlternates(
+      tenantId,
+      episodePath(series_id, episode_id),
+      publishedLocales,
+      episode.locale
+    ),
+    tenantOpenGraphCardPath(tenantId, locale, {
+      episodeId: episode_id,
+      kind: "episode",
+      seriesId: series_id,
+    }),
+  ]);
   const title = episodeDisplayTitle(t, episode);
   // The description is the series': an episode carries no synopsis of its
   // own. `GetEpisodeDetail` answers with the work's id, title, and rating
   // rather than its artwork, so the card falls back on the series detail too.
   const work = seriesResult.ok ? seriesResult.value?.series : undefined;
   const description = work?.synopsis.trim() || undefined;
-  const image = alternates
+  const image = cardPath
     ? resolveEpisodeOpenGraphImage(
         { alt: title, variants: episode.eyeCatchImageVariants },
-        { alt: series.title, variants: work?.eyeCatchImageVariants }
+        { alt: series.title, variants: work?.eyeCatchImageVariants },
+        cardPath
       )
     : undefined;
 
   return {
     ...adultContentMetadata(series.ageRating),
-    alternates,
-    description,
-    openGraph: {
+    ...openGraphMetadata({
       description,
-      images: image,
+      image,
       siteName: siteLabel,
       title,
       type: "article",
       url: alternates?.canonical,
-    },
+    }),
+    alternates,
+    description,
     title,
-    twitter: {
-      card: "summary_large_image",
-      description,
-      images: image,
-      title,
-    },
   };
 };
 

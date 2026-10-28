@@ -21,6 +21,13 @@ export interface PublishedCreatorListItem {
   seriesCount: number;
 }
 
+/**
+ * The related series one creator page lists. The page, its metadata, and the
+ * creator's Open Graph card all read the first page with it, so the three
+ * share one `"use cache"` entry and one RPC.
+ */
+export const CREATOR_SERIES_PAGE_SIZE = 20;
+
 export interface PublishedCreatorDetail {
   id: string;
   /** Internal ID (`id`), which following the creator takes. */

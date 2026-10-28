@@ -1,5 +1,5 @@
-import type { EpisodeDetail } from "#lib/catalog";
-import type { StorefrontMessageAccessor } from "#lib/messages";
+import type { EpisodeDetail } from "./catalog";
+import type { StorefrontMessageAccessor } from "./messages";
 
 /**
  * How an episode names itself where it stands as one string and the work is

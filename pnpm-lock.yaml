@@ -607,6 +607,21 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@fontsource/noto-sans':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource/noto-sans-jp':
+        specifier: 5.3.1
+        version: 5.3.1
+      '@fontsource/noto-sans-kr':
+        specifier: 5.3.1
+        version: 5.3.1
+      '@fontsource/noto-sans-sc':
+        specifier: 5.3.1
+        version: 5.3.1
+      '@fontsource/noto-sans-tc':
+        specifier: 5.3.1
+        version: 5.3.1
       '@next/third-parties':
         specifier: 'catalog:'
         version: 16.4.3(next@16.4.3(@opentelemetry/api@1.10.0)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
@@ -1620,6 +1635,21 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource/noto-sans-jp@5.3.1':
+    resolution: {integrity: sha512-9NNBB/M9PextLYVXGSfIaLZsPnrt5UDw8g2B6T0M775H2yb/oekApSjuS1XKOP7FPcMMEnTavR5rJGDM66qKtA==}
+
+  '@fontsource/noto-sans-kr@5.3.1':
+    resolution: {integrity: sha512-aKnPug5P6zBHaiLbGEVNyBQesyOeEUYl6C3Xedb00xO3iAHJZPQs2JOsPNVqHanKSVe1fTVmTPuYIao4noImXw==}
+
+  '@fontsource/noto-sans-sc@5.3.1':
+    resolution: {integrity: sha512-YxZ/VWAWo9FWzH08Q6fGTzIW6vYNP2TMhUFCnfhlimbhdXnWrxJLrzX3KWt2FKnV0s8XiM5vjpGHQiyFRlTj0w==}
+
+  '@fontsource/noto-sans-tc@5.3.1':
+    resolution: {integrity: sha512-kiOTKRnkEV4dsMqfmIuH3TnkYp5Rqq2f4LgAArx0Y5eVzCebU2TgWup5TWCWWSk28nBf4mgunLTyQP+xQ74gcQ==}
+
+  '@fontsource/noto-sans@5.3.0':
+    resolution: {integrity: sha512-fBCog2PY7DiVVTEEqtI/Qdinx/knobHYfoGpjFXdfBX5RoJaBp1Prw2G75p0OIsdlMZg3cLo0c+YbIUYOxnQJw==}
 
   '@github/browserslist-config@1.0.0':
     resolution: {integrity: sha512-gIhjdJp/c2beaIWWIlsXdqXVRUz3r2BxBCpfz/F3JXHvSAQ1paMYjLH+maEATtENg+k5eLV7gA+9yPp762ieuw==}
@@ -6262,6 +6292,16 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource/noto-sans-jp@5.3.1': {}
+
+  '@fontsource/noto-sans-kr@5.3.1': {}
+
+  '@fontsource/noto-sans-sc@5.3.1': {}
+
+  '@fontsource/noto-sans-tc@5.3.1': {}
+
+  '@fontsource/noto-sans@5.3.0': {}
 
   '@github/browserslist-config@1.0.0': {}
 

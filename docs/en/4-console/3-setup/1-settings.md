@@ -2,7 +2,7 @@
 title: Settings
 description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, reader sign-up, refused email addresses, crawler exclusions, and search engine verification codes, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-10-24
+updated: 2026-10-28
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -18,7 +18,7 @@ Each card on these tabs has its own save button and saves only its own fields, s
 Three pieces of copy, each of which may be left empty:
 
 - **Copyright notice**: shown at the foot of every page of the site, and of its sign-in screens.
-- **Site tagline**: a short line shown on the sign-in, sign-up, and password screens.
+- **Site tagline**: a short line shown on the sign-in, sign-up, and password screens, and on the picture a link to the site's home page is shared with (see [Link previews](./2-branding.md#link-previews)).
 - **Site description**: shown in the site's footer, and given to search engines and link previews as the site's description.
 
 Each language the site offers, as chosen under [Languages](#languages), has a tab under **Languages** with its own three pieces of copy. The card opens on the default language's tab, and a language with no copy of its own is marked **(not added)**. **Save the settings** saves the three fields of the open tab, and leaves the other languages' copy as it is. Save before you switch tabs: an edit that was not saved is not kept. Emptying all three fields and saving removes the language's copy.

@@ -19,10 +19,13 @@ import { PageLoadError } from "#components/page-load-error";
 import * as SeriesShelf from "#components/series-shelf";
 import { getMessages } from "#lib/get-messages";
 import { breadcrumbJsonLd } from "#lib/json-ld";
-import { getPublishedLabelDetail } from "#lib/labels";
+import { getPublishedLabelDetail, LABEL_SERIES_PAGE_SIZE } from "#lib/labels";
 import type { PublishedLabelDetail } from "#lib/labels";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { openGraphCardImage, openGraphMetadata } from "#lib/open-graph";
+import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
+import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -31,8 +34,6 @@ import {
   parseLabelDetailParams,
   parseLabelDetailSearchParams,
 } from "./_lib/search-params";
-
-const LABEL_SERIES_PAGE_SIZE = 20;
 
 type LabelDetailPageProps =
   PageProps<"/[tenant_id]/[locale]/labels/[label_id]">;
@@ -71,12 +72,16 @@ export const generateMetadata = async ({
 
   const labelId = parseLabelDetailParams({ label_id });
 
-  const [result, t, alternates] = await Promise.all([
+  const [result, t, alternates, siteLabel, cardPath] = await Promise.all([
     labelId
       ? loadPublishedLabelDetail(tenantId, labelId, locale, "")
       : { ok: true as const, value: null },
     getMessagesFor(locale),
     tenantLocaleAlternates(tenantId, locale, `/labels/${label_id}`),
+    getTenantSiteLabel(tenantId, locale),
+    labelId
+      ? tenantOpenGraphCardPath(tenantId, locale, { kind: "label", labelId })
+      : undefined,
   ]);
 
   // An unavailable label reads as "not found" for the `<title>` alone; the
@@ -89,12 +94,22 @@ export const generateMetadata = async ({
     };
   }
 
+  const description = t("storefront.labels.detail_description", {
+    count: label.seriesCount,
+    name: label.name,
+  });
+
   return {
-    alternates,
-    description: t("storefront.labels.detail_description", {
-      count: label.seriesCount,
-      name: label.name,
+    ...openGraphMetadata({
+      description,
+      image: cardPath ? openGraphCardImage(cardPath, label.name) : undefined,
+      siteName: siteLabel,
+      title: label.name,
+      type: "website",
+      url: alternates?.canonical,
     }),
+    alternates,
+    description,
     title: label.name,
   };
 };

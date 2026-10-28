@@ -13,6 +13,13 @@ import { toEyeCatchImageVariants, toSeriesListItem } from "./catalog";
 import type { EyeCatchImageVariant, SeriesListItem } from "./catalog";
 import { localizedReadFailure } from "./read-failure";
 
+/**
+ * The related series one label page lists. The page, its metadata, and the
+ * label's Open Graph card all read the first page with it, so the three share
+ * one `"use cache"` entry and one RPC.
+ */
+export const LABEL_SERIES_PAGE_SIZE = 20;
+
 export interface PublishedLabelDetail {
   id: string;
   name: string;
