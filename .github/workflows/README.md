@@ -4,7 +4,8 @@
 | --- | --- | --- |
 | `CI` | [`ci.yml`](./ci.yml) | Validation jobs described below. |
 | `Organize issues` | [`organize-issues.yml`](./organize-issues.yml) | Issue-maintenance automation. |
-| `Review` | [`review.yml`](./review.yml) | Review-support automation. |
+| `Review` | [`review.yml`](./review.yml) | The moments a pull request asks for review. |
+| `Review labels` | [`review-labels.yml`](./review-labels.yml) | Review-support automation that writes to the pull request, run when `Review` completes. |
 | `Release notes` | [`release-notes.yml`](./release-notes.yml) | The Upgrade notes of every pull request, checked, and collected into the release a tag publishes. |
 | `Release images` | [`release-images.yml`](./release-images.yml) | The images of the release a tag publishes, pushed to `ghcr.io/publira`; called by `Release notes`. |
 
@@ -20,13 +21,13 @@
 
 ## Review
 
-[`review.yml`](./review.yml), named `Review`, is the home for review-support jobs. Add work by job.
+Review support is two workflows. [`review.yml`](./review.yml), named `Review`, runs on `pull_request` (`opened` and `ready_for_review`) with no permissions, and its one job, `Review requested`, only succeeds: the token a fork's pull request runs with is read-only, so nothing that writes to the pull request can run there. [`review-labels.yml`](./review-labels.yml), named `Review labels`, is the home for the jobs that do, and runs on `workflow_run` when a `Review` run that a pull request started succeeds. Add work by job.
 
-| Displayed job | Purpose |
-| --- | --- |
-| `Label review size` | Give a pull request one `size/*` label computed from its diff. |
+| Workflow | Displayed job | Purpose |
+| --- | --- | --- |
+| `Review labels` | `Label review size` | Give a pull request one `size/*` label computed from its diff. |
 
-The jobs are triggered by `pull_request_target`, whose types are the union of what they need: currently `opened` and `ready_for_review`. `pull_request` cannot be used: a fork's `GITHUB_TOKEN` is read-only and could not add a label.
+A `workflow_run` run executes the workflow from the default branch with this repository's token, whichever repository the pull request comes from. It finds the pull request through `GET /repos/{owner}/{repo}/pulls`, filtered by the head repository's owner and the branch the `Review` run was for, rather than through the event's `pull_requests` list, which is empty for a fork; a branch that heads no open pull request, or more than one, is left alone. Nothing the `Review` run produced is read, since that run executes the workflow file as the pull request proposes it.
 
 ### Review size
 
@@ -73,9 +74,9 @@ Coefficients and thresholds live in `scripts/pr-size.ts`; its classification and
 
 #### The job
 
-`Label review size` skips an `opened` event for a draft, so a pull request opened as a draft is labelled when it is marked ready and one opened ready is labelled immediately. A push (`synchronize`) does not trigger it, which is what makes the label a snapshot rather than a running score.
+`Review requested` skips an `opened` event for a draft, so a pull request opened as a draft is labelled when it is marked ready and one opened ready is labelled immediately. A push (`synchronize`) does not trigger it, which is what makes the label a snapshot rather than a running score. A pull request turned back into a draft by the time `Label review size` runs is left alone.
 
-The job holds `contents: read` and `pull-requests: write`, and it never checks out the head branch — `pull_request_target` resolves to the base commit, so the scorer that runs is the one that was reviewed and merged. A job's `permissions` block replaces the workflow's `permissions: {}` rather than adding to it, so the read the checkout needs has to be spelled out in the job. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
+The job holds `contents: read` and `pull-requests: write`, and it never checks out the head branch — `workflow_run` resolves to the default branch, so the scorer that runs is the one that was reviewed and merged. A job's `permissions` block replaces the workflow's `permissions: {}` rather than adding to it, so the read the checkout needs has to be spelled out in the job. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
 
 A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score. The job asks `GET /repos/{owner}/{repo}/pulls/{number}` for the pull request's current labels rather than reading the list the event payload carries: `gh pr create --label` applies its label in a request of its own once the pull request exists, so the payload can still describe it as unlabelled and the label would be scored over.
 
@@ -85,7 +86,7 @@ A pull request that already carries a `size/*` label is left alone and the run l
 
 | Displayed job | Trigger | Purpose |
 | --- | --- | --- |
-| `Check upgrade notes` | `pull_request_target`: `opened`, `edited`, `reopened`, `synchronize` | Fail a pull request whose diff makes a change an operator may have to act on while its Upgrade notes section is empty or missing. |
+| `Check upgrade notes` | `pull_request`: `opened`, `edited`, `reopened`, `synchronize` | Fail a pull request whose diff makes a change an operator may have to act on while its Upgrade notes section is empty or missing. |
 | `Check version` | A pushed tag of the form `v1.2.3` or `v1.2.3-rc.1` | Fail a tag whose commit carries any other version in a `package.json`, naming each such file. See [Cutting a release](#cutting-a-release). |
 | `Images` | The same tag, once `Check version` succeeds | Run [`release-images.yml`](./release-images.yml): push the release's images. See [Release images](#release-images). |
 | `Publish release` | The same tag, once `Images` succeeds | Publish the GitHub Release of the tag, its notes opening with the Upgrade notes section, with the Compose install attached. |

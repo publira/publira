@@ -263,7 +263,7 @@ It prints a weighted score and the bucket it falls into — `size/xs`, `size/s`,
 
 Raise the bucket by one, and say why in the Summary, when the change is harder to review than its line count admits — concurrency, authentication, a data migration, a subtle invariant. Never lower it: an agent does not get to talk down the review its own work needs.
 
-If the pull request arrives without a `size/*` label, the `Review` workflow computes the same score and adds the label itself, so the bucket you pass is the one that stands.
+If the pull request arrives without a `size/*` label, the `Review labels` workflow computes the same score and adds the label itself, so the bucket you pass is the one that stands.
 
 ## Create the PR
 

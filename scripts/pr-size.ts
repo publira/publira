@@ -7,7 +7,7 @@
  *     git diff origin/main...HEAD | node scripts/pr-size.ts
  *
  * `--json` prints the score, the label, and the per-file breakdown instead, so
- * the `Review` workflow and a calibration run read the same number a human
+ * the `Review labels` workflow and a calibration run read the same number a human
  * does. The formula is
  *
  *     score = Σ over changed files ( coefficient(path) × significant_lines(file) )
