@@ -1,8 +1,10 @@
 "use client";
 
 import { BellIcon } from "@publira/icons";
+import { buttonVariants } from "@publira/ui-components/button";
 import * as Popover from "@publira/ui-components/popover";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import Link from "next/link";
 import { createContext, useCallback, useContext, useState } from "react";
 import type { ReactNode } from "react";
@@ -56,7 +58,12 @@ const NotificationBellTrigger = ({
   const count = Math.max(0, unreadCount);
 
   return (
-    <Popover.Trigger className="relative inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted data-popup-open:bg-muted pointer-coarse:size-11">
+    <Popover.Trigger
+      className={cn(
+        buttonVariants({ size: "icon", variant: "ghost" }),
+        "relative data-popup-open:bg-muted"
+      )}
+    >
       <BellIcon aria-hidden="true" className="size-5" />
       <span className="sr-only">{children}</span>
       {count > 0 ? (

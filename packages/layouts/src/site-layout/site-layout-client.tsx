@@ -3,7 +3,8 @@
 import { Collapsible } from "@base-ui/react/collapsible";
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { ChevronDownIcon, CloseIcon, MenuIcon } from "@publira/icons";
-import { LinkButton } from "@publira/ui-components/button";
+import { buttonVariants, LinkButton } from "@publira/ui-components/button";
+import { cn } from "@publira/utils";
 import Link from "next/link";
 import {
   createContext,
@@ -81,7 +82,10 @@ export const SiteLayoutMobileNavigationOpenButton = ({
 }) => (
   <BaseDrawer.Trigger
     aria-label={ariaLabel}
-    className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:hidden pointer-coarse:size-11"
+    className={cn(
+      buttonVariants({ size: "icon", variant: "ghost" }),
+      "shrink-0 md:hidden"
+    )}
   >
     <MenuIcon className="size-5" />
   </BaseDrawer.Trigger>
