@@ -51,7 +51,7 @@ RUN CGO_ENABLED=1 go build -trimpath \
 # converts a JPEG to AVIF for every browser that accepts it: without an encoder
 # plugin, heifsave fails and Manael answers with the original bytes, neither
 # converted nor resized.
-FROM debian:13.7-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
+FROM debian:13.7-slim@sha256:89c1ea91e897f0fe0a3731595330bc45b8bdef4047464a07116f891a94054b31
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates libvips42t64 libheif-plugin-aomenc \
