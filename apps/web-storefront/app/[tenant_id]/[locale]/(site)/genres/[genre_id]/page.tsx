@@ -32,6 +32,9 @@ import { getMessages } from "#lib/get-messages";
 import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { openGraphCardImage, openGraphMetadata } from "#lib/open-graph";
+import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
+import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -79,12 +82,16 @@ export const generateMetadata = async ({
   guardPlaceholders({ genre_id });
 
   const genreId = parseGenreDetailParams({ genre_id });
-  const [genres, t, alternates] = await Promise.all([
+  const [genres, t, alternates, siteLabel, cardPath] = await Promise.all([
     genreId
       ? listPublishedGenres(tenantId, locale)
       : { ok: true as const, value: [] },
     getMessagesFor(locale),
     tenantLocaleAlternates(tenantId, locale, `/genres/${genre_id}`),
+    getTenantSiteLabel(tenantId, locale),
+    genreId
+      ? tenantOpenGraphCardPath(tenantId, locale, { genreId, kind: "genre" })
+      : undefined,
   ]);
 
   // An unavailable genre reads as "not found" for the `<title>` alone; the
@@ -95,7 +102,17 @@ export const generateMetadata = async ({
     return { title: t("storefront.genres.not_found_title") };
   }
 
-  return { alternates, title: genre.name };
+  return {
+    ...openGraphMetadata({
+      image: cardPath ? openGraphCardImage(cardPath, genre.name) : undefined,
+      siteName: siteLabel,
+      title: genre.name,
+      type: "website",
+      url: alternates?.canonical,
+    }),
+    alternates,
+    title: genre.name,
+  };
 };
 
 const GenreDetailSkeleton = () => (

@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { EyeCatchImageVariant } from "./catalog";
 import {
+  openGraphMetadata,
   resolveEpisodeOpenGraphImage,
   resolveOpenGraphImage,
+  resolveSeriesOpenGraphImage,
 } from "./open-graph";
+
+const SERIES_CARD = "/og/series/SeedSERSAAA1";
+const EPISODE_CARD = "/og/series/SeedSERSAAA1/episodes/SeedEPSDAAA1";
 
 const variant = (
   variantType: string,
@@ -56,6 +61,45 @@ describe("resolveOpenGraphImage", () => {
   });
 });
 
+describe("resolveSeriesOpenGraphImage", () => {
+  it("keeps the uploaded og variant", () => {
+    expect(
+      resolveSeriesOpenGraphImage(
+        { alt: "Published Series", variants: [variant("og", 1200, 630)] },
+        SERIES_CARD
+      )
+    ).toEqual({
+      alt: "Published Series",
+      height: 630,
+      url: "/images/series/00000000-0000-4000-8000-000000000000/og/1200",
+      width: 1200,
+    });
+  });
+
+  it("falls back to the drawn card when the series has no og variant", () => {
+    expect(
+      resolveSeriesOpenGraphImage(
+        { alt: "Published Series", variants: [variant("portrait", 600, 800)] },
+        SERIES_CARD
+      )
+    ).toEqual({
+      alt: "Published Series",
+      height: 630,
+      url: SERIES_CARD,
+      width: 1200,
+    });
+  });
+
+  it("falls back to the drawn card when the series has no eye-catch", () => {
+    expect(
+      resolveSeriesOpenGraphImage(
+        { alt: "Published Series", variants: undefined },
+        SERIES_CARD
+      ).url
+    ).toBe(SERIES_CARD);
+  });
+});
+
 describe("resolveEpisodeOpenGraphImage", () => {
   const seriesOg = {
     contentType: "image/jpeg",
@@ -75,7 +119,8 @@ describe("resolveEpisodeOpenGraphImage", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: [episodeOg] },
-        { alt: "Published Series", variants: [seriesOg] }
+        { alt: "Published Series", variants: [seriesOg] },
+        EPISODE_CARD
       )
     ).toEqual({
       alt: "Episode 2",
@@ -89,7 +134,8 @@ describe("resolveEpisodeOpenGraphImage", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: undefined },
-        { alt: "Published Series", variants: [seriesOg] }
+        { alt: "Published Series", variants: [seriesOg] },
+        EPISODE_CARD
       )
     ).toEqual({
       alt: "Published Series",
@@ -103,17 +149,61 @@ describe("resolveEpisodeOpenGraphImage", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: [variant("landscape", 1600, 900)] },
-        { alt: "Published Series", variants: [seriesOg] }
-      )?.url
+        { alt: "Published Series", variants: [seriesOg] },
+        EPISODE_CARD
+      ).url
     ).toBe(seriesOg.url);
   });
 
-  it("returns nothing when neither has an og variant", () => {
+  it("falls back to the drawn card when neither has an og variant", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: undefined },
-        { alt: "Published Series", variants: undefined }
+        { alt: "Published Series", variants: undefined },
+        EPISODE_CARD
       )
-    ).toBeUndefined();
+    ).toEqual({
+      alt: "Episode 2",
+      height: 630,
+      url: EPISODE_CARD,
+      width: 1200,
+    });
+  });
+});
+
+describe("openGraphMetadata", () => {
+  it("gives Open Graph and X the same card", () => {
+    const image = {
+      alt: "Seed Label 01",
+      height: 630,
+      url: "/og/labels/SeedLABLAAA1",
+      width: 1200,
+    };
+
+    expect(
+      openGraphMetadata({
+        description: "3 published series from Seed Label 01",
+        image,
+        siteName: "Seed Tenant",
+        title: "Seed Label 01",
+        type: "website",
+        url: "/labels/SeedLABLAAA1",
+      })
+    ).toEqual({
+      openGraph: {
+        description: "3 published series from Seed Label 01",
+        images: image,
+        siteName: "Seed Tenant",
+        title: "Seed Label 01",
+        type: "website",
+        url: "/labels/SeedLABLAAA1",
+      },
+      twitter: {
+        card: "summary_large_image",
+        description: "3 published series from Seed Label 01",
+        images: image,
+        title: "Seed Label 01",
+      },
+    });
   });
 });

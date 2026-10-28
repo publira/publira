@@ -63,6 +63,13 @@ const nextConfig: NextConfig = {
   // Google's tag gateway is loaded from `/<gateway path>/` with its slash, so
   // `proxy.ts` drops a trailing slash itself, from every other path.
   skipTrailingSlashRedirect: true,
+  turbopack: {
+    rules: {
+      // The faces `lib/open-graph-card-fonts.ts` draws the Open Graph cards
+      // with, as the bytes `ImageResponse` takes rather than a URL.
+      "*.woff": { condition: { query: "?bytes" }, type: "bytes" },
+    },
+  },
 };
 
 export default nextConfig;

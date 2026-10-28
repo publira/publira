@@ -25,12 +25,18 @@ import { PageLoadError } from "#components/page-load-error";
 import { Prose } from "#components/prose";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import * as SeriesShelf from "#components/series-shelf";
-import { getPublishedCreatorDetail } from "#lib/creators";
+import {
+  CREATOR_SERIES_PAGE_SIZE,
+  getPublishedCreatorDetail,
+} from "#lib/creators";
 import type { PublishedCreatorDetail } from "#lib/creators";
 import { getMessages } from "#lib/get-messages";
 import { breadcrumbJsonLd, creatorJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { openGraphCardImage, openGraphMetadata } from "#lib/open-graph";
+import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
+import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -38,8 +44,6 @@ import {
   creatorDetailHref,
   parseCreatorDetailSearchParams,
 } from "./_lib/search-params";
-
-const CREATOR_SERIES_PAGE_SIZE = 20;
 
 /** The creator's portrait, at the size the page draws it. */
 const CREATOR_ICON_SIZE = 96;
@@ -86,10 +90,15 @@ export const generateMetadata = async ({
   }
   const { creator_id } = parsedParams;
 
-  const [result, t, alternates] = await Promise.all([
+  const [result, t, alternates, siteLabel, cardPath] = await Promise.all([
     loadPublishedCreatorDetail(tenantId, creator_id, locale, ""),
     getMessagesFor(locale),
     tenantLocaleAlternates(tenantId, locale, `/creators/${creator_id}`),
+    getTenantSiteLabel(tenantId, locale),
+    tenantOpenGraphCardPath(tenantId, locale, {
+      creatorId: creator_id,
+      kind: "creator",
+    }),
   ]);
 
   // An unavailable creator reads as "not found" for the `<title>` alone; the
@@ -102,14 +111,24 @@ export const generateMetadata = async ({
     };
   }
 
+  const description =
+    creator.profileText ||
+    t("storefront.creators.detail_description", {
+      count: creator.seriesCount,
+      name: creator.name,
+    });
+
   return {
+    ...openGraphMetadata({
+      description,
+      image: cardPath ? openGraphCardImage(cardPath, creator.name) : undefined,
+      siteName: siteLabel,
+      title: creator.name,
+      type: "website",
+      url: alternates?.canonical,
+    }),
     alternates,
-    description:
-      creator.profileText ||
-      t("storefront.creators.detail_description", {
-        count: creator.seriesCount,
-        name: creator.name,
-      }),
+    description,
     title: creator.name,
   };
 };

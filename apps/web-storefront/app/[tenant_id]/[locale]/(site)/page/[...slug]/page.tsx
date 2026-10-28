@@ -15,8 +15,11 @@ import { z } from "zod";
 import { PageLoadError } from "#components/page-load-error";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { openGraphCardImage, openGraphMetadata } from "#lib/open-graph";
+import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
 import { getPublishedPage, publishedPageHrefFromSlug } from "#lib/pages";
 import { fallbackLanguage } from "#lib/served-locale";
+import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -47,9 +50,10 @@ export const generateMetadata = async (
   }
   const { slug } = parsedParams;
 
-  const [result, t] = await Promise.all([
+  const [result, t, siteLabel] = await Promise.all([
     getPublishedPage(tenantId, slug, locale),
     getMessagesFor(locale),
+    getTenantSiteLabel(tenantId, locale),
   ]);
 
   // An unavailable page reads as "not found" for the `<title>` alone; the page
@@ -62,14 +66,27 @@ export const generateMetadata = async (
 
   // Alternates wait on the page: only a published translation is a language
   // of this URL, and which those are is part of the read above.
-  const alternates = await tenantPublishedLocaleAlternates(
-    tenantId,
-    publishedPageHrefFromSlug(slug.join("/")),
-    page.publishedLocales,
-    page.locale
-  );
+  const [alternates, cardPath] = await Promise.all([
+    tenantPublishedLocaleAlternates(
+      tenantId,
+      publishedPageHrefFromSlug(slug.join("/")),
+      page.publishedLocales,
+      page.locale
+    ),
+    tenantOpenGraphCardPath(tenantId, locale, { kind: "page", slug }),
+  ]);
 
-  return { alternates, title: page.title };
+  return {
+    ...openGraphMetadata({
+      image: cardPath ? openGraphCardImage(cardPath, page.title) : undefined,
+      siteName: siteLabel,
+      title: page.title,
+      type: "article",
+      url: alternates?.canonical,
+    }),
+    alternates,
+    title: page.title,
+  };
 };
 
 const PublishedPageSkeleton = () => (

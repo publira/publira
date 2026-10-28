@@ -48,7 +48,11 @@ import type { SeriesDetail, SeriesSerializationStatus } from "#lib/catalog";
 import { breadcrumbJsonLd, jsonLdSiteIn, seriesJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { resolveOpenGraphImage } from "#lib/open-graph";
+import {
+  openGraphMetadata,
+  resolveSeriesOpenGraphImage,
+} from "#lib/open-graph";
+import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
 import { fallbackLanguage } from "#lib/served-locale";
 import { shareText } from "#lib/share-text";
@@ -116,37 +120,40 @@ export const generateMetadata = async (
 
   // Alternates wait on the series: only a language it has a translation in is
   // a language of this URL, and the canonical one is the language served.
-  const alternates = await tenantPublishedLocaleAlternates(
-    tenantId,
-    `/series/${series_id}`,
-    series.publishedLocales,
-    series.locale
-  );
+  const [alternates, cardPath] = await Promise.all([
+    tenantPublishedLocaleAlternates(
+      tenantId,
+      `/series/${series_id}`,
+      series.publishedLocales,
+      series.locale
+    ),
+    tenantOpenGraphCardPath(tenantId, locale, {
+      kind: "series",
+      seriesId: series_id,
+    }),
+  ]);
   const description = series.synopsis.trim() || undefined;
   // Relative, like the alternates, so both need the same `metadataBase`.
-  const image = alternates
-    ? resolveOpenGraphImage(series.eyeCatchImageVariants, series.title)
+  const image = cardPath
+    ? resolveSeriesOpenGraphImage(
+        { alt: series.title, variants: series.eyeCatchImageVariants },
+        cardPath
+      )
     : undefined;
 
   return {
     ...adultContentMetadata(series.ageRating),
-    alternates,
-    description,
-    openGraph: {
+    ...openGraphMetadata({
       description,
-      images: image,
+      image,
       siteName: siteLabel,
       title: series.title,
       type: "website",
       url: alternates?.canonical,
-    },
+    }),
+    alternates,
+    description,
     title: series.title,
-    twitter: {
-      card: "summary_large_image",
-      description,
-      images: image,
-      title: series.title,
-    },
   };
 };
 

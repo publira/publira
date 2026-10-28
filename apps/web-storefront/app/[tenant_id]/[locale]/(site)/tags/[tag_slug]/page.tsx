@@ -26,6 +26,9 @@ import { getMessages } from "#lib/get-messages";
 import { breadcrumbJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { openGraphCardImage, openGraphMetadata } from "#lib/open-graph";
+import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
+import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -57,12 +60,16 @@ export const generateMetadata = async ({
   guardPlaceholders({ tag_slug });
 
   const tagSlug = parseTagDetailParams({ tag_slug });
-  const [result, t, alternates] = await Promise.all([
+  const [result, t, alternates, siteLabel, cardPath] = await Promise.all([
     tagSlug
       ? findPublishedTagBySlug(tenantId, tagSlug, locale)
       : { ok: true as const, value: null },
     getMessagesFor(locale),
     tenantLocaleAlternates(tenantId, locale, `/tags/${tag_slug}`),
+    getTenantSiteLabel(tenantId, locale),
+    tagSlug
+      ? tenantOpenGraphCardPath(tenantId, locale, { kind: "tag", tagSlug })
+      : undefined,
   ]);
 
   // An unavailable tag reads as "not found" for the `<title>` alone; the page
@@ -73,7 +80,17 @@ export const generateMetadata = async ({
     return { title: t("storefront.tags.not_found_title") };
   }
 
-  return { alternates, title: tag.name };
+  return {
+    ...openGraphMetadata({
+      image: cardPath ? openGraphCardImage(cardPath, tag.name) : undefined,
+      siteName: siteLabel,
+      title: tag.name,
+      type: "website",
+      url: alternates?.canonical,
+    }),
+    alternates,
+    title: tag.name,
+  };
 };
 
 const TagDetailSkeleton = () => (

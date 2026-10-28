@@ -83,6 +83,10 @@ For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`pack
 
 The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over the `getTenantTheme()` read in `lib/tenant.ts` and its own cache tag from `lib/cache-tags.ts`. The document shell links it, so every page picks up the tenant's colors. A tenant with a dark palette gets it under `prefers-color-scheme: dark` unless `<html>` carries `data-theme="light"`, and under `data-theme="dark"`; the header's theme switch (`app/[tenant_id]/[locale]/(site)/_components/theme-switch.tsx`) stores the reader's choice as `publira.theme` in `localStorage`, and `THEME_PREFERENCE_SCRIPT` in `lib/theme-preference.ts` puts it on `<html>` before the first paint.
 
+### `/og/…`
+
+The 1200×630 PNG cards a page's `og:image` and `twitter:image` point at, served by the Route Handlers under `app/[tenant_id]/[locale]/og/` at the page's own path behind `/og` (`/og` for the tenant itself, `/og/series/{id}`, `/og/labels/{id}`, `/ja/og/page/{slug}`, and so on) and drawn by `lib/open-graph-card.tsx` with `ImageResponse` from `next/og`. Each reads its subject through the page's own `"use cache"` reads, so `POST /api/v1/revalidate` drops a card with its page. A series or an episode with an uploaded `og` eye-catch points at that instead. The faces are the 700 weight of the `@fontsource/noto-sans*` packages, imported as bytes through the `?bytes` rule in `next.config.ts` (and its counterpart in `vitest.config.ts`), so they are part of the build and no request fetches a font. A subject the page would answer 404 for answers 404, and an unavailable API answers 503.
+
 ### `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association`
 
 The documents that let the tenant's Android and iOS apps open its links, built in `lib/mobile-app-association.ts` from the identities saved in the tenant console and served as `application/json` by the Route Handlers under `app/[tenant_id]/.well-known/`. A platform the tenant has no app on answers 404, and an unavailable API answers 503.

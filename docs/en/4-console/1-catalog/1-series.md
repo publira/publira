@@ -2,7 +2,7 @@
 title: Series
 description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes.
 published: 2026-10-07
-updated: 2026-10-26
+updated: 2026-10-28
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -124,7 +124,7 @@ The site does not show the image as uploaded. Saving it cuts four images of fixe
 | **Portrait (3:4)** | 1200 × 1600 | The cover on shelves on the site and in the app, and on the series' page on the site |
 | **Square (1:1)** | 1200 × 1200 | The small picture beside the series and its episodes in the site's lists, and one of the images the site offers search engines |
 | **Landscape (16:9)** | 1600 × 900 | Wide banners on the site and in the app, and the small picture beside each episode on the series' page and at the end of an episode on the site |
-| **Link preview (1200:630)** | 1200 × 630 | The preview shown when a link to the series or one of its episodes is shared |
+| **Link preview (1200:630)** | 1200 × 630 | The preview shown when a link to the series or one of its episodes is shared. A series without one is shared with a card the site draws from its title, the logo, and the theme's colors, as [Link previews](../3-setup/2-branding.md#link-previews) describes |
 
 Each shape is cropped from the centre of the image. To give one shape a different crop or a picture of its own, click its image under **Aspect ratio images** and select a JPEG, PNG, or WebP image at least as large as the slot asks, which may be the same image as before. **Adjust the frame** then sets which part of it the shape shows, and **Replace** saves it, leaving the other three as they are. A shape can be replaced only once the series has a cover image, so upload one under **Cover image** first. Uploading a new cover image there replaces all four.
 
