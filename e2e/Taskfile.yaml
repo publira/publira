@@ -68,6 +68,16 @@ tasks:
     cmds:
       - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
 
+  restore:
+    desc: Back the seeded stack up, restore it into empty services, and verify the restore, as the backup runbook says
+    deps:
+      - task: prepare
+    cmds:
+      # The page's `publiractl` is this checkout's image, built once the
+      # binaries and the apps are.
+      - task: :docker:build:publiractl
+      - bash {{.PUBLIRA_E2E_DIR}}/../scripts/backup-and-restore.sh
+
   prepare:
     desc: Build server binaries, web-storefront, web-admin, web-platform, email-renderer, and install Playwright Chromium
     cmds:

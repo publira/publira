@@ -22,6 +22,11 @@
  * resolved here against the checkout, the heading by the anchor GitHub and the
  * website's `rehype-slug` derive from it.
  *
+ * A page whose commands CI runs shows them as a code block that a script keeps
+ * between a `# quoted by <page>` comment and `# end of quote`, and the block
+ * has to read the same as those lines, so a change to either is a change to
+ * both.
+ *
  * CI runs this in `Check`, which a path filter of its own starts for a change
  * to Markdown or under `docs/` alone, and for a deletion or a rename anywhere,
  * since the job's main filter leaves Markdown out.
@@ -1071,9 +1076,176 @@ const checkMarkdown = async (
   return findings.filter((finding) => finding !== null);
 };
 
+const QUOTE_START = /^(?<indent>[\t ]*)# quoted by (?<page>\S+)$/u;
+const QUOTE_END = /^[\t ]*# end of quote$/u;
+
+/** Lines of a script that a page shows as one of its code blocks. */
+export interface Quote {
+  /** The line of the `# quoted by` comment. */
+  line: number;
+  page: string;
+  /** The lines between the two comments, without the first one's indentation. */
+  text: string;
+}
+
 /**
- * Every finding under `root`, every tree beside it under `docs/`, and every
- * link that leads nowhere from the Markdown {@link listMarkdown} names,
+ * Every quote in a script, and a finding for a `# quoted by` comment that no
+ * `# end of quote` closes before the next one or the end of the file.
+ */
+export const collectQuotes = (
+  file: string,
+  source: string
+): { findings: Finding[]; quotes: Quote[] } => {
+  const findings: Finding[] = [];
+  const quotes: Quote[] = [];
+  let open: {
+    indent: string;
+    line: number;
+    lines: string[];
+    page: string;
+  } | null = null;
+  const unclosed = (line: number): Finding => ({
+    file,
+    line,
+    message: "This `# quoted by` comment has no `# end of quote` after it.",
+  });
+  for (const [index, text] of source.split(/\r?\n/u).entries()) {
+    const start = QUOTE_START.exec(text);
+    if (start?.groups) {
+      if (open) {
+        findings.push(unclosed(open.line));
+      }
+      open = {
+        indent: start.groups.indent ?? "",
+        line: index + 1,
+        lines: [],
+        page: start.groups.page ?? "",
+      };
+    } else if (open && QUOTE_END.test(text)) {
+      quotes.push({
+        line: open.line,
+        page: open.page,
+        text: open.lines.join("\n"),
+      });
+      open = null;
+    } else if (open) {
+      open.lines.push(
+        text.startsWith(open.indent) ? text.slice(open.indent.length) : text
+      );
+    }
+  }
+  if (open) {
+    findings.push(unclosed(open.line));
+  }
+
+  return { findings, quotes };
+};
+
+/**
+ * Every shell script in the repository, tracked or about to be, that holds a
+ * quote.
+ */
+const listQuotingScripts = async (repository: string): Promise<string[]> => {
+  const { stdout } = await run(
+    "git",
+    [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "--",
+      ":(glob)**/*.sh",
+      ":(exclude,glob)**/node_modules/**",
+    ],
+    { cwd: repository, maxBuffer: 16 * 1024 * 1024 }
+  );
+  const files = [...new Set(stdout.split("\0").filter(Boolean))];
+  const sources = await Promise.all(
+    files.map((file) =>
+      // A file deleted from the working tree is still in the index until the
+      // deletion is staged, and quotes nothing.
+      readFile(path.join(repository, file), "utf-8").catch(() => "")
+    )
+  );
+
+  return files.filter((_, index) => sources[index]?.includes("# quoted by "));
+};
+
+/**
+ * The findings for the quotes in the scripts under `repository`. A script runs
+ * the lines it quotes, in CI, so the page it names has to be a page under
+ * `root` with a code block that reads the same: a block that drifted from them
+ * shows the reader commands nothing ran.
+ */
+const checkQuotes = async (
+  repository: string,
+  root: string
+): Promise<Finding[]> => {
+  const blocks = new Map<string, Promise<Set<string> | null>>();
+  const codeBlocks = (page: string): Promise<Set<string> | null> => {
+    let found = blocks.get(page);
+    if (!found) {
+      found = readFile(path.join(repository, page), "utf-8").then(
+        (source) => {
+          const values = new Set<string>();
+          visit(parseMarkdown(source), (node) => {
+            if (node.type === "code") {
+              values.add(node.value);
+            }
+          });
+          return values;
+        },
+        () => null
+      );
+      blocks.set(page, found);
+    }
+    return found;
+  };
+  const checkQuote = async (
+    file: string,
+    { line, page, text }: Quote
+  ): Promise<Finding | null> => {
+    const values =
+      page.startsWith(`${root}/`) && page.endsWith(PAGE_EXTENSION)
+        ? await codeBlocks(page)
+        : null;
+    if (values === null) {
+      return {
+        file,
+        line,
+        message: `\`${page}\` is not a page under \`${root}/\`.`,
+      };
+    }
+    if (!values.has(text)) {
+      return {
+        file,
+        line,
+        message: `\`${page}\` has no code block that reads the same as the lines quoted from here; change the two together.`,
+      };
+    }
+    return null;
+  };
+  const scripts = await listQuotingScripts(repository);
+  const inScripts = await Promise.all(
+    scripts.map(async (file) => {
+      const source = await readFile(path.join(repository, file), "utf-8");
+      const { findings, quotes } = collectQuotes(file, source);
+      const checked = await Promise.all(
+        quotes.map((quote) => checkQuote(file, quote))
+      );
+
+      return [...findings, ...checked.filter((finding) => finding !== null)];
+    })
+  );
+
+  return inScripts.flat();
+};
+
+/**
+ * Every finding under `root`, every tree beside it under `docs/`, every quote
+ * a script holds that its page does not show, and every link that leads
+ * nowhere from the Markdown {@link listMarkdown} names,
  * relative to `repository`, as are the files the findings name, in the order
  * of those files and lines.
  */
@@ -1095,6 +1267,7 @@ export const scan = async (
   const inMarkdown = await Promise.all(
     markdown.map((file) => checkMarkdown(context, file))
   );
+  const quotes = await checkQuotes(repository, root);
   const shownBy = new Map<string, string[]>();
   for (const [index, page] of pages.entries()) {
     for (const image of inPages[index]?.images ?? []) {
@@ -1112,6 +1285,7 @@ export const scan = async (
       inPages.map((page) => page.redirects)
     ),
     ...checkImages(images, shownBy),
+    ...quotes,
     ...inMarkdown.flat(),
   ].toSorted(
     (a, b) =>
