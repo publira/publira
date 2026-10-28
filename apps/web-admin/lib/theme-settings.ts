@@ -1,3 +1,4 @@
+import type { TenantThemePalette } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -205,7 +206,7 @@ const toTenantTheme = (theme?: Partial<TenantTheme> | null): TenantTheme =>
   resolveTenantThemeColors(theme);
 
 const toTenantThemeColors = (
-  palette?: Partial<TenantThemeColors> | null
+  palette?: Pick<TenantThemePalette, keyof TenantThemeColors> | null
 ): TenantThemeColors | null => {
   if (!palette) {
     return null;

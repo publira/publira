@@ -349,6 +349,15 @@ const tenantThemeFormFieldMap = [
   ["serifFontFamily", "serif_font_family"],
 ] as const;
 
+const tenantIdFormFields = {
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+const tenantIdInputSchema = (t: AdminMessageAccessor) =>
+  z.object({
+    tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+  });
+
 type TenantThemeSchemaInput = z.input<
   Awaited<ReturnType<typeof tenantThemeSchema>>
 >;
@@ -473,33 +482,39 @@ export const updateTenantDarkThemeAction = async (
 ): Promise<DarkThemeSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const t = await getMessagesFor(locale);
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  if (!tenantId) {
-    return {
-      message: t("admin.settings.tenant_missing"),
-      ok: false,
-    };
-  }
-
-  const schema = await tenantThemeColorsSchema(locale);
-  const parsed = schema.safeParse(
-    parseThemeFormData<z.input<typeof schema>>(
+  const [t, colorsSchema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantThemeColorsSchema(locale),
+  ]);
+  const schema = colorsSchema.extend(tenantIdInputSchema(t).shape);
+  const parsed = schema.safeParse({
+    ...parseThemeFormData<z.input<typeof schema>>(
       formData,
       tenantThemeColorsFormFieldMap
-    )
-  );
+    ),
+    ...toFormDataInput(formData, tenantIdFormFields),
+  });
 
   if (!parsed.success) {
+    const { fieldErrors } = parsed.error.flatten();
+    if (fieldErrors.tenantId) {
+      return {
+        message: t("admin.settings.tenant_missing"),
+        ok: false,
+      };
+    }
+
     return {
       fieldErrors: mapThemeFieldErrors(
-        parsed.error.flatten().fieldErrors,
+        fieldErrors,
         tenantThemeColorsFormFieldMap
       ),
       message: t("errors.validation"),
       ok: false,
     };
   }
+
+  const { tenantId } = parsed.data;
 
   const contrastIssues = findThemeTextContrastIssues(parsed.data);
   if (contrastIssues.length > 0) {
@@ -511,7 +526,7 @@ export const updateTenantDarkThemeAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantDarkThemeSettings({ ...parsed.data, tenantId }, locale)
+    updateTenantDarkThemeSettings(parsed.data, locale)
   );
 
   if (!result.ok) {
@@ -539,14 +554,17 @@ export const deleteTenantDarkThemeAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
-  if (!tenantId) {
+  const parsed = tenantIdInputSchema(t).safeParse(
+    toFormDataInput(formData, tenantIdFormFields)
+  );
+  if (!parsed.success) {
     return {
       message: t("admin.settings.tenant_missing"),
       ok: false,
     };
   }
 
+  const { tenantId } = parsed.data;
   const result = await withAdminSessionReauth(() =>
     deleteTenantDarkThemeSettings(tenantId, locale)
   );

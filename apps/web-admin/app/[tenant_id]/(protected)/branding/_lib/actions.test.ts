@@ -302,6 +302,21 @@ describe("updateTenantDarkThemeAction", () => {
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
+
+  it("refuses a tenant ID posted as a file", async () => {
+    const formData = themeFormData(DARK_COLORS);
+    formData.set("tenant_id", new File(["TENANT001"], "tenant.txt"));
+
+    const { updateTenantDarkThemeAction } = await import("./actions");
+
+    const result = await updateTenantDarkThemeAction(null, formData);
+
+    expect(result).toEqual({
+      message: "The tenant ID is missing.",
+      ok: false,
+    });
+    expect(mockUpdateTenantDarkThemeSettings).not.toHaveBeenCalled();
+  });
 });
 
 describe("deleteTenantDarkThemeAction", () => {
@@ -343,6 +358,21 @@ describe("deleteTenantDarkThemeAction", () => {
     const { deleteTenantDarkThemeAction } = await import("./actions");
 
     const result = await deleteTenantDarkThemeAction(null, textFormData({}));
+
+    expect(result).toEqual({
+      message: "The tenant ID is missing.",
+      ok: false,
+    });
+    expect(mockDeleteTenantDarkThemeSettings).not.toHaveBeenCalled();
+  });
+
+  it("refuses a tenant ID posted as a file", async () => {
+    const formData = new FormData();
+    formData.set("tenant_id", new File(["TENANT001"], "tenant.txt"));
+
+    const { deleteTenantDarkThemeAction } = await import("./actions");
+
+    const result = await deleteTenantDarkThemeAction(null, formData);
 
     expect(result).toEqual({
       message: "The tenant ID is missing.",
