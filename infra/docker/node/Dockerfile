@@ -66,7 +66,7 @@ RUN turbo prune "@publira/${APP_NAME}" --docker
 FROM base AS deps
 
 COPY --from=prepare /app/out/json/ .
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --no-runtime
 
 # -----------------------------------------------------------------------------
 FROM base AS builder
@@ -75,7 +75,7 @@ ARG APP_NAME
 
 # Install dependencies first (they change less often than source)
 COPY --from=prepare /app/out/json/ .
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --no-runtime
 
 # Source files for the pruned workspace graph
 COPY --from=prepare /app/out/full/ .
