@@ -311,6 +311,15 @@ $$;
 -- SECURITY DEFINER trigger function audit_logs_keep_deleted_actor.
 REVOKE UPDATE, DELETE ON audit_logs, platform_audit_logs FROM publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
 
+-- That function runs as the owner of audit_logs, and a role may attach any
+-- trigger function it can execute to a table of its own, so EXECUTE is taken
+-- from PUBLIC. It is taken here rather than in the migration because a
+-- restore leaves every privilege out and this directory puts them back. A
+-- trigger's function is checked for EXECUTE when the trigger is created, not
+-- when it fires, so the trigger on users keeps firing for every role that
+-- deletes an account.
+REVOKE EXECUTE ON FUNCTION public.audit_logs_keep_deleted_actor() FROM PUBLIC;
+
 -- The storefront and the tenant console charge their rate limits, and decide
 -- whether a tenant admin owes a second factor, from the platform policy. It
 -- holds no secret, so both roles read it; neither may write it.

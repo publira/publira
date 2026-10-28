@@ -25,9 +25,9 @@
 --
 -- Running as the owner, it must not run on anything but a deleted account.
 -- A role may attach any trigger function it can execute to a table of its
--- own, so EXECUTE is taken from PUBLIC, and the body refuses to run for a
--- table other than users besides: a forged row of a temporary table would
--- otherwise rewrite any tenant's entries. And every role may create
+-- own, so the body refuses to run for a table other than users, and the
+-- baseline seed takes EXECUTE from PUBLIC besides: a forged row of a
+-- temporary table would otherwise rewrite any tenant's entries. And every role may create
 -- temporary tables, which a search_path that leaves pg_temp out searches
 -- first, so pg_temp goes last and the table the body updates is named with
 -- its schema: a temporary audit_logs would otherwise take the update, and
@@ -50,11 +50,6 @@ BEGIN
     RETURN OLD;
 END;
 $$;
-
--- A trigger's function is checked for EXECUTE when the trigger is created,
--- not when it fires, so users_keep_deleted_actor_in_audit_logs keeps firing
--- for every role that deletes an account.
-REVOKE EXECUTE ON FUNCTION audit_logs_keep_deleted_actor() FROM PUBLIC;
 
 -- FK CONSTRAINT: audit_logs audit_logs_tenant_id_fkey
 -- A tenant with history cannot be deleted, where the cascade used to take the
