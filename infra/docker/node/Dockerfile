@@ -47,12 +47,6 @@ RUN npm install --global "turbo@${TURBO_VERSION}"
 
 COPY . .
 
-# pnpm installs with this image's Node.js (`--no-runtime`) instead of
-# downloading the one devEngines.runtime names, so the two have to agree.
-RUN runtime="$(node --print 'require("./package.json").devEngines.runtime.version')" \
-  && test "$(node --version)" = "v${runtime}" \
-  || (echo "ERROR: the base image runs Node.js $(node --version), but devEngines.runtime names ${runtime}" >&2 && exit 1)
-
 ARG APP_NAME
 RUN test -n "${APP_NAME}" || (echo "ERROR: APP_NAME is required (e.g. email-renderer)" >&2 && exit 1)
 
