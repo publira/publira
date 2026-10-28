@@ -42,9 +42,9 @@ x-web-app: &web-app
 
 # The healthcheck of every Publira process asks its /readyz from inside the
 # container every ten seconds, and calls it unhealthy after three failures in
-# a row, the periods the Kubernetes guide's probes keep. The images carry no
-# curl: the server's runs `publira healthcheck`, and the Node.js ones run
-# `node` itself. For the first minute a failure does not count and the check
+# a row, the periods the Kubernetes guide's probes keep. Nothing is added to
+# an image for it, so it runs what each already carries: bash in the server's,
+# and `node` itself in the Node.js ones. For the first minute a failure does not count and the check
 # is retried every two seconds, so a service that waits on another's
 # `service_healthy` starts as soon as that one is ready, and one that never
 # gets there stops `docker compose up` with its name.
@@ -189,15 +189,25 @@ services:
     networks: [default, edge]
     # Both listeners at once: the server's on :8000, and that of the worker it
     # hosts on :8003. Each runs its checks one after the other, taking six
-    # seconds when every login hangs, so the timeout is longer than that.
+    # seconds when every login hangs, so the timeout is longer than that. The
+    # image has no HTTP client, so bash sends the request over /dev/tcp and
+    # reads the status code from the status line.
     healthcheck:
       <<: *healthcheck
       test:
         - CMD
-        - /app/publira
-        - healthcheck
-        - http://127.0.0.1:8000/readyz
-        - http://127.0.0.1:8003/readyz
+        - bash
+        - -c
+        - |
+          readyz() {
+            exec 3<>"/dev/tcp/127.0.0.1/$$1" &&
+              printf 'GET /readyz HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' >&3 &&
+              read -r _ status _ <&3 &&
+              [ "$$status" = 200 ]
+          }
+          readyz 8000 & server=$$!
+          readyz 8003 & worker=$$!
+          wait "$$server" && wait "$$worker"
       timeout: 8s
     depends_on:
       postgres:

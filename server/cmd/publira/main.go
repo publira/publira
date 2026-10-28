@@ -62,8 +62,6 @@ func run(args []string, stderr io.Writer) int {
 			return usageError(stderr, err.Error())
 		}
 		return serve(command, hosted{worker: queues})
-	case "healthcheck":
-		return healthcheck(rest, stderr)
 	default:
 		return usageError(stderr, fmt.Sprintf("unknown command %q", command))
 	}
@@ -182,7 +180,6 @@ func usage() string {
 	return "\nUsage: publira <command> [flags]\n\nCommands:\n" +
 		"  server                  Serve the API and image delivery to the edge and the Next.js apps\n" +
 		"  worker                  Drain the Outbox and run every scheduled job\n" +
-		"  healthcheck <url>...    Exit 0 when every URL answers 200, for a container healthcheck\n" +
 		"\nFlags of server:\n" +
 		"  --role <role>[,...]     Serve storefront, admin, or platform alone instead of all three\n" +
 		"  --with-worker           Host the worker in the same process as well\n" +
