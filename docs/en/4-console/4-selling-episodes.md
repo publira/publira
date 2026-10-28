@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-26
+updated: 2026-10-28
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -194,6 +194,8 @@ Each pack of your coins on sale is listed there too, as `coins_` followed by the
 ![Store products: the product ID each price needs, such as episode_500 at ¥500, with a button to copy it and the number of episodes at that price.](./selling-episodes-store-products.png)
 
 What each store needs, from the key the install verifies purchases with to testing with the stores' test buyers, is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#selling-episodes-in-the-app), with the app's own setup. A purchase from the App Store sandbox or a Play license tester opens the episode but is recorded as a test, and left out of royalty statements and the content statistics.
+
+An episode a reader saved in the app keeps opening on that device without a network for up to seven days after the app last opened it online, so a refund closes a saved episode within that time rather than at once, as [Offline reading](../5-mobile-app/7-offline-reading.md#paid-episodes-seven-days-without-the-install) describes. The next time the app opens it online, it is locked and deleted from the device.
 
 ## Refunds
 
