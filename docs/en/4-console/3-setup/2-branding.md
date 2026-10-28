@@ -1,11 +1,11 @@
 ---
 title: Branding
-description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, upload other companies' marks under their guidelines, and check the theme in the preview before readers see it.
+description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, design a dark palette beside the light one, upload other companies' marks under their guidelines, and check the theme in the preview before readers see it.
 published: 2026-10-07
 updated: 2026-10-28
 ---
 
-**Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, the marks of other companies, its colors, and the faces its text is set in. The screen has **Logo**, **Icon**, **Sign-in image**, **Brand marks**, and the theme's colors and typefaces. Each is saved on its own, and saving one leaves the others as they are.
+**Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, the marks of other companies, its colors, and the faces its text is set in. The screen has **Logo**, **Icon**, **Sign-in image**, **Brand marks**, and the theme's colors and typefaces, with a dark palette beside them. Each is saved on its own, and saving one leaves the others as they are.
 
 Only a Tenant admin can change branding. Editors and Auditors see the same screen with its controls turned off.
 
@@ -52,9 +52,11 @@ Publira does not check what an uploaded image shows. Whether it is the owner's c
 
 ## Theme colors and typefaces
 
+The theme has three tabs: **Light**, which holds the colors and the typefaces, **Dark**, which holds the dark palette, and **Preview**.
+
 ### Colors
 
-The theme has 27 colors, each entered as `#RRGGBB` or chosen with the swatch beside it. They come in four groups:
+The theme has 27 colors on the **Light** tab, each entered as `#RRGGBB` or chosen with the swatch beside it. They come in four groups:
 
 - **Brand colors**: the **Primary color**, **Secondary color**, and **Accent color**, each with a text color drawn on it. The primary color carries buttons and other emphasis.
 - **Background and text colors**: the page's background and text, and the surfaces, cards, popovers, and muted areas drawn on it, each with its text color.
@@ -65,7 +67,21 @@ The theme has 27 colors, each entered as `#RRGGBB` or chosen with the swatch bes
 
 Each color and the text color drawn on it must contrast by at least 4.5:1, the WCAG AA level for normal text. A pair below that is refused, with the ratio it reached, under "Check these color pairs so the text stays readable." Border, input field, and focus ring colors are not checked, since no text is drawn on them.
 
+### Dark palette
+
+The **Dark** tab holds a second set of the same 27 colors, in the same groups, for a dark screen. It is held to the same 4.5:1 contrast check and has no typefaces of its own: it is set in the faces on the **Light** tab. **Save the dark palette** saves it apart from the light palette, and saving either one leaves the other as it is.
+
+![The top of the Dark tab without a saved dark palette: the note that none is saved, and Derive from light with what it does.](./branding-dark-palette.png)
+
+A tenant starts with no dark palette. Until one is saved, the tab says "No dark palette is saved." and fills its fields with colors derived from the saved light palette, ready to adjust and save.
+
+**Derive from light** replaces every color on the tab with one made from the colors on the **Light** tab, including ones not saved yet. Each color keeps its hue and takes the opposite lightness, so the background turns dark, the text turns light, and a pale tint of a brand color becomes a deep shade of it. A pair that would then contrast by less than 4.5:1 gets white or black text instead, so the result can be saved as it stands. Choose it again to start over from the light palette.
+
+Once a dark palette is saved, **Delete** beside **Save the dark palette** removes it after you confirm, and the tab shows the derived colors again.
+
 The site has one set of colors until the tenant has a dark palette. Once it has one, the site is drawn in the dark palette while a reader's device is in dark mode, and its header gains **Theme**, where a reader chooses **Light**, **Dark**, or **Match system**. The choice is kept in the reader's browser, as [What the site stores in a reader's browser](./3-pages.md#what-the-site-stores-in-a-readers-browser) lists, and every page opens in it.
+
+The tenant's app reads in the dark palette while the reader's device is set to dark. Without one, the app's dark mode makes its colors from the **Primary color**, as it does before a dark palette is saved.
 
 ### Typefaces
 
@@ -82,9 +98,9 @@ The tenant's app uses the theme's colors but not its typefaces.
 
 ### Previewing and saving
 
-While you edit, the console itself takes on the new colors, so you can see them before saving. The **Preview** tab shows them on the parts a site is built from: a header, a featured series, a list of episodes, badges, and a footer, with a line of Japanese, Latin, Korean, and Chinese text in both stacks. The preview does not show the logo, the icon, or the sign-in image.
+While you edit the **Light** tab, the console itself takes on the new colors, so you can see them before saving. The dark palette is shown in the preview alone, since the console is drawn in light colors. The **Preview** tab shows the light palette on the parts a site is built from: a header, a featured series, a list of episodes, badges, and a footer, with a line of Japanese, Latin, Korean, and Chinese text in both stacks. Below it, **Dark palette preview** shows the colors on the **Dark** tab on the same parts. The preview does not show the logo, the icon, or the sign-in image.
 
-![The Preview tab: a header, a featured series, a list of episodes, badges, a footer, and a line of Japanese, Latin, Korean, and Chinese text in both stacks.](./branding-preview.png)
+![The Preview tab: a header, a featured series, a list of episodes, badges, a footer, and a line of Japanese, Latin, Korean, and Chinese text in both stacks, in the light palette and then in the dark one.](./branding-preview.png)
 
 Nothing reaches the site until you choose **Save the theme**. Readers then see the new theme within about a minute and a half, as their browsers and the site's cache pick it up.
 

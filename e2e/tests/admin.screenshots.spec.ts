@@ -91,7 +91,7 @@ test.describe("web-admin screenshots", () => {
         await page.goto("/branding");
 
         await expect(
-          page.getByRole("tab", { name: "Edit", selected: true })
+          page.getByRole("tab", { name: "Light", selected: true })
         ).toBeVisible();
         await expect(page.getByLabel(/Primary color/u).first()).toBeVisible();
 

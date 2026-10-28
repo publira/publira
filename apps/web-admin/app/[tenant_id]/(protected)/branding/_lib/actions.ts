@@ -25,10 +25,12 @@ import { requiredTrimmedString } from "#lib/form-schemas";
 import type { AdminMessageAccessor } from "#lib/messages";
 import { getMessagesFor } from "#lib/messages";
 import {
+  deleteTenantDarkThemeSettings,
   deleteTenantIcon,
   deleteTenantLogo,
   deleteTenantSignInImage,
   tenantThemeCacheTag,
+  updateTenantDarkThemeSettings,
   updateTenantThemeSettings,
   uploadTenantIcon,
   uploadTenantLogo,
@@ -36,6 +38,7 @@ import {
 } from "#lib/theme-settings";
 
 import type {
+  DarkThemeSettingsActionState,
   TenantBrandMarkActionState,
   TenantIconActionState,
   TenantLogoActionState,
@@ -53,43 +56,53 @@ const hexColorCodeSchema = async (locale: Locale) => {
     .regex(/^#[0-9a-fA-F]{6}$/u, t("admin.settings.theme.validation.hex_color"))
     .transform((value) => value.toLowerCase());
 };
-const tenantThemeSchema = async (locale: Locale) => {
-  const t = await getMessagesFor(locale);
+const tenantThemeColorsSchema = async (locale: Locale) => {
+  const hexColorCode = await hexColorCodeSchema(locale);
 
   return z.object({
-    accentColor: await hexColorCodeSchema(locale),
-    accentForegroundColor: await hexColorCodeSchema(locale),
-    backgroundColor: await hexColorCodeSchema(locale),
-    borderColor: await hexColorCodeSchema(locale),
-    cardColor: await hexColorCodeSchema(locale),
-    cardForegroundColor: await hexColorCodeSchema(locale),
-    destructiveColor: await hexColorCodeSchema(locale),
-    destructiveForegroundColor: await hexColorCodeSchema(locale),
-    foregroundColor: await hexColorCodeSchema(locale),
-    infoColor: await hexColorCodeSchema(locale),
-    infoForegroundColor: await hexColorCodeSchema(locale),
-    inputColor: await hexColorCodeSchema(locale),
-    mutedColor: await hexColorCodeSchema(locale),
-    mutedForegroundColor: await hexColorCodeSchema(locale),
-    popoverColor: await hexColorCodeSchema(locale),
-    popoverForegroundColor: await hexColorCodeSchema(locale),
-    primaryColor: await hexColorCodeSchema(locale),
-    primaryForegroundColor: await hexColorCodeSchema(locale),
-    ringColor: await hexColorCodeSchema(locale),
+    accentColor: hexColorCode,
+    accentForegroundColor: hexColorCode,
+    backgroundColor: hexColorCode,
+    borderColor: hexColorCode,
+    cardColor: hexColorCode,
+    cardForegroundColor: hexColorCode,
+    destructiveColor: hexColorCode,
+    destructiveForegroundColor: hexColorCode,
+    foregroundColor: hexColorCode,
+    infoColor: hexColorCode,
+    infoForegroundColor: hexColorCode,
+    inputColor: hexColorCode,
+    mutedColor: hexColorCode,
+    mutedForegroundColor: hexColorCode,
+    popoverColor: hexColorCode,
+    popoverForegroundColor: hexColorCode,
+    primaryColor: hexColorCode,
+    primaryForegroundColor: hexColorCode,
+    ringColor: hexColorCode,
+    secondaryColor: hexColorCode,
+    secondaryForegroundColor: hexColorCode,
+    successColor: hexColorCode,
+    successForegroundColor: hexColorCode,
+    surfaceColor: hexColorCode,
+    surfaceForegroundColor: hexColorCode,
+    warningColor: hexColorCode,
+    warningForegroundColor: hexColorCode,
+  });
+};
+
+const tenantThemeSchema = async (locale: Locale) => {
+  const [t, colors] = await Promise.all([
+    getMessagesFor(locale),
+    tenantThemeColorsSchema(locale),
+  ]);
+
+  return colors.extend({
     sansFontFamily: tenantThemeFontFamilySchema(
       t("admin.settings.theme.validation.font_family")
     ),
-    secondaryColor: await hexColorCodeSchema(locale),
-    secondaryForegroundColor: await hexColorCodeSchema(locale),
     serifFontFamily: tenantThemeFontFamilySchema(
       t("admin.settings.theme.validation.font_family")
     ),
-    successColor: await hexColorCodeSchema(locale),
-    successForegroundColor: await hexColorCodeSchema(locale),
-    surfaceColor: await hexColorCodeSchema(locale),
-    surfaceForegroundColor: await hexColorCodeSchema(locale),
-    warningColor: await hexColorCodeSchema(locale),
-    warningForegroundColor: await hexColorCodeSchema(locale),
   });
 };
 
@@ -300,7 +313,7 @@ const tenantBrandMarkSchema = async (locale: Locale) => {
   ]);
 };
 
-const tenantThemeFormFieldMap = [
+const tenantThemeColorsFormFieldMap = [
   ["accentColor", "accent_color"],
   ["accentForegroundColor", "accent_foreground_color"],
   ["backgroundColor", "background_color"],
@@ -320,35 +333,53 @@ const tenantThemeFormFieldMap = [
   ["primaryColor", "primary_color"],
   ["primaryForegroundColor", "primary_foreground_color"],
   ["ringColor", "ring_color"],
-  ["sansFontFamily", "sans_font_family"],
   ["secondaryColor", "secondary_color"],
   ["secondaryForegroundColor", "secondary_foreground_color"],
   ["successColor", "success_color"],
   ["successForegroundColor", "success_foreground_color"],
   ["surfaceColor", "surface_color"],
   ["surfaceForegroundColor", "surface_foreground_color"],
-  ["serifFontFamily", "serif_font_family"],
   ["warningColor", "warning_color"],
   ["warningForegroundColor", "warning_foreground_color"],
 ] as const;
+
+const tenantThemeFormFieldMap = [
+  ...tenantThemeColorsFormFieldMap,
+  ["sansFontFamily", "sans_font_family"],
+  ["serifFontFamily", "serif_font_family"],
+] as const;
+
+const tenantIdFormFields = {
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+const tenantIdInputSchema = (t: AdminMessageAccessor) =>
+  z.object({
+    tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
+  });
 
 type TenantThemeSchemaInput = z.input<
   Awaited<ReturnType<typeof tenantThemeSchema>>
 >;
 
-const parseTenantThemeFormData = (formData: FormData): TenantThemeSchemaInput =>
+/** The fields a form names in `fieldMap`, read out of what it posted. */
+const parseThemeFormData = <TInput>(
+  formData: FormData,
+  fieldMap: readonly (readonly [string, string])[]
+): TInput =>
   Object.fromEntries(
-    tenantThemeFormFieldMap.map(([field, formName]) => [
+    fieldMap.map(([field, formName]) => [
       field,
       String(formData.get(formName) ?? ""),
     ])
-  ) as TenantThemeSchemaInput;
+  ) as TInput;
 
 const mapThemeFieldErrors = (
-  fieldErrors: z.ZodFlattenedError<TenantThemeSchemaInput>["fieldErrors"]
+  fieldErrors: Partial<Record<string, string[]>>,
+  fieldMap: readonly (readonly [string, string])[]
 ): ThemeSettingsFieldErrors =>
   Object.fromEntries(
-    tenantThemeFormFieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
+    fieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
   ) as ThemeSettingsFieldErrors;
 
 const mapThemeContrastFieldErrors = async (
@@ -390,11 +421,19 @@ export const updateTenantThemeSettingsAction = async (
   }
 
   const schema = await tenantThemeSchema(locale);
-  const parsed = schema.safeParse(parseTenantThemeFormData(formData));
+  const parsed = schema.safeParse(
+    parseThemeFormData<TenantThemeSchemaInput>(
+      formData,
+      tenantThemeFormFieldMap
+    )
+  );
 
   if (!parsed.success) {
     return {
-      fieldErrors: mapThemeFieldErrors(parsed.error.flatten().fieldErrors),
+      fieldErrors: mapThemeFieldErrors(
+        parsed.error.flatten().fieldErrors,
+        tenantThemeFormFieldMap
+      ),
       message: t("errors.validation"),
       ok: false,
     };
@@ -434,6 +473,116 @@ export const updateTenantThemeSettingsAction = async (
     message: t("admin.settings.theme.saved"),
     ok: true,
     theme: result.theme,
+  };
+};
+
+export const updateTenantDarkThemeAction = async (
+  _prevState: DarkThemeSettingsActionState,
+  formData: FormData
+): Promise<DarkThemeSettingsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, colorsSchema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantThemeColorsSchema(locale),
+  ]);
+  const schema = colorsSchema.extend(tenantIdInputSchema(t).shape);
+  const parsed = schema.safeParse({
+    ...parseThemeFormData<z.input<typeof schema>>(
+      formData,
+      tenantThemeColorsFormFieldMap
+    ),
+    ...toFormDataInput(formData, tenantIdFormFields),
+  });
+
+  if (!parsed.success) {
+    const { fieldErrors } = parsed.error.flatten();
+    if (fieldErrors.tenantId) {
+      return {
+        message: t("admin.settings.tenant_missing"),
+        ok: false,
+      };
+    }
+
+    return {
+      fieldErrors: mapThemeFieldErrors(
+        fieldErrors,
+        tenantThemeColorsFormFieldMap
+      ),
+      message: t("errors.validation"),
+      ok: false,
+    };
+  }
+
+  const { tenantId } = parsed.data;
+
+  const contrastIssues = findThemeTextContrastIssues(parsed.data);
+  if (contrastIssues.length > 0) {
+    return {
+      fieldErrors: await mapThemeContrastFieldErrors(contrastIssues, locale),
+      message: t("admin.settings.theme.validation.contrast_summary"),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    updateTenantDarkThemeSettings(parsed.data, locale)
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The public GetTenant carries the dark palette beside the light one.
+  updateTag(`tenant:${tenantId}:site`);
+  updateTag(tenantThemeCacheTag(tenantId));
+
+  return {
+    darkTheme: result.darkTheme,
+    message: t("admin.settings.theme.dark.saved"),
+    ok: true,
+  };
+};
+
+export const deleteTenantDarkThemeAction = async (
+  _prevState: DarkThemeSettingsActionState,
+  formData: FormData
+): Promise<DarkThemeSettingsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const t = await getMessagesFor(locale);
+  const parsed = tenantIdInputSchema(t).safeParse(
+    toFormDataInput(formData, tenantIdFormFields)
+  );
+  if (!parsed.success) {
+    return {
+      message: t("admin.settings.tenant_missing"),
+      ok: false,
+    };
+  }
+
+  const { tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    deleteTenantDarkThemeSettings(tenantId, locale)
+  );
+
+  if (!result.ok) {
+    return {
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  updateTag(`tenant:${tenantId}:site`);
+  updateTag(tenantThemeCacheTag(tenantId));
+
+  return {
+    darkTheme: null,
+    message: t("admin.settings.theme.dark.deleted"),
+    ok: true,
   };
 };
 
