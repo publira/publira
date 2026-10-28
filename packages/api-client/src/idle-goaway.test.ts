@@ -18,16 +18,16 @@ const startServer = async () => {
   const sessions: http2.ServerHttp2Session[] = [];
   server.on("session", (session) => {
     sessions.push(session);
-  });
-  server.on("stream", (stream) => {
-    stream.respond(
-      {
-        ":status": 200,
-        "content-type": "application/grpc",
-        "grpc-status": String(Code.Unauthenticated),
-      },
-      { endStream: true }
-    );
+    session.on("stream", (stream) => {
+      stream.respond(
+        {
+          ":status": 200,
+          "content-type": "application/grpc",
+          "grpc-status": String(Code.Unauthenticated),
+        },
+        { endStream: true }
+      );
+    });
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
