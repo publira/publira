@@ -92,6 +92,10 @@ class FakeCatalogRepository implements CatalogRepository {
   /// How many times [listCampaignBanners] was called.
   var campaignBannersReads = 0;
 
+  /// Held open by a test whose banners arrive after the shelves below them:
+  /// [listCampaignBanners] answers once it completes.
+  Completer<void>? campaignBannersGate;
+
   /// What [listGenres] answers, and the genres [listGenreSeries] knows.
   List<PublishedGenre> genres;
 
@@ -143,6 +147,10 @@ class FakeCatalogRepository implements CatalogRepository {
 
   /// What [listLabels] pages over.
   List<PublishedLabel> labelList;
+
+  /// Held open by a test whose label shelf is still being read while the
+  /// catalog around it changes: [listLabels] answers once it completes.
+  Completer<void>? labelListGate;
 
   /// How many rows one page of [listCreators] and [listLabels] holds, unless
   /// the read asks for fewer.
@@ -483,6 +491,7 @@ class FakeCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     labelListRequests.add((limit: limit, token: token));
+    await labelListGate?.future;
     final error = token.isEmpty
         ? labelListError
         : directoryMoreError ?? labelListError;
@@ -538,6 +547,7 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<List<CampaignBanner>> listCampaignBanners() async {
     campaignBannersReads++;
+    await campaignBannersGate?.future;
     if (campaignBannersError case final error?) {
       throw error;
     }

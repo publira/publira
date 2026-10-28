@@ -35,6 +35,7 @@ import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/ranking_screen.dart';
 
+import '../test/support/catalog_steps.dart';
 import '../test/support/connect_fixture_server.dart';
 import '../test/support/fake_account_icon_picker.dart';
 import '../test/support/fake_auth.dart';
@@ -130,15 +131,6 @@ Future<void> scrollSeriesTo(WidgetTester tester, Finder finder) async {
   );
 }
 
-/// The catalog's own list, which runs down the screen under the shelves that
-/// scroll across it.
-Finder catalogList() => find
-    .byWidgetPredicate(
-      (widget) =>
-          widget is Scrollable && widget.axisDirection == AxisDirection.down,
-    )
-    .first;
-
 /// Pumps until [finder] matches on the catalog and its route has come to rest,
 /// scrolling the catalog down half a screen at a time while it does not.
 ///
@@ -171,20 +163,6 @@ Future<void> pumpUntilCatalogShows(
     timeout: timeout,
   );
   await pumpUntilRouteSettled(tester, finder, timeout: timeout);
-}
-
-/// Taps the "View all" of the catalog shelf under [heading], which stands
-/// below the fold on a phone. The heading is scrolled to first because it is
-/// there while the shelf is still read, and its action is not.
-Future<void> openShelfList(
-  WidgetTester tester,
-  String heading,
-  Key viewAll, {
-  Duration timeout = const Duration(seconds: 10),
-}) async {
-  await pumpUntilCatalogShows(tester, find.text(heading), timeout: timeout);
-  await pumpUntilRouteSettled(tester, find.byKey(viewAll), timeout: timeout);
-  await tapVisible(tester, find.byKey(viewAll), scrollable: catalogList());
 }
 
 void main() {
@@ -762,11 +740,7 @@ void main() {
         // Two to a page, so the third author arrives on a page of its own.
         server.seriesPageSize = 2;
         await pumpApp(tester);
-        await openShelfList(
-          tester,
-          'Featured authors',
-          const ValueKey('catalog-creators-all'),
-        );
+        await openShelfList(tester, const ValueKey('catalog-creators-all'));
         final third = find.byKey(const ValueKey('creator-tile-SeedAUTHAAA3'));
         await pumpUntilRouteSettled(tester, third);
 
@@ -788,11 +762,7 @@ void main() {
     testApp('lists every label from the catalog and opens one', (tester) async {
       await withFailureScreenshot(tester, 'fixture-labels', () async {
         await pumpApp(tester);
-        await openShelfList(
-          tester,
-          'Featured labels',
-          const ValueKey('catalog-labels-all'),
-        );
+        await openShelfList(tester, const ValueKey('catalog-labels-all'));
         final label = find.byKey(const ValueKey('label-tile-SeedLABLAAA1'));
         await pumpUntilRouteSettled(tester, label);
         await tapVisible(tester, label);
@@ -821,11 +791,7 @@ void main() {
             // own.
             ..rankedSeriesPageSize = 1;
           await pumpApp(tester);
-          await openShelfList(
-            tester,
-            'Top 10 this week',
-            const ValueKey('catalog-ranking-all'),
-          );
+          await openShelfList(tester, const ValueKey('catalog-ranking-all'));
           await pumpUntilRouteSettled(
             tester,
             find.byKey(const ValueKey('ranking-tile-series-kitchen')),
@@ -3378,7 +3344,6 @@ void main() {
         await pumpLive(tester);
         await openShelfList(
           tester,
-          'Top 10 this week',
           const ValueKey('catalog-ranking-all'),
           timeout: const Duration(seconds: 20),
         );
@@ -3522,11 +3487,8 @@ void main() {
     ) async {
       await withFailureScreenshot(tester, 'live-creators-labels', () async {
         await pumpLive(tester);
-        // The label shelf stands above the author shelf, so the labels come
-        // first and the catalog is only ever scrolled down.
         await openShelfList(
           tester,
-          'Featured labels',
           const ValueKey('catalog-labels-all'),
           timeout: const Duration(seconds: 20),
         );
@@ -3560,7 +3522,6 @@ void main() {
         await tapBack(tester);
         await openShelfList(
           tester,
-          'Featured authors',
           const ValueKey('catalog-creators-all'),
           timeout: const Duration(seconds: 20),
         );
