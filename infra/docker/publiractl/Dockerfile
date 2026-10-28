@@ -17,7 +17,7 @@
 #   docker run --rm -e PUBLIRA_DB_URL publira/publiractl:local db migrate
 #   docker run --rm publira/publiractl:local job purge-content-events
 
-FROM golang:1.27.3-trixie@sha256:c124b9ad3452f46061b5054607d26ea51730dae5372c5e469920063ba2bc6dcc AS builder
+FROM golang:1.27.3-trixie@sha256:f0778846091f55d452c0aafb693f919e79bfa349d59dc5664d5ccd8924af6d17 AS builder
 
 WORKDIR /src
 
