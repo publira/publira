@@ -24,11 +24,16 @@ FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e05
 # renovate: datasource=npm depName=pnpm versioning=semver
 ARG PNPM_VERSION=12.15.0
 
+ENV PNPM_HOME=/pnpm
+ENV PATH="${PNPM_HOME}/bin:${PATH}"
+
+# openssl lets the pnpm installer verify the npm registry signature.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates \
+  && apt-get install -y --no-install-recommends ca-certificates curl openssl \
   && rm -rf /var/lib/apt/lists/* \
-  && corepack enable \
-  && corepack prepare "pnpm@${PNPM_VERSION}" --activate
+  && curl -fsSL https://get.pnpm.io/install.sh -o /tmp/pnpm-install.sh \
+  && PNPM_VERSION="${PNPM_VERSION}" sh /tmp/pnpm-install.sh \
+  && rm /tmp/pnpm-install.sh
 
 WORKDIR /app
 
