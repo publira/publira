@@ -6,7 +6,12 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { promisify } from "node:util";
 
-import { checkPage, headingAnchors, scan } from "./check-docs.ts";
+import {
+  checkPage,
+  collectQuotes,
+  headingAnchors,
+  scan,
+} from "./check-docs.ts";
 
 const page = (frontmatter: string[], body: string[] = ["## A section"]) =>
   ["---", ...frontmatter, "---", "", ...body, ""].join("\n");
@@ -721,5 +726,103 @@ describe("scan", () => {
     await write(".github/pull_request_template.md", broken);
 
     assert.deepEqual(await findings(), []);
+  });
+
+  it("passes a quote that a page shows as a code block", async () => {
+    await write(
+      "docs/en/2-deployments/1-overview.md",
+      page(VALID, [
+        "## What an install runs",
+        "",
+        "```bash",
+        "publiractl db version",
+        "```",
+      ])
+    );
+    await write(
+      "scripts/restore.sh",
+      [
+        "#!/usr/bin/env bash",
+        'version="$(',
+        "  # quoted by docs/en/2-deployments/1-overview.md",
+        "  publiractl db version",
+        "  # end of quote",
+        ')"',
+        "",
+      ].join("\n")
+    );
+
+    assert.deepEqual(await findings(), []);
+  });
+
+  it("reports a quote its page does not show, or names no page", async () => {
+    await write(
+      "scripts/restore.sh",
+      [
+        "# quoted by docs/en/2-deployments/1-overview.md",
+        "publiractl db version",
+        "# end of quote",
+        "# quoted by docs/en/2-deployments/9-missing.md",
+        "publiractl db version",
+        "# end of quote",
+        "# quoted by server/README.md",
+        "publiractl db version",
+        "# end of quote",
+        "",
+      ].join("\n")
+    );
+
+    assert.deepEqual(await findings(), [
+      "scripts/restore.sh:1",
+      "scripts/restore.sh:4",
+      "scripts/restore.sh:7",
+    ]);
+  });
+});
+
+describe("collectQuotes", () => {
+  it("collects the lines between the comments, without the first one's indentation", () => {
+    const { findings, quotes } = collectQuotes(
+      "scripts/restore.sh",
+      [
+        "  # quoted by docs/en/1-page.md",
+        "  pg_restore --list publira.dump \\",
+        "    > publira.list",
+        "",
+        "  # end of quote",
+      ].join("\n")
+    );
+
+    assert.deepEqual(findings, []);
+    assert.deepEqual(quotes, [
+      {
+        line: 1,
+        page: "docs/en/1-page.md",
+        text: "pg_restore --list publira.dump \\\n  > publira.list\n",
+      },
+    ]);
+  });
+
+  it("reports a quote no end of quote closes", () => {
+    const { findings, quotes } = collectQuotes(
+      "scripts/restore.sh",
+      [
+        "# quoted by docs/en/1-page.md",
+        "publiractl db version",
+        "# quoted by docs/en/1-page.md",
+        "publiractl storage test",
+        "# end of quote",
+        "# quoted by docs/en/1-page.md",
+      ].join("\n")
+    );
+
+    assert.deepEqual(
+      findings.map((finding) => finding.line),
+      [1, 6]
+    );
+    assert.deepEqual(
+      quotes.map((quote) => quote.text),
+      ["publiractl storage test"]
+    );
   });
 });

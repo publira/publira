@@ -104,6 +104,18 @@ task e2e:down
 
 A shot is a PNG of the region a passage explains — a form, a list row with its actions, a dialog — at a 1280px viewport and twice the density, and never the full page.
 
+## Commands a script runs
+
+A code block whose commands CI runs, so that a procedure is proven rather than only described, is kept in that script as well, between a `# quoted by <page>` comment naming the page by its path from the repository root and an `# end of quote` comment:
+
+```bash
+# quoted by docs/en/2-deployments/9-backup-and-restore.md
+publiractl storage test
+# end of quote
+```
+
+The lines between the two, without the indentation of the first comment, have to read the same as a code block on that page, so a change to either is made to both. What the page leaves to the reader — which image `publiractl` is, where the database is — the script provides around the quote, under the names the page uses. A block with a value the reader fills in, such as `<bucket>`, is not quoted.
+
 ## Checking a change
 
 ```bash
