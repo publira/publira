@@ -18,6 +18,10 @@
 --   admin  AgreADMNAAA1 (agree-admin@example.com)
 --   reader AgreMMBRAAA1 (agree-member@example.com)
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'AgreTNNTAAA1');
+
 DELETE FROM tenants
 WHERE public_id = 'AgreTNNTAAA1';
 

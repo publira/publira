@@ -28,6 +28,10 @@ WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RoyaTNNTAAA1');
 DELETE FROM series
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RoyaTNNTAAA1');
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RoyaTNNTAAA1');
+
 DELETE FROM tenants
 WHERE public_id = 'RoyaTNNTAAA1';
 

@@ -15,6 +15,10 @@
 --   admin  CrwlADMNAAA1 (crawlers-admin@example.com)
 --   editor CrwlEDTRAAA1 (crawlers-editor@example.com)
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'CrwlTNNTAAA1');
+
 DELETE FROM tenants
 WHERE public_id = 'CrwlTNNTAAA1';
 

@@ -303,6 +303,14 @@ BEGIN
 END
 $$;
 
+-- The audit logs are append-only for every app role. Publira only ever inserts
+-- an entry, so a role that could rewrite or delete one would hand a
+-- compromised console session, a bug, or anyone holding an app role's password
+-- the means to change the record a publisher's auditor reads. The one update an
+-- entry still takes, when the account that acted is deleted, runs inside the
+-- SECURITY DEFINER trigger function audit_logs_keep_deleted_actor.
+REVOKE UPDATE, DELETE ON audit_logs, platform_audit_logs FROM publira_platform, publira_content_stats, publira_outbox, publira_admin, publira_public;
+
 -- The storefront and the tenant console charge their rate limits, and decide
 -- whether a tenant admin owes a second factor, from the platform policy. It
 -- holds no secret, so both roles read it; neither may write it.

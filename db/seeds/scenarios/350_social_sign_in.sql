@@ -20,6 +20,10 @@
 --   tenant SoclTNNTAAA2 (social-consent.localhost /
 --     admin.social-consent.localhost)
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id IN ('SoclTNNTAAA1', 'SoclTNNTAAA2'));
+
 DELETE FROM tenants
 WHERE public_id IN ('SoclTNNTAAA1', 'SoclTNNTAAA2');
 

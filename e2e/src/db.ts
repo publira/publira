@@ -318,7 +318,8 @@ export const deletePagesByIds = (ids: readonly string[]): void => {
  *
  * `content_events` would cascade from the tenant, but the series and episode
  * deletes run before that and both restrict, so the log has to go first here
- * too.
+ * too. The tenant's own audit log restricts the tenant's deletion, so it goes
+ * before the tenant.
  */
 export const deleteTenantsByPublicIds = (
   publicIds: readonly string[]
@@ -359,6 +360,10 @@ export const deleteTenantsByPublicIds = (
     DELETE FROM series s
     USING tenants t
     WHERE s.tenant_id = t.id
+      AND t.public_id IN (${list});
+    DELETE FROM audit_logs al
+    USING tenants t
+    WHERE al.tenant_id = t.id
       AND t.public_id IN (${list});
     DELETE FROM tenants
     WHERE public_id IN (${list});
