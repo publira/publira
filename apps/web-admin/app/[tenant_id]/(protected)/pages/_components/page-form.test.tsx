@@ -50,12 +50,14 @@ const renderForm = async (
 
 /**
  * Whether a control refuses input, whichever way it says so. A native control
- * its `<fieldset>` closes keeps `disabled` false and matches `:disabled`, and
- * the footer checkbox is a Base UI one that says so with `aria-disabled`.
+ * its `<fieldset>` closes keeps `disabled` false and matches `:disabled`, the
+ * footer checkbox is a Base UI one that says so with `aria-disabled`, and the
+ * body is an editor that stops being `contenteditable`.
  */
 const isClosed = (element: HTMLElement) =>
   element.matches(":disabled") ||
-  element.getAttribute("aria-disabled") === "true";
+  element.getAttribute("aria-disabled") === "true" ||
+  element.getAttribute("contenteditable") === "false";
 
 afterEach(() => {
   cleanup();
@@ -184,6 +186,8 @@ it("closes every field while the save is in flight", async () => {
   // Never resolved: the assertions are about the window the save is open in.
   const save = Promise.withResolvers<PageFormState>();
   await renderForm(() => save.promise);
+  // The editor is built once the form has mounted.
+  await screen.findByRole("textbox", { name: "Content" });
 
   for (const control of submittedControls()) {
     expect(isClosed(control)).toBe(false);

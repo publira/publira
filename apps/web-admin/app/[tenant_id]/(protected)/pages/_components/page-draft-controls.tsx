@@ -4,7 +4,6 @@ import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import { Select } from "@publira/ui-components/select";
-import { Textarea } from "@publira/ui-components/textarea";
 import { createContext, use, useMemo, useOptimistic, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -15,13 +14,21 @@ import {
   getDefaultComparisonVersionId,
 } from "../_lib/version-diff";
 import type { PageFormState, PageVersionListItem } from "../page-types";
-import { MarkdownPreview } from "./markdown-preview";
+import { MarkdownEditor } from "./markdown-editor";
+
+/**
+ * The body the editor starts from, and how many times one has been loaded into
+ * it: the count keys the editor, so each load starts it over.
+ */
+interface LoadedBody {
+  content: string;
+  loads: number;
+}
 
 interface PageDraftContextValue {
   compareVersionId: string;
-  content: string;
+  loadedBody: LoadedBody;
   onCompareVersionChange: (versionId: string) => void;
-  onContentChange: (content: string) => void;
   onLoadVersion: (versionId: string) => void;
   onSaveStart: () => void;
   onSelectedVersionChange: (versionId: string) => void;
@@ -55,9 +62,10 @@ const PageDraft = ({
   /** Newest first, as the API lists them. */
   versions: PageVersionListItem[];
 }) => {
-  const [content, setContent] = useState(
-    () => versions[0]?.contentMarkdown ?? ""
-  );
+  const [loadedBody, setLoadedBody] = useState<LoadedBody>(() => ({
+    content: versions[0]?.contentMarkdown ?? "",
+    loads: 0,
+  }));
   const [selectedVersionId, setSelectedVersionId] = useState(
     () => versions[0]?.id ?? ""
   );
@@ -71,15 +79,17 @@ const PageDraft = ({
   const value = useMemo<PageDraftContextValue>(
     () => ({
       compareVersionId,
-      content,
+      loadedBody,
       onCompareVersionChange: setCompareVersionId,
-      onContentChange: setContent,
       onLoadVersion: (versionId) => {
         const version = versions.find((entry) => entry.id === versionId);
         if (!version) {
           return;
         }
-        setContent(version.contentMarkdown);
+        setLoadedBody((previous) => ({
+          content: version.contentMarkdown,
+          loads: previous.loads + 1,
+        }));
         setSelectedVersionId(version.id);
       },
       onSaveStart: () => {
@@ -104,7 +114,7 @@ const PageDraft = ({
     }),
     [
       compareVersionId,
-      content,
+      loadedBody,
       publishedVersionId,
       saving,
       selectedVersionId,
@@ -144,25 +154,19 @@ const PageDraftSaveForm = ({
   );
 };
 
-/** The body as Markdown, posted as `content_markdown`. */
-const PageDraftTextarea = () => {
-  const { content, onContentChange } = usePageDraft();
+/** The body, posted as `content_markdown`. */
+const PageDraftEditor = () => {
+  const t = useClientMessages();
+  const { loadedBody } = usePageDraft();
 
   return (
-    <Textarea
+    <MarkdownEditor
+      aria-label={t("admin.pages.workspace.body")}
+      defaultValue={loadedBody.content}
+      key={loadedBody.loads}
       name="content_markdown"
-      onChange={(event) => onContentChange(event.target.value)}
-      rows={14}
-      value={content}
     />
   );
-};
-
-/** The body as it would be published, unsaved edits included. */
-const PageDraftPreview = () => {
-  const { content } = usePageDraft();
-
-  return <MarkdownPreview content={content} />;
 };
 
 /**
@@ -349,9 +353,8 @@ export {
   PageDraft as Root,
   PageDraftDiffFromSelect as DiffFromSelect,
   PageDraftDiffToSelect as DiffToSelect,
-  PageDraftPreview as Preview,
+  PageDraftEditor as Editor,
   PageDraftSaveForm as SaveForm,
-  PageDraftTextarea as Textarea,
   PageDraftVersionDiff as VersionDiff,
   PageDraftVersionLoadButton as VersionLoadButton,
 };

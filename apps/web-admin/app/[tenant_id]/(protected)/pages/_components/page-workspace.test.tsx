@@ -12,6 +12,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { Editor } from "@tiptap/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
@@ -102,7 +103,21 @@ const renderWorkspace = async (
   await act(() => {
     rendered = renderBase(workspace(saveAction, initialPage, options));
   });
+  // The editor is built once the screen has mounted.
+  await screen.findByRole("textbox", { name: "Content" });
   return rendered as ReturnType<typeof renderBase>;
+};
+
+/** The editor behind the body's textbox, to write into it as a writer would. */
+const bodyEditor = (): Editor => {
+  const { editor } = screen.getByRole("textbox", {
+    name: "Content",
+  }) as HTMLElement & { editor?: Editor };
+  if (!editor) {
+    throw new Error("The body's textbox is not an editor.");
+  }
+
+  return editor;
 };
 
 const editForm = (): HTMLFormElement => {
@@ -122,9 +137,14 @@ afterEach(() => {
 
 const submittedControls = () => [
   screen.getByRole<HTMLInputElement>("textbox", { name: /Title/u }),
-  screen.getByRole<HTMLTextAreaElement>("textbox", { name: /Content/u }),
   screen.getByRole<HTMLButtonElement>("button", { name: "Load content" }),
 ];
+
+/** Whether the body's editor takes input; ProseMirror says so on the element. */
+const bodyIsEditable = () =>
+  screen
+    .getByRole("textbox", { name: "Content" })
+    .getAttribute("contenteditable") === "true";
 
 describe("PageWorkspace", () => {
   it("keeps every form on the translation it shows", async () => {
@@ -144,8 +164,11 @@ describe("PageWorkspace", () => {
 
     const form = editForm();
 
-    expect(screen.getByRole("textbox", { name: /Content/u })).toBe(
-      form.querySelector("textarea[name='content_markdown']")
+    expect(
+      form.contains(screen.getByRole("textbox", { name: "Content" }))
+    ).toBe(true);
+    expect(new FormData(form).get("content_markdown")).toBe(
+      version.contentMarkdown
     );
     expect(form.querySelectorAll("button[type='submit']")).toHaveLength(1);
     expect(
@@ -195,27 +218,18 @@ describe("PageWorkspace", () => {
     );
   });
 
-  it("keeps the editor submittable while the preview tab is showing", async () => {
+  it("saves the body as it was edited, in Markdown", async () => {
     await renderWorkspace();
 
-    const form = editForm();
-    fireEvent.click(await screen.findByRole("tab", { name: "Preview" }));
-
-    expect(new FormData(form).get("content_markdown")).toBe(
-      version.contentMarkdown
-    );
-  });
-
-  it("previews the body that has not been saved yet", async () => {
-    await renderWorkspace();
-
-    fireEvent.change(screen.getByRole("textbox", { name: /Content/u }), {
-      target: { value: "# Privacy policy\n\nUnsaved body." },
+    await act(() => {
+      bodyEditor().commands.setContent("# Privacy policy\n\nUnsaved body.", {
+        contentType: "markdown",
+      });
     });
-    fireEvent.click(await screen.findByRole("tab", { name: "Preview" }));
 
-    expect(screen.getByText("Unsaved body.")).toBeDefined();
-    expect(screen.queryByText("Saved body.")).toBeNull();
+    expect(new FormData(editForm()).get("content_markdown")).toBe(
+      "# Privacy policy\n\nUnsaved body."
+    );
   });
 
   // The Action carries the title and the body the form held when it was
@@ -228,6 +242,7 @@ describe("PageWorkspace", () => {
     for (const control of submittedControls()) {
       expect(control.matches(":disabled")).toBe(false);
     }
+    expect(bodyIsEditable()).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Save page" }));
 
@@ -235,6 +250,7 @@ describe("PageWorkspace", () => {
       for (const control of submittedControls()) {
         expect(control.matches(":disabled")).toBe(true);
       }
+      expect(bodyIsEditable()).toBe(false);
     });
 
     // A submission left in flight would hold back the next test's transitions.
@@ -246,13 +262,22 @@ describe("PageWorkspace", () => {
   it("puts a version's body back in the editor", async () => {
     await renderWorkspace();
 
-    const body = screen.getByRole<HTMLTextAreaElement>("textbox", {
-      name: /Content/u,
+    await act(() => {
+      bodyEditor().commands.setContent("Unsaved body.", {
+        contentType: "markdown",
+      });
     });
-    fireEvent.change(body, { target: { value: "Unsaved body." } });
     fireEvent.click(screen.getByRole("button", { name: "Load content" }));
 
-    expect(body.value).toBe(version.contentMarkdown);
+    // The editor starts over from the version, so it is a new one.
+    await waitFor(() => {
+      expect(screen.getByRole("textbox", { name: "Content" }).textContent).toBe(
+        "Privacy policySaved body."
+      );
+    });
+    expect(new FormData(editForm()).get("content_markdown")).toBe(
+      version.contentMarkdown
+    );
   });
 
   it("opens loading a version again once a refused save returns", async () => {

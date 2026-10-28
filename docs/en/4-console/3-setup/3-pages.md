@@ -1,11 +1,11 @@
 ---
 title: Pages
-description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
+description: Write the site's own pages in a rich text editor, publish and roll back their versions, translate them, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
 published: 2026-10-07
 updated: 2026-10-28
 ---
 
-**Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in Markdown, kept in versions, and can be translated into each of the site's languages.
+**Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in a rich text editor, kept in versions, and can be translated into each of the site's languages.
 
 ![The Pages list: Create page at the top, and a row for each page with its title, slug, status, whether it is in the footer, when it was updated, and Edit.](./pages-list.png)
 
@@ -18,7 +18,7 @@ Choose **Create page** and fill in:
 - **slug**: the page's address on the site. `privacy` serves the page at `https://comics.example.com/privacy`, and `legal/terms` at `https://comics.example.com/legal/terms`. Use lowercase letters, digits, and hyphens, with `/` between the parts of a nested path. The slug cannot be changed once the page exists, because links to it would break. Paths the site uses itself, such as its sign-in and account pages, are refused.
 - **Title**: shown at the top of the page and wherever it is linked. The page is created in the site's default language.
 - **Show in footer**: lists the page by its title in the footer of every page of the site once it is published. It can be changed later on the edit screen.
-- **Content**: the first version of the page's body, in Markdown. It may be left empty and written on the next screen.
+- **Content**: the first version of the page's body, written in the editor described under [Writing and publishing](#writing-and-publishing). It may be left empty and written on the next screen.
 
 **Create page** creates the page as a draft and opens its edit screen. Nothing appears on the site until a version is published.
 
@@ -28,11 +28,13 @@ Pages cannot be deleted. A page that should no longer be read is unpublished ins
 
 ## Writing and publishing
 
-The edit screen holds the page's body on two tabs: **Write**, where you write Markdown, and **Preview**, which shows how it will look. The body takes headings, paragraphs, lists, quotes, code blocks, bold and italic text, and links.
+The edit screen holds the page's body in an editor that shows it formatted as it is written. The toolbar above it formats the selected text, or the paragraph the cursor is in: **Heading**, **Subheading**, **Bold**, **Italic**, **Strikethrough**, **Code**, **Link**, **Bulleted list**, **Numbered list**, **Quote**, and **Code block**. **Link** asks for the address, and with nothing selected it puts the address itself in as the link. Markdown typed into the editor formats as you type, so `## ` at the start of a line makes a heading and `- ` a bulleted list.
+
+The body is saved as Markdown. A body written in Markdown before the editor existed opens in it with its tables, task lists, and images, and keeps them when it is edited. Footnotes and HTML do not survive an edit: they are saved back as plain text.
 
 **Save page** saves a changed title and **Show in footer** at once. A changed body is saved as a new **Draft** version, which readers do not see. Saving never publishes.
 
-![A page's edit screen: a tab for each of the site's languages, the page's status with Unpublish, its slug, Title, Show in footer, the Write and Preview tabs over its Markdown, and Save page.](./pages-editor.png)
+![A page's edit screen: a tab for each of the site's languages, the page's status with Unpublish, its slug, Title, Show in footer, the Content editor with its toolbar, and Save page.](./pages-editor.png)
 
 **Show in footer** belongs to the page rather than to one of its translations, so changing it on any language's tab changes it for every language. The footer follows moments after the save, for as long as the page is published.
 
@@ -42,7 +44,7 @@ The edit screen holds the page's body on two tabs: **Write**, where you write Ma
 - **Load content** puts that version's body back into the editor, to continue from.
 - **Roll back to this version** copies that version's body into a new draft. Publish the draft to put the old text back on the site.
 
-**Compare versions** shows the lines added and removed between any two versions, once the page has two.
+**Compare versions** shows the lines of Markdown added and removed between any two versions, once the page has two.
 
 ![The Versions section of a page with one version, v1, Published, with when it was created and published, and Load content, Publish, and Roll back to this version.](./pages-versions.png)
 
