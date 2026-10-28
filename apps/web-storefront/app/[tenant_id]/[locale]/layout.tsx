@@ -14,7 +14,9 @@ import {
 import { getTenantPublicOrigin, getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";
+import { THEME_PREFERENCE_SCRIPT } from "#lib/theme-preference";
 
+import { DocumentTheme } from "./_components/document-theme";
 import { GoogleTag } from "./_components/google-tag";
 
 import "../../globals.css";
@@ -90,6 +92,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * locale context in the `(site)` and `(auth)` layouts, is what writes the
  * attribute back afterwards.
  *
+ * The reader's theme is written rather than rendered too.
+ * `THEME_PREFERENCE_SCRIPT` sets `data-theme` from what the reader chose
+ * before the first paint, without knowing whether the tenant has a dark
+ * palette for it to select, and `<DocumentTheme>` carries a later choice onto
+ * the attribute.
+ *
  * The React context both locales travel in is seeded one level down, by the
  * `(site)` and `(auth)` layouts. That is also what puts the tenant read behind
  * `app/[tenant_id]/[locale]/error.tsx`: a tenant whose stored default cannot be
@@ -111,11 +119,13 @@ const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
   <html suppressHydrationWarning>
     <head>
       <script dangerouslySetInnerHTML={{ __html: PATH_LOCALE_LANG_SCRIPT }} />
+      <script dangerouslySetInnerHTML={{ __html: THEME_PREFERENCE_SCRIPT }} />
       {/* Dynamic per-tenant overrides from GET /theme.css (short Cache-Control). */}
       {/* oxlint-disable-next-line next/no-css-tags, react-doctor/nextjs-no-css-link -- runtime tenant theme route */}
       <link href="/theme.css" rel="stylesheet" />
     </head>
     <body className="group/document min-h-dvh bg-background font-sans text-foreground antialiased">
+      <DocumentTheme />
       <StorefrontMessagesProvider>{children}</StorefrontMessagesProvider>
       <OfflineNotice>
         <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>

@@ -2,7 +2,7 @@
 title: Branding
 description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, upload other companies' marks under their guidelines, and check the theme in the preview before readers see it.
 published: 2026-10-07
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 **Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, the marks of other companies, its colors, and the faces its text is set in. The screen has **Logo**, **Icon**, **Sign-in image**, **Brand marks**, and the theme's colors and typefaces. Each is saved on its own, and saving one leaves the others as they are.
@@ -65,7 +65,7 @@ The theme has 27 colors, each entered as `#RRGGBB` or chosen with the swatch bes
 
 Each color and the text color drawn on it must contrast by at least 4.5:1, the WCAG AA level for normal text. A pair below that is refused, with the ratio it reached, under "Check these color pairs so the text stays readable." Border, input field, and focus ring colors are not checked, since no text is drawn on them.
 
-The site has one set of colors. It does not switch to a dark version when a reader's device is in dark mode.
+The site has one set of colors until the tenant has a dark palette. Once it has one, the site is drawn in the dark palette while a reader's device is in dark mode, and its header gains **Theme**, where a reader chooses **Light**, **Dark**, or **Match system**. The choice is kept in the reader's browser, as [What the site stores in a reader's browser](./3-pages.md#what-the-site-stores-in-a-readers-browser) lists, and every page opens in it.
 
 ### Typefaces
 

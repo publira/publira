@@ -7,9 +7,42 @@ import {
   DEFAULT_TENANT_THEME_COLORS,
   isTenantThemeFontFamily,
   resolveTenantThemeColors,
+  resolveTenantThemePalette,
   toPubliraThemeCssText,
   toPubliraThemeCssVariables,
 } from "./theme-css-variables";
+import type { TenantThemeColors } from "./theme-css-variables";
+
+/** A dark palette whose every text pair clears 4.5:1. */
+const DARK_PALETTE: TenantThemeColors = {
+  accentColor: "#22314f",
+  accentForegroundColor: "#d3def5",
+  backgroundColor: "#1a1917",
+  borderColor: "#3d3a35",
+  cardColor: "#262420",
+  cardForegroundColor: "#ecebe6",
+  destructiveColor: "#f08a8a",
+  destructiveForegroundColor: "#3a0b0b",
+  foregroundColor: "#ecebe6",
+  infoColor: "#8ab8e0",
+  infoForegroundColor: "#0d2236",
+  inputColor: "#4a4740",
+  mutedColor: "#2e2c28",
+  mutedForegroundColor: "#b3b1aa",
+  popoverColor: "#2b2925",
+  popoverForegroundColor: "#ecebe6",
+  primaryColor: "#8eb1f2",
+  primaryForegroundColor: "#14213d",
+  ringColor: "#8eb1f2",
+  secondaryColor: "#f08a63",
+  secondaryForegroundColor: "#2a1007",
+  successColor: "#7fc896",
+  successForegroundColor: "#0f2a18",
+  surfaceColor: "#211f1c",
+  surfaceForegroundColor: "#ecebe6",
+  warningColor: "#e6b45c",
+  warningForegroundColor: "#2b1d04",
+};
 
 describe("theme-css-variables", () => {
   it("falls back to brand defaults for empty input", () => {
@@ -57,6 +90,48 @@ describe("theme-css-variables", () => {
     expect(css).toContain(
       `--publira-color-background:${DEFAULT_TENANT_THEME_COLORS.backgroundColor}`
     );
+  });
+
+  it("reads a dark palette only when every color is a #RRGGBB code", () => {
+    const palette = { ...DARK_PALETTE, primaryColor: "#8EB1F2" };
+
+    expect(resolveTenantThemePalette(palette)).toEqual({
+      ...DARK_PALETTE,
+      primaryColor: "#8eb1f2",
+    });
+    expect(
+      resolveTenantThemePalette({ ...DARK_PALETTE, mutedColor: "" })
+    ).toBeUndefined();
+    expect(
+      resolveTenantThemePalette({ ...DARK_PALETTE, ringColor: "blue" })
+    ).toBeUndefined();
+    expect(resolveTenantThemePalette(undefined)).toBeUndefined();
+  });
+
+  it("writes the light palette alone when there is no dark palette", () => {
+    const css = toPubliraThemeCssText({ primaryColor: "#112233" });
+
+    expect(css).not.toContain("@media");
+    expect(css).not.toContain("data-theme");
+    expect(css).not.toContain("color-scheme");
+  });
+
+  it("writes a dark palette for the system setting and for a dark choice", () => {
+    const css = toPubliraThemeCssText(
+      { primaryColor: "#112233" },
+      DARK_PALETTE
+    );
+    const dark = `color-scheme:dark;--publira-color-accent:${DARK_PALETTE.accentColor};`;
+
+    expect(css.startsWith(":root{--publira-color-accent:")).toBe(true);
+    expect(css).toContain(
+      `@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${dark}`
+    );
+    expect(css).toContain(`:root[data-theme="dark"]{${dark}`);
+    expect(css).toContain(
+      `--publira-color-background:${DARK_PALETTE.backgroundColor}`
+    );
+    expect(css.match(/--publira-font-/gu)).toBeNull();
   });
 
   it("emits configured font stacks without overriding defaults for empty values", () => {

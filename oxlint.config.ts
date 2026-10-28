@@ -95,8 +95,8 @@ export default defineConfig({
     },
     {
       /**
-       * `LOCALE_LANG_SCRIPT` and the Google tag's consent defaults ship as
-       * JavaScript source, so the only test that proves anything runs it:
+       * `LOCALE_LANG_SCRIPT`, the Google tag's consent defaults, and the
+       * storefront's theme preference ship as JavaScript source, so the only test that proves anything runs it:
        * asserting on the string would still pass on a script the browser
        * cannot execute. The "dynamic" code is built by the module under test,
        * evaluated in a fresh context against a `document` stub.
@@ -104,6 +104,7 @@ export default defineConfig({
       files: [
         "packages/i18n/src/i18n.test.ts",
         "apps/web-storefront/lib/google-tag-scripts.test.ts",
+        "apps/web-storefront/lib/theme-preference.test.ts",
       ],
       rules: {
         "sonarjs/code-eval": "off",

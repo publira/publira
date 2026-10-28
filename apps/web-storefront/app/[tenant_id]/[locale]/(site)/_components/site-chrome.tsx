@@ -40,6 +40,7 @@ import { AnalyticsConsentBanner } from "./analytics-consent-banner";
 import { AnalyticsConsentSettingsButton } from "./analytics-consent-settings-button";
 import { LegalPageAgreementGate } from "./legal-page-agreement-gate";
 import { PinnedAnnouncementBanner } from "./pinned-announcement-banner";
+import * as ThemeSwitch from "./theme-switch";
 
 const notificationMenuLimit = 5;
 
@@ -511,6 +512,9 @@ const SiteMobileNavigation = () => (
       <Suspense fallback={<LocaleSwitcher.DisclosureSkeleton />}>
         <LocaleSwitcher.Disclosure />
       </Suspense>
+      <Suspense fallback={<ThemeSwitch.DisclosureSkeleton />}>
+        <ThemeSwitch.Disclosure />
+      </Suspense>
       <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
         <MobileNavigationAccountActions />
       </Suspense>
@@ -623,6 +627,9 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
         </Suspense>
       </SiteLayout.HeaderSearch>
       <SiteLayout.HeaderWideControls>
+        <Suspense fallback={<ThemeSwitch.Skeleton />}>
+          <ThemeSwitch.Root />
+        </Suspense>
         <Suspense fallback={<LocaleSwitcher.Skeleton />}>
           <LocaleSwitcher.Root />
         </Suspense>

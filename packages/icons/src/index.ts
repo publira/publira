@@ -47,6 +47,7 @@ export { SettingsIcon } from "./settings-icon";
 export { ShapesIcon } from "./shapes-icon";
 export { ShareIcon } from "./share-icon";
 export { ShieldUserIcon } from "./shield-user-icon";
+export { SunMoonIcon } from "./sun-moon-icon";
 export { TagIcon } from "./tag-icon";
 export { TicketIcon } from "./ticket-icon";
 export { TrendingUpIcon } from "./trending-up-icon";

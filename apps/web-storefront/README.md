@@ -81,7 +81,7 @@ For the environment variables and how `NEXT_OTEL_VERBOSE` is handled, see [`pack
 
 ### `/theme.css`
 
-The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over the `getTenantTheme()` read in `lib/tenant.ts` and its own cache tag from `lib/cache-tags.ts`. The document shell links it, so every page picks up the tenant's colors.
+The per-tenant stylesheet, served by `app/[tenant_id]/theme.css/route.ts` over the `getTenantTheme()` read in `lib/tenant.ts` and its own cache tag from `lib/cache-tags.ts`. The document shell links it, so every page picks up the tenant's colors. A tenant with a dark palette gets it under `prefers-color-scheme: dark` unless `<html>` carries `data-theme="light"`, and under `data-theme="dark"`; the header's theme switch (`app/[tenant_id]/[locale]/(site)/_components/theme-switch.tsx`) stores the reader's choice as `publira.theme` in `localStorage`, and `THEME_PREFERENCE_SCRIPT` in `lib/theme-preference.ts` puts it on `<html>` before the first paint.
 
 ### `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association`
 

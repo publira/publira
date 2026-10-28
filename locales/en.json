@@ -5183,7 +5183,11 @@
       "search": "Search",
       "search_label": "Search works",
       "search_submit": "Search",
-      "signup": "Get started"
+      "signup": "Get started",
+      "theme_dark": "Dark",
+      "theme_light": "Light",
+      "theme_switch": "Theme",
+      "theme_system": "Match system"
     },
     "notifications": {
       "announcement_posted_description": "“{$title}” was posted by the operator.",

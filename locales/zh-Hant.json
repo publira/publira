@@ -5183,7 +5183,11 @@
       "search": "搜尋",
       "search_label": "搜尋作品",
       "search_submit": "搜尋",
-      "signup": "立即開始"
+      "signup": "立即開始",
+      "theme_dark": "深色",
+      "theme_light": "淺色",
+      "theme_switch": "主題",
+      "theme_system": "跟隨系統"
     },
     "notifications": {
       "announcement_posted_description": "營運方發布了《{$title}》。",

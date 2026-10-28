@@ -212,6 +212,50 @@ export const resolveTenantThemeColors = (
 };
 
 /**
+ * A dark palette's colors, or `undefined` unless every one of them is a
+ * `#RRGGBB` code.
+ *
+ * {@link resolveTenantThemeColors} fills a gap from the brand defaults, which
+ * are light colors: one of them dropped into a dark palette would set dark ink
+ * on a dark ground. A palette that is not whole is therefore no palette.
+ */
+export const resolveTenantThemePalette = (
+  palette?: Partial<TenantThemeColors> | null
+): TenantThemeColors | undefined => {
+  if (!palette) {
+    return undefined;
+  }
+  const resolved = { ...DEFAULT_TENANT_THEME_COLORS };
+  for (const key of Object.keys(
+    DEFAULT_TENANT_THEME_COLORS
+  ) as (keyof TenantThemeColors)[]) {
+    const raw = palette[key]?.trim() ?? "";
+    if (!isHexColor(raw)) {
+      return undefined;
+    }
+    resolved[key] = raw.toLowerCase();
+  }
+  return resolved;
+};
+
+const toColorCssVariables = (
+  colors: TenantThemeColors
+): Record<string, string> => {
+  const vars: Record<string, string> = {};
+  for (const key of Object.keys(
+    themeColorToCssVar
+  ) as (keyof TenantThemeColors)[]) {
+    vars[themeColorToCssVar[key]] = colors[key];
+  }
+  return vars;
+};
+
+const toDeclarations = (vars: Record<string, string>): string =>
+  Object.entries(vars)
+    .map(([property, value]) => `${property}:${value}`)
+    .join(";");
+
+/**
  * Build a style map of `--publira-color-*` custom properties for React
  * `style` props or client-side `setProperty`.
  */
@@ -219,12 +263,7 @@ export const toPubliraThemeCssVariables = (
   theme?: Partial<TenantTheme> | null
 ): Record<string, string> => {
   const resolved = resolveTenantThemeColors(theme);
-  const vars: Record<string, string> = {};
-  for (const key of Object.keys(
-    themeColorToCssVar
-  ) as (keyof TenantThemeColors)[]) {
-    vars[themeColorToCssVar[key]] = resolved[key];
-  }
+  const vars = toColorCssVariables(resolved);
   if (resolved.serifFontFamily) {
     vars["--publira-font-serif"] = resolved.serifFontFamily;
   }
@@ -235,14 +274,25 @@ export const toPubliraThemeCssVariables = (
 };
 
 /**
- * Build a `:root { ... }` CSS text block for `GET /theme.css` responses.
+ * Build the CSS text `GET /theme.css` responds with: the light palette and
+ * the fonts on `:root`, and, when the tenant has a dark palette, its colors
+ * twice more.
+ *
+ * The dark colors apply under `prefers-color-scheme: dark` unless the document
+ * carries `data-theme="light"`, and wherever it carries `data-theme="dark"`:
+ * a reader who has chosen nothing follows the system, and a choice either way
+ * overrides it. Both selectors outrank the bare `:root`, so the order of the
+ * blocks decides nothing. `color-scheme` goes with the dark colors, so the
+ * browser's own scroll bars and form controls are drawn dark beside them.
  */
 export const toPubliraThemeCssText = (
-  theme?: Partial<TenantTheme> | null
+  theme?: Partial<TenantTheme> | null,
+  darkPalette?: TenantThemeColors
 ): string => {
-  const vars = toPubliraThemeCssVariables(theme);
-  const declarations = Object.entries(vars)
-    .map(([property, value]) => `${property}:${value}`)
-    .join(";");
-  return `:root{${declarations}}`;
+  const light = `:root{${toDeclarations(toPubliraThemeCssVariables(theme))}}`;
+  if (!darkPalette) {
+    return light;
+  }
+  const dark = `color-scheme:dark;${toDeclarations(toColorCssVariables(darkPalette))}`;
+  return `${light}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${dark}}}:root[data-theme="dark"]{${dark}}`;
 };

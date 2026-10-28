@@ -55,6 +55,7 @@ export {
   DEFAULT_TENANT_THEME,
   isTenantThemeFontFamily,
   resolveTenantThemeColors,
+  resolveTenantThemePalette,
   tenantThemeFontFamilySchema,
   toPubliraThemeCssText,
   toPubliraThemeCssVariables,

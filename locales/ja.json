@@ -5183,7 +5183,11 @@
       "search": "検索",
       "search_label": "作品を検索",
       "search_submit": "検索",
-      "signup": "はじめる"
+      "signup": "はじめる",
+      "theme_dark": "ダーク",
+      "theme_light": "ライト",
+      "theme_switch": "テーマ",
+      "theme_system": "システム設定に合わせる"
     },
     "notifications": {
       "announcement_posted_description": "運営から「{$title}」が届きました。",

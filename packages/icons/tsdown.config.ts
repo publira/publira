@@ -53,6 +53,7 @@ export default defineConfig({
     "src/shapes-icon.tsx",
     "src/share-icon.tsx",
     "src/shield-user-icon.tsx",
+    "src/sun-moon-icon.tsx",
     "src/tag-icon.tsx",
     "src/ticket-icon.tsx",
     "src/trending-up-icon.tsx",
