@@ -70,7 +70,7 @@ A function is `SECURITY DEFINER` only when it has to write or read what the call
 - In the baseline seed, `REVOKE EXECUTE ... FROM PUBLIC`, granting it back only to the roles that call the function themselves. It is in the seed rather than the migration because a restore drops every privilege and `db roles` puts them back. A role that can execute a trigger function can attach it to a temporary table of its own and fire it on rows it made up; the triggers the migrations create keep firing, because `EXECUTE` is checked when a trigger is created rather than when it fires. A function a policy calls runs as the role whose statement the policy filters, so that role keeps `EXECUTE`.
 - In a trigger function, a first statement that raises unless `TG_RELID` is the table its trigger is on.
 
-`TestSecurityDefinerFunctionsPinTheirSearchPathAndRefusePublic` reads every `SECURITY DEFINER` function in `public` out of the catalog and fails on one whose `search_path` does not end in `pg_temp` or that `PUBLIC` may still execute, and `TestSecurityDefinerTriggerFunctionsRefuseAnotherTable` fails on a trigger function that runs for a table of the caller's choosing.
+`TestSecurityDefinerFunctionsPinTheirSearchPathAndRefusePublic` reads every `SECURITY DEFINER` function in `public` out of the catalog and fails on one whose `search_path` is anything but `pg_catalog, public, pg_temp`, or that `PUBLIC` may still execute, and `TestSecurityDefinerTriggerFunctionsRefuseAnotherTable` fails on a trigger function that runs for a table of the caller's choosing.
 
 ## Layout (quick map)
 

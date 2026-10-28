@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -78,9 +77,8 @@ func TestSecurityDefinerFunctionsPinTheirSearchPathAndRefusePublic(t *testing.T)
 		`, &searchPath, function)
 		mustQueryRow(t, ctx, pg.DB, `SELECT has_function_privilege('public', $1::regprocedure, 'EXECUTE')`, &publicExecutes, function)
 
-		schemas := strings.Split(searchPath.String, ",")
-		if !searchPath.Valid || strings.TrimSpace(schemas[len(schemas)-1]) != "pg_temp" {
-			t.Errorf("%s: search_path = %q, want one that ends in pg_temp", function, searchPath.String)
+		if searchPath.String != "pg_catalog, public, pg_temp" {
+			t.Errorf("%s: search_path = %q, want pg_catalog, public, pg_temp", function, searchPath.String)
 		}
 		if publicExecutes {
 			t.Errorf("%s: PUBLIC may execute it, want EXECUTE revoked from PUBLIC in the baseline seed", function)
