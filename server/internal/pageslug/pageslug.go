@@ -6,8 +6,8 @@
 // between readers and a screen they cannot use the site without: signing in
 // and up, the links a mail carries, and the account settings. An unreachable
 // one is answered before any page is looked up — a locale prefix, the API, a
-// health probe, a sitemap file — so a page there would never be served at its
-// own path.
+// health probe, a sitemap file, an Open Graph card — so a page there would
+// never be served at its own path.
 package pageslug
 
 import (
@@ -31,6 +31,7 @@ var reservedFirstSegments = map[string]struct{}{
 var unreachableFirstSegments = map[string]struct{}{
 	"api":     {},
 	"livez":   {},
+	"og":      {},
 	"readyz":  {},
 	"rpc":     {},
 	"sitemap": {},
