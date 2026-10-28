@@ -71,9 +71,9 @@ Each color and the text color drawn on it must contrast by at least 4.5:1, the W
 
 The **Dark** tab holds a second set of the same 27 colors, in the same groups, for a dark screen. It is held to the same 4.5:1 contrast check and has no typefaces of its own: it is set in the faces on the **Light** tab. **Save the dark palette** saves it apart from the light palette, and saving either one leaves the other as it is.
 
-![The top of the Dark tab without a saved dark palette: the note that none is saved, and Derive from light with what it does.](./branding-dark-palette.png)
-
 A tenant starts with no dark palette. Until one is saved, the tab says "No dark palette is saved." and fills its fields with colors derived from the saved light palette, ready to adjust and save.
+
+![The top of the Dark tab with a dark palette saved: Derive from light with what it does.](./branding-dark-palette.png)
 
 **Derive from light** replaces every color on the tab with one made from the colors on the **Light** tab, including ones not saved yet. Each color keeps its hue and takes the opposite lightness, so the background turns dark, the text turns light, and a pale tint of a brand color becomes a deep shade of it. A pair that would then contrast by less than 4.5:1 gets white or black text instead, so the result can be saved as it stands. Choose it again to start over from the light palette.
 

@@ -41,6 +41,7 @@ The files themselves are rendered from the vector sources under [`assets/`](../.
   - `080_purchases.sql`: The member's purchases of the priced episode, one readable and one expired, which fill the purchase library
   - `090_reading_signals.sql`: The member's views of two series over the last fortnight, and the `user_recommend_features` row the recommendation batch builds from them, so the member's Recommended shelf — on My Page, and on the storefront of a tenant with no ranking yet — opens on `Seed Series 090` instead of the order a guest gets. The views are dated relative to the tenant's own day when the file is applied, inside the batch's 28-day window, and the shelf's first row is all-ages. Constants are in `e2e/src/scenarios/reading-signals.ts`
   - `100_campaign_banners.sql`: Three published campaign banners, opened a day before the file is applied and closed ten years after, so the top page opens on the banner strip; each is stored in the landscape ratio only, the one the site's band and the console's list draw
+  - `110_tenant_theme_dark.sql`: A dark palette for the seed tenant, the dark counterpart of the default light one, so the storefront header offers the Theme control. The tenant keeps no light theme row, so its light palette is the defaults. Colors are in `e2e/src/scenarios/seed-dark-theme.ts`
 - `objects/`: The image files `task storage:seed` uploads, laid out as the keys `dev/060_images.sql` and `dev/100_campaign_banners.sql` name
 - `scenarios/`: Scenario-specific data (run as needed) — [scenarios/README.md](./scenarios/README.md)
 
