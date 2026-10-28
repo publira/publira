@@ -3,10 +3,12 @@ package dbtest
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -122,5 +124,112 @@ func TestDeletingATenantWithAuditHistoryIsRefused(t *testing.T) {
 	mustQueryRow(t, ctx, pg.DB, `SELECT count(*) FROM audit_logs WHERE tenant_id = $1`, &entries, tenantID)
 	if entries != 1 {
 		t.Fatalf("entries after the refused delete = %d, want 1", entries)
+	}
+}
+
+// The trigger function runs as the table's owner, so no app role may attach
+// it to a table of its own: a forged row deleted from a temporary table would
+// otherwise rewrite any tenant's entries.
+func TestNoAppRoleCanAttachTheDeletedActorTrigger(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	for _, role := range []struct {
+		name string
+		open func(*testing.T) *sql.DB
+	}{
+		{name: "publira_platform", open: pg.OpenPlatformDB},
+		{name: "publira_admin", open: pg.OpenAdminDB},
+		{name: "publira_public", open: pg.OpenPublicDB},
+		{name: "publira_content_stats", open: pg.OpenContentStatsDB},
+		{name: "publira_outbox", open: pg.OpenOutboxDB},
+		{name: "publira_ticker", open: pg.OpenTickerDB},
+	} {
+		t.Run(role.name, func(t *testing.T) {
+			conn, err := role.open(t).Conn(ctx)
+			if err != nil {
+				t.Fatalf("open %s connection: %v", role.name, err)
+			}
+			defer conn.Close() //nolint:errcheck
+			if _, err := conn.ExecContext(ctx, "CREATE TEMP TABLE forged_users (tenant_id uuid, id uuid, public_id varchar, name text)"); err != nil {
+				t.Fatalf("create a temporary table as %s: %v", role.name, err)
+			}
+			_, err = conn.ExecContext(ctx, "CREATE TRIGGER forge BEFORE DELETE ON forged_users FOR EACH ROW EXECUTE FUNCTION public.audit_logs_keep_deleted_actor()")
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+				t.Fatalf("attach the trigger function as %s: error = %v, want SQLSTATE %s", role.name, err, insufficientPrivilegeCode)
+			}
+		})
+	}
+
+	// A role that can execute it, such as the owner, still cannot make it
+	// run for anything but users.
+	conn, err := pg.DB.Conn(ctx)
+	if err != nil {
+		t.Fatalf("open owner connection: %v", err)
+	}
+	defer conn.Close() //nolint:errcheck
+	for _, statement := range []string{
+		"CREATE TEMP TABLE forged_users (tenant_id uuid, id uuid, public_id varchar, name text)",
+		"CREATE TRIGGER forge BEFORE DELETE ON forged_users FOR EACH ROW EXECUTE FUNCTION public.audit_logs_keep_deleted_actor()",
+		"INSERT INTO forged_users VALUES (gen_random_uuid(), gen_random_uuid(), 'FORGED000001', 'Forged')",
+	} {
+		if _, err := conn.ExecContext(ctx, statement); err != nil {
+			t.Fatalf("%q as the owner: %v", statement, err)
+		}
+	}
+	if _, err := conn.ExecContext(ctx, "DELETE FROM forged_users"); err == nil {
+		t.Fatal("the trigger function ran for a delete from another table, want it refused")
+	}
+}
+
+// Every role may create temporary tables, and a temporary audit_logs must not
+// take the update the trigger function makes as the table's owner: its own
+// triggers would run with the owner's rights.
+func TestATemporaryAuditLogsTableDoesNotTakeTheDeletedActorUpdate(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := mustInsertTenant(t, ctx, pg.DB, "AAPTENANT001", "append-temp.example.com", "admin-append-temp.example.com", "Append Temp")
+	leaving := mustInsertUser(t, ctx, pg.DB, tenantID, "AAPLEAVING01", "leaving@append-temp.example.com", "Leaving")
+	entry := mustInsertAuditLog(t, ctx, pg.DB, tenantID, leaving, time.Now().UTC())
+
+	conn, err := pg.OpenAdminDB(t).Conn(ctx)
+	if err != nil {
+		t.Fatalf("open admin connection: %v", err)
+	}
+	defer conn.Close() //nolint:errcheck
+	for _, statement := range []string{
+		"CREATE TEMP TABLE audit_logs (tenant_id uuid, actor_user_id uuid, actor_public_id varchar, actor_name text)",
+		"INSERT INTO pg_temp.audit_logs VALUES ('" + tenantID.String() + "', '" + leaving.String() + "', NULL, NULL)",
+	} {
+		if _, err := conn.ExecContext(ctx, statement); err != nil {
+			t.Fatalf("%q as publira_admin: %v", statement, err)
+		}
+	}
+	if _, err := conn.ExecContext(ctx, "SELECT set_config('app.current_tenant_id', $1, false)", tenantID.String()); err != nil {
+		t.Fatalf("scope the connection to the tenant: %v", err)
+	}
+	if _, err := conn.ExecContext(ctx, "DELETE FROM public.users WHERE id = $1", leaving); err != nil {
+		t.Fatalf("delete an account as publira_admin: %v", err)
+	}
+
+	var shadowed sql.NullString
+	if err := conn.QueryRowContext(ctx, "SELECT actor_public_id FROM pg_temp.audit_logs").Scan(&shadowed); err != nil {
+		t.Fatalf("read the temporary table: %v", err)
+	}
+	if shadowed.Valid {
+		t.Fatalf("the temporary audit_logs took the update (actor_public_id = %q), want it left alone", shadowed.String)
+	}
+	var kept sql.NullString
+	mustQueryRow(t, ctx, pg.DB, `SELECT actor_public_id FROM public.audit_logs WHERE id = $1`, &kept, entry)
+	if kept.String != "AAPLEAVING01" {
+		t.Fatalf("real entry actor_public_id = %v, want the deleted account's public ID", kept)
 	}
 }
