@@ -21,7 +21,7 @@ jobs:
     # labelled immediately. A push does not trigger it: the score is a
     # snapshot of the moment review was requested, not of the latest push.
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       # A job's `permissions` replaces the workflow's `{}` outright rather than

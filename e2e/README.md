@@ -113,7 +113,7 @@ Host-based URL constants are in `src/urls.ts`. web-storefront resolves the tenan
 
 ## Parallelism and isolation
 
-`playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches the four vCPUs CI's `ubuntu-latest` runner has on a public repository; temporarily serialize with `task e2e:test -- --workers=1`.
+`playwright.config.ts` uses `workers: 3` and `fullyParallel: false`: files run in parallel while tests within a file run serially. This matches the four vCPUs CI's `ubuntu-26.04` runner has on a public repository; temporarily serialize with `task e2e:test -- --workers=1`.
 
 ### Groups
 
