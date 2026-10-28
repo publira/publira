@@ -13,6 +13,10 @@
 --   admin  TmbrADMNAAA1 (team-admin@example.com)
 --   editor TmbrEDTRAAA1 (team-editor@example.com)
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'TmbrTNNTAAA1');
+
 DELETE FROM tenants
 WHERE public_id = 'TmbrTNNTAAA1';
 

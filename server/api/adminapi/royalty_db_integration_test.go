@@ -702,9 +702,14 @@ func TestDBRoyaltyStatementCannotBeRewrittenButGoesWithItsTenant(t *testing.T) {
 	}
 
 	// A referential action still reaches a statement. A tenant with a catalog
-	// cannot be deleted at all, so this one closed a month it sold nothing in.
+	// cannot be deleted at all, so this one closed a month it sold nothing in,
+	// and the entry the close filed in its audit log, which holds a tenant back
+	// as well, is removed first.
 	empty := env.seedTenantWithAdmin(t, "RYITENANT02", "ryi-empty.example.com", "Empty", "RYIADMIN002", "admin@ryi-empty.example.com")
 	env.closeRoyalties(t, empty, "2026-07")
+	if _, err := env.PG.DB.ExecContext(context.Background(), "DELETE FROM audit_logs WHERE tenant_id = $1", empty.Tenant.ID); err != nil {
+		t.Fatalf("delete the tenant's audit entries: %v", err)
+	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), "DELETE FROM tenants WHERE id = $1", empty.Tenant.ID); err != nil {
 		t.Fatalf("delete tenant with a closed statement: %v", err)
 	}

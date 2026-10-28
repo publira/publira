@@ -24,6 +24,10 @@
 --
 -- ID band: 018f1070-0001-7000-8000-0000000000NN.
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'DeskTNNTAAA1');
+
 DELETE FROM tenants
 WHERE public_id = 'DeskTNNTAAA1';
 

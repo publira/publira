@@ -2,10 +2,10 @@
 title: Audit logs
 description: What the Platform Console's audit log and a tenant's audit log record, who can read each, and what neither records.
 published: 2026-10-21
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
-An install keeps two audit logs that never share entries: the Platform Console's, for what operators and `publiractl` change, and each tenant's, for what its staff change in the tenant console. Entries are never deleted, and either log can be [exported as CSV](#exporting-a-log) a period at a time.
+An install keeps two audit logs that never share entries: the Platform Console's, for what operators and `publiractl` change, and each tenant's, for what its staff change in the tenant console. Entries are never deleted, and the database refuses every role Publira's processes connect as any change to one, save the one it makes itself when the account that acted is deleted and the entry keeps that account's name and public ID in its place. Either log can be [exported as CSV](#exporting-a-log) a period at a time.
 
 ## The Platform Console's log
 

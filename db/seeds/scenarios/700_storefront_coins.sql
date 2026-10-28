@@ -81,6 +81,10 @@ WHERE tenant_id IN (
     SELECT id FROM tenants WHERE public_id IN ('CoinTNNTAAA1', 'CoffTNNTAAA1')
 );
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id IN ('CoinTNNTAAA1', 'CoffTNNTAAA1'));
+
 DELETE FROM tenants
 WHERE public_id IN ('CoinTNNTAAA1', 'CoffTNNTAAA1');
 

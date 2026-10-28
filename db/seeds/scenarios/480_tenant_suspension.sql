@@ -14,6 +14,10 @@
 --   tenant PausTNNTAAA1 (suspend.localhost / admin.suspend.localhost)
 --   admin  PausADMNAAA1 (suspend-admin@example.com)
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'PausTNNTAAA1');
+
 DELETE FROM tenants
 WHERE public_id = 'PausTNNTAAA1';
 

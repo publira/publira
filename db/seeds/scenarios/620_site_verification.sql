@@ -16,6 +16,10 @@
 --   admin  VrfyADMNAAA1 (verify-admin@example.com)
 --   editor VrfyEDTRAAA1 (verify-editor@example.com)
 
+-- A tenant's audit entries hold its deletion back, so they go first.
+DELETE FROM audit_logs
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'VrfyTNNTAAA1');
+
 DELETE FROM tenants
 WHERE public_id = 'VrfyTNNTAAA1';
 
