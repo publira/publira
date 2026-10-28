@@ -68,9 +68,11 @@ COPY --from=builder /out/publira /app/publira
 # documentation metadata.
 EXPOSE 8000 8003
 
-# debian-slim has no HEALTHCHECK convention here; orchestrator probes:
+# No HEALTHCHECK, and no curl to run one with; orchestrator probes:
 #   liveness  -> GET /livez
 #   readiness -> GET /readyz
+# A Compose healthcheck runs the binary itself instead:
+#   /app/publira healthcheck http://127.0.0.1:8000/readyz
 
 USER nonroot
 

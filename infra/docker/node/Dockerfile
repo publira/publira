@@ -132,5 +132,7 @@ EXPOSE ${PORT}
 # distroless has no shell/wget; configure HTTP probes in the orchestrator:
 #   liveness  -> GET /livez
 #   readiness -> GET /readyz
+# A Compose healthcheck runs node itself instead:
+#   /nodejs/bin/node -e "fetch('http://127.0.0.1:<PORT>/readyz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 # Image entrypoint is /nodejs/bin/node; path is normalized to apps/node in the pack stage.
 CMD ["apps/node/dist/index.mjs"]

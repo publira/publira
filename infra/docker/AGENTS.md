@@ -93,9 +93,12 @@ A new **maintenance job** is not a new target: it is a `publiractl job` subcomma
    ARG TURBO_VERSION=2.10.8
    ```
 
-4. **No Docker `HEALTHCHECK`** on distroless runners (no shell/wget). Orchestrator probes for server / Web:
+4. **No Docker `HEALTHCHECK`** in any runner: which port to ask is the container's choice — `server`, `worker`, and `server --with-worker` answer on different ones, and `PORT` can be overridden — not the image's. Orchestrator probes for server / Web:
    - liveness `GET /livez`
    - readiness `GET /readyz`
+
+   A healthcheck that has to run inside the container, as a Compose `healthcheck` does, runs what the image already carries rather than a probe added to it: `publira healthcheck <url>...` in the server image, which asks each URL and exits 0 when every one answers 200, and `node -e` with `fetch` in the web and node images. None of the images has `curl`, and the web and node images have no shell either; a dedicated probe binary copied into each would grow every image for what a few lines of the binary or the runtime already do.
+
 5. **Web**: follow [Turborepo Docker guide](https://turborepo.dev/docs/guides/tools/docker) (`turbo prune --docker`). Keep standalone path stable for distroless `CMD` (pack stage may normalize to `apps/web`). `turbo prune` does not carry repo-root assets; `@publira/i18n/catalog` imports `locales/*.json` relatively, so the builder stage `COPY`s `locales/` explicitly.
 6. **Node**: also `turbo prune --docker`, but there is no standalone output. The runner gets a `pnpm install --frozen-lockfile --prod` tree plus every workspace `dist/`; sources and dev dependencies stay in the builder, and the pack stage renames `apps/${APP_NAME}` to `apps/node` so the distroless `CMD` is a fixed path. Two consequences:
    - Anything the compiled output imports at runtime must sit in a `dependencies` field. A `devDependencies` / unmet `peerDependencies` entry disappears under `--prod` and the container dies on `Cannot find package`.

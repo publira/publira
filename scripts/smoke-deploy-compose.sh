@@ -4,9 +4,10 @@
 # and extracted away from the checkout, take it through the steps its README
 # documents, from generating .env to running `setup` a second time, and check
 # that the tenant site, the tenant console, and the Platform Console answer
-# through the edge, that `server` hosts the worker, that the proxy cannot reach
-# the database or Valkey, and that image delivery converts an image to WebP and
-# to AVIF and resizes it through libvips.
+# through the edge, that every Publira process passes its healthcheck, that
+# `server` hosts the worker, that the proxy cannot reach the database or
+# Valkey, and that image delivery converts an image to WebP and to AVIF and
+# resizes it through libvips.
 #
 # The stack runs under its own project name, so an install on the same host is
 # left alone, and is always removed with its volumes.
@@ -134,16 +135,21 @@ expect_page "tenant console" "admin.${domain}"
 expect_page "Platform Console" "platform.localhost"
 
 # A long-lived process that exited or keeps restarting is a failure even when
-# every page above answered.
+# every page above answered, and so is a Publira process whose healthcheck does
+# not pass: `docker compose ps` is where the install's README tells the
+# operator to look. The proxy has no healthcheck of its own.
 for service in server web-storefront web-admin web-platform email-renderer proxy; do
   state="$(compose ps --all --format '{{.State}}' "${service}")"
+  health="$(compose ps --all --format '{{.Health}}' "${service}")"
   restarts="$(docker inspect --format '{{.RestartCount}}' "$(compose ps --all -q "${service}")")"
-  if [ "${state}" != running ] || [ "${restarts}" != 0 ]; then
-    echo "[deploy-smoke] ERROR: ${service} is ${state} after ${restarts} restarts" >&2
+  want_health=healthy
+  [ "${service}" = proxy ] && want_health=""
+  if [ "${state}" != running ] || [ "${health}" != "${want_health}" ] || [ "${restarts}" != 0 ]; then
+    echo "[deploy-smoke] ERROR: ${service} is ${state}${health:+ (${health})} after ${restarts} restarts" >&2
     exit 1
   fi
 done
-echo "[deploy-smoke] ok: every long-lived process is running"
+echo "[deploy-smoke] ok: every long-lived process is running, and every Publira process is healthy"
 
 # `server` runs with the worker hosted in it, so it is the one container of the
 # publira image, and it answers the readiness of both: the server's pools on
