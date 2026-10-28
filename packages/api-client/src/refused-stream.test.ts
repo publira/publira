@@ -50,14 +50,14 @@ const startServer = async (
   let streams = 0;
   server.on("session", (session) => {
     sessions.push(session);
-  });
-  server.on("stream", (stream) => {
-    // The server side of a refused stream errors too.
-    stream.on("error", () => {
-      // Nothing to report: the client side is what the tests assert.
+    session.on("stream", (stream) => {
+      // The server side of a refused stream errors too.
+      stream.on("error", () => {
+        // Nothing to report: the client side is what the tests assert.
+      });
+      handle(stream, streams);
+      streams += 1;
     });
-    handle(stream, streams);
-    streams += 1;
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");

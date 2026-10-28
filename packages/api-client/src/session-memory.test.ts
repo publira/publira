@@ -34,15 +34,15 @@ const startServer = async () => {
   const uploadHeld = Promise.withResolvers<"held">();
   server.on("session", (session) => {
     sessions.push(session);
-  });
-  server.on("stream", (stream, headers) => {
-    if (headers[":path"] === UPLOAD_PATH) {
-      stream.pause();
-      held.push(stream);
-      uploadHeld.resolve("held");
-      return;
-    }
-    answer(stream);
+    session.on("stream", (stream, headers) => {
+      if (headers[":path"] === UPLOAD_PATH) {
+        stream.pause();
+        held.push(stream);
+        uploadHeld.resolve("held");
+        return;
+      }
+      answer(stream);
+    });
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
