@@ -2,7 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file every release publishes, from downloading it to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-25
+updated: 2026-10-28
 ---
 
 Every release publishes a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
@@ -189,7 +189,9 @@ docker compose up -d
 docker compose ps
 ```
 
-`docker compose ps` lists every service of the install as running; `publiractl` and `setup` are not among them, since they only ever run for one command. A process that keeps restarting says why in `docker compose logs <service>`.
+`docker compose up -d` starts `server` first, then the web apps once `server` answers ready and Valkey is healthy, then the proxy once `web-storefront` and `web-admin` do, and returns when everything is started. `docker compose ps` lists every service of the install as running, and `server`, the web apps, and `email-renderer` as `healthy` too; `publiractl` and `setup` are not among them, since they only ever run for one command. Nothing waits on `web-platform` or `email-renderer`, so either can still show `health: starting` for a few seconds after the command returns. A process that keeps restarting, or one that turns `unhealthy`, says why in `docker compose logs <service>`.
+
+When `server` exits as it starts, or is still not ready a minute and a half after it started, `docker compose up -d` stops with a `dependency failed to start` error naming `publira-deploy-server-1`, as unhealthy or as exited, and leaves the web apps and the proxy unstarted. `docker compose logs server` says why: a role that `setup` has not created, or whose password does not match `.env`, is logged as `failed to initialize db` with the login it tried. A `server` that runs but is not ready logs the check that fails as a `readiness check failed` line, as described in [Health checks](../3-operations/11-monitoring.md#health-checks). Run `docker compose up -d` again once the cause is fixed.
 
 With `PUBLIRA_EDGE_ACME_EMAIL` set, the proxy requests the certificates as it starts, and `docker compose logs proxy` prints `certificate obtained successfully` once for each host name. A name it could not get one for is logged as `could not get certificate from issuer`, with the certificate authority's reason, most often DNS that does not point at the host yet or a port closed to the internet. The proxy keeps retrying on its own, so fixing the cause is enough.
 

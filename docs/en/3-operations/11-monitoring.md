@@ -2,7 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
-updated: 2026-10-23
+updated: 2026-10-28
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -66,7 +66,9 @@ readinessProbe:
 
 On ECS, every health check of a service's tasks acts as a liveness probe, since the service replaces a task that fails one; [Health checks](../2-deployments/6-ecs-fargate/index.md#health-checks) points them all at `/livez`.
 
-The images declare no Docker `HEALTHCHECK`, and the web images carry no shell to run one from, so the [Docker Compose](../2-deployments/3-docker-compose.md) install probes none of Publira's processes: Compose restarts a process that exits, not one that hangs. Probe it from outside instead, from a monitor that can reach the containers' network. The tenant site's `/livez` and `/readyz` are also reachable through the reverse proxy on every tenant's domain, such as `https://comics.example.com/readyz`, which an uptime monitor on the internet can use; the API's and the worker's are not, since the proxy forwards only `/rpc` and `/images` to `publira server`.
+The [Docker Compose](../2-deployments/3-docker-compose.md) install gives every Publira process a healthcheck on its `/readyz`, asked from inside the container every two seconds for the first minute after it starts, when a failure does not count, and every ten seconds after that, when three failures in a row mark the process `unhealthy`; `server` is asked on both of its ports. `docker compose ps` shows the result beside each service, and the web apps start only once `server` and Valkey are healthy, and the proxy once `server`, `web-storefront`, and `web-admin` are. The images declare no Docker `HEALTHCHECK` of their own: the Compose file runs `bash` in the server's image and `node` in the others, since none of them carries `curl`.
+
+Nothing restarts a process on these results: Compose restarts a process that exits, not one that hangs or turns unhealthy, and uses the results only to hold back the services that wait on it. To be told when that happens, probe the install from outside, from a monitor that can reach the containers' network, or watch `docker compose ps`. The tenant site's `/livez` and `/readyz` are also reachable through the reverse proxy on every tenant's domain, such as `https://comics.example.com/readyz`, which an uptime monitor on the internet can use; the API's and the worker's are not, since the proxy forwards only `/rpc` and `/images` to `publira server`.
 
 ## Logs
 
