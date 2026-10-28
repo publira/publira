@@ -665,6 +665,20 @@
         "period_invalid": "掲載終了は掲載開始より後の、これから先の日時にしてください。"
       }
     },
+    "calendar": {
+      "title": "カレンダー",
+      "page_description": "予約済みと公開中のエピソードを、公開される日に表示します。",
+      "time_zone_description": "日付はテナントのタイムゾーン（{$time_zone}）で区切ります。エピソードを選ぶと、そのエピソードを開きます。",
+      "section_error": "カレンダーを表示できませんでした",
+      "load_error": "カレンダーの取得に失敗しました。時間をおいて再試行してください。",
+      "previous_month": "前の月",
+      "next_month": "次の月",
+      "this_month": "今月",
+      "empty_title": "この月に公開されるエピソードはありません",
+      "empty_description": "この月には、予約済みのエピソードも公開されたエピソードもありません。",
+      "status_scheduled": "予約済み",
+      "status_published": "公開中"
+    },
     "comments": {
       "title": "コメント",
       "page_description": "読者が投稿したコメントを、投稿者が取り消したものも含めて確認し対応します。",
@@ -1191,6 +1205,7 @@
       "scheduled_episodes": "予約公開",
       "queue_title": "公開キュー",
       "queue_description": "直近で確認が必要なエピソードと公開予定です。",
+      "calendar_link": "カレンダーを開く",
       "queue_empty_title": "公開キューは空です",
       "queue_empty_description": "現在、下書きまたは予約済みのエピソードはありません。シリーズのページからエピソードを作成してください。",
       "columns": {
@@ -1487,6 +1502,7 @@
       "administration": "管理",
       "announcements_label": "お知らせ",
       "campaign_banners_label": "キャンペーンバナー",
+      "calendar_label": "カレンダー",
       "app_links_label": "アプリリンク",
       "audit_label": "監査ログ",
       "branding_label": "ブランディング",

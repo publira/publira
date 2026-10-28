@@ -3,6 +3,7 @@ export { ArchiveIcon } from "./archive-icon";
 export { BellIcon } from "./bell-icon";
 export { BookOpenIcon } from "./book-open-icon";
 export { BuildingIcon } from "./building-icon";
+export { CalendarIcon } from "./calendar-icon";
 export { ChartIcon } from "./chart-icon";
 export { CheckIcon } from "./check-icon";
 export { ChevronDownIcon } from "./chevron-down-icon";

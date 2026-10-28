@@ -2,20 +2,21 @@
 title: Publishing works
 description: Take an empty catalog to a first episode a reader can open, through the console's labels, Authors, series, and episodes.
 published: 2026-10-07
-updated: 2026-10-10
+updated: 2026-10-27
 ---
 
-Everything a reader can open on the site is an episode of a series, and a series is filed under a label and credits its Authors. The sidebar's **Catalog** group holds the five screens these are made on:
+Everything a reader can open on the site is an episode of a series, and a series is filed under a label and credits its Authors. The sidebar's **Catalog** group holds the screens these are made on, and a calendar of when they go out:
 
 | Screen | What it holds |
 | --- | --- |
 | **Series** | The works, with their episodes |
+| **Calendar** | Every scheduled and published episode, on the day it goes out |
 | **Labels** | The imprints a series is published under |
 | **Authors** | The people credited on series and episodes |
 | **Author roles** | What an Author is credited as, such as **Original Author** or **Artist** |
 | **Genres** | The categories readers browse the catalog by |
 
-![The sidebar's Catalog group: Series, Labels, Authors, Author roles, and Genres.](./index-catalog-group.png)
+![The sidebar's Catalog group: Series, Calendar, Labels, Authors, Author roles, and Genres.](./index-catalog-group.png)
 
 A Tenant admin and an Editor can create and change everything on these screens, except that only a Tenant admin sees and changes the **Reader accounts** linked to an Author. An Auditor can open every one of them, with their forms read-only, and does not see the buttons that create anything. Nothing in the catalog can be deleted except an episode's pages, and Author roles and genres that nothing uses, so a series or an episode that should no longer be read is taken off the site rather than removed.
 
@@ -38,7 +39,7 @@ The episodes that follow are added to a series that is already public, so they a
 ## In this section
 
 - [Series](./1-series.md): creating a series, where and when it is shown, its age rating, reading direction, comments, cover image, and **Free if you wait**.
-- [Episodes](./2-episodes.md): creating an episode, adding its pages, its price and reading period, its page layout, credits, where it is shown and sold, free reading periods, and scheduled publication.
+- [Episodes](./2-episodes.md): creating an episode, adding its pages, its price and reading period, its page layout, credits, where it is shown and sold, free reading periods, scheduled publication, and the calendar of what goes out when.
 - [Labels](./3-labels.md): the imprints series are published under, and the label pages readers see.
 - [Authors and Author roles](./4-authors.md): the people credited on a work, what they are credited as, how the credits read on the site, and linking an Author to their reader account.
 - [Genres](./5-genres.md): the categories readers browse by, and their order.

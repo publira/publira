@@ -665,6 +665,20 @@
         "period_invalid": "The end has to come after the start and still be ahead."
       }
     },
+    "calendar": {
+      "title": "Calendar",
+      "page_description": "Every scheduled and published episode, on the day it goes out.",
+      "time_zone_description": "Days are counted in the tenant time zone ({$time_zone}). Select an episode to open it.",
+      "section_error": "Could not display the calendar",
+      "load_error": "Could not load the calendar. Please try again later.",
+      "previous_month": "Previous month",
+      "next_month": "Next month",
+      "this_month": "This month",
+      "empty_title": "Nothing goes out in this month",
+      "empty_description": "No episode is scheduled or was published in this month.",
+      "status_scheduled": "Scheduled",
+      "status_published": "Published"
+    },
     "comments": {
       "title": "Comments",
       "page_description": "Work through the comments readers left, including the ones a commenter has withdrawn.",
@@ -1191,6 +1205,7 @@
       "scheduled_episodes": "Scheduled releases",
       "queue_title": "Publishing queue",
       "queue_description": "Episodes and upcoming releases that need attention.",
+      "calendar_link": "Open calendar",
       "queue_empty_title": "The publishing queue is empty",
       "queue_empty_description": "There are no draft or scheduled episodes. Create an episode from a series page.",
       "columns": {
@@ -1487,6 +1502,7 @@
       "administration": "Administration",
       "announcements_label": "Announcements",
       "campaign_banners_label": "Campaign banners",
+      "calendar_label": "Calendar",
       "app_links_label": "App links",
       "audit_label": "Audit logs",
       "branding_label": "Branding",

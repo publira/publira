@@ -665,6 +665,20 @@
         "period_invalid": "结束时间必须晚于开始时间，且尚未到来。"
       }
     },
+    "calendar": {
+      "title": "日历",
+      "page_description": "在发布当天显示所有已预约和已发布的章节。",
+      "time_zone_description": "日期按租户时区（{$time_zone}）划分。选择章节即可打开该章节。",
+      "section_error": "无法显示日历",
+      "load_error": "无法加载日历。请稍后再试。",
+      "previous_month": "上个月",
+      "next_month": "下个月",
+      "this_month": "本月",
+      "empty_title": "该月没有要发布的章节",
+      "empty_description": "该月没有已预约或已发布的章节。",
+      "status_scheduled": "已预约",
+      "status_published": "已发布"
+    },
     "comments": {
       "title": "评论",
       "page_description": "处理读者留下的评论，包括评论者自行撤回的评论。",
@@ -1191,6 +1205,7 @@
       "scheduled_episodes": "预约发布",
       "queue_title": "发布队列",
       "queue_description": "需要关注的章节和即将进行的发布。",
+      "calendar_link": "打开日历",
       "queue_empty_title": "发布队列为空",
       "queue_empty_description": "没有草稿章节，也没有预约发布的章节。",
       "columns": {
@@ -1487,6 +1502,7 @@
       "administration": "管理",
       "announcements_label": "公告",
       "campaign_banners_label": "活动横幅",
+      "calendar_label": "日历",
       "app_links_label": "应用链接",
       "audit_label": "审计日志",
       "branding_label": "品牌",

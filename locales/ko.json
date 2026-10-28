@@ -665,6 +665,20 @@
         "period_invalid": "게재 종료는 게재 시작보다 뒤이면서 앞으로의 일시여야 합니다."
       }
     },
+    "calendar": {
+      "title": "캘린더",
+      "page_description": "예약된 에피소드와 공개된 에피소드를 공개되는 날에 표시합니다.",
+      "time_zone_description": "날짜는 테넌트 시간대({$time_zone})를 기준으로 나눕니다. 에피소드를 선택하면 해당 에피소드가 열립니다.",
+      "section_error": "캘린더를 표시할 수 없습니다",
+      "load_error": "캘린더를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "previous_month": "이전 달",
+      "next_month": "다음 달",
+      "this_month": "이번 달",
+      "empty_title": "이 달에 공개되는 에피소드가 없습니다",
+      "empty_description": "이 달에 예약되었거나 공개된 에피소드가 없습니다.",
+      "status_scheduled": "예약됨",
+      "status_published": "공개 중"
+    },
     "comments": {
       "title": "댓글",
       "page_description": "독자가 남긴 댓글을 작성자가 삭제한 것까지 포함해 확인하고 처리합니다.",
@@ -1191,6 +1205,7 @@
       "scheduled_episodes": "예약 공개",
       "queue_title": "공개 대기열",
       "queue_description": "확인이 필요한 에피소드와 공개 예정 항목입니다.",
+      "calendar_link": "캘린더 열기",
       "queue_empty_title": "공개 대기열이 비어 있습니다",
       "queue_empty_description": "임시저장이나 예약된 에피소드가 없습니다.",
       "columns": {
@@ -1487,6 +1502,7 @@
       "administration": "관리",
       "announcements_label": "공지사항",
       "campaign_banners_label": "캠페인 배너",
+      "calendar_label": "캘린더",
       "app_links_label": "앱 링크",
       "audit_label": "감사 로그",
       "branding_label": "브랜딩",

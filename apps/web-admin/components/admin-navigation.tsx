@@ -2,6 +2,7 @@ import {
   ActivityIcon,
   BellIcon,
   BookOpenIcon,
+  CalendarIcon,
   ChartIcon,
   CoinsIcon,
   CollectionIcon,
@@ -51,6 +52,7 @@ import { TenantAdminOnly } from "./tenant-role-gate";
 const hrefs = [
   "/",
   "/series",
+  "/calendar",
   "/labels",
   "/creators",
   "/creator-roles",
@@ -115,6 +117,18 @@ export const AdminNavigation = () => (
             <ConsoleSidebar.NavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.nav.series_label" />
+              </Suspense>
+            </ConsoleSidebar.NavigationItemLabel>
+          </ConsoleSidebar.NavigationItemHeading>
+        </ConsoleSidebar.NavigationItem>
+        <ConsoleSidebar.NavigationItem href="/calendar">
+          <ConsoleSidebar.NavigationItemIcon>
+            <CalendarIcon className="size-4" />
+          </ConsoleSidebar.NavigationItemIcon>
+          <ConsoleSidebar.NavigationItemHeading>
+            <ConsoleSidebar.NavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                <Message message="admin.nav.calendar_label" />
               </Suspense>
             </ConsoleSidebar.NavigationItemLabel>
           </ConsoleSidebar.NavigationItemHeading>

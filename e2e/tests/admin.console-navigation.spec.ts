@@ -11,6 +11,7 @@ import { signInAsSeedAdmin } from "../src/admin";
 const sidebarEntries = [
   "Dashboard",
   "Series",
+  "Calendar",
   "Labels",
   "Authors",
   "Author roles",

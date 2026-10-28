@@ -436,6 +436,24 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      test("the publishing calendar, with a month's scheduled episode", async ({
+        page,
+      }) => {
+        // The month the moderation tenant's scheduled episode is due in,
+        // years ahead, so no day of it is marked as today on any run.
+        await openModerationScreen(page, locale, "/calendar?month=2030-01");
+
+        await expectDocsScreenshot(page, {
+          element: [
+            docsScreenHeader(page),
+            page.getByRole("main").getByRole("list").first(),
+          ],
+          locale,
+          page: "console/catalog/episodes",
+          subject: "calendar",
+        });
+      });
+
       test("the form that creates an episode", async ({ page }) => {
         await openScreen(page, locale, `${episodesPath}/new`);
 

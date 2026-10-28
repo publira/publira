@@ -1,8 +1,8 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, and publish it now or on time.
+description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, publish it now or on time, and see what goes out when on the calendar.
 published: 2026-10-07
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -231,6 +231,14 @@ An episode that is still **Scheduled** well after its time means the worker is n
 An episode published while its series is not public waits for the series, so that no notification leads to a page that is not found. It is announced when the series is published, whether from **Update series** or by the series' own **Publication date and time** arriving, and from then on it shows the moment the series became public as its publication date, since no reader could open it before. An episode its followers were already told about, while the series was public before, keeps its date and is not announced again.
 
 An episode published while it is **Not shown anywhere** is announced to nobody, and is not announced later when it is shown. An episode shown on only one of the site and the app is announced there alone: readers see its notification in that one's notifications, and its push notification reaches only their browsers or only their phones. Where an episode is announced is decided when `publira worker` sends its notifications, and changing its **Shown on** after that does not move a notification already sent. Set where an episode is shown before its time.
+
+### What goes out when
+
+**Calendar**, in the sidebar's **Catalog** group, shows a month of the tenant's releases across every series. Each day lists the episodes that go out on it, or went out on it, with the series' title, the episode's title, and its status, **Scheduled** or **Published**, and choosing one opens its edit screen. A day is a day in the tenant's time zone, which the screen names, so an episode scheduled for 23:30 there is on that day wherever the person looking at it is. Drafts have no time and are not on it.
+
+The calendar opens on the current month, with today marked. **Previous month** and **Next month** move a month at a time, and **This month** comes back. **Open calendar**, beside the Dashboard's **Publishing queue**, opens it as well. Every member of the staff can open it, and nothing is changed from it: an episode is rescheduled under its own **Publishing settings**.
+
+![The Calendar for January 2030: Previous month, This month, and Next month beside the month, the note that days are counted in the tenant's time zone, and the month's grid with one scheduled episode on the 11th, under its series' title.](./episodes-calendar.png)
 
 ### Taking an episode off the site
 
