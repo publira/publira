@@ -7,6 +7,7 @@ import { fillField, signInAsSeedAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import { EYE_CATCH_ASPECT_FIXTURES } from "../src/scenarios/eye-catch";
 import { MULTI_TENANT_SCENARIO } from "../src/scenarios/multi-tenant";
+import { SEED_DARK_THEME } from "../src/scenarios/seed-dark-theme";
 import { serverActionAnswered } from "../src/server-action";
 import {
   storefrontPath,
@@ -29,6 +30,9 @@ const otherStorefrontUrl = (pathname: string): string =>
  * `DEFAULT_TENANT_THEME_COLORS` in `@publira/utils/theme-css-variables`.
  */
 const DEFAULT_PRIMARY_COLOR = "#2b4c8c";
+
+/** Default `--publira-color-background`, from the same defaults. */
+const DEFAULT_BACKGROUND_COLOR = "#f5f5f2";
 
 /** A passing contrast pair against the default primary text color `#ffffff`. */
 const SAVED_PRIMARY_COLOR = "#1d4ed8";
@@ -168,6 +172,14 @@ const primaryCustomProperty = (page: Page): Promise<string> =>
       .toLowerCase()
   );
 
+const backgroundCustomProperty = (page: Page): Promise<string> =>
+  page.evaluate(() =>
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--publira-color-background")
+      .trim()
+      .toLowerCase()
+  );
+
 const storefrontSansFontFamily = (page: Page): Promise<string> =>
   page.evaluate(() => getComputedStyle(document.body).fontFamily);
 
@@ -288,6 +300,23 @@ const deleteDarkPaletteIfSet = async (page: Page): Promise<void> => {
   }
   await page.getByRole("tab", { name: "Light" }).click();
   await expect(primaryColorField(page)).toBeVisible();
+};
+
+/**
+ * Save the seed tenant's dark palette back, as `task e2e:db` left it, so the
+ * suites after this one still find the storefront's Theme control.
+ */
+const restoreSeedDarkPalette = async (page: Page): Promise<void> => {
+  await openDarkTab(page);
+  await Promise.all(
+    Object.entries(SEED_DARK_THEME).map(([name, color]) =>
+      fillField(page.locator(`input[name="${name}"]`), color)
+    )
+  );
+  const saved = serverActionAnswered(page);
+  await page.getByRole("button", { name: "Save the dark palette" }).click();
+  await saved;
+  await expectStatus(page, "The dark palette was saved.");
 };
 
 const deleteBrandingIfSet = async (
@@ -477,7 +506,7 @@ test.describe("admin brand settings", () => {
       await restoreFontFamilies(page);
     }
     if (restoreDarkTheme) {
-      await deleteDarkPaletteIfSet(page);
+      await restoreSeedDarkPalette(page);
     }
   });
 
@@ -592,6 +621,23 @@ test.describe("admin brand settings", () => {
     await openThemeSettings(page);
     await openDarkTab(page);
     await expect(page.getByText(DARK_PALETTE_UNSAVED)).toBeVisible();
+  });
+
+  test("the seeded dark palette puts the Theme control in the public header, and choosing Dark repaints the page in it", async ({
+    page,
+  }) => {
+    await disableThemeCssHttpCache(page);
+    await pollStorefrontPage(page, storefrontUrl("/"), () =>
+      page.locator("header").getByRole("button", { name: "Theme" }).count()
+    ).toBe(1);
+    expect(await backgroundCustomProperty(page)).toBe(DEFAULT_BACKGROUND_COLOR);
+
+    await page.locator("header").getByRole("button", { name: "Theme" }).click();
+    await page.getByRole("button", { exact: true, name: "Dark" }).click();
+
+    await expect
+      .poll(() => backgroundCustomProperty(page))
+      .toBe(SEED_DARK_THEME.background_color);
   });
 
   test("a theme change on one tenant does not affect another tenant's /theme.css", async ({
