@@ -23,6 +23,10 @@
       "types": "./dist/bell-icon.d.mts",
       "default": "./dist/bell-icon.mjs"
     },
+    "./bold-icon": {
+      "types": "./dist/bold-icon.d.mts",
+      "default": "./dist/bold-icon.mjs"
+    },
     "./book-open-icon": {
       "types": "./dist/book-open-icon.d.mts",
       "default": "./dist/book-open-icon.mjs"
@@ -62,6 +66,10 @@
     "./close-icon": {
       "types": "./dist/close-icon.d.mts",
       "default": "./dist/close-icon.mjs"
+    },
+    "./code-icon": {
+      "types": "./dist/code-icon.d.mts",
+      "default": "./dist/code-icon.mjs"
     },
     "./coins-icon": {
       "types": "./dist/coins-icon.d.mts",
@@ -107,6 +115,14 @@
       "types": "./dist/grip-vertical-icon.d.mts",
       "default": "./dist/grip-vertical-icon.mjs"
     },
+    "./heading-2-icon": {
+      "types": "./dist/heading-2-icon.d.mts",
+      "default": "./dist/heading-2-icon.mjs"
+    },
+    "./heading-3-icon": {
+      "types": "./dist/heading-3-icon.d.mts",
+      "default": "./dist/heading-3-icon.mjs"
+    },
     "./heart-icon": {
       "types": "./dist/heart-icon.d.mts",
       "default": "./dist/heart-icon.mjs"
@@ -119,6 +135,10 @@
       "types": "./dist/image-icon.d.mts",
       "default": "./dist/image-icon.mjs"
     },
+    "./italic-icon": {
+      "types": "./dist/italic-icon.d.mts",
+      "default": "./dist/italic-icon.mjs"
+    },
     "./key-round-icon": {
       "types": "./dist/key-round-icon.d.mts",
       "default": "./dist/key-round-icon.mjs"
@@ -130,6 +150,14 @@
     "./link-icon": {
       "types": "./dist/link-icon.d.mts",
       "default": "./dist/link-icon.mjs"
+    },
+    "./list-icon": {
+      "types": "./dist/list-icon.d.mts",
+      "default": "./dist/list-icon.mjs"
+    },
+    "./list-ordered-icon": {
+      "types": "./dist/list-ordered-icon.d.mts",
+      "default": "./dist/list-ordered-icon.mjs"
     },
     "./lock-icon": {
       "types": "./dist/lock-icon.d.mts",
@@ -207,6 +235,14 @@
       "types": "./dist/shield-user-icon.d.mts",
       "default": "./dist/shield-user-icon.mjs"
     },
+    "./square-code-icon": {
+      "types": "./dist/square-code-icon.d.mts",
+      "default": "./dist/square-code-icon.mjs"
+    },
+    "./strikethrough-icon": {
+      "types": "./dist/strikethrough-icon.d.mts",
+      "default": "./dist/strikethrough-icon.mjs"
+    },
     "./sun-moon-icon": {
       "types": "./dist/sun-moon-icon.d.mts",
       "default": "./dist/sun-moon-icon.mjs"
@@ -214,6 +250,10 @@
     "./tag-icon": {
       "types": "./dist/tag-icon.d.mts",
       "default": "./dist/tag-icon.mjs"
+    },
+    "./text-quote-icon": {
+      "types": "./dist/text-quote-icon.d.mts",
+      "default": "./dist/text-quote-icon.mjs"
     },
     "./ticket-icon": {
       "types": "./dist/ticket-icon.d.mts",
