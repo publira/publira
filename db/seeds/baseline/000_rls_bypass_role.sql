@@ -320,6 +320,24 @@ REVOKE UPDATE, DELETE ON audit_logs, platform_audit_logs FROM publira_platform, 
 -- deletes an account.
 REVOKE EXECUTE ON FUNCTION public.audit_logs_keep_deleted_actor() FROM PUBLIC;
 
+-- Every other SECURITY DEFINER function runs as the owner too, and is taken
+-- from PUBLIC for the same reasons. The trigger functions reach no role
+-- again: their triggers are all that call them.
+REVOKE EXECUTE ON FUNCTION
+    public.episode_rating_counts_follow_ratings(),
+    public.series_rating_counts_follow_ratings(),
+    public.episode_ratings_follow_episode_deletes(),
+    public.series_follows_record_change(),
+    public.tenant_image_shown_by_brand_mark(uuid, uuid)
+FROM PUBLIC;
+
+-- tenant_image_shown_by_brand_mark is called from the restrictive policy on
+-- tenant_images, and a policy calls a function as the role whose statement it
+-- filters, so the roles that delete tenant images keep it: the console's, and
+-- the maintenance role the orphan image sweep runs as. A tenant's deletion
+-- reaches its images through foreign keys, which no policy filters.
+GRANT EXECUTE ON FUNCTION public.tenant_image_shown_by_brand_mark(uuid, uuid) TO publira_admin, publira_content_stats;
+
 -- The storefront and the tenant console charge their rate limits, and decide
 -- whether a tenant admin owes a second factor, from the platform policy. It
 -- holds no secret, so both roles read it; neither may write it.

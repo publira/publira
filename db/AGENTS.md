@@ -64,6 +64,14 @@ Declare every view `WITH (security_invoker = true)`. Without it a view runs with
 
 A rule that takes an argument from the query, such as which reader is asking, is a SQL function instead, as `reader_may_open_episode` is, and stays `SECURITY INVOKER` for the same reason.
 
+A function is `SECURITY DEFINER` only when it has to write or read what the calling role may not, as the triggers that keep a tally do. It then runs as the schema's owner, outside every table's row-level security, and declares what keeps a role from steering it elsewhere:
+
+- `SET search_path = pg_catalog, public, pg_temp`, with `pg_temp` last, and every table the body touches named `public.`. Every role may create temporary tables, and a search path that leaves `pg_temp` out searches it first, so a temporary table of the same name would take the body's write and run its own triggers as the owner.
+- In the baseline seed, `REVOKE EXECUTE ... FROM PUBLIC`, granting it back only to the roles that call the function themselves. It is in the seed rather than the migration because a restore drops every privilege and `db roles` puts them back. A role that can execute a trigger function can attach it to a temporary table of its own and fire it on rows it made up; the triggers the migrations create keep firing, because `EXECUTE` is checked when a trigger is created rather than when it fires. A function a policy calls runs as the role whose statement the policy filters, so that role keeps `EXECUTE`.
+- In a trigger function, a first statement that raises unless `TG_RELID` is the table its trigger is on.
+
+`TestSecurityDefinerFunctionsPinTheirSearchPathAndRefusePublic` reads every `SECURITY DEFINER` function in `public` out of the catalog and fails on one whose `search_path` does not end in `pg_temp` or that `PUBLIC` may still execute, and `TestSecurityDefinerTriggerFunctionsRefuseAnotherTable` fails on a trigger function that runs for a table of the caller's choosing.
+
 ## Layout (quick map)
 
 | Path | Role |
