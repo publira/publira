@@ -24,7 +24,7 @@ jobs:
   check:
     name: Check upgrade notes
     if: github.event_name == 'pull_request_target'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     concurrency:
       group: release-notes-check-${{ github.event.pull_request.number }}
@@ -78,7 +78,7 @@ jobs:
   version:
     name: Check version
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -124,7 +124,7 @@ jobs:
     name: Publish release
     needs: images
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write

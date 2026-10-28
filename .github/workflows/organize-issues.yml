@@ -13,7 +13,7 @@ jobs:
   label-area:
     name: Label area from issue form
     if: github.event_name == 'issues' && github.event.action == 'opened'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       issues: write
