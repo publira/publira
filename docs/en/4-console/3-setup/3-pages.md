@@ -2,7 +2,7 @@
 title: Pages
 description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
 published: 2026-10-07
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in Markdown, kept in versions, and can be translated into each of the site's languages.

@@ -3,22 +3,15 @@
 import { SunMoonIcon } from "@publira/icons/sun-moon-icon";
 import * as SiteLayout from "@publira/layouts/site-layout";
 import * as Popover from "@publira/ui-components/popover";
+import type { ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import type { StorefrontClientMessageKey } from "#lib/messages";
 import {
   parseThemePreference,
   THEME_PREFERENCE_STORAGE_KEY,
-  THEME_PREFERENCES,
 } from "#lib/theme-preference";
 import type { ThemePreference } from "#lib/theme-preference";
 import { useWebStorage, writeWebStorage } from "#lib/web-storage";
-
-const preferenceLabel: Record<ThemePreference, StorefrontClientMessageKey> = {
-  dark: "storefront.nav.theme_dark",
-  light: "storefront.nav.theme_light",
-  system: "storefront.nav.theme_system",
-};
 
 /**
  * Stores a choice. `<DocumentTheme>` subscribes to the same key, so storing it
@@ -35,6 +28,49 @@ const choose = (preference: ThemePreference) => {
  */
 const useThemePreference = (): ThemePreference =>
   parseThemePreference(useWebStorage("local", THEME_PREFERENCE_STORAGE_KEY));
+
+interface ThemeSwitchOptionProps {
+  children: ReactNode;
+  /** The choice in effect, which this option is marked against. */
+  current: ThemePreference;
+  preference: ThemePreference;
+}
+
+/** One choice in the header's popover. */
+const ThemeSwitchOption = ({
+  children,
+  current,
+  preference,
+}: ThemeSwitchOptionProps) => (
+  <button
+    aria-pressed={preference === current}
+    className="rounded-control px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden aria-pressed:bg-muted aria-pressed:font-medium aria-pressed:text-foreground pointer-coarse:py-3"
+    onClick={() => {
+      choose(preference);
+    }}
+    type="button"
+  >
+    {children}
+  </button>
+);
+
+/** One choice among the drawer's rows, drawn as the rows beside it are. */
+const ThemeSwitchDisclosureOption = ({
+  children,
+  current,
+  preference,
+}: ThemeSwitchOptionProps) => (
+  <button
+    aria-pressed={preference === current}
+    className="rounded-control px-3 py-2 text-left text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:bg-muted focus-visible:outline-hidden aria-pressed:bg-muted aria-pressed:font-medium pointer-coarse:py-3"
+    onClick={() => {
+      choose(preference);
+    }}
+    type="button"
+  >
+    {children}
+  </button>
+);
 
 /**
  * Header control for light, dark, or the system setting, beside the locale
@@ -59,19 +95,15 @@ const ThemeSwitch = () => {
           {label}
         </Popover.Title>
         <div className="grid gap-0.5">
-          {THEME_PREFERENCES.map((option) => (
-            <button
-              aria-pressed={option === preference}
-              className="rounded-control px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-state ease-state hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:outline-hidden aria-pressed:bg-muted aria-pressed:font-medium aria-pressed:text-foreground pointer-coarse:py-3"
-              key={option}
-              onClick={() => {
-                choose(option);
-              }}
-              type="button"
-            >
-              {t(preferenceLabel[option])}
-            </button>
-          ))}
+          <ThemeSwitchOption current={preference} preference="light">
+            {t("storefront.nav.theme_light")}
+          </ThemeSwitchOption>
+          <ThemeSwitchOption current={preference} preference="dark">
+            {t("storefront.nav.theme_dark")}
+          </ThemeSwitchOption>
+          <ThemeSwitchOption current={preference} preference="system">
+            {t("storefront.nav.theme_system")}
+          </ThemeSwitchOption>
         </div>
       </Popover.Content>
     </Popover.Root>
@@ -92,19 +124,15 @@ const ThemeSwitchDisclosure = () => {
         <ClientMessage message="storefront.nav.theme_switch" />
       </SiteLayout.MobileNavigationDisclosureTrigger>
       <SiteLayout.MobileNavigationDisclosurePanel>
-        {THEME_PREFERENCES.map((option) => (
-          <button
-            aria-pressed={option === preference}
-            className="rounded-control px-3 py-2 text-left text-sm text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:bg-muted focus-visible:outline-hidden aria-pressed:bg-muted aria-pressed:font-medium pointer-coarse:py-3"
-            key={option}
-            onClick={() => {
-              choose(option);
-            }}
-            type="button"
-          >
-            <ClientMessage message={preferenceLabel[option]} />
-          </button>
-        ))}
+        <ThemeSwitchDisclosureOption current={preference} preference="light">
+          <ClientMessage message="storefront.nav.theme_light" />
+        </ThemeSwitchDisclosureOption>
+        <ThemeSwitchDisclosureOption current={preference} preference="dark">
+          <ClientMessage message="storefront.nav.theme_dark" />
+        </ThemeSwitchDisclosureOption>
+        <ThemeSwitchDisclosureOption current={preference} preference="system">
+          <ClientMessage message="storefront.nav.theme_system" />
+        </ThemeSwitchDisclosureOption>
       </SiteLayout.MobileNavigationDisclosurePanel>
     </SiteLayout.MobileNavigationDisclosure>
   );

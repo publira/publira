@@ -4,13 +4,6 @@
  */
 export type ThemePreference = "dark" | "light" | "system";
 
-/** In the order the switch lists them. */
-export const THEME_PREFERENCES: readonly ThemePreference[] = [
-  "light",
-  "dark",
-  "system",
-];
-
 /**
  * One key for every tenant: the inline script that applies it runs before
  * anything names the tenant, and light or dark is a choice about the reader's

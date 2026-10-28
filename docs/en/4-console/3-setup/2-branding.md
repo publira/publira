@@ -2,7 +2,7 @@
 title: Branding
 description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, upload other companies' marks under their guidelines, and check the theme in the preview before readers see it.
 published: 2026-10-07
-updated: 2026-10-27
+updated: 2026-10-28
 ---
 
 **Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, the marks of other companies, its colors, and the faces its text is set in. The screen has **Logo**, **Icon**, **Sign-in image**, **Brand marks**, and the theme's colors and typefaces. Each is saved on its own, and saving one leaves the others as they are.
