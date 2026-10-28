@@ -53,6 +53,7 @@ This always tears down app processes and compose volumes, including on failure o
 | `task e2e:test` | Run Playwright only against a running stack. |
 | `task e2e:search` | The full lifecycle on the OpenSearch search backend, running the `search` group alone; see [Catalog search on OpenSearch](#catalog-search-on-opensearch). |
 | `task e2e:tracing` | The full lifecycle with every process tracing into a Jaeger of the stack's own, running the `tracing` group alone; see [Trace propagation](#trace-propagation). |
+| `task e2e:restore` | Build, then back the seeded stack up and restore it into empty services as the backup runbook says, running the `restore` group on the restore; see [Backup and restore](#backup-and-restore). |
 | `task e2e:test-lib` | Verify `PUBLIRA_E2E_RUN_DIR` isolation and compose-project locks (no Docker required; also run by `task e2e`). |
 | `task e2e:down` | Stop applications and remove compose resources, including volumes. |
 
@@ -116,7 +117,7 @@ Host-based URL constants are in `src/urls.ts`. web-storefront resolves the tenan
 
 ### Groups
 
-Every project belongs to one of six groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)). A seventh, `search`, takes two projects of `main` onto the OpenSearch backend for `task e2e:search`:
+Every project belongs to one of seven groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)). An eighth, `search`, takes two projects of `main` onto the OpenSearch backend for `task e2e:search`:
 
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
@@ -126,6 +127,7 @@ Every project belongs to one of six groups, and CI runs each group as a job of i
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, `docs-screenshots-first-operator`, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
 | `performance` | `viewer-performance` | A machine with nothing else running on it. |
 | `tracing` | `trace-propagation` | Every process tracing into the stack's Jaeger, which `PUBLIRA_E2E_TRACING=on` starts and no other group's stack runs. |
+| `restore` | `restore` | The services `scripts/backup-and-restore.sh` restored from a backup of the seed, which no other group's stack is. |
 | `search` | `catalog-search`, `platform-search-settings` | The OpenSearch backend `task e2e:search` starts and saves. |
 
 `PUBLIRA_E2E_GROUP` runs one group alone, through `task e2e` or `task e2e:test`; a name that is not a group fails the run before any test starts:
@@ -134,7 +136,7 @@ Every project belongs to one of six groups, and CI runs each group as a job of i
 PUBLIRA_E2E_GROUP=exclusive task e2e
 ```
 
-A dependency between projects of two groups only orders work on a stack they share, so a group run drops it and keeps the dependencies inside the group. A project therefore must not need anything a project of another group leaves behind. Without `PUBLIRA_E2E_GROUP`, every group but `tracing` runs on one stack, ordered by the whole graph described below.
+A dependency between projects of two groups only orders work on a stack they share, so a group run drops it and keeps the dependencies inside the group. A project therefore must not need anything a project of another group leaves behind. Without `PUBLIRA_E2E_GROUP`, every group but `tracing` and `restore` runs on one stack, ordered by the whole graph described below.
 
 `server-logs` belongs to every group. It is the teardown of every other project, so it reads the logs once everything before it has finished — in a run of the whole graph, in a group run, and in each shard of one.
 
@@ -193,6 +195,10 @@ The stack traces nothing. `PUBLIRA_E2E_TRACING` selects whether it does, and `sc
 | `on` | `PUBLIRA_TRACING_ENABLED=true`, exporting over OTLP to `http://127.0.0.1:<PUBLIRA_E2E_JAEGER_OTLP_PORT>`, every root span sampled | The `jaeger` service, through `COMPOSE_PROFILES=tracing`, on `PUBLIRA_E2E_JAEGER_OTLP_PORT` (default `4319`) for the intake and `PUBLIRA_E2E_JAEGER_QUERY_PORT` (default `16687`) for the query API, which a spec reads at `PUBLIRA_E2E_JAEGER_BASE_URL` |
 
 `task e2e:tracing` sets `PUBLIRA_E2E_TRACING=on` and `PUBLIRA_E2E_GROUP=tracing`, which runs one project, `trace-propagation` (`tests/storefront.trace-propagation.spec.ts`). The run of the whole graph leaves the group out, since its stack traces nothing.
+
+## Backup and restore
+
+`task e2e:restore` builds the stack's processes and the `publiractl` image, `publira/publiractl:local`, and runs [`scripts/backup-and-restore.sh`](../scripts/backup-and-restore.sh) on them. The script seeds the stack with its bucket named `publira-images`, takes a backup with the commands of [Backup and restore](../docs/en/2-deployments/9-backup-and-restore.md), replaces PostgreSQL, RustFS, and Valkey with empty ones, restores the backup with the page's commands, and fails when a plain `pg_dump` of the restored database differs from one of the backup restored with its owners, grants, and policies, or the objects in the restored bucket differ from the ones backed up. It then starts the processes, waits for their readiness, runs the page's `db version` and `storage test`, and runs the `restore` group (`tests/backup.restore.spec.ts`): the tenant console's sign-in, a series' cover, and an episode's pages.
 
 ## Readiness and failures
 
@@ -306,5 +312,7 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 - The required branch check is the final **Summary** job, as with all CI jobs; it reports the matrix as one `Test / E2E` result.
 
 Job: **Test / E2E Search** runs `task e2e:search`. Its path filter is the OpenSearch backend and its wiring — the search packages under `server/`, `db/query/catalog_index.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, `tests/catalog.search.spec.ts`, `tests/platform.search-settings.spec.ts` and the Platform Console screen it drives, the helpers under `src/`, and `db/seeds/**`, whose rows the OpenSearch-only cases search for — and its failure artifact is `e2e-search-artifacts`.
+
+Job: **Test / Restore** runs `task e2e:restore`; its path filter is in [the workflow overview](../.github/workflows/README.md#path-filters), and its failure artifact is `restore-artifacts`.
 
 See [the workflow overview](../.github/workflows/README.md) for job layout, filters, and failure triage.

@@ -64,6 +64,7 @@ jobs:
       test_mobile_ios: ${{ steps.plan.outputs.test_mobile_ios }}
       test_e2e: ${{ steps.plan.outputs.test_e2e }}
       test_e2e_search: ${{ steps.plan.outputs.test_e2e_search }}
+      test_restore: ${{ steps.plan.outputs.test_restore }}
       test_bootstrap: ${{ steps.plan.outputs.test_bootstrap }}
       test_routing: ${{ steps.plan.outputs.test_routing }}
       test_deploy: ${{ steps.plan.outputs.test_deploy }}
@@ -142,6 +143,8 @@ jobs:
               - 'docs/**'
               - '**/*.md'
               - 'scripts/check-docs.ts'
+              # A script holds the commands a page quotes from it.
+              - '**/*.sh'
               - deleted|renamed: '**'
             # Narrower than test_go on purpose: golangci-lint only reads Go
             # sources and server/.golangci.yml, and `task gen` writes its output
@@ -345,6 +348,33 @@ jobs:
               - '.github/actions/pnpm-setup/**'
               - '.github/actions/tool-install/**'
               - '.github/actions/main-cache-save/**'
+            # The schema, the roles, and the publiractl image a backup is
+            # restored with, and the stack the restore runs on.
+            test_restore:
+              - *docs_excluded
+              - 'db/**'
+              - 'server/**'
+              - 'infra/docker/publiractl/**'
+              - 'scripts/backup-and-restore.sh'
+              - 'scripts/storage-init.sh'
+              - 'scripts/storage-seed.sh'
+              - 'e2e/compose.yaml'
+              - 'e2e/scripts/**'
+              - 'e2e/Taskfile.yaml'
+              - 'e2e/playwright.config.ts'
+              - 'e2e/tests/*.restore.spec.ts'
+              - 'Taskfile.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci-plan-jobs.sh'
+              - '.github/actions/apt-install/**'
+              - '.github/actions/go-setup/**'
+              - '.github/actions/pnpm-setup/**'
+              - '.github/actions/tool-install/**'
+              - '.github/actions/main-cache-save/**'
+            # The runbook the restore follows, which test_restore leaves out
+            # with the rest of the Markdown.
+            test_restore_docs:
+              - 'docs/en/2-deployments/9-backup-and-restore.md'
             test_bootstrap:
               - *docs_excluded
               - 'compose.yaml'
@@ -487,6 +517,8 @@ jobs:
           FILTER_TEST_MOBILE_IOS: ${{ steps.filter.outputs.test_mobile_ios }}
           FILTER_TEST_E2E: ${{ steps.filter.outputs.test_e2e }}
           FILTER_TEST_E2E_SEARCH: ${{ steps.filter.outputs.test_e2e_search }}
+          FILTER_TEST_RESTORE: ${{ steps.filter.outputs.test_restore }}
+          FILTER_TEST_RESTORE_DOCS: ${{ steps.filter.outputs.test_restore_docs }}
           FILTER_TEST_BOOTSTRAP: ${{ steps.filter.outputs.test_bootstrap }}
           FILTER_TEST_ROUTING: ${{ steps.filter.outputs.test_routing }}
           FILTER_TEST_DEPLOY: ${{ steps.filter.outputs.test_deploy }}
@@ -1543,6 +1575,118 @@ jobs:
             e2e/.run/logs/
           if-no-files-found: ignore
 
+  test-restore:
+    name: Test / Restore
+    needs: changes
+    if: needs.changes.outputs.test_restore == 'true'
+    runs-on: ubuntu-26.04
+    # The build, the publiractl image, and two stacks brought up one after
+    # the other.
+    timeout-minutes: 45
+    steps:
+      - name: Setup / Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup / Go
+        uses: ./.github/actions/go-setup
+        with:
+          build-cache: build
+
+      - name: Setup / libvips
+        uses: ./.github/actions/apt-install
+        with:
+          packages: libvips-dev pkg-config
+
+      - name: Install Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: ${{ env.TASK_VERSION }}
+
+      - name: Setup / pnpm
+        uses: ./.github/actions/pnpm-setup
+        with:
+          # Dependencies are installed by `task deps`, which also runs
+          # `task server:deps`. Keep a single install path per job.
+          install: false
+
+      - name: Setup / Install migrate
+        uses: ./.github/actions/tool-install
+        with:
+          tool: migrate
+
+      - name: Setup / Install wait4x
+        uses: ./.github/actions/tool-install
+        with:
+          tool: wait4x
+
+      - name: Dependencies / Install
+        run: task deps
+
+      # Installed ahead of `playwright install --with-deps` for the reason
+      # `Test / E2E` gives.
+      - name: Setup / Playwright package list
+        id: playwright-packages
+        run: |
+          set -uo pipefail
+          status=0
+          report="$(pnpm --dir e2e exec playwright install-deps --dry-run chromium)" || status=$?
+          packages="$(sed -n 's/^  //p' <<< "${report}" | tr '\n' ' ')"
+          if ((status != 0)) && [[ -z "${packages// /}" ]]; then
+            echo "${report}"
+            exit "${status}"
+          fi
+          echo "packages=${packages}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup / Playwright packages
+        if: steps.playwright-packages.outputs.packages != ''
+        uses: ./.github/actions/apt-install
+        with:
+          packages: ${{ steps.playwright-packages.outputs.packages }}
+
+      # Keyed for the reasons `Test / E2E Search` gives.
+      - name: Cache / Playwright key
+        id: playwright-key
+        run: |
+          set -euo pipefail
+          version="$(pnpm --dir e2e exec playwright --version)"
+          echo "key=playwright-${ImageOS}-${version#Version }" >> "$GITHUB_OUTPUT"
+
+      - name: Cache / Playwright browsers
+        id: playwright
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright-key.outputs.key }}
+
+      - name: Build + Backup + Restore + Verify
+        # The seeded stack backed up and restored into empty services as the
+        # backup runbook says, then checked as it says. Always tears the stack
+        # down (trap).
+        run: task e2e:restore
+        env:
+          CI: true
+
+      # Saved on `main` alone, for the reason `Test / E2E` gives.
+      - name: Cache / Save Playwright browsers
+        if: github.ref == 'refs/heads/main' && steps.playwright.outputs.cache-hit != 'true'
+        uses: ./.github/actions/main-cache-save
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright-key.outputs.key }}
+
+      - name: Upload / E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: restore-artifacts
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/.run/logs/
+          if-no-files-found: ignore
+
   test-bootstrap:
     name: Test / Bootstrap
     needs: changes
@@ -1862,6 +2006,7 @@ jobs:
       - test-e2e
       - test-e2e-report
       - test-e2e-search
+      - test-restore
       - test-bootstrap
       - test-routing
       - test-deploy
@@ -1891,6 +2036,7 @@ jobs:
           TEST_E2E: ${{ needs.test-e2e.result }}
           TEST_E2E_REPORT: ${{ needs.test-e2e-report.result }}
           TEST_E2E_SEARCH: ${{ needs.test-e2e-search.result }}
+          TEST_RESTORE: ${{ needs.test-restore.result }}
           TEST_BOOTSTRAP: ${{ needs.test-bootstrap.result }}
           TEST_ROUTING: ${{ needs.test-routing.result }}
           TEST_DEPLOY: ${{ needs.test-deploy.result }}
@@ -1920,6 +2066,7 @@ jobs:
             "Test / E2E=${TEST_E2E}" \
             "Test / E2E Report=${TEST_E2E_REPORT}" \
             "Test / E2E Search=${TEST_E2E_SEARCH}" \
+            "Test / Restore=${TEST_RESTORE}" \
             "Test / Bootstrap=${TEST_BOOTSTRAP}" \
             "Test / Routing=${TEST_ROUTING}" \
             "Test / Deploy=${TEST_DEPLOY}" \

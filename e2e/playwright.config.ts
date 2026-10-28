@@ -173,6 +173,14 @@ const platformSearchSettingsSpecs = /platform\.search-settings\./u;
 const tracePropagationSpecs = /\.trace-propagation\./u;
 
 /**
+ * The checks the backup runbook makes of a restore, run by
+ * `scripts/backup-and-restore.sh` on the services it restored. They assert on
+ * the seed as the backup holds it, so they are a group of their own that only
+ * that script runs, and are left out of the run of the whole graph.
+ */
+const restoreSpecs = /\.restore\./u;
+
+/**
  * The suites that record what a screen looks like. In a run of the whole
  * graph they run before every other project, as its dependency, because the
  * state they photograph is the one `task e2e:db` seeded: the admin console
@@ -324,6 +332,7 @@ const mainProjects: PlaywrightTestProject[] = [
       catalogSearchSpecs,
       tabletSpecs,
       tracePropagationSpecs,
+      restoreSpecs,
     ],
     use: {
       ...desktopChrome,
@@ -739,6 +748,17 @@ const performanceProjects: PlaywrightTestProject[] = [
   },
 ];
 
+const restoreProjects: PlaywrightTestProject[] = [
+  {
+    name: "restore",
+    testMatch: [restoreSpecs],
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_STOREFRONT_BASE_URL,
+    },
+  },
+];
+
 const tracingProjects: PlaywrightTestProject[] = [
   {
     name: "trace-propagation",
@@ -762,14 +782,18 @@ const tracingProjects: PlaywrightTestProject[] = [
  * on its stack, and keeps the ones inside the group. A project therefore may
  * not need what another group's project leaves behind.
  *
- * Without `PUBLIRA_E2E_GROUP` the run is every group but `tracing` on one
- * stack, ordered by the whole graph, which is what `task e2e` does.
+ * Without `PUBLIRA_E2E_GROUP` the run is every group but `tracing` and
+ * `restore` on one stack, ordered by the whole graph, which is what
+ * `task e2e` does.
  */
 const groups = {
   admin: adminProjects,
   exclusive: exclusiveProjects,
   main: mainProjects,
   performance: performanceProjects,
+  // `scripts/backup-and-restore.sh`, on a stack restored from a backup of
+  // the seed. No CI matrix entry names it; Test / Restore runs the script.
+  restore: restoreProjects,
   screenshots: screenshotProjects,
   // `task e2e:search`, on the OpenSearch backend: the catalog search suite
   // and then the suite that moves the search off the engine and back. No CI

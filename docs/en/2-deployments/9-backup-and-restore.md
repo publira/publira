@@ -2,12 +2,14 @@
 title: Backup and restore
 description: What an install keeps and has to be backed up, how to take a backup that restores, and how to bring an install back on empty services.
 published: 2026-10-06
-updated: 2026-10-20
+updated: 2026-10-28
 ---
 
 An install keeps its state in three places: the PostgreSQL database, the object store bucket, and the secret encryption keys, which only you hold. Restored without the others, each one is incomplete: rows name images the bucket does not have, the bucket holds images no row names, and the credentials in the database are sealed with keys nobody has. This page names what to back up and why, how to take a backup that restores into a working install, and how to bring an install back from it on empty services.
 
 The steps are written for an install you run yourself, as [Installing](./2-installing.md) brings up. The install from the repository's Compose file runs the same steps with commands of its own, in [On the Docker Compose install](#on-the-docker-compose-install).
+
+`publiractl` in the commands stands for the `publiractl` image of the release the install runs, as in [Installing](./2-installing.md#before-you-start), with the variables each command reads passed into it: `db` reads `PUBLIRA_DB_URL`, the connection of the administrative login; `storage` reads `PUBLIRA_PLATFORM_DB_URL`, and `search reindex` reads `PUBLIRA_CONTENT_STATS_DB_URL`, both with `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`. CI takes a backup and restores it with these commands on every change to the schema, in [`scripts/backup-and-restore.sh`](https://github.com/publira/publira/blob/main/scripts/backup-and-restore.sh).
 
 ## What to back up
 
@@ -61,18 +63,22 @@ The rest of the install keeps serving. What the worker would have done meanwhile
 
 ```bash
 pg_dump --format=custom --file=publira.dump --dbname="$PUBLIRA_DB_URL"
-docker run --rm -e PUBLIRA_DB_URL publira/publiractl:<tag> db version
+publiractl db version > publira.version
 ```
 
 `PUBLIRA_DB_URL` is the connection of the [administrative login](./2-installing.md#provision-the-services), and `pg_dump` has to be the major version of your PostgreSQL server or newer. It reads every table in one snapshot, so the backup is consistent while the processes keep serving, and holds what was committed when it started.
 
-`db version` prints the schema version of the database, which is the release the backup restores onto. Keep its output, and the release's tag, with the backup.
+`db version` prints the schema version of the database, which is the release the backup restores onto. Keep `publira.version`, and the release's tag, with the backup.
 
 A snapshot from a managed PostgreSQL does the same job. It is restored the way its provider describes, and carries the roles with it.
 
 ### 3. Back up the bucket
 
-Copy every object in the bucket to storage somewhere else, with any S3 client that copies a whole bucket, such as `aws s3 sync` or `rclone copy`. Use a copy that never deletes from its destination, which neither of those does, and copy into the same destination every time, so that every database backup you keep, not only the newest, finds its objects there.
+Copy every object in the bucket to storage somewhere else, with any S3 client that copies a whole bucket, such as `aws s3 sync` or `rclone copy`. Use a copy that never deletes from its destination, which neither of those does, and copy into the same destination every time, so that every database backup you keep, not only the newest, finds its objects there. With the AWS CLI, from the bucket `publira-images` into the directory `publira-bucket`:
+
+```bash
+aws s3 sync s3://publira-images publira-bucket
+```
 
 The order is what makes the two backups fit together. An upload writes the objects first and then the row that names them, and an object is never rewritten, so every object a row in the database backup names was already in the bucket when that backup started. With the worker stopped, none of them is deleted before the copy reaches it, so the bucket backup has every one of them.
 
@@ -106,7 +112,7 @@ pg_restore --no-owner --no-acl --single-transaction --use-list=publira.list --db
 ### 2. Create the roles
 
 ```bash
-docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro publira/publiractl:<tag> db roles \
+publiractl db roles \
   --public-password-file /run/secrets/publira-public-db-password \
   --admin-password-file /run/secrets/publira-admin-db-password \
   --platform-password-file /run/secrets/publira-platform-db-password \
@@ -115,19 +121,20 @@ docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro publira/publir
   --content-stats-password-file /run/secrets/publira-content-stats-db-password
 ```
 
-It is the command [Create the roles](./2-installing.md#2-create-the-roles) runs at install, and it does the same here: it creates the six roles and grants them what the release defines, gives `publira_outbox` the job queue's tables and keeps every other role away from them, and sets every password. With the passwords the install ran with, the processes' connection URLs keep working; with new ones, update the URLs.
+It is the command [Create the roles](./2-installing.md#2-create-the-roles) runs at install, reading each password from a file the container has mounted at `/run/secrets`, and it does the same here: it creates the six roles and grants them what the release defines, gives `publira_outbox` the job queue's tables and keeps every other role away from them, and sets every password. With the passwords the install ran with, the processes' connection URLs keep working; with new ones, update the URLs.
 
 ### 3. Restore the bucket
 
-Copy every object from the bucket backup into the new bucket, under the same keys.
+Copy every object from the bucket backup into the new bucket, under the same keys. With the AWS CLI, from the directory the backup copied into:
+
+```bash
+aws s3 sync publira-bucket s3://publira-images
+```
 
 If the bucket has the name, the address, and the credential the install had, nothing else changes. Otherwise save the new bucket, as `setup` saved the old one, and test it:
 
 ```bash
-docker run --rm -it \
-  -e PUBLIRA_PLATFORM_DB_URL \
-  -e PUBLIRA_SECRET_ENCRYPTION_KEYS -e PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID \
-  publira/publiractl:<tag> storage set --bucket <bucket> --region <region> --access-key-id <access key>
+publiractl storage set --bucket <bucket> --region <region> --access-key-id <access key>
 ```
 
 Add `--endpoint` and `--force-path-style` for a store other than Amazon S3; every flag of `storage set` is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#storage).
@@ -143,10 +150,7 @@ Start them on an empty Valkey. A Valkey that served the install before the resto
 When the search runs on OpenSearch or Elasticsearch, rebuild the index from the restored database:
 
 ```bash
-docker run --rm \
-  -e PUBLIRA_CONTENT_STATS_DB_URL \
-  -e PUBLIRA_SECRET_ENCRYPTION_KEYS -e PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID \
-  publira/publiractl:<tag> search reindex
+publiractl search reindex
 ```
 
 An index that survived the restore still finds what was published after the backup, and links to series the restored database no longer has; an index that was lost leaves the search empty. On the default search, which is the database itself, there is nothing to rebuild.
@@ -166,20 +170,17 @@ Everything written after the backup was taken: accounts readers created, comment
 
 ## Verify a restore
 
-- `db version` reports the version you kept with the backup, and no dirty state:
+- `db version` reports the version you kept with the backup in `publira.version`, and no dirty state:
 
   ```bash
-  docker run --rm -e PUBLIRA_DB_URL publira/publiractl:<tag> db version
+  publiractl db version
   ```
 
 - Every process answers `GET /readyz` as ready. `publira server` and `publira worker` report one check per database login, so a role whose password does not match its connection URL is named there.
 - `storage test` passes. It reaches the bucket with the secret key the database holds sealed, so it also proves that the encryption keys are the right ones:
 
   ```bash
-  docker run --rm \
-    -e PUBLIRA_PLATFORM_DB_URL \
-    -e PUBLIRA_SECRET_ENCRYPTION_KEYS -e PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID \
-    publira/publiractl:<tag> storage test
+  publiractl storage test
   ```
 
 - The tenant console signs you in, and the tenant's site opens with its images: a series' cover, and the pages of an episode uploaded shortly before the backup.

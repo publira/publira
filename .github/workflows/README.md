@@ -166,6 +166,7 @@ Implementation:
 | `Test / E2E (<group> <shard>)` | `task e2e:run-built` on `e2e-build` for one group of Playwright projects, or one shard of `main` or `admin`: readiness, Playwright, teardown, on a stack of its own. The `tracing` entry alone runs its stack with `PUBLIRA_E2E_TRACING=on`. On `main`, saves the Playwright browser cache every E2E job restores. | [`e2e/README.md`](../../e2e/README.md#groups) |
 | `Test / E2E Report` | Only when a `Test / E2E` entry failed: every entry's blob report merged into one HTML report. | [`e2e/README.md`](../../e2e/README.md#ci) |
 | `Test / E2E Search` | `task e2e:search`: the same lifecycle with OpenSearch in the stack and the server on it, running the catalog search and search settings specs alone. On `main`, saves the same Playwright browser cache when it missed. | [`e2e/README.md`](../../e2e/README.md#catalog-search-on-opensearch) |
+| `Test / Restore` | `task e2e:restore`: the seeded E2E stack backed up and restored into an empty PostgreSQL, bucket, and Valkey with the commands of the backup runbook, which [`scripts/backup-and-restore.sh`](../../scripts/backup-and-restore.sh) runs and the runbook quotes; the restored database and bucket compared with the ones backed up, then the runbook's **Verify a restore** checks, the last of them as the `restore` Playwright group. | [`e2e/README.md`](../../e2e/README.md#backup-and-restore), [`docs/README.md`](../../docs/README.md#commands-a-script-runs) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/rpc`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Test / Deploy` | `task deploy:check`, which also runs the checkout's `publiractl env generate` against `.env.example` and renders the Compose file from the release archive extracted away from the checkout, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from that archive with every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
@@ -204,7 +205,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | Job | Watched paths |
 | --- | --- |
 | `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
-| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**`, every Markdown file, and a deletion or a rename of any file |
+| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**`, every Markdown file, every shell script, which may hold commands a page quotes, and a deletion or a rename of any file |
 | `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**`, and `scripts/go-test-share.sh` |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
@@ -215,6 +216,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / Mobile E2E Build`, `Test / Mobile E2E (<group>)` | mobile, E2E lifecycle scripts, domain proto, server, migrations/seeds, Taskfile, storage init and seed, `scripts/setup-flutter.sh`, the Flutter and Android setup actions |
 | `Test / E2E` | E2E except routing, the Traefik edge configuration, web apps, email-renderer, packages, locales, server, db, the documentation's PNG screenshots under `docs/`, build inputs, storage init and seed |
 | `Test / E2E Search` | The OpenSearch backend alone: `server/internal/catalogsearch/**`, `server/internal/catalogindex/**`, `server/internal/platformsearch/**`, the outbox handler, the search handlers and the `publiractl search` command, `db/query/catalog_index.sql`, `db/query/platform_search.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, the catalog search and search settings specs with `e2e/src/**` and the Platform Console's search screen, and `db/seeds/**` |
+| `Test / Restore` | `db/**`, `server/**`, `infra/docker/publiractl/**`, `scripts/backup-and-restore.sh`, storage init and seed, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, `e2e/tests/*.restore.spec.ts`, and `Taskfile.yaml`; and, through the separate `test_restore_docs` filter, the runbook `docs/en/2-deployments/9-backup-and-restore.md` |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
 | `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |
 | `Test / Deploy` | `infra/deploy/**`, `infra/proxy/caddy/**`, `infra/docker/**`, `.dockerignore`, its two scripts and `scripts/package-deploy.sh`, `Taskfile.yaml`, and `server/cmd/publiractl/**` and `server/internal/deployenv/**`, whose `.env` generator the check runs |
@@ -236,7 +238,7 @@ filters: |
     …
 ```
 
-**`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every heavyweight filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`. `format` intentionally omits it. `Check` also validates the pages under `docs/` and the links between the repository's Markdown, which a Markdown edit can break by renaming a heading and any deletion or rename can break by taking away the file a link names, so the `check_docs` filter omits `*docs_excluded` too and adds a `deleted|renamed: '**'` entry, and `scripts/ci-plan-jobs.sh` starts `Check` when either it or `check` matches. A documentation-only pull request therefore receives `Lint and Format` and `Check`, and no other job.
+**`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every heavyweight filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`. `format` intentionally omits it. `Check` also validates the pages under `docs/` and the links between the repository's Markdown, which a Markdown edit can break by renaming a heading and any deletion or rename can break by taking away the file a link names, so the `check_docs` filter omits `*docs_excluded` too and adds a `deleted|renamed: '**'` entry, and `scripts/ci-plan-jobs.sh` starts `Check` when either it or `check` matches. A documentation-only pull request therefore receives `Lint and Format` and `Check`, and no other job but `Test / Restore` for a change to the backup runbook, whose commands that job runs.
 
 For `pull_request`, paths-filter obtains changed files through the GitHub API, so shallow history is sufficient. For `push` it diffs `github.event.before`..HEAD locally, and for `merge_group` it diffs the event's `base_sha`..`head_sha`, so both endpoints have to be in the local repository. `Detect changes` sets `persist-credentials: false`, so the fallback fetch cannot authenticate; on those two events, use `fetch-depth: 0` to provide the history locally:
 
@@ -248,7 +250,7 @@ Quotes around `'0'` are required: GitHub expressions treat bare `0` as falsy, wh
 
 The `Path filter` step runs on all three events, so a merge-group run selects its jobs from the group's changed paths instead of falling through to an empty filter result.
 
-Separate Go, TypeScript, migration, mobile, mobile E2E, mobile iOS, E2E, E2E search, bootstrap, routing, and deploy jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
+Separate Go, TypeScript, migration, mobile, mobile E2E, mobile iOS, E2E, E2E search, restore, bootstrap, routing, and deploy jobs prevent unrelated toolchain setup for a focused PR; `Summary` keeps the required-check count unchanged. `sqlc diff` reads schema and query files and needs no live database, so it remains in `Check`.
 
 `Validate / buf Generated Diff` runs `buf generate`, then compares `server/internal/proto/gen/**` and `packages/api-client/src/gen/**` against the committed tree. `buf.gen.yaml` sets `clean: true` so stale output is visible; when it fails, run `task gen` and commit the result. CI stages before comparing so untracked generated files are included.
 
@@ -299,6 +301,7 @@ The job then runs against its own Postgres service and must succeed through `mig
    | `Test / E2E (<group> <shard>)` | `PUBLIRA_E2E_GROUP=<group> task e2e -- --shard=<shard>` |
    | `Test / E2E (tracing 1/1)` | `task e2e:tracing` |
    | `Test / E2E Search` | `task e2e:search` |
+   | `Test / Restore` | `task e2e:restore`, or `task e2e:build`, `task docker:build:publiractl`, and `bash scripts/backup-and-restore.sh` |
    | `Test / Bootstrap` | `task e2e:bootstrap` (`PUBLIRA_BOOTSTRAP_SKIP_DEV=1` if `task dev` cannot stop) |
    | `Test / Routing` | `task e2e:routing` |
    | `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke` |
