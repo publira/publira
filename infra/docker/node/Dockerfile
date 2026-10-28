@@ -24,14 +24,10 @@ FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e05
 # renovate: datasource=npm depName=pnpm versioning=semver
 ARG PNPM_VERSION=12.15.0
 
-# pnpm comes from its standalone installer: the node images stop carrying
-# Corepack from Node.js 26. The installer checks the npm registry signature over
-# what it downloads only when openssl is present, and otherwise falls back to the
-# checksum the registry itself publishes. `pnpm setup` cannot tell which shell
-# config file to edit here, so PATH is set below instead.
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}/bin:${PATH}"
 
+# openssl lets the pnpm installer verify the npm registry signature.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl openssl \
   && rm -rf /var/lib/apt/lists/* \
