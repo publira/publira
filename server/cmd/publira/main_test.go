@@ -78,6 +78,9 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 		{[]string{"worker", "--queue", "ticker", "--queue", "ticker"}, `--queue names "ticker" twice`},
 		{[]string{"worker", "--queue"}, "flag needs an argument: -queue"},
 		{[]string{"--with-worker"}, `unknown command "--with-worker"`},
+		{[]string{"healthcheck"}, "healthcheck takes the URL of at least one /livez or /readyz"},
+		{[]string{"healthcheck", "127.0.0.1:8000/readyz"}, `healthcheck takes absolute http or https URLs, not "127.0.0.1:8000/readyz"`},
+		{[]string{"healthcheck", "/readyz"}, `healthcheck takes absolute http or https URLs, not "/readyz"`},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			var stderr strings.Builder
@@ -154,7 +157,7 @@ func TestParseWorkerFlags(t *testing.T) {
 
 func TestUsageListsEveryCommandAndFlag(t *testing.T) {
 	out := usage()
-	for _, entry := range []string{"server", "worker", "--role", "--with-worker", "--queue"} {
+	for _, entry := range []string{"server", "worker", "healthcheck", "--role", "--with-worker", "--queue"} {
 		if !strings.Contains(out, "  "+entry+" ") {
 			t.Fatalf("usage text is missing %q", entry)
 		}
