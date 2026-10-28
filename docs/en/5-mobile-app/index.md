@@ -2,6 +2,7 @@
 title: Mobile app
 description: Building, signing, and publishing a tenant's own iOS and Android app.
 published: 2026-10-06
+updated: 2026-10-28
 ---
 
 Every tenant can publish the Publira reader app under its own name: its own launcher name and store listings, its own push notifications, and links to its site that open in the app. These pages are for whoever builds and publishes that app, whether the operator or the publisher's own staff, and they assume no knowledge of the Flutter code it is built from.
@@ -20,7 +21,7 @@ After cloning, run `task setup` once from the repository root, or `task mobile:d
 
 ## In this section
 
-The pages follow the order the work is done in. The first release takes all of them; a later release takes only the build and the submission.
+The first six pages follow the order the work is done in. The first release takes all of them; a later release takes only the build and the submission. The last describes what the app keeps on the device, for the staff who answer for it.
 
 - [The app manifest](./1-app-manifest.md): naming the app, the tenant it serves, and the identifiers the stores know it by.
 - [Building and signing](./2-building.md): producing a signed Android App Bundle and iOS archive from the manifest.
@@ -28,3 +29,4 @@ The pages follow the order the work is done in. The first release takes all of t
 - [App links](./4-app-links.md): making links to the tenant's site open in the app.
 - [In-app purchase and sign-in](./5-purchases-and-sign-in.md): what the app needs to sell episodes through the stores and to sign readers in with Apple and Google.
 - [Submitting to the stores](./6-store-submission.md): the store listings, and what App Review and Google Play's review need from the publisher.
+- [Offline reading](./7-offline-reading.md): what the app saves for reading without a network, how long a paid episode stays readable, and the screenshot notice.
