@@ -137,10 +137,15 @@ expect_page "Platform Console" "platform.localhost"
 # A long-lived process that exited or keeps restarting is a failure even when
 # every page above answered, and so is a Publira process whose healthcheck does
 # not pass: `docker compose ps` is where the install's README tells the
-# operator to look. The proxy has no healthcheck of its own.
+# operator to look. The proxy has no healthcheck of its own. Nothing waits on
+# web-platform or email-renderer, so either may still be starting here.
 for service in server web-storefront web-admin web-platform email-renderer proxy; do
+  deadline=$((SECONDS + timeout))
+  while health="$(compose ps --all --format '{{.Health}}' "${service}")" &&
+    [ "${health}" = starting ] && [ "${SECONDS}" -lt "${deadline}" ]; do
+    sleep 2
+  done
   state="$(compose ps --all --format '{{.State}}' "${service}")"
-  health="$(compose ps --all --format '{{.Health}}' "${service}")"
   restarts="$(docker inspect --format '{{.RestartCount}}' "$(compose ps --all -q "${service}")")"
   want_health=healthy
   [ "${service}" = proxy ] && want_health=""
