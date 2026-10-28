@@ -6,8 +6,13 @@ import type { Locale } from "@publira/i18n";
  * when no published page has that slug.
  *
  * `publishedSlugs` is the tenant's set in storage form (`/privacy`). A page
- * wins over one of the site's own routes at the same path.
+ * wins over one of the site's own routes at the same path, but not over the
+ * Open Graph cards under `/og`: every page advertises one of those as its
+ * picture, so a page stored there would turn the picture of the whole site
+ * into an HTML document.
  */
+const OPEN_GRAPH_CARD_SEGMENT = "og";
+
 export const getPublishedPageSlugFromPathname = (
   pathname: string,
   publishedSlugs: ReadonlySet<string> | null
@@ -21,7 +26,7 @@ export const getPublishedPageSlugFromPathname = (
     .split("/")
     .map((segment) => segment.trim().toLowerCase())
     .filter((segment) => segment.length > 0);
-  if (segments.length === 0) {
+  if (segments.length === 0 || segments[0] === OPEN_GRAPH_CARD_SEGMENT) {
     return null;
   }
 
