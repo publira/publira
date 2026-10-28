@@ -53,6 +53,7 @@ func TestTenantAnalyticsSettingsDefaultsAndChecks(t *testing.T) {
 		"a gateway path a page slug could be": {"gateway_path = 'abcdefghijklmnop'", "tenant_analytics_settings_gateway_path_check"},
 		"gateway mode without a path":         {"gateway_path = NULL", "tenant_analytics_settings_gateway_path_required_check"},
 		"server container mode without a URL": {"serving_mode = 'server_container', server_container_url = NULL", "tenant_analytics_settings_server_container_required_check"},
+		"external consent with no container":  {"gtm_container_id = NULL", "tenant_analytics_settings_external_container_required_check"},
 	} {
 		_, err := pg.DB.ExecContext(ctx, "UPDATE tenant_analytics_settings SET "+tt.assignment+" WHERE tenant_id = $1", tenantID)
 		if !isCheckViolation(err) || checkName(err) != tt.check {
