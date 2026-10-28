@@ -2,7 +2,9 @@
 
 import { SunMoonIcon } from "@publira/icons/sun-moon-icon";
 import * as SiteLayout from "@publira/layouts/site-layout";
+import { buttonVariants } from "@publira/ui-components/button";
 import * as Popover from "@publira/ui-components/popover";
+import { cn } from "@publira/utils";
 import type { ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -86,7 +88,10 @@ const ThemeSwitch = () => {
     <Popover.Root>
       <Popover.Trigger
         aria-label={label}
-        className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted pointer-coarse:size-11"
+        className={cn(
+          buttonVariants({ size: "icon", variant: "ghost" }),
+          "data-popup-open:bg-muted"
+        )}
       >
         <SunMoonIcon aria-hidden="true" className="size-5" />
       </Popover.Trigger>

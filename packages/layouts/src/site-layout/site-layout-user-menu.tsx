@@ -1,5 +1,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { LogoutIcon, MegaphoneIcon, UserIcon } from "@publira/icons";
+import { buttonVariants } from "@publira/ui-components/button";
+import { cn } from "@publira/utils";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -25,7 +27,10 @@ export const SiteLayoutUserMenuTrigger = ({
 }) => (
   <Menu.Trigger
     aria-label={ariaLabel}
-    className="inline-flex size-9 items-center justify-center overflow-hidden rounded-control border border-input text-foreground transition-colors duration-state ease-state hover:bg-muted data-popup-open:bg-muted pointer-coarse:size-11"
+    className={cn(
+      buttonVariants({ size: "icon", variant: "ghost" }),
+      "overflow-hidden data-popup-open:bg-muted"
+    )}
   >
     {children ?? <UserIcon aria-hidden="true" className="size-4" />}
   </Menu.Trigger>

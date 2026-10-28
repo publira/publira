@@ -4,8 +4,10 @@ import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
 import * as SiteLayout from "@publira/layouts/site-layout";
+import { buttonVariants } from "@publira/ui-components/button";
 import * as Popover from "@publira/ui-components/popover";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -85,7 +87,10 @@ const LocaleSwitcher = () => {
     <Popover.Root>
       <Popover.Trigger
         aria-label={label}
-        className="inline-flex size-9 items-center justify-center rounded-control border border-input bg-card text-foreground transition-colors duration-state ease-state hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted pointer-coarse:size-11"
+        className={cn(
+          buttonVariants({ size: "icon", variant: "ghost" }),
+          "data-popup-open:bg-muted"
+        )}
       >
         <LanguageIcon aria-hidden="true" className="size-5" />
       </Popover.Trigger>
