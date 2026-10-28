@@ -46,7 +46,10 @@ func TestNormalizePageSlugForStorage(t *testing.T) {
 		{in: "/livez", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
 		{in: "/readyz", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
 		{in: "/sitemap/help", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
+		{in: "/og", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
+		{in: "og/series", wantErr: true, wantReason: rpcerrors.FieldReasonPageSlugUnreachable},
 		{in: "/about/ja", want: "/about/ja"},
+		{in: "/ogp", want: "/ogp"},
 	}
 	for _, tt := range tests {
 		got, err := normalizePageSlugForStorage(tt.in)

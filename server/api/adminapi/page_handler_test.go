@@ -107,26 +107,39 @@ func TestCreatePageRefusesASlugThatTakesOverTheSignInScreen(t *testing.T) {
 }
 
 func TestCreatePageRefusesASlugTheSiteAnswersBeforePages(t *testing.T) {
-	tenantID := uuid.Must(uuid.NewV7())
-	userID := uuid.Must(uuid.NewV7())
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
+	tests := []struct {
+		name  string
+		slug  string
+		title string
+	}{
+		{name: "locale prefix", slug: "/ja", title: "Japanese"},
+		{name: "Open Graph card", slug: "/og", title: "Open Graph"},
+		{name: "under the Open Graph cards", slug: "/og/series", title: "Series card"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newPageClient(t, tenantID, userID, now)
 
-	req := &publiraadminv1.CreatePageRequest{
-		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Slug:   "/ja",
-		Title:  "Japanese",
-	}
+			req := &publiraadminv1.CreatePageRequest{
+				Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Slug:   tt.slug,
+				Title:  tt.title,
+			}
 
-	_, err := client.CreatePage(testutil.WithBearer(context.Background(), sessionToken), req)
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+			_, err := client.CreatePage(testutil.WithBearer(context.Background(), sessionToken), req)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("CreatePage code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+			}
+			assertBadRequestField(t, err, "slug")
+			if reason := badRequestReason(t, err); reason != rpcerrors.FieldReasonPageSlugUnreachable {
+				t.Fatalf("reason = %q, want %q", reason, rpcerrors.FieldReasonPageSlugUnreachable)
+			}
+			assertExpectations(t, mock)
+		})
 	}
-	assertBadRequestField(t, err, "slug")
-	if reason := badRequestReason(t, err); reason != rpcerrors.FieldReasonPageSlugUnreachable {
-		t.Fatalf("reason = %q, want %q", reason, rpcerrors.FieldReasonPageSlugUnreachable)
-	}
-	assertExpectations(t, mock)
 }
 
 func TestListPagesFirstPageReportsNextToken(t *testing.T) {
