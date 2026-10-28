@@ -20,13 +20,12 @@ const (
 // comes out of the migration asking the reader itself, and a tenant whose
 // container is still there keeps leaving the asking to it.
 func TestTenantAnalyticsExternalConsentMigrationAsksReadersWithoutAContainer(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
 
 	// Behind the migration under test, so the rows seeded below are rows it
 	// finds rather than rows written through it.
 	pg.MigrateTo(t, tenantAnalyticsConsentModeVersion)
-	t.Cleanup(func() { pg.MigrateUp(t) })
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
