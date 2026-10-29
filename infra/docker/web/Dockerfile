@@ -17,7 +17,7 @@
 # Package name is derived as @publira/${APP_NAME}.
 
 # -----------------------------------------------------------------------------
-FROM node:24.22.1-trixie-slim@sha256:89c5244bc22a9bc3287d89ebc7e49b9cb5bb84cd40e6175ac3421d5a9f68b95a AS base
+FROM node:24.22.2-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS base
 
 # renovate: datasource=npm depName=pnpm versioning=semver
 ARG PNPM_VERSION=12.15.0
