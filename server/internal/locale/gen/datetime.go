@@ -50,7 +50,7 @@ var DateTimeFormats = map[string][]Field{
 		{Kind: FieldHour, Values: []string{"12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"}},
 		{Kind: FieldLiteral, Text: ":"},
 		{Kind: FieldMinute, Width: 2},
-		{Kind: FieldLiteral, Text: "\u202f"},
+		{Kind: FieldLiteral, Text: " "},
 		{Kind: FieldDayPeriod, Values: []string{"AM", "AM", "AM", "AM", "AM", "AM", "AM", "AM", "AM", "AM", "AM", "AM", "PM", "PM", "PM", "PM", "PM", "PM", "PM", "PM", "PM", "PM", "PM", "PM"}},
 	},
 	"ko": {

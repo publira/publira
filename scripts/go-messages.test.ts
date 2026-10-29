@@ -26,9 +26,9 @@ describe("goString", () => {
   });
 
   it("escapes a space a reader could not tell from an ordinary one", () => {
-    // U+202F, which Intl writes before an English AM/PM.
-    assert.equal(goString("9:00\u202FPM"), '"9:00\\u202fPM"');
-    assert.equal(goString("9:00 PM"), '"9:00 PM"');
+    // U+202F, which Intl writes inside the West African CFA franc sign.
+    assert.equal(goString("F\u202FCFA"), '"F\\u202fCFA"');
+    assert.equal(goString("F CFA"), '"F CFA"');
   });
 
   it("leaves the copy of a language that is written in it alone", () => {

@@ -22,12 +22,12 @@ func TestFormatDateTimeWordsAnInstantPerLocale(t *testing.T) {
 		want     string
 	}{
 		{code: "ja", timeZone: "Asia/Seoul", want: "2030/01/15 21:00"},
-		{code: "en", timeZone: "Asia/Seoul", want: "Jan 15, 2030, 9:00\u202fPM"},
+		{code: "en", timeZone: "Asia/Seoul", want: "Jan 15, 2030, 9:00 PM"},
 		{code: "ko", timeZone: "Asia/Seoul", want: "2030. 1. 15. 오후 9:00"},
 		{code: "zh-Hans", timeZone: "Asia/Seoul", want: "2030年1月15日 21:00"},
 		{code: "zh-Hant", timeZone: "Asia/Seoul", want: "2030年1月15日 晚上9:00"},
 		{code: "ja", timeZone: "America/Los_Angeles", want: "2030/01/15 4:00"},
-		{code: "en", timeZone: "America/Los_Angeles", want: "Jan 15, 2030, 4:00\u202fAM"},
+		{code: "en", timeZone: "America/Los_Angeles", want: "Jan 15, 2030, 4:00 AM"},
 		{code: "zh-Hant", timeZone: "America/Los_Angeles", want: "2030年1月15日 凌晨4:00"},
 	} {
 		t.Run(testCase.code+" in "+testCase.timeZone, func(t *testing.T) {

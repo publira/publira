@@ -508,7 +508,7 @@ func TestEmailCopyWritesTheWholeMail(t *testing.T) {
 				"We received a request to reset your password.\n\n" +
 				"Open the button below to set a new password.\n\n" +
 				"Reset password https://reader.example.test/confirm-password?token=reset\n\n" +
-				"This link expires at Jan 15, 2030, 12:00\u202fPM.\n\n" +
+				"This link expires at Jan 15, 2030, 12:00 PM.\n\n" +
 				"If you were not expecting this email, you can ignore it.\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/confirm-password?token=reset\n\n" +
 				"This email was sent by Aoto Press.",
@@ -569,7 +569,7 @@ func TestEmailCopyQuotesTheMessageAStaffReplyAnswers(t *testing.T) {
 		t.Fatalf("emailCopy: %v", err)
 	}
 	want := "Aoto Press\n\nWe have corrected it.\nSorry for the trouble.\n\n" +
-		"On Jan 15, 2030, 12:00\u202fPM, you wrote:\n\n" +
+		"On Jan 15, 2030, 12:00 PM, you wrote:\n\n" +
 		"> The date of birth on my account is wrong.\n>\n> Could you correct it?\n\n" +
 		"To answer, reply to this email.\n\n" +
 		"This email was sent by Aoto Press."
@@ -611,8 +611,8 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"Here is the receipt for your purchase on Aoto Press.\n\n" +
 				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
 				"Price paid: ¥500 (JPY)\n\n" +
-				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
-				"Readable until: Jan 17, 2030, 9:00\u202fPM\n\n" +
+				"Purchased: Jan 15, 2030, 9:00 PM\n\n" +
+				"Readable until: Jan 17, 2030, 9:00 PM\n\n" +
 				"Open your purchases https://reader.example.test/my/library\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
 				"This email was sent by Aoto Press.",
@@ -644,7 +644,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"This was a purchase in the payment provider's test mode. No money was charged.\n\n" +
 				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
 				"Price paid: ¥100 (JPY)\n\n" +
-				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Purchased: Jan 15, 2030, 9:00 PM\n\n" +
 				"Open your purchases https://reader.example.test/my/library\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
 				"This email was sent by Aoto Press.",
@@ -659,7 +659,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"Here is the receipt for your purchase on Aoto Press.\n\n" +
 				"Series: The Lighthouse Keeper\n\nVolume: Volume 1\n\n" +
 				"Price paid: ¥1,500 (JPY)\n\n" +
-				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Purchased: Jan 15, 2030, 9:00 PM\n\n" +
 				"Open your purchases https://reader.example.test/my/library\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
 				"This email was sent by Aoto Press.",
@@ -674,7 +674,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"Here is the receipt for your purchase on Aoto Press.\n\n" +
 				"Series: The Lighthouse Keeper\n\nRemaining episodes: 12 episodes\n\n" +
 				"Price paid: ¥2,700 (JPY)\n\n" +
-				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Purchased: Jan 15, 2030, 9:00 PM\n\n" +
 				"Open your purchases https://reader.example.test/my/library\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
 				"This email was sent by Aoto Press.",
@@ -707,8 +707,8 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"Here is the receipt for your purchase on Aoto Press.\n\n" +
 				"Points: 1,100 (including 100 bonus)\n\n" +
 				"Price paid: ¥1,000 (JPY)\n\n" +
-				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
-				"Spendable until: Jul 14, 2030, 9:00\u202fPM\n\n" +
+				"Purchased: Jan 15, 2030, 9:00 PM\n\n" +
+				"Spendable until: Jul 14, 2030, 9:00 PM\n\n" +
 				"Open your purchases https://reader.example.test/my/library\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
 				"This email was sent by Aoto Press.",

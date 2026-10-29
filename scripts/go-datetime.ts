@@ -75,10 +75,20 @@ const probes = (): Instant[] =>
     )
   );
 
+/**
+ * The parts `formatter` writes at `instant`, with every U+202F written as
+ * U+0020. V8 makes that replacement in `format()`, which is what
+ * `@publira/utils` calls, but only Node.js 26 makes it in `formatToParts()`
+ * too: read without it, the table would depend on the Node.js version that
+ * generated it, and the server would write a space the web apps do not.
+ */
 const partsOf = (
   formatter: Intl.DateTimeFormat,
   instant: Instant
-): Intl.DateTimeFormatPart[] => formatter.formatToParts(epoch(instant));
+): Intl.DateTimeFormatPart[] =>
+  formatter
+    .formatToParts(epoch(instant))
+    .map((part) => ({ ...part, value: part.value.replaceAll("\u202F", " ") }));
 
 /** The part types and the literal text between them, as one comparable line. */
 const shapeOf = (parts: readonly Intl.DateTimeFormatPart[]): string =>
