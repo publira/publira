@@ -8,7 +8,7 @@ import { expect } from "@playwright/test";
 import { waitForScreenToSettle } from "./screenshots";
 
 /**
- * The user documentation, one tree per locale (`docs/en/`), whose pages show
+ * The user documentation, one tree per locale (`docs/en/`, `docs/ja/`), whose pages show
  * the screenshots the `docs-screenshots` project takes. `docs/README.md` is
  * the contract the tree follows.
  */

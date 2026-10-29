@@ -77,7 +77,17 @@ for (const locale of DOCS_LOCALES) {
           name: t("admin.settings.sign_in.apple.key_id"),
         })
         .fill("2X9R4HXF34");
-      await page.locator('input[name="apple_private_key_file"]').setInputFiles({
+      // The run in the locale before this one saved a key, which the form
+      // keeps until it is asked to take another.
+      const changeKey = apple.getByRole("button", {
+        name: t("admin.settings.sign_in.key_change"),
+      });
+      const keyFile = page.locator('input[name="apple_private_key_file"]');
+      await expect(changeKey.or(keyFile).first()).toBeAttached();
+      if ((await changeKey.count()) > 0) {
+        await changeKey.click();
+      }
+      await keyFile.setInputFiles({
         buffer: Buffer.from(APPLE_KEY),
         mimeType: "application/octet-stream",
         name: "AuthKey_2X9R4HXF34.p8",

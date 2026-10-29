@@ -192,7 +192,7 @@ Run the commands that match the area you changed, from the repository root. They
 | `db/migrations/` | `task db:reset`; the history is append-only once merged, so fix a mistake in a migration already on `main` with a new migration rather than by editing it |
 | `mobile/` | `task mobile:check` |
 | Behaviour that spans the web apps and the API | `task e2e` |
-| `docs/`, and any `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, or skill under `skills/` | `pnpm docs:check`: the pages under `docs/en/`, and every link from them or between those files to a file and a heading |
+| `docs/`, and any `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, or skill under `skills/` | `pnpm docs:check`: the pages under `docs/<locale>/`, each translation against `docs/en/`, and every link from them or between those files to a file and a heading |
 | Everything | `pnpm check` formats and lints every file type oxfmt supports, Markdown included |
 
 When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.md) lists which job checks what and the local command that reproduces each one.

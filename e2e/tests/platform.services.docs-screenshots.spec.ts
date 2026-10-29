@@ -337,7 +337,13 @@ for (const locale of DOCS_LOCALES) {
           const failedAt = page.getByText(
             docsTextPattern(locale, "platform.search.status.failed_at")
           );
-          await expect(failedAt).toBeVisible();
+          // A revalidated tag is served stale once while it refreshes, and the
+          // run in the locale before this one left the screen read without
+          // the row, so the first load can still show no failure.
+          await expect(async () => {
+            await page.reload();
+            await expect(failedAt).toBeVisible({ timeout: 2000 });
+          }).toPass({ timeout: 30_000 });
 
           await expectDocsScreenshot(page, {
             element: docsSection(page, t("platform.search.status.title")),
