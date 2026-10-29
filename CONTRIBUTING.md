@@ -202,7 +202,7 @@ When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.m
 - **Branch from `main`** and open a pull request against it. Nothing is pushed to `main` directly.
 - **Commit subjects and pull request titles use [Conventional Commits](https://www.conventionalcommits.org/)**, in English: `type(scope): description`. The pull request title and body become the commit message on `main`, so both are read from `git log` long after the pull request is closed.
 - **Fill in the pull request template** at [`.github/pull_request_template.md`](.github/pull_request_template.md). GitHub loads it into every new pull request; keep its headings.
-- **Disclose a coding agent with an `Assisted-by` trailer, never a co-author trailer.** The full rule and its reasons are in the [AI agent trailer](AGENTS.md#ai-agent-trailer-assisted-by-never-co-authored-by) section of `AGENTS.md`. In short: the trailer discloses the process, a co-author line would claim authorship an AI cannot hold. Pass it with `--trailer` so Git records a real trailer:
+- **Disclose a coding agent with an `Assisted-by` trailer, never a co-author trailer.** The rule follows the Linux kernel's [Coding assistants](https://docs.kernel.org/process/coding-assistants.html) policy: the trailer discloses the process, a co-author line would claim authorship an AI cannot hold. Pass it with `--trailer` so Git records a real trailer:
 
   ```bash
   git commit -m "feat(web-storefront): add episode access gate" \

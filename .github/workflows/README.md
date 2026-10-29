@@ -60,7 +60,7 @@ score = Σ over changed files ( coefficient(path) × significant_lines(file) )
 | Application and package source (Go, TypeScript, Dart), and every path the table does not name | 1.0 |
 | Contracts (`proto/**`, `db/migrations/**`, `db/query/**`) | 1.5 |
 
-`*.tsx` is discounted for what the tag filter cannot reach: the formatter puts one attribute per line, so a component's props arrive as attribute-only and opening-tag lines, each cheaper to read than a line of logic. It is not discounted for being React — the hazards that make a component hard to review (a props-to-state Effect, the Server/Client boundary, `use cache` placement) sit in a handful of lines and do not grow with the size of the tree, which is what the one-bucket raise in `skills/create-pr` is for.
+`*.tsx` is discounted for what the tag filter cannot reach: the formatter puts one attribute per line, so a component's props arrive as attribute-only and opening-tag lines, each cheaper to read than a line of logic. It is not discounted for being React — the hazards that make a component hard to review (a props-to-state Effect, the Server/Client boundary, `use cache` placement) sit in a handful of lines and do not grow with the size of the tree, which is what the one-bucket raise allowed under **The review-size label** in `AGENTS.md` is for.
 
 | Bucket    | Score      |
 | --------- | ---------- |
@@ -78,7 +78,7 @@ Coefficients and thresholds live in `scripts/pr-size.ts`; its classification and
 
 The job holds `contents: read` and `pull-requests: write`, and it never checks out the head branch — `workflow_run` resolves to the default branch, so the scorer that runs is the one that was reviewed and merged. A job's `permissions` block replaces the workflow's `permissions: {}` rather than adding to it, so the read the checkout needs has to be spelled out in the job. It reads per-file patches from `GET /repos/{owner}/{repo}/pulls/{number}/files` and pipes them to that scorer; where the API omits a patch (a binary or oversized file), it stands in one significant line for each addition and deletion the API counted.
 
-A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `skills/create-pr`, or a human who has judged the review load — wins over the mechanical score. The job asks `GET /repos/{owner}/{repo}/pulls/{number}` for the pull request's current labels rather than reading the list the event payload carries: `gh pr create --label` applies its label in a request of its own once the pull request exists, so the payload can still describe it as unlabelled and the label would be scored over.
+A pull request that already carries a `size/*` label is left alone and the run log says so. A label the author set — an agent following `AGENTS.md`, or a human who has judged the review load — wins over the mechanical score. The job asks `GET /repos/{owner}/{repo}/pulls/{number}` for the pull request's current labels rather than reading the list the event payload carries: `gh pr create --label` applies its label in a request of its own once the pull request exists, so the payload can still describe it as unlabelled and the label would be scored over.
 
 ## Release notes
 
