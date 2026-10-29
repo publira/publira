@@ -164,8 +164,8 @@ func TestPurchaseReceiptEmailTellsTheReaderWhatTheyBought(t *testing.T) {
 		"Series: The Lighthouse Keeper",
 		"Episode: The First Night",
 		"Price paid: ¥500 (JPY)",
-		"Purchased: Jan 15, 2030, 9:00\u202fPM",
-		"Readable until: Jan 17, 2030, 9:00\u202fPM",
+		"Purchased: Jan 15, 2030, 9:00 PM",
+		"Readable until: Jan 17, 2030, 9:00 PM",
 		"://aoto.example.test/my/library",
 	} {
 		if !strings.Contains(sent.Text, fragment) {
@@ -391,7 +391,7 @@ func TestPurchaseReceiptEmailNamesTheCoinsAPackBought(t *testing.T) {
 		t.Fatalf("sent %d mails, want 1", len(mailer.sent))
 	}
 	text := mailer.sent[0].email.Text
-	for _, fragment := range []string{"Points: 1,100 (including 100 bonus)", "Price paid: ¥1,000 (JPY)", "Spendable until: Jul 14, 2030, 9:00\u202fPM"} {
+	for _, fragment := range []string{"Points: 1,100 (including 100 bonus)", "Price paid: ¥1,000 (JPY)", "Spendable until: Jul 14, 2030, 9:00 PM"} {
 		if !strings.Contains(text, fragment) {
 			t.Errorf("the mail does not carry %q:\n%s", fragment, text)
 		}
