@@ -38,7 +38,7 @@
     "temporal-polyfill": "catalog:",
     "turbo": "2.11.10",
     "typescript": "catalog:",
-    "ultracite": "8.0.2",
+    "ultracite": "8.1.0",
     "vitest": "catalog:",
     "yaml": "2.9.1"
   },
