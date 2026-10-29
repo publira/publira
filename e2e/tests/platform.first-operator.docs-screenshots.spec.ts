@@ -61,26 +61,33 @@ const restoreOperators = async (): Promise<void> => {
 };
 
 for (const locale of DOCS_LOCALES) {
-  test(`the initial setup screen in ${locale}`, async ({ page }) => {
-    emptyPlatformOperators();
-    try {
-      await setDocsLocale(page, WEB_PLATFORM_BASE_URL, locale);
-      await page.goto("/setup");
+  test.describe(() => {
+    // No operator has chosen a language yet, so the screen's copy follows the
+    // browser's `Accept-Language`; the `publira_locale` cookie still names the
+    // document's `lang`.
+    test.use({ locale });
 
-      await expect(
-        page.getByRole("button", {
-          name: docsText(locale, "platform.auth.setup.submit"),
-        })
-      ).toBeVisible();
+    test(`the initial setup screen in ${locale}`, async ({ page }) => {
+      emptyPlatformOperators();
+      try {
+        await setDocsLocale(page, WEB_PLATFORM_BASE_URL, locale);
+        await page.goto("/setup");
 
-      await expectDocsScreenshot(page, {
-        element: page.getByRole("main"),
-        locale,
-        page: "operations/platform-console",
-        subject: "initial-setup",
-      });
-    } finally {
-      await restoreOperators();
-    }
+        await expect(
+          page.getByRole("button", {
+            name: docsText(locale, "platform.auth.setup.submit"),
+          })
+        ).toBeVisible();
+
+        await expectDocsScreenshot(page, {
+          element: page.getByRole("main"),
+          locale,
+          page: "operations/platform-console",
+          subject: "initial-setup",
+        });
+      } finally {
+        await restoreOperators();
+      }
+    });
   });
 }
