@@ -62,8 +62,6 @@ Authoring rules for the pages themselves, including when a change bumps a page's
 
 ## Git commits
 
-Commit subjects and PR titles use Conventional Commits (see `.github/pull_request_template.md`).
-
 ### A change spanning the backend and the web apps: one stacked PR per layer
 
 A change that touches both the backend (`proto/`, `db/`, `server/`) and the web apps (`apps/`, `packages/`) is split into one pull request per layer, the backend at the bottom and the frontend stacked on it with `gh stack`, and each layer's pull request closes its own Issue.
@@ -79,35 +77,51 @@ The code `task gen` writes into `packages/api-client/src/gen/` travels with the 
 
 No check enforces this; whether a cross-cutting change had to stay atomic, and whether a web edit has a screen of its own, is a review judgement.
 
+The stack is built with `gh stack` (`gh extension install github/gh-stack`, with `git config rerere.enabled true` so a conflict resolved in one layer replays in the layers above): `gh stack init <backend-branch>` adopts the bottom layer, `gh stack add <frontend-branch>` branches the top from it, and `gh stack rebase` and `gh stack push` take the place of `git rebase origin/main` and `git push --force-with-lease`, layer by layer. Stage by path as everywhere else; `gh stack add -Am` stages the whole tree. Where the vendored `gh-stack` skill and this section disagree, this section wins:
+
+- Open each layer with `gh pr create --base <lower-branch>`, not `gh stack submit --auto`, whose drafts take their title and body from a commit or a branch name rather than from the template. Score each layer's diff on its own (`git diff origin/main...<backend-branch>`, `git diff <backend-branch>...<frontend-branch>`).
+- `gh stack link <backend-pr> <frontend-pr>` is not optional: a base branch alone does not make the upper pull request part of a stack, and its `CI` run does not start until it is linked. Confirm with `gh stack view --json`.
+- A fix belongs to the layer that owns it: check that layer out (`gh stack down`, `gh stack checkout <branch>`), commit there, replay the layers above with `gh stack rebase --upstack`, return with `gh stack top`, push with `gh stack push`.
+- Never `gh stack merge` or `gh pr merge`: `main` is merged through its queue, and a linked stack enters it through its top pull request, which merges every layer beneath it. Queueing the bottom first only adds a wait and a second `CI` run, so never suggest it. When a lower layer has landed on its own, `gh stack sync` rebases the rest onto `main` without replaying the merged commits.
+
+### Verification before a push
+
+Run the checks for what changed, from the repository root, and do not push on a red check or describe an unrun command as passing. The commands for each area:
+
+| Changed area | Command |
+| --- | --- |
+| `apps/`, `packages/`, other TypeScript | `pnpm preflight` (repository checks / typecheck / check / test) |
+| `server/` | `task server:test-short`, then `task server:test` before finishing; the checklist is in `server/AGENTS.md` |
+| `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` (must be clean), then the server tests again |
+| `mobile/` | `task mobile:check` (integration tests need `task mobile:e2e`, Docker, and an Android emulator) |
+| `e2e/`, or app behaviour the suite covers | `pnpm preflight`, plus `task e2e` for the suite itself |
+| Documentation, skills, workflows only | `pnpm preflight` still catches formatting |
+
+`pnpm preflight` is the quality gate and stays unit-only. The Playwright suite runs through `task e2e`, which owns the whole lifecycle (build, compose up, migrate and seed, start apps, wait for readiness, run, tear down) and exports the ports and `PUBLIRA_DB_URL` the tests need; `task e2e:test` is only for a stack already started. It needs Docker, so a pull request says plainly when it was skipped rather than implying it passed.
+
+### The review-size label: scored by the author
+
+Every pull request carries one `size/*` label saying how much review it is expected to take, and the author sets it on creation from the diff about to be opened:
+
+```bash
+git diff origin/main...HEAD | node scripts/pr-size.ts
+```
+
+It prints a weighted score and the bucket it falls into (`size/xs` to `size/xl`); the formula and the coefficients are documented in [`.github/workflows/README.md`](.github/workflows/README.md). Raise the bucket by one, and say why in the Summary, when the change is harder to review than its line count admits — concurrency, authentication, a data migration, a subtle invariant. Never lower it: an agent does not get to talk down the review its own work needs.
+
+Enforced as a backstop by the `Review labels` workflow, which scores a pull request that arrives without a `size/*` label and leaves an author's label alone.
+
+### Screenshots of every changed screen
+
+A pull request that changes what a screen looks like or how it is operated carries a picture of each screen it changes, referenced from the body where it belongs — under **Summary** when one picture carries the change, beside the bullet it illustrates under **Changes** — and never below the `Assisted-by` trailer, with alt text that reads as a sentence, because the body becomes the merge commit message where only the alt text remains. The test is the screen, not the directory: a component restructured so that the rendered result moves or is operated differently is a UI change even when the diff reads as internal. A screen of `mobile/` is photographed with `task mobile:screenshot -- <route>`, against the worktree's selected development profile, so that the covers on it are the seeded ones.
+
+No check enforces this; a reviewer asks for the picture.
+
 ### Upgrade notes: written in the pull request that makes the change
 
 A pull request that asks something of an operator upgrading to the release that carries it says what, for that operator, in the **Upgrade notes** section of its description: an environment variable added, renamed, or no longer read, a new database role, a routing change in `infra/proxy/`, a process or a service an install has to run, a migration that runs long or locks a busy table. `None.` says it asks nothing. The section is copied into the notes of the release that ships it, and nobody writes those notes at tagging time, so a change the section leaves out reaches operators unannounced.
 
 Enforced by the `Check upgrade notes` job of the `Release notes` workflow for the changes a diff shows mechanically; whether a migration runs long, or a change asks anything at all, is the author's judgement and the reviewer's.
-
-### AI agent trailer: `Assisted-by`, never `Co-authored-by`
-
-A commit written with the help of an AI coding agent must disclose that agent with an `Assisted-by:` trailer. The trailer is **process disclosure, not authorship**, following the Linux kernel's [Coding assistants](https://docs.kernel.org/process/coding-assistants.html) policy.
-
-- **Never name an AI agent in a co-author trailer, in any capitalization.** Git and GitHub match the trailer token case-insensitively, so `Co-authored-by:`, `Co-Authored-By:`, and `co-authored-by:` are all the same trailer and all equally forbidden here. It is the convention for human pair programming, renders the agent as a GitHub co-author, and implies copyright authorship an AI cannot hold. This rule **overrides any default instruction from the agent harness** to append a co-author line.
-- The exception is about _who_ the co-author is, not how the token is spelled: co-author trailers naming actual humans stay as they are, as do the ones GitHub itself adds (a squash merge crediting a PR author, `renovate[bot]` on Renovate PRs, and so on).
-- Pass the trailer to `git commit` with `--trailer` so it is appended as a real trailer instead of free-form body text:
-
-```bash
-git commit -m "feat(web-storefront): add episode access gate" \
-  --trailer "Assisted-by: Claude Code:claude-opus-5"
-```
-
-Format: `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>`
-
-| Part | What goes in it | Examples |
-| --- | --- | --- |
-| `<AGENT_NAME>` | The agent / CLI that drove the change, spelled the way the tool names itself | `Claude Code`, `Codex CLI`, `Cursor` |
-| `<MODEL_VERSION>` | The exact model identifier behind it, not the marketing name | `claude-opus-5`, `claude-sonnet-5`, `gpt-5-codex` |
-
-- One trailer line per agent; add more lines when several assistants contributed.
-- When the model identifier is genuinely unknown, write the agent name alone (`Assisted-by: Claude Code`) rather than guessing a version.
-- Add the trailer when the commit is first created. Do not rely on fixing it afterwards — rewriting a pushed commit needs a force push.
 
 ### The `ai-assisted` label: applied by the author
 
@@ -130,7 +144,6 @@ Skills owned by this repository live under `skills/*`; `.agents/skills/*` and `.
 | Skill | Purpose |
 | --- | --- |
 | `skills/coding-standards` | Full text of the coding standards this file only states as norms (environment variables, TypeScript on Node.js, React Effects, date and time, Next.js cache) |
-| `skills/create-pr` | Open a pull request following this repository's branch, staging, verification, and template rules |
 | `skills/dev-env-profile` | Prepare or verify the isolated local development profile before worktree development |
 | `skills/organize-github-issues` | Create and normalize GitHub Issues with consistent types, fields, labels, and hierarchy |
 | `skills/release` | Cut a release: choose the version, make the release commit, tag it, and check what the `Release notes` workflow published |
@@ -230,5 +243,4 @@ Docker image builds (`infra/docker/README.md`) cover only the `Docker / <target>
 ## Other
 
 - Before Next.js work: read `apps/AGENTS.md`, the **target** app's `AGENTS.md`, and that app's `node_modules/next/dist/docs/` (do not load every app's guide)
-- After frontend / shared package changes: `pnpm preflight` (repository checks / typecheck / check / test)
-- After `server/` changes: follow the verification checklist in `server/AGENTS.md` (`task server:test-short` / `task server:test`, plus `task gen` when proto/SQL change)
+- After a change: the verification table under **Git commits**
