@@ -88,7 +88,7 @@ jobs:
               return;
             }
 
-            // A label the author set — an agent following skills/create-pr, or
+            // A label the author set — an agent following AGENTS.md, or
             // a human who has judged the review load — wins over the
             // mechanical score.
             const existing = pull.labels
