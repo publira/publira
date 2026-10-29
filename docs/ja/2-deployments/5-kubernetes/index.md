@@ -1,43 +1,43 @@
 ---
 title: Kubernetes
-description: Kubernetesクラスターでインストール環境を動かす。SecretとDeployment、その前に置くGatewayまたはIngressから、テナント管理画面への最初のログインまで。
+description: Kubernetesクラスターで、SecretとDeploymentを作成し、その前段にGatewayかIngressを置いて、テナント管理画面に初めてログインするまでの手順を説明します。
 published: 2026-10-29
 source_updated: 2026-10-23
 ---
 
-このページでは、Kubernetesクラスターの空のnamespaceから始めて、テナント管理画面に初めてログインするまでのインストール環境を構築します。手順は[インストール](../2-installing.md)と同じです。各手順がなぜ必要か、各シークレットが何を守るのか、各データベースロールが何にアクセスできるのかは、そちらで説明しています。また、[エッジ](../4-edge/index.md#エッジが行うべきこと)の要件どおりに、前段にエッジを置きます。このページで扱うのはクラスターに固有のことです。各部分がどのリソースになるのか、そして2つのページの各要件をそれらのリソースでどう満たすのかです。
+このページでは、Kubernetesクラスターの空のnamespaceから始めて、テナント管理画面に初めてログインできるまでPubliraを構築します。手順は[インストール](../2-installing.md)と同じです。各手順が必要な理由、各シークレットが守るもの、各データベースロールがアクセスできる範囲は、そちらで説明しています。リバースプロキシは、[リバースプロキシの設定](../4-edge/index.md#リバースプロキシで必要な設定)の要件どおりに前段に置きます。このページで扱うのは、クラスターに固有の部分です。Publiraの各部分をどのリソースで動かすか、2つのページの要件をそのリソースでどう満たすかを説明します。
 
-以下のマニフェストは手直しして使うための例であり、メンテナンスされたセットではありません。リポジトリにはHelmチャートもKustomizeのベースもOperatorも同梱されていません。マニフェストは公開イメージ`ghcr.io/publira/<name>:<tag>`を指定しています。[始める前に](../2-installing.md#始める前に)のとおり、`<tag>`はインストールするリリースのバージョンに書き換えてください。
+以下のマニフェストは手直しして使うための例で、継続的にメンテナンスしているものではありません。リポジトリには、HelmチャートもKustomizeのベースもOperatorもありません。マニフェストでは公開イメージ`ghcr.io/publira/<name>:<tag>`を指定しています。[始める前に](../2-installing.md#始める前に)の説明のとおり、`<tag>`はインストールするリリースのバージョンに書き換えてください。
 
-## クラスターで動くもの
+## クラスターで動かすもの
 
-長時間動き続けるプロセスはすべてDeploymentです。そのうち何かから呼び出されるものは、すべて同じ名前のServiceを通じて到達します。
+常駐するプロセスは、すべてDeploymentとして動かします。ほかから呼び出されるプロセスには、同じ名前のServiceを通じて接続します。
 
 | Deployment | イメージと引数 | ポート | Service | レプリカ数 |
 | --- | --- | --- | --- | --- |
-| `publira-server` | `ghcr.io/publira/publira:<tag>` | `8000` | あり。エッジとWebアプリが呼び出します | 任意 |
-| `publira-worker` | `ghcr.io/publira/publira:<tag>`、引数は`worker` | `8003`（プローブ専用） | なし。呼び出すものがありません | 任意 |
-| `web-storefront` | `ghcr.io/publira/web-storefront:<tag>` | `3000` | あり。エッジと、サーバーとワーカーからのキャッシュの再検証が呼び出します | 任意 |
-| `web-admin` | `ghcr.io/publira/web-admin:<tag>` | `4000` | あり。`web-storefront`と同じです | 任意 |
-| `web-platform`（動かす場合） | `ghcr.io/publira/web-platform:<tag>` | `4100` | あり。`web-storefront`と同じです | 任意 |
-| `email-renderer`（動かす場合） | `ghcr.io/publira/email-renderer:<tag>` | `8080` | あり。ワーカーが呼び出します | 任意 |
+| `publira-server` | `ghcr.io/publira/publira:<tag>` | `8000` | あり。リバースプロキシとWebアプリが呼び出します | 任意 |
+| `publira-worker` | `ghcr.io/publira/publira:<tag>`、引数は`worker` | `8003`(プローブ専用) | なし。呼び出し元がありません | 任意 |
+| `web-storefront` | `ghcr.io/publira/web-storefront:<tag>` | `3000` | あり。リバースプロキシが呼び出すほか、サーバーとワーカーがキャッシュの再検証で呼び出します | 任意 |
+| `web-admin` | `ghcr.io/publira/web-admin:<tag>` | `4000` | あり。呼び出し元は`web-storefront`と同じです | 任意 |
+| `web-platform`(動かす場合) | `ghcr.io/publira/web-platform:<tag>` | `4100` | あり。呼び出し元は`web-storefront`と同じです | 任意 |
+| `email-renderer`(動かす場合) | `ghcr.io/publira/email-renderer:<tag>` | `8080` | あり。ワーカーが呼び出します | 任意 |
 
-ワーカーは複数のレプリカで動かしてかまいません。定期ジョブはどれも、実行中の間は一意であるため、2つのレプリカが同じジョブを同時に実行することはないからです。また、ワーカーは繰り返し実行するジョブをすべて自分でスケジュールするため、インストール環境にCronJobは必要ありません。サーバーとワーカーの各レプリカはデータベースのログインごとにプールを開くため、レプリカを増やすには、より多くの接続を受け付けるデータベースが必要です。その計算は[コネクションプール](https://github.com/publira/publira/blob/main/server/README.md#connection-pools)にあります。
+ワーカーは複数のレプリカで動かせます。定期ジョブは実行中は一意になるので、2つのレプリカが同じジョブを同時に実行することはありません。繰り返し実行するジョブもワーカーが自分でスケジュールするので、CronJobは必要ありません。サーバーとワーカーの各レプリカは、データベースのログインごとにコネクションプールを開きます。そのため、レプリカを増やすには、より多くの接続を受け付けるデータベースが必要です。必要な接続数の計算は[コネクションプール](https://github.com/publira/publira/blob/main/server/README.md#connection-pools)にあります。
 
-`publira server`と`publira worker`は、1つの`publira server --with-worker`としてではなく、上の2つのDeploymentとして動かしてください。このフラグは1台のホストで動かすインストール環境のためのものです。クラスターで使うと、2つを別々にスケールできなくなるうえ、[概要](../1-overview.md#インストール環境が動かすもの)で説明しているとおり、エッジが転送する先のプロセスにワーカーのデータベースのログインを置くことになり、クラスターに必要なものは何も得られません。
+`publira server`と`publira worker`は、1つの`publira server --with-worker`ではなく、上の2つのDeploymentとして動かしてください。このフラグは1台のホストで動かす構成のためのものです。クラスターで使うと、2つを別々にスケールできなくなります。さらに[構成の概要](../1-overview.md#publiraで動かすプロセス)で説明しているとおり、リバースプロキシの転送先のプロセスが、ワーカーのデータベースのログインを持つことになります。クラスターにとって得るものはありません。
 
-`publiractl`は常駐させません。インストールするリリースのイメージから、JobとしてまたはアタッチするPodとして実行します。
+`publiractl`は常駐させません。インストールするリリースのイメージから、JobとしてかアタッチするPodとして実行します。
 
 ## 始める前に
 
 次のものが必要です。
 
-- **クラスター。** ノードは、イメージが公開されている2つのプラットフォームである`linux/amd64`または`linux/arm64`で、`kubectl`がそのクラスターにログインしている必要があります。手順では`publira` namespaceで、Secret、Deployment、Service、Job、Podを作成・変更・削除し、Podのログを読み、Podにアタッチし、エッジのリソースを管理します。エッジのリソースとは、GatewayとHTTPRouteとEnvoy GatewayのHTTPRouteFilter、またはIngressと2つのTraefik Middlewareです。namespaceと、どのnamespaceにも属さない`ClusterIssuer`の作成、そしてcert-managerとエッジのコントローラーのインストールには、クラスター管理者が必要です。それ以外は、namespaceにバインドした組み込みの`admin`ロールで足ります。ただしカスタムリソースは別で、カスタムリソースはそのインストールがこのロールに追加した場合にだけ含まれます。Envoy Gatewayのインストールは、Gateway、HTTPRoute、独自のHTTPRouteFilterについて追加しません。
-- **エッジとなるGateway APIの実装またはIngressコントローラー**と、証明書を発行する**cert-manager**。[Kubernetesでのエッジ](./1-edge.md)で説明しています。エッジのServiceにはインターネットから到達できる必要があり、通常は`LoadBalancer`タイプのServiceにします。
-- **インストール環境が依存するサービス。** [サービスを用意する](../2-installing.md#サービスを用意する)の一覧のとおりに用意します。クラスター外のマネージドサービスでも、クラスター内で動かすものでもかまいません。データベースを所有しロールを作成できる管理用ログインを持つPostgreSQLデータベース、Valkeyインスタンス、空のバケットとその認証情報、SMTPサーバーです。インストール環境のすべてのPodがこれらに到達できる必要があります。
-- テナントのドメインと、その管理画面のホスト（`admin.<domain>`、または`--admin-domain`で指定するホスト）の**DNS**。どちらも、エッジのServiceにアドレスが割り当てられたら、そのアドレスを指すようにします。
+- **クラスター**。ノードは、イメージを公開している2つのプラットフォーム`linux/amd64`か`linux/arm64`にします。`kubectl`でクラスターにログインしておきます。手順の中では`publira` namespaceで、Secret、Deployment、Service、Job、Podを作成、変更、削除し、Podのログを読み、Podにアタッチし、リバースプロキシのリソースを管理します。リバースプロキシのリソースとは、GatewayとHTTPRouteとEnvoy GatewayのHTTPRouteFilter、またはIngressと2つのTraefikのMiddlewareです。namespaceの作成と、namespaceに属さない`ClusterIssuer`の作成、cert-managerとリバースプロキシのコントローラーのインストールには、クラスター管理者の権限が必要です。それ以外の操作は、namespaceにバインドした組み込みの`admin`ロールでできます。ただしカスタムリソースを操作できるのは、そのリソースをインストールしたときに`admin`ロールへ権限が追加された場合だけです。Envoy Gatewayのインストールでは、Gateway、HTTPRoute、Envoy Gateway独自のHTTPRouteFilterの権限は追加されません。
+- リバースプロキシになる**Gateway APIの実装かIngressコントローラー**と、証明書を発行する**cert-manager**。詳しくは[Kubernetesでのリバースプロキシの設定](./1-edge.md)で説明します。リバースプロキシのServiceには、インターネットから接続できる必要があります。通常は`LoadBalancer`タイプのServiceにします。
+- **Publiraが依存するサービス**。[サービスを用意する](../2-installing.md#サービスを用意する)の一覧のとおりに用意します。クラスター外のマネージドサービスでも、クラスター内で動かすものでもかまいません。必要なのは、データベースを所有しロールを作成できる管理用ログインのあるPostgreSQLデータベース、Valkeyインスタンス、空のバケットとその認証情報、SMTPサーバーです。PubliraのすべてのPodから、これらに接続できる必要があります。
+- テナントのドメインと管理画面のホストの**DNS**。管理画面のホストは`admin.<domain>`か、`--admin-domain`で指定するホストです。リバースプロキシのServiceにアドレスが割り当てられたら、どちらもそのアドレスに向けます。
 
-以下のコマンドはすべて`publira` namespaceで実行します。
+以下のコマンドは、すべて`publira` namespaceで実行します。
 
 ```bash
 kubectl create namespace publira
@@ -46,7 +46,7 @@ kubectl config set-context --current --namespace=publira
 
 ## 1. Secretを作成する
 
-インストール環境に必要なすべてのシークレットと、それぞれが何を守るのかは、[シークレットを生成する](../2-installing.md#シークレットを生成する)に一覧があります。同じ方法で一度だけ生成します。
+Publiraに必要なシークレットと、それぞれが守るものは、[シークレットを生成する](../2-installing.md#シークレットを生成する)に一覧があります。同じ方法で、一度だけ生成します。
 
 ```bash
 ENCRYPTION_KEYS="k1:$(openssl rand -base64 32)"
@@ -63,7 +63,7 @@ TICKER_DB_PASSWORD="$(openssl rand -hex 32)"
 CONTENT_STATS_DB_PASSWORD="$(openssl rand -hex 32)"
 ```
 
-次に、各プロセスには自分が読むものだけを、専用のSecretで渡します。接続URLにはロールのパスワードが含まれるためシークレットであり、パスワードを含むRedisのURLも同様です。以下のホストとValkeyのURLは、自分のデータベースのホストとValkeyのURLに書き換えてください。
+次に、各プロセスが読む値だけを、プロセスごとのSecretにして渡します。接続URLにはロールのパスワードが入るので、接続URLもシークレットです。RedisのURLも、パスワードを含む場合はシークレットです。以下のデータベースのホストとValkeyのURLは、実際のものに書き換えてください。
 
 ```bash
 DB="db.internal:5432/publira?sslmode=require"
@@ -111,20 +111,20 @@ kubectl create secret generic publira-db-roles \
   --from-literal=content-stats="$CONTENT_STATS_DB_PASSWORD"
 ```
 
-| Secret | 読むもの | 方法 |
+| Secret | 読むもの | 渡し方 |
 | --- | --- | --- |
-| `publira-encryption` | `publira-server`、`publira-worker`、すべての`publiractl`の実行 | 環境変数として |
-| `publira-server` | `publira-server`と`publiractl setup` | 環境変数として。`setup`は`secretKeyRef`で、ここから`PUBLIRA_PLATFORM_DB_URL`だけを取得します |
-| `publira-worker` | `publira-worker` | 環境変数として |
-| `web-storefront`、`web-admin` | 同じ名前のWebアプリ | 環境変数として |
-| `publiractl` | `db`のJob | 環境変数として。[管理用ログイン](../2-installing.md#サービスを用意する)の接続である`PUBLIRA_DB_URL`だけを保持します。これを読むのは`db`コマンドだけであるため、ほかの`publiractl`コマンドにも、常駐するものにも渡しません |
-| `publira-db-roles` | `db roles`のJob | ロールごとに1つのファイルとして。`db roles`が`--<role>-password-file`フラグで読み込みます |
+| `publira-encryption` | `publira-server`、`publira-worker`、すべての`publiractl`の実行 | 環境変数 |
+| `publira-server` | `publira-server`と`publiractl setup` | 環境変数。`setup`は`secretKeyRef`で`PUBLIRA_PLATFORM_DB_URL`だけを読みます |
+| `publira-worker` | `publira-worker` | 環境変数 |
+| `web-storefront`、`web-admin` | 同じ名前のWebアプリ | 環境変数 |
+| `publiractl` | `db`のJob | 環境変数。[管理用ログイン](../2-installing.md#サービスを用意する)の接続情報`PUBLIRA_DB_URL`だけを入れます。この変数を読むのは`db`コマンドだけなので、ほかの`publiractl`コマンドにも、常駐するプロセスにも渡しません |
+| `publira-db-roles` | `db roles`のJob | ロールごとに1つのファイル。`db roles`が`--<role>-password-file`フラグで読み込みます |
 
-クラスター内のSecretはバックアップではありません。暗号化キーは自分のシークレットストアにも保管してください。[シークレットを生成する](../2-installing.md#シークレットを生成する)にあるとおり、キーを失うと、インストール環境が保存したすべての認証情報を入力し直すことになります。シークレットを、クラスターが同期するストア（たとえば、ストアからSecretを書き出すOperatorを使う場合）に保管するなら、同じSecretを同じキーで書き出すようにしてください。
+クラスター内のSecretはバックアップになりません。暗号化キーは、自分で管理するシークレットストアにも保管してください。[シークレットを生成する](../2-installing.md#シークレットを生成する)にあるとおり、キーを失うと、Publiraに保存したすべての認証情報を入力し直すことになります。シークレットをストアで管理してクラスターに同期する場合(ストアからSecretを書き出すOperatorを使う場合など)は、同じ名前のSecretに同じキー名で書き出すようにしてください。
 
 ## 2. マイグレーションを適用する
 
-`db migrate`は、管理用ログインの接続で、そのリリースの`publiractl`イメージからJobとして実行します。
+`db migrate`は、そのリリースの`publiractl`イメージを使い、管理用ログインの接続でJobとして実行します。
 
 ```yaml
 apiVersion: batch/v1
@@ -152,9 +152,9 @@ kubectl wait --for=condition=Complete --timeout=10m job/publira-db-migrate
 kubectl logs job/publira-db-migrate
 ```
 
-`backoffLimit: 0`は、失敗したマイグレーションをKubernetesが勝手に再実行しないようにします。失敗した実行はデータベースにdirtyの印を残し、それは[マイグレーションが失敗したとき](../8-upgrading.md#マイグレーションが失敗したとき)の手順で手作業で解消します。`kubectl wait`はJobが失敗した場合もまだ実行中の場合も10分で待つのをやめるため、どちらの場合もログを読んでください。
+`backoffLimit: 0`を指定すると、失敗したマイグレーションをKubernetesが自動で再実行しなくなります。マイグレーションが失敗するとデータベースにdirtyの印が残り、[マイグレーションが失敗したとき](../8-upgrading.md#マイグレーションが失敗したとき)の手順に従って手作業で解消する必要があります。`kubectl wait`は、Jobが失敗した場合もまだ実行中の場合も、10分で待つのをやめます。どちらの場合も、ログを確認してください。
 
-Jobは一度作成すると変更できず、完了したか失敗したかにかかわらず、終了したJobはマニフェストを適用しても再実行されません。このJobは終了の1日後に削除されます。それまでの間にJobを再実行するとき（その復旧手順の最後のステップのように）は、まずJobを削除します。
+Jobは作成後に変更できません。また、完了したか失敗したかにかかわらず、終了したJobはマニフェストを適用し直しても再実行されません。このJobは終了の1日後に削除されます。それまでに再実行するとき(マイグレーションが失敗したときの復旧手順の最後のステップなど)は、まずJobを削除します。
 
 ```bash
 kubectl delete job publira-db-migrate --ignore-not-found
@@ -165,7 +165,7 @@ kubectl apply -f publira-db-migrate.yaml
 
 ## 3. ロールを作成する
 
-`db roles`は、マイグレーションの後に同じ方法で実行します。ロールのパスワードは、ファイルとしてマウントした`publira-db-roles` Secretから読み込みます。
+マイグレーションの後に、`db roles`を同じ方法で実行します。ロールのパスワードは、ファイルとしてマウントした`publira-db-roles`のSecretから読み込みます。
 
 ```yaml
 apiVersion: batch/v1
@@ -209,7 +209,7 @@ kubectl wait --for=condition=Complete --timeout=5m job/publira-db-roles
 kubectl logs job/publira-db-roles
 ```
 
-ログにはロールごとに1行が出力されます。後でロールのパスワードをローテーションするときも、同じJobを使います。`publira-db-roles`と、そのパスワードを含む接続URLの両方でパスワードを変更し、Jobを再実行して、そのロールで接続するDeploymentを再起動します。マイグレーションと同じく、再適用する前に終了したJobを削除してください。`publira-server`がURLを持つ`publira_admin`の場合は次のとおりです。
+ログには、ロールごとに1行が出力されます。後でロールのパスワードをローテーションするときも、このJobを使います。`publira-db-roles`と、そのパスワードを含む接続URLの両方でパスワードを変更し、Jobを再実行してから、そのロールで接続するDeploymentを再起動します。マイグレーションと同じく、終了したJobは削除してから適用し直してください。`publira-server`が接続URLを持つ`publira_admin`の場合は、次のとおりです。
 
 ```bash
 kubectl delete job publira-db-roles --ignore-not-found
@@ -220,11 +220,11 @@ kubectl rollout restart deployment/publira-server
 
 ## 4. プロセスを起動する
 
-各プロセスは、Secretを環境変数として受け取り、[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables)に一覧がある残りの変数をDeploymentで受け取ります。livenessプローブは`/livez`、readinessプローブは`/readyz`で、タイムアウトは[オーケストレーターからのプローブ](../../3-operations/11-monitoring.md#オーケストレーターからの監視)のとおりです。チェックを順に実行するサーバーとワーカーは6秒より長く、Webアプリは2秒より長くします。
+各プロセスには、Secretを環境変数として渡し、[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables)にあるそのほかの変数をDeploymentで設定します。livenessプローブには`/livez`、readinessプローブには`/readyz`を使い、タイムアウトは[オーケストレーターからの監視](../../3-operations/11-monitoring.md#オーケストレーターからのプローブ)のとおりにします。サーバーとワーカーはチェックを順に実行するので6秒より長く、Webアプリは2秒より長くします。
 
-`publira server`と`publira worker`は停止を指示されてから30秒以内に停止するため、DeploymentではKubernetesが強制終了するまでの時間を、既定の30秒ではなく45秒にしています。また`publira-server`は、まず`preStop`フックで5秒待ちます。これにより、リクエストの受け付けをやめる前に、エッジがリクエストを送らなくなります。両方が必要な理由は[コピーを停止する](../7-scaling-out.md#コピーを停止する)で説明しています。フックは`sleep`アクションを使います。このアクションはイメージにシェルを必要とせず、Kubernetesはバージョン1.30以降で実行します。
+`publira server`と`publira worker`は、停止を指示されてから30秒以内に停止します。そのためDeploymentでは、Kubernetesが強制終了するまでの猶予を、既定の30秒ではなく45秒にしています。さらに`publira-server`は、まず`preStop`フックで5秒待ちます。こうすると、`publira-server`がリクエストの受け付けをやめる前に、リバースプロキシがリクエストを送らなくなります。両方が必要な理由は[コピーを停止する](../7-scaling-out.md#インスタンスを停止する)で説明しています。フックには`sleep`アクションを使います。`sleep`アクションはイメージにシェルがなくても動き、Kubernetes 1.30以降で使えます。
 
-`publira-server.yaml`：
+`publira-server.yaml`の内容は次のとおりです。
 
 ```yaml
 apiVersion: apps/v1
@@ -287,9 +287,9 @@ spec:
       targetPort: http
 ```
 
-`PUBLIRA_TRUSTED_PROXIES`は、クラスターがPodにアドレスを割り当てる範囲で、プロバイダーはクラスターのPodのアドレス範囲として表示しています。これを設定する理由は[クライアントのアドレス](./1-edge.md#クライアントのアドレス)で説明しています。
+`PUBLIRA_TRUSTED_PROXIES`には、クラスターがPodにアドレスを割り当てる範囲を指定します。クラウドプロバイダーでは、クラスターのPodのアドレス範囲として表示されます。設定する理由は[クライアントのアドレス](./1-edge.md#クライアントのアドレス)で説明しています。
 
-Serviceを必要としない`publira-worker.yaml`：
+`publira-worker.yaml`の内容は次のとおりです。ワーカーにはServiceは必要ありません。
 
 ```yaml
 apiVersion: apps/v1
@@ -335,7 +335,7 @@ spec:
             timeoutSeconds: 8
 ```
 
-2つのWebアプリも同じ形で、どちらもServiceを通じて`publira server`を呼び出します。`web-storefront.yaml`：
+2つのWebアプリも同じ形で、どちらもServiceを通じて`publira server`を呼び出します。`web-storefront.yaml`の内容は次のとおりです。
 
 ```yaml
 apiVersion: apps/v1
@@ -389,24 +389,24 @@ spec:
       targetPort: http
 ```
 
-`web-storefront`は、テナントのGoogleタグゲートウェイに渡す読者のアドレスを特定するために、`publira server`と同じ`PUBLIRA_TRUSTED_PROXIES`を受け取ります。`web-admin.yaml`は、`web-storefront`が出てくる箇所をすべて`web-admin`にし（これでSecretの名前も変わります）、`3000`の代わりにポート`4000`を使い、`PUBLIRA_TRUSTED_PROXIES`を省いたものです。`web-admin`はこの変数を読みません。
+`web-storefront`にも、`publira server`と同じ`PUBLIRA_TRUSTED_PROXIES`を設定します。テナントのGoogleタグゲートウェイに渡す読者のアドレスを判断するためです。`web-admin.yaml`は、`web-storefront`をすべて`web-admin`に置き換え(Secretの名前も変わります)、ポートを`3000`から`4000`に変え、`PUBLIRA_TRUSTED_PROXIES`を削除したものです。`web-admin`はこの変数を読みません。
 
-すべてを適用し、すべてのDeploymentの準備ができるまで待ちます。
+すべて適用し、すべてのDeploymentの準備ができるまで待ちます。
 
 ```bash
 kubectl apply -f publira-server.yaml -f publira-worker.yaml -f web-storefront.yaml -f web-admin.yaml
 kubectl rollout status deployment/publira-server deployment/publira-worker deployment/web-storefront deployment/web-admin
 ```
 
-`publira-worker`はジョブキューのテーブルを起動時に作成するため、専用のJobは必要ありません。準備ができないDeploymentは、そのPodの`/readyz`と、ログの`readiness check failed`の行に理由を示します。パスワードが接続URLと一致しないロールは、そこに`db.public`などのログインとして示されます。
+`publira-worker`は起動時にジョブキューのテーブルを作成するので、専用のJobは必要ありません。準備ができないDeploymentは、Podの`/readyz`とログの`readiness check failed`の行に理由を出力します。ロールのパスワードが接続URLと一致しない場合は、`db.public`などのログイン名がそこに出力されます。
 
-## 5. インストール環境をセットアップする
+## 5. Publiraをセットアップする
 
-`publiractl setup`は一度だけ実行します。すべての値を尋ねるターミナルにアタッチして実行するか、すべての値をフラグで渡すJobとして実行します。どちらも、`publira-server` Secretの`PUBLIRA_PLATFORM_DB_URL`を使って`publira_platform`として接続し、保存するものを暗号化キーで封印します。そのため、どちらもプロセスと同じ`publira-encryption` Secretを読みます。どちらにも`publiractl` Secretは渡しません。`setup`が管理用ログインで接続することはないためです。
+`publiractl setup`は一度だけ実行します。実行方法は2つあります。ターミナルにアタッチして、すべての値を対話的に入力する方法と、すべての値をフラグで渡してJobとして実行する方法です。どちらも`publira-server`のSecretにある`PUBLIRA_PLATFORM_DB_URL`を使って`publira_platform`として接続し、保存する値を暗号化キーで暗号化します。そのため、どちらの方法でも、プロセスと同じ`publira-encryption`のSecretを読みます。`setup`は管理用ログインでは接続しないので、どちらの方法でも`publiractl`のSecretは渡しません。
 
-どちらの方法でも、出力はコンテナのログに送られ、クラスターのログ収集がそれを保管する場合があります。そのため、管理者のパスワードは生成させずに指定してください。生成されたパスワードはサマリーに出力されます。プロンプトで入力したパスワードはエコーされず、ファイルで渡したパスワードは出力されません。
+どちらの方法でも、出力はコンテナのログに書かれ、クラスターのログ収集で保管される場合があります。そのため、管理者のパスワードは自動生成させずに指定してください。自動生成したパスワードは、最後の概要に出力されます。プロンプトで入力したパスワードは画面に表示されず、ファイルで渡したパスワードは出力されません。
 
-ターミナルで実行するには、アタッチするPodで実行します。このPodは終了時に削除されます。
+ターミナルで実行する場合は、アタッチするPodで実行します。このPodは終了すると削除されます。
 
 ```bash
 kubectl run publiractl-setup --rm -it --restart=Never \
@@ -430,7 +430,7 @@ kubectl run publiractl-setup --rm -it --restart=Never \
   }'
 ```
 
-無人で実行するには、すべての値をフラグで渡し、保存されるシークレット（管理者のパスワードを含む）を専用のSecretからファイルとして渡します。
+無人で実行する場合は、すべての値をフラグで渡します。保存するシークレットは、管理者のパスワードも含めて、専用のSecretからファイルとして渡します。
 
 ```bash
 kubectl create secret generic publiractl-setup \
@@ -497,25 +497,25 @@ kubectl wait --for=condition=Complete --timeout=5m job/publiractl-setup
 kubectl logs job/publiractl-setup
 ```
 
-Amazon S3以外のストアを使う場合は、`--endpoint`でそのURLを追加し、パスでバケットを指定するストアなら`--force-path-style`も追加します。すべてのフラグと省略できる手順は、[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup)に一覧があります。
+Amazon S3以外のストレージを使う場合は、`--endpoint`でそのURLを追加します。パス形式でバケットを指定するストレージでは、`--force-path-style`も追加します。すべてのフラグと、省略できる手順は[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup)にあります。
 
-たとえば接続テストを拒否するオブジェクトストレージで途中で止まった実行は、保存したものを保持しているため、原因を直してから再実行すれば完了します。マイグレーションと同じく、失敗したJobを削除してから再適用してください。
+オブジェクトストレージが接続テストを拒否した場合などに実行が途中で止まっても、それまでに保存した値は残ります。原因を直してから再実行すれば完了します。マイグレーションと同じく、失敗したJobを削除してから適用し直してください。
 
-管理者のパスワードは、`publiractl-setup` Secretの`admin-password`キーです。管理者がログインしてパスワードを変更したら、このSecretを削除してください。その後これを読むものはありません。
+管理者のパスワードは、`publiractl-setup`のSecretの`admin-password`キーにあります。管理者がログインしてパスワードを変更したら、このSecretは削除してください。以降はどこからも読まれません。
 
-## 6. 前段にエッジを置く
+## 6. リバースプロキシを置く
 
-エッジは、ホストとパスごとに適切なServiceへルーティングし、TLSを終端し、呼び出し元が選んではならないヘッダーを取り除きます。[Kubernetesでのエッジ](./1-edge.md)では、cert-managerが証明書を発行するGatewayまたはIngressとしてエッジを前段に置き、クラスターの外から確認します。その確認が通ったら、ログインするためにこのページに戻ってきてください。
+リバースプロキシは、ホストとパスに応じて適切なServiceにルーティングし、TLSを終端し、呼び出し元に指定させてはならないヘッダーを削除します。[Kubernetesでのリバースプロキシの設定](./1-edge.md)では、cert-managerで証明書を発行するGatewayかIngressをリバースプロキシとして前段に置き、クラスターの外から動作を確認します。確認が済んだら、このページに戻ってログインします。
 
 ## 7. ログインする
 
-`https://admin.comics.example.com`、または`--admin-domain`で指定した管理画面のホストでテナント管理画面を開き、管理者のメールアドレスとパスワードでログインします。ここから先のインストール環境は、[ログインする](../2-installing.md#6-ログインする)で説明しているものと同じです。
+`https://admin.comics.example.com`(`--admin-domain`で管理画面のホストを指定した場合はそのホスト)でテナント管理画面を開き、管理者のメールアドレスとパスワードでログインします。ここから先は、[インストールのログインの手順](../2-installing.md#6-ログインする)を済ませた後と同じです。
 
-## このセクションの内容
+## このセクションのページ
 
-- [Kubernetesでのエッジ](./1-edge.md)：証明書、Serviceの前に置くGatewayまたはIngress、クライアントのアドレス、クラスターの外からのエッジの確認。
-- [Kubernetesでの運用](./2-operating.md)：テナントの追加、管理画面の認証情報をテナントのドメインに置かないこと、メトリクス、アップグレード。
+- [Kubernetesでのリバースプロキシの設定](./1-edge.md)では、証明書、Serviceの前段に置くGatewayかIngress、クライアントのアドレス、クラスターの外からの確認方法を説明します。
+- [Kubernetesでの運用](./2-operating.md)では、テナントの追加、テナントのドメインから管理画面の認証情報を切り離す方法、メトリクス、アップグレードを説明します。
 
 ## 次のステップ
 
-GatewayまたはIngressが果たすべきことの全体は[エッジ](../4-edge/index.md)に、インストール環境が稼働を始めた後に監視すべきことは[モニタリング](../../3-operations/11-monitoring.md)にあります。各プロセスが読む変数は[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md)にあります。オプションのプロセスは、[オプションのプロセスを有効にする](../2-installing.md#オプションのプロセスを有効にする)のとおりに、それぞれ上と同じようなDeploymentとServiceとして有効にします。
+GatewayやIngressに必要な設定の全体は[リバースプロキシの設定](../4-edge/index.md)に、運用を始めた後に監視すべきことは[監視](../../3-operations/11-monitoring.md)にあります。各プロセスが読む変数は[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md)にあります。オプションのプロセスは、[オプションのプロセスを有効にする](../2-installing.md#追加のプロセスを有効にする)の説明のとおり、それぞれ上と同じようにDeploymentとServiceで動かします。

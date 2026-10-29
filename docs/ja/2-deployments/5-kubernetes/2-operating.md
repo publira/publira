@@ -1,24 +1,24 @@
 ---
 title: Kubernetesでの運用
-description: Kubernetesクラスターで動くインストール環境で、テナントを追加し、管理画面の認証情報をテナントのドメインに置かず、画像と公開APIを分けて提供し、メトリクスを公開し、アップグレードする。
+description: Kubernetesクラスターで動かしているPubliraについて、テナントの追加、テナントのドメインから管理画面の認証情報を切り離す方法、画像と公開APIの分離、メトリクスの公開、アップグレードを説明します。
 published: 2026-10-29
 source_updated: 2026-10-25
 ---
 
-ここで扱うのは、[Kubernetes](./index.md)でインストール環境の運用を始めた後に加える変更です。どの変更も、そのページと[Kubernetesでのエッジ](./1-edge.md)で作成したリソースを変更します。
+ここでは、[Kubernetes](./index.md)の手順で運用を始めたPubliraに加える変更を説明します。どの変更も、そのページと[Kubernetesでのリバースプロキシの設定](./1-edge.md)で作成したリソースを変更します。
 
 ## テナントを追加する
 
-`publiractl tenant create`またはプラットフォーム管理画面で作成したテナントには、[テナントを追加する](../4-edge/index.md#テナントを追加する)で説明しているとおり、エッジにその2つのホスト名が必要です。クラスターでは次のようになります。
+`publiractl tenant create`やプラットフォーム管理画面でテナントを作成したら、[テナントを追加する](../4-edge/index.md#テナントを追加するとき)で説明しているとおり、そのテナントの2つのホスト名をリバースプロキシに追加する必要があります。クラスターでは次のようにします。
 
-- **Gatewayを使う場合**：Gatewayに2つのHTTPSリスナーを追加します。テナントのドメイン用と、その管理画面のホスト用で、それぞれ独自のSecret名を持たせます。そして各リスナーの名前を、そのWebアプリのHTTPRouteの`parentRefs`に追加します。cert-managerは、Gatewayのアノテーションによって両方の証明書を発行します。1つのGatewayが持てるリスナーは最大64個であるため、1つのGatewayで提供できるのは、`http`リスナーのほかに最大31テナントです。それ以降のテナントは、独自のHTTPRouteとともに別のGatewayに置いてください。
-- **Ingressを使う場合**：ドメインを`web-storefront` Ingressの`tls`エントリーとルールに、管理画面のホストを`web-admin`のそれらに、両方を`api-not-found`のそれらに追加します。[Ingressを使う場合](./1-edge.md#ingressを使う場合)のYAMLアンカー（`&storefront-paths`、`&admin-paths`、`&not-found-paths`）を使えば、新しいルールで`paths: *storefront-paths`のようにパスを再利用できます。cert-managerは、`tls`エントリーが変わったときに新しい名前の証明書を発行します。
+- **Gatewayを使う場合**。GatewayにHTTPSリスナーを2つ追加します。テナントのドメイン用と管理画面のホスト用で、それぞれに別のSecret名を指定します。各リスナーの名前は、対応するWebアプリのHTTPRouteの`parentRefs`に追加します。証明書は2つとも、Gatewayのアノテーションによってcert-managerが発行します。1つのGatewayに置けるリスナーは最大64個なので、`http`リスナーのほかに収容できるテナントは31までです。それ以降のテナントは、別のGatewayとそのGateway用のHTTPRouteに置いてください。
+- **Ingressを使う場合**。ドメインを`web-storefront`のIngressの`tls`エントリーとルールに、管理画面のホストを`web-admin`のIngressの`tls`エントリーとルールに追加します。両方のホスト名を`api-not-found`の`tls`エントリーとルールにも追加します。[Ingressを使う場合](./1-edge.md#ingressを使う場合)のYAMLアンカー(`&storefront-paths`、`&admin-paths`、`&not-found-paths`)を使うと、新しいルールで`paths: *storefront-paths`のようにパスを再利用できます。`tls`エントリーを変更すると、cert-managerが新しい名前の証明書を発行します。
 
-cert-managerのチャレンジがエッジに届くように、変更を適用する前に両方の名前をエッジのアドレスに向けておいてください。
+cert-managerのチャレンジが届くように、変更を適用する前に、両方の名前をリバースプロキシのアドレスに向けておいてください。
 
-## 管理画面の認証情報をテナントのドメインに置かない
+## テナントのドメインから管理画面の認証情報を切り離す
 
-エッジはすでに管理画面のAPIをインターネットから切り離していますが、エッジがテナントのドメインを転送する先の`publira-server`は依然としてそれらのAPIを提供しており、そのためにデータベースのログインとWebサービストークンを保持しています。[エッジを通るのは公開APIだけ](../4-edge/index.md#エッジを通るのは公開apiだけ)で説明しているとおり、エッジのルールとは別の層として、この3つすべてを読者が到達するプロセスから取り除くには、`--role storefront`を付けた2つ目のDeploymentを動かし、テナントのドメインと`web-storefront`をそこにルーティングします。各Deploymentは独自のレプリカを持つため、この分割によって、[役割ごとにサーバーを分割する](../7-scaling-out.md#ロールごとにサーバーを分ける)で説明しているとおり、読者のトラフィックを管理画面とは別にスケールすることもできます。
+管理画面のAPIは、リバースプロキシによってインターネットから遮断されています。しかし、テナントのドメインへのリクエストの転送先である`publira-server`は管理画面のAPIも提供しているので、そのためのデータベースのログインとWebサービストークンを持っています。管理画面のAPI、そのデータベースのログイン、Webサービストークンの3つを、読者からのリクエストを処理するプロセスから取り除くには、`--role storefront`を付けた2つ目のDeploymentを動かし、テナントのドメインと`web-storefront`の接続先をそちらに切り替えます。[リバースプロキシを通すのは公開APIだけ](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しているとおり、これはリバースプロキシのルールとは別の防御層になります。Deploymentごとにレプリカ数を設定できるので、[ロールごとにサーバーを分ける](../7-scaling-out.md#サーバーをロールごとに分ける)で説明しているとおり、読者のトラフィックを管理画面とは別にスケールすることもできます。
 
 ```yaml
 apiVersion: apps/v1
@@ -82,7 +82,7 @@ spec:
       targetPort: http
 ```
 
-このDeploymentのSecretには、それが読む`publira server`の値を入れます。Webサービストークンと、`publira_public`以外の接続は含みません。[ほかのSecretを作成した](./index.md#1-secretを作成する)シェル（それらの値がまだ残っているシェル）で作成します。
+このDeploymentのSecretには、このDeploymentで`publira server`が読む値だけを入れます。Webサービストークンと、`publira_public`以外の接続URLは入れません。[ほかのSecretを作成した](./index.md#1-secretを作成する)ときのシェルには値がまだ残っているので、同じシェルで作成します。
 
 ```bash
 kubectl create secret generic publira-storefront \
@@ -92,9 +92,9 @@ kubectl create secret generic publira-storefront \
   --from-literal=PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:$PUBLIC_DB_PASSWORD@$DB"
 ```
 
-次に、`web-storefront`のHTTPRouteまたはIngressで、テナントのドメインの`/images`と`/rpc`の下の公開APIについてだけ、バックエンドを`publira-server`から`publira-storefront`に変更します。`web-storefront`も公開APIだけを呼び出すため、同じくそこに向けます。そのDeploymentの`PUBLIRA_GRPC_URL`を`http://publira-storefront:8000/rpc`に設定してください。管理画面のホストのルート、`web-admin`、`web-platform`は、[管理画面のサーバーから公開APIを外す](#管理画面のサーバーから公開apiを外す)で公開APIを外すまで、すべての役割を提供する`publira-server`を引き続き呼び出します。
+次に、`web-storefront`のHTTPRouteまたはIngressで、テナントのドメインの`/images`と、`/rpc`の下の公開APIだけ、バックエンドを`publira-server`から`publira-storefront`に変更します。`web-storefront`も公開APIしか呼び出さないので、接続先を`publira-storefront`にします。`web-storefront`のDeploymentで、`PUBLIRA_GRPC_URL`を`http://publira-storefront:8000/rpc`に設定してください。管理画面のホストのルート、`web-admin`、`web-platform`は、[管理画面のサーバーから公開APIを外す](#管理画面のサーバーから公開apiを外す)で公開APIを外すまで、すべてのロールを提供する`publira-server`を引き続き呼び出します。
 
-どちらの場合も、エッジはすべてのホストで管理画面のAPIに`404`を返すため、確認では代わりにクラスターの中から2つのServiceを呼び出します。
+分割の前後を問わず、リバースプロキシはどのホストでも管理画面のAPIに`404`を返します。そのため確認は、クラスターの中から2つのServiceを直接呼び出して行います。
 
 ```bash
 for service in publira-storefront publira-server; do
@@ -104,22 +104,22 @@ for service in publira-storefront publira-server; do
 done
 ```
 
-`publira-storefront`はそのAPIを提供していないため、`404`を返します。`publira-server`は`400`を返します。そこではAPIが提供されており、空のリクエストを拒否するためです。
+`publira-storefront`はこのAPIを提供していないので、`404`を返します。`publira-server`は`400`を返します。このAPIを提供していて、空のリクエストを拒否するからです。
 
 ### 管理画面のサーバーから公開APIを外す
 
-`publira-server`は依然として公開APIを提供し、`publira_public`を保持しています。`web-admin`がテナントのテーマとタグのために公開APIを呼び出し、管理画面のホストのルートが公開APIをそこに転送しているためです。その両方を`publira-storefront`に送れば、[役割ごとにサーバーを分割する](../7-scaling-out.md#ロールごとにサーバーを分ける)の手順4で説明しているとおり、`publira-server`を`--role admin,platform`で動かせます。`publira-server`が公開APIのリクエストの提供をやめた時点で、まだそこに公開APIのリクエストを送っているものが残らないように、次の順序で変更してください。
+`publira-server`はまだ公開APIを提供していて、`publira_public`の接続も持っています。`web-admin`がテナントのテーマとタグを取得するために公開APIを呼び出し、管理画面のホストのルートも公開APIを`publira-server`に転送しているからです。この2つを`publira-storefront`に向ければ、[ロールごとにサーバーを分ける](../7-scaling-out.md#サーバーをロールごとに分ける)の手順4で説明しているとおり、`publira-server`を`--role admin,platform`で動かせます。`publira-server`が公開APIの提供をやめた時点で、まだ公開APIのリクエストを送ってくるものが残らないように、次の順序で変更してください。
 
-まず、`web-admin`の公開APIの呼び出し先をストアフロントのServiceに向けます。そのDeploymentの`env`に、引き続き`publira-server`を指定する`PUBLIRA_GRPC_URL`と並べて変数を追加し、適用します。
+まず、`web-admin`の公開APIの呼び出し先を、ストアフロントのServiceに向けます。`web-admin`のDeploymentの`env`に次の変数を`PUBLIRA_GRPC_URL`と並べて追加し、適用します。`PUBLIRA_GRPC_URL`は`publira-server`のままにします。
 
 ```yaml
 - name: PUBLIRA_PUBLIC_GRPC_URL
   value: http://publira-storefront:8000/rpc
 ```
 
-これで、このWebアプリの`/readyz`はそのServiceも`public-api`として確認するようになります。
+これで、`web-admin`の`/readyz`は、このServiceも`public-api`として確認するようになります。
 
-次に、管理画面のホストの公開APIを、どのホストでも応答する`publira-storefront`にルーティングし、`/images`は`publira-server`のままにします。管理画面のページに表示される画像は`admin`の役割に属するためです。`web-admin`のHTTPRouteで、最初のルールを2つに分けます。
+次に、管理画面のホストの公開APIを`publira-storefront`にルーティングします。`publira-storefront`は、どのホストへのリクエストにも応答します。`/images`は`publira-server`のままにします。管理画面のページに表示する画像は、`admin`ロールが提供するからです。`web-admin`のHTTPRouteで、最初のルールを次の2つに分けます。
 
 ```yaml
 - matches:
@@ -145,9 +145,9 @@ done
       port: 8000
 ```
 
-`web-admin` Ingressの場合は、代わりに`/rpc/publira.v1.`のパスのバックエンドを`publira-storefront`に変更します。
+Ingressを使う場合は、代わりに`web-admin`のIngressで、`/rpc/publira.v1.`のパスのバックエンドを`publira-storefront`に変更します。
 
-最後に、`publira-server.yaml`で`publira-server`のコンテナに`args: ["server", "--role", "admin,platform"]`を与え、ほかにそこから読むもののない`PUBLIRA_PUBLIC_DB_URL`をそのSecretから削除して、Deploymentを適用します。
+最後に、`publira-server.yaml`で`publira-server`のコンテナに`args: ["server", "--role", "admin,platform"]`を指定します。ほかにこのSecretから`PUBLIRA_PUBLIC_DB_URL`を読むものはないので、Secretから削除します。そのうえで、Deploymentを適用します。
 
 ```bash
 kubectl patch secret publira-server --type=json \
@@ -156,7 +156,7 @@ kubectl apply -f publira-server.yaml
 kubectl rollout status deployment/publira-server
 ```
 
-`publira-server`が公開APIを提供しなくなったことを確認します。以前は`400`を返していたこの呼び出しが、`404`を返します。
+`publira-server`が公開APIを提供しなくなったことを確認します。次の呼び出しは、以前は`400`を返していましたが、`404`を返すようになります。
 
 ```bash
 kubectl run publira-role-check --rm -i --restart=Never --image=curlimages/curl -- \
@@ -164,22 +164,22 @@ kubectl run publira-role-check --rm -i --restart=Never --image=curlimages/curl -
   "http://publira-server:8000/rpc/publira.v1.TenantService/GetTenant"
 ```
 
-テナント管理画面にログインします。テナントのテーマが描画され、タグが以前と同じように一覧表示されます。これらは今では`publira-storefront`から読み込まれています。
+テナント管理画面にログインします。テナントのテーマもタグの一覧も以前と同じように表示され、これらは`publira-storefront`から読み込まれています。
 
-## 画像と公開APIを分けて提供する
+## 画像と公開APIを別に提供する
 
-[画像と公開APIを分けて提供する](../7-scaling-out.md#画像と公開apiを分けて提供する)で説明しているとおり、テナントの画像と公開APIには、それぞれ専用のロードバランサーを通じて、専用のホスト名で到達できるようにできます。Gatewayを使うクラスターでは、Gatewayがそれぞれ独立したロードバランサーになるため、画像には専用のDeploymentの前に置く2つ目のGatewayを用意し、公開APIには既存のGateway上で`publira-storefront`の前に置くホスト名を用意します。これは、`publira-storefront`を作成した[管理画面の認証情報をテナントのドメインに置かない](#管理画面の認証情報をテナントのドメインに置かない)を前提としています。以下の名前は例です。テナントの画像ホストは`images.comics.example.com`、公開APIのホストは`api.example.com`です。
+[画像と公開APIを分けて提供する](../7-scaling-out.md#画像と公開apiを別々に提供する)で説明しているとおり、テナントの画像と公開APIは、それぞれ専用のロードバランサーを経由する専用のホスト名で提供できます。Gatewayを使うクラスターでは、Gatewayごとに別のロードバランサーになります。そこで、画像には専用のDeploymentとその前段の2つ目のGatewayを用意し、公開APIには既存のGatewayに`publira-storefront`へ転送するホスト名を追加します。この手順は、`publira-storefront`を作成する[テナントのドメインから管理画面の認証情報を切り離す](#テナントのドメインから管理画面の認証情報を切り離す)の手順を済ませていることが前提です。以下の名前は例です。テナントの画像ホストを`images.comics.example.com`、公開APIのホストを`api.example.com`とします。
 
 ### 画像
 
-画像のトラフィックをAPIのトラフィックとは別にスケールできるように、画像を専用のDeploymentで動かします。`publira-storefront`のDeploymentとServiceを`publira-images.yaml`にコピーし、名前、ラベル、セレクター、コンテナ名の`publira-storefront`を`publira-images`に変更します。`secretRef: {name: publira-storefront}`はそのままにします。2つは同じ役割を提供し、同じSecretを読むためです。そのうえで適用します。
+画像のトラフィックをAPIとは別にスケールできるように、画像は専用のDeploymentで動かします。`publira-storefront`のDeploymentとServiceを`publira-images.yaml`にコピーし、名前、ラベル、セレクター、コンテナ名の`publira-storefront`を`publira-images`に変更します。`secretRef: {name: publira-storefront}`は変更しません。2つは同じロールを提供し、同じSecretを読むからです。そのうえで適用します。
 
 ```bash
 kubectl apply -f publira-images.yaml
 kubectl rollout status deployment/publira-images
 ```
 
-画像ホストには、画像ホストごとに1つのHTTPSリスナーを持つ専用のGatewayと、そこでの`/images`だけを`publira-images`に転送するHTTPRouteを用意します。どのルールにも一致しないパスには、Gateway自身が`404`を返します。
+画像ホスト用に専用のGatewayを用意し、画像ホストごとにHTTPSリスナーを置きます。HTTPRouteは、そのホストへの`/images`だけを`publira-images`に転送します。どのルールにも一致しないパスには、Gateway自身が`404`を返します。
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -243,7 +243,7 @@ spec:
             statusCode: 301
 ```
 
-フィルターは、[Gatewayを使う場合](./1-edge.md#gatewayを使う場合)で説明しているとおり、ほかのルートと同じヘッダーを取り除きます。cert-managerは画像ホストのACMEチャレンジに新しいGatewayの`http`リスナーで応答するため、`letsencrypt`発行者のソルバーの`parentRefs`に、[証明書](./1-edge.md#証明書)で指定したものと並べてそのリスナーを追加します。
+フィルターは、[Gatewayを使う場合](./1-edge.md#gatewayを使う場合)で説明しているとおり、ほかのルートと同じヘッダーを削除します。画像ホストのACMEチャレンジには、新しいGatewayの`http`リスナーでcert-managerが応答します。そのため、`letsencrypt`発行者のソルバーの`parentRefs`に、[証明書](./1-edge.md#証明書)で指定したものと並べて新しいGatewayを追加します。
 
 ```yaml
 parentRefs:
@@ -257,11 +257,11 @@ parentRefs:
     sectionName: http
 ```
 
-各画像ホストを新しいGatewayのアドレスに向け、証明書を待ってから、[画像ホスト](../../3-operations/2-tenants.md#画像ホスト)で説明しているとおり、プラットフォーム管理画面の**画像ホスト**または`publiractl tenant update --image-domain`でテナントに割り当てます。後で追加したテナントには、その画像ホストのためのリスナーを`publira-images`に追加し、リスナーの名前を`images` HTTPRouteの`parentRefs`に追加します。
+各画像ホストを新しいGatewayのアドレスに向け、証明書が発行されるのを待ちます。そのうえで、[画像ホスト](../../3-operations/2-tenants.md#画像ホスト)で説明しているとおり、プラットフォーム管理画面の**画像ホスト**か`publiractl tenant update --image-domain`で、画像ホストをテナントに割り当てます。後からテナントを追加したときは、その画像ホスト用のリスナーを`publira-images`に追加し、リスナーの名前を`images`のHTTPRouteの`parentRefs`に追加します。
 
 ### 公開API
 
-公開APIには、`publira` Gateway上の専用のホスト名と、そこでの公開APIだけを`publira-storefront`に転送するHTTPRouteを用意します。Gatewayの`listeners`にリスナーを追加し、
+公開APIには、`publira`のGatewayに専用のホスト名を用意し、そのホストへの公開APIだけを`publira-storefront`に転送するHTTPRouteを作成します。まず、Gatewayの`listeners`に次のリスナーを追加します。
 
 ```yaml
 - name: api-example-com
@@ -273,7 +273,7 @@ parentRefs:
       - name: api-example-com-tls
 ```
 
-ルートを適用します。
+続けて、次のルートを適用します。
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -302,11 +302,11 @@ spec:
           port: 8000
 ```
 
-Webアプリはすでにクラスターのネットワーク経由で`publira-storefront`を呼び出しており、ロードバランサーを通りません。`web-storefront`は`PUBLIRA_GRPC_URL`で、`web-admin`は[管理画面のサーバーから公開APIを外す](#管理画面のサーバーから公開apiを外す)を済ませた後なら`PUBLIRA_PUBLIC_GRPC_URL`で呼び出します。クラスターの外で動くWebアプリは、代わりに`https://api.example.com/rpc`を指定します。テナントのモバイルアプリは、[アプリの接続先アドレス](../../5-mobile-app/2-building.md#アプリの接続先のアドレス)で説明しているとおり、テナントが画像ホストを持った後に`PUBLIRA_BASE_URL=https://api.example.com`でビルドします。テナントのドメインのルートはそのまま残るため、テナントのドメインを接続先としてビルドしたアプリも引き続き動作します。
+Webアプリはすでにクラスター内のネットワークで`publira-storefront`を呼び出しているので、ロードバランサーを経由しません。`web-storefront`は`PUBLIRA_GRPC_URL`で、`web-admin`は[管理画面のサーバーから公開APIを外す](#管理画面のサーバーから公開apiを外す)を済ませていれば`PUBLIRA_PUBLIC_GRPC_URL`で呼び出しています。クラスターの外で動かすWebアプリでは、代わりに`https://api.example.com/rpc`を指定します。テナントのモバイルアプリは、テナントに画像ホストを割り当てた後で、`PUBLIRA_BASE_URL=https://api.example.com`を指定してビルドします。詳しくは[アプリの接続先のアドレス](../../5-mobile-app/2-building.md#アプリの接続先)で説明しています。テナントのドメインのルートは変更しないので、テナントのドメインを接続先にしてビルドしたアプリも引き続き動作します。
 
 ### Ingressを使う場合
 
-同じクラスのIngressはすべて、そのコントローラーのService、つまり1つのロードバランサーを通じて到達します。画像ホストには、[Ingressを使う場合](./1-edge.md#ingressを使う場合)の値でインストールした、独自のクラスを持つ2つ目のコントローラーを用意するか、既存のコントローラーに置いたままにします。[テナントの画像ホスト](../4-edge/index.md#テナントの画像ホスト)では後者も認められています。どちらの場合も1つのIngressがそれらをルーティングし、それ以外のパスはどのルールにも指定されていないため、Traefikが自分で`404`を返します。
+同じクラスのIngressは、すべてコントローラーのServiceを経由します。このServiceが1つのロードバランサーです。画像ホストには、独自のクラスを持つ2つ目のコントローラーを、[Ingressを使う場合](./1-edge.md#ingressを使う場合)の値でインストールして用意します。既存のコントローラーに置いたままにしてもかまいません。[テナントの画像ホスト](../4-edge/index.md#テナントの画像ホスト)でも、それは認められています。どちらの場合も、1つのIngressで画像ホストをルーティングします。ほかのパスはどのルールにも指定されていないので、Traefikが自分で`404`を返します。
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -330,7 +330,7 @@ spec:
               { service: { name: publira-images, port: { number: 8000 } } }
 ```
 
-公開APIのホストは、既存のコントローラー上の同じ形のIngressをもう1つ追加したものです。ホストは`api.example.com`、パスは`ImplementationSpecific`の`/rpc/publira.v1.`の1つだけで、`publira-storefront`に向けます。
+公開APIのホストも、既存のコントローラーに同じ形のIngressを1つ追加して用意します。ホストは`api.example.com`、パスは`ImplementationSpecific`の`/rpc/publira.v1.`だけで、転送先は`publira-storefront`です。
 
 ### 分割を確認する
 
@@ -341,35 +341,35 @@ curl -s -X POST -H 'Content-Type: application/json' -d '{}' \
 curl -s -o /dev/null -w '%{http_code}\n' https://api.example.com/images/
 ```
 
-1つ目は`404`を返します。画像ホストは画像以外のものを提供しません。2つ目は`publira-storefront`に届き、空のリクエストが`invalid_argument`で拒否されます。3つ目も`404`を返します。APIのホストは画像を提供しません。そのうえでテナントのサイトを開くと、画像が`https://images.comics.example.com/images/…`から読み込まれます。
+1つ目は`404`を返します。画像ホストは画像しか提供しないからです。2つ目は`publira-storefront`に届き、空のリクエストは`invalid_argument`で拒否されます。3つ目も`404`を返します。APIのホストは画像を提供しないからです。最後にテナントのサイトを開き、画像が`https://images.comics.example.com/images/…`から読み込まれることを確認します。
 
 ## メトリクス
 
-`publira server`と`publira worker`は、[メトリクス](../../3-operations/11-monitoring.md#メトリクス)のとおりに`PUBLIRA_METRICS_ENABLED=true`、`OTEL_METRICS_EXPORTER=prometheus`、`OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`で有効にすると、ポート`9464`でPrometheusのメトリクスを提供します。[プロセスを起動する](./index.md#4-プロセスを起動する)では両者がそれぞれ別のPodで動くため、どちらも衝突せずにこのポートで待ち受けます。2つを1つのPodの2つのコンテナとして動かすと、1つのネットワーク名前空間を共有するため、後から起動した方は先に起動した方が使っているポートで待ち受けられません。それぞれに別の`OTEL_EXPORTER_PROMETHEUS_PORT`を与えるか、別々のPodで動かしてください。
+`publira server`と`publira worker`は、[メトリクス](../../3-operations/11-monitoring.md#メトリクス)の説明に従って`PUBLIRA_METRICS_ENABLED=true`、`OTEL_METRICS_EXPORTER=prometheus`、`OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`で有効にすると、ポート`9464`でPrometheusのメトリクスを公開します。[プロセスを起動する](./index.md#4-プロセスを起動する)の構成では両者が別々のPodで動くので、同じポートで待ち受けても衝突しません。2つを1つのPodの2つのコンテナとして動かす場合は、ネットワーク名前空間を共有します。そのため、後から起動した方は、先に起動した方が使っているポートで待ち受けられません。それぞれに別の`OTEL_EXPORTER_PROMETHEUS_PORT`を指定するか、別々のPodで動かしてください。
 
 ## アップグレード
 
-[アップグレード](../8-upgrading.md)では、バックアップ、新しいリリースの`publiractl`によるマイグレーションとロール、そしてプロセスの順に、インストール環境を新しいリリースに移行します。まずそのページとリリースノートを読んでください。クラスターでは、その手順は次のようになります。
+[アップグレード](../8-upgrading.md)では、バックアップ、新しいリリースの`publiractl`によるマイグレーションとロールの更新、プロセスの入れ替えの順に、Publiraを新しいリリースに移行します。先にそのページと、リリースノートを読んでください。クラスターでは、手順は次のようになります。
 
-1. 先にプロセスを停止すると決めた場合は（その判断は[先にプロセスを停止するかどうかを決める](../8-upgrading.md#先にプロセスを停止するかどうかを決める)で検討します）、インストール環境のすべてのDeploymentをゼロにスケールして**プロセスを停止します**。
+1. 先にプロセスを停止すると決めた場合は、PubliraのすべてのDeploymentのレプリカ数を0にして**プロセスを停止します**。停止するかどうかは、[先にプロセスを停止するかどうかを決める](../8-upgrading.md#先にプロセスを停止するかどうかを決める)を参考に判断します。
 
    ```bash
    kubectl scale deployment --all --replicas=0
    kubectl wait --for=delete pod -l app.kubernetes.io/name --timeout=2m
    ```
 
-   このラベルはインストール環境のすべてのDeploymentのPodを選択し、Jobのものは除外します。JobのPodは終了済みで、ログのために残されています。
+   このラベルで、PubliraのすべてのDeploymentのPodを選択します。JobのPodは選択されません。JobのPodは終了済みで、ログを読むために残されています。
 
-2. [データベースをバックアップする](../8-upgrading.md#1-データベースをバックアップする)で説明しているとおり、データベースに到達できるホストからの`pg_dump`、またはマネージドデータベースのスナップショットで、**データベースをバックアップします**。
-3. **マイグレーションとロールを適用します。** Jobは変更できないため、前のリリースのJobがまだ残っていれば削除します。そのうえで、[マイグレーションを適用する](./index.md#2-マイグレーションを適用する)と[ロールを作成する](./index.md#3-ロールを作成する)の2つのJobの`<tag>`を新しいリリースに変更し、この順に実行して、それぞれが完了するのを待ちます。
+2. [データベースをバックアップする](../8-upgrading.md#1-データベースをバックアップする)の説明のとおり、データベースに接続できるホストから`pg_dump`を実行するか、マネージドデータベースのスナップショットを取って、**データベースをバックアップします**。
+3. **マイグレーションとロールを適用します。** Jobは変更できないので、前のリリースのJobが残っていれば削除します。そのうえで、[マイグレーションを適用する](./index.md#2-マイグレーションを適用する)と[ロールを作成する](./index.md#3-ロールを作成する)の2つのJobの`<tag>`を新しいリリースに変更し、この順に実行します。それぞれ完了するまで待ってから、次に進みます。
 
    ```bash
    kubectl delete job publira-db-migrate publira-db-roles --ignore-not-found
    ```
 
-   ロールのJobは、各ロールに`publira-db-roles`が保持しているパスワード、つまりすでに設定されているパスワードを与えるため、フラグを変えずに実行できます。ロールを追加するリリースでは、そのロールのパスワードを`publira-db-roles`に入れ、そのフラグを追加する必要があります。
+   ロールのJobは、各ロールに`publira-db-roles`にあるパスワードを設定します。これは現在のパスワードと同じなので、フラグを変えずに実行できます。ロールを追加するリリースでは、そのロールのパスワードを`publira-db-roles`に追加し、フラグも追加する必要があります。
 
-4. **新しいリリースを起動します。** すべてのDeploymentの`<tag>`を変更し、リリースノートに記載された変数を追加して、適用します。マニフェストを適用すると、ゼロにスケールしたレプリカ数が元に戻ります。
-5. [インストール環境を確認する](../8-upgrading.md#5-インストール環境を確認する)で説明しているとおり、**インストール環境を確認します**。
+4. **新しいリリースを起動します。** すべてのDeploymentの`<tag>`を変更し、リリースノートに書かれている変数を追加して適用します。マニフェストを適用すると、0にしたレプリカ数も元に戻ります。
+5. [Publiraの動作を確認する](../8-upgrading.md#5-動作を確認する)の説明のとおり、**動作を確認します**。
 
-代わりにアップグレードの間もプロセスを動かし続ける場合は、手順4で、[プロセスを置き換える](../8-upgrading.md#4-プロセスを置き換える)に示す順序でプロセスを置き換えます。`email-renderer`を動かしている場合はそれを最初に適用し、その後でほかのDeploymentを適用します。それらは、インストール環境が提供を続けている間に、1レプリカずつ順に入れ替わります。
+アップグレード中もプロセスを止めない場合は、手順4で、[プロセスを置き換える](../8-upgrading.md#4-プロセスを入れ替える)の順序に従ってプロセスを入れ替えます。`email-renderer`を動かしている場合は最初に適用し、続けてほかのDeploymentを適用します。ほかのDeploymentは、Publiraがサービスを続けたまま、1レプリカずつ入れ替わります。

@@ -18,6 +18,6 @@ A translated page says what its English page says, for a reader of that locale: 
 
 A screen element is named by its label in that locale's catalog, `locales/<locale>.json`, at the key whose `locales/en.json` text the English page uses, so the reader finds on screen the words the page names. The credited creator and the writer of a comment take the words the root [AGENTS.md](../AGENTS.md#a-credited-creator-creator-in-code-author-on-screen) fixes for that locale.
 
-Japanese pages follow the conventions of `locales/ja.json`: the polite form (です・ます), no space between Japanese and Latin letters, digits, or inline code, and full-width punctuation in prose.
+Japanese pages are written in the polite form, with no space between Japanese and Latin letters, digits, or inline code. Parentheses in prose are half-width. A colon, full-width or not, is an English device and is not used; the sentence says the same thing in Japanese. An enumeration inside a sentence joins its items with と, や, or 、, one way per list, and never with 中黒. A 読点 marks a pause the reader needs to parse the sentence, not every clause, and a sentence that needs many of them is split instead. Screen text quoted from `locales/ja.json` keeps the catalog's own characters.
 
 `pnpm docs:check` checks the shape a translation keeps — the pages and images it mirrors, the `source_updated` it records, and the links and anchors it resolves. Whether its text says what the English page says is a review judgement.

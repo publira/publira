@@ -1,15 +1,15 @@
 ---
 title: アプリマニフェスト
-description: テナントのアプリの名前と、ストアがアプリを識別するIDを記述するファイルを書き、ビルドの前に確認します。
+description: テナントのアプリの名前と、ストアがアプリを識別するIDを書いたファイルを作成し、ビルドの前に確認します。
 published: 2026-10-29
 source_updated: 2026-10-21
 ---
 
-アプリマニフェストは、そのビルドが誰のアプリなのかを示す短いYAMLファイルです。ホーム画面に表示される名前、アプリが対象とする1つのテナント、そしてアプリを公開するときのIDを記述します。テナントのアプリのビルドはすべてこのファイルを読むので、テナントのほかのビルド用の入力と一緒に、リポジトリの外で、自分のバージョン管理の下に置いてください。
+アプリマニフェストは、ビルドするアプリがどのテナントのものかを示す短いYAMLファイルです。ホーム画面に表示する名前、アプリが対象とする1つのテナント、アプリを公開するときのIDを記述します。テナントのアプリをビルドするたびにこのファイルを読むので、テナントのほかのビルド用ファイルと一緒にリポジトリの外に置き、自分たちのバージョン管理で管理してください。
 
 ## マニフェストを書く
 
-[`mobile/config/app.example.yaml`](https://github.com/publira/publira/blob/main/mobile/config/app.example.yaml)を`~/example-reader/app.yaml`のような自分のディレクトリにコピーし、すべての値をテナントのものに置き換えます。
+[`mobile/config/app.example.yaml`](https://github.com/publira/publira/blob/main/mobile/config/app.example.yaml)を`~/example-reader/app.yaml`など自分のディレクトリにコピーし、すべての値をテナントのものに書き換えます。
 
 ```yaml
 # yaml-language-server: $schema=https://www.publira.dev/schemas/app-manifest/v1.json
@@ -31,33 +31,33 @@ ios:
 
 | フィールド | 入力する内容 |
 | --- | --- |
-| `schemaVersion` | `1`。ファイルの形式を示すもので、アプリのバージョンではありません |
-| `app.name` | ホーム画面のアイコンの下に表示される名前です。そこで途切れない程度に短くしてください。ストアの掲載情報には別にタイトルがあります |
-| `tenant.host` | テナントの公開サイトのホスト名で、`https://`やパスは付けません。アプリはこのテナントだけを対象にし、AndroidとiOSはアプリのリンクをこのホストで確認します |
-| `android.applicationId` | Google Playがアプリを識別するアプリケーションIDで、`com.example.reader`のような形式です。ドットで区切られた2つ以上の部分からなり、それぞれ英字で始まり、英字、数字、アンダースコアだけを含みます |
-| `ios.bundleIdentifier` | App Storeがアプリを識別するバンドルIDです。ドットで区切られた2つ以上の部分からなり、英字、数字、ハイフンで構成します |
-| `ios.googleSignInClientId` | 省略可能です。[アプリ内課金とログイン](./5-purchases-and-sign-in.md#appleとgoogleでのログイン)で説明している、テナントのGoogleログインのiOSクライアントです。iOSアプリでGoogleを提供しない場合は、この行を省きます |
+| `schemaVersion` | `1`です。ファイルの形式のバージョンで、アプリのバージョンではありません |
+| `app.name` | ホーム画面でアイコンの下に表示される名前です。途中で切れないよう短くしてください。ストアの掲載情報のタイトルは別に設定します |
+| `tenant.host` | テナントの公開サイトのホスト名です。`https://`やパスは付けません。アプリはこのテナント専用になり、AndroidとiOSはアプリのリンクをこのホストに照らして確認します |
+| `android.applicationId` | Google Playがアプリを識別するアプリケーションIDです。`com.example.reader`のように、ドットで区切った2つ以上の部分で構成します。各部分は英字で始め、英字、数字、アンダースコアだけを使います |
+| `ios.bundleIdentifier` | App Storeがアプリを識別するバンドルIDです。ドットで区切った2つ以上の部分で構成し、英字、数字、ハイフンを使います |
+| `ios.googleSignInClientId` | 省略できます。[アプリ内課金とログイン](./5-purchases-and-sign-in.md#appleとgoogleでのログイン)で説明している、テナントのGoogleログイン用のiOSクライアントです。iOSアプリでGoogleでのログインを提供しない場合は、この行を削除します |
 
-ほかのフィールドはすべて必須です。形式に定義されていないフィールドは、無視されるのではなくエラーになります。
+ほかのフィールドはすべて必須です。形式で定義されていないフィールドがあると、無視されずにエラーになります。
 
-### IDは一度だけ決める
+### IDは最初に決めて変えない
 
-アプリケーションIDとバンドルIDは、ストアがアプリを識別するためのものです。ストアにそのIDでビルドが登録されると、変更はできません。IDが違えば別のアプリになり、レビューもインストール数も引き継がれず、読者を移す方法もありません。最初のアップロードの前に決め、以降のすべてのリリースで使い続けてください。
+アプリケーションIDとバンドルIDは、ストアがアプリを識別するためのものです。一度ストアにそのIDでビルドを登録すると、IDは変更できません。IDが違えば別のアプリとして扱われ、レビューもインストール数も引き継がれず、読者を移行する方法もありません。最初のアップロードの前に決め、以降のリリースでも同じIDを使い続けてください。
 
-一般的な形式は、出版社が所有するドメインを逆順にし、その後にアプリの名前を続けたものです。`example.com`なら`com.example.reader`になります。2つのIDは同じでもよく、通常は同じにします。異なっていてもかまわないので、すでに一方のストアにアプリを持っている出版社は、そのストアでのIDをそのまま使い続けられます。
+一般的には、出版社が所有するドメインを逆順にし、そのあとにアプリの名前を続けます。`example.com`なら`com.example.reader`です。2つのIDは同じでもかまわず、通常は同じにします。違うIDにすることもできるので、すでに一方のストアにアプリがある出版社は、そのストアでのIDをそのまま使えます。
 
-アプリの開発用ビルドは、テスト端末で公開版のアプリと並べてインストールできるよう、両方のIDに`.dev`を付け加えます。このビルドがアップロードされることはなく、そのIDをどこかに入力することもありません。
+開発用ビルドでは、テスト端末に公開版のアプリと並べてインストールできるよう、両方のIDの末尾に`.dev`が付きます。開発用ビルドをアップロードすることはなく、そのIDをどこかに入力することもありません。
 
 ## マニフェストを確認する
 
-ビルドに使う前に、リポジトリのルートからファイルを確認します。
+ビルドに使う前に、リポジトリのルートでファイルを確認します。
 
 ```console
 $ dart run mobile/scripts/app_manifest.dart ~/example-reader/app.yaml
 /home/you/example-reader/app.yaml: Example Reader for reader.example.com (Android com.example.reader, iOS com.example.reader)
 ```
 
-出力される行は、このマニフェストからのビルドが持つアイデンティティで、あとでテナント管理画面とストアの管理画面にコピーする内容でもあります。問題のあるマニフェストに対しては、すべての問題が一度に示され、0以外の終了コードで終わります。ビルドも同じようにそのマニフェストを拒否します。
+出力される1行が、このマニフェストからビルドしたアプリの識別情報です。あとでテナント管理画面や各ストアの管理画面に入力する値も、この行からコピーします。マニフェストに問題がある場合は、すべての問題がまとめて表示され、0以外の終了コードで終了します。ビルドも同じように、そのマニフェストを受け付けません。
 
 ```console
 $ dart run mobile/scripts/app_manifest.dart ~/example-reader/app.yaml
@@ -66,6 +66,6 @@ $ dart run mobile/scripts/app_manifest.dart ~/example-reader/app.yaml
   - android.applicationId "com.example-reader" is not a valid Android application ID: it needs at least two dot-separated segments, and each must start with a letter and contain only letters, digits, and underscores (e.g. com.example.reader)
 ```
 
-JSON Schemaに対応したエディターでは、入力しながらファイルが確認されます。1行目のコメントが、エディターに[形式](https://www.publira.dev/schemas/app-manifest/v1.json)を指し示しています。
+JSON Schemaに対応したエディターでは、入力しながらファイルが検証されます。1行目のコメントで、エディターに[形式の定義](https://www.publira.dev/schemas/app-manifest/v1.json)を指定しているためです。
 
 次は[ビルドと署名](./2-building.md)です。

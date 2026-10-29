@@ -1,28 +1,28 @@
 ---
 title: デプロイ
-description: Publiraのインストール環境がどのように構成され、どのように稼働を始めるか。
+description: Publiraの構成と、Publiraを稼働させるまでの手順を説明します。
 published: 2026-10-29
 source_updated: 2026-10-22
 ---
 
-このセクションは、Publiraをデプロイするオペレーターに向けたものです。インストール環境が何を動かし、何に依存するかを説明します。それらをどのようにホストするか（Composeファイル、Kubernetesクラスター、systemdユニットの組み合わせなど）は、あなたが選びます。
+このセクションは、Publiraをデプロイするオペレーター向けです。Publiraで動かすものと、Publiraが依存するものを説明します。それらをどのようにホストするか(Composeファイル、Kubernetesクラスター、systemdユニット群など)は自由に選べます。
 
 ## このセクションの内容
 
-- [概要](./1-overview.md)：インストール環境が動かすプロセス、それらが依存するサービス、追加できるプロセス。
-- [インストール](./2-installing.md)：空のインストール環境を稼働させるまでの手順。依存するサービスの用意から、テナント管理画面への最初のログインまで。
-- [Docker Compose](./3-docker-compose.md)：リポジトリのComposeファイルを使って、インストール環境全体を1台のホストで動かす方法。
-- [エッジ](./4-edge/index.md)：インストール環境の前に置くロードバランサー、プロキシ、CDNが行うべきこと、そしてテナントを追加したときにそこで変更すること。
-  - [サンプル設定](./4-edge/1-sample-configurations.md)：それを行う、リポジトリにあるTraefik、nginx、Caddyのサンプル設定と、それをインストール環境に合わせる方法。
-- [Kubernetes](./5-kubernetes/index.md)：Kubernetesクラスターでインストール環境を動かす方法。Secret、Job、Deploymentから最初のログインまで。
-  - [Kubernetesでのエッジ](./5-kubernetes/1-edge.md)：Serviceの前に置くGatewayまたはIngressと、証明書を発行するcert-manager。
-  - [Kubernetesでの運用](./5-kubernetes/2-operating.md)：テナントの追加、管理画面の認証情報をテナントのドメインから切り離すこと、メトリクス、アップグレード。
-- [Fargate上のAmazon ECS](./6-ecs-fargate/index.md)：FargateのECSサービスとしてインストール環境を動かす方法。パラメーター、単発のタスク、Application Load Balancerの背後のサービスから最初のログインまで。
-  - [ECSの前に置くCloudFront](./6-ecs-fargate/1-cloudfront.md)：VPCオリジンとして、ロードバランサーの前に置くCloudFront。
-  - [ECSでの運用](./6-ecs-fargate/2-operating.md)：テナントの追加、管理画面の認証情報をテナントのドメインから切り離すこと、アップグレード。
-- [スケールアウト](./7-scaling-out.md)：各プロセスを複数動かすこと、`publira server`を応答するトラフィックごとに分けること、そして複数のコピーが共有するもの。
-- [アップグレード](./8-upgrading.md)：稼働中のインストール環境を新しいリリースに上げる方法と、マイグレーションが失敗したときの対処。
-- [バックアップと復元](./9-backup-and-restore.md)：インストール環境が保持するもの、そのバックアップ、空のサービスへの復元。
-- [リリース](./10-releases.md)：`0.x`のバージョン番号が示すこと、マイナーリリースとパッチリリースが変更しうること、修正を受けるリリース。
+- [構成の概要](./1-overview.md)では、Publiraで動かすプロセス、それらが依存するサービス、追加できるプロセスを説明します。
+- [インストール](./2-installing.md)では、空の状態からPubliraを稼働させる手順を、依存するサービスの準備からテナント管理画面への最初のログインまで説明します。
+- [Docker Compose](./3-docker-compose.md)では、リポジトリにあるComposeファイルを使い、1台のホストでPublira全体を動かす方法を説明します。
+- [リバースプロキシの設定](./4-edge/index.md)では、Publiraの前に置くロードバランサーやプロキシ、CDNに必要な設定と、テナントを追加したときに変更する箇所を説明します。
+  - [リバースプロキシの設定例](./4-edge/1-sample-configurations.md)では、その設定を実装したリポジトリ内のTraefik、nginx、Caddyのサンプル設定と、それを自分の環境に合わせる方法を説明します。
+- [Kubernetes](./5-kubernetes/index.md)では、Kubernetesクラスター上でPubliraを動かす方法を、Secret、Job、Deploymentの作成から最初のログインまで説明します。
+  - [Kubernetesでのリバースプロキシの設定](./5-kubernetes/1-edge.md)では、Serviceの前にGatewayかIngressを置き、cert-managerで証明書を発行する構成を説明します。
+  - [Kubernetesでの運用](./5-kubernetes/2-operating.md)では、テナントの追加、管理画面の認証情報をテナントのドメインに送らないための設定、メトリクス、アップグレードを説明します。
+- [Amazon ECS(Fargate)](./6-ecs-fargate/index.md)では、Fargate上のECSサービスとしてPubliraを動かす方法を説明します。パラメーターの用意、単発のタスク、Application Load Balancerの背後に置くサービスから、最初のログインまでを扱います。
+  - [CloudFrontを使った公開](./6-ecs-fargate/1-cloudfront.md)では、ロードバランサーの前にCloudFrontをVPCオリジン経由で置く構成を説明します。
+  - [Amazon ECSでの運用](./6-ecs-fargate/2-operating.md)では、テナントの追加、管理画面の認証情報をテナントのドメインに送らないための設定、アップグレードを説明します。
+- [スケールアウト](./7-scaling-out.md)では、各プロセスを複数動かす方法、`publira server`を受け持つトラフィックごとに分ける方法、複数のプロセスで共有するものを説明します。
+- [アップグレード](./8-upgrading.md)では、稼働中のPubliraを新しいリリースに更新する方法と、マイグレーションが失敗したときの対処を説明します。
+- [バックアップと復元](./9-backup-and-restore.md)では、Publiraが保存するデータとそのバックアップ方法、空のサービスへの復元方法を説明します。
+- [リリース](./10-releases.md)では、`0.x`というバージョン番号の意味、マイナーリリースとパッチリリースでそれぞれ何が変わりうるか、どのリリースに修正が提供されるかを説明します。
 
-Publiraとは何かをまだ読んでいない場合は、[はじめに](../1-getting-started.md)から読んでください。
+Publiraについてまだ読んでいない場合は、[はじめに](../1-getting-started.md)から読んでください。

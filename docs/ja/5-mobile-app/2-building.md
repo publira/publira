@@ -1,58 +1,58 @@
 ---
 title: ビルドと署名
-description: テナントのアプリの署名済みAndroid App BundleとiOSのアーカイブを、マニフェストから作成します。
+description: マニフェストをもとに、テナントのアプリの署名済みAndroid App BundleとiOSのアーカイブを作成します。
 published: 2026-10-29
 source_updated: 2026-10-25
 ---
 
-テナントのアプリのリリースは、`task mobile:build`という1つのコマンドで、Android用とiOS用に1回ずつビルドします。このコマンドは[アプリマニフェスト](./1-app-manifest.md)を読み、始める前にすべての入力を確認して、変更を加えていないチェックアウトからストア用のアプリをビルドします。このページでは、コマンドが環境から読み取る入力を説明し、そのあと2つのビルドを説明します。
+テナントのアプリのリリース版は、`task mobile:build`という1つのコマンドでビルドします。Android用とiOS用に1回ずつ実行します。このコマンドは[アプリマニフェスト](./1-app-manifest.md)を読み込み、ビルドを始める前にすべての入力を確認してから、変更を加えていないチェックアウトからストア向けのアプリをビルドします。このページでは、まずコマンドが環境から読み取る入力を説明し、次にAndroidとiOSのビルドを説明します。
 
-コマンドが受け付けるすべてのフラグは、[モバイルアプリのリファレンス](https://github.com/publira/publira/blob/main/mobile/README.md#building-a-tenants-app)に載っています。
+コマンドで使えるフラグは、すべて[モバイルアプリのリファレンス](https://github.com/publira/publira/blob/main/mobile/README.md#building-a-tenants-app)に載っています。
 
 ## すべてのビルドに必要なもの
 
-### アプリの接続先のアドレス
+### アプリの接続先
 
-テナントのサイトのオリジンを`PUBLIRA_BASE_URL`としてexportします。アプリはAPIを`/rpc`の下に、画像を`/images`の下に要求します。どちらもインストール環境のリバースプロキシがすでにルーティングしています。
+テナントのサイトのオリジンを`PUBLIRA_BASE_URL`に設定してexportします。アプリはこのオリジンの`/rpc`以下にAPIを、`/images`以下に画像を要求します。どちらも、Publiraの前に置いたリバースプロキシですでにルーティングされているパスです。
 
 ```bash
 export PUBLIRA_BASE_URL=https://reader.example.com
 ```
 
-`https://`で、パスのないオリジンだけである必要があります。それ以外の値は、読者のスマートフォンで初めて失敗するアプリを出荷するのではなく、ビルドが拒否します。通常はマニフェストの`tenant.host`と同じですが、マニフェストで決まるわけではありません。[画像と公開APIを別々に提供する](../2-deployments/7-scaling-out.md#画像と公開apiを分けて提供する)で説明しているとおり、インストール環境はAPIを別のホスト名で提供できます。そのようなホストは画像を提供しないため、そのホストに向けてビルドする前に、テナントに[画像用のホスト](../3-operations/2-tenants.md#画像ホスト)を設定してください。そうすると、アプリはすべての画像を、APIが返すアドレスで画像用のホストから読み込みます。
+値は`https://`で始まり、パスを含まないオリジンだけにする必要があります。それ以外の値はビルド時に拒否されます。読者のスマートフォンで初めて失敗するようなアプリを配布しないためです。通常はマニフェストの`tenant.host`と同じホストですが、マニフェストで決まるわけではありません。[画像と公開APIを別々に提供する方法](../2-deployments/7-scaling-out.md#画像と公開apiを別々に提供する)で説明しているとおり、APIを別のホスト名で提供する構成もあります。そのようなホストは画像を提供しないので、そのホストに向けてビルドする前に、テナントに[画像用のホスト](../3-operations/2-tenants.md#画像ホスト)を設定してください。設定すると、アプリはAPIが返すアドレスを使って、すべての画像を画像用のホストから読み込みます。
 
 ### プッシュ通知
 
-アプリがプッシュ通知を受け取るFirebaseプロジェクトは、アプリに組み込まれます。[プッシュ通知](./3-push-notifications.md)の説明に従って最初のリリースの前に設定し、その値を`~/example-reader/firebase.json`のような専用のファイルに保存しておいてください。Firebaseの値を渡さずにビルドしてもアプリは動きますが、プッシュ通知はなく、アプリの**アカウント**画面にもプッシュ通知のスイッチが表示されません。
+アプリがプッシュ通知を受け取るFirebaseプロジェクトは、ビルド時にアプリに組み込まれます。最初のリリースの前に[プッシュ通知](./3-push-notifications.md)の説明に従って設定し、その値を`~/example-reader/firebase.json`のような専用のファイルに保存しておいてください。Firebaseの値を渡さずにビルドしてもアプリは動きますが、プッシュ通知は使えず、アプリの**アカウント**画面にもプッシュ通知のスイッチが表示されません。
 
 ### バージョン
 
-ストアへのアップロードでは、そのストアが前回受け付けたものより大きいビルド番号が毎回必要で、読者にはバージョン名が表示されます。リリース用のビルドには毎回両方を指定します。
+ストアにアップロードするたびに、そのストアが前回受け付けたものより大きいビルド番号が必要です。また、読者にはバージョン名が表示されます。リリース用のビルドでは、毎回この2つを指定してください。
 
 ```bash
 --build-name 1.2.0 --build-number 7
 ```
 
-指定しないとビルドは`1.0.0`、ビルド番号`1`になり、ストアは2回目以降のアップロードでこれを拒否します。
+指定しないとバージョン名は`1.0.0`、ビルド番号は`1`になり、2回目以降のアップロードはストアに拒否されます。
 
 ## Android
 
 ### アップロード鍵を作成する
 
-Google Playでは、すべてのアップロードに同じ鍵での署名が必要です。この鍵をアップロード鍵と呼びます。ビルドするマシンかシークレットの保管場所で、一度だけ作成します。
+Google Playにアップロードするビルドは、すべて同じ鍵で署名する必要があります。この鍵をアップロード鍵と呼びます。ビルドするマシンかシークレットの保管場所で、一度だけ作成します。
 
 ```bash
 keytool -genkeypair -v -keystore ~/example-reader/upload.jks \
   -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 ```
 
-`keytool`はどのJDKにも含まれており、キーストアのパスワードと鍵のパスワードを尋ねます。ファイルと2つのパスワードはリポジトリの外に保管し、バックアップを取ってください。Play Consoleでは失ったアップロード鍵を置き換えられますが、Googleの承認が必要な申請を通じてのみで、承認されるまでアップロードはできません。
+`keytool`はどのJDKにも含まれています。実行すると、キーストアのパスワードと鍵のパスワードを尋ねられます。キーストアのファイルと2つのパスワードはリポジトリの外に保管し、バックアップを取っておいてください。アップロード鍵をなくした場合はPlay Consoleで置き換えられますが、Googleの承認が必要な申請をしなければならず、承認されるまではアップロードできません。
 
-Google Playの新しいアプリはPlay App Signingを使います。インストールされるアプリの署名に使う鍵はGoogleが保管し、アップロード鍵はアップロードが自分からのものであることを証明するだけです。この違いは[アプリリンク](./4-app-links.md)のページでもう一度重要になります。
+Google Playの新しいアプリではPlay App Signingを使います。インストールされるアプリの署名に使う鍵はGoogleが保管し、アップロード鍵は、アップロードしたのが自分であることを証明するためだけに使われます。この違いは[アプリリンク](./4-app-links.md)のページでもう一度出てきます。
 
 ### App Bundleをビルドする
 
-キーストアとそのパスワードを環境で指定してから、ビルドします。
+キーストアとパスワードを環境変数で指定してから、ビルドします。
 
 ```bash
 export PUBLIRA_ANDROID_KEYSTORE=~/example-reader/upload.jks
@@ -65,25 +65,25 @@ task mobile:build -- ~/example-reader/app.yaml appbundle \
   --build-name 1.2.0 --build-number 7
 ```
 
-リポジトリのルートから実行してください。マニフェストやキーストアの相対パスは、実行を始めたディレクトリから読まれます。Firebaseのファイルは`mobile/`から読まれるため、例ではフルパスで指定しています。
+コマンドはリポジトリのルートで実行してください。マニフェストやキーストアを相対パスで指定すると、コマンドを実行したディレクトリからのパスとして読まれます。一方、Firebaseのファイルは`mobile/`からのパスとして読まれるため、例ではフルパスで指定しています。
 
-署名用の4つの変数のどれかが欠けていると、Google Playが拒否する鍵で署名するのではなく、コンパイルの前にビルドが止まります。アップロードするApp Bundleは`mobile/build/app/outputs/bundle/productionRelease/app-production-release.aab`です。
+署名用の4つの環境変数のどれかが設定されていないと、ビルドはコンパイルの前に止まります。Google Playが受け付けない鍵で署名してしまわないためです。アップロードするApp Bundleは`mobile/build/app/outputs/bundle/productionRelease/app-production-release.aab`です。
 
-アップロードする前にスマートフォンでリリース版を試すには、同じ変数のまま`appbundle`の代わりに`apk`をビルドし、`mobile/build/app/outputs/flutter-apk/app-production-release.apk`をインストールします。このビルドはアップロード鍵で署名されているため、アップロード鍵のフィンガープリントも[アプリリンク](./4-app-links.md)に登録しない限り、サイトへのリンクでこのアプリは開きません。
+アップロードする前にスマートフォンでリリース版を試すには、同じ環境変数のまま`appbundle`の代わりに`apk`を指定してビルドし、`mobile/build/app/outputs/flutter-apk/app-production-release.apk`をインストールします。このビルドはアップロード鍵で署名されるので、アップロード鍵のフィンガープリントも[アプリリンク](./4-app-links.md)に登録しない限り、サイトへのリンクからは開きません。
 
 ## iOS
 
 ### Macを準備する
 
-iOSのビルドは、Xcodeを入れたMacで行います。**Xcode** › **Settings** › **Accounts**で、出版社のApple Developerチームに属するAppleアカウントにXcodeでサインインします。ビルドは自動署名を使います。Xcodeが、アプリが使う機能（プッシュ通知、Associated Domains、Sign in with Apple）とともにバンドルIDを登録し、証明書とプロファイルも自分で作成するため、Apple Developerのウェブサイトから手作業でダウンロードするものはありません。
+iOSアプリはXcodeを入れたMacでビルドします。**Xcode** › **Settings** › **Accounts**で、出版社のApple Developerチームに所属するAppleアカウントにXcodeからログインします。ビルドには自動署名を使います。Xcodeが、アプリで使う機能(プッシュ通知、Associated Domains、Sign in with Apple)を付けてバンドルIDを登録し、証明書とプロファイルも作成します。Apple Developerのウェブサイトから手作業でダウンロードするものはありません。
 
-Apple DeveloperのウェブサイトでチームのTeam ID（英字と数字10文字）を**Membership details**で調べ、環境で指定します。
+チームのTeam IDは、Apple Developerのウェブサイトの**Membership details**で確認できます。英字と数字からなる10文字のIDです。これを環境変数で指定します。
 
 ```bash
 export PUBLIRA_IOS_DEVELOPMENT_TEAM=ABCDE12345
 ```
 
-同じTeam IDを、あとで[アプリリンク](./4-app-links.md)でも入力します。
+同じTeam IDは、あとで[アプリリンク](./4-app-links.md)でも入力します。
 
 ### アーカイブをビルドする
 
@@ -93,12 +93,12 @@ task mobile:build -- ~/example-reader/app.yaml ipa \
   --build-name 1.2.0 --build-number 7
 ```
 
-アーカイブは`mobile/build/ios/archive/Runner.xcarchive`で、アップロードするファイルは`mobile/build/ios/ipa/`にある`.ipa`です。`.ipa`はAppleのTransporterアプリでアップロードするか、Xcodeの**Organizer**でアーカイブを開いて**Distribute App**を選びます。App Store Connectでの処理が終わると、TestFlightでスマートフォンでのテストに回せ、その後審査に出せます。
+アーカイブは`mobile/build/ios/archive/Runner.xcarchive`に、アップロードするファイルは`mobile/build/ios/ipa/`内の`.ipa`に出力されます。`.ipa`はAppleのTransporterアプリでアップロードするか、Xcodeの**Organizer**でアーカイブを開いて**Distribute App**を選びます。App Store Connectでの処理が終わると、TestFlightでスマートフォンでのテストに使えるようになり、そのあと審査に提出できます。
 
-実機向けのビルドでは、`PUBLIRA_IOS_DEVELOPMENT_TEAM`が設定されていないと、Xcodeが最初に見つけたチームで署名するのではなく、最初のステップで止まります。
+実機向けのビルドは、`PUBLIRA_IOS_DEVELOPMENT_TEAM`が設定されていないと最初のステップで止まります。Xcodeが最初に見つけたチームで署名してしまわないためです。
 
 ## ビルドが残すもの
 
-ビルドがテナントのアイデンティティを書き込むのは、Gitが無視するファイルだけです。リポジトリが追跡しているファイルに変更を残した場合、ビルドは失敗します。そのため、同じチェックアウトで、事前に掃除をしなくても次のテナントのアプリや次のリリースをビルドできます。
+ビルドがテナントの識別情報を書き込むのは、Gitが無視するファイルだけです。リポジトリで管理しているファイルに変更が残った場合、ビルドは失敗します。そのため、同じチェックアウトを掃除しなくても、そのまま次のテナントのアプリや次のリリースをビルドできます。
 
 次は[プッシュ通知](./3-push-notifications.md)です。

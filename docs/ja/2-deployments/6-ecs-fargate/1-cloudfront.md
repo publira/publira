@@ -1,17 +1,17 @@
 ---
-title: ECSの前に置くCloudFront
-description: Fargate上のAmazon ECSで動くインストール環境の内部向けApplication Load Balancerの前にCloudFrontを置き、VPCの外から確認します。
+title: CloudFrontを使った公開
+description: Amazon ECS(Fargate)で動かすPubliraの内部向けApplication Load Balancerの前にCloudFrontを置き、VPCの外から動作を確認します。
 published: 2026-10-29
 source_updated: 2026-10-22
 ---
 
-このページは[Fargate上のAmazon ECS](./index.md)の手順8で、それより前の手順と同じシェルで実行します。コマンドでは、それらの手順で定義した`VPC`、`VPC_CIDR`、`ALB`、`allow`などの変数と関数を使います。
+このページは[Amazon ECS(Fargate)](./index.md)の手順8にあたり、それまでの手順と同じシェルで実行します。コマンドでは、それまでの手順で定義した`VPC`、`VPC_CIDR`、`ALB`、`allow`などの変数と関数を使います。
 
-CloudFrontは、読者が接続するエッジです。[エッジが行うこと](../4-edge/index.md#エッジが行うべきこと)が求めるとおり、`us-east-1`の証明書ですべてのテナントのホストのTLSを終端し、平文のHTTPをHTTPSにリダイレクトし、呼び出し元に選ばせてはならないヘッダーを取り除き、それ以外のすべてをロードバランサーに転送します。
+読者が接続する先はCloudFrontです。CloudFrontは、`us-east-1`の証明書ですべてのテナントのホストのTLSを終端し、HTTPでのアクセスをHTTPSにリダイレクトし、呼び出し元に指定させてはならないヘッダーを取り除いたうえで、それ以外をすべてロードバランサーに転送します。この構成は[リバースプロキシで必要な設定](../4-edge/index.md#リバースプロキシで必要な設定)の要件を満たすためのものです。
 
 ## VPCオリジン
 
-ロードバランサーは内部向けなので、CloudFrontはVPCオリジンとして、HTTPSでこれに到達します。
+ロードバランサーは内部向けなので、CloudFrontはVPCオリジンとして、HTTPSでロードバランサーに接続します。
 
 ```bash
 aws cloudfront create-vpc-origin --vpc-origin-endpoint-config "{
@@ -24,7 +24,7 @@ aws cloudfront create-vpc-origin --vpc-origin-endpoint-config "{
 }" --query 'VpcOrigin.Id' --output text
 ```
 
-ステータスが`Deployed`になると（`aws cloudfront get-vpc-origin --id <the VPC origin ID> --query VpcOrigin.Status`で確認できます）、CloudFrontはVPC内に`CloudFront-VPCOrigins-Service-SG`という名前のセキュリティグループを作成しています。このグループだけがロードバランサーに到達できるようにします。
+VPCオリジンのステータスが`Deployed`になった時点で、CloudFrontはVPC内に`CloudFront-VPCOrigins-Service-SG`という名前のセキュリティグループを作成しています。ステータスは`aws cloudfront get-vpc-origin --id <the VPC origin ID> --query VpcOrigin.Status`で確認できます。ロードバランサーへの接続は、このセキュリティグループからだけ許可します。
 
 ```bash
 CLOUDFRONT_SG=$(aws ec2 describe-security-groups \
@@ -33,11 +33,11 @@ CLOUDFRONT_SG=$(aws ec2 describe-security-groups \
 allow "$ALB_SG" 443 "$CLOUDFRONT_SG"
 ```
 
-このグループは自分のアカウントのVPCオリジンに属するものです。ロードバランサーをインターネット向けではなく内部向けにしているのはそのためです。インターネット向けのロードバランサーでは、CloudFrontのマネージドプレフィックスリスト`com.amazonaws.global.cloudfront.origin-facing`を許可することになります。これは自分のディストリビューションだけでなく、すべてのCloudFrontディストリビューションの接続元です。そのため、自分のディストリビューションをそのロードバランサーに向けた呼び出し元は、下の関数を経由せずに、好きな`Forwarded`と`X-Forwarded-Host`を付けてロードバランサーに到達できてしまいます。
+このセキュリティグループは、自分のアカウントのVPCオリジンだけが使うものです。ロードバランサーをインターネット向けにせず内部向けにしているのはそのためです。インターネット向けのロードバランサーでは、CloudFrontのマネージドプレフィックスリスト`com.amazonaws.global.cloudfront.origin-facing`からの接続を許可することになります。このリストに含まれるのは自分のディストリビューションの接続元だけではなく、すべてのCloudFrontディストリビューションの接続元です。そのため、第三者が自分のディストリビューションをそのロードバランサーに向けると、後述の関数を通らずにロードバランサーに到達し、好きな値の`Forwarded`と`X-Forwarded-Host`を送れてしまいます。
 
 ## ヘッダー
 
-すべてのビューワーリクエストに対して動くCloudFront Functionが、他の何よりも先に、トレースコンテキストのヘッダー、`Forwarded`、`X-Forwarded-Host`、`X-Forwarded-CountryRegion`を取り除き、最後のヘッダーには読者の地域を設定します。`strip-request-headers.js`：
+すべてのビューアーリクエストでCloudFront Functionを実行し、ほかの処理より先に、トレースコンテキストのヘッダー、`Forwarded`、`X-Forwarded-Host`、`X-Forwarded-CountryRegion`を取り除きます。そのうえで、`X-Forwarded-CountryRegion`に読者の地域を設定します。`strip-request-headers.js`を次の内容で作成します。
 
 ```js
 function handler(event) {
@@ -66,15 +66,15 @@ aws cloudfront create-function --name publira-strip-request-headers \
 aws cloudfront publish-function --name publira-strip-request-headers --if-match <the ETag above>
 ```
 
-`traceparent`、`tracestate`、`baggage`は、[トレースコンテキスト](../4-edge/index.md#トレースコンテキスト)が求めるとおりに取り除きます。CloudFrontとロードバランサーは、呼び出し元が送った`Forwarded`と`X-Forwarded-Host`をそのまま渡し、Publiraは、[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)と[リクエストの送り先のホスト](../4-edge/index.md#リクエストの送信先のホスト)で説明しているとおり、その両方を読みます。CloudFrontもロードバランサーもこの2つのヘッダーを自分では書き込まないため、ここで取り除いておけば、Webアプリはブラウザーが送った`Host`を読み、どのプロセスでも`PUBLIRA_FORWARDED_HEADER_ENABLED`をデフォルトのままにできます。
+`traceparent`、`tracestate`、`baggage`は、[トレースコンテキスト](../4-edge/index.md#トレースコンテキスト)の要件に従って取り除きます。CloudFrontとロードバランサーは、呼び出し元が送った`Forwarded`と`X-Forwarded-Host`をそのまま転送し、Publiraはその両方を読みます。この点は[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)と[リクエストの送信先のホスト](../4-edge/index.md#リクエストの送信先のホスト)で説明しています。CloudFrontもロードバランサーもこの2つのヘッダーを自分では書き込みません。そのため、ここで取り除いておけば、Webアプリはブラウザーが送った`Host`を読むことになり、どのプロセスでも`PUBLIRA_FORWARDED_HEADER_ENABLED`を既定値のままにできます。
 
-`X-Forwarded-CountryRegion`は、[読者の地域](../4-edge/index.md#読者の地域)で説明しているとおり、読者の地域をテナントのGoogleタグゲートウェイに伝えます。CloudFrontは読者のアドレスから地域を調べ、国コードを`CloudFront-Viewer-Country`に、読者のいる第1階層の地方区分のコード（ISO 3166-2のコードで国の後に続く部分）を`CloudFront-Viewer-Country-Region`に入れます。関数はこの2つを、`JP-13`のような、このヘッダーの形式につなげます。関数がこの2つのヘッダーを見られるのは、ビヘイビアのオリジンリクエストポリシーがそれらを転送する場合だけです。下のデフォルトのビヘイビアで`Managed-AllViewerAndCloudFrontHeaders-2022-06`を使うのはそのためです。CloudFrontがどの地域にも割り当てないリクエストは、呼び出し元が送ったものも含めて、このヘッダーを持たずにロードバランサーに届きます。
+[読者の地域](../4-edge/index.md#読者の地域)で説明しているとおり、`X-Forwarded-CountryRegion`は読者の地域をテナントのGoogleタグゲートウェイに伝えるヘッダーです。CloudFrontは読者のアドレスから地域を調べ、`CloudFront-Viewer-Country`に国コードを、`CloudFront-Viewer-Country-Region`に第1レベルの行政区画のコードを設定します。行政区画のコードは、ISO 3166-2のコードのうち国コードの後に続く部分です。関数はこの2つをつなげて、`JP-13`のようなヘッダーの形式にします。関数がこの2つのヘッダーを受け取れるのは、ビヘイビアのオリジンリクエストポリシーがそれらを転送する場合だけです。後述の既定のビヘイビアで`Managed-AllViewerAndCloudFrontHeaders-2022-06`を使っているのはそのためです。CloudFrontがどの地域にも割り当てられなかったリクエストは、このヘッダーなしでロードバランサーに届きます。呼び出し元が送ったヘッダーも残りません。
 
 ## キャッシュポリシー
 
-`/images`以外のすべてのパスは、ブラウザーが送ったすべてのヘッダー、Cookie、クエリ文字列とともに、キャッシュせずに転送します。マネージドキャッシュポリシー`Managed-CachingDisabled`と、マネージドオリジンリクエストポリシー`Managed-AllViewerAndCloudFrontHeaders-2022-06`を使います。後者は、ブラウザーが送ったヘッダーに、読者の国や地域など、CloudFront自身が書き込むヘッダーを加えます。ページは読者のセッションCookieによって変わり、WebアプリはValkeyに独自のキャッシュを持っていて、サーバーとワーカーからの再検証がそれを最新に保ちます。CloudFrontにコピーを置くと、そのコピーには再検証が届きません。このポリシーは、テナントを決める`Host`ヘッダーと、モバイルアプリがリクエストの署名に使う`Authorization`ヘッダーを転送します。
+`/images`以外のパスは、ブラウザーが送ったヘッダー、Cookie、クエリ文字列をすべて付けたまま、キャッシュせずに転送します。使うのはマネージドキャッシュポリシーの`Managed-CachingDisabled`と、マネージドオリジンリクエストポリシーの`Managed-AllViewerAndCloudFrontHeaders-2022-06`です。後者は、ブラウザーが送ったヘッダーに加えて、読者の国や地域などCloudFront自身が書き込むヘッダーも転送します。ページの内容は読者のセッションCookieによって変わります。また、WebアプリはValkeyに独自のキャッシュを持ち、サーバーとワーカーからの再検証でそのキャッシュを最新に保っています。CloudFrontにコピーを置いても、そのコピーには再検証が届きません。このオリジンリクエストポリシーは、テナントを決める`Host`ヘッダーと、モバイルアプリがリクエストの署名に使う`Authorization`ヘッダーも転送します。
 
-`/images`はキャッシュする価値があります。`publira server`は、読者がログインせずに見られる画像を最大1時間の`public`とし、読者の認証情報が必要な画像を、CloudFrontが保存しない`private`とします。サーバーは形式を`Accept`ヘッダーから、テナントをホストから選び、読者の認証情報を`Authorization`またはクエリ文字列から受け取ります。そのため、それぞれをキャッシュされたコピーを探すためのキーに含めます。
+`/images`はキャッシュする価値があります。`publira server`は、読者がログインせずに見られる画像には最大1時間の`public`を付け、読者の認証情報が必要な画像には`private`を付けます。`private`の画像はCloudFrontに保存されません。`publira server`は画像の形式を`Accept`ヘッダーで、テナントをホストで決め、読者の認証情報を`Authorization`かクエリ文字列から受け取ります。そのため、これらはどれもキャッシュのキーに含める必要があります。
 
 ```bash
 aws cloudfront create-cache-policy --cache-policy-config '{
@@ -95,11 +95,11 @@ aws cloudfront create-cache-policy --cache-policy-config '{
 }' --query 'CachePolicy.Id' --output text
 ```
 
-`MinTTL`を`0`にしているのは、CloudFrontが`private`や`no-store`を含め、すべての応答の`Cache-Control`に従うようにするためです。`DefaultTTL`を`0`にしているのは、このヘッダーのない応答を保存しないためです。
+`MinTTL`を`0`にしているのは、`private`や`no-store`も含め、CloudFrontがすべての応答の`Cache-Control`に従うようにするためです。`DefaultTTL`を`0`にしているのは、`Cache-Control`のない応答を保存しないためです。
 
 ## ディストリビューション
 
-1つのディストリビューションで1つのテナントを提供します。そのドメインと管理画面のホストを、両方を指定した証明書で提供します。ディストリビューションが持てる証明書は1つで、テナントの証明書はそのテナント専用なので、[テナントの追加](./2-operating.md#テナントの追加)で説明しているとおり、次のテナントには専用のディストリビューションを用意します。`distribution.json`：
+1つのディストリビューションで1つのテナントを扱います。対象はテナントのドメインと管理画面のホスト名で、証明書には両方の名前を含めます。ディストリビューションに設定できる証明書は1つだけで、証明書はテナントごとに別なので、次のテナントには別のディストリビューションを作ります。その手順は[テナントの追加](./2-operating.md#テナントの追加)で説明しています。`distribution.json`を次の内容で作成します。
 
 ```json
 {
@@ -187,19 +187,19 @@ aws cloudfront create-distribution --distribution-config file://distribution.jso
   --query 'Distribution.[Id,DomainName]' --output text
 ```
 
-- **ID。** `4135ea2d-…`は`Managed-CachingDisabled`、`33f36d7e-…`は`Managed-AllViewerAndCloudFrontHeaders-2022-06`、`216adef6-…`は`Managed-AllViewer`です。ロードバランサーのDNS名は`aws elbv2 describe-load-balancers --load-balancer-arns "$ALB" --query 'LoadBalancers[0].DNSName'`で出力できます。
-- **メソッド。** ページはフォームを送信し、APIは`POST`で呼び出されるため、デフォルトのビヘイビアはすべてのメソッドを受け付けます。`/images`は読み取りにだけ応答します。
-- **アップロードのタイムアウト。** CloudFrontには、ここで問題になるボディの上限がないため、アップロードやWebhookはそのまま通ります。`OriginReadTimeout`は、CloudFrontがロードバランサーの応答を待つ時間で、設定しなければ30秒です。120はクォータを引き上げずに設定できる最大値で、エピソード全体のページが届いた後、管理画面がそれを保存する時間を確保できます。
-- **関数**は両方のビヘイビアに関連付けます。関数を指定しないビヘイビアは、呼び出し元のヘッダーをそのまま転送してしまいます。
+- **ID**。`4135ea2d-…`は`Managed-CachingDisabled`、`33f36d7e-…`は`Managed-AllViewerAndCloudFrontHeaders-2022-06`、`216adef6-…`は`Managed-AllViewer`のIDです。ロードバランサーのDNS名は`aws elbv2 describe-load-balancers --load-balancer-arns "$ALB" --query 'LoadBalancers[0].DNSName'`で表示できます。
+- **メソッド**。ページはフォームを送信し、APIは`POST`で呼び出されるので、既定のビヘイビアではすべてのメソッドを許可します。`/images`は読み取りにだけ応答します。
+- **アップロードのタイムアウト**。CloudFrontには、ここで問題になるようなボディのサイズ制限はないので、アップロードやWebhookはそのまま通ります。`OriginReadTimeout`は、CloudFrontがロードバランサーの応答を待つ時間で、指定しなければ30秒です。120秒はクォータを引き上げずに設定できる上限です。この長さがあれば、エピソード全体のページが届いた後に、管理画面がそれらを保存する時間を確保できます。
+- **関数**は両方のビヘイビアに関連付けます。関数を指定しないビヘイビアでは、呼び出し元が送ったヘッダーがそのまま転送されます。
 
-ディストリビューションのデプロイが終わったら、両方のホスト名を、`d111111abcdef8.cloudfront.net`のようなそのドメイン名に向けます。それぞれに`CNAME`レコードを作成するか、ゾーンがRoute 53にある場合はエイリアスレコードを作成します。
+ディストリビューションのデプロイが終わったら、両方のホスト名を`d111111abcdef8.cloudfront.net`のようなディストリビューションのドメイン名に向けます。それぞれに`CNAME`レコードを作成するか、ゾーンがRoute 53にある場合はエイリアスレコードを作成します。
 
 ## クライアントのアドレス
 
-Publiraはすべてのリクエストについて、その背後にいる読者のアドレスを記録します。[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)で説明しているとおり、アドレスはエッジが書き込む`X-Forwarded-For`ヘッダーから読みます。CloudFrontは、呼び出し元が書いた内容の後ろに読者のアドレスを追加し、ロードバランサーは、CloudFrontの接続元のアドレスを追加します。読者のためにAPIを呼び出すWebアプリは、さらにロードバランサーのアドレスを追加します。`publira server`はこれらのアドレスを右からたどり、信頼するアドレスを1つずつ飛ばしていくため、`PUBLIRA_TRUSTED_PROXIES`は読者より後のすべての中継点を含んでいなければなりません。
+Publiraは、リクエストごとにその送り主である読者のアドレスを記録します。[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)で説明しているとおり、アドレスはCloudFrontとロードバランサーが書き込む`X-Forwarded-For`ヘッダーから読みます。CloudFrontは、呼び出し元が書いた値の後ろに読者のアドレスを追加します。ロードバランサーは、CloudFrontが接続してきたアドレスを追加します。Webアプリが読者に代わってAPIを呼び出すときは、さらにロードバランサーのアドレスが追加されます。`publira server`はこれらのアドレスを右から順にたどり、信頼するアドレスを飛ばしていきます。そのため、`PUBLIRA_TRUSTED_PROXIES`には、読者より後に経由するすべてのアドレスを含める必要があります。
 
-- **VPCのアドレス範囲**。ロードバランサーとWebアプリの接続元です。
-- **CloudFrontのオリジン向けアドレス範囲**。AWSが`CLOUDFRONT_ORIGIN_FACING`というサービス名で公開しているもので、CloudFrontがロードバランサーに到達するときの接続元アドレスです。
+- **VPCのアドレス範囲**。ロードバランサーとWebアプリはこの範囲から接続します。
+- **CloudFrontのオリジン向けのアドレス範囲**。AWSが`CLOUDFRONT_ORIGIN_FACING`というサービス名で公開している範囲で、CloudFrontはここからロードバランサーに接続します。
 
 ```bash
 TRUSTED_PROXIES="$VPC_CIDR,$(curl -s https://ip-ranges.amazonaws.com/ip-ranges.json \
@@ -207,7 +207,7 @@ TRUSTED_PROXIES="$VPC_CIDR,$(curl -s https://ip-ranges.amazonaws.com/ip-ranges.j
 echo "$TRUSTED_PROXIES"
 ```
 
-`web-storefront`も、テナントのGoogleタグゲートウェイに渡す読者のアドレスを求めるために同じアドレスをたどるため、同じ値を受け取ります。[サービスを起動する](./index.md#6-サービスを起動する)の`publira-server.json`と`web-storefront.json`の`<see The client address>`をこの値に書き換え、両方のタスク定義を登録し直して、両方のサービスをそれでデプロイします。
+`web-storefront`も同じアドレスをたどって、テナントのGoogleタグゲートウェイに渡す読者のアドレスを求めるので、同じ値を使います。[サービスの起動](./index.md#6-サービスを起動する)の`publira-server.json`と`web-storefront.json`で、`<see The client address>`をこの値に置き換えてください。そのうえで両方のタスク定義を登録し直し、新しいタスク定義で両方のサービスをデプロイします。
 
 ```bash
 for family in publira-server web-storefront; do
@@ -216,9 +216,9 @@ for family in publira-server web-storefront; do
 done
 ```
 
-AWSはこれらのアドレス範囲を時折変更し、変更のたびに`AmazonIpSpaceChanged`のSNSトピックで告知します。変数を更新するまで、新しい範囲を経由して届いたリクエストは、読者のアドレスではなくCloudFrontのアドレスで記録されます。その範囲の背後にいる読者は全員同じアドレスになりますが、誰もそのアドレスを選ぶことはできません。これらより広い範囲は信頼しないでください。読者が接続できる範囲を信頼すると、どの読者も好きなアドレスを名乗れるようになります。
+AWSはこれらの範囲をときどき変更し、変更のたびに`AmazonIpSpaceChanged`のSNSトピックで通知します。変数を更新するまでは、新しい範囲を通って届いたリクエストは、読者ではなくCloudFrontのアドレスで記録されます。その範囲を経由する読者はみな同じアドレスになりますが、どの読者もそのアドレスを自分で選ぶことはできません。信頼する範囲をこれより広げてはいけません。読者が接続してくる範囲まで信頼すると、どの読者も好きなアドレスを名乗れるようになります。
 
-## エッジを確認する
+## VPCの外からの確認
 
 DNSレコードが応答するようになったら、VPCの外からルーティングを確認します。
 
@@ -232,6 +232,6 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 curl -sI http://comics.example.com/ | grep -i '^location'
 ```
 
-1つ目は`web-storefront`から`200`を返し、2つ目はそのレディネスを返します。`publira server`とValkeyに到達できていれば`"status":"ok"`です。3つ目は`publira server`に届き、サーバーは空のリクエストを`invalid_argument`で拒否します。4つ目はテナント管理画面のAPIを呼び出し、ロードバランサーはそれを転送せずに`404`で応答します。最後のものは、`https://comics.example.com/`へのCloudFrontのリダイレクトを返します。管理画面のホストでも同じことを実行してください。そこでも管理画面のAPIは`404`を返します。管理画面はこのAPIをエッジ経由ではなく、VPC経由で呼び出すためです。
+1つ目のコマンドには`web-storefront`が`200`を返します。2つ目にはレディネスが返り、`publira server`とValkeyに接続できていれば`"status":"ok"`になります。3つ目は`publira server`に届き、空のリクエストが`invalid_argument`で拒否されます。4つ目はテナント管理画面のAPIを呼び出しますが、ロードバランサーはこれを転送せずに`404`を返します。最後のコマンドには、CloudFrontが`https://comics.example.com/`へのリダイレクトを返します。管理画面のホスト名でも同じことを確認してください。管理画面はAPIをCloudFrontを通さずVPC内で呼び出すので、管理画面のホスト名でも管理画面のAPIには`404`が返ります。
 
-その後、Fargate上のAmazon ECSのページの[ログインする](./index.md#9-ログインする)に戻ってください。
+確認が済んだら、[Amazon ECS(Fargate)のログインの手順](./index.md#9-ログインする)に戻ってください。

@@ -1,30 +1,30 @@
 ---
-title: Kubernetesでのエッジ
-description: Kubernetesクラスター上のインストール環境の前段に、cert-managerが証明書を発行するGatewayまたはIngressを置き、クラスターの外から確認する。
+title: Kubernetesでのリバースプロキシの設定
+description: KubernetesクラスターでPubliraの前段にGatewayかIngressを置き、cert-managerで証明書を発行して、クラスターの外から動作を確認する方法を説明します。
 published: 2026-10-29
 source_updated: 2026-10-22
 ---
 
-このページは[Kubernetes](./index.md)の手順6です。[プロセスを起動する](./index.md#4-プロセスを起動する)で作成したServiceの前段に、[インストール環境をセットアップする](./index.md#5-インストール環境をセットアップする)の実行後にエッジを置きます。
+このページは[Kubernetes](./index.md)の手順6です。[プロセスを起動する](./index.md#4-プロセスを起動する)で作成したServiceの前段に、リバースプロキシを置きます。[Publiraをセットアップする](./index.md#5-publiraをセットアップする)を済ませてから始めてください。
 
-エッジは、[エッジが果たすべきこと](../4-edge/index.md#エッジが行うべきこと)の要件どおりに、ホストとパスごとに適切なServiceへルーティングし、TLSを終端し、呼び出し元が選んではならないヘッダーを取り除きます。クラスターでは、Gateway APIを実装したコントローラー上のGatewayとHTTPRoute、またはIngressのどちらかになります。以下では、同じルーティングで両方を示します。
+リバースプロキシは、[リバースプロキシに必要な設定](../4-edge/index.md#リバースプロキシで必要な設定)のとおり、ホストとパスに応じて適切なServiceにルーティングし、TLSを終端し、呼び出し元に指定させてはならないヘッダーを削除します。クラスターでは、Gateway APIを実装したコントローラーで動かすGatewayとHTTPRoute、またはIngressがこの役割を担います。以下では両方を、同じルーティングで説明します。
 
 | ホスト | パス | Service |
 | --- | --- | --- |
 | テナントのドメイン | `/images`、`/rpc/publira.v1.…` | `publira-server`、ポート`8000` |
-| テナントのドメイン | `/rpc`のそれ以外 | なし。エッジが`404`を返します |
-| テナントのドメイン | それ以外のすべて | `web-storefront`、ポート`3000` |
+| テナントのドメイン | それ以外の`/rpc` | なし。リバースプロキシが`404`を返します |
+| テナントのドメイン | そのほかすべて | `web-storefront`、ポート`3000` |
 | テナントの管理画面のホスト | `/images`、`/rpc/publira.v1.…` | `publira-server`、ポート`8000` |
-| テナントの管理画面のホスト | `/rpc`のそれ以外 | なし。エッジが`404`を返します |
-| テナントの管理画面のホスト | それ以外のすべて | `web-admin`、ポート`4000` |
+| テナントの管理画面のホスト | それ以外の`/rpc` | なし。リバースプロキシが`404`を返します |
+| テナントの管理画面のホスト | そのほかすべて | `web-admin`、ポート`4000` |
 
-`/rpc`の下で転送するのは公開API`publira.v1`だけです。[エッジを通るのは公開APIだけ](../4-edge/index.md#エッジを通るのは公開apiだけ)で説明しているとおり、管理画面は自分のAPIをクラスターのネットワーク経由で呼び出すため、エッジはそれ以外に自分で`404`を返します。パスと`Host`ヘッダーは、ブラウザーが送ったとおりにServiceに届きます。どちらも書き換えないでください。
+`/rpc`の下で転送するのは、公開API`publira.v1`だけです。管理画面は自分のAPIをクラスター内のネットワークで呼び出すので、[リバースプロキシを通すのは公開APIだけ](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しているとおり、それ以外にはリバースプロキシが自分で`404`を返します。パスと`Host`ヘッダーは、ブラウザーが送ったままServiceに届けます。どちらも書き換えないでください。
 
-公開APIのプレフィックスはパスセグメントの途中、`v1`の後のドットで終わります。Gatewayの`PathPrefix`もIngressの`Prefix`もセグメント全体で一致を判定するため、どちらもそれだけではこのプレフィックスを指定できません。また、どちらのAPIにも、リクエストに自分で応答する手段がありません。どちらも実装に任されているため、以下の各セクションで、そこで使う実装がそれをどう行うかを説明します。
+公開APIのプレフィックスは、パスセグメントの途中、`v1`の後のドットで終わります。Gatewayの`PathPrefix`もIngressの`Prefix`もセグメント単位で照合するので、どちらもそれだけではこのプレフィックスを指定できません。また、どちらのAPIにも、リクエストに自分で応答する仕組みがありません。この2点は実装に任されているので、以下の各節で、使う実装での方法を説明します。
 
 ## 証明書
 
-cert-managerは、Let's EncryptなどのACME発行者から、GatewayまたはIngressが指定するすべてのホスト名について証明書を発行し、更新します。Gatewayを使う場合はGateway APIのサポートを有効にしてcert-managerをインストールします。Helmチャートでは`config.enableGatewayAPI: true`で有効になります。そのうえで、エッジを通じてACMEチャレンジに応答する発行者を作成します。
+cert-managerは、GatewayやIngressに書いたすべてのホスト名について、Let's EncryptなどのACME発行者から証明書を発行し、更新します。Gatewayを使う場合は、Gateway APIのサポートを有効にしてcert-managerをインストールします。Helmチャートでは`config.enableGatewayAPI: true`で有効になります。そのうえで、リバースプロキシ経由でACMEチャレンジに応答する発行者を作成します。
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -47,13 +47,13 @@ spec:
                 sectionName: http
 ```
 
-Ingressの場合、ソルバーは代わりに`http01: {ingress: {ingressClassName: <your class>}}`になります。チャレンジは各ホスト名でポート80を通じてエッジに届くため、先にDNSレコードを用意します。
+Ingressの場合は、ソルバーを`http01: {ingress: {ingressClassName: <your class>}}`にします。チャレンジは各ホスト名のポート80でリバースプロキシに届くので、先にDNSレコードを登録しておきます。
 
 ## Gatewayを使う場合
 
-ルートでは、Gateway APIがExtendedとしている機能を2つ使います。Extendedの機能は、サポートしなくても実装がAPIに準拠できるものです。HTTPSへのリダイレクトのための`HTTPRouteSchemeRedirect`と、Webアプリへのリクエストにかけられる時間について実装の制限を外すための`HTTPRouteRequestTimeout`です。各実装がサポートする機能はGateway APIの[Implementations](https://gateway-api.sigs.k8s.io/docs/implementations/)のページで比較されており、各実装の適合性レポートへのリンクがあります。Envoy Gatewayは両方をサポートしています。どちらかがない実装では、その部分を実装が独自のリソースで提供する方法で行うか、代わりに[Ingress](#ingressを使う場合)を使ってください。
+ルートでは、Gateway APIでExtendedに分類されている機能を2つ使います。Extendedの機能は、サポートしていなくても実装がAPIに準拠していると認められます。使うのは、HTTPSへのリダイレクトに使う`HTTPRouteSchemeRedirect`と、Webアプリへのリクエストにかかる時間について実装の上限を外すための`HTTPRouteRequestTimeout`です。各実装がサポートする機能は、Gateway APIの[Implementations](https://gateway-api.sigs.k8s.io/docs/implementations/)のページで比較でき、各実装の適合性レポートへのリンクもあります。Envoy Gatewayは両方をサポートしています。どちらかをサポートしていない実装では、その部分を実装独自のリソースで実現するか、代わりに[Ingress](#ingressを使う場合)を使ってください。
 
-ルートでは、Envoy Gateway自体からも2つのものを使います。公開APIのプレフィックスは`RegularExpression`のパスマッチで、その方言と優先順位はGateway APIが各実装に任せています。Envoy GatewayはRE2の式をパス全体に対して照合し、正規表現をプレフィックスより先に試します。`/rpc`のそれ以外への`404`は、Envoy Gateway独自の`HTTPRouteFilter`で、これがリクエストに自分で応答します。
+また、Envoy Gateway固有の機能も2つ使います。1つは、公開APIのプレフィックスを指定する`RegularExpression`のパスマッチです。正規表現の方言と優先順位は、Gateway APIでは実装に任されています。Envoy GatewayはRE2の正規表現をパス全体に対して照合し、プレフィックスより先に正規表現を試します。もう1つは、それ以外の`/rpc`に`404`を返すEnvoy Gateway独自の`HTTPRouteFilter`です。このフィルターがリクエストに直接応答します。
 
 ```yaml
 apiVersion: gateway.envoyproxy.io/v1alpha1
@@ -65,9 +65,9 @@ spec:
     statusCode: 404
 ```
 
-ほかの実装では、その実装独自の、正規表現でパスを照合する方法と、リクエストに`404`で応答する方法を使ってください。
+ほかの実装では、正規表現でパスを照合する方法と`404`で応答する方法として、その実装独自のものを使ってください。
 
-Gatewayには、ホスト名ごとに1つのHTTPSリスナー（それぞれ証明書を入れるSecretを持ちます）と、1つの平文のHTTPリスナーがあります。HTTPリスナーはHTTPSにリダイレクトし、ACMEチャレンジに応答します。`cert-manager.io/cluster-issuer`アノテーションによって、cert-managerはHTTPSリスナーごとに、リスナーが指定するSecretに証明書を発行します。
+Gatewayには、ホスト名ごとに1つのHTTPSリスナーと、1つの平文のHTTPリスナーを置きます。HTTPSリスナーにはそれぞれ、証明書を格納するSecretを指定します。HTTPリスナーは、HTTPSへのリダイレクトとACMEチャレンジへの応答を受け持ちます。`cert-manager.io/cluster-issuer`アノテーションを付けると、cert-managerはHTTPSリスナーごとに、リスナーが指定するSecretに証明書を発行します。
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -98,7 +98,7 @@ spec:
           - name: admin-comics-example-com-tls
 ```
 
-Webアプリごとに1つのHTTPRouteが、そのアプリのHTTPSリスナーに名前で接続し、ホスト名をリスナーから受け取ります。どのルールも、すべての実装がサポートする`RequestHeaderModifier`フィルターで、リクエストからトレースコンテキストのヘッダー、`Forwarded`、`X-Forwarded-Host`、`X-Forwarded-CountryRegion`を取り除きます。
+HTTPRouteはWebアプリごとに1つ作成し、そのアプリのHTTPSリスナーに名前で接続します。ホスト名はリスナーから引き継ぎます。どのルールでも、すべての実装がサポートする`RequestHeaderModifier`フィルターで、トレースコンテキストのヘッダー、`Forwarded`、`X-Forwarded-Host`、`X-Forwarded-CountryRegion`をリクエストから削除します。
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -201,16 +201,16 @@ spec:
             statusCode: 301
 ```
 
-- **公開APIと`404`。** Envoy Gatewayは正規表現を先に試すため、`/rpc/publira\.v1\..*`に一致するパスは`publira-server`に届きます。`/rpc`のそれ以外と`/api`は`not-found`フィルターを持つ`PathPrefix`のルールに落ち、より長いプレフィックスである`/api/v1`はWebアプリに届きます。フィルターを持つルールには`backendRefs`がありません。フィルターが一致するすべてのリクエストに応答し、何も転送されないためです。
-- **取り除くヘッダー。** `traceparent`、`tracestate`、`baggage`は、[トレースコンテキスト](../4-edge/index.md#トレースコンテキスト)の要件どおりに取り除きます。Gatewayは、指示しない限り呼び出し元が送った`Forwarded`と`X-Forwarded-Host`を渡し、Publiraは[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)と[リクエストの送信先のホスト](../4-edge/index.md#リクエストの送信先のホスト)で説明しているとおりその両方を読みます。ここで取り除いておけば、すべてのプロセスで`PUBLIRA_FORWARDED_HEADER_ENABLED`を既定値のままにできます。`X-Forwarded-CountryRegion`は、[読者の地域](../4-edge/index.md#読者の地域)の要件どおりに取り除きます。Envoy Gatewayは自分では地域を調べないため、テナントのGoogleタグゲートウェイはGoogleに地域を送りません。[ECSの前に置くCloudFront](../6-ecs-fargate/1-cloudfront.md#ヘッダー)で示すように、Gatewayの前にあるCDNがこのヘッダーを読者の地域に設定する場合は、`web-storefront`のルールで`remove`からこのヘッダーを外せば、ヘッダーが`web-storefront`に届きます。ただし、これが安全なのは、そのCDNだけがGatewayに接続できる間に限ります。
-- **アップロードのタイムアウト。** `timeouts.request: 0s`は、Gateway APIのゼロ期間の定義どおり、Webアプリへのリクエストにかけられる時間の制限を無効にします。これがないと、ルールには実装の既定値が適用され、それははるかに短い場合があります。Envoy Gatewayの既定値は、リクエストが届いてから応答までの15秒です。[テナント管理画面でのアップロード](../4-edge/index.md#テナント管理画面でのアップロード)で説明しているとおり、テナント管理画面でのエピソードのアップロードは、届くまでに最大300秒かかります。Gateway APIでは、`web-admin`がページを保存して応答する前のこの時間も、実装が数えてよいことになっています。Webアプリ自身がリクエストの到着に300秒を与えているため、エッジに独自の制限は必要ありません。Gateway APIにはボディのサイズのフィールドがなく、Envoy Gatewayは独自のポリシーで追加しない限りボディのサイズを制限しません。使う実装がボディのサイズを制限する場合は、管理画面のホストの`/api/v1/episode-pages`で256MiB、テナントのドメインの`/api/v1/webhook/email/`の下で33MiBを許可してください。
-- **リダイレクト。** `https-redirect`は`http`リスナーだけに接続し、そこに届いたすべてのリクエストをHTTPSに送ります。証明書の発行中は、cert-managerがチャレンジ用の独自のルートを同じリスナーに追加します。このルートは証明書の対象のホストを指定するため、そのホストへの平文のHTTPリクエストはリダイレクトではなくこのルートが受け取ります。証明書が発行されてルートが削除されると、再びリダイレクトがそれらのリクエストに応答します。
+- **公開APIと`404`。** Envoy Gatewayは正規表現を先に試すので、`/rpc/publira\.v1\..*`に一致するパスは`publira-server`に届きます。それ以外の`/rpc`と`/api`は`not-found`フィルターを付けた`PathPrefix`のルールに一致し、より長いプレフィックスである`/api/v1`はWebアプリに届きます。フィルターを付けたルールには`backendRefs`がありません。一致したリクエストにはすべてフィルターが応答し、どこにも転送しないからです。
+- **削除するヘッダー。** `traceparent`、`tracestate`、`baggage`は、[トレースコンテキスト](../4-edge/index.md#トレースコンテキスト)の要件に従って削除します。Gatewayは、指定しない限り、呼び出し元が送った`Forwarded`と`X-Forwarded-Host`をそのまま渡します。[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)と[リクエストの送信先のホスト](../4-edge/index.md#リクエストの送信先のホスト)で説明しているとおり、Publiraはその両方を読みます。ここで削除しておけば、すべてのプロセスで`PUBLIRA_FORWARDED_HEADER_ENABLED`を既定値のままにできます。`X-Forwarded-CountryRegion`は、[読者の地域](../4-edge/index.md#読者の地域)の要件に従って削除します。Envoy Gatewayは自分では地域を調べないので、テナントのGoogleタグゲートウェイはGoogleに地域を送りません。[CloudFrontを使った公開](../6-ecs-fargate/1-cloudfront.md#ヘッダー)の例のように、Gatewayの前段のCDNがこのヘッダーに読者の地域を設定する場合は、`web-storefront`のルールの`remove`からこのヘッダーを外すと、地域が`web-storefront`に届きます。ただし、これが安全なのは、Gatewayに接続できるのがそのCDNだけの場合に限ります。
+- **アップロードのタイムアウト。** `timeouts.request: 0s`は、Webアプリへのリクエストにかかる時間の上限をなくします。Gateway APIでは、時間0をこの意味に定義しています。指定しないとルールには実装の既定値が適用され、その値ははるかに短い場合があります。Envoy Gatewayの既定値は、リクエストが届いてから応答までの15秒です。[テナント管理画面でのアップロード](../4-edge/index.md#テナント管理画面でのアップロード)で説明しているとおり、テナント管理画面でのエピソードのアップロードは、届くまでに最大300秒かかります。Gateway APIでは、`web-admin`がページを保存して応答するより前のこの到着時間も、実装がタイムアウトの計測に含めてよいことになっています。Webアプリ自身がリクエストの到着に300秒の上限を設けているので、リバースプロキシで別に上限を設ける必要はありません。Gateway APIには、ボディのサイズを指定するフィールドがありません。Envoy Gatewayは、独自のポリシーで追加しない限りボディのサイズを制限しません。使う実装がボディのサイズを制限する場合は、管理画面のホストの`/api/v1/episode-pages`で256MiB、テナントのドメインの`/api/v1/webhook/email/`の下で33MiBまで許可してください。
+- **リダイレクト。** `https-redirect`は`http`リスナーだけに接続し、そこに届いたすべてのリクエストをHTTPSにリダイレクトします。証明書の発行中は、cert-managerがチャレンジ用のルートを同じリスナーに追加します。このルートは証明書の対象のホストを指定しているので、そのホストへの平文のHTTPリクエストは、リダイレクトではなくこのルートが受け取ります。証明書が発行されてルートが削除されると、再びリダイレクトが応答します。
 
-YAMLアンカー`&strip-request-headers`は、ルートのすべてのルールで同じフィルターを繰り返すためのもので、`kubectl apply`が展開します。
+YAMLアンカー`&strip-request-headers`を使って、ルートのすべてのルールに同じフィルターを指定しています。アンカーは`kubectl apply`が展開します。
 
 ## Ingressを使う場合
 
-Ingressは、自身のフィールドではリクエストヘッダーを取り除くこともタイムアウトを設定することもできないため、Ingressによるエッジはその両方をコントローラーに頼ることになります。以下のマニフェストは、IngressコントローラーとしてTraefikを使う場合のもので、Traefikは次の値でHelmチャートからインストールします。
+Ingressのフィールドでは、リクエストヘッダーの削除もタイムアウトの設定もできません。そのため、Ingressを使う場合は、どちらもコントローラーの機能に頼ります。以下のマニフェストは、IngressコントローラーとしてTraefikを使う場合の例です。Traefikは、Helmチャートから次の値でインストールします。
 
 ```yaml
 ports:
@@ -233,7 +233,7 @@ service:
     externalTrafficPolicy: Local
 ```
 
-そして2つのMiddlewareを使います。1つはヘッダーを取り除くもので、上の`websecure`エントリーポイントが受け取るすべてのリクエストに適用します。もう1つはリクエストが転送される前に`404`で応答するもので、下の`/rpc`のそれ以外のためのIngressがそのパスに適用します。
+Middlewareも2つ作成します。1つはヘッダーを削除するもので、上の`websecure`エントリーポイントが受け取るすべてのリクエストに適用します。もう1つは転送する前に`404`で応答するもので、後述のそれ以外の`/rpc`用のIngressが、そのパスに適用します。
 
 ```yaml
 apiVersion: traefik.io/v1alpha1
@@ -259,11 +259,11 @@ spec:
     rejectStatusCode: 404
 ```
 
-Traefikにはリクエストに応答するだけのMiddlewareがないため、`not-found`は、どの接続の送信元にもならないブロードキャストアドレスを指定した許可リストで、それ以外のすべてのアドレスを`404`で拒否します。`rejectStatusCode`にはTraefik 3.4以降が必要です。
+Traefikには、リクエストに応答するだけのMiddlewareがありません。そこで`not-found`は、どの接続の送信元にもならないブロードキャストアドレスだけを許可するリストにして、ほかのすべてのアドレスを`404`で拒否します。`rejectStatusCode`には、Traefik 3.4以降が必要です。
 
-Traefikは、[クライアントのアドレス](#クライアントのアドレス)で説明しているとおり、前にあるホップを信頼するよう指示しない限り、呼び出し元の`X-Forwarded-For`と`X-Forwarded-Host`を自分のものに置き換えるため、どちらも取り除く必要はありません。Traefikは自分では地域を調べないため、[読者の地域](../4-edge/index.md#読者の地域)の要件どおり、すべてのリクエストから`X-Forwarded-CountryRegion`を取り除きます。テナントのGoogleタグゲートウェイはGoogleに地域を送りません。`readTimeout`はリクエストの到着に300秒を与えます。これはエピソードのアップロードに必要です。Traefikはボディのサイズを制限しません。`web`のリダイレクトはACMEチャレンジもHTTPSに送り、認証局はそのリダイレクトに従います。HTTPS側では、証明書がまだ存在しない段階でチャレンジに応答します。ほかのコントローラーでは、これらをそれぞれ、そのコントローラーが独自のアノテーションやリソースで提供する方法で行ってください。
+[クライアントのアドレス](#クライアントのアドレス)で説明しているとおり、Traefikは、前段を信頼するよう設定しない限り、呼び出し元の`X-Forwarded-For`と`X-Forwarded-Host`を自分の値で置き換えます。そのため、この2つは削除する必要がありません。Traefikは自分では地域を調べないので、[読者の地域](../4-edge/index.md#読者の地域)の要件に従って、すべてのリクエストから`X-Forwarded-CountryRegion`を削除します。テナントのGoogleタグゲートウェイはGoogleに地域を送りません。`readTimeout`はリクエストの到着に300秒を与えます。これはエピソードのアップロードに必要です。Traefikはボディのサイズを制限しません。`web`のリダイレクトでACMEチャレンジもHTTPSに転送されますが、認証局はリダイレクトに従います。HTTPS側では、証明書がまだない段階でもチャレンジに応答します。ほかのコントローラーでは、これらをそれぞれ、そのコントローラー独自のアノテーションやリソースで実現してください。
 
-そのうえで、Webアプリごとに1つのIngressがそのホストをルーティングします。Traefikは、`strictPrefixMatching`オプションが有効でない限り、`Prefix`や`ImplementationSpecific`のパスを、セグメント全体ではなく文字列としてのパスのプレフィックスとして照合します。そのため、このオプションは無効のままにしてください。これにより、`/rpc/publira.v1.`でパスセグメントの途中にある公開APIのプレフィックスを指定できます。Ingress APIはこの意味をコントローラーに任せているため、このパスは`ImplementationSpecific`として指定します。セグメント全体で照合するコントローラーでは、そのための独自のアノテーションやリソースが必要です。
+そのうえで、Webアプリごとに1つのIngressでホストをルーティングします。Traefikは、`strictPrefixMatching`オプションが有効でない限り、`Prefix`と`ImplementationSpecific`のパスを、セグメント単位ではなく文字列の前方一致で照合します。このオプションは無効のままにしてください。この照合のおかげで、パスセグメントの途中で終わる公開APIのプレフィックスを`/rpc/publira.v1.`で指定できます。Ingress APIはこの照合の意味をコントローラーに任せているので、このパスの種類は`ImplementationSpecific`にします。セグメント単位で照合するコントローラーでは、そのための独自のアノテーションやリソースが必要です。
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -347,28 +347,28 @@ spec:
         paths: *not-found-paths
 ```
 
-`cert-manager.io/cluster-issuer`アノテーションによって、cert-managerは各`tls`エントリーのホストについて、エントリーが指定するSecretに証明書を発行します。`api-not-found`にはこのアノテーションがなく、ほかの2つのIngressで発行された証明書を読みます。
+`cert-manager.io/cluster-issuer`アノテーションを付けると、cert-managerは各`tls`エントリーのホストについて、エントリーが指定するSecretに証明書を発行します。`api-not-found`にはこのアノテーションを付けず、ほかの2つのIngressで発行した証明書を読み込みます。
 
-`api-not-found`は、両方のホストで`/rpc`のそれ以外を受け取り、`not-found` Middlewareで応答します。Traefikは最も長いルールを先に試すため、`/rpc/publira.v1.`は自分のパスを保持し、Webアプリは`/`を保持します。バックエンドに届くことはなく、Ingressのパスにはバックエンドが必要だから指定しているだけです。バックエンドに`publira-server`ではなくWebアプリを指定しているのは、万一Middlewareがなくなった場合に、パスが管理画面のAPIではなく、そこにページを持たないWebアプリに届くようにするためです。Traefikは`/rpc`を文字列として照合するため、`/rpcabc`のようなパスにも`404`が返ります。そこにページを持つWebアプリもありません。
+`api-not-found`は、両方のホストでそれ以外の`/rpc`を受け取り、`not-found`のMiddlewareで応答します。Traefikは長いルールから順に試すので、`/rpc/publira.v1.`のパスはそれぞれのIngressに残り、`/`は引き続きWebアプリに届きます。バックエンドにリクエストが届くことはありません。Ingressのパスにはバックエンドが必要なので、指定しているだけです。バックエンドを`publira-server`ではなくWebアプリにしているのは、万一Middlewareがなくなっても、リクエストが管理画面のAPIではなく、そのパスにページを持たないWebアプリに届くようにするためです。Traefikは`/rpc`を文字列として照合するので、`/rpcabc`のようなパスにも`404`を返します。そのパスにページを持つWebアプリもありません。
 
 ## クライアントのアドレス
 
-Publiraはすべてのリクエストの背後にいる読者のアドレスを記録し、[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)で説明しているとおり、エッジが書き込む`X-Forwarded-For`ヘッダーからそれを読みます。クラスターでは、そのアドレスが読者のものになるかどうかを2つのことが決めます。
+Publiraはリクエストごとに、送信元の読者のアドレスを記録します。[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)で説明しているとおり、アドレスはリバースプロキシが書き込む`X-Forwarded-For`ヘッダーから読みます。クラスターでは、記録されるアドレスが本当に読者のものになるかどうかを、次の2点が左右します。
 
-**読者のアドレスがコントローラーに届く必要があります。** 多くのクラウドのロードバランサーのパススルーモードのように、接続をそのまま転送する`LoadBalancer`タイプのServiceは、ロードバランサーが選んだいずれかのノードを通じて接続を届けます。既定の`externalTrafficPolicy: Cluster`では、接続がコントローラーのPodに届く前に、そのノードが読者のアドレスを自分のアドレスに置き換えます。コントローラーのServiceに`externalTrafficPolicy: Local`を設定して、接続がコントローラーのPodを動かしているノードだけに、送信元アドレスを保ったまま届けられるようにしてください。どこで設定するかはコントローラーによります。Envoy Gatewayは、指示しない限り、Gatewayのために作成するServiceにこれを設定します。上のTraefikの値は、チャートが作成するServiceにこれを設定します。HTTPを自分で終端するロードバランサーは、代わりに読者のアドレスを`X-Forwarded-For`に書き込みます。その場合、信頼すべきなのは下で説明するとおり、そのロードバランサー自身のアドレスです。
+**読者のアドレスがコントローラーまで届くこと。** `LoadBalancer`タイプのServiceが接続をそのまま転送する場合(多くのクラウドのロードバランサーのパススルーモードなど)、接続はロードバランサーが選んだいずれかのノードを経由して届きます。既定の`externalTrafficPolicy: Cluster`では、接続がコントローラーのPodに届く前に、そのノードが読者のアドレスを自分のアドレスに置き換えます。コントローラーのServiceに`externalTrafficPolicy: Local`を設定してください。接続は、コントローラーのPodが動いているノードにだけ、送信元アドレスを保ったまま届くようになります。設定する場所はコントローラーによって異なります。Envoy Gatewayは、特に指定しない限り、Gatewayのために作成するServiceにこの値を設定します。上のTraefikの値では、チャートが作成するServiceに設定しています。HTTPを自分で終端するロードバランサーは、代わりに読者のアドレスを`X-Forwarded-For`に書き込みます。その場合は、後述のとおりロードバランサー自身のアドレスを信頼します。
 
-**`PUBLIRA_TRUSTED_PROXIES`には、クラスター内のホップを指定します。** コントローラーのPodとWebアプリのPodはPodのアドレスから`publira server`に接続するため、値はPodのアドレス範囲です。[プロセスを起動する](./index.md#4-プロセスを起動する)の`publira-server`と`web-storefront`のDeploymentもそうなっています。未設定の場合はすべてのプライベートな範囲を信頼し、その中にはノードのアドレスも含まれます。すると、`externalTrafficPolicy`が`Cluster`のままだったためにノードのアドレスからコントローラーに届いたリクエストは、呼び出し元が自分の`X-Forwarded-For`に書き込んだ任意のアドレスで記録されます。Podの範囲だけを指定していれば、そのようなリクエストはノードのアドレスで記録されます。その場合、すべての読者が1つのアドレスを共有することになりますが、どの読者もそのアドレスを選ぶことはできません。
+**`PUBLIRA_TRUSTED_PROXIES`にクラスター内のプロキシを指定すること。** コントローラーのPodとWebアプリのPodは、Podのアドレスから`publira server`に接続します。そのため、値にはPodのアドレス範囲を指定します。[プロセスを起動する](./index.md#4-プロセスを起動する)の`publira-server`と`web-storefront`のDeploymentでも、この値にしています。未設定の場合は、ノードのアドレスも含めて、すべてのプライベートアドレスの範囲を信頼します。すると、`externalTrafficPolicy`が`Cluster`のままでノードのアドレスからコントローラーに届いたリクエストは、呼び出し元が自分で`X-Forwarded-For`に書いた任意のアドレスで記録されてしまいます。Podの範囲だけを指定していれば、そのようなリクエストはノードのアドレスで記録されます。その場合は全読者が1つのアドレスを共有しますが、読者がアドレスを自由に選ぶことはできません。
 
-**コントローラーの前にあるホップは、2か所で信頼させます。** コントローラーの前でHTTPを終端するロードバランサーやCDNは、[プロキシの前にあるホップ](../4-edge/1-sample-configurations.md#プロキシの前にあるホップ)で説明しているとおり、`X-Forwarded-For`を、呼び出し元の値に追記するのではなく、自分に接続してきたアドレスに設定します。コントローラーはそのヘッダーを渡す必要があります。
+**コントローラーの前段のプロキシは2か所で信頼させること。** コントローラーの前段でHTTPを終端するロードバランサーやCDNは、[前段にロードバランサーやCDNを置く場合](../4-edge/1-sample-configurations.md#前段にロードバランサーやcdnを置く場合)で説明しているとおり、`X-Forwarded-For`を呼び出し元の値に追記せず、自分に接続してきたアドレスに設定します。コントローラーは、このヘッダーをそのまま渡す必要があります。
 
-- Envoy Gatewayは受け取った`X-Forwarded-For`を保持し、ホップのアドレスを追記するため、設定は必要ありません。
-- Traefikは、エントリーポイントがホップを信頼していない限り、このヘッダーを置き換えます。上のHelmの値の`ports.websecure.forwardedHeaders.trustedIPs`に、ホップのアドレスを追加してください。するとTraefikはホップの`X-Forwarded-Host`も保持するようになります。Webアプリはこのヘッダーからテナントを特定するため、ホップはこのヘッダーも設定します。
+- Envoy Gatewayは受け取った`X-Forwarded-For`を残し、前段のアドレスを追記するので、設定は必要ありません。
+- Traefikは、エントリーポイントが前段を信頼していない限り、このヘッダーを置き換えます。上のHelmの値の`ports.websecure.forwardedHeaders.trustedIPs`に、前段のアドレスを追加してください。するとTraefikは、前段から届いた`X-Forwarded-Host`も残します。Webアプリはこのヘッダーからテナントを判断するので、前段はこのヘッダーも設定します。
 
-そのうえで、[信頼するプロキシを設定するとき](../4-edge/index.md#信頼するプロキシを設定する場合)で説明しているとおり、同じアドレスを`PUBLIRA_TRUSTED_PROXIES`にPodの範囲と並べて追加し、`publira server`がホップのアドレスを飛ばしてホップの指定したアドレスを採用するようにします。コントローラー側の設定がないと、`PUBLIRA_TRUSTED_PROXIES`をどう設定しても、すべての読者がホップのアドレスで記録されます。信頼するのはホップ自身のアドレスだけにしてください。読者からも届くアドレス範囲を信頼すると、どの読者も好きなアドレスを名乗れてしまいます。
+続けて、同じアドレスを`PUBLIRA_TRUSTED_PROXIES`にPodの範囲と並べて追加します。[信頼するプロキシを設定する場合](../4-edge/index.md#信頼するプロキシを設定する場合)で説明しているとおり、これで`publira server`は前段のアドレスを読み飛ばし、前段が指定したアドレスを採用します。コントローラー側の設定がなければ、`PUBLIRA_TRUSTED_PROXIES`をどう設定しても、すべての読者が前段のアドレスで記録されます。信頼するのは前段自身のアドレスだけにしてください。読者からの接続も届くアドレス範囲を信頼すると、どの読者でも好きなアドレスを名乗れてしまいます。
 
-## エッジを確認する
+## リバースプロキシの動作を確認する
 
-エッジのServiceにアドレスが割り当てられたら、DNSレコードをそのアドレスに向け、証明書を待ちます。`kubectl get certificate`では、発行された証明書がそれぞれ`True`と表示されます。そのうえで、クラスターの外からルーティングを確認します。
+リバースプロキシのServiceにアドレスが割り当てられたら、DNSレコードをそのアドレスに向け、証明書の発行を待ちます。発行された証明書は、`kubectl get certificate`で`True`と表示されます。そのうえで、クラスターの外からルーティングを確認します。
 
 ```bash
 curl -sI https://comics.example.com/ | head -1
@@ -380,6 +380,6 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 curl -sI http://comics.example.com/ | grep -i '^location'
 ```
 
-1つ目は`web-storefront`から`200`が返ります。2つ目はreadinessを返し、`publira server`とValkeyに到達できれば`"status":"ok"`になります。3つ目は`publira server`に届き、空のリクエストが`invalid_argument`で拒否されます。4つ目はテナント管理画面のAPIを呼び出し、エッジが転送せずに`404`を返します。最後は`https://comics.example.com/`へのリダイレクトを返します。管理画面のホストでも同じことを実行してください。管理画面はそのAPIをエッジ経由ではなくクラスターのネットワーク経由で呼び出すため、そこでも管理画面のAPIには`404`が返ります。
+1つ目のコマンドでは、`web-storefront`が`200`を返します。2つ目ではreadinessの状態が返り、`publira server`とValkeyに接続できていれば`"status":"ok"`になります。3つ目は`publira server`に届き、空のリクエストは`invalid_argument`で拒否されます。4つ目はテナント管理画面のAPIを呼び出しますが、リバースプロキシは転送せずに`404`を返します。最後のコマンドでは、`https://comics.example.com/`へのリダイレクトが返ります。管理画面のホストでも同じコマンドを実行してください。管理画面はAPIをリバースプロキシ経由ではなくクラスター内のネットワークで呼び出すので、管理画面のホストでも管理画面のAPIには`404`が返ります。
 
 確認が済んだら、Kubernetesのページの[ログインする](./index.md#7-ログインする)に戻ってください。

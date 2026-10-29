@@ -1,79 +1,79 @@
 ---
 title: インストール
-description: 空のインストール環境を稼働させる。依存するサービスの用意から、テナント管理画面への最初のログインまで。
+description: 依存するサービスの用意から、テナント管理画面への最初のログインまで、空の状態からPubliraを稼働させる手順を説明します。
 published: 2026-10-29
 source_updated: 2026-10-25
 ---
 
-このページでは、何もない状態から、最初の管理者がログインするテナント管理画面ができるまで、インストール環境を構築します。手順を実行すべき順に追い、それぞれの手順で何を決めるかを説明します。各プロセスが読む変数の完全な一覧と`publiractl`のすべてのフラグは、各手順からリンクしているリファレンスに書かれています。
+このページでは、何もない状態から、最初の管理者がテナント管理画面にログインできるようになるまでの手順を説明します。手順は実行しなければならない順に並べ、それぞれの手順で何を決めるのかを説明します。各プロセスが読む環境変数の一覧と`publiractl`のすべてのフラグは、各手順からリンクしているリファレンスにあります。
 
-ここで説明するのは、[概要](./1-overview.md)にある最小のインストール環境です。`web-storefront`、`web-admin`、`publira server`、`publira worker`で構成し、`publiractl`から管理します。最後の[オプションのプロセスを有効にする](#オプションのプロセスを有効にする)で、HTMLメールとプラットフォーム管理画面を追加します。
+ここで構築するのは、[構成の概要](./1-overview.md)で説明した最小構成です。`web-storefront`、`web-admin`、`publira server`、`publira worker`の4つのプロセスを動かし、`publiractl`で管理します。HTMLメールとプラットフォーム管理画面は、最後の[追加のプロセスを有効にする](#追加のプロセスを有効にする)で追加します。
 
 ## 始める前に
 
-各リリースは、そのイメージをGitHub Container Registryに`ghcr.io/publira/<name>:<tag>`として公開します。タグはリリースのバージョン、つまりGitタグから`v`を除いたもので、`v0.1.0`なら`0.1.0`です。公開されるイメージは`publira`、`publiractl`、`web-storefront`、`web-admin`と、オプションのプロセス用の`web-platform`と`email-renderer`です。公開イメージなので、ホストはログインせずにpullでき、何もビルドする必要はありません。各イメージは`linux/amd64`と`linux/arm64`向けに公開されており、それ以外のプラットフォームのホストではpullできるイメージがありません。このページの例ではイメージを`ghcr.io/publira/<name>:<tag>`と書いています。`<tag>`の部分には、インストールするリリースのバージョンを書いてください。タグの番号の付け方は[リリース](./10-releases.md)に書かれています。
+イメージはリリースごとにGitHub Container Registryへ`ghcr.io/publira/<name>:<tag>`として公開されます。タグはリリースのバージョン、つまりGitのタグから`v`を除いたもので、`v0.1.0`なら`0.1.0`です。公開されるイメージは`publira`、`publiractl`、`web-storefront`、`web-admin`と、追加のプロセス用の`web-platform`、`email-renderer`です。どれも公開イメージなので、ホストはログインせずにpullでき、自分でビルドする必要はありません。各イメージは`linux/amd64`と`linux/arm64`向けに公開されています。それ以外のプラットフォームのホストでは、pullできるイメージがありません。このページの例ではイメージを`ghcr.io/publira/<name>:<tag>`と書いているので、`<tag>`はインストールするリリースのバージョンに置き換えてください。タグの番号の付け方は[リリース](./10-releases.md)で説明しています。
 
-コードに手を加えるインストール環境や、それ以外のプラットフォームで動かすインストール環境は、代わりに、動かすコミットの[イメージのビルド手順](https://github.com/publira/publira/blob/main/infra/docker/README.md)に従って自分でイメージをビルドし、ホストがpullする場所にプッシュして、以降は公開イメージの代わりにそれを指定します。
+コードを改修する場合や、ほかのプラットフォームで動かす場合は、イメージを自分でビルドします。動かすコミットの[イメージのビルド手順](https://github.com/publira/publira/blob/main/infra/docker/README.md)に従ってビルドし、ホストがpullできる場所にプッシュしたうえで、このページの手順すべてで公開イメージの代わりにそのイメージを指定してください。
 
-`publiractl`の各手順では、インストールするリリースの`publiractl`イメージを実行します。このイメージにはそのリリースのマイグレーションとロールの定義が含まれているため、別のリリースのイメージを使うと、プロセスが想定していないスキーマが適用されてしまいます。
+`publiractl`を使う手順では、どれもインストールするリリースの`publiractl`イメージを実行します。このイメージにはそのリリースのマイグレーションとロールの定義が入っているので、別のリリースのイメージを使うと、プロセスが想定していないスキーマが適用されてしまいます。
 
-インストール環境全体を1台のホストで動かす場合は、[Docker Compose](./3-docker-compose.md)で説明しているとおり、リポジトリのComposeファイルがサービスを用意し、変数を設定します。その場合も、実行される内容は以下の手順と同じです。
+Publira全体を1台のホストで動かす場合は、[Docker Compose](./3-docker-compose.md)で説明しているように、リポジトリのComposeファイルがサービスの用意と環境変数の設定を代わりに行います。その場合も、内部で実行されるのは以下の手順と同じです。
 
 ## サービスを用意する
 
-最初の手順の前に、次のものを作成しておきます。中身はすべてPubliraが作成するので、どれも空の状態で始めます。
+最初の手順を始める前に、次のものを作成しておきます。中身はすべてPubliraが作成するので、どれも空の状態で用意してください。
 
-- **PostgreSQLデータベース**と、それを所有しロールを作成できる管理用ログイン。自分で運用するPostgreSQLサーバーでは、そのスーパーユーザーがこれにあたります。スーパーユーザーを自分で保持するマネージドのPostgreSQLでは、代わりにこの種のログインが提供されます（Cloud SQLの`postgres`ユーザーなど）。Publiraが必要とするのはそれだけで、スーパーユーザーも、行レベルセキュリティを迂回するロールも必要ありません。このログインで接続するのは`publiractl db`コマンドだけで、常駐プロセスがこれを使うことはありません。
-- **Valkeyインスタンス**、またはRedisプロトコルを話す任意のサーバー。`publira server`、`web-storefront`、`web-admin`が、画像変換のキャッシュ、レート制限のカウンター、Webアプリのキャッシュのために共有します。パスワードを伴う接続には、TLSを使う`rediss://`を使う必要があります。`publira server`は、パスワードを含む`redis://`のURLでは起動を拒否します。
-- S3互換のオブジェクトストレージにある**空のバケット**と、それを読み書きできる認証情報。アップロードされたすべての画像がここに保存されます。`publiractl setup`がバケットと認証情報を保存するので、プロセスがそれにアクセスするために他に必要なものはありません。プロセスが環境から得る認証情報（インスタンスロールなど）を代わりに使う場合は、セットアップでアクセスキーを省略し、`publira server`、`publira worker`、`publiractl`に`AWS_*`変数を渡してください。
-- **SMTPサーバー**：ホスト、ポート、暗号化方式、メールの送信元アドレス、そしてログインに使うユーザー名とパスワード。ただし、ローカルのMTAや、ホストのアドレスを信頼するリレーのように、認証情報なしで中継するサーバーではユーザー名とパスワードは不要です。読者の会員登録、パスワードの再設定、管理者の招待はすべてこのサーバーを通ります。
-- テナントのドメインと`admin.<domain>`の**DNS**。どちらもインストール環境の前にあるエッジを指すようにします。前者はテナントの公開サイトを、後者はその管理画面を提供します。管理画面を別のホスト名に置く場合は、ここで決めておいてください。`publiractl setup`がそれを`--admin-domain`として受け取ります。
+- **PostgreSQLのデータベース**と、そのデータベースを所有し、ロールを作成できる管理用ログイン。自分で運用するPostgreSQLサーバーなら、スーパーユーザーがこれにあたります。スーパーユーザーを利用者に渡さないマネージドのPostgreSQLでは、代わりにこの種のログインが用意されています(Cloud SQLの`postgres`ユーザーなど)。Publiraに必要なのはこのログインだけで、スーパーユーザーも、行レベルセキュリティを迂回できるロールも必要ありません。このログインで接続するのは`publiractl db`コマンドだけで、常駐プロセスが使うことはありません。
+- **Valkeyのインスタンス**、またはRedisプロトコルに対応した任意のサーバー。`publira server`、`web-storefront`、`web-admin`が、画像変換のキャッシュ、レート制限のカウンター、Webアプリのキャッシュに共同で使います。パスワードを使って接続する場合は、TLSを使う`rediss://`にする必要があります。パスワードを含む`redis://`のURLを指定すると、`publira server`は起動しません。
+- S3互換のオブジェクトストレージの**空のバケット**と、そのバケットを読み書きできる認証情報。アップロードされたすべての画像はここに保存されます。バケットと認証情報は`publiractl setup`が保存するので、プロセスがバケットにアクセスするための設定はほかに必要ありません。インスタンスロールなど、プロセスの実行環境から得られる認証情報を使う場合は、初期設定でアクセスキーを入力せず、`publira server`、`publira worker`、`publiractl`に`AWS_*`の環境変数を設定してください。
+- **SMTPサーバー**。ホスト、ポート、暗号化方式、メールの送信元アドレスと、ログインに使うユーザー名とパスワードを用意します。ローカルのMTAや、ホストのアドレスを信頼するリレーのように認証なしで中継するサーバーなら、ユーザー名とパスワードは不要です。読者の会員登録、パスワードの再設定、管理者の招待のメールは、すべてこのサーバーから送られます。
+- テナントのドメインと`admin.<domain>`の**DNS**レコード。どちらもPubliraの前に置くリバースプロキシを指すように設定します。前者でテナントの公開サイトを、後者でテナントの管理画面を提供します。管理画面を別のホスト名で提供する場合は、ここで決めておいてください。そのホスト名は`publiractl setup`に`--admin-domain`で渡します。
 
 ## シークレットを生成する
 
-インストール環境には、あなただけが保持するいくつかのシークレットが必要です。環境ごとに新しいものを生成してシークレットストアに保管し、リポジトリに書かれている値は決して使い回さないでください。それらはローカル開発用のもので、公開されています。
+Publiraには、自分だけが管理するいくつかのシークレットが必要です。環境ごとに新しく生成してシークレットストアに保管し、リポジトリに書かれている値は使い回さないでください。リポジトリの値はローカル開発用で、誰でも見られます。
 
 | シークレット | 生成方法 | 設定先 | 保護するもの |
 | --- | --- | --- | --- |
-| シークレットの暗号化キー | `PUBLIRA_SECRET_ENCRYPTION_KEYS`として`k1:$(openssl rand -base64 32)`、`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`として`k1` | `publira server`、`publira worker`、`publiractl` | インストール環境が保存するすべての認証情報。SMTPのパスワード、オブジェクトストレージのシークレットキー、検索エンジンのパスワード、Web Pushの秘密鍵、各テナントの決済・プッシュ通知・ログインの認証情報 |
-| アクセストークンの署名キー | `PUBLIRA_AUTH_JWT_SECRET`として`openssl rand -base64 32` | `publira server` | ログイン中のすべてのセッション。これを持つ人は任意のユーザーのトークンに署名でき、そのユーザーとしてすべてのAPIを呼び出せます |
-| 各Webアプリのセッションキー | そのアプリの`PUBLIRA_AUTH_SECRET`として`openssl rand -base64 32` | `web-storefront`と`web-admin`に1つずつ | ユーザーのアクセストークンを運ぶセッションCookie。2つのアプリで共有してもかまいませんが、その必要はありません |
-| キャッシュ再検証トークン | `openssl rand -hex 32` | `publira server`、`publira worker`、`web-storefront`、`web-admin`に`PUBLIRA_REVALIDATE_TOKEN`として | 変更後にWebアプリのキャッシュ済みページを破棄するためにサーバーが呼び出すエンドポイント。これがないとサーバーは何も送らず、Webアプリは変更前にキャッシュしたものを返し続けます |
-| Webサービストークン | `PUBLIRA_WEB_SERVICE_TOKEN`として`openssl rand -base64 32` | `publira server`と`web-admin` | 管理画面がスタッフの誰かとしてではなく自分自身として行う読み取り。たとえば、どのスタッフにも同じように表示されるカタログの一覧で、これにより全員分を一度にキャッシュできます。`web-admin`はこれがないと起動しません |
-| データベースのロールごとのパスワード | `openssl rand -hex 32`を6回 | `publiractl db roles`と、そのロールを使うプロセスの接続URL | データベースそのもの。接続URLにはパスワードがエスケープされずに入るので、hexの出力のようにURLで安全な文字だけを使ってください |
+| シークレットの暗号化キー | `PUBLIRA_SECRET_ENCRYPTION_KEYS`に`k1:$(openssl rand -base64 32)`を、`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`に`k1`を設定 | `publira server`、`publira worker`、`publiractl` | Publiraが保存するすべての認証情報(SMTPのパスワード、オブジェクトストレージのシークレットキー、検索エンジンのパスワード、Web Pushの秘密鍵、各テナントの決済、プッシュ通知、ログインの認証情報) |
+| アクセストークンの署名キー | `openssl rand -base64 32`の値を`PUBLIRA_AUTH_JWT_SECRET`に設定 | `publira server` | ログイン中のすべてのセッション。このキーがあれば任意のユーザーのトークンに署名でき、そのユーザーとしてすべてのAPIを呼び出せます |
+| Webアプリごとのセッションキー | `openssl rand -base64 32`の値を各アプリの`PUBLIRA_AUTH_SECRET`に設定 | `web-storefront`と`web-admin`にそれぞれ1つ | ユーザーのアクセストークンを格納するセッションCookie。2つのアプリで同じ値を使っても、別々の値にしてもかまいません |
+| キャッシュ再検証トークン | `openssl rand -hex 32` | `publira server`、`publira worker`、`web-storefront`、`web-admin`の`PUBLIRA_REVALIDATE_TOKEN` | データの変更後に、Webアプリのキャッシュ済みページを破棄させるためにサーバーが呼び出すエンドポイント。このトークンがないとサーバーは何も送らず、Webアプリは変更前にキャッシュした内容を返し続けます |
+| Webサービストークン | `openssl rand -base64 32`の値を`PUBLIRA_WEB_SERVICE_TOKEN`に設定 | `publira server`と`web-admin` | 管理画面がスタッフ個人ではなく管理画面自身として行う読み取り。たとえば、どのスタッフにも同じ内容が表示されるカタログの一覧がこれにあたり、全員分を1回キャッシュするだけで済みます。このトークンがないと`web-admin`は起動しません |
+| データベースのロールごとのパスワード | `openssl rand -hex 32`を6回実行 | `publiractl db roles`と、そのロールを使うプロセスの接続URL | データベースそのもの。接続URLにはパスワードがエスケープされずに入るので、16進数の出力のようにURLで使える文字だけにしてください |
 
-最も注意が必要なのは暗号化キーです。`publiractl setup`は、SMTPのパスワードとオブジェクトストレージのキーが与えられた場合、それらをこのキーで暗号化して保存し、`publira server`と`publira worker`は与えられたキーでそれを復号します。別のキーを与えられたプロセスは、`publiractl`が保存したものを読めません。ワーカーはメールを送れず、サーバーはオブジェクトストレージにアクセスできなくなります。キーを失うと、保存されているすべての認証情報を入力し直す必要があります。後でキーを入れ替えるときに、それで暗号化したものを失わないようにするには、[シークレットの暗号化キーのローテーション](../3-operations/12-security/1-rotating-secrets.md#シークレット暗号化キーの入れ替え)で説明しているとおり、古いキーを置き換えるのではなく、その横に新しいキーを追加します。
+最も慎重に扱う必要があるのは暗号化キーです。`publiractl setup`にSMTPのパスワードやオブジェクトストレージのキーを渡すと、`setup`はそれをこのキーで暗号化して保存し、`publira server`と`publira worker`は自分に設定されたキーで復号します。別のキーを設定したプロセスは`publiractl`が保存した値を読めないので、ワーカーはメールを送れず、サーバーはオブジェクトストレージにアクセスできなくなります。キーを失うと、保存されているすべての認証情報を入力し直すことになります。あとでキーを入れ替えるときは、そのキーで暗号化した値を失わないように、古いキーを置き換えずに新しいキーを追加します。手順は[シークレットの暗号化キーのローテーション](../3-operations/12-security/1-rotating-secrets.md#シークレットの暗号化キーのローテーション)で説明しています。
 
 ## データベースのロール
 
-プロセスが管理用ログインで接続することはありません。`publiractl db roles`は6つのログインロールを作成し、インストール環境の各部分は、自分の役割に合ったロールで接続します。
+プロセスが管理用ログインで接続することはありません。`publiractl db roles`は6つのログインロールを作成し、Publiraの各部分は自分の処理に合ったロールで接続します。
 
-| ロール | 接続する用途 | アクセスできる範囲 |
+| ロール | 接続するプロセスと用途 | アクセスできる範囲 |
 | --- | --- | --- |
-| `publira_public` | 公開サイトとモバイルアプリにサービスを提供する`publira server` | リクエストの対象テナントの行 |
-| `publira_admin` | テナント管理画面にサービスを提供する`publira server` | リクエストの対象テナントの行 |
-| `publira_platform` | プラットフォーム管理画面にサービスを提供する`publira server`と、`setup`をはじめとするプラットフォームの設定を変更する`publiractl`コマンド | すべてのテナントと、プラットフォーム自体の設定 |
-| `publira_outbox` | メールとプッシュ通知の送信、キャッシュの再検証を行う`publira worker` | すべてのテナントと、メールに必要なプラットフォームの設定 |
-| `publira_ticker` | エピソードの公開など、予定時刻が過ぎた瞬間に動くジョブを実行する`publira worker` | それらのジョブが扱う少数のテーブル |
-| `publira_content_stats` | メンテナンスと集計のジョブを実行する`publira worker`と`publiractl job` | すべてのテナントと、それらのジョブが読むプラットフォームの設定 |
+| `publira_public` | `publira server`(公開サイトとモバイルアプリへの応答) | リクエスト先のテナントの行 |
+| `publira_admin` | `publira server`(テナント管理画面への応答) | リクエスト先のテナントの行 |
+| `publira_platform` | `publira server`(プラットフォーム管理画面への応答)と、`setup`などプラットフォームの設定を変更する`publiractl`コマンド | すべてのテナントと、プラットフォーム自体の設定 |
+| `publira_outbox` | `publira worker`(メールとプッシュ通知の送信、キャッシュの再検証) | すべてのテナントと、メールの送信に必要なプラットフォームの設定 |
+| `publira_ticker` | `publira worker`(エピソードの公開など、予定時刻になった瞬間に動くジョブの実行) | それらのジョブが扱う少数のテーブル |
+| `publira_content_stats` | `publira worker`と`publiractl job`(メンテナンスと集計のジョブの実行) | すべてのテナントと、それらのジョブが読むプラットフォームの設定 |
 
-この分割によって、あるテナントのデータが別のテナントから切り離されます。読者からのリクエストとテナントのスタッフからのリクエストに応答する2つのロールは、行レベルセキュリティによってリクエストが指定するテナントに限定されているため、それらの経路に不具合があっても別のテナントの行は読めません。オペレーターのパスワードハッシュやプラットフォームのメールの認証情報を保持するプラットフォーム自体のテーブルには、`publira_platform`以外のロールはアクセスできず、他のロールには限られた読み取りだけが改めて許可されています。ワーカーのロールは自分のジョブとメールに必要な設定を読み、テナント管理画面のロールはそのリクエストが適用する少数の設定を読みます。その中にはプラットフォームのメールの送信元アドレスが含まれますが、その横に保存されているメールサーバー、アカウント、パスワードは含まれません。そのため各プロセスには、使うロールごとに1つの接続URLを渡します。どの変数がどれを運ぶかは、[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#per-process)に書かれています。
+ロールを分けているのは、テナントのデータをほかのテナントから切り離すためです。読者からのリクエストとテナントのスタッフからのリクエストに応答する2つのロールは、行レベルセキュリティによって、リクエストで指定されたテナントの行にしかアクセスできません。そのため、どちらかの処理に不具合があっても、ほかのテナントの行は読めません。オペレーターのパスワードハッシュやプラットフォームのメールの認証情報を保存するプラットフォーム自体のテーブルには、`publira_platform`以外のロールはアクセスできず、ほかのロールには必要な範囲の読み取りだけを個別に許可しています。ワーカーのロールは、ジョブとメールに必要な設定を読めます。テナント管理画面のロールは、リクエストの処理に使う少数の設定を読めます。その中にはプラットフォームのメールの送信元アドレスが含まれますが、同じ場所に保存されているメールサーバー、アカウント、パスワードは含まれません。こうした理由から、各プロセスには使うロールごとに接続URLを1つずつ渡します。どの環境変数がどのロールの接続URLかは[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#per-process)にあります。
 
-## インストール環境を起動する
+## Publiraを起動する
 
 ### 1. マイグレーションを適用する
 
-管理用ログインの接続で`db migrate`を実行します。スキーマを作成し、適用するものがない場合は何も変更せずに終了します。
+管理用ログインで接続して`db migrate`を実行します。このコマンドはスキーマを作成します。適用するマイグレーションがない場合は、何も変更せずに終了します。
 
 ```bash
 docker run --rm -e PUBLIRA_DB_URL ghcr.io/publira/publiractl:<tag> db migrate
 ```
 
-`PUBLIRA_DB_URL`はその接続で、たとえば`postgres://postgres:<password>@db.internal:5432/publira?sslmode=require`です。
+`PUBLIRA_DB_URL`には管理用ログインの接続URLを指定します。たとえば`postgres://postgres:<password>@db.internal:5432/publira?sslmode=require`のようになります。
 
 ### 2. ロールを作成する
 
-同じ接続で`db roles`を実行し、各ロールに生成したパスワードを渡します。マイグレーションが作成したテーブルに権限を付与するため、2番目に実行します。
+同じ接続で`db roles`を実行し、生成したパスワードを各ロールに渡します。このコマンドはマイグレーションで作成したテーブルに権限を付与するので、マイグレーションのあとに実行します。
 
 ```bash
 docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro ghcr.io/publira/publiractl:<tag> db roles \
@@ -85,27 +85,27 @@ docker run --rm -e PUBLIRA_DB_URL -v /run/secrets:/run/secrets:ro ghcr.io/publir
   --content-stats-password-file /run/secrets/publira-content-stats-db-password
 ```
 
-もう一度実行しても、与えられたパスワード以外は何も変わりません。そのため、後でロールのパスワードをローテーションするときもこのコマンドを使います。パスワードを渡す他の方法は[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#db)にあります。
+もう一度実行しても、渡したパスワード以外は何も変わりません。あとでロールのパスワードをローテーションするときも、このコマンドを使います。パスワードのほかの渡し方は[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#db)にあります。
 
 ### 3. 4つのプロセスを起動する
 
-`publira server`、`publira worker`、`web-storefront`、`web-admin`を、同じリリースのイメージから、[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables)にある変数を付けて起動します。最初の2つは`ghcr.io/publira/publira:<tag>`で、2つ目にはコンテナの引数として`worker`を渡します。残りは`ghcr.io/publira/web-storefront:<tag>`と`ghcr.io/publira/web-admin:<tag>`です。各接続URLには、そのロールと`db roles`が与えたパスワードを指定します。たとえば`PUBLIRA_PUBLIC_DB_URL`なら`postgres://publira_public:<password>@db.internal:5432/publira?sslmode=require`です。接続URLはすべて設定してください。設定されていない接続URLは、あなたが設定した他の変数ではなく開発用のURLにフォールバックし、ログインに失敗します。
+`publira server`、`publira worker`、`web-storefront`、`web-admin`を、同じリリースのイメージから起動します。`publira server`と`publira worker`は`ghcr.io/publira/publira:<tag>`を使い、`publira worker`ではコンテナの引数に`worker`を渡します。`web-storefront`と`web-admin`は、それぞれ`ghcr.io/publira/web-storefront:<tag>`と`ghcr.io/publira/web-admin:<tag>`を使います。環境変数は[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables)のとおりに設定します。各接続URLには、ロール名と、`db roles`でそのロールに設定したパスワードを指定します。たとえば`PUBLIRA_PUBLIC_DB_URL`なら`postgres://publira_public:<password>@db.internal:5432/publira?sslmode=require`です。接続URLは必ずすべて設定してください。設定していない接続URLは、設定済みのほかの環境変数ではなく開発用のURLにフォールバックするので、ログインに失敗します。
 
-`publira worker`は起動時にジョブキューのテーブルを作成するので、そのための手順は必要ありません。`publira server`と`publira worker`はそれぞれ、`GET /readyz`でデータベースのログインごとに1つのチェックを報告するので、パスワードが一致しないロールはそこに表示されます。
+`publira worker`はジョブキューのテーブルを起動時に作成するので、そのための手順は必要ありません。`publira server`と`publira worker`は、`GET /readyz`でデータベースのログインごとにチェック結果を返します。パスワードが合っていないロールがあれば、そこに表示されます。
 
-### 4. インストール環境をセットアップする
+### 4. 初期設定をする
 
-`publiractl setup`は、インストール環境が最初のテナントにサービスを提供するために必要なものを保存し、テナントの最初の管理者を作成します。
+`publiractl setup`は、最初のテナントにサービスを提供するのに必要な設定を保存し、テナントの最初の管理者を作成します。
 
-1. プラットフォームのデフォルトのロケール、新しいテナントの初期のタイムゾーン、テナントの管理者が選ぶまでテナントが販売に使う通貨（別のものを指定しなければ`USD`）。
-2. オブジェクトストレージ。接続テストに合格する必要があります。
-3. 任意で、カタログの検索エンジン。別のものを選ばなければデータベース自体を使います。
-4. SMTPの設定と、アドレスを指定した場合はテストメッセージ。認証情報を受け付けないリレーではユーザー名を空欄にします。その場合メールはログインせずに送られ、パスワードは尋ねられません。
-5. 任意で、Web Push。
-6. テナントとそのドメイン。
-7. テナントの最初の管理者。パスワードは入力するか、生成させます。
+1. プラットフォームの既定のロケール、新しいテナントの初期タイムゾーン、テナントの管理者が通貨を選ぶまで販売に使う通貨(指定しなければ`USD`)
+2. オブジェクトストレージ(接続テストに成功する必要があります)
+3. 任意で、カタログの検索エンジン(ほかを選ばなければデータベース自体を使います)
+4. SMTPの設定と、送信先アドレスを指定した場合はテストメール。認証なしで中継するリレーでは、ユーザー名を空欄にします。その場合、メールはログインせずに送られ、パスワードは尋ねられません。
+5. 任意で、Web Push
+6. テナントとそのドメイン
+7. テナントの最初の管理者(パスワードは自分で入力するか、自動生成させます)
 
-このコマンドは`publira_platform`で接続し、保存する認証情報を暗号化キーで暗号化します。そのため、プロセスに与えるのと同じキーを渡してください。
+`setup`は`publira_platform`で接続し、保存する認証情報を暗号化キーで暗号化します。そのため、プロセスに設定するものと同じキーを渡してください。
 
 ```bash
 docker run --rm -it \
@@ -114,49 +114,49 @@ docker run --rm -it \
   ghcr.io/publira/publiractl:<tag> setup
 ```
 
-端末から実行すると、すべての値を尋ねられます。同じ処理は、すべての値をフラグで渡すことで、CIジョブやinitコンテナから無人で実行することもできます。その形式は[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup)にあります。出力されるリンクは`PUBLIRA_TENANT_URL_SCHEME`をもとに組み立てられます。これは読者のブラウザーがテナントにアクセスするスキームで、設定しなければ`https`です。これは公開されるアドレスを表すもので、プロキシがプロセスにどう到達するかではないため、TLS終端の背後にあるプレーンなHTTPのホップはこれに影響しません。`http`に設定するのは、ブラウザーが実際にHTTPでテナントを開く場合だけにし、その場合は`publiractl`とプロセスの両方に設定してください。
+端末で実行すると、すべての値を対話形式で尋ねられます。すべての値をフラグで渡せば、CIジョブやinitコンテナから無人で実行することもできます。その方法は[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup)にあります。`setup`が表示するリンクは`PUBLIRA_TENANT_URL_SCHEME`をもとに組み立てられます。この環境変数は読者のブラウザーがテナントにアクセスするときのスキームで、設定しなければ`https`です。表すのは公開されるアドレスであって、プロキシがプロセスにどう接続するかではありません。TLSを終端したあとの区間がHTTPでも、この値は変わりません。`http`に設定するのは、ブラウザーが実際にHTTPでテナントを開く場合だけにしてください。その場合は`publiractl`とプロセスの両方に設定します。
 
-接続テストの失敗などで途中で止まった実行は、もう一度実行すれば完了します。保存済みの手順はすべてそのまま残り、残りの手順だけが尋ねられます。例外はテストメッセージが拒否された場合です。SMTPの設定はテストの前に保存されるため、次の実行ではそれがそのまま残り、テストメッセージは送られません。[メール](../3-operations/6-email.md#アカウントをテストする)の説明どおり、誤った設定を`publiractl smtp set`で直し、`publiractl smtp test`でテストメッセージを送ってから、もう一度`setup`を実行してください。
+接続テストの失敗などで途中で止まった場合は、もう一度実行すれば最後まで進められます。保存済みの手順はそのまま残り、残りの手順だけを尋ねられます。ただし、テストメールがSMTPサーバーに拒否された場合は例外です。SMTPの設定はテストの前に保存されるため、次の実行ではその設定が残り、テストメールは送られません。[メール](../3-operations/6-email.md#アカウントをテストする)で説明しているように、誤った設定を`publiractl smtp set`で直し、`publiractl smtp test`でテストメールを送ってから、もう一度`setup`を実行してください。
 
-`setup`は手順1と2を自分で行い、まだ存在しない空のバケットを作成することもできます。`PUBLIRA_DB_URL`と各ロールのパスワードを与えると、自分の手順の前にマイグレーションを適用してロールを作成し、`--create-bucket`を付けると接続テストの前にバケットを作成します。[Docker Compose](./3-docker-compose.md)のインストール環境のように、`setup`が完了してからすべてのプロセスを起動するインストール環境では、他のコマンドは必要ありません。そのフラグは[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#the-database-steps)にあります。
+`setup`は手順1と手順2も代わりに実行でき、まだ存在しないバケットを空の状態で作成することもできます。`PUBLIRA_DB_URL`と各ロールのパスワードを渡すと、自分の手順の前にマイグレーションの適用とロールの作成を行い、`--create-bucket`を付けると、接続テストの前にバケットを作成します。[Docker Compose](./3-docker-compose.md)の構成のように、`setup`が終わってからすべてのプロセスを起動する場合は、ほかのコマンドは必要ありません。フラグは[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#the-database-steps)にあります。
 
-最後の概要には、テナントのサイトとテナント管理画面が表示され、管理者のパスワードを生成した場合はそれも表示されます。生成されたパスワードが表示されるのはここだけなので、端末を閉じる前に控えておいてください。
+最後に表示される概要には、テナントのサイトとテナント管理画面が示され、管理者のパスワードを自動生成した場合はそのパスワードも表示されます。生成したパスワードが表示されるのはここだけなので、端末を閉じる前に控えておいてください。
 
-### 5. エッジを前に置く
+### 5. リバースプロキシを設定する
 
-エッジは、読者のリクエストを受け取ってプロセスに転送するものです。プラットフォームが管理するロードバランサー、自分で運用するリバースプロキシ、あるいはそれらを連ねたものです。2つのホスト名をプロセスにルーティングします。
+ここでいうリバースプロキシは、読者のリクエストを受け取ってプロセスに転送するものです。プラットフォームが管理するロードバランサー、自分で運用するリバースプロキシ、またはそれらを組み合わせたものが該当します。2つのホスト名を次のようにプロセスへルーティングします。
 
-- `admin.<domain>`、または選んだ管理画面ホストを`web-admin`へ。
-- テナントのドメインを`web-storefront`へ。
-- どちらのホストでも、`/rpc/publira.v1.`と`/images`を`publira server`（デフォルトではポート`8000`）へ。
-- どちらのホストでも、それ以外の`/rpc`はどこにも送らず、エッジが`404`で応答します。そこは`publira server`が管理画面のAPIに応答する場所で、Webアプリがプライベートネットワーク経由で呼び出します。[エッジを通るのは公開APIだけ](./4-edge/index.md#エッジを通るのは公開apiだけ)で説明しています。
+- `admin.<domain>`(または自分で決めた管理画面のホスト)を`web-admin`へ
+- テナントのドメインを`web-storefront`へ
+- どちらのホストでも、`/rpc/publira.v1.`と`/images`を`publira server`(既定ではポート`8000`)へ
+- どちらのホストでも、それ以外の`/rpc`はどこにも転送せず、リバースプロキシが`404`を返す。`publira server`はこのパスで管理画面のAPIを提供しており、WebアプリはこのAPIをプライベートネットワーク経由で呼び出します。詳しくは[リバースプロキシを通すのは公開APIだけ](./4-edge/index.md#リバースプロキシを通すのは公開apiだけ)を参照してください。
 
-両方のホスト名のTLSはエッジで終端します。エッジが何で構成されていても、それに必要な残りのこと（引き渡すヘッダーと削除するヘッダー、クライアントのアドレス、通す必要のあるアップロードとWebhook）は[エッジが行うべきこと](./4-edge/index.md#エッジが行うべきこと)に書かれています。リポジトリにあるTraefik、nginx、Caddyの[サンプル設定](./4-edge/1-sample-configurations.md)は、そのすべてを実現する方法の1つです。
+どちらのホスト名も、TLSはリバースプロキシで終端します。リバースプロキシに何を使う場合でも、ほかに必要な設定(転送するヘッダーと削除するヘッダー、クライアントのアドレス、通す必要があるアップロードとWebhook)は[リバースプロキシで必要な設定](./4-edge/index.md#リバースプロキシで必要な設定)で説明しています。[リバースプロキシの設定例](./4-edge/1-sample-configurations.md)で紹介しているリポジトリのTraefik、nginx、Caddyのサンプル設定は、そのすべてを実装した一例です。
 
 ### 6. ログインする
 
-`setup`の概要に表示されたテナント管理画面のURL（`https://admin.<domain>`、または`--admin-domain`で指定した管理画面ホスト）を開き、管理者のメールアドレスとパスワードでログインします。テナント管理画面は`setup`が作成したテナントで開き、そこからスタッフを招待したり、サイトを設定したりできます。テナントの公開サイトは`https://<domain>`で応答します。
+`setup`の概要に表示されたテナント管理画面のURL(`https://admin.<domain>`、または`--admin-domain`で指定した管理画面のホスト)を開き、管理者のメールアドレスとパスワードでログインします。ログインすると`setup`で作成したテナントの管理画面が開き、ここからスタッフを招待したり、サイトを設定したりできます。テナントの公開サイトには`https://<domain>`でアクセスできます。
 
-## オプションのプロセスを有効にする
+## 追加のプロセスを有効にする
 
-どちらのプロセスも、すでに稼働しているインストール環境に追加できます。どちらも独自のデータを保持しないため、有効にするには、そのプロセスを動かし、変数が変わるプロセスを再起動するだけです。
+どちらのプロセスも、すでに稼働しているPubliraにあとから追加できます。どちらも独自のデータを持たないので、プロセスを起動し、環境変数が変わるプロセスを再起動するだけで有効になります。
 
 ### `email-renderer`によるHTMLメール
 
-`email-renderer`がない場合、ワーカーはすべてのメールをプレーンテキストで送ります。これを動かし、`publira worker`の`PUBLIRA_EMAIL_RENDERER_URL`に、プライベートネットワーク上のそのアドレス（`http://email-renderer:8080`など）を設定すると、それ以降、すべてのメールに同じテキストと並んでHTMLパートが付きます。変数を設定すると、レンダラーはメール送信の一部になります。レンダラーが停止している間、ワーカーはプレーンテキストにフォールバックせず、各メールを保留して再試行します。
+`email-renderer`がない場合、ワーカーはすべてのメールをプレーンテキストで送ります。`email-renderer`を起動し、`publira worker`の`PUBLIRA_EMAIL_RENDERER_URL`にプライベートネットワーク上のアドレス(`http://email-renderer:8080`など)を設定すると、以降のメールには同じ内容のテキストに加えてHTMLパートが付きます。この環境変数を設定したあとは、`email-renderer`がメール送信に欠かせなくなります。`email-renderer`が停止している間、ワーカーはプレーンテキストで送るのではなく、メールを保留して再試行します。
 
 ### `web-platform`によるプラットフォーム管理画面
 
-`web-platform`はプラットフォーム管理画面で、オペレーターは`publiractl`ではなくブラウザーからテナントとプラットフォームの設定を管理できます。動かすには次のようにします。
+`web-platform`はプラットフォーム管理画面のプロセスで、オペレーターは`publiractl`の代わりにブラウザーでテナントとプラットフォームの設定を管理できます。動かすには次の設定をします。
 
-- 他のWebアプリと同じようにセッションキーを生成し、32バイト以上の値をその`PUBLIRA_AUTH_SECRET`として設定します。これがないとどのオペレーターもログインできません。`PUBLIRA_GRPC_URL`、`PUBLIRA_WEB_SERVICE_TOKEN`、`PNCH_REDIS_URL`、`PUBLIRA_REVALIDATE_TOKEN`には`web-admin`と同じ値を渡します。
-- キャッシュの再検証が届くように、`publira server`と`publira worker`に`PUBLIRA_WEB_PLATFORM_INTERNAL_URL`を設定します。また、`publira worker`に`PUBLIRA_PLATFORM_APP_URL`を設定します。これはオペレーターがプラットフォーム管理画面を開くアドレスで、そのメールに含まれるリンクはこれをもとに組み立てられます。
-- `platform.example.com`のようなホスト名を決め、エッジを指すようにし、エッジにその証明書を用意して、[ルーティング](./4-edge/index.md#ルーティング)の説明どおり、他のホストと同じパスで`web-platform`にルーティングします。サンプル設定では`PUBLIRA_EDGE_PLATFORM_HOSTS`でこれを受け取ります。
+- ほかのWebアプリと同じ方法でセッションキーを生成し、32バイト以上の値を`web-platform`の`PUBLIRA_AUTH_SECRET`に設定します。設定しないと、どのオペレーターもログインできません。`PUBLIRA_GRPC_URL`、`PUBLIRA_WEB_SERVICE_TOKEN`、`PNCH_REDIS_URL`、`PUBLIRA_REVALIDATE_TOKEN`には`web-admin`と同じ値を設定します。
+- キャッシュの再検証が`web-platform`に届くように、`publira server`と`publira worker`に`PUBLIRA_WEB_PLATFORM_INTERNAL_URL`を設定します。また、`publira worker`に`PUBLIRA_PLATFORM_APP_URL`を設定します。これはオペレーターがプラットフォーム管理画面を開くアドレスで、プラットフォーム管理画面のメールに含まれるリンクはこのアドレスをもとに組み立てられます。
+- `platform.example.com`のようなホスト名を決めてリバースプロキシに向け、リバースプロキシにそのホスト名の証明書を用意します。そのうえで、[ルーティング](./4-edge/index.md#ルーティング)で説明しているとおり、ほかのホストと同じパスで`web-platform`にルーティングします。サンプル設定では、このホスト名を`PUBLIRA_EDGE_PLATFORM_HOSTS`に指定します。
 
-プラットフォーム管理画面を開き、セットアップ画面で最初のオペレーターを作成します。このオペレーターは、`publiractl setup`が作成したテナントの管理者とは別のものです。プラットフォーム管理画面には独自のアカウントがあり、セットアップ画面は最初のアカウントができるまで表示されます。その画面で選んだ言語が、`publiractl setup`が保存したものに代わってプラットフォームのデフォルトのロケールになり、タイムゾーンも同様です。タイムゾーンの初期値はブラウザーのタイムゾーンです。画面ではデフォルトの通貨も尋ねられ、その初期値は`publiractl setup`が保存したものなので、そのままにすればそれが維持されます。それ以外の設定はすべてそのまま残り、`publiractl`もプラットフォーム管理画面と並行して使い続けられます。
+プラットフォーム管理画面を開き、セットアップ画面で最初のオペレーターを作成します。このオペレーターは、`publiractl setup`で作成したテナントの管理者とは別のアカウントです。プラットフォーム管理画面には独自のアカウントがあり、最初のアカウントが作成されるまでセットアップ画面が表示されます。セットアップ画面で選んだ言語は、`publiractl setup`で保存したロケールに代わってプラットフォームの既定のロケールになります。タイムゾーンも同様に置き換わり、画面での初期値はブラウザーのタイムゾーンです。既定の通貨も尋ねられますが、初期値は`publiractl setup`で保存した通貨なので、変更しなければそのまま維持されます。それ以外の設定はすべて残り、プラットフォーム管理画面を導入したあとも`publiractl`を併用できます。
 
 ## 次のステップ
 
-各プロセスが読む変数の完全な一覧は[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md)に、オプションの変数は[`publira server`と`publira worker`](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md)、[`web-storefront`](https://github.com/publira/publira/blob/main/apps/web-storefront/README.md)、[`web-admin`](https://github.com/publira/publira/blob/main/apps/web-admin/README.md)、[`web-platform`](https://github.com/publira/publira/blob/main/apps/web-platform/README.md)の各READMEにあります。`publiractl`のすべてのコマンドは[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md)にあります。
+各プロセスが読む環境変数の一覧は[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md)に、任意の環境変数は[`publira server`と`publira worker`](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md)、[`web-storefront`](https://github.com/publira/publira/blob/main/apps/web-storefront/README.md)、[`web-admin`](https://github.com/publira/publira/blob/main/apps/web-admin/README.md)、[`web-platform`](https://github.com/publira/publira/blob/main/apps/web-platform/README.md)の各READMEにあります。`publiractl`のすべてのコマンドは[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md)にあります。
 
-以降のリリースのたびに、[アップグレード](./8-upgrading.md)でインストール環境を新しいリリースに上げます。まずそのリリースの`publiractl`イメージでマイグレーションとロールを、次にそのプロセスを更新します。
+新しいリリースが出るたびに、[アップグレード](./8-upgrading.md)の手順でPubliraを更新します。まずそのリリースの`publiractl`イメージでマイグレーションとロールを適用し、そのあとでプロセスを置き換えます。
