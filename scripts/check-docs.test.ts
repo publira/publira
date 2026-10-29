@@ -383,16 +383,156 @@ describe("scan", () => {
     assert.deepEqual(await findings(), []);
   });
 
-  it("reports a tree for a locale other than en", async () => {
-    await write("docs/ja/1-getting-started.md");
-    await write("docs/README.md", "# Documentation\n");
+  /** Each file of the English tree, translated into `docs/ja/` as of its date. */
+  const translate = async (): Promise<void> => {
+    await write("locales/ja.json", "{}\n");
+    await write(
+      "docs/ja/1-getting-started.md",
+      page(
+        [...VALID, "source_updated: 2026-10-04"],
+        ["[デプロイ](./2-deployments/index.md)を参照してください。"]
+      )
+    );
+    await write(
+      "docs/ja/2-deployments/index.md",
+      page(
+        [...VALID, "source_updated: 2026-10-04"],
+        [
+          "## 節",
+          "",
+          "[概要](./1-overview.md#インストールが動かすもの)と[はじめに](../1-getting-started.md)。",
+          "",
+          "![図](./index-diagram.png)",
+          "",
+          "[この節](#節)。",
+        ]
+      )
+    );
+    await write(
+      "docs/ja/2-deployments/1-overview.md",
+      page(
+        [...VALID, "source_updated: 2026-10-04"],
+        ["## インストールが動かすもの"]
+      )
+    );
+    await write("docs/ja/2-deployments/index-diagram.png", "");
+  };
+
+  it("passes a translated tree in step with docs/en/", async () => {
+    await translate();
+
+    assert.deepEqual(await findings(), []);
+  });
+
+  it("reports a tree named after no locale the UI ships", async () => {
+    await write("docs/jp/1-getting-started.md");
 
     const reported = await scan(repository);
     assert.deepEqual(
       reported.map((finding) => finding.file),
-      ["docs/ja"]
+      ["docs/jp"]
     );
-    assert.match(reported[0]?.message ?? "", /English alone until 1\.0\.0/u);
+    assert.match(reported[0]?.message ?? "", /locales\/jp\.json/u);
+  });
+
+  it("reports a page or an image missing from either tree", async () => {
+    await translate();
+    await rm(path.join(repository, "docs/ja/2-deployments/1-overview.md"));
+    await rm(path.join(repository, "docs/ja/2-deployments/index-diagram.png"));
+    await write(
+      "docs/ja/3-upgrading.md",
+      page([...VALID, "source_updated: 2026-10-04"])
+    );
+
+    assert.deepEqual(await findings(), [
+      "docs/en/2-deployments/1-overview.md",
+      "docs/en/2-deployments/index-diagram.png",
+      "docs/ja/2-deployments/index.md:10",
+      "docs/ja/2-deployments/index.md:12",
+      "docs/ja/3-upgrading.md",
+    ]);
+  });
+
+  it("reports a translation behind its English page, or ahead of it", async () => {
+    await translate();
+    await write(
+      "docs/en/2-deployments/1-overview.md",
+      page([...VALID, "updated: 2026-10-20"], ["## What an install runs"])
+    );
+    await write(
+      "docs/ja/1-getting-started.md",
+      page(
+        [...VALID, "source_updated: 2026-10-05"],
+        ["[デプロイ](./2-deployments/index.md)を参照してください。"]
+      )
+    );
+
+    const reported = await scan(repository);
+    assert.deepEqual(
+      reported.map((finding) => `${finding.file}:${finding.line}`),
+      [
+        "docs/ja/1-getting-started.md:1",
+        "docs/ja/2-deployments/1-overview.md:1",
+      ]
+    );
+    assert.match(reported[0]?.message ?? "", /later than 2026-10-04/u);
+    assert.match(
+      reported[1]?.message ?? "",
+      /as of 2026-10-04.*updated on 2026-10-20.*`source_updated` to 2026-10-20/u
+    );
+  });
+
+  it("reports source_updated missing from a translation, or present in docs/en/", async () => {
+    await translate();
+    await write(
+      "docs/ja/2-deployments/1-overview.md",
+      page(VALID, ["## インストールが動かすもの"])
+    );
+    await write(
+      "docs/en/1-getting-started.md",
+      page(
+        [...VALID, "source_updated: 2026-10-04"],
+        ["See [Deployments](./2-deployments/index.md)."]
+      )
+    );
+
+    const reported = await scan(repository);
+    assert.deepEqual(
+      reported.map((finding) => [finding.file, finding.message]),
+      [
+        [
+          "docs/en/1-getting-started.md",
+          "`source_updated` is not a frontmatter key. A page carries `description`, `published`, `redirect_from`, `title`, `updated` and nothing else.",
+        ],
+        [
+          "docs/ja/2-deployments/1-overview.md",
+          "The frontmatter has no `source_updated`.",
+        ],
+      ]
+    );
+  });
+
+  it("reports a translation that redirects from other URLs than its English page", async () => {
+    await translate();
+    await write(
+      "docs/ja/2-deployments/1-overview.md",
+      page(
+        [
+          ...VALID,
+          "source_updated: 2026-10-04",
+          "redirect_from:",
+          "  - /overview",
+        ],
+        ["## インストールが動かすもの"]
+      )
+    );
+
+    const reported = await scan(repository);
+    assert.deepEqual(
+      reported.map((finding) => finding.file),
+      ["docs/ja/2-deployments/1-overview.md"]
+    );
+    assert.match(reported[0]?.message ?? "", /`redirect_from` is not the one/u);
   });
 
   it("reports a name that is not <n>-<slug>", async () => {

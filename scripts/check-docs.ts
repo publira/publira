@@ -1,7 +1,8 @@
 /**
- * Fail on a page under `docs/en/` that breaks the contract the website reads it
- * by, on a tree beside it that the documentation does not have yet, or on a
- * link in the repository's Markdown that leads to no file or no heading.
+ * Fail on a page under `docs/<locale>/` that breaks the contract the website
+ * reads it by, on a translated tree that has fallen out of step with
+ * `docs/en/`, or on a link in the repository's Markdown that leads to no file
+ * or no heading.
  *
  *     pnpm docs:check
  *
@@ -21,6 +22,12 @@
  * anything that fails when a heading is renamed or a file moves, so both are
  * resolved here against the checkout, the heading by the anchor GitHub and the
  * website's `rehype-slug` derive from it.
+ *
+ * A translated tree, `docs/ja/` and any other locale's beside it, follows the
+ * same contract and holds the same pages and images as `docs/en/`, and each of
+ * its pages records the English text it was translated from by that page's
+ * date, so a change to the English page that a reader should notice leaves
+ * the translation reported here until it catches up.
  *
  * A page whose commands CI runs shows them as a code block that a script keeps
  * between a `# quoted by <page>` comment and `# end of quote`, and the block
@@ -53,11 +60,14 @@ import { parse as parseYaml } from "yaml";
 /** The directory every locale's tree sits in, relative to the repository root. */
 const DOCS = "docs";
 
-/** The one locale the documentation is written in until 1.0.0. */
-const LOCALE = "en";
+/** The locale every page is written in first, and every other tree translates. */
+const SOURCE_LOCALE = "en";
 
-/** The tree the website publishes, relative to the repository root. */
-const ROOT = `${DOCS}/${LOCALE}`;
+/** The tree every translation follows, relative to the repository root. */
+const SOURCE = `${DOCS}/${SOURCE_LOCALE}`;
+
+/** The message catalogs the UI ships, one `<locale>.json` per locale. */
+const CATALOGS = "locales";
 
 /** A positive integer without a leading zero, then lowercase ASCII words. */
 const ENTRY_NAME = /^(?<number>[1-9]\d*)-(?<slug>[a-z\d]+(?:-[a-z\d]+)*)$/u;
@@ -95,6 +105,15 @@ const KEYS: Record<string, boolean> = {
   title: true,
   updated: false,
 };
+
+/**
+ * The key a translated page carries besides {@link KEYS}, and must: the
+ * `updated` date of the English page it follows, or its `published` date while
+ * it has none. That date moves whenever the English page changes in a way a
+ * reader should notice, so a translation that names an earlier one has not
+ * caught up with it.
+ */
+const SOURCE_UPDATED = "source_updated";
 
 export interface Finding {
   file: string;
@@ -181,20 +200,41 @@ const parseDate = (value: unknown): Temporal.PlainDate | null => {
   }
 };
 
-/** What is wrong with the set of keys: an unknown one, or a required one missing. */
-const checkKeys = (record: Record<string, unknown>): string[] => [
-  ...Object.keys(record)
-    .filter((key) => !(key in KEYS))
-    .map(
-      (key) =>
-        `\`${key}\` is not a frontmatter key. A page carries ${Object.keys(KEYS)
-          .map((known) => `\`${known}\``)
-          .join(", ")} and nothing else.`
-    ),
-  ...Object.entries(KEYS)
-    .filter(([key, required]) => required && !(key in record))
-    .map(([key]) => `The frontmatter has no \`${key}\`.`),
-];
+/** The tree a file under `docs/` sits in, such as `docs/en`. */
+const treeOf = (file: string): string => file.split("/").slice(0, 2).join("/");
+
+/** Whether a file under `docs/` is in a translated tree rather than `docs/en/`. */
+const isTranslated = (file: string): boolean => treeOf(file) !== SOURCE;
+
+/**
+ * What is wrong with the set of keys: an unknown one, or a required one
+ * missing. A translated page carries {@link SOURCE_UPDATED} too.
+ */
+const checkKeys = (
+  record: Record<string, unknown>,
+  translated: boolean
+): string[] => {
+  const keys: Record<string, boolean> = translated
+    ? { ...KEYS, [SOURCE_UPDATED]: true }
+    : KEYS;
+
+  return [
+    ...Object.keys(record)
+      .filter((key) => !(key in keys))
+      .map(
+        (key) =>
+          `\`${key}\` is not a frontmatter key. A page ${translated ? "in a translated tree " : ""}carries ${Object.keys(
+            keys
+          )
+            .toSorted()
+            .map((known) => `\`${known}\``)
+            .join(", ")} and nothing else.`
+      ),
+    ...Object.entries(keys)
+      .filter(([key, required]) => required && !(key in record))
+      .map(([key]) => `The frontmatter has no \`${key}\`.`),
+  ];
+};
 
 const checkText = (record: Record<string, unknown>): string[] =>
   ["title", "description"]
@@ -227,8 +267,28 @@ const checkDates = (record: Record<string, unknown>): string[] => {
   ) {
     messages.push("`updated` is earlier than `published`.");
   }
+  if (SOURCE_UPDATED in record && !parseDate(record[SOURCE_UPDATED])) {
+    messages.push(`\`${SOURCE_UPDATED}\` is not a \`YYYY-MM-DD\` date.`);
+  }
 
   return messages;
+};
+
+/**
+ * The date of the English text a page carries: its own `updated`, or
+ * `published` while it has none, for a page in `docs/en/`, and the
+ * {@link SOURCE_UPDATED} it records for a translation. `null` when that date is
+ * missing or malformed, which {@link checkDates} reports already.
+ */
+const revisionOf = (
+  record: Record<string, unknown>,
+  translated: boolean
+): string | null => {
+  const value = translated
+    ? record[SOURCE_UPDATED]
+    : (record.updated ?? record.published);
+
+  return parseDate(value) ? (value as string) : null;
 };
 
 /**
@@ -277,26 +337,29 @@ const checkRedirects = (
 const checkFrontmatter = (
   file: string,
   values: unknown
-): { findings: Finding[]; redirects: string[] } => {
+): { findings: Finding[]; redirects: string[]; revision: string | null } => {
   if (typeof values !== "object" || values === null || Array.isArray(values)) {
     return {
       findings: [
         { file, line: 1, message: "The frontmatter is not a map of keys." },
       ],
       redirects: [],
+      revision: null,
     };
   }
   const record = values as Record<string, unknown>;
+  const translated = isTranslated(file);
   const { messages, redirects } = checkRedirects(record);
 
   return {
     findings: [
-      ...checkKeys(record),
+      ...checkKeys(record, translated),
       ...checkText(record),
       ...checkDates(record),
       ...messages,
     ].map((message) => ({ file, line: 1, message })),
     redirects,
+    revision: revisionOf(record, translated),
   };
 };
 
@@ -418,15 +481,21 @@ export const headingAnchors = (source: string): string[] => {
   return anchors;
 };
 
+/** What {@link checkPage} finds in a page, and what it leaves to the tree. */
+export interface CheckedPage {
+  findings: Finding[];
+  links: Link[];
+  redirects: string[];
+  /** The date of the English text the page carries, as {@link revisionOf} reads it. */
+  revision: string | null;
+}
+
 /**
- * The findings that can be told from the page alone, and the links it makes
- * and the former URLs it redirects from, which only the tree around it can
- * resolve.
+ * The findings that can be told from the page alone, and the links it makes,
+ * the former URLs it redirects from, and the English text it carries, which
+ * only the trees around it can resolve.
  */
-export const checkPage = (
-  file: string,
-  source: string
-): { findings: Finding[]; links: Link[]; redirects: string[] } => {
+export const checkPage = (file: string, source: string): CheckedPage => {
   const frontmatter = splitFrontmatter(source);
   if (!frontmatter) {
     return {
@@ -440,6 +509,7 @@ export const checkPage = (
       ],
       links: [],
       redirects: [],
+      revision: null,
     };
   }
   if ("error" in frontmatter) {
@@ -447,10 +517,14 @@ export const checkPage = (
       findings: [{ file, line: 1, message: frontmatter.error }],
       links: [],
       redirects: [],
+      revision: null,
     };
   }
 
-  const { findings, redirects } = checkFrontmatter(file, frontmatter.values);
+  const { findings, redirects, revision } = checkFrontmatter(
+    file,
+    frontmatter.values
+  );
 
   const tree = parseMarkdown(source);
   visit(tree, (node) => {
@@ -478,7 +552,7 @@ export const checkPage = (
     }
   });
 
-  return { findings, links: collectLinks(tree), redirects };
+  return { findings, links: collectLinks(tree), redirects, revision };
 };
 
 const SCHEME = /^[a-z][\d+.a-z-]*:/iu;
@@ -641,6 +715,7 @@ const checkLink = async (
   link: Link
 ): Promise<Resolved> => {
   const { line, url } = link;
+  const tree = treeOf(file);
   const report = (message: string | null): Resolved =>
     message === null ? null : { finding: { file, line, message } };
   const main = mainDestination(url);
@@ -653,7 +728,7 @@ const checkLink = async (
   ) {
     if (link.image) {
       return report(
-        `\`${url}\` is not a file in ${ROOT}/. An image sits beside the page that shows it and is referenced by a relative path.`
+        `\`${url}\` is not a file in ${tree}/. An image sits beside the page that shows it and is referenced by a relative path.`
       );
     }
     if (main) {
@@ -680,10 +755,10 @@ const checkLink = async (
     path.dirname(path.join(context.repository, file)),
     decoded
   );
-  const root = path.join(context.repository, ROOT);
+  const root = path.join(context.repository, tree);
   if (path.relative(root, resolved).startsWith("..")) {
     return report(
-      `\`${url}\` leaves ${ROOT}/, which the website does not serve. Link to source code by an absolute https://github.com/publira/publira/ URL.`
+      `\`${url}\` leaves ${tree}/, which the website does not serve. Link to source code by an absolute https://github.com/publira/publira/ URL.`
     );
   }
   const extension = path.extname(decoded);
@@ -730,7 +805,7 @@ const checkDirectory = async (
   const numbers = new Map<string, string>();
   const slugs = new Map<string, string>();
 
-  // `docs/en/` itself is the website's to title, so it may go without a page.
+  // A locale's tree itself is the website's to title, so it may go without a page.
   if (
     !(root || entries.some((entry) => entry.isFile() && entry.name === INDEX))
   ) {
@@ -800,15 +875,20 @@ const checkDirectory = async (
 };
 
 /**
- * The findings in one page, the images beside it that it shows, and the former
- * URLs it redirects from.
+ * The findings in one page, the images beside it that it shows, the former
+ * URLs it redirects from, and the English text it carries.
  */
 const checkFile = async (
   context: Context,
   file: string
-): Promise<{ findings: Finding[]; images: string[]; redirects: string[] }> => {
+): Promise<{
+  findings: Finding[];
+  images: string[];
+  redirects: string[];
+  revision: string | null;
+}> => {
   const source = await readFile(path.join(context.repository, file), "utf-8");
-  const { findings, links, redirects } = checkPage(file, source);
+  const { findings, links, redirects, revision } = checkPage(file, source);
   const resolved = await Promise.all(
     links.map(async (link) => ({
       image: link.image,
@@ -832,6 +912,7 @@ const checkFile = async (
         : []
     ),
     redirects,
+    revision,
   };
 };
 
@@ -961,40 +1042,195 @@ const checkImages = (
   });
 
 /**
- * The findings for a directory under `docs/` other than `docs/en/`.
+ * The tree of every locale under `docs/`, `docs/en/` included, and a finding for
+ * a directory there that names no locale the UI ships a catalog for.
  *
- * The documentation is English alone until 1.0.0, as `docs/README.md` states:
- * throughout 0.x a minor release can change the behaviour a page describes,
- * and each such change rewrites the English page in the same pull request, so
- * a translation beside it would drift without anything noticing. A second
- * tree is refused here rather than in review, because the `docs-screenshots`
- * project and the website both pick up any tree that appears. The Issue that
- * adds the first translation lifts this check.
+ * The `docs-screenshots` project photographs the consoles in the language of
+ * every tree it finds, from that language's catalog, and the website serves
+ * every tree under the locale it is named after, so a tree is a locale the
+ * consoles can be shown in or a mistake.
  */
-const checkLocales = async (repository: string): Promise<Finding[]> => {
+const listTrees = async (
+  repository: string
+): Promise<{ findings: Finding[]; trees: string[] }> => {
   const entries = await readdir(path.join(repository, DOCS), {
     withFileTypes: true,
   });
+  const translations = entries
+    .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE)
+    .map((entry) => entry.name);
+  const shipped = await Promise.all(
+    translations.map((locale) =>
+      exists(path.join(repository, CATALOGS, `${locale}.json`))
+    )
+  );
 
-  return entries
-    .filter((entry) => entry.isDirectory() && entry.name !== LOCALE)
-    .map((entry) => ({
-      file: path.posix.join(DOCS, entry.name),
-      message: `The documentation is maintained in English alone until 1.0.0, so \`${ROOT}/\` is the only tree under \`${DOCS}/\`. See "Languages" in docs/README.md.`,
-    }));
+  return {
+    findings: translations
+      .filter((_, index) => !shipped[index])
+      .map((locale) => ({
+        file: path.posix.join(DOCS, locale),
+        message: `\`${locale}\` is not a locale the UI ships, so no \`${CATALOGS}/${locale}.json\` is there to take its screenshots in. A tree under \`${DOCS}/\` is named after a catalog in \`${CATALOGS}/\`.`,
+      })),
+    trees: [
+      SOURCE,
+      ...translations
+        .filter((_, index) => shipped[index])
+        .map((locale) => path.posix.join(DOCS, locale)),
+    ].toSorted((a, b) => a.localeCompare(b, "en")),
+  };
+};
+
+/** What a page in a tree carries that its counterpart in another has to match. */
+interface PageEntry {
+  redirects: readonly string[];
+  revision: string | null;
+}
+
+/**
+ * Every finding in one locale's tree, and its pages and images by their path
+ * within it, which is the path of their counterpart in every other tree.
+ */
+const checkTree = async (
+  context: Context,
+  root: string
+): Promise<{
+  findings: Finding[];
+  images: Set<string>;
+  pages: Map<string, PageEntry>;
+}> => {
+  const { findings, images, pages } = await checkDirectory(
+    context.repository,
+    root,
+    true
+  );
+  const inPages = await Promise.all(
+    pages.map((page) => checkFile(context, page))
+  );
+  const shownBy = new Map<string, string[]>();
+  for (const [index, page] of pages.entries()) {
+    for (const image of inPages[index]?.images ?? []) {
+      shownBy.set(image, [...(shownBy.get(image) ?? []), pageSlug(page)]);
+    }
+  }
+
+  return {
+    findings: [
+      ...findings,
+      ...inPages.flatMap((page) => page.findings),
+      ...checkRedirectTargets(
+        root,
+        pages,
+        inPages.map((page) => page.redirects)
+      ),
+      ...checkImages(images, shownBy),
+    ],
+    images: new Set(images.map((image) => path.posix.relative(root, image))),
+    pages: new Map(
+      pages.map((page, index) => [
+        path.posix.relative(root, page),
+        {
+          redirects: inPages[index]?.redirects ?? [],
+          revision: inPages[index]?.revision ?? null,
+        },
+      ])
+    ),
+  };
+};
+
+/**
+ * The findings for a translated tree that is out of step with `docs/en/`.
+ *
+ * A translation holds every page and every image `docs/en/` holds, under the
+ * same names, so each locale publishes the same pages at the same URLs and
+ * shows the same screenshots. Each of its pages records, in
+ * {@link SOURCE_UPDATED}, the `updated` date of the English page it was last
+ * brought in line with, and is behind when the English page's date has moved
+ * past it. A page published at the same URL redirects from the same former
+ * ones too.
+ */
+const compareTrees = (
+  source: Awaited<ReturnType<typeof checkTree>>,
+  root: string,
+  translation: Awaited<ReturnType<typeof checkTree>>
+): Finding[] => {
+  const findings: Finding[] = [];
+  const counterparts = (
+    type: "image" | "page",
+    english: Iterable<string>,
+    translated: Iterable<string>
+  ): void => {
+    const theirs = new Set(translated);
+    const ours = new Set(english);
+    for (const entry of ours) {
+      if (!theirs.has(entry)) {
+        findings.push({
+          file: path.posix.join(SOURCE, entry),
+          message: `The ${type} has no counterpart at ${path.posix.join(root, entry)}. Every tree under \`${DOCS}/\` holds the pages and images \`${SOURCE}/\` holds, under the same names, and a change that adds one adds it to every tree.`,
+        });
+      }
+    }
+    for (const entry of theirs) {
+      if (!ours.has(entry)) {
+        findings.push({
+          file: path.posix.join(root, entry),
+          message: `The ${type} translates nothing: ${path.posix.join(SOURCE, entry)} does not exist. A translated tree holds what \`${SOURCE}/\` holds and nothing else, so one that is removed or renamed there is removed or renamed here too.`,
+        });
+      }
+    }
+  };
+  counterparts("page", source.pages.keys(), translation.pages.keys());
+  counterparts("image", source.images, translation.images);
+
+  for (const [entry, translated] of translation.pages) {
+    const english = source.pages.get(entry);
+    if (!english) {
+      continue;
+    }
+    const file = path.posix.join(root, entry);
+    const { revision } = english;
+    if (
+      revision !== null &&
+      translated.revision !== null &&
+      translated.revision !== revision
+    ) {
+      findings.push({
+        file,
+        line: 1,
+        message:
+          translated.revision < revision
+            ? `The translation follows the English page as of ${translated.revision}, and ${path.posix.join(SOURCE, entry)} has changed since: it was updated on ${revision}. Bring the translation in line with it and set \`${SOURCE_UPDATED}\` to ${revision}.`
+            : `\`${SOURCE_UPDATED}\` is ${translated.revision}, later than ${revision}, the \`updated\` date of ${path.posix.join(SOURCE, entry)} (its \`published\` date while it has none), which is the date it records.`,
+      });
+    }
+    const sameRedirects =
+      english.redirects.length === translated.redirects.length &&
+      english.redirects.every((redirect) =>
+        translated.redirects.includes(redirect)
+      );
+    if (!sameRedirects) {
+      findings.push({
+        file,
+        line: 1,
+        message: `\`redirect_from\` is not the one ${path.posix.join(SOURCE, entry)} has. A translation is published at the URL its English page is, so it redirects from the same former URLs.`,
+      });
+    }
+  }
+
+  return findings;
 };
 
 const run = promisify(execFile);
 
 /**
- * The Markdown outside `root` whose links are checked: every `README.md` and
+ * The Markdown outside the locales' `trees` whose links are checked: every `README.md` and
  * `AGENTS.md`, `CONTRIBUTING.md`, and the skills under `skills/`, tracked or
  * about to be. The skills vendored under `.agents/skills/` are someone else's
  * to fix, and `.claude/skills/` only links to the ones under `skills/`.
  */
 const listMarkdown = async (
   repository: string,
-  root: string
+  trees: readonly string[]
 ): Promise<string[]> => {
   const { stdout } = await run(
     "git",
@@ -1011,7 +1247,7 @@ const listMarkdown = async (
       ":(glob)skills/**/*.md",
       ":(exclude).agents",
       ":(exclude,glob)**/node_modules/**",
-      `:(exclude)${root}`,
+      ...trees.map((tree) => `:(exclude)${tree}`),
     ],
     { cwd: repository, maxBuffer: 16 * 1024 * 1024 }
   );
@@ -1243,48 +1479,38 @@ const checkQuotes = async (
 };
 
 /**
- * Every finding under `root`, every tree beside it under `docs/`, every quote
- * a script holds that its page does not show, and every link that leads
- * nowhere from the Markdown {@link listMarkdown} names,
- * relative to `repository`, as are the files the findings name, in the order
- * of those files and lines.
+ * Every finding in each locale's tree under `docs/`, every way a translated
+ * tree is out of step with `docs/en/`, every quote a script holds that its
+ * page does not show, and every link that leads nowhere from the Markdown
+ * {@link listMarkdown} names, relative to `repository`, as are the files the
+ * findings name, in the order of those files and lines.
  */
-export const scan = async (
-  repository = process.cwd(),
-  root = ROOT
-): Promise<Finding[]> => {
+export const scan = async (repository = process.cwd()): Promise<Finding[]> => {
   const context = createContext(repository);
-  const locales = await checkLocales(repository);
-  const { findings, images, pages } = await checkDirectory(
-    repository,
-    root,
-    true
+  const { findings: locales, trees } = await listTrees(repository);
+  const checked = await Promise.all(
+    trees.map((root) => checkTree(context, root))
   );
-  const inPages = await Promise.all(
-    pages.map((page) => checkFile(context, page))
-  );
-  const markdown = await listMarkdown(repository, root);
+  const source = checked[trees.indexOf(SOURCE)];
+  const translations = source
+    ? trees.flatMap((root, index) => {
+        const translation = checked[index];
+
+        return root === SOURCE || !translation
+          ? []
+          : compareTrees(source, root, translation);
+      })
+    : [];
+  const markdown = await listMarkdown(repository, trees);
   const inMarkdown = await Promise.all(
     markdown.map((file) => checkMarkdown(context, file))
   );
-  const quotes = await checkQuotes(repository, root);
-  const shownBy = new Map<string, string[]>();
-  for (const [index, page] of pages.entries()) {
-    for (const image of inPages[index]?.images ?? []) {
-      shownBy.set(image, [...(shownBy.get(image) ?? []), pageSlug(page)]);
-    }
-  }
+  const quotes = await checkQuotes(repository, SOURCE);
 
   return [
     ...locales,
-    ...findings,
-    ...inPages.flatMap((page) => page.findings),
-    ...checkRedirectTargets(
-      root,
-      pages,
-      inPages.map((page) => page.redirects)
-    ),
-    ...checkImages(images, shownBy),
+    ...checked.flatMap((tree) => tree.findings),
+    ...translations,
     ...quotes,
     ...inMarkdown.flat(),
   ].toSorted(
@@ -1317,7 +1543,7 @@ const main = async (): Promise<void> => {
   }
 
   console.log(
-    `${ROOT}: every page follows the contract in docs/README.md, and every link in the repository's Markdown resolves.`
+    `${DOCS}: every page follows the contract in docs/README.md, every translation is in step with ${SOURCE}/, and every link in the repository's Markdown resolves.`
   );
 };
 
