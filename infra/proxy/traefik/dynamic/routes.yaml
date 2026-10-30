@@ -14,9 +14,8 @@
 # PUBLIRA_EDGE_PLATFORM_HOSTS, and the tenants' image hosts,
 # PUBLIRA_EDGE_IMAGE_HOSTS, each a list of host names separated by spaces.
 # A Host matcher names one host, so each list is split below and joined back
-# into one rule per app. An empty list leaves its router out, since Traefik
-# refuses an empty rule; with the three app lists empty, so is /rpc, and with
-# all four, /images.
+# into one rule per app. An empty list leaves its routers out, since Traefik
+# refuses an empty rule.
 #
 # A host in no list matches no router, so Traefik answers it with its own 404
 # and no backend sees the request. /rpc and /images are routed on the listed
@@ -36,6 +35,20 @@
 # separated by spaces, the same ones as forwardedHeaders.trustedIPs in
 # traefik.yaml. Every other router removes the header. Traefik looks up no
 # region of its own.
+#
+# How many requests one client may send, as infra/proxy/README.md lists them,
+# is a rateLimit middleware per allowance, on the routers of a tenant's site
+# and image hosts; the console hosts have routers of their own without one,
+# since they are left to the server's own limits. Each lets a client send its
+# burst at once and refills at its average, and answers a request past that
+# with a 429 of its own, which no backend sees. Traefik keeps the count per
+# router, so each allowance is one router's. A rateLimit counts a client by the
+# address that connected unless told otherwise, which behind a trusted hop is
+# the hop's for every reader. Told to read X-Forwarded-For past the hop's
+# addresses instead, it counts every request that did not come through the hop
+# as one client, since Traefik has already removed theirs, so the requests from
+# the hop have routers of their own again, with a `-trusted-hop` copy of each
+# middleware that reads the header.
 {{- define "hosts" -}}
   {{- range $i, $host := . }}{{ if $i }} || {{ end }}Host(`{{ $host }}`){{ end -}}
 {{- end -}}
@@ -47,9 +60,31 @@
 {{- $platform := regexSplit "\\s+" (env "PUBLIRA_EDGE_PLATFORM_HOSTS") -1 | compact -}}
 {{- $image := regexSplit "\\s+" (env "PUBLIRA_EDGE_IMAGE_HOSTS") -1 | compact -}}
 {{- $hops := regexSplit "\\s+" (env "PUBLIRA_EDGE_TRUSTED_PROXIES") -1 | compact -}}
-{{- $apps := concat $site $admin $platform }}
-{{- $listed := concat $apps $image }}
+{{- define "rateLimit" }}
+      rateLimit:
+        average: {{ .average }}
+        period: 1s
+        burst: {{ .burst }}
+{{- if .hops }}
+        sourceCriterion:
+          ipStrategy:
+            excludedIPs:
+{{- range .hops }}
+              - '{{ . }}'
+{{- end }}
+{{- end }}
+{{- end -}}
+{{- $consoles := concat $admin $platform }}
+{{- $limitedImages := concat $site $image }}
+{{- $listed := concat $site $consoles $image }}
 {{- $appPaths := "!PathRegexp(`^/rpc(/.*)?$`)" }}
+{{- $searchPage := "PathRegexp(`^(/[a-z]{2}(-[A-Za-z]{4})?)?/search/?$`)" }}
+{{- $searchRPC := "PathPrefix(`/rpc/publira.v1.CatalogService/SearchPublished`)" }}
+{{- $allowances := list
+  (dict "name" "api" "average" 20 "burst" 120)
+  (dict "name" "search-rpc" "average" 2 "burst" 20)
+  (dict "name" "search-page" "average" 2 "burst" 20)
+  (dict "name" "images" "average" 60 "burst" 600) }}
 http:
   middlewares:
     # The trust boundary for W3C Trace Context. Traefik drops a request header
@@ -77,6 +112,12 @@ http:
       headers:
         customRequestHeaders:
           X-Forwarded-CountryRegion: ""
+{{- range $allowances }}
+    rate-limit-{{ .name }}:{{ template "rateLimit" (dict "average" .average "burst" .burst) }}
+{{- if $hops }}
+    rate-limit-{{ .name }}-trusted-hop:{{ template "rateLimit" (dict "average" .average "burst" .burst "hops" $hops) }}
+{{- end }}
+{{- end }}
 {{- if $listed }}
 
   routers:
@@ -98,6 +139,62 @@ http:
       entryPoints: [web]
       service: web-storefront
 {{- end }}
+
+    # The storefront's search page, with or without a locale prefix, which runs
+    # the catalog search on the server, so it has an allowance of its own.
+    web-storefront-search:
+      rule: '({{ template "hosts" $site }}) && {{ $searchPage }}'
+      priority: 102
+      entryPoints: [web]
+      service: web-storefront
+      middlewares: [strip-country-region, rate-limit-search-page]
+{{- if $hops }}
+
+    web-storefront-search-trusted-hop:
+      rule: '({{ template "hosts" $site }}) && {{ $searchPage }} && ({{ template "clientIPs" $hops }})'
+      priority: 103
+      entryPoints: [web]
+      service: web-storefront
+      middlewares: [rate-limit-search-page-trusted-hop]
+{{- end }}
+
+    # The public API on a tenant's site, and rpc-console below on a console
+    # host, so priority 105 puts it above the host routers. The prefix ends at
+    # the dot after v1, so that publira.v1.<Service>/<Method> is all it
+    # matches. No prefix removal, because the server's own routes carry /rpc.
+    rpc:
+      rule: '({{ template "hosts" $site }}) && PathPrefix(`/rpc/publira.v1.`)'
+      priority: 105
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-api]
+{{- if $hops }}
+
+    rpc-trusted-hop:
+      rule: '({{ template "hosts" $site }}) && PathPrefix(`/rpc/publira.v1.`) && ({{ template "clientIPs" $hops }})'
+      priority: 106
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-api-trusted-hop]
+{{- end }}
+
+    # The catalog search, which costs the database more than any other read,
+    # has an allowance of its own rather than the rest of the public API's.
+    rpc-search:
+      rule: '({{ template "hosts" $site }}) && {{ $searchRPC }}'
+      priority: 107
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-search-rpc]
+{{- if $hops }}
+
+    rpc-search-trusted-hop:
+      rule: '({{ template "hosts" $site }}) && {{ $searchRPC }} && ({{ template "clientIPs" $hops }})'
+      priority: 108
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-search-rpc-trusted-hop]
+{{- end }}
 {{- end }}
 {{- if $admin }}
 
@@ -117,27 +214,43 @@ http:
       service: web-platform
       middlewares: [strip-country-region]
 {{- end }}
-{{- if $apps }}
+{{- if $consoles }}
 
-    # The public API, on every host an app answers, so priority 105 puts it
-    # above the host routers. The prefix ends at the dot after v1, so that
-    # publira.v1.<Service>/<Method> is all it matches. No prefix removal,
-    # because the server's own routes carry /rpc.
-    rpc:
-      rule: '({{ template "hosts" $apps }}) && PathPrefix(`/rpc/publira.v1.`)'
+    # The public API and image delivery on a console host, without the
+    # allowances of a tenant's site.
+    rpc-console:
+      rule: '({{ template "hosts" $consoles }}) && PathPrefix(`/rpc/publira.v1.`)'
       priority: 105
       entryPoints: [web]
       service: api
       middlewares: [strip-country-region]
-{{- end }}
 
-    # On every listed host, an image host among them, and answered by the
-    # same process as the API: the server picks the rules it applies to an
-    # image from the host name it was given. No prefix removal, like the API.
-    images:
-      rule: '({{ template "hosts" $listed }}) && PathPrefix(`/images`)'
+    images-console:
+      rule: '({{ template "hosts" $consoles }}) && PathPrefix(`/images`)'
       priority: 110
       entryPoints: [web]
       service: api
       middlewares: [strip-country-region]
+{{- end }}
+{{- if $limitedImages }}
+
+    # On a tenant's site and image hosts, and answered by the same process as
+    # the API: the server picks the rules it applies to an image from the
+    # host name it was given. No prefix removal, like the API.
+    images:
+      rule: '({{ template "hosts" $limitedImages }}) && PathPrefix(`/images`)'
+      priority: 110
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-images]
+{{- if $hops }}
+
+    images-trusted-hop:
+      rule: '({{ template "hosts" $limitedImages }}) && PathPrefix(`/images`) && ({{ template "clientIPs" $hops }})'
+      priority: 111
+      entryPoints: [web]
+      service: api
+      middlewares: [strip-country-region, rate-limit-images-trusted-hop]
+{{- end }}
+{{- end }}
 {{- end }}

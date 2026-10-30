@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-10-25
+updated: 2026-10-30
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -164,6 +164,36 @@ Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 - **The provider reaches the path from the internet.** An IP allowlist, a sign-in prompt, or a bot challenge in front of the tenant's site has to let these requests through, or payments are taken and never recorded, and replies never reach the console.
 - **The body arrives as the provider sent it.** Each notification is signed over its exact bytes, so a hop that rewrites the body on this path makes Publira refuse it.
 - **A body of up to 33 MiB** under `/api/v1/webhook/email/`. SendGrid posts a reply with its attachments, up to its own 30 MB limit for a mail. A smaller limit turns a reply with a large attachment into a failed delivery the provider retries for days and then drops.
+
+## Rate limits and a WAF
+
+`publira server` limits what it can tell apart: password attempts, the mail it sends, and each reader action, such as posting a comment or using a wait-for-free ticket, as [Rate limits](../../3-operations/9-platform-policies.md#rate-limits) describes. It does not limit anonymous reads. The catalog, the search, and the images answer as fast as a client asks, so one client can fetch every page of every free episode, or run the search until the database falls behind, and the first sign of it is `/readyz` failing. Limiting those requests per client is the edge's job.
+
+### What to limit
+
+Limit each reader's address, the one [The client address](#the-client-address) has the edge record, on a tenant's domain and its image host:
+
+- **The public API**, `/rpc/publira.v1.`, which the mobile app calls.
+- **The search**, which runs the most expensive query a reader can ask for: the search procedures of the public API, `/rpc/publira.v1.CatalogService/SearchPublished…`, and the site's search page, `/search` or `/<locale>/search`, which runs the same search on the server. Give it a lower limit than the rest of the API.
+- **The images**, `/images`, which every page of an episode is. A reader opening an episode loads all of its pages at once, so allow a burst of several hundred.
+
+Answer a request over the limit with `429 Too Many Requests`. Each limit counts per address, so readers behind one address, such as a carrier's NAT or an office network, share it: set them for the busiest address you expect a legitimate reader to come from, not for one reader.
+
+The console hosts are left to the limits `publira server` keeps: their traffic is your staff's, and the episode uploads and editing screens there are the heaviest an install serves.
+
+### What never to limit
+
+- **The webhooks** under `/api/v1/webhook/`, which [Webhooks](#webhooks) lists. A provider refused there retries, and a payment is recorded late, or a reader's reply never reaches the console.
+- **The health checks**, `GET /readyz` and `GET /livez`, which a load balancer or an orchestrator sends to each process. A health check refused for its rate takes a healthy process out of service.
+
+A bot challenge or a sign-in prompt in front of a path is a limit of its own: neither the mobile app nor a webhook provider can answer one, so keep both off the public API, the images, and the webhooks.
+
+### Where the limit goes
+
+- **A managed WAF or a CDN rate limit in front of the edge**, such as AWS WAF on CloudFront or an Application Load Balancer, or Cloud Armor on a Google Cloud load balancer, counts each reader by the address that connected to it, before the request reaches anything you run. Limit the paths above with it, and the proxy behind it needs no limits of its own.
+- **The proxy**, when nothing in front of it limits requests. The Traefik and nginx [sample configurations](./1-sample-configurations.md#what-each-sample-does) limit the paths above as they ship, and the Caddy one carries its limits commented out, since they need a module the `caddy` image does not include. A proxy behind a hop counts each reader by the address the hop names only once it [trusts the hop](./1-sample-configurations.md#a-hop-in-front-of-the-proxy); until then every reader shares the hop's limit.
+
+Protecting an install from a distributed denial of service is the hosting provider's job, not the edge's: a limit per address does nothing against requests from many addresses.
 
 ## In this section
 

@@ -1,0 +1,16 @@
+# Overlay on compose.caddy.yaml for the pass that sends bursts over the limits.
+#
+# The Caddyfile carries its rate_limit block commented out, because the caddy
+# image ships without the module it needs and refuses the file with it. This
+# pass runs a Caddy built with that module, from caddy/Dockerfile, and mounts
+# the copy of the Caddyfile whose block scripts/lib.sh has uncommented, from
+# PUBLIRA_ROUTING_PROXY_DIR, in place of the one compose.caddy.yaml mounts.
+
+services:
+  proxy:
+    image: publira-routing/caddy-ratelimit:local
+    build:
+      context: ./caddy
+    pull_policy: build
+    volumes:
+      - ${PUBLIRA_ROUTING_PROXY_DIR:?}/Caddyfile:/etc/caddy/Caddyfile:ro

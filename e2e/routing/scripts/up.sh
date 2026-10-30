@@ -28,6 +28,9 @@ fi
 if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" ]]; then
   enable_trusted_hop
 fi
+if [[ "${PUBLIRA_ROUTING_RATE_LIMITS}" == "1" ]]; then
+  enable_rate_limits
+fi
 
 # The Traefik run is the Dev Container's own edge, so it starts that service by
 # name; nginx and Caddy, and every proxy in the trusted-hop pass, come from

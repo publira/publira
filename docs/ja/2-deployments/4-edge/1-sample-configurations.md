@@ -2,7 +2,8 @@
 title: リバースプロキシの設定例
 description: リバースプロキシに必要な設定を満たすTraefik、nginx、Caddyの設定例と、その設定例を自分の環境に合わせて使う方法を説明します。
 published: 2026-10-29
-source_updated: 2026-10-25
+updated: 2026-10-30
+source_updated: 2026-10-30
 ---
 
 リポジトリには、Traefik、nginx、Caddyのリバースプロキシの設定例が1つずつ含まれています。どれも[リバースプロキシに必要な設定](./index.md#リバースプロキシで必要な設定)のとおりにリクエストをルーティングし、ヘッダー、ボディ、タイムアウトを扱います。ただしTLSリスナーだけは、設定例を使う側で用意します。TraefikとnginxではTLSリスナーを自分で追加します。CaddyではHTTPSで提供するホスト名を渡すと、Caddy自身がTLSリスナーを追加します。設定例はあくまで例で、リバースプロキシの要件を定めるものではありません。[Docker Compose](../3-docker-compose.md)の構成ではCaddyの設定例を使います。リバースプロキシを独自に動かす場合は、どの設定例から始めてもかまいません。マネージドのロードバランサー、Ingress、Gatewayで構成する場合も同じ要件に従いますが、設定例は使いません。要件を満たすGatewayとIngressの例は[Kubernetesでのリバースプロキシの設定](../5-kubernetes/1-edge.md)に、Application Load Balancerの前段にCloudFrontを置く例は[CloudFrontを使った公開](../6-ecs-fargate/1-cloudfront.md)にあります。
@@ -23,6 +24,7 @@ source_updated: 2026-10-25
 - **トレースコンテキスト。** どの設定例もトレースコンテキストの3つのヘッダーを削除します。Traefikでは`strip-trace-context`ミドルウェアで削除するので、どのエントリーポイントにも`strip-forwarded`と並べてこのミドルウェアを指定する必要があります。
 - **読者の地域。** 設定例はどれも読者の地域を自分では調べません。そのため、すべてのリクエストから`X-Forwarded-CountryRegion`を削除します。ただし、信頼する[前段のプロキシ](#前段にロードバランサーやcdnを置く場合)からのリクエストでは、その値をそのまま渡します。Traefikでは`web-storefront-trusted-hop`以外のすべてのルーターに付けた`strip-country-region`ミドルウェアで削除します。ルーターを追加するときは、このミドルウェアも付けてください。
 - **アップロードとWebhook。** TraefikとCaddyは、自分で設定しない限りボディのサイズを制限しません。nginxは既定で1MBを超えるボディを拒否するので、設定例では上限を引き上げています。管理画面のホストの`/api/v1/episode-pages`は`256m`、それ以外の`/api/v1/`は`33m`、画像をアップロードする各ページのパスは`11m`です。Traefikは、指定しない限り60秒以内に全体が届かないリクエストを打ち切ります。この時間はパスごとではなくエントリーポイントごとに設定するので、設定例では`transport.respondingTimeouts.readTimeout`で`web`エントリーポイントのすべてのリクエストに300秒を与えています。nginxの60秒はボディ全体ではなく、ボディを読み取る間隔の上限です。Caddyは時間を制限しません。そのためnginxとCaddyの設定例では、この時間を変更していません。
+- **リクエストのレート。** Traefikとnginxの設定例は、テナントのドメインと画像ホストで1つのクライアントが公開API、検索、画像に送れるリクエストの数を、[レート制限とWAF](./index.md#レート制限とwaf)の説明のとおりに制限します。上限を超えたリクエストには、設定例自身が`429`を返します。上限の値は[ルーティングの仕様](https://github.com/publira/publira/blob/main/infra/proxy/README.md#request-rates)にあります。nginxでは`default.conf.template`の`limit_req_zone`の行で、Traefikでは`dynamic/routes.yaml`にある上限ごとの`rateLimit`ミドルウェアで設定し、このミドルウェアはサイトと画像ホストのルーターに付けています。これらのホストにルーターを追加するときは、このミドルウェアも付けてください。Caddyの設定例では`rate_limit`ブロックをコメントアウトしています。このブロックには[`caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit)モジュールが必要で、`caddy`イメージはこのモジュールを含まず、ブロックのあるCaddyfileを拒否するからです。使うときは、`xcaddy build --with github.com/mholt/caddy-ratelimit`などでこのモジュールを組み込んだCaddyを動かし、コメントを外してください。[Docker Compose](../3-docker-compose.md)の構成は`caddy`イメージを使うので、リバースプロキシでは何も制限しません。
 - **TLS。** どの設定例も、TLSリスナーを追加するまでは平文のHTTPで待ち受けます。CaddyではHTTPSで提供するホスト名を渡すまでです。手順は[設定例でTLSを終端する](#設定例でtlsを終端する)で説明します。
 
 設定例を手直しするときも、これらの動作はすべて残してください。エントリーポイントや`server`ブロックを追加する場合は、そこにも同じヘッダー、上限、タイムアウトを設定します。
@@ -70,13 +72,13 @@ PUBLIRA_EDGE_IMAGE_HOSTS=images.comics.example.com
 
 ## 前段にロードバランサーやCDNを置く場合
 
-ロードバランサー、CDN、TLS終端装置などを設定例の前段に置くと、プロキシに接続してくるのはその前段のプロキシになります。設定例をそのまま使うと、すべてのリクエストが前段のプロキシのアドレスで記録されます。監査ログには全員が同じアドレスで表示され、Publiraがクライアントのアドレスごとにかける制限も、すべての読者で共有されてしまいます。
+ロードバランサー、CDN、TLS終端装置などを設定例の前段に置くと、プロキシに接続してくるのはその前段のプロキシになります。設定例をそのまま使うと、すべてのリクエストが前段のプロキシのアドレスで記録されます。監査ログには全員が同じアドレスで表示され、Publiraと設定例がクライアントのアドレスごとにかける制限も、すべての読者で共有されてしまいます。
 
 読者自身のアドレスを記録するには、次の2つを設定します。
 
 - **前段のプロキシが`X-Forwarded-For`、`X-Forwarded-Host`、`X-Forwarded-Proto`を自分で設定する。** 値はそれぞれ、前段のプロキシに接続してきたアドレス、ブラウザーが要求したホスト、ブラウザーが使ったスキームです。呼び出し元から届いた値を渡したり、その値に追記したりはしません。Traefikは前段から届いたこの3つをすべて信頼し、Webアプリは`X-Forwarded-Host`からテナントを判断します。そのため、Traefikの前段が`X-Forwarded-For`しか設定しないと、呼び出し元がテナントを選べてしまいます。Caddyは、自分の前段にあるプロキシを信頼していなければ、既定でこの3つをすべて設定します。
 - **設定例のプロキシが前段のアドレスだけを信頼する。** クライアントのアドレスは、前段が設定したヘッダーから取得します。Traefikとnginxの設定例には、この設定がコメントアウトした状態で入っています。アドレスにはドキュメント用の範囲`192.0.2.0/24`が書かれているので、コメントを外し、前段のアドレスに書き換えてください。Caddyの設定例は、アドレスを環境変数から読み込みます。
-  - Traefikでは、`traefik.yaml`の`web`エントリーポイント(前段が別のエントリーポイントに接続する場合はそのエントリーポイント)の`forwardedHeaders.trustedIPs`に設定します。さらに、同じアドレスをスペース区切りで、Traefikプロセスの環境変数`PUBLIRA_EDGE_TRUSTED_PROXIES`にも設定します。`dynamic/routes.yaml`は、前段から届いた地域を渡すためにこの変数を読み込みます。
+  - Traefikでは、`traefik.yaml`の`web`エントリーポイント(前段が別のエントリーポイントに接続する場合はそのエントリーポイント)の`forwardedHeaders.trustedIPs`に設定します。さらに、同じアドレスをスペース区切りで、Traefikプロセスの環境変数`PUBLIRA_EDGE_TRUSTED_PROXIES`にも設定します。`dynamic/routes.yaml`は、前段から届いた地域を渡すためと、前段が伝えたアドレスで読者を数えるために、この変数を読み込みます。
   - nginxでは、`default.conf.template`の先頭近くにある`set_real_ip_from`と、その下の`real_ip_header`と`real_ip_recursive`を設定します。`set_real_ip_from`は、アドレスまたはアドレス範囲ごとに1行ずつ書きます。さらに、その下の`geo`ブロックにも同じアドレスを1行ずつ、末尾を` 1;`にして書きます。
   - Caddyでは、Caddyプロセスの環境変数`PUBLIRA_EDGE_TRUSTED_PROXIES`に、アドレスをスペース区切りで設定します。Caddyfileのグローバルオプションにある`trusted_proxies static`がこの変数を読み込みます。
   - Docker Composeの構成では、[前段にCDNやロードバランサーを置く場合](../3-docker-compose.md#cdnやロードバランサーを前に置く場合)の説明のとおり、`.env`の`PUBLIRA_EDGE_TRUSTED_PROXIES`に設定します。

@@ -78,6 +78,22 @@ map $remote_addr $publira_forwarded {
     default "for=$remote_addr";
 }
 
+# How many requests one client may send, as infra/proxy/README.md lists them:
+# each zone lets a client send its burst at once and refills at its rate, and
+# answers a request past that with a 429 of its own, which no backend sees.
+# The burst is each `limit_req` in snippets/, with nodelay so that a request
+# within it is passed on at once rather than queued. A zone counts a client by
+# $publira_rate_limit_key, which each server block below sets: the client
+# address on a tenant's site and image host, the one a hop the lines above
+# trust named or else the peer's, and empty on a console host, since nginx
+# counts no request whose key is empty and the consoles are left to the
+# server's own limits.
+limit_req_zone $publira_rate_limit_key zone=publira_api:10m rate=20r/s;
+limit_req_zone $publira_rate_limit_key zone=publira_search_rpc:10m rate=2r/s;
+limit_req_zone $publira_rate_limit_key zone=publira_search_page:10m rate=2r/s;
+limit_req_zone $publira_rate_limit_key zone=publira_images:10m rate=60r/s;
+limit_req_status 429;
+
 # A host in no list: the edge answers it itself, and no backend sees the
 # request, /rpc and /images included.
 server {
@@ -96,6 +112,7 @@ server {
     server_name ~(?!) ${PUBLIRA_EDGE_SITE_HOSTS};
 
     set $publira_app publira_web_storefront;
+    set $publira_rate_limit_key $binary_remote_addr;
     include /etc/nginx/templates/snippets/proxy-headers.conf;
 
     include /etc/nginx/templates/snippets/app-routes.conf;
@@ -107,6 +124,7 @@ server {
     server_name ~(?!) ${PUBLIRA_EDGE_ADMIN_HOSTS};
 
     set $publira_app publira_web_admin;
+    set $publira_rate_limit_key "";
     include /etc/nginx/templates/snippets/proxy-headers.conf;
 
     include /etc/nginx/templates/snippets/app-routes.conf;
@@ -127,6 +145,7 @@ server {
     server_name ~(?!) ${PUBLIRA_EDGE_PLATFORM_HOSTS};
 
     set $publira_app publira_web_platform;
+    set $publira_rate_limit_key "";
     include /etc/nginx/templates/snippets/proxy-headers.conf;
 
     include /etc/nginx/templates/snippets/app-routes.conf;
@@ -138,6 +157,7 @@ server {
     listen 80;
     server_name ~(?!) ${PUBLIRA_EDGE_IMAGE_HOSTS};
 
+    set $publira_rate_limit_key $binary_remote_addr;
     include /etc/nginx/templates/snippets/proxy-headers.conf;
 
     include /etc/nginx/templates/snippets/images.conf;
