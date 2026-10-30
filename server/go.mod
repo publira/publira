@@ -30,7 +30,7 @@ require (
 	github.com/riverqueue/river v0.50.0
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.50.0
 	github.com/riverqueue/river/rivertype v0.50.0
-	github.com/stripe/stripe-go/v87 v87.0.0
+	github.com/stripe/stripe-go/v87 v87.1.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	github.com/xdg-go/stringprep v1.0.4
