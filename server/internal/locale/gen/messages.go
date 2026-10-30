@@ -6,21 +6,21 @@ package gen
 // namespaces, keyed by the message key and then by locale code.
 var Messages = map[string]map[string]string{
 	"checkout.bundle_discount": {
-		"ja":      "まとめ買い割引（{$percent :integer}%）",
+		"ja":      "まとめ買い割引({$percent :integer}%)",
 		"en":      "Bundle discount ({$percent :integer}%)",
 		"ko":      "묶음 할인 ({$percent :integer}%)",
 		"zh-Hans": "打包优惠（{$percent :integer}%）",
 		"zh-Hant": "打包優惠（{$percent :integer}%）",
 	},
 	"checkout.coin_pack_line_item": {
-		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（うちボーナス{$bonus}）}}",
+		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}(うちボーナス{$bonus})}}",
 		"en":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (including {$bonus} bonus)}}",
 		"ko":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count} {$coin_name}}}\n* {{{$count} {$coin_name} (보너스 {$bonus} 포함)}}",
 		"zh-Hans": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含赠送{$bonus}）}}",
 		"zh-Hant": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}（含贈送{$bonus}）}}",
 	},
 	"checkout.rental_line_item": {
-		"ja":      "{$episode_title}（レンタル・{$hours :integer}時間）",
+		"ja":      "{$episode_title}(レンタル、{$hours :integer}時間)",
 		"en":      ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}",
 		"ko":      "{$episode_title} (대여, {$hours :integer}시간)",
 		"zh-Hans": "{$episode_title}（租借，{$hours :integer}小时）",
@@ -48,7 +48,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。",
 	},
 	"email.admin_console_email_change_confirmation.current_email": {
-		"ja":      "現在のメールアドレス: {$current_email}",
+		"ja":      "現在のメールアドレスは{$current_email}です。",
 		"en":      "Current email address: {$current_email}",
 		"ko":      "현재 이메일 주소: {$current_email}",
 		"zh-Hans": "当前邮箱地址：{$current_email}",
@@ -90,7 +90,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "我們收到了變更您管理主控台帳戶電子郵件地址的請求。",
 	},
 	"email.admin_console_email_change_confirmation.new_email": {
-		"ja":      "新しいメールアドレス: {$new_email}",
+		"ja":      "新しいメールアドレスは{$new_email}です。",
 		"en":      "New email address: {$new_email}",
 		"ko":      "새 이메일 주소: {$new_email}",
 		"zh-Hans": "新的邮箱地址：{$new_email}",
@@ -125,7 +125,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "管理主控台的電子郵件地址已變更",
 	},
 	"email.admin_console_email_changed_notice.new_email": {
-		"ja":      "変更後: {$new_email}",
+		"ja":      "変更後は{$new_email}です。",
 		"en":      "After: {$new_email}",
 		"ko":      "변경 후: {$new_email}",
 		"zh-Hans": "变更后：{$new_email}",
@@ -139,7 +139,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您管理主控台帳戶的電子郵件地址已變更。",
 	},
 	"email.admin_console_email_changed_notice.previous_email": {
-		"ja":      "変更前: {$previous_email}",
+		"ja":      "変更前は{$previous_email}でした。",
 		"en":      "Before: {$previous_email}",
 		"ko":      "변경 전: {$previous_email}",
 		"zh-Hans": "变更前：{$previous_email}",
@@ -258,7 +258,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。",
 	},
 	"email.platform_console_email_change_confirmation.current_email": {
-		"ja":      "現在のメールアドレス: {$current_email}",
+		"ja":      "現在のメールアドレスは{$current_email}です。",
 		"en":      "Current email address: {$current_email}",
 		"ko":      "현재 이메일 주소: {$current_email}",
 		"zh-Hans": "当前邮箱地址：{$current_email}",
@@ -300,7 +300,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "我們收到了變更您平台主控台帳戶電子郵件地址的請求。",
 	},
 	"email.platform_console_email_change_confirmation.new_email": {
-		"ja":      "新しいメールアドレス: {$new_email}",
+		"ja":      "新しいメールアドレスは{$new_email}です。",
 		"en":      "New email address: {$new_email}",
 		"ko":      "새 이메일 주소: {$new_email}",
 		"zh-Hans": "新的邮箱地址：{$new_email}",
@@ -335,7 +335,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "平台主控台的電子郵件地址已變更",
 	},
 	"email.platform_console_email_changed_notice.new_email": {
-		"ja":      "変更後: {$new_email}",
+		"ja":      "変更後は{$new_email}です。",
 		"en":      "After: {$new_email}",
 		"ko":      "변경 후: {$new_email}",
 		"zh-Hans": "变更后：{$new_email}",
@@ -349,7 +349,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您平台主控台帳戶的電子郵件地址已變更。",
 	},
 	"email.platform_console_email_changed_notice.previous_email": {
-		"ja":      "変更前: {$previous_email}",
+		"ja":      "変更前は{$previous_email}でした。",
 		"en":      "Before: {$previous_email}",
 		"ko":      "변경 전: {$previous_email}",
 		"zh-Hans": "变更前：{$previous_email}",
@@ -566,35 +566,35 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "查看已購買",
 	},
 	"email.purchase_receipt.amount": {
-		"ja":      "購入価格: {$amount}（{$currency}）",
+		"ja":      "購入価格は{$amount}({$currency})です。",
 		"en":      "Price paid: {$amount} ({$currency})",
 		"ko":      "구매 가격: {$amount} ({$currency})",
 		"zh-Hans": "支付金额：{$amount}（{$currency}）",
 		"zh-Hant": "支付金額：{$amount}（{$currency}）",
 	},
 	"email.purchase_receipt.coin_pack": {
-		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count}（うちボーナス{$bonus}）}}",
+		"ja":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$count}{$coin_name}}}\n* {{{$count}{$coin_name}(うちボーナス{$bonus})}}",
 		"en":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (including {$bonus} bonus)}}",
 		"ko":      ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}: {$count}}}\n* {{{$coin_name}: {$count} (보너스 {$bonus} 포함)}}",
 		"zh-Hans": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}：{$count}}}\n* {{{$coin_name}：{$count}（含赠送{$bonus}）}}",
 		"zh-Hant": ".input {$count :integer}\n.input {$bonus :integer}\n.match $bonus\n0 {{{$coin_name}：{$count}}}\n* {{{$coin_name}：{$count}（含贈送{$bonus}）}}",
 	},
 	"email.purchase_receipt.coins_expire_at": {
-		"ja":      "利用期限: {$expires_at}",
+		"ja":      "利用期限は{$expires_at}です。",
 		"en":      "Spendable until: {$expires_at}",
 		"ko":      "사용 기한: {$expires_at}",
 		"zh-Hans": "使用期限至：{$expires_at}",
 		"zh-Hant": "使用期限至：{$expires_at}",
 	},
 	"email.purchase_receipt.episode": {
-		"ja":      "エピソード: {$episode_title}",
+		"ja":      "エピソード「{$episode_title}」",
 		"en":      "Episode: {$episode_title}",
 		"ko":      "에피소드: {$episode_title}",
 		"zh-Hans": "章节：{$episode_title}",
 		"zh-Hant": "章節：{$episode_title}",
 	},
 	"email.purchase_receipt.expires_at": {
-		"ja":      "有効期限: {$expires_at}",
+		"ja":      "有効期限は{$expires_at}です。",
 		"en":      "Readable until: {$expires_at}",
 		"ko":      "만료일: {$expires_at}",
 		"zh-Hans": "有效期至：{$expires_at}",
@@ -629,21 +629,21 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "感謝您購買{$title}。",
 	},
 	"email.purchase_receipt.purchased_at": {
-		"ja":      "購入日時: {$purchased_at}",
+		"ja":      "購入日時は{$purchased_at}です。",
 		"en":      "Purchased: {$purchased_at}",
 		"ko":      "구매 일시: {$purchased_at}",
 		"zh-Hans": "购买时间：{$purchased_at}",
 		"zh-Hant": "購買時間：{$purchased_at}",
 	},
 	"email.purchase_receipt.series": {
-		"ja":      "シリーズ: {$series_title}",
+		"ja":      "シリーズ「{$series_title}」",
 		"en":      "Series: {$series_title}",
 		"ko":      "시리즈: {$series_title}",
 		"zh-Hans": "系列：{$series_title}",
 		"zh-Hant": "系列：{$series_title}",
 	},
 	"email.purchase_receipt.series_bundle": {
-		"ja":      "残りのエピソード: {$count :integer}話",
+		"ja":      "残りのエピソード{$count :integer}話",
 		"en":      ".input {$count :integer}\n.match $count\none {{Remaining episodes: {$count} episode}}\n* {{Remaining episodes: {$count} episodes}}",
 		"ko":      "남은 에피소드: {$count :integer}화",
 		"zh-Hans": "剩余章节：{$count :integer}话",
@@ -664,7 +664,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "這是在支付服務測試模式下的購買，未產生任何扣款。",
 	},
 	"email.purchase_receipt.volume": {
-		"ja":      "巻: {$volume_title}",
+		"ja":      "巻「{$volume_title}」",
 		"en":      "Volume: {$volume_title}",
 		"ko":      "권: {$volume_title}",
 		"zh-Hans": "卷：{$volume_title}",
@@ -720,14 +720,14 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "請查看{$tenant_name}的公告。",
 	},
 	"email.reader_announcement_posted.subject": {
-		"ja":      "{$tenant_name}からのお知らせ: {$announcement_title}",
+		"ja":      "{$tenant_name}からのお知らせ「{$announcement_title}」",
 		"en":      "{$tenant_name} announcement: {$announcement_title}",
 		"ko":      "{$tenant_name} 공지사항: {$announcement_title}",
 		"zh-Hans": "{$tenant_name}公告：{$announcement_title}",
 		"zh-Hant": "{$tenant_name}公告：{$announcement_title}",
 	},
 	"email.reader_announcement_posted.title": {
-		"ja":      "タイトル: {$announcement_title}",
+		"ja":      "タイトルは「{$announcement_title}」です。",
 		"en":      "Title: {$announcement_title}",
 		"ko":      "제목: {$announcement_title}",
 		"zh-Hans": "标题：{$announcement_title}",
@@ -748,7 +748,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您的留言已通過審核，現在所有人都能看到。",
 	},
 	"email.reader_comment_approved.episode": {
-		"ja":      "エピソード: {$episode_title}",
+		"ja":      "エピソード「{$episode_title}」",
 		"en":      "Episode: {$episode_title}",
 		"ko":      "에피소드: {$episode_title}",
 		"zh-Hans": "章节：{$episode_title}",
@@ -783,7 +783,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您在{$episode_title}下的留言已公開。",
 	},
 	"email.reader_comment_approved.series": {
-		"ja":      "シリーズ: {$series_title}",
+		"ja":      "シリーズ「{$series_title}」",
 		"en":      "Series: {$series_title}",
 		"ko":      "시리즈: {$series_title}",
 		"zh-Hans": "系列：{$series_title}",
@@ -818,7 +818,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "這項變更需要由新的電子郵件地址確認。請開啟下方按鈕完成確認。",
 	},
 	"email.reader_email_change_confirmation.current_email": {
-		"ja":      "現在のメールアドレス: {$current_email}",
+		"ja":      "現在のメールアドレスは{$current_email}です。",
 		"en":      "Current email address: {$current_email}",
 		"ko":      "현재 이메일 주소: {$current_email}",
 		"zh-Hans": "当前邮箱地址：{$current_email}",
@@ -860,7 +860,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "我們收到了變更您電子郵件地址的請求。",
 	},
 	"email.reader_email_change_confirmation.new_email": {
-		"ja":      "新しいメールアドレス: {$new_email}",
+		"ja":      "新しいメールアドレスは{$new_email}です。",
 		"en":      "New email address: {$new_email}",
 		"ko":      "새 이메일 주소: {$new_email}",
 		"zh-Hans": "新的邮箱地址：{$new_email}",
@@ -895,7 +895,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "電子郵件地址已變更",
 	},
 	"email.reader_email_changed_notice.new_email": {
-		"ja":      "変更後: {$new_email}",
+		"ja":      "変更後は{$new_email}です。",
 		"en":      "After: {$new_email}",
 		"ko":      "변경 후: {$new_email}",
 		"zh-Hans": "变更后：{$new_email}",
@@ -909,7 +909,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您帳戶的電子郵件地址已變更。",
 	},
 	"email.reader_email_changed_notice.previous_email": {
-		"ja":      "変更前: {$previous_email}",
+		"ja":      "変更前は{$previous_email}でした。",
 		"en":      "Before: {$previous_email}",
 		"ko":      "변경 전: {$previous_email}",
 		"zh-Hans": "变更前：{$previous_email}",
@@ -1000,7 +1000,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "閱讀章節",
 	},
 	"email.reader_episode_published.episode": {
-		"ja":      "エピソード: {$episode_title}",
+		"ja":      "エピソード「{$episode_title}」",
 		"en":      "Episode: {$episode_title}",
 		"ko":      "에피소드: {$episode_title}",
 		"zh-Hans": "章节：{$episode_title}",
@@ -1042,7 +1042,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "{$episode_title}現已發布。",
 	},
 	"email.reader_episode_published.series": {
-		"ja":      "シリーズ: {$series_title}",
+		"ja":      "シリーズ「{$series_title}」",
 		"en":      "Series: {$series_title}",
 		"ko":      "시리즈: {$series_title}",
 		"zh-Hans": "系列：{$series_title}",
@@ -1070,7 +1070,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您帳戶的密碼已變更。",
 	},
 	"email.reader_password_changed_notice.email": {
-		"ja":      "メールアドレス: {$email}",
+		"ja":      "対象のメールアドレスは{$email}です。",
 		"en":      "Email address: {$email}",
 		"ko":      "이메일 주소: {$email}",
 		"zh-Hans": "邮箱地址：{$email}",
@@ -1210,7 +1210,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "您的帳戶已存在，因此沒有建立第二個帳戶。該帳戶的電子郵件地址尚未確認，所以無法登入。",
 	},
 	"email.reader_signup_attempt_notice.email": {
-		"ja":      "メールアドレス: {$email}",
+		"ja":      "対象のメールアドレスは{$email}です。",
 		"en":      "Email address: {$email}",
 		"ko":      "이메일 주소: {$email}",
 		"zh-Hans": "邮箱地址：{$email}",
@@ -1308,21 +1308,21 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "{$tenant_name}收到了讀者的訊息。",
 	},
 	"email.staff_contact_message_notice.received": {
-		"ja":      "受信日時: {$received_at}",
+		"ja":      "{$received_at}に受信しました。",
 		"en":      "Received at {$received_at}.",
 		"ko":      "수신 일시: {$received_at}",
 		"zh-Hans": "接收时间：{$received_at}",
 		"zh-Hant": "接收時間：{$received_at}",
 	},
 	"email.staff_contact_message_notice.reply_to": {
-		"ja":      "返信先: {$reply_to_email}",
+		"ja":      "返信先は{$reply_to_email}です。",
 		"en":      "Reply to: {$reply_to_email}",
 		"ko":      "회신 주소: {$reply_to_email}",
 		"zh-Hans": "回复地址：{$reply_to_email}",
 		"zh-Hant": "回覆地址：{$reply_to_email}",
 	},
 	"email.staff_contact_message_notice.sender": {
-		"ja":      "サインイン中のアカウント: {$sender_name}",
+		"ja":      "{$sender_name}としてサインインしている読者からの送信です。",
 		"en":      "Signed in as {$sender_name}.",
 		"ko":      "로그인한 계정: {$sender_name}",
 		"zh-Hans": "登录账号：{$sender_name}",
@@ -1336,7 +1336,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "{$tenant_name}諮詢",
 	},
 	"email.staff_contact_message_notice.subject_line": {
-		"ja":      "件名: {$subject}",
+		"ja":      "件名は「{$subject}」です。",
 		"en":      "Subject: {$subject}",
 		"ko":      "제목: {$subject}",
 		"zh-Hans": "主题：{$subject}",
@@ -1357,7 +1357,7 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "{$tenant_name}回覆了您的諮詢。",
 	},
 	"email.staff_contact_reply.quote_intro": {
-		"ja":      "{$received_at}にお送りいただいた内容:",
+		"ja":      "{$received_at}にお送りいただいた内容は次のとおりです。",
 		"en":      "On {$received_at}, you wrote:",
 		"ko":      "{$received_at}에 보내신 내용:",
 		"zh-Hans": "您于{$received_at}写道：",

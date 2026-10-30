@@ -230,7 +230,7 @@ describe("PurchaseReceiptEmail", () => {
   it("names the coins of a pack with no bonus in Japanese", async () => {
     const html = await render("ja", { ...pack, coin_pack_bonus_coins: 0 });
 
-    expect(html).toContain("Points: 1,000");
+    expect(html).toContain("1,000Points");
     expect(html).not.toContain("ボーナス");
   });
 
@@ -259,8 +259,8 @@ describe("PurchaseReceiptEmail", () => {
     const html = await render("ja");
 
     expect(html).toContain("ご購入ありがとうございます");
-    expect(html).toContain("購入価格: ￥500（JPY）");
-    expect(html).toContain("購入日時: 2030/01/15 21:00");
-    expect(html).toContain("有効期限: 2030/01/17 21:00");
+    expect(html).toContain("購入価格は￥500(JPY)です。");
+    expect(html).toContain("購入日時は2030/01/15 21:00です。");
+    expect(html).toContain("有効期限は2030/01/17 21:00です。");
   });
 });

@@ -637,7 +637,7 @@ func TestCoinPackLineItemNameNamesTheBonusOnlyWhenThereIsOne(t *testing.T) {
 	}{
 		{code: "en", coins: 1000, bonusCoins: 100, coinName: "Points", want: "1,100 Points (including 100 bonus)"},
 		{code: "en", coins: 500, coinName: "Points", want: "500 Points"},
-		{code: "ja", coins: 1000, bonusCoins: 100, coinName: "ポイント", want: "1,100ポイント（うちボーナス100）"},
+		{code: "ja", coins: 1000, bonusCoins: 100, coinName: "ポイント", want: "1,100ポイント(うちボーナス100)"},
 		{code: "ja", coins: 500, coinName: "ポイント", want: "500ポイント"},
 	} {
 		got, err := coinPackLineItemName(tc.code, tc.coinName, tc.coins, tc.bonusCoins)
