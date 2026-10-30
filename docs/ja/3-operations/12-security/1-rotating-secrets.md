@@ -70,7 +70,7 @@ docker compose run --rm publiractl db reseal
 
 ![パスワードを保存した状態のSMTPのパスワード。パスワードは伏せて表示され、その下に「変更する」がある。](./rotating-secrets-smtp-password.png)
 
-![アクセスキーを保存した状態のストレージの認証情報。アクセスキーIDと、「保存済み（非表示）」と表示されたシークレット、「アクセスキーを置き換える」がある。](./rotating-secrets-replace-access-key.png)
+![アクセスキーを保存した状態のストレージの認証情報。アクセスキーIDと、「保存済み(非表示)」と表示されたシークレット、「アクセスキーを置き換える」がある。](./rotating-secrets-replace-access-key.png)
 
 ## データベースのロールのパスワードのローテーション
 
