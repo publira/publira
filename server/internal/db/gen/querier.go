@@ -904,6 +904,8 @@ type Querier interface {
 	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	// The Stripe customer the reader last subscribed as, which a later checkout
 	// and the billing portal name, so the reader's invoices stay on one customer.
+	// A subscription billed by another provider names no Stripe customer, so it is
+	// passed over rather than answered as the latest.
 	GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetLatestStripeCustomerIDForUserParams) (string, error)
 	// Where a newly created banner goes: after everything that already exists.
 	GetMaxCampaignBannerDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
@@ -1709,7 +1711,8 @@ type Querier interface {
 	// closes their months across tenants.
 	ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoyaltyConfig, error)
 	// The subscriptions of the reader Stripe will go on billing, which closing the
-	// account cancels.
+	// account cancels. A subscription billed by another provider is not Stripe's
+	// to cancel and names no Stripe subscription.
 	ListBilledStripeSubscriptionIDsForUser(ctx context.Context, arg ListBilledStripeSubscriptionIDsForUserParams) ([]string, error)
 	// Every published banner with a boundary the ticker has not dropped the site
 	// caches for yet. A banner whose start and end both passed while the ticker
