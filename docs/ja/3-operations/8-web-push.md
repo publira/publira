@@ -33,9 +33,9 @@ publiractl webpush show
 
 ### プラットフォーム管理画面から
 
-サイドバーの**外部サービス**にある**Web Push**を選びます。鍵ペアがまだ保存されていなければ、画面を開いたときに生成されます。「**連絡先（VAPID subject）**」を入力して**Web Push設定を保存**を選ぶと、Web Pushが設定済みであることが画面に表示されます。保存できるのはオペレーターとスーパー管理者で、監査担当は画面を閲覧できるだけです。
+サイドバーの**外部サービス**にある**Web Push**を選びます。鍵ペアがまだ保存されていなければ、画面を開いたときに生成されます。「**連絡先(VAPID subject)**」を入力して**Web Push設定を保存**を選ぶと、Web Pushが設定済みであることが画面に表示されます。保存できるのはオペレーターとスーパー管理者で、監査担当は画面を閲覧できるだけです。
 
-![Web Pushを設定済みのブラウザー通知の画面。連絡先（VAPID subject）の入力欄とWeb Push設定を保存ボタンがある。](./web-push-settings.png)
+![Web Pushを設定済みのブラウザー通知の画面。連絡先(VAPID subject)の入力欄とWeb Push設定を保存ボタンがある。](./web-push-settings.png)
 
 APIサーバーにシークレットの暗号鍵がないのでWeb Pushを設定できない、と画面に表示された場合は、`publira server`が`PUBLIRA_SECRET_ENCRYPTION_KEYS`を設定せずに起動されています。ほかのプロセスと同じ暗号鍵を設定して`publira server`を再起動し、画面を開き直してください。
 

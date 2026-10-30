@@ -54,6 +54,6 @@ describe("EpisodeStatusPrice", () => {
   it("labels the status and the price in the chosen language", () => {
     const { container } = renderIn("ja", "published", 1500);
 
-    expect(container.textContent).toBe("状態: 公開中 / 価格: ￥1,500");
+    expect(container.textContent).toBe("状態は公開中、価格は￥1,500");
   });
 });

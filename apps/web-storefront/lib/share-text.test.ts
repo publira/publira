@@ -39,7 +39,7 @@ describe("shareText", () => {
         credit("First Author"),
         credit("Second Author"),
       ])
-    ).toBe("Published Series（First Author、Second Author）");
+    ).toBe("Published Series(First Author、Second Author)");
   });
 
   it("leaves an uncredited work as its own name, with no empty bracket", () => {

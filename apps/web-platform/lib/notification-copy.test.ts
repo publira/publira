@@ -103,7 +103,7 @@ describe("notificationDisplay", () => {
       )
     ).resolves.toEqual({
       description:
-        "テナント「Acme」の「Episode 1」（Series A）を公開できませんでした。エピソードを開いて公開をやり直してください。",
+        "テナント「Acme」の「Episode 1」(Series A)を公開できませんでした。エピソードを開いて公開をやり直してください。",
       href: undefined,
       title: "エピソードの公開に失敗しました",
     });

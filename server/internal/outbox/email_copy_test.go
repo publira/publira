@@ -426,7 +426,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_announcement_posted to the readers who chose it",
-		subjects: map[string]string{"en": "Aoto Press announcement: Scheduled maintenance", "ja": "Aoto Pressからのお知らせ: Scheduled maintenance"},
+		subjects: map[string]string{"en": "Aoto Press announcement: Scheduled maintenance", "ja": "Aoto Pressからのお知らせ「Scheduled maintenance」"},
 		request: emailrenderer.Request{
 			Template: "reader_announcement_posted",
 			Data: map[string]any{
@@ -440,7 +440,7 @@ var emailCopyCases = []struct {
 	},
 	{
 		name:     "reader_announcement_posted to everyone",
-		subjects: map[string]string{"en": "Aoto Press announcement: New terms of use", "ja": "Aoto Pressからのお知らせ: New terms of use"},
+		subjects: map[string]string{"en": "Aoto Press announcement: New terms of use", "ja": "Aoto Pressからのお知らせ「New terms of use」"},
 		request: emailrenderer.Request{
 			Template: "reader_announcement_posted",
 			Data: map[string]any{
@@ -625,9 +625,9 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 			episodeTitle: "Episode 1",
 			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
 				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
-				"シリーズ: The Lighthouse Keeper\n\nエピソード: Episode 1\n\n" +
-				"購入価格: $4.99（USD）\n\n" +
-				"購入日時: 2030/01/15 21:00\n\n" +
+				"シリーズ「The Lighthouse Keeper」\n\nエピソード「Episode 1」\n\n" +
+				"購入価格は$4.99(USD)です。\n\n" +
+				"購入日時は2030/01/15 21:00です。\n\n" +
 				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
 				"このメールはAoto Pressから送信されています。",
@@ -687,9 +687,9 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 			bundleCount: 12,
 			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
 				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
-				"シリーズ: The Lighthouse Keeper\n\n残りのエピソード: 12話\n\n" +
-				"購入価格: ￥2,700（JPY）\n\n" +
-				"購入日時: 2030/01/15 21:00\n\n" +
+				"シリーズ「The Lighthouse Keeper」\n\n残りのエピソード12話\n\n" +
+				"購入価格は￥2,700(JPY)です。\n\n" +
+				"購入日時は2030/01/15 21:00です。\n\n" +
 				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
 				"このメールはAoto Pressから送信されています。",
@@ -723,10 +723,10 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 			coinsExpireAt: "2030-07-14T12:00:00Z",
 			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
 				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
-				"ポイント: 500\n\n" +
-				"購入価格: ￥500（JPY）\n\n" +
-				"購入日時: 2030/01/15 21:00\n\n" +
-				"利用期限: 2030/07/14 21:00\n\n" +
+				"500ポイント\n\n" +
+				"購入価格は￥500(JPY)です。\n\n" +
+				"購入日時は2030/01/15 21:00です。\n\n" +
+				"利用期限は2030/07/14 21:00です。\n\n" +
 				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
 				"このメールはAoto Pressから送信されています。",
@@ -859,7 +859,7 @@ func TestEmailCopyWritesANotificationMail(t *testing.T) {
 			},
 			wantText: "Aoto Press\n\n新しいお知らせ\n\n" +
 				"Aoto Pressからお知らせが届きました。\n\n" +
-				"タイトル: New terms of use\n\n" +
+				"タイトルは「New terms of use」です。\n\n" +
 				"お知らせを読む https://reader.example.test/announcements\n\n" +
 				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/announcements\n\n" +
 				"このお知らせは、通知設定にかかわらずAoto Pressのすべての読者に送信されています。\n\n" +

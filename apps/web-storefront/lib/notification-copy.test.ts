@@ -97,7 +97,7 @@ describe("notificationDisplay", () => {
         JA
       )
     ).resolves.toEqual({
-      description: "「Chapter 1」（Work A）が公開されました。",
+      description: "「Chapter 1」(Work A)が公開されました。",
       href: "/series/SR01",
       title: "新しいエピソードが公開されました",
     });

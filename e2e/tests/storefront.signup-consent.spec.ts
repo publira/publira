@@ -197,7 +197,7 @@ test.describe("web-storefront sign-up consent", () => {
       .getByLabel("パスワード", { exact: true })
       .fill(SIGNUP_CONSENT_READER.password);
     await page
-      .getByLabel("パスワード（確認）")
+      .getByLabel("パスワード(確認)")
       .fill(SIGNUP_CONSENT_READER.password);
     await page
       .getByRole("checkbox", { name: "以下の内容を読み、同意します。" })
