@@ -20,7 +20,7 @@
 FROM node:26.13.0-trixie-slim@sha256:e4db4c914bf8ad241bd24804fc25d272d89bad97e68cdc8a1414862790a02c39 AS base
 
 # renovate: datasource=npm depName=pnpm versioning=semver
-ARG PNPM_VERSION=12.16.0
+ARG PNPM_VERSION=12.16.1
 
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}/bin:${PATH}"
