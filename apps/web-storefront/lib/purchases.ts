@@ -124,9 +124,7 @@ type RawPurchase = Pick<
 >;
 
 /** Unspecified, which the server never answers, reads as the permanent copy. */
-const toPurchaseKind = (
-  kind: PurchaseKind | undefined
-): PurchaseItem["kind"] =>
+const toPurchaseKind = (kind: PurchaseKind | undefined): PurchaseItem["kind"] =>
   kind === PurchaseKind.RENTAL ? "rental" : "purchase";
 
 /**

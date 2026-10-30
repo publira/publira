@@ -74,11 +74,8 @@ export const TenantAdminOnly = async ({ children }: { children: ReactNode }) =>
   (await isSignedInTenantAdmin(await getTenantId())) ? children : null;
 
 /** A write control, such as a create button, a tenant auditor is not shown. */
-export const TenantEditorOnly = async ({
-  children,
-}: {
-  children: ReactNode;
-}) => ((await isSignedInTenantEditor(await getTenantId())) ? children : null);
+export const TenantEditorOnly = async ({ children }: { children: ReactNode }) =>
+  (await isSignedInTenantEditor(await getTenantId())) ? children : null;
 
 /**
  * Forms a tenant auditor may read but not submit. For an editor they are left
