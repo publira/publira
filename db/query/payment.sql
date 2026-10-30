@@ -1016,7 +1016,9 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- finds once that one commits, the reader's dispute revoked it first, which
 -- the dispute keeps, or a refund in part staff asked for is waiting for the
 -- provider, whose idempotency key this refund would be sent under. A refund
--- recorded first gives way to staff while its instant stays.
+-- recorded first gives way to staff while its instant stays. It answers the
+-- attempt the refund is sent under, as it stands on the row rather than on an
+-- earlier read of it, which a refund in part settled since has moved on.
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),
     revocation_reason = 'staff'
@@ -1025,7 +1027,7 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND revocation_reason IS DISTINCT FROM 'staff'
     AND revocation_reason IS DISTINCT FROM 'dispute'
     AND staff_refund_requested_amount IS NULL
-RETURNING id;
+RETURNING staff_refund_attempt;
 
 -- name: RequestStaffRefundInPart :one
 -- Marks a refund in part of amount as asked of the provider, before it is

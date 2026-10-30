@@ -2135,7 +2135,7 @@ WHERE tenant_id = $1
     AND revocation_reason IS DISTINCT FROM 'staff'
     AND revocation_reason IS DISTINCT FROM 'dispute'
     AND staff_refund_requested_amount IS NULL
-RETURNING id
+RETURNING staff_refund_attempt
 `
 
 type RevokePurchaseForStaffParams struct {
@@ -2150,12 +2150,14 @@ type RevokePurchaseForStaffParams struct {
 // finds once that one commits, the reader's dispute revoked it first, which
 // the dispute keeps, or a refund in part staff asked for is waiting for the
 // provider, whose idempotency key this refund would be sent under. A refund
-// recorded first gives way to staff while its instant stays.
-func (q *Queries) RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error) {
+// recorded first gives way to staff while its instant stays. It answers the
+// attempt the refund is sent under, as it stands on the row rather than on an
+// earlier read of it, which a refund in part settled since has moved on.
+func (q *Queries) RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (int32, error) {
 	row := q.db.QueryRowContext(ctx, RevokePurchaseForStaff, arg.TenantID, arg.ID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var staff_refund_attempt int32
+	err := row.Scan(&staff_refund_attempt)
+	return staff_refund_attempt, err
 }
 
 const SettleStaffRefundInPart = `-- name: SettleStaffRefundInPart :one

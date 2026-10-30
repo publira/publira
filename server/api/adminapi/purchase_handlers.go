@@ -697,8 +697,14 @@ func (s *adminServer) staffRefundError(ctx context.Context, refund staffRefund, 
 func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefund, credentials paymentprovider.Credentials) error {
 	tenantID, row := refund.tenantID, refund.row
 	queries := s.queriesFor(ctx)
+	// The attempt is the one the purchase stands at when it is revoked: a
+	// refund in part settled since the purchase was read has moved it on, and
+	// its key would be sent with other parameters than the ones it was sent
+	// with.
+	var attempt int32
 	revokedHere, err := s.markPurchaseForStaffRefund(ctx, refund.sessionCtx, tenantID, row.ID, refund.reason, func(queries *dbmodels.Queries) error {
-		_, err := queries.RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
+		var err error
+		attempt, err = queries.RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
 			TenantID: tenantID,
 			ID:       row.ID,
 		})
@@ -717,6 +723,7 @@ func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefun
 		if current.StaffRefundRequestedAmount.Valid {
 			return connect.NewError(connect.CodeFailedPrecondition, "a refund in part is waiting for the payment provider")
 		}
+		attempt = current.StaffRefundAttempt
 	}
 	recordOutcome := func(outcome, why string) {
 		if revokedHere {
@@ -743,7 +750,7 @@ func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefun
 
 	refunded, err := refund.provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
 		PaymentID:      row.ProviderPaymentID.String,
-		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, row.StaffRefundAttempt),
+		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
 	})
 	if err != nil {
 		refused, answer := s.staffRefundError(ctx, refund, err)

@@ -3771,8 +3771,10 @@ type Querier interface {
 	// finds once that one commits, the reader's dispute revoked it first, which
 	// the dispute keeps, or a refund in part staff asked for is waiting for the
 	// provider, whose idempotency key this refund would be sent under. A refund
-	// recorded first gives way to staff while its instant stays.
-	RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error)
+	// recorded first gives way to staff while its instant stays. It answers the
+	// attempt the refund is sent under, as it stands on the row rather than on an
+	// earlier read of it, which a refund in part settled since has moved on.
+	RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (int32, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a
 	// position for an episode that was unpublished or a rental that has expired.
