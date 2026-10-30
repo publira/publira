@@ -317,7 +317,8 @@ export type PlatformPolicy = Message<"publira.platform.v1.PlatformPolicy"> & {
 
   /**
    * How often one reader may ask SubscriptionService.StartSubscriptionCheckout
-   * to start a subscription checkout.
+   * to start a subscription checkout, or StartStoreSubscription to start one
+   * through the app's store, counted together.
    *
    * Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
    * when a request leaves it unset.

@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/appstore/appstoretest"
 	"github.com/publira/publira/server/internal/googleplay/googleplaytest"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -33,7 +34,12 @@ type storeSubscriptionEnv struct {
 
 func newStoreSubscriptionEnv(t *testing.T) *storeSubscriptionEnv {
 	t.Helper()
-	env := newStorePurchaseEnv(t)
+	return newStoreSubscriptionEnvWithGuards(t, openReaderGuards())
+}
+
+func newStoreSubscriptionEnvWithGuards(t *testing.T, guards readerGuards) *storeSubscriptionEnv {
+	t.Helper()
+	env := newStorePurchaseEnvWithGuards(t, guards)
 	plan := env.pg.SeedSubscriptionPlan(t, env.tenant.ID, testutil.SubscriptionPlanSeed{
 		Published:           true,
 		AppStoreProductID:   storeSubscriptionAppStoreProduct,
@@ -471,6 +477,23 @@ func TestDBStartStoreSubscriptionRefusesWhatItCannotSell(t *testing.T) {
 	}
 	if got := env.count(t, "SELECT count(*) FROM store_subscription_intents WHERE tenant_id = $1", env.tenant.ID); got != 0 {
 		t.Fatalf("intents opened = %d, want none", got)
+	}
+}
+
+// A store start spends the allowance a checkout on the site spends, so a
+// reader past it is refused before any intent is written.
+func TestDBStartStoreSubscriptionSpendsTheReadersAllowance(t *testing.T) {
+	t.Parallel()
+
+	env := newStoreSubscriptionEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.SubscriptionCheckout = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	}))
+	env.mustStartSubscription(t, env.token, publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE)
+	if _, err := env.startSubscription(t, env.token, publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a second start over the limit = %v, want resource_exhausted", err)
+	}
+	if got := env.count(t, "SELECT count(*) FROM store_subscription_intents WHERE tenant_id = $1", env.tenant.ID); got != 1 {
+		t.Fatalf("intents opened = %d, want the first start's alone", got)
 	}
 }
 

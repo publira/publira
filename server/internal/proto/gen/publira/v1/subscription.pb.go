@@ -735,7 +735,10 @@ func (x *CreateBillingPortalSessionResponse) GetUrl() string {
 // a plan that names no product in that store are failed_precondition. A reader
 // who already holds a subscription that is trialing, active, past due, unpaid,
 // or paused, whether Stripe or a store bills it, is already_exists. Asking
-// again for the same plan answers the same intent.
+// again for the same plan answers the same intent. Each call spends the
+// reader's allowance for subscription checkouts, the one
+// StartSubscriptionCheckout spends, and a reader past it is
+// resource_exhausted.
 type StartStoreSubscriptionRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

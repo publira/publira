@@ -153,11 +153,12 @@ type Policy struct {
 	// payment provider for a checkout, so what this bounds is the writes and
 	// the provider requests one account can make the storefront repeat.
 	SeriesRemainderCheckout MinuteDay
-	// SubscriptionCheckout bounds the subscription checkouts one reader may
-	// start. Each start writes the reader's latest checkout, may expire the one
-	// before it, and asks the payment provider for a checkout, so what this
-	// bounds is the writes and the provider requests one account can make the
-	// storefront repeat.
+	// SubscriptionCheckout bounds the subscriptions one reader may start,
+	// through a checkout on the site or through the app's store, counted
+	// together. A checkout writes the reader's latest checkout, may expire the
+	// one before it, and asks the payment provider for a checkout, and a store
+	// start writes an intent, so what this bounds is the writes and the
+	// provider requests one account can make the storefront repeat.
 	SubscriptionCheckout MinuteDay
 	// CoinPayment bounds the episodes one reader may pay for with coins. Each
 	// payment writes a purchase and the coins it spent, so what this bounds is
