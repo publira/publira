@@ -360,7 +360,8 @@ type PlatformPolicy struct {
 	CoinPayment *MinuteDayLimit `protobuf:"bytes,19,opt,name=coin_payment,json=coinPayment,proto3" json:"coin_payment,omitempty"`
 	// How often one reader may ask PurchaseService.StartEpisodeCheckout,
 	// StartVolumeCheckout, or CoinService.StartCoinPackCheckout to start a
-	// checkout. The three share the one allowance.
+	// checkout, or PurchaseService.StartStorePurchase to start a purchase
+	// through the app's store. The four share the one allowance.
 	//
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.

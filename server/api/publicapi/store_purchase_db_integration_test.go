@@ -718,6 +718,37 @@ func TestDBConfirmStorePurchaseChargesTheReaderBeforeAskingTheStore(t *testing.T
 	}
 }
 
+// A store start writes its intent on every call, the open one included, so a
+// reader past the purchase allowance is refused before anything is read or
+// written.
+func TestDBStartStorePurchaseChargesTheReadersPurchaseAllowance(t *testing.T) {
+	t.Parallel()
+
+	env := newStorePurchaseEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.PurchaseCheckout = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	}))
+	series := env.pg.SeedSeries(t, env.tenant.ID, testutil.SeriesSeed{PublicID: "STORESERIES2", Title: "Second Series", Published: true})
+	second := env.pg.SeedEpisode(t, env.tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "STOREEPISOD2",
+		Title:    "Second Episode",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    300,
+	})
+
+	env.start(t, env.token)
+	_, err := env.client.StartStorePurchase(testutil.WithBearer(context.Background(), env.token), &publirav1.StartStorePurchaseRequest{
+		Tenant:    tenantContext(env.tenant),
+		EpisodeId: second.ID.String(),
+		Store:     publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE,
+	})
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("start past the allowance = %v, want resource_exhausted", err)
+	}
+	if got := env.count(t, "SELECT count(*) FROM store_purchase_intents WHERE tenant_id = $1 AND episode_id = $2", env.tenant.ID, second.ID); got != 0 {
+		t.Fatalf("intents opened past the allowance = %d, want 0", got)
+	}
+}
+
 // storeTestCurrency answers the currency the tenant's store purchases are
 // recorded in: its own, which for a tenant with no payment settings is the
 // platform's.

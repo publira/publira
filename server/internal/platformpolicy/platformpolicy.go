@@ -102,13 +102,14 @@ type Policy struct {
 	// payment writes a purchase and the coins it spent, so what this bounds is
 	// the writes one account can make the storefront repeat.
 	CoinPayment MinuteDay
-	// PurchaseCheckout bounds the checkouts of an episode, a volume, or a coin
-	// pack one reader may start, all three together. None of them writes
-	// anything, but each one asks the payment provider for a checkout on the
-	// tenant's credentials, so what this bounds is the provider requests one
-	// account can make the storefront repeat. A reader buying a series one
-	// episode at a time starts a checkout per episode, so its day is wider
-	// than the other checkouts'.
+	// PurchaseCheckout bounds the purchases of an episode, a volume, or a coin
+	// pack one reader may start, on the web and through the app's store
+	// together. A checkout writes nothing, but each one asks the payment
+	// provider for a checkout on the tenant's credentials, and a store
+	// purchase writes its intent on every start, so what this bounds is the
+	// provider requests and the writes one account can make the storefront
+	// repeat. A reader buying a series one episode at a time starts a purchase
+	// per episode, so its day is wider than the other checkouts'.
 	PurchaseCheckout MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console. A sign-in
