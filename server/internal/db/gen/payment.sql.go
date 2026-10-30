@@ -175,7 +175,8 @@ SET staff_refund_requested_total = NULL,
     staff_refund_attempt = staff_refund_attempt + CASE WHEN $1::boolean THEN 1 ELSE 0 END
 WHERE tenant_id = $2
     AND id = $3
-    AND staff_refund_requested_total = $4::integer
+    AND staff_refund_attempt = $4::integer
+    AND staff_refund_requested_total = $5::integer
 RETURNING id
 `
 
@@ -183,6 +184,7 @@ type ClearStaffRefundInPartParams struct {
 	NextAttempt    bool      `json:"next_attempt"`
 	TenantID       uuid.UUID `json:"tenant_id"`
 	ID             uuid.UUID `json:"id"`
+	Attempt        int32     `json:"attempt"`
 	RequestedTotal int32     `json:"requested_total"`
 }
 
@@ -191,12 +193,15 @@ type ClearStaffRefundInPartParams struct {
 // when next_attempt is set: the provider refused or failed the refund, and
 // under the same idempotency key would only answer that again. A mark the
 // provider's notification has cleared since, or another request's, is left
-// alone.
+// alone: the mark is the attempt's as well as the total's, since a refused
+// request's next attempt can ask for the same total while a slower request of
+// the refused one is still to hear the refusal.
 func (q *Queries) ClearStaffRefundInPart(ctx context.Context, arg ClearStaffRefundInPartParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, ClearStaffRefundInPart,
 		arg.NextAttempt,
 		arg.TenantID,
 		arg.ID,
+		arg.Attempt,
 		arg.RequestedTotal,
 	)
 	var id uuid.UUID

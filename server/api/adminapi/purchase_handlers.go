@@ -839,6 +839,7 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 		_, err := queries.ClearStaffRefundInPart(ctx, dbmodels.ClearStaffRefundInPartParams{
 			TenantID:       tenantID,
 			ID:             row.ID,
+			Attempt:        attempt,
 			RequestedTotal: requestedTotal,
 			NextAttempt:    nextAttempt,
 		})

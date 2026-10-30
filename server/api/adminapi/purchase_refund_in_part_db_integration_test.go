@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -233,6 +234,43 @@ func TestDBRefundPurchaseInPartRetriesARefusedRefundUnderANewKey(t *testing.T) {
 		t.Fatalf("refunded total = %d, want 300", got)
 	}
 	f.assertRefundEntries(t, purchaseID, 2, 1, 1)
+}
+
+// A refusal heard late, by a request of an attempt Stripe refused and that
+// another request has taken back already, leaves the next attempt's request
+// waiting under its key, even for the same total.
+func TestDBRefundPurchaseInPartKeepsTheNextAttemptThroughALateRefusal(t *testing.T) {
+	t.Parallel()
+
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_part_late_refusal"})
+	f.stripe.FailNextRefund(purchaseTestSecretKey, "pi_part_late_refusal")
+	_, err := f.refundInPart(purchaseID, 200)
+	assertConnectCode(t, "the refused RefundPurchaseInPart", err, connect.CodeFailedPrecondition)
+	if _, err := f.refundInPart(purchaseID, 200); err != nil {
+		t.Fatalf("RefundPurchaseInPart of the next attempt: %v", err)
+	}
+
+	// The slower request of the refused attempt hearing the refusal.
+	_, err = dbmodels.New(f.env.PG.DB).ClearStaffRefundInPart(context.Background(), dbmodels.ClearStaffRefundInPartParams{
+		TenantID:       f.admin.Tenant.ID,
+		ID:             purchaseID,
+		Attempt:        0,
+		RequestedTotal: 200,
+		NextAttempt:    true,
+	})
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("taking back the refused attempt's request: error = %v, want no row", err)
+	}
+	if purchase := f.get(t, purchaseID); purchase.RefundRequestedAmount != 200 {
+		t.Fatalf("purchase after the late refusal = %+v, want 200 still requested", purchase)
+	}
+	if _, err := f.refundInPart(purchaseID, 200); err != nil {
+		t.Fatalf("RefundPurchaseInPart again: %v", err)
+	}
+	if keys := f.refundKeys("pi_part_late_refusal"); len(keys) != 2 || keys[0] == keys[1] {
+		t.Fatalf("idempotency keys = %v, want the refused attempt's and the waiting one's", keys)
+	}
 }
 
 // A refund in part marked on the purchase but never asked of Stripe, as a

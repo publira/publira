@@ -131,7 +131,9 @@ type Querier interface {
 	// when next_attempt is set: the provider refused or failed the refund, and
 	// under the same idempotency key would only answer that again. A mark the
 	// provider's notification has cleared since, or another request's, is left
-	// alone.
+	// alone: the mark is the attempt's as well as the total's, since a refused
+	// request's next attempt can ask for the same total while a slower request of
+	// the refused one is still to hear the refusal.
 	ClearStaffRefundInPart(ctx context.Context, arg ClearStaffRefundInPartParams) (uuid.UUID, error)
 	// Leaves every account of the tenant that shows an upload with no icon, for a
 	// policy that no longer allows one, answering the accounts it changed. The

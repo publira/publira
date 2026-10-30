@@ -1062,11 +1062,14 @@ RETURNING staff_refund_attempt, staff_refund_requested_total::integer AS staff_r
 -- when next_attempt is set: the provider refused or failed the refund, and
 -- under the same idempotency key would only answer that again. A mark the
 -- provider's notification has cleared since, or another request's, is left
--- alone.
+-- alone: the mark is the attempt's as well as the total's, since a refused
+-- request's next attempt can ask for the same total while a slower request of
+-- the refused one is still to hear the refusal.
 UPDATE purchases
 SET staff_refund_requested_total = NULL,
     staff_refund_attempt = staff_refund_attempt + CASE WHEN sqlc.arg('next_attempt')::boolean THEN 1 ELSE 0 END
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
+    AND staff_refund_attempt = sqlc.arg('attempt')::integer
     AND staff_refund_requested_total = sqlc.arg('requested_total')::integer
 RETURNING id;
