@@ -75,7 +75,9 @@ message AdminPurchase {
   // True when RefundPurchase would ask the provider for a refund: the reader
   // paid through the tenant's current, enabled payment provider, and the
   // purchase is neither refunded in full, revoked, nor disputed. A store
-  // purchase is refunded through the store and never here.
+  // purchase is refunded through the store and never here. While
+  // refund_requested_amount is set, only RefundPurchaseInPart for that amount
+  // asks.
   bool refundable = 21;
   string volume_id = 22;
   string volume_public_id = 23;
@@ -88,6 +90,10 @@ message AdminPurchase {
   // The tenant's word for its coins in the tenant's default locale, set
   // beside coin_pack.
   string coin_name = 27;
+  // What of a refund in part staff asked for through RefundPurchaseInPart the
+  // provider has yet to report, in the minor unit of currency. Zero while no
+  // such refund is waiting. The purchase keeps opening its episode meanwhile.
+  int64 refund_requested_amount = 28;
 }
 
 // Cursor pagination, newest purchase first. Field shape and token rules:
@@ -163,6 +169,21 @@ message RefundPurchaseResponse {
   AdminPurchase purchase = 1;
 }
 
+message RefundPurchaseInPartRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string purchase_id = 2;
+  // Required. What to give back, in the minor unit of the purchase's
+  // currency: above zero, and at most what the provider has not reported
+  // refunded yet.
+  int64 amount = 3;
+  // Required, as on RefundPurchaseRequest.
+  string reason = 4;
+}
+
+message RefundPurchaseInPartResponse {
+  AdminPurchase purchase = 1;
+}
+
 service AdminPurchaseService {
   // Minimum role: tenant_admin.
   rpc ListPurchases(ListPurchasesRequest) returns (ListPurchasesResponse) {}
@@ -188,10 +209,10 @@ service AdminPurchaseService {
   // revoked already with no refund recorded yet is asked of the provider
   // again under the same idempotency key, which refunds nothing twice and
   // records nothing more. A store purchase, a purchase made without a
-  // payment, a disputed one, and one paid through a provider the tenant no
-  // longer has enabled are failed_precondition, as is a refund the provider
-  // refuses. An empty reason is invalid_argument with a field violation on
-  // reason.
+  // payment, a disputed one, one paid through a provider the tenant no longer
+  // has enabled, and one with a refund in part waiting for the provider are
+  // failed_precondition, as is a refund the provider refuses. An empty reason
+  // is invalid_argument with a field violation on reason.
   //
   // A purchase of a pack of coins is refunded the same way. Its coins are
   // taken back once the provider reports the refund in full rather than when
@@ -200,4 +221,25 @@ service AdminPurchaseService {
   //
   // Minimum role: tenant_admin.
   rpc RefundPurchase(RefundPurchaseRequest) returns (RefundPurchaseResponse) {}
+  // Asks the provider the reader paid through to refund amount of the
+  // payment, and leaves the purchase opening its episode, as a refund in part
+  // the provider reports does. The purchase shows the amount as
+  // refund_requested_amount until the provider's notification of it arrives,
+  // which records it as refunded; a refund the provider refuses takes the
+  // request back, and asking again after that is a new attempt. An amount
+  // that is all the provider has not reported refunded yet is RefundPurchase.
+  // It is an RPC of its own rather than an amount on RefundPurchase because a
+  // server that predates it answers unimplemented, where one that predates the
+  // field would refund the whole payment.
+  //
+  // While the refund waits, asking again for the same amount is sent under
+  // the same idempotency key, which refunds nothing twice; another amount,
+  // and RefundPurchase, are failed_precondition until the provider has
+  // reported it. A purchase of a pack of coins is failed_precondition, as is
+  // every purchase RefundPurchase refuses with it. An amount of zero or less,
+  // or above what is left to refund, is invalid_argument with a field
+  // violation on amount, and an empty reason one on reason.
+  //
+  // Minimum role: tenant_admin.
+  rpc RefundPurchaseInPart(RefundPurchaseInPartRequest) returns (RefundPurchaseInPartResponse) {}
 }

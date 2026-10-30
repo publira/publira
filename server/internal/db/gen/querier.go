@@ -126,6 +126,13 @@ type Querier interface {
 	// accounts it changed so the caller can name the comment lists that showed it.
 	// The foreign key would clear them on the delete too, but without saying which.
 	ClearReaderIconPresetElections(ctx context.Context, arg ClearReaderIconPresetElectionsParams) ([]uuid.UUID, error)
+	// Takes back the mark RequestStaffRefundInPart made when the refund it was
+	// made for did not happen, and moves the purchase on to staff's next attempt
+	// when next_attempt is set: the provider refused or failed the refund, and
+	// under the same idempotency key would only answer that again. A mark the
+	// provider's notification has cleared since, or another request's, is left
+	// alone.
+	ClearStaffRefundInPart(ctx context.Context, arg ClearStaffRefundInPartParams) (uuid.UUID, error)
 	// Leaves every account of the tenant that shows an upload with no icon, for a
 	// policy that no longer allows one, answering the accounts it changed. The
 	// images are left for the orphan sweep.
@@ -3629,6 +3636,10 @@ type Querier interface {
 	// delivery of the same refund leaves the instant already stored. The same
 	// moment revokes the purchase, unless something revoked it first, whose reason
 	// it keeps.
+	//
+	// A total reaching what a refund in part staff asked for brings the purchase
+	// to answers that request: it stops waiting, and the purchase moves on to
+	// staff's next attempt, whose key the provider has not answered yet.
 	RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOnPurchaseParams) (Purchase, error)
 	// Records a store's refund on the purchase of the transaction it names. A
 	// store refunds a consumable in full, so the purchase is refunded its whole
@@ -3709,6 +3720,14 @@ type Querier interface {
 	// it counted has failed, the one place a held amount goes down. Nothing is
 	// held for the payment in the ordinary case, and nothing changes then.
 	ReplaceUnappliedRefund(ctx context.Context, arg ReplaceUnappliedRefundParams) error
+	// Marks a refund in part of amount as asked of the provider, before it is
+	// asked, recording the refunded total it brings the purchase to, and answers
+	// the attempt the request belongs to. The purchase keeps opening its episode.
+	// It answers no row when there is nothing for this call to mark: a refund in
+	// part is waiting already, which a second request racing the first finds once
+	// that one commits, something revoked the purchase, or the amount no longer
+	// leaves part of the price unrefunded.
+	RequestStaffRefundInPart(ctx context.Context, arg RequestStaffRefundInPartParams) (int32, error)
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error
 	// A second factor that checked out clears the count, and so does starting an
 	// enrollment, so a stalled attempt never blocks the next one.
@@ -3738,9 +3757,10 @@ type Querier interface {
 	// so that whatever the provider reports about the refund lands on a purchase
 	// already revoked. It answers no row when there is nothing for this call to
 	// change: staff revoked it already, which a second request racing the first
-	// finds once that one commits, or the reader's dispute revoked it first, which
-	// the dispute keeps. A refund recorded first gives way to staff while its
-	// instant stays.
+	// finds once that one commits, the reader's dispute revoked it first, which
+	// the dispute keeps, or a refund in part staff asked for is waiting for the
+	// provider, whose idempotency key this refund would be sent under. A refund
+	// recorded first gives way to staff while its instant stays.
 	RevokePurchaseForStaff(ctx context.Context, arg RevokePurchaseForStaffParams) (uuid.UUID, error)
 	// Stores where the reader stopped, after checking publication and body access
 	// in the same statement, so a viewer that saves on its way out cannot write a

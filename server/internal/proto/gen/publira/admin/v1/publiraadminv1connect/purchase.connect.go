@@ -36,6 +36,9 @@ const (
 	// AdminPurchaseServiceRefundPurchaseProcedure is the procedure name of the AdminPurchaseService's
 	// RefundPurchase RPC.
 	AdminPurchaseServiceRefundPurchaseProcedure = "/publira.admin.v1.AdminPurchaseService/RefundPurchase"
+	// AdminPurchaseServiceRefundPurchaseInPartProcedure is the procedure name of the
+	// AdminPurchaseService's RefundPurchaseInPart RPC.
+	AdminPurchaseServiceRefundPurchaseInPartProcedure = "/publira.admin.v1.AdminPurchaseService/RefundPurchaseInPart"
 )
 
 var (
@@ -67,6 +70,13 @@ var (
 			Procedure:  AdminPurchaseServiceRefundPurchaseProcedure,
 		}
 	})
+	adminPurchaseServiceRefundPurchaseInPartSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_purchase_proto.Services().ByName("AdminPurchaseService").Methods().ByName("RefundPurchaseInPart"),
+			Procedure:  AdminPurchaseServiceRefundPurchaseInPartProcedure,
+		}
+	})
 )
 
 // AdminPurchaseServiceClient is a client for the publira.admin.v1.AdminPurchaseService service.
@@ -95,10 +105,10 @@ type AdminPurchaseServiceClient interface {
 	// revoked already with no refund recorded yet is asked of the provider
 	// again under the same idempotency key, which refunds nothing twice and
 	// records nothing more. A store purchase, a purchase made without a
-	// payment, a disputed one, and one paid through a provider the tenant no
-	// longer has enabled are failed_precondition, as is a refund the provider
-	// refuses. An empty reason is invalid_argument with a field violation on
-	// reason.
+	// payment, a disputed one, one paid through a provider the tenant no longer
+	// has enabled, and one with a refund in part waiting for the provider are
+	// failed_precondition, as is a refund the provider refuses. An empty reason
+	// is invalid_argument with a field violation on reason.
 	//
 	// A purchase of a pack of coins is refunded the same way. Its coins are
 	// taken back once the provider reports the refund in full rather than when
@@ -107,6 +117,27 @@ type AdminPurchaseServiceClient interface {
 	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)
+	// Asks the provider the reader paid through to refund amount of the
+	// payment, and leaves the purchase opening its episode, as a refund in part
+	// the provider reports does. The purchase shows the amount as
+	// refund_requested_amount until the provider's notification of it arrives,
+	// which records it as refunded; a refund the provider refuses takes the
+	// request back, and asking again after that is a new attempt. An amount
+	// that is all the provider has not reported refunded yet is RefundPurchase.
+	// It is an RPC of its own rather than an amount on RefundPurchase because a
+	// server that predates it answers unimplemented, where one that predates the
+	// field would refund the whole payment.
+	//
+	// While the refund waits, asking again for the same amount is sent under
+	// the same idempotency key, which refunds nothing twice; another amount,
+	// and RefundPurchase, are failed_precondition until the provider has
+	// reported it. A purchase of a pack of coins is failed_precondition, as is
+	// every purchase RefundPurchase refuses with it. An amount of zero or less,
+	// or above what is left to refund, is invalid_argument with a field
+	// violation on amount, and an empty reason one on reason.
+	//
+	// Minimum role: tenant_admin.
+	RefundPurchaseInPart(context.Context, *v1.RefundPurchaseInPartRequest) (*v1.RefundPurchaseInPartResponse, error)
 }
 
 // NewAdminPurchaseServiceClient constructs a client for the publira.admin.v1.AdminPurchaseService
@@ -142,10 +173,10 @@ type AdminPurchaseServiceHandler interface {
 	// revoked already with no refund recorded yet is asked of the provider
 	// again under the same idempotency key, which refunds nothing twice and
 	// records nothing more. A store purchase, a purchase made without a
-	// payment, a disputed one, and one paid through a provider the tenant no
-	// longer has enabled are failed_precondition, as is a refund the provider
-	// refuses. An empty reason is invalid_argument with a field violation on
-	// reason.
+	// payment, a disputed one, one paid through a provider the tenant no longer
+	// has enabled, and one with a refund in part waiting for the provider are
+	// failed_precondition, as is a refund the provider refuses. An empty reason
+	// is invalid_argument with a field violation on reason.
 	//
 	// A purchase of a pack of coins is refunded the same way. Its coins are
 	// taken back once the provider reports the refund in full rather than when
@@ -154,6 +185,27 @@ type AdminPurchaseServiceHandler interface {
 	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)
+	// Asks the provider the reader paid through to refund amount of the
+	// payment, and leaves the purchase opening its episode, as a refund in part
+	// the provider reports does. The purchase shows the amount as
+	// refund_requested_amount until the provider's notification of it arrives,
+	// which records it as refunded; a refund the provider refuses takes the
+	// request back, and asking again after that is a new attempt. An amount
+	// that is all the provider has not reported refunded yet is RefundPurchase.
+	// It is an RPC of its own rather than an amount on RefundPurchase because a
+	// server that predates it answers unimplemented, where one that predates the
+	// field would refund the whole payment.
+	//
+	// While the refund waits, asking again for the same amount is sent under
+	// the same idempotency key, which refunds nothing twice; another amount,
+	// and RefundPurchase, are failed_precondition until the provider has
+	// reported it. A purchase of a pack of coins is failed_precondition, as is
+	// every purchase RefundPurchase refuses with it. An amount of zero or less,
+	// or above what is left to refund, is invalid_argument with a field
+	// violation on amount, and an empty reason one on reason.
+	//
+	// Minimum role: tenant_admin.
+	RefundPurchaseInPart(context.Context, *v1.RefundPurchaseInPartRequest) (*v1.RefundPurchaseInPartResponse, error)
 }
 
 // RegisterAdminPurchaseServiceHandler registers svc as the publira.admin.v1.AdminPurchaseService
@@ -165,6 +217,7 @@ func RegisterAdminPurchaseServiceHandler(server *connect.Server, svc AdminPurcha
 		connect.Method{Spec: adminPurchaseServiceListReaderPurchasesSpec(), Handler: adapter.listReaderPurchases},
 		connect.Method{Spec: adminPurchaseServiceGetPurchaseSpec(), Handler: adapter.getPurchase},
 		connect.Method{Spec: adminPurchaseServiceRefundPurchaseSpec(), Handler: adapter.refundPurchase},
+		connect.Method{Spec: adminPurchaseServiceRefundPurchaseInPartSpec(), Handler: adapter.refundPurchaseInPart},
 	)
 }
 
@@ -185,6 +238,10 @@ func (UnimplementedAdminPurchaseServiceHandler) GetPurchase(context.Context, *v1
 
 func (UnimplementedAdminPurchaseServiceHandler) RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPurchaseService.RefundPurchase is not implemented")
+}
+
+func (UnimplementedAdminPurchaseServiceHandler) RefundPurchaseInPart(context.Context, *v1.RefundPurchaseInPartRequest) (*v1.RefundPurchaseInPartResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminPurchaseService.RefundPurchaseInPart is not implemented")
 }
 
 type adminPurchaseServiceClient struct {
@@ -218,6 +275,14 @@ func (c *adminPurchaseServiceClient) GetPurchase(ctx context.Context, req *v1.Ge
 func (c *adminPurchaseServiceClient) RefundPurchase(ctx context.Context, req *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error) {
 	var res v1.RefundPurchaseResponse
 	if err := c.client.CallUnary(ctx, adminPurchaseServiceRefundPurchaseSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminPurchaseServiceClient) RefundPurchaseInPart(ctx context.Context, req *v1.RefundPurchaseInPartRequest) (*v1.RefundPurchaseInPartResponse, error) {
+	var res v1.RefundPurchaseInPartResponse
+	if err := c.client.CallUnary(ctx, adminPurchaseServiceRefundPurchaseInPartSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -267,6 +332,18 @@ func (h adminPurchaseServiceHandler) refundPurchase(ctx context.Context, _ conne
 		return err
 	}
 	res, err := h.svc.RefundPurchase(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminPurchaseServiceHandler) refundPurchaseInPart(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RefundPurchaseInPartRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RefundPurchaseInPart(ctx, &req)
 	if err != nil {
 		return err
 	}

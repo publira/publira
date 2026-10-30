@@ -522,7 +522,8 @@
         "announcement_delivery": {
           "preferred": "알림 설정에 따라 알림",
           "everyone": "모든 독자에게 알림"
-        }
+        },
+        "purchase_refund_in_part": "대금 중 {$amount}: {$reason}"
       }
     },
     "announcements": {

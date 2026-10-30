@@ -426,11 +426,18 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	if remaining <= 0 {
 		return false, nil
 	}
-	// The remainder is part of the key: a retry that finds the same remainder
+	// The amount is part of the key: a retry that finds the same remainder
 	// is the same request, and one that finds a refund made in between asks
-	// for less, which PAY.JP would refuse under a key it has seen.
-	idempotencyKey := req.IdempotencyKey + ":" + strconv.Itoa(remaining)
-	body := payjpv2.PaymentRefundCreateRequest{PaymentFlowId: req.PaymentID, Amount: &remaining}
+	// for less, which PAY.JP would refuse under a key it has seen. An amount
+	// staff named stays the same however much a retry finds left, so its
+	// retry is the same request even after the first has gone through, and
+	// one above what is left is PAY.JP's to refuse.
+	amount := remaining
+	if req.Amount > 0 {
+		amount = int(req.Amount)
+	}
+	idempotencyKey := req.IdempotencyKey + ":" + strconv.Itoa(amount)
+	body := payjpv2.PaymentRefundCreateRequest{PaymentFlowId: req.PaymentID, Amount: &amount}
 	created, err := payjpv2.Extract(client.CreatePaymentRefundWithResponse(ctx, body, payjpv2.WithIdempotencyKey(idempotencyKey)))
 	if err != nil {
 		return false, refundError("payment refund", err)

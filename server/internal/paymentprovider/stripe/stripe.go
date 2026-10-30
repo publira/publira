@@ -258,6 +258,9 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 		return false, err
 	}
 	params := &stripego.RefundCreateParams{PaymentIntent: stripego.String(req.PaymentID)}
+	if req.Amount > 0 {
+		params.Amount = stripego.Int64(req.Amount)
+	}
 	params.SetIdempotencyKey(req.IdempotencyKey)
 	refund, err := client.V1Refunds.Create(ctx, params)
 	if err == nil {

@@ -284,6 +284,9 @@ type RefundRequest struct {
 	// IdempotencyKey is the same for every attempt to refund the same
 	// purchase, so that a retried request refunds nothing twice.
 	IdempotencyKey string
+	// Amount is what to refund, in the minor unit of the payment's currency,
+	// or zero for whatever of the payment has not been refunded yet.
+	Amount int64
 }
 
 // Event is what a notification means to the purchase flow: one of
@@ -403,8 +406,9 @@ type Provider interface {
 	// answers [ErrInvalidSignature] for a notification that does not verify
 	// and [ErrMalformedNotification] for one that verifies but cannot be read.
 	ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials Credentials) (Event, error)
-	// Refund returns to the reader whatever of a payment has not been refunded
-	// yet, and reports whether it refunded anything. A payment already
+	// Refund returns to the reader req.Amount of a payment, or whatever of it
+	// has not been refunded yet when that is zero, and reports whether it
+	// refunded anything. An amount above what is left is [ErrRefundRefused]. A payment already
 	// refunded in full, in the provider's dashboard or by an earlier request,
 	// is false and no error, so a request made again succeeds without
 	// refunding anything; one the provider answers from its idempotency key

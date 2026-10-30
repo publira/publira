@@ -431,6 +431,10 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')::uuid
 -- delivery of the same refund leaves the instant already stored. The same
 -- moment revokes the purchase, unless something revoked it first, whose reason
 -- it keeps.
+--
+-- A total reaching what a refund in part staff asked for brings the purchase
+-- to answers that request: it stops waiting, and the purchase moves on to
+-- staff's next attempt, whose key the provider has not answered yet.
 WITH refund AS (
     SELECT p.id,
         GREATEST(
@@ -460,6 +464,14 @@ SET refunded_amount = refund.amount,
     revocation_reason = CASE
         WHEN refund.amount >= p.price_at_purchase THEN COALESCE(p.revocation_reason, 'refund')
         ELSE p.revocation_reason
+    END,
+    staff_refund_requested_total = CASE
+        WHEN refund.amount >= p.staff_refund_requested_total THEN NULL
+        ELSE p.staff_refund_requested_total
+    END,
+    staff_refund_attempt = p.staff_refund_attempt + CASE
+        WHEN refund.amount >= p.staff_refund_requested_total THEN 1
+        ELSE 0
     END
 FROM refund
 WHERE p.id = refund.id
@@ -966,7 +978,8 @@ SELECT p.id,
     p.refunded_at,
     p.revoked_at,
     p.revocation_reason,
-    p.staff_refund_attempt
+    p.staff_refund_attempt,
+    p.staff_refund_requested_total
 FROM purchases p
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
@@ -993,9 +1006,10 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- so that whatever the provider reports about the refund lands on a purchase
 -- already revoked. It answers no row when there is nothing for this call to
 -- change: staff revoked it already, which a second request racing the first
--- finds once that one commits, or the reader's dispute revoked it first, which
--- the dispute keeps. A refund recorded first gives way to staff while its
--- instant stays.
+-- finds once that one commits, the reader's dispute revoked it first, which
+-- the dispute keeps, or a refund in part staff asked for is waiting for the
+-- provider, whose idempotency key this refund would be sent under. A refund
+-- recorded first gives way to staff while its instant stays.
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),
     revocation_reason = 'staff'
@@ -1003,4 +1017,38 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
     AND revocation_reason IS DISTINCT FROM 'staff'
     AND revocation_reason IS DISTINCT FROM 'dispute'
+    AND staff_refund_requested_total IS NULL
+RETURNING id;
+
+-- name: RequestStaffRefundInPart :one
+-- Marks a refund in part of amount as asked of the provider, before it is
+-- asked, recording the refunded total it brings the purchase to, and answers
+-- the attempt the request belongs to. The purchase keeps opening its episode.
+-- It answers no row when there is nothing for this call to mark: a refund in
+-- part is waiting already, which a second request racing the first finds once
+-- that one commits, something revoked the purchase, or the amount no longer
+-- leaves part of the price unrefunded.
+UPDATE purchases
+SET staff_refund_requested_total = COALESCE(refunded_amount, 0) + sqlc.arg('amount')::integer
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND staff_refund_requested_total IS NULL
+    AND revocation_reason IS NULL
+    AND refunded_at IS NULL
+    AND COALESCE(refunded_amount, 0) + sqlc.arg('amount')::integer < price_at_purchase
+RETURNING staff_refund_attempt;
+
+-- name: ClearStaffRefundInPart :one
+-- Takes back the mark RequestStaffRefundInPart made when the refund it was
+-- made for did not happen, and moves the purchase on to staff's next attempt
+-- when next_attempt is set: the provider refused or failed the refund, and
+-- under the same idempotency key would only answer that again. A mark the
+-- provider's notification has cleared since, or another request's, is left
+-- alone.
+UPDATE purchases
+SET staff_refund_requested_total = NULL,
+    staff_refund_attempt = staff_refund_attempt + CASE WHEN sqlc.arg('next_attempt')::boolean THEN 1 ELSE 0 END
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND staff_refund_requested_total = sqlc.arg('requested_total')::integer
 RETURNING id;

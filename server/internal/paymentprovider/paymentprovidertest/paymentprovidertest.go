@@ -444,6 +444,38 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a refund of an amount returns that much once however often it is asked for", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_amount_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, credentials, paid)
+		key := "refund_contract_amount_" + strings.ToLower(currency)
+		refund := func(key string, amount, want int64) {
+			t.Helper()
+			refunded, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: amount})
+			if err != nil {
+				t.Fatalf("Refund of %d with key %q: %v", amount, key, err)
+			}
+			if !refunded {
+				t.Fatalf("the refund of %d with key %q reports refunding nothing", amount, key)
+			}
+			if got := fixture.RefundedTotal(t, credentials, paid.PaymentID); got != want {
+				t.Fatalf("refunded total after %d with key %q = %d, want %d", amount, key, got, want)
+			}
+		}
+		refund(key, 300, 300)
+		refund(key, 300, 300)
+		// The next attempt is another key, which refunds again, as far as the
+		// price and no further.
+		refund(key+"_next", 100, 400)
+		_, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key + "_over", Amount: int64(paid.Purchase.Price)})
+		if !errors.Is(err, paymentprovider.ErrRefundRefused) {
+			t.Fatalf("Refund of more than is left: error = %v, want ErrRefundRefused", err)
+		}
+		if got := fixture.RefundedTotal(t, credentials, paid.PaymentID); got != 400 {
+			t.Fatalf("refunded total after a refund of more than is left = %d, want 400", got)
+		}
+	})
+
 	t.Run("a refund the provider answers as failed is refused", func(t *testing.T) {
 		paid := checkout
 		paid.PaymentID = "payment_refund_failed_" + strings.ToLower(currency)
