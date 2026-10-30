@@ -168,7 +168,7 @@ Webアプリは、リクエストの送信先のホストからテナントを�
 
 ## レート制限
 
-`publira server`は匿名の閲覧を制限しないので、公開API、検索、画像は、前段のマネージドのWAFやCDN、またはリバースプロキシ自身で、クライアントごとに制限する必要があります。Webhookとヘルスチェックは制限しません。何をどれだけ制限するか、AWS WAF、Cloud Armor、Cloudflareのルールでどう書くかは、[レート制限とWAF](../../3-operations/12-security/4-rate-limits.md)で説明します。
+`publira server`は作品の閲覧を制限しません。そのため公開APIと検索と画像へのリクエストは、クライアントごとに制限する必要があります。制限をかけるのは、前段のマネージドのWAFやCDNか、リバースプロキシです。Webhookとヘルスチェックは制限しません。制限の対象と値や、AWS WAFとCloud ArmorとCloudflareでのルールの作り方は、[レート制限とWAF](../../3-operations/12-security/4-rate-limits.md)を参照してください。
 
 ## このセクションの内容
 
