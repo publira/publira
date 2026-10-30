@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -266,6 +267,67 @@ func TestDBConfirmStoreSubscriptionRecordsTheAppStoresStateNow(t *testing.T) {
 	}
 	if got := env.entitlementSource(t, env.token, publirattypesv1.ClientSurface_CLIENT_SURFACE_APP); got != publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_UNSPECIFIED {
 		t.Fatalf("the episode after expiry is opened by %v, want nothing", got)
+	}
+}
+
+// The store is asked about a subscription only under its lock, so of two
+// confirmations that overlap, the one that writes last is the one that asked
+// last: a confirmation held up inside the App Store's answer that it is active
+// does not write that over the revocation a later one read and recorded.
+func TestDBConfirmStoreSubscriptionNeverWritesAnOlderAnswerOverANewerOne(t *testing.T) {
+	t.Parallel()
+
+	env := newStoreSubscriptionEnv(t)
+	intent := env.mustStartSubscription(t, env.token, publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE)
+	transaction := env.putAppStoreSubscription("2000000500000008", intent, appstore.SubscriptionStatusActive, time.Now().Add(30*24*time.Hour))
+
+	answering := make(chan struct{})
+	release := make(chan struct{})
+	// Only the first answer is held; a sync.Once would hold every later one
+	// until the first returned.
+	var held atomic.Bool
+	env.appStore.mu.Lock()
+	env.appStore.answeringStatuses = func() {
+		if held.CompareAndSwap(false, true) {
+			close(answering)
+			<-release
+		}
+	}
+	env.appStore.mu.Unlock()
+
+	// The first confirmation has read the subscription as active and is held
+	// before the answer reaches it.
+	first := make(chan error, 1)
+	go func() {
+		_, err := env.confirmAppStoreSubscription(t, env.token, transaction)
+		first <- err
+	}()
+	<-answering
+
+	// Apple revokes it, and a second confirmation asks after that.
+	env.appStore.mu.Lock()
+	revoked := env.appStore.subscriptions["2000000500000008"]
+	revoked.status = appstore.SubscriptionStatusRevoked
+	revoked.latest.RevocationDate = time.Now().Add(-time.Minute).UnixMilli()
+	env.appStore.subscriptions["2000000500000008"] = revoked
+	env.appStore.mu.Unlock()
+	second := make(chan error, 1)
+	go func() {
+		_, err := env.confirmAppStoreSubscription(t, env.token, transaction)
+		second <- err
+	}()
+	// Long enough for the second confirmation to have asked and recorded, had
+	// it not waited for the first.
+	time.Sleep(500 * time.Millisecond)
+	close(release)
+
+	for name, done := range map[string]chan error{"first": first, "second": second} {
+		if err := <-done; err != nil {
+			t.Fatalf("%s confirmation: %v", name, err)
+		}
+	}
+	if got := env.count(t, "SELECT count(*) FROM subscriptions WHERE tenant_id = $1 AND status = 'canceled'", env.tenant.ID); got != 1 || env.subscriptionRows(t) != 1 {
+		t.Fatalf("canceled subscriptions = %d of %d, want the revocation recorded on the one row", got, env.subscriptionRows(t))
 	}
 }
 
