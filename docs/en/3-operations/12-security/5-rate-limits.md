@@ -1,5 +1,5 @@
 ---
-title: Rate limits and a WAF
+title: Rate limits
 description: Which requests to limit per client in front of an install, which never to limit, and how to write the limits as AWS WAF, Cloud Armor, or Cloudflare rules, or in the proxy you run.
 published: 2026-10-30
 ---
@@ -23,11 +23,11 @@ The console hosts are left to the limits `publira server` keeps: their traffic i
 - **The webhooks** under `/api/v1/webhook/`, which [Webhooks](../../2-deployments/4-edge/index.md#webhooks) lists. A provider refused there retries, and a payment is recorded late, or a reader's reply never reaches the console.
 - **The health checks**, `GET /readyz` and `GET /livez`, which a load balancer or an orchestrator sends to each process. A health check refused for its rate takes a healthy process out of service.
 
-A bot challenge or a sign-in prompt in front of a path is a limit of its own: neither the mobile app nor a webhook provider can answer one, so keep both off the public API, the images, and the webhooks.
+A bot challenge or a sign-in prompt in front of a path refuses the mobile app and the webhook providers as well, as [Bot challenges](./4-waf.md#bot-challenges) describes.
 
 ## In a managed WAF or CDN
 
-An install on a cloud platform almost always has a managed load balancer or a CDN in front of it, and that is where the limit belongs. A managed WAF, such as AWS WAF on CloudFront or an Application Load Balancer, Cloud Armor on a Google Cloud load balancer, or Cloudflare's rate limiting rules, counts each reader by the address that connected to it and refuses a request before it reaches anything you run. With the paths above limited there, the proxy behind it needs no limits of its own. Remove them, or [trust the hop](../../2-deployments/4-edge/1-sample-configurations.md#a-hop-in-front-of-the-proxy) first: a proxy that does not trust the hop counts every reader as the hop's address, and refuses all of them together.
+An install on a cloud platform almost always has a managed load balancer or a CDN in front of it, and the [web application firewall](./4-waf.md) that comes with it is where the limit belongs. AWS WAF on CloudFront or an Application Load Balancer, Cloud Armor on a Google Cloud load balancer, and Cloudflare's rate limiting rules each count a reader by the address that connected to them and refuse a request before it reaches anything you run. With the paths above limited there, the proxy behind it needs no limits of its own. Remove them, or [trust the hop](../../2-deployments/4-edge/1-sample-configurations.md#a-hop-in-front-of-the-proxy) first: a proxy that does not trust the hop counts every reader as the hop's address, and refuses all of them together.
 
 A managed WAF counts a reader's requests over a window, such as 10 seconds or a minute, and refuses the rest of that window once the count is reached. Write one rule per row below, matching its paths on a tenant's domain and image host, so that nothing else is counted, the webhooks and the health checks included. The counts are the most the sample configurations admit from one client in that time:
 

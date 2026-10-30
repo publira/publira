@@ -26,6 +26,7 @@ Most of this work can be done from either the `publiractl` command line or the P
   - [Rotating secrets](./12-security/1-rotating-secrets.md): replacing the encryption keys, database passwords, signing keys, and tokens.
   - [Two-step verification](./12-security/2-two-step-verification.md): requiring it of tenant staff and of platform operators.
   - [Audit logs](./12-security/3-audit-logs.md): what the Platform Console's log and a tenant's log record, and what neither records.
-  - [Rate limits and a WAF](./12-security/4-rate-limits.md): which requests to limit per client in front of an install, and how to write the limits as WAF rules or in the proxy you run.
+  - [A web application firewall](./12-security/4-waf.md): the managed rules to turn on, and the exceptions Publira's uploads and webhooks need.
+  - [Rate limits](./12-security/5-rate-limits.md): which requests to limit per client in front of an install, and how to write the limits as WAF rules or in the proxy you run.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.
