@@ -379,5 +379,19 @@ func (s *adminServer) ListTenantStoreProducts(
 			CoinPack:  coinPackToProto(pack, currency),
 		})
 	}
-	return &publiraadminv1.ListTenantStoreProductsResponse{Products: products}, nil
+	// Every plan is listed, the ones the app does not sell yet included, so
+	// the console can show which still name no store product.
+	planRows, err := s.queriesFor(ctx).ListSubscriptionPlansForTenant(ctx, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list subscription plans", err, "tenant_id", tenant.ID.String())
+	}
+	plans := make([]dbmodels.GetSubscriptionPlanByIDForTenantRow, 0, len(planRows))
+	for _, row := range planRows {
+		plans = append(plans, dbmodels.GetSubscriptionPlanByIDForTenantRow(row))
+	}
+	subscriptionPlans, err := s.subscriptionPlanMessages(ctx, tenant.ID, plans)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.ListTenantStoreProductsResponse{Products: products, SubscriptionPlans: subscriptionPlans}, nil
 }

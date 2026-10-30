@@ -7,6 +7,7 @@ package dbmodels
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,6 +78,11 @@ SELECT (
         FROM subscription_checkouts c
         WHERE c.tenant_id = $1
             AND c.plan_id = $2
+    )::int4 + (
+        SELECT COUNT(*)
+        FROM store_subscription_intents i
+        WHERE i.tenant_id = $1
+            AND i.plan_id = $2
     )::int4 AS subscription_count
 `
 
@@ -85,8 +91,9 @@ type CountSubscriptionsAndCheckoutsForPlanParams struct {
 	PlanID   uuid.UUID `json:"plan_id"`
 }
 
-// Every subscription the plan bills or billed, whatever its state, and every
-// reader whose latest checkout was of it.
+// Every subscription the plan bills or billed, whatever its state, every
+// reader whose latest checkout was of it, and every intent a reader opened to
+// subscribe to it through a store.
 func (q *Queries) CountSubscriptionsAndCheckoutsForPlan(ctx context.Context, arg CountSubscriptionsAndCheckoutsForPlanParams) (int32, error) {
 	row := q.db.QueryRowContext(ctx, CountSubscriptionsAndCheckoutsForPlan, arg.TenantID, arg.PlanID)
 	var subscription_count int32
@@ -102,6 +109,8 @@ INSERT INTO subscription_plans (
         name,
         description,
         stripe_price_id,
+        app_store_product_id,
+        google_play_product_id,
         price_amount,
         currency,
         recurring_interval,
@@ -121,25 +130,29 @@ VALUES (
         $9,
         $10,
         $11,
-        $12
+        $12,
+        $13,
+        $14
     )
 RETURNING id,
     public_id
 `
 
 type CreateSubscriptionPlanParams struct {
-	ID                     uuid.UUID `json:"id"`
-	TenantID               uuid.UUID `json:"tenant_id"`
-	PublicID               string    `json:"public_id"`
-	Name                   string    `json:"name"`
-	Description            string    `json:"description"`
-	StripePriceID          string    `json:"stripe_price_id"`
-	PriceAmount            int32     `json:"price_amount"`
-	Currency               string    `json:"currency"`
-	RecurringInterval      string    `json:"recurring_interval"`
-	RecurringIntervalCount int32     `json:"recurring_interval_count"`
-	Scope                  string    `json:"scope"`
-	IsPublished            bool      `json:"is_published"`
+	ID                     uuid.UUID      `json:"id"`
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	Description            string         `json:"description"`
+	StripePriceID          string         `json:"stripe_price_id"`
+	AppStoreProductID      sql.NullString `json:"app_store_product_id"`
+	GooglePlayProductID    sql.NullString `json:"google_play_product_id"`
+	PriceAmount            int32          `json:"price_amount"`
+	Currency               string         `json:"currency"`
+	RecurringInterval      string         `json:"recurring_interval"`
+	RecurringIntervalCount int32          `json:"recurring_interval_count"`
+	Scope                  string         `json:"scope"`
+	IsPublished            bool           `json:"is_published"`
 }
 
 type CreateSubscriptionPlanRow struct {
@@ -155,6 +168,8 @@ func (q *Queries) CreateSubscriptionPlan(ctx context.Context, arg CreateSubscrip
 		arg.Name,
 		arg.Description,
 		arg.StripePriceID,
+		arg.AppStoreProductID,
+		arg.GooglePlayProductID,
 		arg.PriceAmount,
 		arg.Currency,
 		arg.RecurringInterval,
@@ -244,6 +259,8 @@ SELECT id,
     name,
     description,
     stripe_price_id,
+    app_store_product_id,
+    google_play_product_id,
     price_amount,
     currency,
     recurring_interval,
@@ -262,16 +279,18 @@ type GetPublishedSubscriptionPlanByIDForTenantParams struct {
 }
 
 type GetPublishedSubscriptionPlanByIDForTenantRow struct {
-	ID                     uuid.UUID `json:"id"`
-	PublicID               string    `json:"public_id"`
-	Name                   string    `json:"name"`
-	Description            string    `json:"description"`
-	StripePriceID          string    `json:"stripe_price_id"`
-	PriceAmount            int32     `json:"price_amount"`
-	Currency               string    `json:"currency"`
-	RecurringInterval      string    `json:"recurring_interval"`
-	RecurringIntervalCount int32     `json:"recurring_interval_count"`
-	Scope                  string    `json:"scope"`
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	Description            string         `json:"description"`
+	StripePriceID          string         `json:"stripe_price_id"`
+	AppStoreProductID      sql.NullString `json:"app_store_product_id"`
+	GooglePlayProductID    sql.NullString `json:"google_play_product_id"`
+	PriceAmount            int32          `json:"price_amount"`
+	Currency               string         `json:"currency"`
+	RecurringInterval      string         `json:"recurring_interval"`
+	RecurringIntervalCount int32          `json:"recurring_interval_count"`
+	Scope                  string         `json:"scope"`
 }
 
 func (q *Queries) GetPublishedSubscriptionPlanByIDForTenant(ctx context.Context, arg GetPublishedSubscriptionPlanByIDForTenantParams) (GetPublishedSubscriptionPlanByIDForTenantRow, error) {
@@ -283,6 +302,8 @@ func (q *Queries) GetPublishedSubscriptionPlanByIDForTenant(ctx context.Context,
 		&i.Name,
 		&i.Description,
 		&i.StripePriceID,
+		&i.AppStoreProductID,
+		&i.GooglePlayProductID,
 		&i.PriceAmount,
 		&i.Currency,
 		&i.RecurringInterval,
@@ -298,6 +319,8 @@ SELECT sp.id,
     sp.name,
     sp.description,
     sp.stripe_price_id,
+    sp.app_store_product_id,
+    sp.google_play_product_id,
     sp.price_amount,
     sp.currency,
     sp.recurring_interval,
@@ -325,20 +348,22 @@ type GetSubscriptionPlanByIDForTenantParams struct {
 }
 
 type GetSubscriptionPlanByIDForTenantRow struct {
-	ID                     uuid.UUID `json:"id"`
-	PublicID               string    `json:"public_id"`
-	Name                   string    `json:"name"`
-	Description            string    `json:"description"`
-	StripePriceID          string    `json:"stripe_price_id"`
-	PriceAmount            int32     `json:"price_amount"`
-	Currency               string    `json:"currency"`
-	RecurringInterval      string    `json:"recurring_interval"`
-	RecurringIntervalCount int32     `json:"recurring_interval_count"`
-	Scope                  string    `json:"scope"`
-	IsPublished            bool      `json:"is_published"`
-	CreatedAt              time.Time `json:"created_at"`
-	UpdatedAt              time.Time `json:"updated_at"`
-	SubscriberCount        int32     `json:"subscriber_count"`
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	Description            string         `json:"description"`
+	StripePriceID          string         `json:"stripe_price_id"`
+	AppStoreProductID      sql.NullString `json:"app_store_product_id"`
+	GooglePlayProductID    sql.NullString `json:"google_play_product_id"`
+	PriceAmount            int32          `json:"price_amount"`
+	Currency               string         `json:"currency"`
+	RecurringInterval      string         `json:"recurring_interval"`
+	RecurringIntervalCount int32          `json:"recurring_interval_count"`
+	Scope                  string         `json:"scope"`
+	IsPublished            bool           `json:"is_published"`
+	CreatedAt              time.Time      `json:"created_at"`
+	UpdatedAt              time.Time      `json:"updated_at"`
+	SubscriberCount        int32          `json:"subscriber_count"`
 }
 
 func (q *Queries) GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error) {
@@ -350,6 +375,8 @@ func (q *Queries) GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetS
 		&i.Name,
 		&i.Description,
 		&i.StripePriceID,
+		&i.AppStoreProductID,
+		&i.GooglePlayProductID,
 		&i.PriceAmount,
 		&i.Currency,
 		&i.RecurringInterval,
@@ -369,7 +396,7 @@ WITH recorded AS (
         stripe_price_id
     FROM subscriptions
     WHERE tenant_id = $1
-        AND stripe_subscription_id = $3
+        AND stripe_subscription_id = $3::text
 ),
 anchor AS (
     SELECT plan_id,
@@ -432,6 +459,8 @@ SELECT id,
     public_id,
     name,
     description,
+    app_store_product_id,
+    google_play_product_id,
     price_amount,
     currency,
     recurring_interval,
@@ -445,15 +474,17 @@ ORDER BY created_at ASC,
 `
 
 type ListPublishedSubscriptionPlansForTenantRow struct {
-	ID                     uuid.UUID `json:"id"`
-	PublicID               string    `json:"public_id"`
-	Name                   string    `json:"name"`
-	Description            string    `json:"description"`
-	PriceAmount            int32     `json:"price_amount"`
-	Currency               string    `json:"currency"`
-	RecurringInterval      string    `json:"recurring_interval"`
-	RecurringIntervalCount int32     `json:"recurring_interval_count"`
-	Scope                  string    `json:"scope"`
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	Description            string         `json:"description"`
+	AppStoreProductID      sql.NullString `json:"app_store_product_id"`
+	GooglePlayProductID    sql.NullString `json:"google_play_product_id"`
+	PriceAmount            int32          `json:"price_amount"`
+	Currency               string         `json:"currency"`
+	RecurringInterval      string         `json:"recurring_interval"`
+	RecurringIntervalCount int32          `json:"recurring_interval_count"`
+	Scope                  string         `json:"scope"`
 }
 
 func (q *Queries) ListPublishedSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListPublishedSubscriptionPlansForTenantRow, error) {
@@ -470,6 +501,8 @@ func (q *Queries) ListPublishedSubscriptionPlansForTenant(ctx context.Context, t
 			&i.PublicID,
 			&i.Name,
 			&i.Description,
+			&i.AppStoreProductID,
+			&i.GooglePlayProductID,
 			&i.PriceAmount,
 			&i.Currency,
 			&i.RecurringInterval,
@@ -542,6 +575,8 @@ SELECT sp.id,
     sp.name,
     sp.description,
     sp.stripe_price_id,
+    sp.app_store_product_id,
+    sp.google_play_product_id,
     sp.price_amount,
     sp.currency,
     sp.recurring_interval,
@@ -564,20 +599,22 @@ ORDER BY sp.created_at ASC,
 `
 
 type ListSubscriptionPlansForTenantRow struct {
-	ID                     uuid.UUID `json:"id"`
-	PublicID               string    `json:"public_id"`
-	Name                   string    `json:"name"`
-	Description            string    `json:"description"`
-	StripePriceID          string    `json:"stripe_price_id"`
-	PriceAmount            int32     `json:"price_amount"`
-	Currency               string    `json:"currency"`
-	RecurringInterval      string    `json:"recurring_interval"`
-	RecurringIntervalCount int32     `json:"recurring_interval_count"`
-	Scope                  string    `json:"scope"`
-	IsPublished            bool      `json:"is_published"`
-	CreatedAt              time.Time `json:"created_at"`
-	UpdatedAt              time.Time `json:"updated_at"`
-	SubscriberCount        int32     `json:"subscriber_count"`
+	ID                     uuid.UUID      `json:"id"`
+	PublicID               string         `json:"public_id"`
+	Name                   string         `json:"name"`
+	Description            string         `json:"description"`
+	StripePriceID          string         `json:"stripe_price_id"`
+	AppStoreProductID      sql.NullString `json:"app_store_product_id"`
+	GooglePlayProductID    sql.NullString `json:"google_play_product_id"`
+	PriceAmount            int32          `json:"price_amount"`
+	Currency               string         `json:"currency"`
+	RecurringInterval      string         `json:"recurring_interval"`
+	RecurringIntervalCount int32          `json:"recurring_interval_count"`
+	Scope                  string         `json:"scope"`
+	IsPublished            bool           `json:"is_published"`
+	CreatedAt              time.Time      `json:"created_at"`
+	UpdatedAt              time.Time      `json:"updated_at"`
+	SubscriberCount        int32          `json:"subscriber_count"`
 }
 
 // Every plan of the tenant, in the order they were created, with how many
@@ -598,6 +635,8 @@ func (q *Queries) ListSubscriptionPlansForTenant(ctx context.Context, tenantID u
 			&i.Name,
 			&i.Description,
 			&i.StripePriceID,
+			&i.AppStoreProductID,
+			&i.GooglePlayProductID,
 			&i.PriceAmount,
 			&i.Currency,
 			&i.RecurringInterval,
@@ -644,29 +683,33 @@ UPDATE subscription_plans
 SET name = $1,
     description = $2,
     stripe_price_id = $3,
-    price_amount = $4,
-    currency = $5,
-    recurring_interval = $6,
-    recurring_interval_count = $7,
-    scope = $8,
-    is_published = $9,
+    app_store_product_id = $4,
+    google_play_product_id = $5,
+    price_amount = $6,
+    currency = $7,
+    recurring_interval = $8,
+    recurring_interval_count = $9,
+    scope = $10,
+    is_published = $11,
     updated_at = NOW()
-WHERE tenant_id = $10
-    AND id = $11
+WHERE tenant_id = $12
+    AND id = $13
 `
 
 type UpdateSubscriptionPlanParams struct {
-	Name                   string    `json:"name"`
-	Description            string    `json:"description"`
-	StripePriceID          string    `json:"stripe_price_id"`
-	PriceAmount            int32     `json:"price_amount"`
-	Currency               string    `json:"currency"`
-	RecurringInterval      string    `json:"recurring_interval"`
-	RecurringIntervalCount int32     `json:"recurring_interval_count"`
-	Scope                  string    `json:"scope"`
-	IsPublished            bool      `json:"is_published"`
-	TenantID               uuid.UUID `json:"tenant_id"`
-	ID                     uuid.UUID `json:"id"`
+	Name                   string         `json:"name"`
+	Description            string         `json:"description"`
+	StripePriceID          string         `json:"stripe_price_id"`
+	AppStoreProductID      sql.NullString `json:"app_store_product_id"`
+	GooglePlayProductID    sql.NullString `json:"google_play_product_id"`
+	PriceAmount            int32          `json:"price_amount"`
+	Currency               string         `json:"currency"`
+	RecurringInterval      string         `json:"recurring_interval"`
+	RecurringIntervalCount int32          `json:"recurring_interval_count"`
+	Scope                  string         `json:"scope"`
+	IsPublished            bool           `json:"is_published"`
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	ID                     uuid.UUID      `json:"id"`
 }
 
 func (q *Queries) UpdateSubscriptionPlan(ctx context.Context, arg UpdateSubscriptionPlanParams) (int64, error) {
@@ -674,6 +717,8 @@ func (q *Queries) UpdateSubscriptionPlan(ctx context.Context, arg UpdateSubscrip
 		arg.Name,
 		arg.Description,
 		arg.StripePriceID,
+		arg.AppStoreProductID,
+		arg.GooglePlayProductID,
 		arg.PriceAmount,
 		arg.Currency,
 		arg.RecurringInterval,

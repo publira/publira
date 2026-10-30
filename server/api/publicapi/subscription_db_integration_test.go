@@ -434,6 +434,30 @@ func TestDBStartSubscriptionCheckoutRefusesWhatItCannotSell(t *testing.T) {
 	}
 }
 
+// A reader who subscribed in the app holds a subscription a second one would
+// run beside, so the web checkout refuses them as it refuses a Stripe
+// subscriber, and asks Stripe for nothing. Stripe has never billed them
+// either, so they have no billing portal to open.
+func TestDBStartSubscriptionCheckoutRefusesAStoreSubscriber(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionFixture(t)
+	plan := f.pg.SeedSubscriptionPlan(t, f.tenant.ID, testutil.SubscriptionPlanSeed{Published: true, AppStoreProductID: "com.example.reader.monthly"})
+	f.pg.SeedSubscription(t, f.tenant.ID, f.reader.ID, plan.ID, testutil.SubscriptionSeed{Provider: "app_store", StoreProductID: "com.example.reader.monthly"})
+
+	_, err := f.subscriptions.StartSubscriptionCheckout(f.readerCtx(t), &publirav1.StartSubscriptionCheckoutRequest{Tenant: tenantContext(f.tenant), PlanId: plan.ID.String()})
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("StartSubscriptionCheckout of a store subscriber = %v, want already_exists", err)
+	}
+	if got := len(f.stripe.API.CheckoutSessions()); got != 0 {
+		t.Fatalf("checkout sessions = %d, want none", got)
+	}
+	_, err = f.subscriptions.CreateBillingPortalSession(f.readerCtx(t), &publirav1.CreateBillingPortalSessionRequest{Tenant: tenantContext(f.tenant)})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("CreateBillingPortalSession of a store subscriber = %v, want failed_precondition", err)
+	}
+}
+
 func TestDBCreateBillingPortalSessionRefusesAReaderWhoNeverSubscribed(t *testing.T) {
 	t.Parallel()
 

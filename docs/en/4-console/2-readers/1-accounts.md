@@ -2,7 +2,7 @@
 title: Reader accounts
 description: Find a reader's account, correct their date of birth, remove their icon, and suspend or delete the account.
 published: 2026-10-21
-updated: 2026-10-26
+updated: 2026-10-30
 ---
 
 **Readers** lists every account on the tenant's site, newest sign-up first, twenty to a page. That includes the staff, since a console account is also an account on the site: **Role** shows the highest role a member of the staff holds, and is empty for a reader. Only a Tenant admin sees it.
@@ -59,7 +59,7 @@ Whether readers may upload an icon, pick one of the tenant's own, or show none a
 | --- | --- |
 | Comments, and the reports they filed | Deleted |
 | Purchases | Kept without the buyer, so sales and royalties do not change |
-| Subscriptions to a plan | Canceled at once on the tenant's Stripe account, so the reader is not billed again. The period they already paid for is not refunded |
+| Subscriptions to a plan | Canceled at once on the tenant's Stripe account, so the reader is not billed again. The period they already paid for is not refunded. A subscription the reader bought in the app is billed by the App Store or Google Play, where only the reader can cancel it: it is kept without the subscriber, and the reader cancels it in the store |
 | Access tickets, follows, reading history, ratings, notifications, and linked Apple and Google sign-ins | Deleted |
 | Contact messages | Kept, shown as from **Guest** |
 | Roles on the staff | Removed |

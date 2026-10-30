@@ -36,6 +36,12 @@ const (
 	// SubscriptionServiceCreateBillingPortalSessionProcedure is the procedure name of the
 	// SubscriptionService's CreateBillingPortalSession RPC.
 	SubscriptionServiceCreateBillingPortalSessionProcedure = "/publira.v1.SubscriptionService/CreateBillingPortalSession"
+	// SubscriptionServiceStartStoreSubscriptionProcedure is the procedure name of the
+	// SubscriptionService's StartStoreSubscription RPC.
+	SubscriptionServiceStartStoreSubscriptionProcedure = "/publira.v1.SubscriptionService/StartStoreSubscription"
+	// SubscriptionServiceConfirmStoreSubscriptionProcedure is the procedure name of the
+	// SubscriptionService's ConfirmStoreSubscription RPC.
+	SubscriptionServiceConfirmStoreSubscriptionProcedure = "/publira.v1.SubscriptionService/ConfirmStoreSubscription"
 )
 
 var (
@@ -67,6 +73,20 @@ var (
 			Procedure:  SubscriptionServiceCreateBillingPortalSessionProcedure,
 		}
 	})
+	subscriptionServiceStartStoreSubscriptionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_subscription_proto.Services().ByName("SubscriptionService").Methods().ByName("StartStoreSubscription"),
+			Procedure:  SubscriptionServiceStartStoreSubscriptionProcedure,
+		}
+	})
+	subscriptionServiceConfirmStoreSubscriptionSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_subscription_proto.Services().ByName("SubscriptionService").Methods().ByName("ConfirmStoreSubscription"),
+			Procedure:  SubscriptionServiceConfirmStoreSubscriptionProcedure,
+		}
+	})
 )
 
 // SubscriptionServiceClient is a client for the publira.v1.SubscriptionService service.
@@ -75,6 +95,8 @@ type SubscriptionServiceClient interface {
 	StartSubscriptionCheckout(context.Context, *v1.StartSubscriptionCheckoutRequest) (*v1.StartSubscriptionCheckoutResponse, error)
 	GetMySubscription(context.Context, *v1.GetMySubscriptionRequest) (*v1.GetMySubscriptionResponse, error)
 	CreateBillingPortalSession(context.Context, *v1.CreateBillingPortalSessionRequest) (*v1.CreateBillingPortalSessionResponse, error)
+	StartStoreSubscription(context.Context, *v1.StartStoreSubscriptionRequest) (*v1.StartStoreSubscriptionResponse, error)
+	ConfirmStoreSubscription(context.Context, *v1.ConfirmStoreSubscriptionRequest) (*v1.ConfirmStoreSubscriptionResponse, error)
 }
 
 // NewSubscriptionServiceClient constructs a client for the publira.v1.SubscriptionService service.
@@ -89,6 +111,8 @@ type SubscriptionServiceHandler interface {
 	StartSubscriptionCheckout(context.Context, *v1.StartSubscriptionCheckoutRequest) (*v1.StartSubscriptionCheckoutResponse, error)
 	GetMySubscription(context.Context, *v1.GetMySubscriptionRequest) (*v1.GetMySubscriptionResponse, error)
 	CreateBillingPortalSession(context.Context, *v1.CreateBillingPortalSessionRequest) (*v1.CreateBillingPortalSessionResponse, error)
+	StartStoreSubscription(context.Context, *v1.StartStoreSubscriptionRequest) (*v1.StartStoreSubscriptionResponse, error)
+	ConfirmStoreSubscription(context.Context, *v1.ConfirmStoreSubscriptionRequest) (*v1.ConfirmStoreSubscriptionResponse, error)
 }
 
 // RegisterSubscriptionServiceHandler registers svc as the publira.v1.SubscriptionService
@@ -100,6 +124,8 @@ func RegisterSubscriptionServiceHandler(server *connect.Server, svc Subscription
 		connect.Method{Spec: subscriptionServiceStartSubscriptionCheckoutSpec(), Handler: adapter.startSubscriptionCheckout},
 		connect.Method{Spec: subscriptionServiceGetMySubscriptionSpec(), Handler: adapter.getMySubscription},
 		connect.Method{Spec: subscriptionServiceCreateBillingPortalSessionSpec(), Handler: adapter.createBillingPortalSession},
+		connect.Method{Spec: subscriptionServiceStartStoreSubscriptionSpec(), Handler: adapter.startStoreSubscription},
+		connect.Method{Spec: subscriptionServiceConfirmStoreSubscriptionSpec(), Handler: adapter.confirmStoreSubscription},
 	)
 }
 
@@ -120,6 +146,14 @@ func (UnimplementedSubscriptionServiceHandler) GetMySubscription(context.Context
 
 func (UnimplementedSubscriptionServiceHandler) CreateBillingPortalSession(context.Context, *v1.CreateBillingPortalSessionRequest) (*v1.CreateBillingPortalSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.SubscriptionService.CreateBillingPortalSession is not implemented")
+}
+
+func (UnimplementedSubscriptionServiceHandler) StartStoreSubscription(context.Context, *v1.StartStoreSubscriptionRequest) (*v1.StartStoreSubscriptionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.SubscriptionService.StartStoreSubscription is not implemented")
+}
+
+func (UnimplementedSubscriptionServiceHandler) ConfirmStoreSubscription(context.Context, *v1.ConfirmStoreSubscriptionRequest) (*v1.ConfirmStoreSubscriptionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.SubscriptionService.ConfirmStoreSubscription is not implemented")
 }
 
 type subscriptionServiceClient struct {
@@ -153,6 +187,22 @@ func (c *subscriptionServiceClient) GetMySubscription(ctx context.Context, req *
 func (c *subscriptionServiceClient) CreateBillingPortalSession(ctx context.Context, req *v1.CreateBillingPortalSessionRequest) (*v1.CreateBillingPortalSessionResponse, error) {
 	var res v1.CreateBillingPortalSessionResponse
 	if err := c.client.CallUnary(ctx, subscriptionServiceCreateBillingPortalSessionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *subscriptionServiceClient) StartStoreSubscription(ctx context.Context, req *v1.StartStoreSubscriptionRequest) (*v1.StartStoreSubscriptionResponse, error) {
+	var res v1.StartStoreSubscriptionResponse
+	if err := c.client.CallUnary(ctx, subscriptionServiceStartStoreSubscriptionSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *subscriptionServiceClient) ConfirmStoreSubscription(ctx context.Context, req *v1.ConfirmStoreSubscriptionRequest) (*v1.ConfirmStoreSubscriptionResponse, error) {
+	var res v1.ConfirmStoreSubscriptionResponse
+	if err := c.client.CallUnary(ctx, subscriptionServiceConfirmStoreSubscriptionSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -202,6 +252,30 @@ func (h subscriptionServiceHandler) createBillingPortalSession(ctx context.Conte
 		return err
 	}
 	res, err := h.svc.CreateBillingPortalSession(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h subscriptionServiceHandler) startStoreSubscription(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartStoreSubscriptionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartStoreSubscription(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h subscriptionServiceHandler) confirmStoreSubscription(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ConfirmStoreSubscriptionRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ConfirmStoreSubscription(ctx, &req)
 	if err != nil {
 		return err
 	}

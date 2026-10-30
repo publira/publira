@@ -24,7 +24,9 @@ const (
 
 // A subscription plan is a recurring Price on the tenant's Stripe account and
 // what a reader who pays it may read. The storefront lists the published ones
-// through publira.v1.SubscriptionService.ListSubscriptionPlans.
+// through publira.v1.SubscriptionService.ListSubscriptionPlans. The tenant's
+// app may sell the same plan as an auto-renewable subscription of its own in
+// the App Store and in Google Play, which the store bills instead of Stripe.
 type AdminSubscriptionPlan struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The plan's primary key, which every RPC below addresses it by.
@@ -55,8 +57,13 @@ type AdminSubscriptionPlan struct {
 	SubscriberCount int32  `protobuf:"varint,14,opt,name=subscriber_count,json=subscriberCount,proto3" json:"subscriber_count,omitempty"`
 	CreatedAt       string `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt       string `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The subscription the plan is sold as in the tenant's iOS app, as App Store
+	// Connect names it, and in its Android app, as the Play Console names it.
+	// Empty where the app does not sell the plan.
+	AppStoreProductId   string `protobuf:"bytes,17,opt,name=app_store_product_id,json=appStoreProductId,proto3" json:"app_store_product_id,omitempty"`
+	GooglePlayProductId string `protobuf:"bytes,18,opt,name=google_play_product_id,json=googlePlayProductId,proto3" json:"google_play_product_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AdminSubscriptionPlan) Reset() {
@@ -197,6 +204,20 @@ func (x *AdminSubscriptionPlan) GetCreatedAt() string {
 func (x *AdminSubscriptionPlan) GetUpdatedAt() string {
 	if x != nil {
 		return x.UpdatedAt
+	}
+	return ""
+}
+
+func (x *AdminSubscriptionPlan) GetAppStoreProductId() string {
+	if x != nil {
+		return x.AppStoreProductId
+	}
+	return ""
+}
+
+func (x *AdminSubscriptionPlan) GetGooglePlayProductId() string {
+	if x != nil {
+		return x.GooglePlayProductId
 	}
 	return ""
 }
@@ -403,17 +424,29 @@ func (x *GetSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
 // labels nor series; a SUBSCRIPTION_PLAN_SCOPE_LABEL plan names one to 100
 // labels of the tenant and no series, and a SUBSCRIPTION_PLAN_SCOPE_SERIES
 // plan one to 100 series and no labels. Anything else is invalid_argument.
+//
+// `app_store_product_id` and `google_play_product_id` are optional, and empty
+// sells the plan in neither app. Each is at most 100 characters: an App Store
+// product ID of letters, digits, underscores, and periods, and a Google Play
+// one of lowercase letters, digits, underscores, and periods, starting with a
+// letter or a digit. Anything else is invalid_argument on that field, and one
+// another plan of the tenant already names is already_exists on it. Neither is
+// checked with the store: the tenant creates the product there, at the price
+// and the billing period the store will bill, which this plan's Stripe Price
+// does not set.
 type SubscriptionPlanInput struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Name          string                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                   `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	StripePriceId string                   `protobuf:"bytes,3,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
-	Scope         v1.SubscriptionPlanScope `protobuf:"varint,4,opt,name=scope,proto3,enum=publira.types.v1.SubscriptionPlanScope" json:"scope,omitempty"`
-	LabelIds      []string                 `protobuf:"bytes,5,rep,name=label_ids,json=labelIds,proto3" json:"label_ids,omitempty"`
-	SeriesIds     []string                 `protobuf:"bytes,6,rep,name=series_ids,json=seriesIds,proto3" json:"series_ids,omitempty"`
-	Published     bool                     `protobuf:"varint,7,opt,name=published,proto3" json:"published,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState   `protogen:"open.v1"`
+	Name                string                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description         string                   `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	StripePriceId       string                   `protobuf:"bytes,3,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
+	Scope               v1.SubscriptionPlanScope `protobuf:"varint,4,opt,name=scope,proto3,enum=publira.types.v1.SubscriptionPlanScope" json:"scope,omitempty"`
+	LabelIds            []string                 `protobuf:"bytes,5,rep,name=label_ids,json=labelIds,proto3" json:"label_ids,omitempty"`
+	SeriesIds           []string                 `protobuf:"bytes,6,rep,name=series_ids,json=seriesIds,proto3" json:"series_ids,omitempty"`
+	Published           bool                     `protobuf:"varint,7,opt,name=published,proto3" json:"published,omitempty"`
+	AppStoreProductId   string                   `protobuf:"bytes,8,opt,name=app_store_product_id,json=appStoreProductId,proto3" json:"app_store_product_id,omitempty"`
+	GooglePlayProductId string                   `protobuf:"bytes,9,opt,name=google_play_product_id,json=googlePlayProductId,proto3" json:"google_play_product_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SubscriptionPlanInput) Reset() {
@@ -493,6 +526,20 @@ func (x *SubscriptionPlanInput) GetPublished() bool {
 		return x.Published
 	}
 	return false
+}
+
+func (x *SubscriptionPlanInput) GetAppStoreProductId() string {
+	if x != nil {
+		return x.AppStoreProductId
+	}
+	return ""
+}
+
+func (x *SubscriptionPlanInput) GetGooglePlayProductId() string {
+	if x != nil {
+		return x.GooglePlayProductId
+	}
+	return ""
 }
 
 // A tenant that already holds 20 plans is failed_precondition with the
@@ -594,9 +641,9 @@ func (x *CreateSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
 }
 
 // Replaces every field of the plan with `plan`. A subscription already started
-// keeps going whatever changes: a new Price does not move it, since Stripe
-// bills it at the Price it was started at, and a narrower scope applies to it
-// from then on.
+// keeps going whatever changes: a new Price or a new store product does not
+// move it, since Stripe or the store bills it at what it was started at, and a
+// narrower scope applies to it from then on.
 type UpdateSubscriptionPlanRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -704,8 +751,9 @@ func (x *UpdateSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
 // Removes a plan nobody has ever subscribed to. One a subscription names, in
 // whatever state, is failed_precondition with the ErrorInfo reason
 // SUBSCRIPTION_PLAN_IN_USE: the subscription is a record of what the reader
-// paid for. So is one a reader's latest checkout was of, which the reader may
-// still be paying. Unpublish such a plan instead.
+// paid for. So is one a reader's latest checkout was of, or one a reader asked
+// to subscribe to in the app, which the reader may still be paying. Unpublish
+// such a plan instead.
 type DeleteSubscriptionPlanRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Tenant             *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -798,7 +846,7 @@ var File_publira_admin_v1_subscription_plan_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\n" +
-	"(publira/admin/v1/subscription_plan.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xce\x04\n" +
+	"(publira/admin/v1/subscription_plan.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xb4\x05\n" +
 	"\x15AdminSubscriptionPlan\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
@@ -819,7 +867,9 @@ const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x0f \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x10 \x01(\tR\tupdatedAt\"W\n" +
+	"updated_at\x18\x10 \x01(\tR\tupdatedAt\x12/\n" +
+	"\x14app_store_product_id\x18\x11 \x01(\tR\x11appStoreProductId\x123\n" +
+	"\x16google_play_product_id\x18\x12 \x01(\tR\x13googlePlayProductId\"W\n" +
 	"\x1cListSubscriptionPlansRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"^\n" +
 	"\x1dListSubscriptionPlansResponse\x12=\n" +
@@ -828,7 +878,7 @@ const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
 	"\x14subscription_plan_id\x18\x02 \x01(\tR\x12subscriptionPlanId\"Z\n" +
 	"\x1bGetSubscriptionPlanResponse\x12;\n" +
-	"\x04plan\x18\x01 \x01(\v2'.publira.admin.v1.AdminSubscriptionPlanR\x04plan\"\x8e\x02\n" +
+	"\x04plan\x18\x01 \x01(\v2'.publira.admin.v1.AdminSubscriptionPlanR\x04plan\"\xf4\x02\n" +
 	"\x15SubscriptionPlanInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12&\n" +
@@ -837,7 +887,9 @@ const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\tlabel_ids\x18\x05 \x03(\tR\blabelIds\x12\x1d\n" +
 	"\n" +
 	"series_ids\x18\x06 \x03(\tR\tseriesIds\x12\x1c\n" +
-	"\tpublished\x18\a \x01(\bR\tpublished\"\x95\x01\n" +
+	"\tpublished\x18\a \x01(\bR\tpublished\x12/\n" +
+	"\x14app_store_product_id\x18\b \x01(\tR\x11appStoreProductId\x123\n" +
+	"\x16google_play_product_id\x18\t \x01(\tR\x13googlePlayProductId\"\x95\x01\n" +
 	"\x1dCreateSubscriptionPlanRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12;\n" +
 	"\x04plan\x18\x02 \x01(\v2'.publira.admin.v1.SubscriptionPlanInputR\x04plan\"]\n" +

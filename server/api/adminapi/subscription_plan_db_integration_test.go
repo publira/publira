@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect/v2"
@@ -291,10 +292,22 @@ func TestDBDeleteSubscriptionPlanKeepsAPlanSomeoneSubscribedTo(t *testing.T) {
 	); err != nil {
 		t.Fatalf("seed a checkout: %v", err)
 	}
+	inTheApp := f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{AppStoreProductID: "com.example.reader.monthly"})
+	if _, err := f.env.PG.DB.ExecContext(context.Background(),
+		"INSERT INTO store_subscription_intents (id, tenant_id, user_id, plan_id, product_id) VALUES ($1, $2, $3, $4, 'com.example.reader.monthly')",
+		uuid.Must(uuid.NewV7()), f.admin.Tenant.ID, reader.ID, inTheApp.ID,
+	); err != nil {
+		t.Fatalf("seed a store subscription intent: %v", err)
+	}
 	unused := f.env.PG.SeedSubscriptionPlan(t, f.admin.Tenant.ID, testutil.SubscriptionPlanSeed{})
 
-	// A reader's open checkout may still be paid, so its plan stays too.
-	for name, plan := range map[string]testutil.SubscriptionPlan{"a subscribed plan": subscribed, "a plan a reader is checking out": checkedOut} {
+	// A reader's open checkout may still be paid, so its plan stays too, and so
+	// does one a reader asked to subscribe to in the app.
+	for name, plan := range map[string]testutil.SubscriptionPlan{
+		"a subscribed plan":                    subscribed,
+		"a plan a reader is checking out":      checkedOut,
+		"a plan a reader is buying in the app": inTheApp,
+	} {
 		_, err := f.client().DeleteSubscriptionPlan(f.ctx(), &publiraadminv1.DeleteSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: plan.ID.String()})
 		if reason := errorInfoReason(t, err); connect.CodeOf(err) != connect.CodeFailedPrecondition || reason != rpcerrors.ReasonSubscriptionPlanInUse {
 			t.Fatalf("DeleteSubscriptionPlan of %s = %v (reason %q), want failed_precondition %s", name, err, reason, rpcerrors.ReasonSubscriptionPlanInUse)
@@ -303,8 +316,8 @@ func TestDBDeleteSubscriptionPlanKeepsAPlanSomeoneSubscribedTo(t *testing.T) {
 	if _, err := f.client().DeleteSubscriptionPlan(f.ctx(), &publiraadminv1.DeleteSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: unused.ID.String()}); err != nil {
 		t.Fatalf("DeleteSubscriptionPlan: %v", err)
 	}
-	if got := f.env.countRows(t, "SELECT count(*) FROM subscription_plans WHERE tenant_id = $1", f.admin.Tenant.ID); got != 2 {
-		t.Fatalf("plans = %d, want the two in use", got)
+	if got := f.env.countRows(t, "SELECT count(*) FROM subscription_plans WHERE tenant_id = $1", f.admin.Tenant.ID); got != 3 {
+		t.Fatalf("plans = %d, want the three in use", got)
 	}
 	if got := f.env.countRows(t,
 		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'subscription_plan_deleted' AND target_id = $2",
@@ -349,5 +362,81 @@ func TestDBSubscriptionPlanCountsTheReadersItBills(t *testing.T) {
 	}
 	if res.Plan.SubscriberCount != 3 {
 		t.Fatalf("subscriber count = %d, want 3", res.Plan.SubscriberCount)
+	}
+}
+
+// A plan names the products it is sold as in each app, which are its own:
+// another plan naming one is refused on that field, as is a product ID a
+// store would not take, and an empty one sells the plan in neither app.
+func TestDBSubscriptionPlanNamesTheStoreProductsItIsSoldAs(t *testing.T) {
+	t.Parallel()
+
+	f := newSubscriptionPlanFixture(t)
+	plan := f.labelPlan()
+	plan.AppStoreProductId = " com.example.reader.Monthly "
+	plan.GooglePlayProductId = "plan_monthly"
+	created := f.create(t, plan)
+	if created.AppStoreProductId != "com.example.reader.Monthly" || created.GooglePlayProductId != "plan_monthly" {
+		t.Fatalf("plan is sold as %q and %q, want both products", created.AppStoreProductId, created.GooglePlayProductId)
+	}
+
+	yearly := func(edit func(*publiraadminv1.SubscriptionPlanInput)) *publiraadminv1.SubscriptionPlanInput {
+		input := &publiraadminv1.SubscriptionPlanInput{
+			Name:          "Yearly",
+			StripePriceId: "price_yearly",
+			Scope:         publirattypesv1.SubscriptionPlanScope_SUBSCRIPTION_PLAN_SCOPE_ALL,
+		}
+		edit(input)
+		return input
+	}
+	for _, tc := range []struct {
+		name  string
+		edit  func(*publiraadminv1.SubscriptionPlanInput)
+		code  connect.Code
+		field string
+	}{
+		{"an App Store product another plan is sold as", func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = "com.example.reader.Monthly" }, connect.CodeAlreadyExists, "plan.app_store_product_id"},
+		{"a Google Play product another plan is sold as", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = "plan_monthly" }, connect.CodeAlreadyExists, "plan.google_play_product_id"},
+		{"an App Store product with a hyphen", func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = "com.example-reader.yearly" }, connect.CodeInvalidArgument, "plan.app_store_product_id"},
+		{"a Google Play product in capitals", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = "Plan_yearly" }, connect.CodeInvalidArgument, "plan.google_play_product_id"},
+		{"a Google Play product starting with a period", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = ".plan_yearly" }, connect.CodeInvalidArgument, "plan.google_play_product_id"},
+		{"a product ID past the limit", func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = strings.Repeat("a", 101) }, connect.CodeInvalidArgument, "plan.app_store_product_id"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.client().CreateSubscriptionPlan(f.ctx(), &publiraadminv1.CreateSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), Plan: yearly(tc.edit)})
+			if connect.CodeOf(err) != tc.code {
+				t.Fatalf("CreateSubscriptionPlan = %v, want %s", err, tc.code)
+			}
+			assertBadRequestField(t, err, tc.field)
+		})
+	}
+
+	// The same ID may name a product in each store, since the two stores keep
+	// apart products.
+	other := f.create(t, yearly(func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = "plan_monthly" }))
+	if other.AppStoreProductId != "plan_monthly" || other.GooglePlayProductId != "" {
+		t.Fatalf("yearly plan is sold as %q and %q, want the App Store product alone", other.AppStoreProductId, other.GooglePlayProductId)
+	}
+
+	plan.AppStoreProductId = ""
+	updated, err := f.client().UpdateSubscriptionPlan(f.ctx(), &publiraadminv1.UpdateSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: created.Id, Plan: plan})
+	if err != nil {
+		t.Fatalf("UpdateSubscriptionPlan: %v", err)
+	}
+	if updated.Plan.AppStoreProductId != "" || updated.Plan.GooglePlayProductId != "plan_monthly" {
+		t.Fatalf("updated plan is sold as %q and %q, want Google Play alone", updated.Plan.AppStoreProductId, updated.Plan.GooglePlayProductId)
+	}
+	if got := f.env.countRows(t, "SELECT count(*) FROM subscription_plans WHERE tenant_id = $1 AND app_store_product_id IS NULL", f.admin.Tenant.ID); got != 1 {
+		t.Fatalf("plans sold in no App Store product = %d, want the updated one", got)
+	}
+
+	products, err := f.env.paymentClient().ListTenantStoreProducts(f.ctx(), &publiraadminv1.ListTenantStoreProductsRequest{Tenant: f.admin.tenantContext()})
+	if err != nil {
+		t.Fatalf("ListTenantStoreProducts: %v", err)
+	}
+	if len(products.SubscriptionPlans) != 2 ||
+		products.SubscriptionPlans[0].Id != created.Id || products.SubscriptionPlans[0].GooglePlayProductId != "plan_monthly" ||
+		products.SubscriptionPlans[1].Id != other.Id || products.SubscriptionPlans[1].AppStoreProductId != "plan_monthly" {
+		t.Fatalf("ListTenantStoreProducts plans = %v, want both plans with their products in the order they were created", products.SubscriptionPlans)
 	}
 }

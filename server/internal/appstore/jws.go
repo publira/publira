@@ -31,8 +31,13 @@ const (
 	EnvironmentSandbox    = "Sandbox"
 )
 
-// TypeConsumable is the product type of an episode's price tier.
-const TypeConsumable = "Consumable"
+// Product types a transaction names: an episode's price tier and a pack of
+// coins are consumables, and a subscription plan is an auto-renewable
+// subscription.
+const (
+	TypeConsumable                = "Consumable"
+	TypeAutoRenewableSubscription = "Auto-Renewable Subscription"
+)
 
 var (
 	// ErrInvalidSignature reports a JWS whose signature or certificate chain
@@ -73,6 +78,10 @@ type Transaction struct {
 	// RevocationDate is when Apple refunded or revoked the transaction, in
 	// milliseconds since the epoch; zero while it stands.
 	RevocationDate int64 `json:"revocationDate"`
+	// ExpiresDate is when the period an auto-renewable subscription's
+	// transaction pays for ends, in milliseconds since the epoch; zero for any
+	// other product.
+	ExpiresDate int64 `json:"expiresDate"`
 }
 
 // Verifier checks the JWS payloads the App Store signs.
@@ -113,6 +122,44 @@ func (v *Verifier) VerifyTransaction(signed string) (Transaction, error) {
 		return Transaction{}, fmt.Errorf("%w: transaction names no transaction, bundle, or product", ErrMalformed)
 	}
 	return transaction, nil
+}
+
+// Auto-renew states a subscription's renewal info names.
+const (
+	AutoRenewOff = 0
+	AutoRenewOn  = 1
+)
+
+// RenewalInfo is the part of a JWSRenewalInfoDecodedPayload a subscription's
+// state is decided on: what the App Store will do when the period paid for
+// ends.
+type RenewalInfo struct {
+	OriginalTransactionID string `json:"originalTransactionId"`
+	ProductID             string `json:"productId"`
+	// AutoRenewStatus is [AutoRenewOff] once the reader has turned renewal
+	// off, which ends the subscription with the period paid for.
+	AutoRenewStatus int    `json:"autoRenewStatus"`
+	Environment     string `json:"environment"`
+	// GracePeriodExpiresDate is when the billing grace period of a renewal the
+	// App Store is retrying ends, in milliseconds since the epoch; zero outside
+	// one.
+	GracePeriodExpiresDate int64 `json:"gracePeriodExpiresDate"`
+}
+
+// VerifyRenewalInfo checks a JWSRenewalInfo and reads it.
+func (v *Verifier) VerifyRenewalInfo(signed string) (RenewalInfo, error) {
+	payload, err := v.verify(signed)
+	if err != nil {
+		return RenewalInfo{}, err
+	}
+	var renewal RenewalInfo
+	if err := json.Unmarshal(payload, &renewal); err != nil {
+		return RenewalInfo{}, fmt.Errorf("%w: %v", ErrMalformed, err)
+	}
+	if renewal.OriginalTransactionID == "" {
+		return RenewalInfo{}, fmt.Errorf("%w: renewal info names no subscription", ErrMalformed)
+	}
+	return renewal, nil
 }
 
 // Notification types the purchase flow acts on. A consumable's refund arrives

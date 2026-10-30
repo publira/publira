@@ -7,6 +7,8 @@ SELECT sp.id,
     sp.name,
     sp.description,
     sp.stripe_price_id,
+    sp.app_store_product_id,
+    sp.google_play_product_id,
     sp.price_amount,
     sp.currency,
     sp.recurring_interval,
@@ -33,6 +35,8 @@ SELECT sp.id,
     sp.name,
     sp.description,
     sp.stripe_price_id,
+    sp.app_store_product_id,
+    sp.google_play_product_id,
     sp.price_amount,
     sp.currency,
     sp.recurring_interval,
@@ -58,6 +62,8 @@ SELECT id,
     public_id,
     name,
     description,
+    app_store_product_id,
+    google_play_product_id,
     price_amount,
     currency,
     recurring_interval,
@@ -75,6 +81,8 @@ SELECT id,
     name,
     description,
     stripe_price_id,
+    app_store_product_id,
+    google_play_product_id,
     price_amount,
     currency,
     recurring_interval,
@@ -99,7 +107,7 @@ WITH recorded AS (
         stripe_price_id
     FROM subscriptions
     WHERE tenant_id = sqlc.arg('tenant_id')
-        AND stripe_subscription_id = sqlc.arg('stripe_subscription_id')
+        AND stripe_subscription_id = sqlc.arg('stripe_subscription_id')::text
 ),
 anchor AS (
     SELECT plan_id,
@@ -151,6 +159,8 @@ INSERT INTO subscription_plans (
         name,
         description,
         stripe_price_id,
+        app_store_product_id,
+        google_play_product_id,
         price_amount,
         currency,
         recurring_interval,
@@ -165,6 +175,8 @@ VALUES (
         sqlc.arg('name'),
         sqlc.arg('description'),
         sqlc.arg('stripe_price_id'),
+        sqlc.narg('app_store_product_id'),
+        sqlc.narg('google_play_product_id'),
         sqlc.arg('price_amount'),
         sqlc.arg('currency'),
         sqlc.arg('recurring_interval'),
@@ -180,6 +192,8 @@ UPDATE subscription_plans
 SET name = sqlc.arg('name'),
     description = sqlc.arg('description'),
     stripe_price_id = sqlc.arg('stripe_price_id'),
+    app_store_product_id = sqlc.narg('app_store_product_id'),
+    google_play_product_id = sqlc.narg('google_play_product_id'),
     price_amount = sqlc.arg('price_amount'),
     currency = sqlc.arg('currency'),
     recurring_interval = sqlc.arg('recurring_interval'),
@@ -196,8 +210,9 @@ WHERE tenant_id = $1
     AND id = $2;
 
 -- name: CountSubscriptionsAndCheckoutsForPlan :one
--- Every subscription the plan bills or billed, whatever its state, and every
--- reader whose latest checkout was of it.
+-- Every subscription the plan bills or billed, whatever its state, every
+-- reader whose latest checkout was of it, and every intent a reader opened to
+-- subscribe to it through a store.
 SELECT (
         SELECT COUNT(*)
         FROM subscriptions s
@@ -208,6 +223,11 @@ SELECT (
         FROM subscription_checkouts c
         WHERE c.tenant_id = sqlc.arg('tenant_id')
             AND c.plan_id = sqlc.arg('plan_id')
+    )::int4 + (
+        SELECT COUNT(*)
+        FROM store_subscription_intents i
+        WHERE i.tenant_id = sqlc.arg('tenant_id')
+            AND i.plan_id = sqlc.arg('plan_id')
     )::int4 AS subscription_count;
 
 -- name: ListSubscriptionPlanTargetsForTenant :many

@@ -187,8 +187,9 @@ export type PlatformPolicy = Message<"publira.platform.v1.PlatformPolicy"> & {
 
   /**
    * How often one reader may hand a store transaction to
-   * ConfirmStorePurchase, each of which the server verifies with the App Store
-   * or Google Play on the tenant's credentials and quota.
+   * ConfirmStorePurchase or ConfirmStoreSubscription, each of which the server
+   * verifies with the App Store or Google Play on the tenant's credentials and
+   * quota. The two RPCs share the one allowance.
    *
    * @generated from field: publira.platform.v1.MinuteDayLimit store_purchase_confirmation = 6;
    */

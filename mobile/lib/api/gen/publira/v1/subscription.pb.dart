@@ -21,7 +21,9 @@ import 'catalog.pb.dart' as $0;
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 /// A subscription plan the tenant has published: a recurring price on its
-/// Stripe account, and what a reader who pays it may read.
+/// Stripe account, and what a reader who pays it may read. The tenant's app may
+/// sell it through the App Store or Google Play instead, as the product named
+/// below.
 class SubscriptionPlan extends $pb.GeneratedMessage {
   factory SubscriptionPlan({
     $core.String? id,
@@ -37,6 +39,8 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? seriesIds,
     $core.Iterable<$0.PublishedLabel>? labels,
     $core.Iterable<$1.Series>? series,
+    $core.String? appStoreProductId,
+    $core.String? googlePlayProductId,
   }) {
     final result = SubscriptionPlan._();
     if (id != null) result.id = id;
@@ -52,6 +56,9 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
     if (seriesIds != null) result.seriesIds.addAll(seriesIds);
     if (labels != null) result.labels.addAll(labels);
     if (series != null) result.series.addAll(series);
+    if (appStoreProductId != null) result.appStoreProductId = appStoreProductId;
+    if (googlePlayProductId != null)
+      result.googlePlayProductId = googlePlayProductId;
     return result;
   }
 
@@ -85,6 +92,8 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
         subBuilder: $0.PublishedLabel.$_createMessage)
     ..pPM<$1.Series>(13, _omitFieldNames ? '' : 'series',
         subBuilder: $1.Series.$_createMessage)
+    ..aOS(14, _omitFieldNames ? '' : 'appStoreProductId')
+    ..aOS(15, _omitFieldNames ? '' : 'googlePlayProductId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -218,9 +227,33 @@ class SubscriptionPlan extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(13)
   $pb.PbList<$1.Series> get series => $_getList(12);
+
+  /// The auto-renewable subscription the plan is sold as in the tenant's iOS
+  /// app and in its Android app. Empty where the app does not sell the plan,
+  /// which StartStoreSubscription refuses for that store. The price and the
+  /// period the store bills are the store's, which the app reads from it
+  /// rather than from price_amount and interval.
+  @$pb.TagNumber(14)
+  $core.String get appStoreProductId => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set appStoreProductId($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasAppStoreProductId() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearAppStoreProductId() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.String get googlePlayProductId => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set googlePlayProductId($core.String value) => $_setString(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasGooglePlayProductId() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearGooglePlayProductId() => $_clearField(15);
 }
 
-/// A reader's subscription to one plan, as Stripe last reported it.
+/// A reader's subscription to one plan, as Stripe or the store that bills it
+/// last reported it.
 class Subscription extends $pb.GeneratedMessage {
   factory Subscription({
     $core.String? id,
@@ -229,6 +262,7 @@ class Subscription extends $pb.GeneratedMessage {
     $core.String? currentPeriodEnd,
     $core.bool? cancelAtPeriodEnd,
     $core.String? createdAt,
+    $0.InAppPurchaseStore? store,
   }) {
     final result = Subscription._();
     if (id != null) result.id = id;
@@ -237,6 +271,7 @@ class Subscription extends $pb.GeneratedMessage {
     if (currentPeriodEnd != null) result.currentPeriodEnd = currentPeriodEnd;
     if (cancelAtPeriodEnd != null) result.cancelAtPeriodEnd = cancelAtPeriodEnd;
     if (createdAt != null) result.createdAt = createdAt;
+    if (store != null) result.store = store;
     return result;
   }
 
@@ -261,6 +296,8 @@ class Subscription extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'currentPeriodEnd')
     ..aOB(5, _omitFieldNames ? '' : 'cancelAtPeriodEnd')
     ..aOS(6, _omitFieldNames ? '' : 'createdAt')
+    ..aE<$0.InAppPurchaseStore>(7, _omitFieldNames ? '' : 'store',
+        enumValues: $0.InAppPurchaseStore.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -317,7 +354,8 @@ class Subscription extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   void clearStatus() => $_clearField(3);
 
-  /// RFC 3339; the end of the period paid for. Empty when Stripe reported none.
+  /// RFC 3339; the end of the period paid for, or of the grace period a store
+  /// gives a past due subscription. Empty when Stripe reported none.
   @$pb.TagNumber(4)
   $core.String get currentPeriodEnd => $_getSZ(3);
   @$pb.TagNumber(4)
@@ -347,6 +385,18 @@ class Subscription extends $pb.GeneratedMessage {
   $core.bool hasCreatedAt() => $_has(5);
   @$pb.TagNumber(6)
   void clearCreatedAt() => $_clearField(6);
+
+  /// The store the reader subscribed through in the app, which is where they
+  /// change or cancel it. IN_APP_PURCHASE_STORE_UNSPECIFIED for a subscription
+  /// Stripe bills, which CreateBillingPortalSession manages.
+  @$pb.TagNumber(7)
+  $0.InAppPurchaseStore get store => $_getN(6);
+  @$pb.TagNumber(7)
+  set store($0.InAppPurchaseStore value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasStore() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearStore() => $_clearField(7);
 }
 
 class ListSubscriptionPlansRequest extends $pb.GeneratedMessage {
@@ -516,8 +566,8 @@ class ListSubscriptionPlansResponse extends $pb.GeneratedMessage {
 /// Signed-in readers only. A plan that is not published is not_found, and a
 /// tenant that takes no payments, or takes them through a provider that sells
 /// no subscriptions, is failed_precondition. A reader who already holds a
-/// subscription that is trialing, active, past due, unpaid, or paused is
-/// already_exists, and so is one who has paid a checkout whose subscription
+/// subscription that is trialing, active, past due, unpaid, or paused, whether
+/// Stripe or a store bills it, is already_exists, and so is one who has paid a checkout whose subscription
 /// Stripe has not reported as ended: one reader holds one subscription, and
 /// changing it is what CreateBillingPortalSession is for. Each call spends the
 /// reader's allowance for subscription checkouts, and a reader past it is
@@ -804,8 +854,9 @@ class GetMySubscriptionResponse extends $pb.GeneratedMessage {
 /// site. What the reader changes there reaches the server through Stripe's
 /// webhook.
 ///
-/// A reader who has never subscribed is failed_precondition, and so is a
-/// tenant that takes no payments through Stripe.
+/// A reader who has never subscribed through Stripe is failed_precondition, and
+/// so is a tenant that takes no payments through Stripe: a subscription a store
+/// bills is changed and canceled in that store.
 class CreateBillingPortalSessionRequest extends $pb.GeneratedMessage {
   factory CreateBillingPortalSessionRequest({
     $1.TenantContext? tenant,
@@ -937,6 +988,386 @@ class CreateBillingPortalSessionResponse extends $pb.GeneratedMessage {
   void clearUrl() => $_clearField(1);
 }
 
+/// Opens a subscription through the App Store's or Google Play's in-app
+/// purchase, for a tenant whose app sells through the store. The app subscribes
+/// to `product_id` with `intent_id` as the transaction's account token
+/// (`appAccountToken` on iOS, `obfuscatedAccountId` on Android), which is how
+/// ConfirmStoreSubscription learns whose subscription the transaction is.
+///
+/// Signed-in readers only. A plan that is not published is not_found. A tenant
+/// whose app does not sell through the store, a `store` that is not ready, and
+/// a plan that names no product in that store are failed_precondition. A reader
+/// who already holds a subscription that is trialing, active, past due, unpaid,
+/// or paused, whether Stripe or a store bills it, is already_exists. Asking
+/// again for the same plan answers the same intent.
+class StartStoreSubscriptionRequest extends $pb.GeneratedMessage {
+  factory StartStoreSubscriptionRequest({
+    $1.TenantContext? tenant,
+    $0.InAppPurchaseStore? store,
+    $core.String? planId,
+  }) {
+    final result = StartStoreSubscriptionRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (store != null) result.store = store;
+    if (planId != null) result.planId = planId;
+    return result;
+  }
+
+  StartStoreSubscriptionRequest._();
+
+  factory StartStoreSubscriptionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreSubscriptionRequest()..mergeFromBuffer(data, registry);
+  factory StartStoreSubscriptionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreSubscriptionRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartStoreSubscriptionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartStoreSubscriptionRequest.$_createMessage)
+    ..aOM<$1.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $1.TenantContext.$_createMessage)
+    ..aE<$0.InAppPurchaseStore>(2, _omitFieldNames ? '' : 'store',
+        enumValues: $0.InAppPurchaseStore.values)
+    ..aOS(3, _omitFieldNames ? '' : 'planId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreSubscriptionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreSubscriptionRequest copyWith(
+          void Function(StartStoreSubscriptionRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StartStoreSubscriptionRequest))
+          as StartStoreSubscriptionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartStoreSubscriptionRequest() / StartStoreSubscriptionRequest.new instead')
+  static StartStoreSubscriptionRequest create() =>
+      StartStoreSubscriptionRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartStoreSubscriptionRequest._();
+  @$core.override
+  StartStoreSubscriptionRequest createEmptyInstance() =>
+      StartStoreSubscriptionRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StartStoreSubscriptionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartStoreSubscriptionRequest>(
+          StartStoreSubscriptionRequest.$_createMessage);
+  static StartStoreSubscriptionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($1.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The store the app is about to subscribe through. Required.
+  @$pb.TagNumber(2)
+  $0.InAppPurchaseStore get store => $_getN(1);
+  @$pb.TagNumber(2)
+  set store($0.InAppPurchaseStore value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStore() => $_clearField(2);
+
+  /// The plan to subscribe to (SubscriptionPlan.id).
+  @$pb.TagNumber(3)
+  $core.String get planId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set planId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPlanId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPlanId() => $_clearField(3);
+}
+
+class StartStoreSubscriptionResponse extends $pb.GeneratedMessage {
+  factory StartStoreSubscriptionResponse({
+    $core.String? intentId,
+    $core.String? productId,
+  }) {
+    final result = StartStoreSubscriptionResponse._();
+    if (intentId != null) result.intentId = intentId;
+    if (productId != null) result.productId = productId;
+    return result;
+  }
+
+  StartStoreSubscriptionResponse._();
+
+  factory StartStoreSubscriptionResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreSubscriptionResponse()..mergeFromBuffer(data, registry);
+  factory StartStoreSubscriptionResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartStoreSubscriptionResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartStoreSubscriptionResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartStoreSubscriptionResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'intentId')
+    ..aOS(2, _omitFieldNames ? '' : 'productId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreSubscriptionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartStoreSubscriptionResponse copyWith(
+          void Function(StartStoreSubscriptionResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StartStoreSubscriptionResponse))
+          as StartStoreSubscriptionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartStoreSubscriptionResponse() / StartStoreSubscriptionResponse.new instead')
+  static StartStoreSubscriptionResponse create() =>
+      StartStoreSubscriptionResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartStoreSubscriptionResponse._();
+  @$core.override
+  StartStoreSubscriptionResponse createEmptyInstance() =>
+      StartStoreSubscriptionResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StartStoreSubscriptionResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartStoreSubscriptionResponse>(
+          StartStoreSubscriptionResponse.$_createMessage);
+  static StartStoreSubscriptionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get intentId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set intentId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasIntentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearIntentId() => $_clearField(1);
+
+  /// The plan's product in `store`: SubscriptionPlan.app_store_product_id or
+  /// google_play_product_id.
+  @$pb.TagNumber(2)
+  $core.String get productId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set productId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProductId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProductId() => $_clearField(2);
+}
+
+/// Hands a subscription the store charged to the server, which verifies it with
+/// the store and records it as the reader's subscription to the plan its
+/// product is sold as. It opens that plan's episodes as a Stripe subscription
+/// does, for as long as the store reports it active, in its grace period, or
+/// canceled before the end of the period paid for.
+///
+/// A subscription recorded already answers that subscription, as the store
+/// reports it now: confirming it again, as an app restoring its purchases
+/// does, records whatever the store has changed since. One recorded for
+/// another reader is permission_denied, and so is a transaction whose account
+/// token names another reader's intent: a restore moves nothing between
+/// accounts. Otherwise the account token has to name an open intent the caller
+/// opened, for the product the store bills, in the tenant's own app, and the
+/// product has to be one a plan of the tenant is sold as: anything else is
+/// invalid_argument and creates nothing, and an intent another subscription
+/// has already consumed is failed_precondition.
+///
+/// The store has charged by the time the app asks, so a subscription is
+/// recorded even for a reader who already holds another one. A store the
+/// server cannot reach is unavailable, and the app confirms again later. Each
+/// call spends the reader's allowance for store confirmations, the one
+/// PurchaseService.ConfirmStorePurchase spends, and a reader past it is
+/// resource_exhausted before the store is asked.
+class ConfirmStoreSubscriptionRequest extends $pb.GeneratedMessage {
+  factory ConfirmStoreSubscriptionRequest({
+    $1.TenantContext? tenant,
+    $0.InAppPurchaseStore? store,
+    $core.String? transaction,
+    $core.String? productId,
+  }) {
+    final result = ConfirmStoreSubscriptionRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (store != null) result.store = store;
+    if (transaction != null) result.transaction = transaction;
+    if (productId != null) result.productId = productId;
+    return result;
+  }
+
+  ConfirmStoreSubscriptionRequest._();
+
+  factory ConfirmStoreSubscriptionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmStoreSubscriptionRequest()..mergeFromBuffer(data, registry);
+  factory ConfirmStoreSubscriptionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmStoreSubscriptionRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ConfirmStoreSubscriptionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ConfirmStoreSubscriptionRequest.$_createMessage)
+    ..aOM<$1.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $1.TenantContext.$_createMessage)
+    ..aE<$0.InAppPurchaseStore>(2, _omitFieldNames ? '' : 'store',
+        enumValues: $0.InAppPurchaseStore.values)
+    ..aOS(3, _omitFieldNames ? '' : 'transaction')
+    ..aOS(4, _omitFieldNames ? '' : 'productId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmStoreSubscriptionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmStoreSubscriptionRequest copyWith(
+          void Function(ConfirmStoreSubscriptionRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ConfirmStoreSubscriptionRequest))
+          as ConfirmStoreSubscriptionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ConfirmStoreSubscriptionRequest() / ConfirmStoreSubscriptionRequest.new instead')
+  static ConfirmStoreSubscriptionRequest create() =>
+      ConfirmStoreSubscriptionRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ConfirmStoreSubscriptionRequest._();
+  @$core.override
+  ConfirmStoreSubscriptionRequest createEmptyInstance() =>
+      ConfirmStoreSubscriptionRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ConfirmStoreSubscriptionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ConfirmStoreSubscriptionRequest>(
+          ConfirmStoreSubscriptionRequest.$_createMessage);
+  static ConfirmStoreSubscriptionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $1.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($1.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $1.TenantContext ensureTenant() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $0.InAppPurchaseStore get store => $_getN(1);
+  @$pb.TagNumber(2)
+  set store($0.InAppPurchaseStore value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStore() => $_clearField(2);
+
+  /// IN_APP_PURCHASE_STORE_APP_STORE: the JWS signed transaction StoreKit 2
+  /// reports for any transaction of the subscription.
+  /// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the purchase token.
+  @$pb.TagNumber(3)
+  $core.String get transaction => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set transaction($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTransaction() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTransaction() => $_clearField(3);
+
+  /// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the subscription the token was bought
+  /// as. Unused for the App Store, whose signed transaction names its product.
+  @$pb.TagNumber(4)
+  $core.String get productId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set productId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasProductId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearProductId() => $_clearField(4);
+}
+
+class ConfirmStoreSubscriptionResponse extends $pb.GeneratedMessage {
+  factory ConfirmStoreSubscriptionResponse({
+    Subscription? subscription,
+  }) {
+    final result = ConfirmStoreSubscriptionResponse._();
+    if (subscription != null) result.subscription = subscription;
+    return result;
+  }
+
+  ConfirmStoreSubscriptionResponse._();
+
+  factory ConfirmStoreSubscriptionResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmStoreSubscriptionResponse()..mergeFromBuffer(data, registry);
+  factory ConfirmStoreSubscriptionResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConfirmStoreSubscriptionResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ConfirmStoreSubscriptionResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ConfirmStoreSubscriptionResponse.$_createMessage)
+    ..aOM<Subscription>(1, _omitFieldNames ? '' : 'subscription',
+        subBuilder: Subscription.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmStoreSubscriptionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConfirmStoreSubscriptionResponse copyWith(
+          void Function(ConfirmStoreSubscriptionResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ConfirmStoreSubscriptionResponse))
+          as ConfirmStoreSubscriptionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ConfirmStoreSubscriptionResponse() / ConfirmStoreSubscriptionResponse.new instead')
+  static ConfirmStoreSubscriptionResponse create() =>
+      ConfirmStoreSubscriptionResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ConfirmStoreSubscriptionResponse._();
+  @$core.override
+  ConfirmStoreSubscriptionResponse createEmptyInstance() =>
+      ConfirmStoreSubscriptionResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ConfirmStoreSubscriptionResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ConfirmStoreSubscriptionResponse>(
+          ConfirmStoreSubscriptionResponse.$_createMessage);
+  static ConfirmStoreSubscriptionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  Subscription get subscription => $_getN(0);
+  @$pb.TagNumber(1)
+  set subscription(Subscription value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSubscription() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSubscription() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Subscription ensureSubscription() => $_ensure(0);
+}
+
 class SubscriptionServiceApi {
   final $pb.RpcClient _client;
 
@@ -966,6 +1397,18 @@ class SubscriptionServiceApi {
           'CreateBillingPortalSession',
           request,
           CreateBillingPortalSessionResponse());
+  $async.Future<StartStoreSubscriptionResponse> startStoreSubscription(
+          $pb.ClientContext? ctx, StartStoreSubscriptionRequest request) =>
+      _client.invoke<StartStoreSubscriptionResponse>(ctx, 'SubscriptionService',
+          'StartStoreSubscription', request, StartStoreSubscriptionResponse());
+  $async.Future<ConfirmStoreSubscriptionResponse> confirmStoreSubscription(
+          $pb.ClientContext? ctx, ConfirmStoreSubscriptionRequest request) =>
+      _client.invoke<ConfirmStoreSubscriptionResponse>(
+          ctx,
+          'SubscriptionService',
+          'ConfirmStoreSubscription',
+          request,
+          ConfirmStoreSubscriptionResponse());
 }
 
 const $core.bool _omitFieldNames =
