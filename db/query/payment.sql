@@ -431,6 +431,11 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')::uuid
 -- delivery of the same refund leaves the instant already stored. The same
 -- moment revokes the purchase, unless something revoked it first, whose reason
 -- it keeps.
+--
+-- A refund in part staff asked for keeps waiting whatever total is recorded:
+-- the total counts every refund of the payment, one made in the provider's
+-- dashboard among them, so only SettleStaffRefundInPart, once the provider
+-- answers that the refund made under its key is on the payment, ends it.
 WITH refund AS (
     SELECT p.id,
         GREATEST(
@@ -492,6 +497,14 @@ RETURNING id;
 -- asked for, is lifted with it, so the reader keeps what they still pay for,
 -- and lifting staff's moves the purchase on to staff's next attempt, which a
 -- new request is sent under: the provider would answer the failed one again.
+-- A refund in part staff asked for that is waiting for the provider stops
+-- waiting for the same reason, and moves the purchase on to the next attempt,
+-- when the failed refund is that one: refund_key is the key the failed refund
+-- carries, and the waiting one carries the idempotency key of the purchase's
+-- current attempt, as paymentprovider.StaffRefundKey spells it. Any other
+-- failed refund, such as an earlier one whose notification arrives late or
+-- again, leaves it waiting, since a new attempt would send its amount under a
+-- new key while the provider may still make the one waiting.
 -- A total of nothing is still recorded as an amount rather than as no refund:
 -- royalty_uncarried_refunds reads a purchase with an amount, which is how a
 -- refund a closed statement already carried is carried back. A dispute keeps
@@ -520,7 +533,13 @@ SET refunded_amount = sqlc.arg('refunded_amount')::integer,
         WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
             AND p.revocation_reason = 'staff'
             AND p.dispute_lost_at IS NULL THEN 1
+        WHEN p.staff_refund_requested_amount IS NOT NULL
+            AND sqlc.arg('refund_key')::text = format('publira-purchase-refund-%s-%s', p.id, p.staff_refund_attempt) THEN 1
         ELSE 0
+    END,
+    staff_refund_requested_amount = CASE
+        WHEN sqlc.arg('refund_key')::text = format('publira-purchase-refund-%s-%s', p.id, p.staff_refund_attempt) THEN NULL
+        ELSE p.staff_refund_requested_amount
     END
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.provider = sqlc.arg('provider')::text
@@ -966,7 +985,8 @@ SELECT p.id,
     p.refunded_at,
     p.revoked_at,
     p.revocation_reason,
-    p.staff_refund_attempt
+    p.staff_refund_attempt,
+    p.staff_refund_requested_amount
 FROM purchases p
     LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
@@ -993,9 +1013,12 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- so that whatever the provider reports about the refund lands on a purchase
 -- already revoked. It answers no row when there is nothing for this call to
 -- change: staff revoked it already, which a second request racing the first
--- finds once that one commits, or the reader's dispute revoked it first, which
--- the dispute keeps. A refund recorded first gives way to staff while its
--- instant stays.
+-- finds once that one commits, the reader's dispute revoked it first, which
+-- the dispute keeps, or a refund in part staff asked for is waiting for the
+-- provider, whose idempotency key this refund would be sent under. A refund
+-- recorded first gives way to staff while its instant stays. It answers the
+-- attempt the refund is sent under, as it stands on the row rather than on an
+-- earlier read of it, which a refund in part settled since has moved on.
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),
     revocation_reason = 'staff'
@@ -1003,4 +1026,57 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
     AND revocation_reason IS DISTINCT FROM 'staff'
     AND revocation_reason IS DISTINCT FROM 'dispute'
+    AND staff_refund_requested_amount IS NULL
+RETURNING staff_refund_attempt;
+
+-- name: RequestStaffRefundInPart :one
+-- Marks a refund in part of amount as asked of the provider, before it is
+-- asked, and answers the attempt the request belongs to, whose idempotency key
+-- it is sent under. The purchase keeps opening its episode. It answers no row
+-- when there is nothing for this call to mark: a refund in part is waiting
+-- already, which a second request racing the first finds once that one
+-- commits, something revoked the purchase, or the amount no longer leaves part
+-- of the price unrefunded.
+UPDATE purchases
+SET staff_refund_requested_amount = sqlc.arg('amount')::integer
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND staff_refund_requested_amount IS NULL
+    AND revocation_reason IS NULL
+    AND refunded_at IS NULL
+    AND COALESCE(refunded_amount, 0) + sqlc.arg('amount')::integer < price_at_purchase
+RETURNING staff_refund_attempt;
+
+-- name: ClearStaffRefundInPart :one
+-- Takes back the mark RequestStaffRefundInPart made when the refund it was
+-- made for did not happen, and moves the purchase on to staff's next attempt
+-- when next_attempt is set: the provider refused or failed the refund, and
+-- under the same idempotency key would only answer that again. A mark the
+-- provider's notification has cleared since, or another request's, is left
+-- alone: the mark is the attempt's as well as the amount's, since a refused
+-- request's next attempt can ask for the same amount while a slower request of
+-- the refused one is still to hear the refusal.
+UPDATE purchases
+SET staff_refund_requested_amount = NULL,
+    staff_refund_attempt = staff_refund_attempt + CASE WHEN sqlc.arg('next_attempt')::boolean THEN 1 ELSE 0 END
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND staff_refund_attempt = sqlc.arg('attempt')::integer
+    AND staff_refund_requested_amount = sqlc.arg('requested_amount')::integer
+RETURNING id;
+
+-- name: SettleStaffRefundInPart :one
+-- Ends the wait of the refund in part staff asked for under attempt, once the
+-- provider has answered that the refund that attempt's key made is on the
+-- payment, and moves the purchase on to staff's next attempt, whose key the
+-- provider has not answered yet. The refunded amount is the notification's to
+-- record. It answers no row when the purchase has moved on from that attempt
+-- already, as a repeated notification finds it.
+UPDATE purchases
+SET staff_refund_requested_amount = NULL,
+    staff_refund_attempt = staff_refund_attempt + 1
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND staff_refund_attempt = sqlc.arg('attempt')::integer
+    AND staff_refund_requested_amount IS NOT NULL
 RETURNING id;

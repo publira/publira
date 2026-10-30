@@ -54,6 +54,16 @@ type refund struct {
 	id     string
 	amount int
 	status string
+	// metadata is the metadata the refund was created with.
+	metadata map[string]any
+}
+
+// metadataJSON answers the refund's metadata as the API carries it.
+func (r refund) metadataJSON() map[string]any {
+	if r.metadata == nil {
+		return map[string]any{}
+	}
+	return r.metadata
 }
 
 // CheckoutSession is one request the fake received to create a Checkout
@@ -112,6 +122,14 @@ func (a *API) AddRefund(secretKey, id string, amount int, status string) string 
 	flow := a.flow(secretKey, id)
 	flow.refunds = append(flow.refunds, refund{id: refundID, amount: amount, status: status})
 	return refundID
+}
+
+// ForgetIdempotencyKeys makes the fake forget the refund each idempotency key
+// under secretKey created, as PAY.JP forgets a key after a while.
+func (a *API) ForgetIdempotencyKeys(secretKey string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.idempotent, secretKey)
 }
 
 // FailNextRefund makes the next refund created on the payment flow id under
@@ -282,7 +300,7 @@ func (a *API) listRefunds(w http.ResponseWriter, r *http.Request) {
 			"reason":          "requested_by_customer",
 			"status":          refund.status,
 			"livemode":        false,
-			"metadata":        map[string]any{},
+			"metadata":        refund.metadataJSON(),
 			"created_at":      timestamp,
 			"updated_at":      timestamp,
 		})
@@ -300,8 +318,9 @@ func (a *API) listRefunds(w http.ResponseWriter, r *http.Request) {
 // key first created and refunds nothing more.
 func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		PaymentFlowID string `json:"payment_flow_id"`
-		Amount        *int   `json:"amount"`
+		PaymentFlowID string         `json:"payment_flow_id"`
+		Amount        *int           `json:"amount"`
+		Metadata      map[string]any `json:"metadata"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -333,7 +352,7 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 			flow.failNext = false
 			status = "failed"
 		}
-		created = refund{id: fmt.Sprintf("re_fake%04d", a.refunds), amount: amount, status: status}
+		created = refund{id: fmt.Sprintf("re_fake%04d", a.refunds), amount: amount, status: status, metadata: body.Metadata}
 		flow.refunds = append(flow.refunds, created)
 		if idempotencyKey != "" {
 			if a.idempotent[key] == nil {
@@ -355,7 +374,7 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 		"reason":          "requested_by_customer",
 		"status":          created.status,
 		"livemode":        false,
-		"metadata":        map[string]any{},
+		"metadata":        created.metadataJSON(),
 		"created_at":      timestamp,
 		"updated_at":      timestamp,
 	})
@@ -387,7 +406,7 @@ func (a *API) getRefund(w http.ResponseWriter, r *http.Request) {
 		"reason":          "requested_by_customer",
 		"status":          found.status,
 		"livemode":        false,
-		"metadata":        map[string]any{},
+		"metadata":        found.metadataJSON(),
 		"created_at":      timestamp,
 		"updated_at":      timestamp,
 	})
@@ -536,6 +555,10 @@ func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Creden
 
 func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) {
 	f.API.FailNextRefund(credentials[payjp.FieldSecretKey], paymentID)
+}
+
+func (f *Fixture) ForgetIdempotencyKeys(_ testing.TB, credentials paymentprovider.Credentials) {
+	f.API.ForgetIdempotencyKeys(credentials[payjp.FieldSecretKey])
 }
 
 func (f *Fixture) RefundFailed(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {

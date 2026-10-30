@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/purchase.proto.
  */
 export const file_publira_admin_v1_purchase: GenFile = /*@__PURE__*/
-  fileDesc("Ch9wdWJsaXJhL2FkbWluL3YxL3B1cmNoYXNlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIrIFCg1BZG1pblB1cmNoYXNlEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAUgASgJEhQKDHNlcmllc190aXRsZRgGIAEoCRIYChByZWFkZXJfcHVibGljX2lkGAcgASgJEhMKC3JlYWRlcl9uYW1lGAggASgJEhQKDHJlYWRlcl9lbWFpbBgJIAEoCRINCgVwcmljZRgKIAEoAxIQCghjdXJyZW5jeRgLIAEoCRIUCgxwdXJjaGFzZWRfYXQYDCABKAkSEgoKZXhwaXJlc19hdBgNIAEoCRIQCghwcm92aWRlchgOIAEoCRINCgVzdG9yZRgPIAEoCRIMCgR0ZXN0GBAgASgIEhcKD3JlZnVuZGVkX2Ftb3VudBgRIAEoAxITCgtyZWZ1bmRlZF9hdBgSIAEoCRISCgpyZXZva2VkX2F0GBMgASgJEkUKEXJldm9jYXRpb25fcmVhc29uGBQgASgOMioucHVibGlyYS5hZG1pbi52MS5QdXJjaGFzZVJldm9jYXRpb25SZWFzb24SEgoKcmVmdW5kYWJsZRgVIAEoCBIRCgl2b2x1bWVfaWQYFiABKAkSGAoQdm9sdW1lX3B1YmxpY19pZBgXIAEoCRIUCgx2b2x1bWVfdGl0bGUYGCABKAkSNQoNc2VyaWVzX2J1bmRsZRgZIAEoCzIeLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzQnVuZGxlEjYKCWNvaW5fcGFjaxgaIAEoCzIjLnB1YmxpcmEudHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2sSEQoJY29pbl9uYW1lGBsgASgJIt4BChRMaXN0UHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgFIAEoCRIUCgxyZWFkZXJfZW1haWwYBiABKAkSFgoOcHVyY2hhc2VkX2Zyb20YByABKAkSFAoMcHVyY2hhc2VkX3RvGAggASgJIncKFUxpc3RQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ+ChpMaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcmVhZGVyX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIn0KG0xpc3RSZWFkZXJQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJaChJHZXRQdXJjaGFzZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhMKC3B1cmNoYXNlX2lkGAIgASgJIkgKE0dldFB1cmNoYXNlUmVzcG9uc2USMQoIcHVyY2hhc2UYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2UibQoVUmVmdW5kUHVyY2hhc2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBITCgtwdXJjaGFzZV9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSwoWUmVmdW5kUHVyY2hhc2VSZXNwb25zZRIxCghwdXJjaGFzZRgBIAEoCzIfLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5QdXJjaGFzZSq7AQoYUHVyY2hhc2VSZXZvY2F0aW9uUmVhc29uEioKJlBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1VOU1BFQ0lGSUVEEAASJQohUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fUkVGVU5EEAESJgoiUFVSQ0hBU0VfUkVWT0NBVElPTl9SRUFTT05fRElTUFVURRACEiQKIFBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1NUQUZGEAMytQMKFEFkbWluUHVyY2hhc2VTZXJ2aWNlEmIKDUxpc3RQdXJjaGFzZXMSJi5wdWJsaXJhLmFkbWluLnYxLkxpc3RQdXJjaGFzZXNSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5MaXN0UHVyY2hhc2VzUmVzcG9uc2UiABJ0ChNMaXN0UmVhZGVyUHVyY2hhc2VzEiwucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlclB1cmNoYXNlc1Jlc3BvbnNlIgASXAoLR2V0UHVyY2hhc2USJC5wdWJsaXJhLmFkbWluLnYxLkdldFB1cmNoYXNlUmVxdWVzdBolLnB1YmxpcmEuYWRtaW4udjEuR2V0UHVyY2hhc2VSZXNwb25zZSIAEmUKDlJlZnVuZFB1cmNoYXNlEicucHVibGlyYS5hZG1pbi52MS5SZWZ1bmRQdXJjaGFzZVJlcXVlc3QaKC5wdWJsaXJhLmFkbWluLnYxLlJlZnVuZFB1cmNoYXNlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("Ch9wdWJsaXJhL2FkbWluL3YxL3B1cmNoYXNlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxItMFCg1BZG1pblB1cmNoYXNlEgoKAmlkGAEgASgJEhIKCmVwaXNvZGVfaWQYAiABKAkSGQoRZXBpc29kZV9wdWJsaWNfaWQYAyABKAkSFQoNZXBpc29kZV90aXRsZRgEIAEoCRIYChBzZXJpZXNfcHVibGljX2lkGAUgASgJEhQKDHNlcmllc190aXRsZRgGIAEoCRIYChByZWFkZXJfcHVibGljX2lkGAcgASgJEhMKC3JlYWRlcl9uYW1lGAggASgJEhQKDHJlYWRlcl9lbWFpbBgJIAEoCRINCgVwcmljZRgKIAEoAxIQCghjdXJyZW5jeRgLIAEoCRIUCgxwdXJjaGFzZWRfYXQYDCABKAkSEgoKZXhwaXJlc19hdBgNIAEoCRIQCghwcm92aWRlchgOIAEoCRINCgVzdG9yZRgPIAEoCRIMCgR0ZXN0GBAgASgIEhcKD3JlZnVuZGVkX2Ftb3VudBgRIAEoAxITCgtyZWZ1bmRlZF9hdBgSIAEoCRISCgpyZXZva2VkX2F0GBMgASgJEkUKEXJldm9jYXRpb25fcmVhc29uGBQgASgOMioucHVibGlyYS5hZG1pbi52MS5QdXJjaGFzZVJldm9jYXRpb25SZWFzb24SEgoKcmVmdW5kYWJsZRgVIAEoCBIRCgl2b2x1bWVfaWQYFiABKAkSGAoQdm9sdW1lX3B1YmxpY19pZBgXIAEoCRIUCgx2b2x1bWVfdGl0bGUYGCABKAkSNQoNc2VyaWVzX2J1bmRsZRgZIAEoCzIeLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzQnVuZGxlEjYKCWNvaW5fcGFjaxgaIAEoCzIjLnB1YmxpcmEudHlwZXMudjEuUHVyY2hhc2VkQ29pblBhY2sSEQoJY29pbl9uYW1lGBsgASgJEh8KF3JlZnVuZF9yZXF1ZXN0ZWRfYW1vdW50GBwgASgDIt4BChRMaXN0UHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YAyABKAkSGAoQc2VyaWVzX3B1YmxpY19pZBgEIAEoCRIZChFlcGlzb2RlX3B1YmxpY19pZBgFIAEoCRIUCgxyZWFkZXJfZW1haWwYBiABKAkSFgoOcHVyY2hhc2VkX2Zyb20YByABKAkSFAoMcHVyY2hhc2VkX3RvGAggASgJIncKFUxpc3RQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJ+ChpMaXN0UmVhZGVyUHVyY2hhc2VzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcmVhZGVyX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFEg0KBXRva2VuGAQgASgJIn0KG0xpc3RSZWFkZXJQdXJjaGFzZXNSZXNwb25zZRIyCglwdXJjaGFzZXMYASADKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2USFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSJaChJHZXRQdXJjaGFzZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhMKC3B1cmNoYXNlX2lkGAIgASgJIkgKE0dldFB1cmNoYXNlUmVzcG9uc2USMQoIcHVyY2hhc2UYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2UibQoVUmVmdW5kUHVyY2hhc2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBITCgtwdXJjaGFzZV9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiSwoWUmVmdW5kUHVyY2hhc2VSZXNwb25zZRIxCghwdXJjaGFzZRgBIAEoCzIfLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5QdXJjaGFzZSKDAQobUmVmdW5kUHVyY2hhc2VJblBhcnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBITCgtwdXJjaGFzZV9pZBgCIAEoCRIOCgZhbW91bnQYAyABKAMSDgoGcmVhc29uGAQgASgJIlEKHFJlZnVuZFB1cmNoYXNlSW5QYXJ0UmVzcG9uc2USMQoIcHVyY2hhc2UYASABKAsyHy5wdWJsaXJhLmFkbWluLnYxLkFkbWluUHVyY2hhc2UquwEKGFB1cmNoYXNlUmV2b2NhdGlvblJlYXNvbhIqCiZQVVJDSEFTRV9SRVZPQ0FUSU9OX1JFQVNPTl9VTlNQRUNJRklFRBAAEiUKIVBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX1JFRlVORBABEiYKIlBVUkNIQVNFX1JFVk9DQVRJT05fUkVBU09OX0RJU1BVVEUQAhIkCiBQVVJDSEFTRV9SRVZPQ0FUSU9OX1JFQVNPTl9TVEFGRhADMq4EChRBZG1pblB1cmNoYXNlU2VydmljZRJiCg1MaXN0UHVyY2hhc2VzEiYucHVibGlyYS5hZG1pbi52MS5MaXN0UHVyY2hhc2VzUmVxdWVzdBonLnB1YmxpcmEuYWRtaW4udjEuTGlzdFB1cmNoYXNlc1Jlc3BvbnNlIgASdAoTTGlzdFJlYWRlclB1cmNoYXNlcxIsLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlclB1cmNoYXNlc1JlcXVlc3QaLS5wdWJsaXJhLmFkbWluLnYxLkxpc3RSZWFkZXJQdXJjaGFzZXNSZXNwb25zZSIAElwKC0dldFB1cmNoYXNlEiQucHVibGlyYS5hZG1pbi52MS5HZXRQdXJjaGFzZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkdldFB1cmNoYXNlUmVzcG9uc2UiABJlCg5SZWZ1bmRQdXJjaGFzZRInLnB1YmxpcmEuYWRtaW4udjEuUmVmdW5kUHVyY2hhc2VSZXF1ZXN0GigucHVibGlyYS5hZG1pbi52MS5SZWZ1bmRQdXJjaGFzZVJlc3BvbnNlIgASdwoUUmVmdW5kUHVyY2hhc2VJblBhcnQSLS5wdWJsaXJhLmFkbWluLnYxLlJlZnVuZFB1cmNoYXNlSW5QYXJ0UmVxdWVzdBouLnB1YmxpcmEuYWRtaW4udjEuUmVmdW5kUHVyY2hhc2VJblBhcnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
 
 /**
  * A reader's purchase of one episode, of one volume, of the rest of a series,
@@ -169,7 +169,9 @@ export type AdminPurchase = Message<"publira.admin.v1.AdminPurchase"> & {
    * True when RefundPurchase would ask the provider for a refund: the reader
    * paid through the tenant's current, enabled payment provider, and the
    * purchase is neither refunded in full, revoked, nor disputed. A store
-   * purchase is refunded through the store and never here.
+   * purchase is refunded through the store and never here. While
+   * refund_requested_amount is set, only RefundPurchaseInPart for that amount
+   * asks.
    *
    * @generated from field: bool refundable = 21;
    */
@@ -211,6 +213,15 @@ export type AdminPurchase = Message<"publira.admin.v1.AdminPurchase"> & {
    * @generated from field: string coin_name = 27;
    */
   coinName: string;
+
+  /**
+   * What of a refund in part staff asked for through RefundPurchaseInPart the
+   * provider has yet to report, in the minor unit of currency. Zero while no
+   * such refund is waiting. The purchase keeps opening its episode meanwhile.
+   *
+   * @generated from field: int64 refund_requested_amount = 28;
+   */
+  refundRequestedAmount: bigint;
 };
 
 /**
@@ -483,6 +494,61 @@ export const RefundPurchaseResponseSchema: GenMessage<RefundPurchaseResponse> = 
   messageDesc(file_publira_admin_v1_purchase, 8);
 
 /**
+ * @generated from message publira.admin.v1.RefundPurchaseInPartRequest
+ */
+export type RefundPurchaseInPartRequest = Message<"publira.admin.v1.RefundPurchaseInPartRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string purchase_id = 2;
+   */
+  purchaseId: string;
+
+  /**
+   * Required. What to give back, in the minor unit of the purchase's
+   * currency: above zero, and at most what the provider has not reported
+   * refunded yet.
+   *
+   * @generated from field: int64 amount = 3;
+   */
+  amount: bigint;
+
+  /**
+   * Required, as on RefundPurchaseRequest.
+   *
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.RefundPurchaseInPartRequest.
+ * Use `create(RefundPurchaseInPartRequestSchema)` to create a new message.
+ */
+export const RefundPurchaseInPartRequestSchema: GenMessage<RefundPurchaseInPartRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_purchase, 9);
+
+/**
+ * @generated from message publira.admin.v1.RefundPurchaseInPartResponse
+ */
+export type RefundPurchaseInPartResponse = Message<"publira.admin.v1.RefundPurchaseInPartResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.AdminPurchase purchase = 1;
+   */
+  purchase?: AdminPurchase | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.RefundPurchaseInPartResponse.
+ * Use `create(RefundPurchaseInPartResponseSchema)` to create a new message.
+ */
+export const RefundPurchaseInPartResponseSchema: GenMessage<RefundPurchaseInPartResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_purchase, 10);
+
+/**
  * Why a purchase stopped opening its episode.
  *
  * @generated from enum publira.admin.v1.PurchaseRevocationReason
@@ -576,10 +642,10 @@ export const AdminPurchaseService: GenService<{
    * revoked already with no refund recorded yet is asked of the provider
    * again under the same idempotency key, which refunds nothing twice and
    * records nothing more. A store purchase, a purchase made without a
-   * payment, a disputed one, and one paid through a provider the tenant no
-   * longer has enabled are failed_precondition, as is a refund the provider
-   * refuses. An empty reason is invalid_argument with a field violation on
-   * reason.
+   * payment, a disputed one, one paid through a provider the tenant no longer
+   * has enabled, and one with a refund in part waiting for the provider are
+   * failed_precondition, as is a refund the provider refuses. An empty reason
+   * is invalid_argument with a field violation on reason.
    *
    * A purchase of a pack of coins is refunded the same way. Its coins are
    * taken back once the provider reports the refund in full rather than when
@@ -594,6 +660,36 @@ export const AdminPurchaseService: GenService<{
     methodKind: "unary";
     input: typeof RefundPurchaseRequestSchema;
     output: typeof RefundPurchaseResponseSchema;
+  },
+  /**
+   * Asks the provider the reader paid through to refund amount of the
+   * payment, and leaves the purchase opening its episode, as a refund in part
+   * the provider reports does. The purchase shows the amount as
+   * refund_requested_amount until the provider's notification of it arrives,
+   * which records it as refunded; a refund the provider refuses, or reports
+   * failed later, takes the request back, and asking again after that is a new
+   * attempt. An amount
+   * that is all the provider has not reported refunded yet is RefundPurchase.
+   * It is an RPC of its own rather than an amount on RefundPurchase because a
+   * server that predates it answers unimplemented, where one that predates the
+   * field would refund the whole payment.
+   *
+   * While the refund waits, asking again for the same amount is sent under
+   * the same idempotency key, which refunds nothing twice; another amount,
+   * and RefundPurchase, are failed_precondition until the provider has
+   * reported it. A purchase of a pack of coins is failed_precondition, as is
+   * every purchase RefundPurchase refuses with it. An amount of zero or less,
+   * or above what is left to refund, is invalid_argument with a field
+   * violation on amount, and an empty reason one on reason.
+   *
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminPurchaseService.RefundPurchaseInPart
+   */
+  refundPurchaseInPart: {
+    methodKind: "unary";
+    input: typeof RefundPurchaseInPartRequestSchema;
+    output: typeof RefundPurchaseInPartResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_admin_v1_purchase, 0);

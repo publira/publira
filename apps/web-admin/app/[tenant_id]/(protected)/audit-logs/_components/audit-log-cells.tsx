@@ -10,6 +10,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
+import { formatTenantAmount } from "#lib/price";
 import { getTenantRoleLabel } from "#lib/role-labels";
 
 /** An action on series or episodes. */
@@ -985,6 +986,37 @@ const announcementDeliveryLabel = (reason: string, t: AdminMessageAccessor) => {
 };
 
 /**
+ * The reason of a refund in part, which the server records as the amount in
+ * the minor unit of its currency ahead of staff's own reason.
+ */
+const PURCHASE_REFUND_IN_PART_RE =
+  /^amount=(?<amount>\d+) (?<currency>[A-Z]{3}); (?<reason>[\s\S]*)$/u;
+
+// The amount of a refund in part, beside staff's reason; a refund of the whole
+// records the reason alone.
+const purchaseRefundLabel = (
+  reason: string,
+  locale: Locale,
+  t: AdminMessageAccessor
+) => {
+  const groups = PURCHASE_REFUND_IN_PART_RE.exec(reason)?.groups;
+  if (
+    groups?.amount === undefined ||
+    groups.currency === undefined ||
+    groups.reason === undefined
+  ) {
+    return reason;
+  }
+  return t("admin.audit.reasons.purchase_refund_in_part", {
+    amount: formatTenantAmount(Number(groups.amount), {
+      currency: groups.currency,
+      locale,
+    }),
+    reason: groups.reason,
+  });
+};
+
+/**
  * The reason of an entry as the console shows it: the words for a value the
  * server records in a fixed form, and the reason as written otherwise.
  */
@@ -1000,6 +1032,10 @@ const auditReasonLabel = (
     }
     case "announcement_created": {
       return announcementDeliveryLabel(reason, t);
+    }
+    case "purchase_refund_requested":
+    case "purchase_refunded": {
+      return purchaseRefundLabel(reason, locale, t);
     }
     default: {
       return reason;

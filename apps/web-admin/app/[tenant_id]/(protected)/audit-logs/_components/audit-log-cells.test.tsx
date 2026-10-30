@@ -288,6 +288,37 @@ describe("AuditLogActionCell", () => {
     }
   );
 
+  it.each(["purchase_refund_requested", "purchase_refunded"])(
+    "names the amount of a refund in part beside its reason: %s",
+    async (action) => {
+      const cell = await renderActionCell(
+        "en",
+        action,
+        "purchase",
+        "PURCHASE001",
+        "amount=200 JPY; The reader missed a page."
+      );
+
+      expect(cell.textContent).toContain(
+        " / ¥200 of the price: The reader missed a page."
+      );
+    }
+  );
+
+  it("shows the reason of a refund of the whole as it was written", async () => {
+    const cell = await renderActionCell(
+      "en",
+      "purchase_refunded",
+      "purchase",
+      "PURCHASE001",
+      "The reader bought the episode twice."
+    );
+
+    expect(cell.textContent).toContain(
+      " / The reader bought the episode twice."
+    );
+  });
+
   it("falls back to the raw target type it has no name for", async () => {
     const cell = await renderActionCell(
       "en",

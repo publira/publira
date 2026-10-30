@@ -522,7 +522,8 @@
         "announcement_delivery": {
           "preferred": "Notified as each reader's settings allow",
           "everyone": "Notified to every reader"
-        }
+        },
+        "purchase_refund_in_part": "{$amount} of the price: {$reason}"
       }
     },
     "announcements": {

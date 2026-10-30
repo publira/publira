@@ -284,6 +284,9 @@ type RefundRequest struct {
 	// IdempotencyKey is the same for every attempt to refund the same
 	// purchase, so that a retried request refunds nothing twice.
 	IdempotencyKey string
+	// Amount is what to refund, in the minor unit of the payment's currency,
+	// or zero for whatever of the payment has not been refunded yet.
+	Amount int64
 }
 
 // Event is what a notification means to the purchase flow: one of
@@ -344,6 +347,9 @@ type RefundFailed struct {
 	AmountRefunded int64
 	// Currency is the ISO 4217 code of AmountRefunded, in capitals.
 	Currency string
+	// RefundKey is the idempotency key a refund of an amount was made under,
+	// which the failed refund carries, and empty for any other refund.
+	RefundKey string
 }
 
 // Disputed reports that the reader has disputed one payment with their bank.
@@ -403,8 +409,9 @@ type Provider interface {
 	// answers [ErrInvalidSignature] for a notification that does not verify
 	// and [ErrMalformedNotification] for one that verifies but cannot be read.
 	ParseNotification(ctx context.Context, payload []byte, headers http.Header, credentials Credentials) (Event, error)
-	// Refund returns to the reader whatever of a payment has not been refunded
-	// yet, and reports whether it refunded anything. A payment already
+	// Refund returns to the reader req.Amount of a payment, or whatever of it
+	// has not been refunded yet when that is zero, and reports whether it
+	// refunded anything. An amount above what is left is [ErrRefundRefused]. A payment already
 	// refunded in full, in the provider's dashboard or by an earlier request,
 	// is false and no error, so a request made again succeeds without
 	// refunding anything; one the provider answers from its idempotency key
@@ -414,4 +421,20 @@ type Provider interface {
 	// provider's [Refunded] notification, as a refund made in the provider's
 	// own dashboard does, and a refund that fails later as [RefundFailed].
 	Refund(ctx context.Context, credentials Credentials, req RefundRequest) (bool, error)
+	// RefundMade reports whether the refund of an amount made under
+	// refundKey, the idempotency key of the [RefundRequest] that asked for
+	// it, is on the payment and has not failed or been canceled. A
+	// notification reports the total of every refund of a payment, so this
+	// is what tells whether one of them is that refund.
+	RefundMade(ctx context.Context, credentials Credentials, paymentID, refundKey string) (bool, error)
+}
+
+// StaffRefundKey is the idempotency key every request of one attempt of
+// staff's to refund a purchase is sent under, so a provider refunds a purchase
+// once however many times staff ask, until the provider has made, refused, or
+// failed the refund and the purchase has moved on to its next attempt.
+// RecordFailedRefundOnPurchase spells it again, to tell the failure of the
+// refund in part a purchase waits for from that of any other refund.
+func StaffRefundKey(purchaseID uuid.UUID, attempt int32) string {
+	return fmt.Sprintf("publira-purchase-refund-%s-%d", purchaseID, attempt)
 }

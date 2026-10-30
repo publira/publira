@@ -59,6 +59,10 @@ const (
 	// two sales, which sold the permanent copy.
 	MetadataKind = "kind"
 
+	// MetadataRefundKey is the metadata key a refund of an amount carries the
+	// idempotency key it was requested under in.
+	MetadataRefundKey = "publira_refund_key"
+
 	// The notification types the purchase flow reads.
 	EventCheckoutSessionCompleted = "checkout.session.completed"
 	EventRefundCreated            = "refund.created"
@@ -329,6 +333,7 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 	// A refund the notification says failed is confirmed with the API, as
 	// everything else the notification says is, before it reopens anything.
 	failed := false
+	refundKey := ""
 	if refundFailed(payjpv2.PaymentRefundStatus(refund.Status)) {
 		client, err := p.client(credentials)
 		if err != nil {
@@ -342,11 +347,12 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 			return nil, errors.New("payjp returned no refund")
 		}
 		failed = res.Result.PaymentFlowId == refund.PaymentFlowID && refundFailed(res.Result.Status)
+		refundKey = refundKeyOf(*res.Result)
 	}
 
 	// A refund notification carries that refund's amount alone, and the
 	// purchase flow records the total refunded on the payment.
-	total, err := p.refundedTotal(ctx, credentials, refund.PaymentFlowID)
+	total, _, err := p.refundedTotal(ctx, credentials, refund.PaymentFlowID, "")
 	if err != nil {
 		return nil, apiError("payment flow refunds", err)
 	}
@@ -356,6 +362,7 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 			PaymentID:      refund.PaymentFlowID,
 			AmountRefunded: total,
 			Currency:       currency,
+			RefundKey:      refundKey,
 		}, nil
 	}
 	if total == 0 {
@@ -371,33 +378,58 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 	}, nil
 }
 
-// refundedTotal sums the refunds of a payment flow that have gone through.
-func (p *Provider) refundedTotal(ctx context.Context, credentials paymentprovider.Credentials, paymentFlowID string) (int64, error) {
+// refundedTotal answers what has been refunded on the payment flow, and the
+// refund of it that carries refundKey under MetadataRefundKey, or nil when
+// none does or refundKey is empty.
+func (p *Provider) refundedTotal(ctx context.Context, credentials paymentprovider.Credentials, paymentFlowID, refundKey string) (int64, *payjpv2.PaymentRefundResponse, error) {
 	client, err := p.client(credentials)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	var total int64
+	var made *payjpv2.PaymentRefundResponse
 	params := &payjpv2.GetPaymentFlowRefundsParams{Limit: new(refundPageSize)}
 	for {
 		res, err := payjpv2.Extract(client.GetPaymentFlowRefundsWithResponse(ctx, paymentFlowID, params))
 		if err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 		if res.Result == nil {
-			return 0, errors.New("payjp returned no refund list")
+			return 0, nil, errors.New("payjp returned no refund list")
 		}
 		for _, refund := range res.Result.Data {
 			if refund.Status == payjpv2.PaymentRefundStatusSucceeded {
 				total += int64(refund.Amount)
 			}
+			if refundKey != "" && made == nil && refundCarriesKey(refund, refundKey) {
+				made = &refund
+			}
 		}
 		if !res.Result.HasMore || len(res.Result.Data) == 0 {
-			return total, nil
+			return total, made, nil
 		}
 		last := res.Result.Data[len(res.Result.Data)-1].Id
 		params.StartingAfter = &last
 	}
+}
+
+// refundCarriesKey reports whether refund was made under refundKey.
+func refundCarriesKey(refund payjpv2.PaymentRefundResponse, refundKey string) bool {
+	return refundKeyOf(refund) == refundKey
+}
+
+// refundKeyOf answers the key refund carries under MetadataRefundKey, or an
+// empty one when it carries none.
+func refundKeyOf(refund payjpv2.PaymentRefundResponse) string {
+	value, ok := refund.Metadata[MetadataRefundKey]
+	if !ok {
+		return ""
+	}
+	key, err := value.AsPaymentRefundResponseMetadata0()
+	if err != nil {
+		return ""
+	}
+	return key
 }
 
 // Refund refunds what the payment flow has received and not yet refunded.
@@ -418,19 +450,43 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	if res.Result.AmountReceived == nil {
 		return false, fmt.Errorf("%w: the payment flow has received nothing", paymentprovider.ErrRefundRefused)
 	}
-	refunded, err := p.refundedTotal(ctx, credentials, req.PaymentID)
+	refunded, made, err := p.refundedTotal(ctx, credentials, req.PaymentID, refundKeyFor(req))
 	if err != nil {
 		return false, refundError("payment flow refunds", err)
+	}
+	// PAY.JP forgets an idempotency key in time. A refund of the rest sent
+	// again after that finds nothing left to refund, but an amount would be
+	// refunded a second time, so the refund the key made is looked up by the
+	// key it carries before one is made.
+	if made != nil {
+		if refundFailed(made.Status) {
+			return false, fmt.Errorf("%w: the refund is %s", paymentprovider.ErrRefundRefused, made.Status)
+		}
+		return true, nil
 	}
 	remaining := *res.Result.AmountReceived - int(refunded)
 	if remaining <= 0 {
 		return false, nil
 	}
-	// The remainder is part of the key: a retry that finds the same remainder
+	// The amount is part of the key: a retry that finds the same remainder
 	// is the same request, and one that finds a refund made in between asks
-	// for less, which PAY.JP would refuse under a key it has seen.
-	idempotencyKey := req.IdempotencyKey + ":" + strconv.Itoa(remaining)
-	body := payjpv2.PaymentRefundCreateRequest{PaymentFlowId: req.PaymentID, Amount: &remaining}
+	// for less, which PAY.JP would refuse under a key it has seen. An amount
+	// staff named stays the same however much a retry finds left, so its
+	// retry is the same request even after the first has gone through, and
+	// one above what is left is PAY.JP's to refuse.
+	amount := remaining
+	if req.Amount > 0 {
+		amount = int(req.Amount)
+	}
+	idempotencyKey := req.IdempotencyKey + ":" + strconv.Itoa(amount)
+	body := payjpv2.PaymentRefundCreateRequest{PaymentFlowId: req.PaymentID, Amount: &amount}
+	if key := refundKeyFor(req); key != "" {
+		var value payjpv2.PaymentRefundCreateRequest_Metadata_AdditionalProperties
+		if err := value.FromPaymentRefundCreateRequestMetadata0(key); err != nil {
+			return false, err
+		}
+		body.Metadata = &map[string]payjpv2.PaymentRefundCreateRequest_Metadata_AdditionalProperties{MetadataRefundKey: value}
+	}
 	created, err := payjpv2.Extract(client.CreatePaymentRefundWithResponse(ctx, body, payjpv2.WithIdempotencyKey(idempotencyKey)))
 	if err != nil {
 		return false, refundError("payment refund", err)
@@ -439,6 +495,24 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 		return false, fmt.Errorf("%w: the refund is %s", paymentprovider.ErrRefundRefused, created.Result.Status)
 	}
 	return true, nil
+}
+
+func (p *Provider) RefundMade(ctx context.Context, credentials paymentprovider.Credentials, paymentID, refundKey string) (bool, error) {
+	_, made, err := p.refundedTotal(ctx, credentials, paymentID, refundKey)
+	if err != nil {
+		return false, fmt.Errorf("list payment flow refunds: %w", err)
+	}
+	return made != nil && !refundFailed(made.Status), nil
+}
+
+// refundKeyFor answers the key a refund of req carries under
+// MetadataRefundKey: its idempotency key for a refund of an amount, and none
+// for a refund of the rest.
+func refundKeyFor(req paymentprovider.RefundRequest) string {
+	if req.Amount > 0 {
+		return req.IdempotencyKey
+	}
+	return ""
 }
 
 // refundFailed reports a refund status that returns nothing to the reader.

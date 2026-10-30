@@ -37,14 +37,6 @@ const (
 	purchaseRevocationStaff   = "staff"
 )
 
-// purchaseRefundIdempotencyKey is the key every request of one attempt to
-// refund a purchase is sent under, so a provider refunds a purchase once
-// however many times staff ask, until the provider has refused or failed the
-// refund and the purchase has moved on to its next attempt.
-func purchaseRefundIdempotencyKey(purchaseID uuid.UUID, attempt int32) string {
-	return fmt.Sprintf("publira-purchase-refund-%s-%d", purchaseID, attempt)
-}
-
 func purchaseRevocationReasonToProto(reason sql.NullString) publiraadminv1.PurchaseRevocationReason {
 	switch reason.String {
 	case purchaseRevocationRefund:
@@ -89,33 +81,34 @@ func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentse
 		}
 	}
 	return &publiraadminv1.AdminPurchase{
-		Id:               row.ID.String(),
-		EpisodeId:        nullUUIDString(row.EpisodeID),
-		EpisodePublicId:  formatOptionalString(row.EpisodePublicID),
-		EpisodeTitle:     row.EpisodeTitle,
-		VolumeId:         nullUUIDString(row.VolumeID),
-		VolumePublicId:   formatOptionalString(row.VolumePublicID),
-		VolumeTitle:      formatOptionalString(row.VolumeTitle),
-		SeriesBundle:     seriesBundle,
-		CoinPack:         coinPack,
-		CoinName:         row.CoinName,
-		SeriesPublicId:   formatOptionalString(row.SeriesPublicID),
-		SeriesTitle:      row.SeriesTitle,
-		ReaderPublicId:   formatOptionalString(row.ReaderPublicID),
-		ReaderName:       formatOptionalString(row.ReaderName),
-		ReaderEmail:      formatOptionalString(row.ReaderEmail),
-		Price:            int64(row.PriceAtPurchase),
-		Currency:         row.Currency,
-		PurchasedAt:      row.PurchasedAt.UTC().Format(time.RFC3339),
-		ExpiresAt:        formatOptionalTime(row.ExpiresAt),
-		Provider:         formatOptionalString(row.Provider),
-		Store:            formatOptionalString(row.Store),
-		Test:             row.IsTest,
-		RefundedAmount:   int64(row.RefundedAmount.Int32),
-		RefundedAt:       formatOptionalTime(row.RefundedAt),
-		RevokedAt:        formatOptionalTime(row.RevokedAt),
-		RevocationReason: purchaseRevocationReasonToProto(row.RevocationReason),
-		Refundable:       purchaseRefundable(row, payments),
+		Id:                    row.ID.String(),
+		EpisodeId:             nullUUIDString(row.EpisodeID),
+		EpisodePublicId:       formatOptionalString(row.EpisodePublicID),
+		EpisodeTitle:          row.EpisodeTitle,
+		VolumeId:              nullUUIDString(row.VolumeID),
+		VolumePublicId:        formatOptionalString(row.VolumePublicID),
+		VolumeTitle:           formatOptionalString(row.VolumeTitle),
+		SeriesBundle:          seriesBundle,
+		CoinPack:              coinPack,
+		CoinName:              row.CoinName,
+		SeriesPublicId:        formatOptionalString(row.SeriesPublicID),
+		SeriesTitle:           row.SeriesTitle,
+		ReaderPublicId:        formatOptionalString(row.ReaderPublicID),
+		ReaderName:            formatOptionalString(row.ReaderName),
+		ReaderEmail:           formatOptionalString(row.ReaderEmail),
+		Price:                 int64(row.PriceAtPurchase),
+		Currency:              row.Currency,
+		PurchasedAt:           row.PurchasedAt.UTC().Format(time.RFC3339),
+		ExpiresAt:             formatOptionalTime(row.ExpiresAt),
+		Provider:              formatOptionalString(row.Provider),
+		Store:                 formatOptionalString(row.Store),
+		Test:                  row.IsTest,
+		RefundedAmount:        int64(row.RefundedAmount.Int32),
+		RefundedAt:            formatOptionalTime(row.RefundedAt),
+		RevokedAt:             formatOptionalTime(row.RevokedAt),
+		RevocationReason:      purchaseRevocationReasonToProto(row.RevocationReason),
+		Refundable:            purchaseRefundable(row, payments),
+		RefundRequestedAmount: purchaseRefundRequestedAmount(row),
 	}
 }
 
@@ -483,16 +476,94 @@ func (s *adminServer) RefundPurchase(
 	if err != nil {
 		return nil, err
 	}
-	// The audit entry is the only record of who gave the reader their money
-	// back, and one with no reason leaves the tenant unable to say why.
-	reason := strings.TrimSpace(req.Reason)
-	if reason == "" {
-		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reason is required"), "reason")
-	}
-
-	row, err := s.loadPurchase(ctx, tenant.ID, purchaseID)
+	reason, err := purchaseRefundReason(req.Reason)
 	if err != nil {
 		return nil, err
+	}
+	purchase, err := s.refundPurchase(ctx, sessionCtx, tenant.ID, purchaseID, reason, 0)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.RefundPurchaseResponse{Purchase: purchase}, nil
+}
+
+func (s *adminServer) RefundPurchaseInPart(
+	ctx context.Context,
+	req *publiraadminv1.RefundPurchaseInPartRequest,
+) (*publiraadminv1.RefundPurchaseInPartResponse, error) {
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx, err := s.requireTenantAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	purchaseID, err := parseRecordID(req.PurchaseId, "purchase_id")
+	if err != nil {
+		return nil, err
+	}
+	if req.Amount <= 0 {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("amount must be above zero"), "amount")
+	}
+	reason, err := purchaseRefundReason(req.Reason)
+	if err != nil {
+		return nil, err
+	}
+	purchase, err := s.refundPurchase(ctx, sessionCtx, tenant.ID, purchaseID, reason, req.Amount)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.RefundPurchaseInPartResponse{Purchase: purchase}, nil
+}
+
+// purchaseRefundReason reads the reason staff gave for a refund. The audit
+// entry is the only record of who gave the reader their money back, and one
+// with no reason leaves the tenant unable to say why.
+func purchaseRefundReason(reason string) (string, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return "", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("reason is required"), "reason")
+	}
+	return reason, nil
+}
+
+// purchaseRefundInPartAuditReason is the reason an audit entry of a refund in
+// part records: the amount, in the minor unit of currency, ahead of staff's
+// reason, in the fixed form the console reads it back in.
+func purchaseRefundInPartAuditReason(amount int64, currency, reason string) string {
+	return fmt.Sprintf("amount=%d %s; %s", amount, currency, reason)
+}
+
+// purchaseRefundRequestedAmount is what of the refund in part row waits for
+// the provider to report.
+func purchaseRefundRequestedAmount(row dbmodels.ListPurchasesForTenantByIDsRow) int64 {
+	return int64(row.StaffRefundRequestedAmount.Int32)
+}
+
+// refundPurchase asks the provider the purchase was paid through to refund
+// amount of it, or whatever of it is left when amount is zero. An amount that
+// is all that is left is a refund of the rest, which revokes the purchase as
+// one asked for without an amount does.
+func (s *adminServer) refundPurchase(
+	ctx context.Context,
+	sessionCtx rpcmiddleware.SessionContext,
+	tenantID, purchaseID uuid.UUID,
+	reason string,
+	amount int64,
+) (*publiraadminv1.AdminPurchase, error) {
+	row, err := s.loadPurchase(ctx, tenantID, purchaseID)
+	if err != nil {
+		return nil, err
+	}
+	if amount > 0 {
+		left := int64(row.PriceAtPurchase) - int64(row.RefundedAmount.Int32)
+		if amount > left {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("amount is more than is left to refund"), "amount")
+		}
+		if amount == left {
+			amount = 0
+		}
 	}
 	store := s.paymentStore(ctx)
 	// A purchase refunded in full has nothing left to refund, so it comes back
@@ -501,11 +572,11 @@ func (s *adminServer) RefundPurchase(
 	// twice: the provider answers with the refund that key made, or makes it
 	// now when the earlier request never reached the provider.
 	if row.RefundedAt.Valid {
-		payments, err := store.GetPublic(ctx, tenant.ID)
+		payments, err := store.GetPublic(ctx, tenantID)
 		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to get payment settings for refund purchase", err, "tenant_id", tenant.ID.String())
+			return nil, s.internalDBError(ctx, "failed to get payment settings for refund purchase", err, "tenant_id", tenantID.String())
 		}
-		return &publiraadminv1.RefundPurchaseResponse{Purchase: mapPurchase(row, payments)}, nil
+		return mapPurchase(row, payments), nil
 	}
 	switch {
 	case row.RevocationReason.String == purchaseRevocationDispute:
@@ -516,14 +587,20 @@ func (s *adminServer) RefundPurchase(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the purchase was made without a payment")
 	case !row.ProviderPaymentID.Valid:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the payment provider reported no payment for the purchase")
+	case amount > 0 && row.CoinPackID.Valid:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "a purchase of a pack of coins is refunded in full")
+	case amount > 0 && row.RevokedAt.Valid:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "a refund of the whole purchase is waiting for the payment provider")
+	case row.StaffRefundRequestedAmount.Valid && amount != purchaseRefundRequestedAmount(row):
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "a refund in part is waiting for the payment provider")
 	}
 
-	payments, credentials, err := store.LoadEnabledSecrets(ctx, tenant.ID)
+	payments, credentials, err := store.LoadEnabledSecrets(ctx, tenantID)
 	if paymentsettings.IsUnavailable(err) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the tenant's payment settings are not enabled")
 	}
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to load payment settings for refund purchase", err, "tenant_id", tenant.ID.String())
+		return nil, s.internalDBError(ctx, "failed to load payment settings for refund purchase", err, "tenant_id", tenantID.String())
 	}
 	if payments.Provider != row.Provider.String {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the purchase was paid through a payment provider the tenant no longer uses")
@@ -533,41 +610,125 @@ func (s *adminServer) RefundPurchase(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the purchase was paid through a payment provider this server does not register")
 	}
 
-	// The purchase stops opening the episode before the provider is asked, so
-	// that whatever the provider then reports, the refund recorded or the
-	// refund failed, lands on a purchase already revoked. No row is a purchase
-	// something revoked in the meantime: an earlier or a concurrent request for
-	// the same refund, or the reader's dispute. Only the request that revoked
-	// it records staff's decision and takes the revocation back.
-	//
 	// From here on the work runs on a context the request's end does not
 	// cancel, so a caller that hangs up or times out cannot leave a revocation
-	// behind with neither the refund it stands for nor its retraction.
+	// or a request in part behind with neither the refund it stands for nor
+	// its retraction.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), purchaseRefundTimeout)
 	defer cancel()
-	queries := s.queriesFor(ctx)
-	revokedHere, err := s.revokePurchaseForStaffRefund(ctx, sessionCtx, tenant.ID, row.ID, reason)
+	refund := staffRefund{
+		sessionCtx: sessionCtx,
+		tenantID:   tenantID,
+		row:        row,
+		provider:   provider,
+		reason:     reason,
+	}
+	if amount > 0 {
+		err = s.refundPurchaseInPart(ctx, refund, credentials, amount)
+	} else {
+		err = s.refundPurchaseWhole(ctx, refund, credentials)
+	}
 	if err != nil {
 		return nil, err
 	}
-	// recordRefundOutcome follows the request entry this request wrote with what
-	// the provider did about it: the refund made, with staff's reason, or no
-	// refund and why.
-	recordRefundOutcome := func(outcome, why string) {
-		if !revokedHere {
-			return
-		}
-		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
-			TenantID:    tenant.ID,
-			ActorUserID: sessionCtx.User.ID,
-			ActorRole:   sessionCtx.Role,
-			Action:      "purchase_refunded",
-			TargetType:  "purchase",
-			TargetID:    row.ID.String(),
-			Outcome:     outcome,
-			Reason:      why,
-			ClientIP:    clientip.FromContext(ctx),
+
+	refunded, err := s.loadPurchase(ctx, tenantID, row.ID)
+	if err != nil {
+		return nil, err
+	}
+	return mapPurchase(refunded, payments), nil
+}
+
+// staffRefund is a refund staff asked for, once the purchase has been found
+// refundable.
+type staffRefund struct {
+	sessionCtx rpcmiddleware.SessionContext
+	tenantID   uuid.UUID
+	row        dbmodels.ListPurchasesForTenantByIDsRow
+	provider   paymentprovider.Provider
+	reason     string
+}
+
+// recordStaffRefundOutcome follows the request entry of a refund with what the provider
+// did about it: the refund made, with staff's reason, or no refund and why.
+func (s *adminServer) recordStaffRefundOutcome(ctx context.Context, refund staffRefund, outcome, why string) {
+	s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+		TenantID:    refund.tenantID,
+		ActorUserID: refund.sessionCtx.User.ID,
+		ActorRole:   refund.sessionCtx.Role,
+		Action:      "purchase_refunded",
+		TargetType:  "purchase",
+		TargetID:    refund.row.ID.String(),
+		Outcome:     outcome,
+		Reason:      why,
+		ClientIP:    clientip.FromContext(ctx),
+	})
+}
+
+// staffRefundError answers a request to the provider that did not refund
+// anything, logging it, and reports whether the provider refused it.
+func (s *adminServer) staffRefundError(ctx context.Context, refund staffRefund, err error) (bool, error) {
+	if errors.Is(err, paymentprovider.ErrRefundRefused) {
+		s.logger.WarnContext(ctx, "the payment provider refused a refund",
+			"tenant_id", refund.tenantID,
+			"purchase_id", refund.row.ID,
+			"provider", refund.row.Provider.String,
+			"error", err,
+		)
+		return true, connect.NewError(connect.CodeFailedPrecondition, "the payment provider refused the refund").WithCause(err)
+	}
+	s.logger.ErrorContext(ctx, "failed to refund a purchase through its payment provider",
+		"tenant_id", refund.tenantID,
+		"purchase_id", refund.row.ID,
+		"provider", refund.row.Provider.String,
+		"error", err,
+	)
+	return false, connect.NewError(connect.CodeUnavailable, "the payment provider did not complete the refund").WithCause(err)
+}
+
+// refundPurchaseWhole refunds whatever of the purchase is left and revokes it.
+//
+// The purchase stops opening the episode before the provider is asked, so
+// that whatever the provider then reports, the refund recorded or the refund
+// failed, lands on a purchase already revoked. No row is a purchase something
+// revoked in the meantime: an earlier or a concurrent request for the same
+// refund, or the reader's dispute. Only the request that revoked it records
+// staff's decision and takes the revocation back.
+func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefund, credentials paymentprovider.Credentials) error {
+	tenantID, row := refund.tenantID, refund.row
+	queries := s.queriesFor(ctx)
+	// The attempt is the one the purchase stands at when it is revoked: a
+	// refund in part settled since the purchase was read has moved it on, and
+	// its key would be sent with other parameters than the ones it was sent
+	// with.
+	var attempt int32
+	revokedHere, err := s.markPurchaseForStaffRefund(ctx, refund.sessionCtx, tenantID, row.ID, refund.reason, func(queries *dbmodels.Queries) error {
+		var err error
+		attempt, err = queries.RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
+			TenantID: tenantID,
+			ID:       row.ID,
 		})
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	if !revokedHere {
+		// A refund in part asked for since is sent under the key this refund
+		// would be, and the provider would answer it with that refund.
+		current, err := s.loadPurchase(ctx, tenantID, row.ID)
+		if err != nil {
+			return err
+		}
+		if current.StaffRefundRequestedAmount.Valid {
+			return connect.NewError(connect.CodeFailedPrecondition, "a refund in part is waiting for the payment provider")
+		}
+		attempt = current.StaffRefundAttempt
+	}
+	recordOutcome := func(outcome, why string) {
+		if revokedHere {
+			s.recordStaffRefundOutcome(ctx, refund, outcome, why)
+		}
 	}
 	// liftRevocation takes this request's revocation back for a refund that
 	// did not happen, moving the purchase on to its next attempt when the
@@ -577,46 +738,33 @@ func (s *adminServer) RefundPurchase(
 			return nil
 		}
 		_, err := queries.LiftStaffRevocation(ctx, dbmodels.LiftStaffRevocationParams{
-			TenantID:    tenant.ID,
+			TenantID:    tenantID,
 			ID:          row.ID,
 			NextAttempt: nextAttempt,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return s.internalDBError(ctx, "failed to lift the revocation of a refund that did not happen", err, "tenant_id", tenant.ID.String(), "purchase_id", row.ID.String())
+			return s.internalDBError(ctx, "failed to lift the revocation of a refund that did not happen", err, "tenant_id", tenantID.String(), "purchase_id", row.ID.String())
 		}
 		return nil
 	}
 
-	refunded, err := provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
+	refunded, err := refund.provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
 		PaymentID:      row.ProviderPaymentID.String,
-		IdempotencyKey: purchaseRefundIdempotencyKey(row.ID, row.StaffRefundAttempt),
+		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
 	})
 	if err != nil {
-		refused := errors.Is(err, paymentprovider.ErrRefundRefused)
+		refused, answer := s.staffRefundError(ctx, refund, err)
 		// Whether a request that failed some other way reached the provider is
 		// unknown, so the purchase stays on this attempt, whose key keeps a
 		// retry from refunding twice. A refund it did make is reported by the
 		// provider's notification and revokes the purchase again.
 		if liftErr := liftRevocation(refused); liftErr != nil {
-			return nil, liftErr
+			return liftErr
 		}
 		if refused {
-			recordRefundOutcome(auditlog.OutcomeFailure, "the payment provider refused the refund")
-			s.logger.WarnContext(ctx, "the payment provider refused a refund",
-				"tenant_id", tenant.ID,
-				"purchase_id", row.ID,
-				"provider", row.Provider.String,
-				"error", err,
-			)
-			return nil, connect.NewError(connect.CodeFailedPrecondition, "the payment provider refused the refund").WithCause(err)
+			recordOutcome(auditlog.OutcomeFailure, "the payment provider refused the refund")
 		}
-		s.logger.ErrorContext(ctx, "failed to refund a purchase through its payment provider",
-			"tenant_id", tenant.ID,
-			"purchase_id", row.ID,
-			"provider", row.Provider.String,
-			"error", err,
-		)
-		return nil, connect.NewError(connect.CodeUnavailable, "the payment provider did not complete the refund").WithCause(err)
+		return answer
 	}
 
 	// The payment was refunded in full before staff asked, in the provider's
@@ -624,32 +772,115 @@ func (s *adminServer) RefundPurchase(
 	// nothing, so the purchase is left for that notification to revoke.
 	if !refunded {
 		if err := liftRevocation(false); err != nil {
-			return nil, err
+			return err
 		}
-		recordRefundOutcome(auditlog.OutcomeFailure, "the payment provider reports the payment refunded in full already")
+		recordOutcome(auditlog.OutcomeFailure, "the payment provider reports the payment refunded in full already")
 		s.logger.InfoContext(ctx, "the payment provider reports a purchase refunded in full already",
-			"tenant_id", tenant.ID,
+			"tenant_id", tenantID,
 			"purchase_id", row.ID,
 			"provider", row.Provider.String,
 		)
-	} else {
-		recordRefundOutcome(auditlog.OutcomeSuccess, reason)
+		return nil
 	}
-
-	revoked, err := s.loadPurchase(ctx, tenant.ID, row.ID)
-	if err != nil {
-		return nil, err
-	}
-	return &publiraadminv1.RefundPurchaseResponse{
-		Purchase: mapPurchase(revoked, payments),
-	}, nil
+	recordOutcome(auditlog.OutcomeSuccess, refund.reason)
+	return nil
 }
 
-// revokePurchaseForStaffRefund revokes a purchase staff are about to refund
-// and records their request, reason included, in the same transaction, and
-// reports whether this request made the revocation. No row is a purchase
-// something revoked in the meantime, whose request, if staff's, was recorded
-// with that revocation.
+// refundPurchaseInPart refunds amount of the purchase, which keeps opening its
+// episode, as a refund in part the provider reports leaves it.
+//
+// The request is marked on the purchase with its amount before the provider is
+// asked, so that a retry, however the first attempt ended, is sent under the
+// same idempotency key until the provider's notification of the refund that
+// key made clears the mark. Only a refusal, or a payment
+// the provider has nothing left of, takes the mark back, whichever request
+// hears it. A purchase marked already is a retry of that request, whose
+// entries the request that made the mark records.
+func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefund, credentials paymentprovider.Credentials, amount int64) error {
+	tenantID, row := refund.tenantID, refund.row
+	queries := s.queriesFor(ctx)
+	auditReason := purchaseRefundInPartAuditReason(amount, row.Currency, refund.reason)
+	attempt := row.StaffRefundAttempt
+	requestedHere := false
+	if !row.StaffRefundRequestedAmount.Valid {
+		var err error
+		requestedHere, err = s.markPurchaseForStaffRefund(ctx, refund.sessionCtx, tenantID, row.ID, auditReason, func(queries *dbmodels.Queries) error {
+			marked, err := queries.RequestStaffRefundInPart(ctx, dbmodels.RequestStaffRefundInPartParams{
+				TenantID: tenantID,
+				ID:       row.ID,
+				Amount:   int32(amount),
+			})
+			attempt = marked
+			return err
+		})
+		if err != nil {
+			return err
+		}
+		if !requestedHere {
+			return connect.NewError(connect.CodeFailedPrecondition, "the purchase changed while the refund was asked for")
+		}
+	}
+	recordOutcome := func(outcome, why string) {
+		if requestedHere {
+			s.recordStaffRefundOutcome(ctx, refund, outcome, why)
+		}
+	}
+	// clearRequest takes the mark back for a refund that did not happen,
+	// moving the purchase on to its next attempt when the provider refused or
+	// failed the refund.
+	clearRequest := func(nextAttempt bool) error {
+		_, err := queries.ClearStaffRefundInPart(ctx, dbmodels.ClearStaffRefundInPartParams{
+			TenantID:        tenantID,
+			ID:              row.ID,
+			Attempt:         attempt,
+			RequestedAmount: int32(amount),
+			NextAttempt:     nextAttempt,
+		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return s.internalDBError(ctx, "failed to take back a refund in part that did not happen", err, "tenant_id", tenantID.String(), "purchase_id", row.ID.String())
+		}
+		return nil
+	}
+
+	refunded, err := refund.provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
+		PaymentID:      row.ProviderPaymentID.String,
+		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
+		Amount:         amount,
+	})
+	if err != nil {
+		refused, answer := s.staffRefundError(ctx, refund, err)
+		// A request that failed some other way may have reached the provider,
+		// so the mark stays, and a retry is sent under the same key.
+		if refused {
+			if err := clearRequest(true); err != nil {
+				return err
+			}
+			recordOutcome(auditlog.OutcomeFailure, "the payment provider refused the refund")
+		}
+		return answer
+	}
+	if !refunded {
+		if err := clearRequest(false); err != nil {
+			return err
+		}
+		recordOutcome(auditlog.OutcomeFailure, "the payment provider reports the payment refunded in full already")
+		s.logger.InfoContext(ctx, "the payment provider reports a purchase refunded in full already",
+			"tenant_id", tenantID,
+			"purchase_id", row.ID,
+			"provider", row.Provider.String,
+		)
+		return nil
+	}
+	recordOutcome(auditlog.OutcomeSuccess, auditReason)
+	return nil
+}
+
+// markPurchaseForStaffRefund marks a purchase staff are about to refund with
+// mark, which revokes it or records a refund in part, and records their
+// request, reason included, in the same transaction, and reports whether this
+// request made the mark. mark answering no row is a purchase something marked
+// or revoked in the meantime, whose request, if staff's, was recorded with
+// that mark.
 //
 // The request entry is the only record of who gave the reader their money
 // back and why, so it is written before the provider is asked rather than
@@ -657,27 +888,25 @@ func (s *adminServer) RefundPurchase(
 // then answers with nothing left to refund, would otherwise leave a refund no
 // entry names. It records the request rather than the refund, which the
 // provider has yet to make; the entry that follows says whether it did.
-func (s *adminServer) revokePurchaseForStaffRefund(
+func (s *adminServer) markPurchaseForStaffRefund(
 	ctx context.Context,
 	sessionCtx rpcmiddleware.SessionContext,
 	tenantID, purchaseID uuid.UUID,
 	reason string,
+	mark func(*dbmodels.Queries) error,
 ) (bool, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return false, s.internalDBError(ctx, "failed to begin the revocation of a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+		return false, s.internalDBError(ctx, "failed to begin marking a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 	queries := dbmodels.New(tx)
-	_, err = queries.RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{
-		TenantID: tenantID,
-		ID:       purchaseID,
-	})
+	err = mark(queries)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
-		return false, s.internalDBError(ctx, "failed to revoke a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+		return false, s.internalDBError(ctx, "failed to mark a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
 	if err := auditlog.WriteTenant(ctx, queries, s.logger, auditlog.TenantEntry{
 		TenantID:    tenantID,
@@ -693,7 +922,7 @@ func (s *adminServer) revokePurchaseForStaffRefund(
 		return false, s.internalDBError(ctx, "failed to record a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
 	if err := tx.Commit(); err != nil {
-		return false, s.internalDBError(ctx, "failed to commit the revocation of a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+		return false, s.internalDBError(ctx, "failed to commit the mark on a purchase staff are refunding", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
 	return true, nil
 }

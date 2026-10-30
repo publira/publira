@@ -163,6 +163,10 @@ func (declaredProvider) Refund(context.Context, paymentprovider.Credentials, pay
 	return false, nil
 }
 
+func (declaredProvider) RefundMade(context.Context, paymentprovider.Credentials, string, string) (bool, error) {
+	return false, nil
+}
+
 func testRegistry() *paymentprovider.Registry {
 	return paymentprovider.NewRegistry(
 		stripe.New(),

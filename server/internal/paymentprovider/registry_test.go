@@ -24,6 +24,10 @@ func (declaredProvider) Refund(context.Context, Credentials, RefundRequest) (boo
 	return false, nil
 }
 
+func (declaredProvider) RefundMade(context.Context, Credentials, string, string) (bool, error) {
+	return false, nil
+}
+
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
 	registry := NewRegistry(
 		declaredProvider{Declaration{ID: "zeta", Currencies: []string{"JPY"}}},
