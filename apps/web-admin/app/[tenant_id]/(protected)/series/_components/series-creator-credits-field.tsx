@@ -107,10 +107,7 @@ const toRoleItems = (
 };
 
 /** The role a row ends up stating, which is the one it can still be given. */
-const toResolvedRoleId = (
-  roleItems: Combobox.Item[],
-  roleId: string
-): string =>
+const toResolvedRoleId = (roleItems: Combobox.Item[], roleId: string): string =>
   roleItems.some((item) => item.value === roleId)
     ? roleId
     : (roleItems.at(0)?.value ?? "");

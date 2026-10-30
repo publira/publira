@@ -274,9 +274,8 @@ export const renameGenreAction = async (
   const { id, tenantId } = parsed.data;
   // A name left as it was is not written again, so a save records only the
   // languages it changed.
-  const names = posted.names.flatMap(
-    ({ name, savedName, translationLocale }) =>
-      name === "" || name === savedName ? [] : [{ name, translationLocale }]
+  const names = posted.names.flatMap(({ name, savedName, translationLocale }) =>
+    name === "" || name === savedName ? [] : [{ name, translationLocale }]
   );
   const removedLocales = posted.names.flatMap(
     ({ name, savedName, translationLocale }) =>
