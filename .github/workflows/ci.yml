@@ -42,6 +42,15 @@ on:
 # The merge queue on `main` requires that same check on the merge group it
 # builds, which is what the `merge_group` trigger above answers.
 
+# A push to a pull request cancels the run still going for its previous
+# commit. Every other run gets a group of its own: a group holds one pending
+# run besides the running one and replaces it when the next arrives, even
+# without `cancel-in-progress`, so keying a `push` to `main` on its ref would
+# still drop a queued one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 # Repo default is read-only GITHUB_TOKEN; paths-filter needs PR file list on pull_request.
 permissions:
   contents: read

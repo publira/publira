@@ -187,6 +187,8 @@ That is why the branch no longer has to be up to date for GitHub to let it merge
 
 `CI` therefore subscribes to `merge_group` (type `checks_requested`). Without it a queued pull request would wait for a check that never arrives until the queue's status check timeout drops it, so the trigger has to be in place before the rule is added to the ruleset.
 
+A push to a pull request cancels the `CI` run still going for its previous commit, through the workflow's `concurrency` group. Only `pull_request` runs share a group, keyed on the pull request's ref; a merge group's run, a push to `main`, the schedule, and a manual dispatch each get a group of their own and run to completion.
+
 ## Triggers and modes
 
 | Trigger | Host CI | Docker |
@@ -319,5 +321,6 @@ The job then runs against its own Postgres service and must succeed through `mig
 - [ ] Updated the Jobs and Path filters tables in this document
 - [ ] Confirmed that a `Detect changes` checkout change still resolves the base locally on `push` and `merge_group` (the `fetch-depth` / `persist-credentials` combination)
 - [ ] Kept `merge_group` on the `on:` block and on the `Path filter` step — the merge queue on `main` requires `Summary` on merge-group commits
+- [ ] Kept the `concurrency` group keyed on the run ID for every event but `pull_request`, so a merge group's run or a push to `main` is never cancelled
 - [ ] Confirmed that `Summary` remains the required branch-ruleset check after changing a displayed job name
 - [ ] Updated `infra/docker/Taskfile.yaml` `verify:full`, the full Docker matrix in `scripts/ci-plan-jobs.sh`, and the image matrix in `release-images.yml` when adding a Docker target
