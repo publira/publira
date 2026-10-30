@@ -53,6 +53,10 @@ const (
 	// MetadataKind is absent on a checkout started before an episode had
 	// two sales, which sold the permanent copy.
 	MetadataKind = "kind"
+
+	// MetadataRefundKey is the metadata key a refund of an amount carries the
+	// idempotency key it was requested under in.
+	MetadataRefundKey = "publira_refund_key"
 )
 
 // currencies are the currencies Stripe's documentation states a minimum charge
@@ -258,17 +262,56 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 		return false, err
 	}
 	params := &stripego.RefundCreateParams{PaymentIntent: stripego.String(req.PaymentID)}
-	if req.Amount > 0 {
-		params.Amount = stripego.Int64(req.Amount)
-	}
 	params.SetIdempotencyKey(req.IdempotencyKey)
-	refund, err := client.V1Refunds.Create(ctx, params)
-	if err == nil {
-		if refund.Status == stripego.RefundStatusFailed || refund.Status == stripego.RefundStatusCanceled {
-			return false, fmt.Errorf("%w: the refund is %s", paymentprovider.ErrRefundRefused, refund.Status)
+	if req.Amount > 0 {
+		// Stripe keeps an idempotency key for a day. A refund of the rest
+		// sent again after that finds nothing left to refund, but an amount
+		// would be refunded a second time, so the refund the key made is
+		// looked up by the key it carries before one is made.
+		made, err := refundMadeUnder(ctx, client, req)
+		if err != nil {
+			return refundError(err)
 		}
-		return true, nil
+		if made != nil {
+			return refundOutcome(made)
+		}
+		params.Amount = stripego.Int64(req.Amount)
+		params.AddMetadata(MetadataRefundKey, req.IdempotencyKey)
 	}
+	refund, err := client.V1Refunds.Create(ctx, params)
+	if err != nil {
+		return refundError(err)
+	}
+	return refundOutcome(refund)
+}
+
+// refundMadeUnder answers the refund of an amount req's idempotency key made
+// on its payment intent, or nil when it made none.
+func refundMadeUnder(ctx context.Context, client *stripego.Client, req paymentprovider.RefundRequest) (*stripego.Refund, error) {
+	params := &stripego.RefundListParams{PaymentIntent: stripego.String(req.PaymentID)}
+	for refund, err := range client.V1Refunds.List(ctx, params).All(ctx) {
+		if err != nil {
+			return nil, err
+		}
+		if refund.Metadata[MetadataRefundKey] == req.IdempotencyKey {
+			return refund, nil
+		}
+	}
+	return nil, nil
+}
+
+// refundOutcome reads a refund Stripe made, or answered from its idempotency
+// key, as what Refund reports.
+func refundOutcome(refund *stripego.Refund) (bool, error) {
+	if refund.Status == stripego.RefundStatusFailed || refund.Status == stripego.RefundStatusCanceled {
+		return false, fmt.Errorf("%w: the refund is %s", paymentprovider.ErrRefundRefused, refund.Status)
+	}
+	return true, nil
+}
+
+// refundError reads an error Stripe answered a refund request with as what
+// Refund reports.
+func refundError(err error) (bool, error) {
 	var stripeErr *stripego.Error
 	if !errors.As(err, &stripeErr) {
 		return false, err

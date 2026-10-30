@@ -225,12 +225,19 @@ func TestDBRefundPurchaseInPartFinishesARefundAnEarlierRequestLeftUnasked(t *tes
 
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_part_unasked"})
-	if _, err := dbmodels.New(f.env.PG.DB).RequestStaffRefundInPart(context.Background(), dbmodels.RequestStaffRefundInPartParams{
+	// A refund recorded after the purchase was read counts toward the total
+	// the mark stores, which is the one the mark answers.
+	f.recordRefundNotification(t, "pi_part_unasked", 100)
+	marked, err := dbmodels.New(f.env.PG.DB).RequestStaffRefundInPart(context.Background(), dbmodels.RequestStaffRefundInPartParams{
 		TenantID: f.admin.Tenant.ID,
 		ID:       purchaseID,
 		Amount:   200,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("mark the refund in part: %v", err)
+	}
+	if marked.StaffRefundRequestedTotal != 300 {
+		t.Fatalf("requested total = %d, want 300", marked.StaffRefundRequestedTotal)
 	}
 
 	for range 2 {
@@ -246,4 +253,41 @@ func TestDBRefundPurchaseInPartFinishesARefundAnEarlierRequestLeftUnasked(t *tes
 		t.Fatalf("refunds = %+v, want one of 200", refunds)
 	}
 	f.assertRefundEntries(t, purchaseID, 0, 0, 0)
+}
+
+// A refund in part the provider accepted and then failed, as its notification
+// reports, stops waiting, and asking again is a new attempt under a new
+// idempotency key.
+func TestDBRefundPurchaseInPartStopsWaitingForARefundThatFailedLater(t *testing.T) {
+	t.Parallel()
+
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_part_failed_later"})
+	if _, err := f.refundInPart(purchaseID, 200); err != nil {
+		t.Fatalf("RefundPurchaseInPart: %v", err)
+	}
+	// Stripe's notification that the refund failed, as the webhook records it.
+	f.stripe.SetRefunded(purchaseTestSecretKey, "pi_part_failed_later", 0)
+	if _, err := dbmodels.New(f.env.PG.DB).RecordFailedRefundOnPurchase(context.Background(), dbmodels.RecordFailedRefundOnPurchaseParams{
+		TenantID:          f.admin.Tenant.ID,
+		Provider:          stripe.ID,
+		ProviderPaymentID: "pi_part_failed_later",
+		Currency:          "JPY",
+		RefundedAmount:    0,
+	}); err != nil {
+		t.Fatalf("record the failed refund: %v", err)
+	}
+	if purchase := f.get(t, purchaseID); purchase.RefundRequestedAmount != 0 || purchase.RevokedAt != "" || !purchase.Refundable {
+		t.Fatalf("purchase after its refund failed = %+v, want open, refundable, and nothing requested", purchase)
+	}
+
+	if _, err := f.refundInPart(purchaseID, 300); err != nil {
+		t.Fatalf("RefundPurchaseInPart again: %v", err)
+	}
+	if keys := f.refundKeys("pi_part_failed_later"); len(keys) != 2 || keys[0] == keys[1] {
+		t.Fatalf("idempotency keys = %v, want two different ones", keys)
+	}
+	if got := f.stripe.RefundedTotal(purchaseTestSecretKey, "pi_part_failed_later"); got != 300 {
+		t.Fatalf("refunded total = %d, want 300", got)
+	}
 }

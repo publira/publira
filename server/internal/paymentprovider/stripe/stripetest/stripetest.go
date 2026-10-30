@@ -192,6 +192,8 @@ type Refund struct {
 	IdempotencyKey  string
 	// Status is succeeded, or failed for a refund the fake was told to fail.
 	Status string
+	// Metadata is the metadata the refund was created with.
+	Metadata map[string]string
 }
 
 // NewAPI answers a fake that serves until t ends.
@@ -208,6 +210,7 @@ func NewAPI(t testing.TB) *API {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/refunds", api.createRefund)
+	mux.HandleFunc("GET /v1/refunds", api.listRefunds)
 	mux.HandleFunc("POST /v1/coupons", api.createCoupon)
 	mux.HandleFunc("POST /v1/checkout/sessions", api.createCheckoutSession)
 	mux.HandleFunc("GET /v1/checkout/sessions/{id}", api.getCheckoutSession)
@@ -274,6 +277,14 @@ func (a *API) RefundedTotal(secretKey, id string) int64 {
 		return intent.refunded
 	}
 	return 0
+}
+
+// ForgetIdempotencyKeys makes the fake forget the refund each idempotency key
+// under secretKey created, as Stripe forgets a key after a day.
+func (a *API) ForgetIdempotencyKeys(secretKey string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.idempotent, secretKey)
 }
 
 // Refunds answers every refund the fake made, in the order it made them.
@@ -495,6 +506,7 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 			Amount:          amount,
 			IdempotencyKey:  idempotencyKey,
 			Status:          status,
+			Metadata:        formMetadata(r.PostForm),
 		}
 		a.refunds = append(a.refunds, refund)
 		if idempotencyKey != "" {
@@ -508,13 +520,56 @@ func (a *API) createRefund(w http.ResponseWriter, r *http.Request) {
 	a.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	_ = json.NewEncoder(w).Encode(refundJSON(refund, currency))
+}
+
+func refundJSON(refund Refund, currency string) map[string]any {
+	metadata := refund.Metadata
+	if metadata == nil {
+		metadata = map[string]string{}
+	}
+	return map[string]any{
 		"id":             refund.ID,
 		"object":         "refund",
 		"amount":         refund.Amount,
 		"currency":       currency,
 		"payment_intent": refund.PaymentIntentID,
 		"status":         refund.Status,
+		"metadata":       metadata,
+	}
+}
+
+// formMetadata reads the metadata[key] fields of a form.
+func formMetadata(form url.Values) map[string]string {
+	metadata := map[string]string{}
+	for key, values := range form {
+		if name, ok := strings.CutPrefix(key, "metadata["); ok && strings.HasSuffix(name, "]") && len(values) > 0 {
+			metadata[strings.TrimSuffix(name, "]")] = values[0]
+		}
+	}
+	return metadata
+}
+
+// listRefunds answers the refunds made on the payment intent the query names
+// under the request's secret key, newest first, in one page.
+func (a *API) listRefunds(w http.ResponseWriter, r *http.Request) {
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	intentID := r.URL.Query().Get("payment_intent")
+	a.mu.Lock()
+	data := []map[string]any{}
+	for i := len(a.refunds) - 1; i >= 0; i-- {
+		refund := a.refunds[i]
+		if refund.SecretKey == secretKey && refund.PaymentIntentID == intentID {
+			data = append(data, refundJSON(refund, a.intents[secretKey][intentID].currency))
+		}
+	}
+	a.mu.Unlock()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"object":   "list",
+		"data":     data,
+		"has_more": false,
+		"url":      "/v1/refunds",
 	})
 }
 
@@ -842,6 +897,10 @@ func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Creden
 
 func (f *Fixture) FailNextRefund(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) {
 	f.API.FailNextRefund(credentials[stripe.FieldSecretKey], paymentID)
+}
+
+func (f *Fixture) ForgetIdempotencyKeys(_ testing.TB, credentials paymentprovider.Credentials) {
+	f.API.ForgetIdempotencyKeys(credentials[stripe.FieldSecretKey])
 }
 
 func (f *Fixture) RefundFailed(t testing.TB, credentials paymentprovider.Credentials, refund paymentprovidertest.Refund) ([]byte, http.Header) {

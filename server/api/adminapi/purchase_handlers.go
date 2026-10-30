@@ -808,15 +808,14 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 	requestedTotal := row.StaffRefundRequestedTotal.Int32
 	requestedHere := false
 	if !row.StaffRefundRequestedTotal.Valid {
-		requestedTotal = row.RefundedAmount.Int32 + int32(amount)
 		var err error
 		requestedHere, err = s.markPurchaseForStaffRefund(ctx, refund.sessionCtx, tenantID, row.ID, auditReason, func(queries *dbmodels.Queries) error {
-			var err error
-			attempt, err = queries.RequestStaffRefundInPart(ctx, dbmodels.RequestStaffRefundInPartParams{
+			marked, err := queries.RequestStaffRefundInPart(ctx, dbmodels.RequestStaffRefundInPartParams{
 				TenantID: tenantID,
 				ID:       row.ID,
 				Amount:   int32(amount),
 			})
+			attempt, requestedTotal = marked.StaffRefundAttempt, marked.StaffRefundRequestedTotal
 			return err
 		})
 		if err != nil {

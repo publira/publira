@@ -3596,6 +3596,10 @@ type Querier interface {
 	// asked for, is lifted with it, so the reader keeps what they still pay for,
 	// and lifting staff's moves the purchase on to staff's next attempt, which a
 	// new request is sent under: the provider would answer the failed one again.
+	// A refund in part staff asked for that is waiting for the provider stops
+	// waiting for the same reason, and moves the purchase on to the next attempt:
+	// whether the failed refund was that one or an earlier one, the total the
+	// provider now reports is the one staff decide on.
 	// A total of nothing is still recorded as an amount rather than as no refund:
 	// royalty_uncarried_refunds reads a purchase with an amount, which is how a
 	// refund a closed statement already carried is carried back. A dispute keeps
@@ -3722,12 +3726,13 @@ type Querier interface {
 	ReplaceUnappliedRefund(ctx context.Context, arg ReplaceUnappliedRefundParams) error
 	// Marks a refund in part of amount as asked of the provider, before it is
 	// asked, recording the refunded total it brings the purchase to, and answers
-	// the attempt the request belongs to. The purchase keeps opening its episode.
+	// the attempt the request belongs to and that total, as it stands on the row
+	// rather than on an earlier read of it. The purchase keeps opening its episode.
 	// It answers no row when there is nothing for this call to mark: a refund in
 	// part is waiting already, which a second request racing the first finds once
 	// that one commits, something revoked the purchase, or the amount no longer
 	// leaves part of the price unrefunded.
-	RequestStaffRefundInPart(ctx context.Context, arg RequestStaffRefundInPartParams) (int32, error)
+	RequestStaffRefundInPart(ctx context.Context, arg RequestStaffRefundInPartParams) (RequestStaffRefundInPartRow, error)
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error
 	// A second factor that checked out clears the count, and so does starting an
 	// enrollment, so a stalled attempt never blocks the next one.

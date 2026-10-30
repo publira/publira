@@ -121,8 +121,9 @@ type AdminPurchaseServiceClient interface {
 	// payment, and leaves the purchase opening its episode, as a refund in part
 	// the provider reports does. The purchase shows the amount as
 	// refund_requested_amount until the provider's notification of it arrives,
-	// which records it as refunded; a refund the provider refuses takes the
-	// request back, and asking again after that is a new attempt. An amount
+	// which records it as refunded; a refund the provider refuses, or reports
+	// failed later, takes the request back, and asking again after that is a new
+	// attempt. An amount
 	// that is all the provider has not reported refunded yet is RefundPurchase.
 	// It is an RPC of its own rather than an amount on RefundPurchase because a
 	// server that predates it answers unimplemented, where one that predates the
@@ -189,8 +190,9 @@ type AdminPurchaseServiceHandler interface {
 	// payment, and leaves the purchase opening its episode, as a refund in part
 	// the provider reports does. The purchase shows the amount as
 	// refund_requested_amount until the provider's notification of it arrives,
-	// which records it as refunded; a refund the provider refuses takes the
-	// request back, and asking again after that is a new attempt. An amount
+	// which records it as refunded; a refund the provider refuses, or reports
+	// failed later, takes the request back, and asking again after that is a new
+	// attempt. An amount
 	// that is all the provider has not reported refunded yet is RefundPurchase.
 	// It is an RPC of its own rather than an amount on RefundPurchase because a
 	// server that predates it answers unimplemented, where one that predates the

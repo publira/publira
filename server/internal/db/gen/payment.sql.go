@@ -1772,8 +1772,10 @@ SET refunded_amount = $1::integer,
         WHEN $1::integer < p.price_at_purchase
             AND p.revocation_reason = 'staff'
             AND p.dispute_lost_at IS NULL THEN 1
+        WHEN p.staff_refund_requested_total IS NOT NULL THEN 1
         ELSE 0
-    END
+    END,
+    staff_refund_requested_total = NULL
 WHERE p.tenant_id = $2
     AND p.provider = $3::text
     AND p.provider_payment_id = $4::text
@@ -1797,6 +1799,10 @@ type RecordFailedRefundOnPurchaseParams struct {
 // asked for, is lifted with it, so the reader keeps what they still pay for,
 // and lifting staff's moves the purchase on to staff's next attempt, which a
 // new request is sent under: the provider would answer the failed one again.
+// A refund in part staff asked for that is waiting for the provider stops
+// waiting for the same reason, and moves the purchase on to the next attempt:
+// whether the failed refund was that one or an earlier one, the total the
+// provider now reports is the one staff decide on.
 // A total of nothing is still recorded as an amount rather than as no refund:
 // royalty_uncarried_refunds reads a purchase with an amount, which is how a
 // refund a closed statement already carried is carried back. A dispute keeps
@@ -2089,7 +2095,7 @@ WHERE tenant_id = $2
     AND revocation_reason IS NULL
     AND refunded_at IS NULL
     AND COALESCE(refunded_amount, 0) + $1::integer < price_at_purchase
-RETURNING staff_refund_attempt
+RETURNING staff_refund_attempt, staff_refund_requested_total::integer AS staff_refund_requested_total
 `
 
 type RequestStaffRefundInPartParams struct {
@@ -2098,18 +2104,24 @@ type RequestStaffRefundInPartParams struct {
 	ID       uuid.UUID `json:"id"`
 }
 
+type RequestStaffRefundInPartRow struct {
+	StaffRefundAttempt        int32 `json:"staff_refund_attempt"`
+	StaffRefundRequestedTotal int32 `json:"staff_refund_requested_total"`
+}
+
 // Marks a refund in part of amount as asked of the provider, before it is
 // asked, recording the refunded total it brings the purchase to, and answers
-// the attempt the request belongs to. The purchase keeps opening its episode.
+// the attempt the request belongs to and that total, as it stands on the row
+// rather than on an earlier read of it. The purchase keeps opening its episode.
 // It answers no row when there is nothing for this call to mark: a refund in
 // part is waiting already, which a second request racing the first finds once
 // that one commits, something revoked the purchase, or the amount no longer
 // leaves part of the price unrefunded.
-func (q *Queries) RequestStaffRefundInPart(ctx context.Context, arg RequestStaffRefundInPartParams) (int32, error) {
+func (q *Queries) RequestStaffRefundInPart(ctx context.Context, arg RequestStaffRefundInPartParams) (RequestStaffRefundInPartRow, error) {
 	row := q.db.QueryRowContext(ctx, RequestStaffRefundInPart, arg.Amount, arg.TenantID, arg.ID)
-	var staff_refund_attempt int32
-	err := row.Scan(&staff_refund_attempt)
-	return staff_refund_attempt, err
+	var i RequestStaffRefundInPartRow
+	err := row.Scan(&i.StaffRefundAttempt, &i.StaffRefundRequestedTotal)
+	return i, err
 }
 
 const RevokePurchaseForStaff = `-- name: RevokePurchaseForStaff :one
