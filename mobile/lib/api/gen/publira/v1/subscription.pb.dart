@@ -999,7 +999,10 @@ class CreateBillingPortalSessionResponse extends $pb.GeneratedMessage {
 /// a plan that names no product in that store are failed_precondition. A reader
 /// who already holds a subscription that is trialing, active, past due, unpaid,
 /// or paused, whether Stripe or a store bills it, is already_exists. Asking
-/// again for the same plan answers the same intent.
+/// again for the same plan answers the same intent. Each call spends the
+/// reader's allowance for subscription checkouts, the one
+/// StartSubscriptionCheckout spends, and a reader past it is
+/// resource_exhausted.
 class StartStoreSubscriptionRequest extends $pb.GeneratedMessage {
   factory StartStoreSubscriptionRequest({
     $1.TenantContext? tenant,

@@ -97,9 +97,11 @@ const (
 	// series bundle and asks the payment provider for a checkout, which a
 	// reader could otherwise make the storefront repeat as fast as they ask.
 	actionStartSeriesRemainderCheckout readerAction = "series_remainder_checkout.start"
-	// A subscription checkout started. Each start writes the reader's latest
+	// A subscription started, through a checkout on the site or through the
+	// app's store, counted together: one reader starts one subscription at a
+	// time whichever way they pay. A checkout writes the reader's latest
 	// checkout, may expire the one before it, and asks the payment provider
-	// for a checkout.
+	// for a checkout; a store start writes an intent.
 	actionStartSubscriptionCheckout readerAction = "subscription_checkout.start"
 	// An episode paid for with coins. Each payment writes a purchase and the
 	// coins it spent.

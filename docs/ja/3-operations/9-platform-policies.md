@@ -102,7 +102,7 @@ publiractl platform set --default-locale en --default-timezone America/New_York 
 - 1人の読者が自分のアイコンをアップロード、選択、削除する回数。既定は1分あたり5回、1日あたり20回で、`--icon-change-per-minute`と`--icon-change-per-day`で変更できます。
 - 1人の読者がパスキーの登録やパスキーでの確認を始める回数と、パスキーの名前を変えたり削除したりする回数。既定は1分あたり10回、1日あたり50回で、`--passkey-per-minute`と`--passkey-per-day`で変更できます。
 - 1人の読者が、シリーズの残りをまとめて購入する手続きを始める回数。既定は1分あたり10回、1日あたり50回で、`--series-remainder-checkout-per-minute`と`--series-remainder-checkout-per-day`で変更できます。
-- 1人の読者が、サブスクリプションの購入手続きを始める回数。既定は1分あたり10回、1日あたり50回で、`--subscription-checkout-per-minute`と`--subscription-checkout-per-day`で変更できます。
+- 1人の読者が、サブスクリプションの購入手続きを始める回数。ウェブでの購入手続きとアプリのストアでの購読を合わせて数えます。既定は1分あたり10回、1日あたり50回で、`--subscription-checkout-per-minute`と`--subscription-checkout-per-day`で変更できます。
 - 1人の読者が、エピソードの代金をコインで支払う回数。既定は1分あたり20回、1日あたり500回で、`--coin-payment-per-minute`と`--coin-payment-per-day`で変更できます。
 - 1人の読者が、エピソード、巻、コインパックの購入を始める回数。ウェブでの購入手続きとアプリのストアでの購入を合わせて数えます。既定は1分あたり10回、1日あたり100回で、`--purchase-checkout-per-minute`と`--purchase-checkout-per-day`で変更できます。
 
