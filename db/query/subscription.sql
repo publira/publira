@@ -77,10 +77,13 @@ SELECT EXISTS (
 -- name: GetLatestStripeCustomerIDForUser :one
 -- The Stripe customer the reader last subscribed as, which a later checkout
 -- and the billing portal name, so the reader's invoices stay on one customer.
+-- A subscription billed by another provider names no Stripe customer, so it is
+-- passed over rather than answered as the latest.
 SELECT stripe_customer_id
 FROM subscriptions
 WHERE tenant_id = $1
     AND user_id = $2
+    AND stripe_customer_id IS NOT NULL
 ORDER BY created_at DESC,
     id DESC
 LIMIT 1;
@@ -158,10 +161,12 @@ SELECT EXISTS (
 
 -- name: ListBilledStripeSubscriptionIDsForUser :many
 -- The subscriptions of the reader Stripe will go on billing, which closing the
--- account cancels.
+-- account cancels. A subscription billed by another provider is not Stripe's
+-- to cancel and names no Stripe subscription.
 SELECT stripe_subscription_id
 FROM billed_subscriptions
 WHERE tenant_id = $1
     AND user_id = $2
+    AND stripe_subscription_id IS NOT NULL
 ORDER BY created_at,
     id;
