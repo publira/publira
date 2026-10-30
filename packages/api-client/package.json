@@ -148,9 +148,9 @@
   "dependencies": {
     "@buf/googleapis_googleapis.bufbuild_es": "catalog:",
     "@bufbuild/protobuf": "2.16.0",
-    "@connectrpc/connect": "2.2.0",
-    "@connectrpc/connect-node": "2.2.0",
-    "@connectrpc/connect-web": "2.2.0",
+    "@connectrpc/connect": "2.3.0",
+    "@connectrpc/connect-node": "2.3.0",
+    "@connectrpc/connect-web": "2.3.0",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:",
     "@publira/i18n": "workspace:*",
