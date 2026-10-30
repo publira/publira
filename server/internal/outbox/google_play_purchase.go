@@ -33,14 +33,17 @@ type GooglePlayPurchaseConsumePayload struct {
 }
 
 // GooglePlayPurchases is the part of the Google Play Developer API the
-// handler calls.
+// handlers call.
 type GooglePlayPurchases interface {
 	GetProductPurchase(ctx context.Context, serviceAccountKey []byte, packageName, productID, token string) (googleplay.ProductPurchase, error)
 	ConsumeProductPurchase(ctx context.Context, serviceAccountKey []byte, packageName, productID, token string) error
+	GetSubscriptionPurchase(ctx context.Context, serviceAccountKey []byte, packageName, token string) (googleplay.SubscriptionPurchase, error)
+	AcknowledgeSubscriptionPurchase(ctx context.Context, serviceAccountKey []byte, packageName, productID, token string) error
 }
 
 // GooglePlayHandlerConfig is what the worker resolves once at startup for the
-// consume handler. The tenant's credentials are read per event.
+// consume and acknowledge handlers. The tenant's credentials are read per
+// event.
 type GooglePlayHandlerConfig struct {
 	DB        *sql.DB
 	Encryptor paymentsettings.SecretManager

@@ -14,7 +14,7 @@ import (
 )
 
 const GetLatestStripeCustomerIDForUser = `-- name: GetLatestStripeCustomerIDForUser :one
-SELECT stripe_customer_id
+SELECT stripe_customer_id::text
 FROM subscriptions
 WHERE tenant_id = $1
     AND user_id = $2
@@ -43,6 +43,7 @@ func (q *Queries) GetLatestStripeCustomerIDForUser(ctx context.Context, arg GetL
 const GetMySubscription = `-- name: GetMySubscription :one
 SELECT s.id,
     s.plan_id,
+    s.provider,
     s.status,
     s.current_period_end,
     s.cancel_at_period_end,
@@ -64,6 +65,7 @@ type GetMySubscriptionParams struct {
 type GetMySubscriptionRow struct {
 	ID                uuid.UUID    `json:"id"`
 	PlanID            uuid.UUID    `json:"plan_id"`
+	Provider          string       `json:"provider"`
 	Status            string       `json:"status"`
 	CurrentPeriodEnd  sql.NullTime `json:"current_period_end"`
 	CancelAtPeriodEnd bool         `json:"cancel_at_period_end"`
@@ -71,13 +73,60 @@ type GetMySubscriptionRow struct {
 }
 
 // The reader's latest subscription that is not over, or failing that the
-// latest one that is.
+// latest one that is, whoever bills it.
 func (q *Queries) GetMySubscription(ctx context.Context, arg GetMySubscriptionParams) (GetMySubscriptionRow, error) {
 	row := q.db.QueryRowContext(ctx, GetMySubscription, arg.TenantID, arg.UserID)
 	var i GetMySubscriptionRow
 	err := row.Scan(
 		&i.ID,
 		&i.PlanID,
+		&i.Provider,
+		&i.Status,
+		&i.CurrentPeriodEnd,
+		&i.CancelAtPeriodEnd,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const GetMySubscriptionByID = `-- name: GetMySubscriptionByID :one
+SELECT s.id,
+    s.plan_id,
+    s.provider,
+    s.status,
+    s.current_period_end,
+    s.cancel_at_period_end,
+    s.created_at
+FROM subscriptions s
+WHERE s.tenant_id = $1
+    AND s.user_id = $2::uuid
+    AND s.id = $3
+`
+
+type GetMySubscriptionByIDParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+type GetMySubscriptionByIDRow struct {
+	ID                uuid.UUID    `json:"id"`
+	PlanID            uuid.UUID    `json:"plan_id"`
+	Provider          string       `json:"provider"`
+	Status            string       `json:"status"`
+	CurrentPeriodEnd  sql.NullTime `json:"current_period_end"`
+	CancelAtPeriodEnd bool         `json:"cancel_at_period_end"`
+	CreatedAt         time.Time    `json:"created_at"`
+}
+
+// One subscription of the reader's, shaped as GetMySubscription answers it.
+func (q *Queries) GetMySubscriptionByID(ctx context.Context, arg GetMySubscriptionByIDParams) (GetMySubscriptionByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, GetMySubscriptionByID, arg.TenantID, arg.UserID, arg.ID)
+	var i GetMySubscriptionByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.PlanID,
+		&i.Provider,
 		&i.Status,
 		&i.CurrentPeriodEnd,
 		&i.CancelAtPeriodEnd,
@@ -112,7 +161,7 @@ func (q *Queries) GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSub
 }
 
 const ListBilledStripeSubscriptionIDsForUser = `-- name: ListBilledStripeSubscriptionIDsForUser :many
-SELECT stripe_subscription_id
+SELECT stripe_subscription_id::text
 FROM billed_subscriptions
 WHERE tenant_id = $1
     AND user_id = $2
@@ -261,6 +310,7 @@ INSERT INTO subscriptions (
         tenant_id,
         user_id,
         plan_id,
+        provider,
         stripe_customer_id,
         stripe_subscription_id,
         stripe_price_id,
@@ -278,9 +328,10 @@ VALUES (
                 AND u.id = $3
         ),
         $4,
-        $5,
-        $6,
-        $7,
+        'stripe',
+        $5::text,
+        $6::text,
+        $7::text,
         $8,
         $9,
         $10
@@ -352,7 +403,7 @@ SELECT EXISTS (
         SELECT 1
         FROM subscriptions
         WHERE tenant_id = $1
-            AND stripe_subscription_id = $2
+            AND stripe_subscription_id = $2::text
             AND status IN ('canceled', 'incomplete_expired')
     ) AS ended
 `
@@ -375,7 +426,7 @@ func (q *Queries) SubscriptionHasEnded(ctx context.Context, arg SubscriptionHasE
 const UserHoldsLiveSubscription = `-- name: UserHoldsLiveSubscription :one
 SELECT EXISTS (
         SELECT 1
-        FROM billed_subscriptions
+        FROM live_subscriptions
         WHERE tenant_id = $1
             AND user_id = $2
     ) AS holds
@@ -386,9 +437,9 @@ type UserHoldsLiveSubscriptionParams struct {
 	UserID   uuid.NullUUID `json:"user_id"`
 }
 
-// Whether the reader holds a subscription Stripe will go on billing, which a
-// second checkout would run beside. A reader whose first payment failed starts
-// again.
+// Whether the reader holds a subscription Stripe or a store will go on
+// billing, which a second one would run beside. A reader whose first payment
+// failed starts again.
 func (q *Queries) UserHoldsLiveSubscription(ctx context.Context, arg UserHoldsLiveSubscriptionParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, UserHoldsLiveSubscription, arg.TenantID, arg.UserID)
 	var holds bool

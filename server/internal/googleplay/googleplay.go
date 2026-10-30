@@ -1,6 +1,6 @@
 // Package googleplay asks the Google Play Developer API about a tenant's
-// one-time product purchases, as the service account the tenant granted
-// access to its app in the Play Console.
+// one-time product purchases and subscriptions, as the service account the
+// tenant granted access to its app in the Play Console.
 package googleplay
 
 import (
@@ -172,6 +172,97 @@ func (c *Client) ListVoidedPurchases(ctx context.Context, serviceAccountKey []by
 			return voided, nil
 		}
 	}
+}
+
+// Subscription states of a SubscriptionPurchaseV2.
+const (
+	SubscriptionStatePending                 = "SUBSCRIPTION_STATE_PENDING"
+	SubscriptionStateActive                  = "SUBSCRIPTION_STATE_ACTIVE"
+	SubscriptionStatePaused                  = "SUBSCRIPTION_STATE_PAUSED"
+	SubscriptionStateInGracePeriod           = "SUBSCRIPTION_STATE_IN_GRACE_PERIOD"
+	SubscriptionStateOnHold                  = "SUBSCRIPTION_STATE_ON_HOLD"
+	SubscriptionStateCanceled                = "SUBSCRIPTION_STATE_CANCELED"
+	SubscriptionStateExpired                 = "SUBSCRIPTION_STATE_EXPIRED"
+	SubscriptionStatePendingPurchaseCanceled = "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED"
+)
+
+// AcknowledgementStateAcknowledged is a purchase someone has acknowledged.
+const AcknowledgementStateAcknowledged = "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED"
+
+// SubscriptionPurchase is the part of a SubscriptionPurchaseV2 resource a
+// subscription's state is decided on.
+type SubscriptionPurchase struct {
+	SubscriptionState    string `json:"subscriptionState"`
+	AcknowledgementState string `json:"acknowledgementState"`
+	// LineItems are the products the token subscribes to: one for a plain
+	// subscription.
+	LineItems []SubscriptionLineItem `json:"lineItems"`
+	// TestPurchase is present on a license tester's subscription, which
+	// charged nobody.
+	TestPurchase *struct{} `json:"testPurchase"`
+	// ExternalAccountIdentifiers carries the value the app set on the
+	// purchase, which is the intent the subscription was opened with.
+	ExternalAccountIdentifiers struct {
+		ObfuscatedExternalAccountID string `json:"obfuscatedExternalAccountId"`
+	} `json:"externalAccountIdentifiers"`
+}
+
+// SubscriptionLineItem is one product of a subscription purchase.
+type SubscriptionLineItem struct {
+	ProductID string `json:"productId"`
+	// ExpiryTime is when the period paid for ends, in RFC 3339.
+	ExpiryTime string `json:"expiryTime"`
+	// AutoRenewingPlan is present on a subscription that renews, as opposed to
+	// a prepaid one.
+	AutoRenewingPlan *AutoRenewingPlan `json:"autoRenewingPlan"`
+}
+
+// AutoRenewingPlan is how a renewing subscription renews.
+type AutoRenewingPlan struct {
+	// AutoRenewEnabled is false once the reader has canceled, which ends the
+	// subscription with the period paid for.
+	AutoRenewEnabled bool `json:"autoRenewEnabled"`
+}
+
+// IsTest reports a license tester's subscription.
+func (p SubscriptionPurchase) IsTest() bool {
+	return p.TestPurchase != nil
+}
+
+// LineItem answers the line item of productID, if the purchase has one.
+func (p SubscriptionPurchase) LineItem(productID string) (SubscriptionLineItem, bool) {
+	for _, item := range p.LineItems {
+		if item.ProductID == productID {
+			return item, true
+		}
+	}
+	return SubscriptionLineItem{}, false
+}
+
+// GetSubscriptionPurchase answers the subscription token was bought as, in the
+// app packageName.
+func (c *Client) GetSubscriptionPurchase(ctx context.Context, serviceAccountKey []byte, packageName, token string) (SubscriptionPurchase, error) {
+	target := fmt.Sprintf("%s/androidpublisher/v3/applications/%s/purchases/subscriptionsv2/tokens/%s",
+		c.endpoint, url.PathEscape(packageName), url.PathEscape(token))
+	body, err := c.do(ctx, serviceAccountKey, http.MethodGet, target)
+	if err != nil {
+		return SubscriptionPurchase{}, err
+	}
+	var purchase SubscriptionPurchase
+	if err := json.Unmarshal(body, &purchase); err != nil {
+		return SubscriptionPurchase{}, fmt.Errorf("googleplay: decode subscription purchase: %w", err)
+	}
+	return purchase, nil
+}
+
+// AcknowledgeSubscriptionPurchase acknowledges the subscription token bought
+// as productID. Google Play refunds and ends a subscription nobody
+// acknowledged within three days of its purchase.
+func (c *Client) AcknowledgeSubscriptionPurchase(ctx context.Context, serviceAccountKey []byte, packageName, productID, token string) error {
+	target := fmt.Sprintf("%s/androidpublisher/v3/applications/%s/purchases/subscriptions/%s/tokens/%s:acknowledge",
+		c.endpoint, url.PathEscape(packageName), url.PathEscape(productID), url.PathEscape(token))
+	_, err := c.do(ctx, serviceAccountKey, http.MethodPost, target)
+	return err
 }
 
 func (c *Client) purchaseURL(packageName, productID, token string) string {

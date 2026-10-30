@@ -35,12 +35,14 @@ const (
 // asks.
 type appStoreTransactions interface {
 	GetTransactionInfo(ctx context.Context, credentials appstore.Credentials, environment, transactionID string) (string, error)
+	GetAllSubscriptionStatuses(ctx context.Context, credentials appstore.Credentials, environment, transactionID string) ([]appstore.SubscriptionStatus, error)
 }
 
 // googlePlayPurchases is the part of the Google Play Developer API a
 // confirmation asks.
 type googlePlayPurchases interface {
 	GetProductPurchase(ctx context.Context, serviceAccountKey []byte, packageName, productID, token string) (googleplay.ProductPurchase, error)
+	GetSubscriptionPurchase(ctx context.Context, serviceAccountKey []byte, packageName, token string) (googleplay.SubscriptionPurchase, error)
 }
 
 // storeClients reach the two stores on a tenant's behalf.

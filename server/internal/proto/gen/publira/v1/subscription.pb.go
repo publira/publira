@@ -23,7 +23,9 @@ const (
 )
 
 // A subscription plan the tenant has published: a recurring price on its
-// Stripe account, and what a reader who pays it may read.
+// Stripe account, and what a reader who pays it may read. The tenant's app may
+// sell it through the App Store or Google Play instead, as the product named
+// below.
 type SubscriptionPlan struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The plan's primary key, which StartSubscriptionCheckout addresses it by.
@@ -54,10 +56,17 @@ type SubscriptionPlan struct {
 	// series are titled in the reader's locale. ListSubscriptionPlans fills
 	// them; GetMySubscription, which reports a plan the reader already holds,
 	// leaves them empty.
-	Labels        []*PublishedLabel `protobuf:"bytes,12,rep,name=labels,proto3" json:"labels,omitempty"`
-	Series        []*v1.Series      `protobuf:"bytes,13,rep,name=series,proto3" json:"series,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels []*PublishedLabel `protobuf:"bytes,12,rep,name=labels,proto3" json:"labels,omitempty"`
+	Series []*v1.Series      `protobuf:"bytes,13,rep,name=series,proto3" json:"series,omitempty"`
+	// The auto-renewable subscription the plan is sold as in the tenant's iOS
+	// app and in its Android app. Empty where the app does not sell the plan,
+	// which StartStoreSubscription refuses for that store. The price and the
+	// period the store bills are the store's, which the app reads from it
+	// rather than from price_amount and interval.
+	AppStoreProductId   string `protobuf:"bytes,14,opt,name=app_store_product_id,json=appStoreProductId,proto3" json:"app_store_product_id,omitempty"`
+	GooglePlayProductId string `protobuf:"bytes,15,opt,name=google_play_product_id,json=googlePlayProductId,proto3" json:"google_play_product_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SubscriptionPlan) Reset() {
@@ -181,7 +190,22 @@ func (x *SubscriptionPlan) GetSeries() []*v1.Series {
 	return nil
 }
 
-// A reader's subscription to one plan, as Stripe last reported it.
+func (x *SubscriptionPlan) GetAppStoreProductId() string {
+	if x != nil {
+		return x.AppStoreProductId
+	}
+	return ""
+}
+
+func (x *SubscriptionPlan) GetGooglePlayProductId() string {
+	if x != nil {
+		return x.GooglePlayProductId
+	}
+	return ""
+}
+
+// A reader's subscription to one plan, as Stripe or the store that bills it
+// last reported it.
 type Subscription struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The subscription's primary key, a UUID.
@@ -190,13 +214,18 @@ type Subscription struct {
 	// tenant unpublishes its plan.
 	Plan   *SubscriptionPlan     `protobuf:"bytes,2,opt,name=plan,proto3" json:"plan,omitempty"`
 	Status v1.SubscriptionStatus `protobuf:"varint,3,opt,name=status,proto3,enum=publira.types.v1.SubscriptionStatus" json:"status,omitempty"`
-	// RFC 3339; the end of the period paid for. Empty when Stripe reported none.
+	// RFC 3339; the end of the period paid for, or of the grace period a store
+	// gives a past due subscription. Empty when Stripe reported none.
 	CurrentPeriodEnd string `protobuf:"bytes,4,opt,name=current_period_end,json=currentPeriodEnd,proto3" json:"current_period_end,omitempty"`
 	// Whether the reader has canceled it, which ends it at current_period_end
 	// rather than renewing it.
 	CancelAtPeriodEnd bool `protobuf:"varint,5,opt,name=cancel_at_period_end,json=cancelAtPeriodEnd,proto3" json:"cancel_at_period_end,omitempty"`
 	// RFC 3339; when the subscription was first recorded.
-	CreatedAt     string `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CreatedAt string `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The store the reader subscribed through in the app, which is where they
+	// change or cancel it. IN_APP_PURCHASE_STORE_UNSPECIFIED for a subscription
+	// Stripe bills, which CreateBillingPortalSession manages.
+	Store         InAppPurchaseStore `protobuf:"varint,7,opt,name=store,proto3,enum=publira.v1.InAppPurchaseStore" json:"store,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -271,6 +300,13 @@ func (x *Subscription) GetCreatedAt() string {
 		return x.CreatedAt
 	}
 	return ""
+}
+
+func (x *Subscription) GetStore() InAppPurchaseStore {
+	if x != nil {
+		return x.Store
+	}
+	return InAppPurchaseStore_IN_APP_PURCHASE_STORE_UNSPECIFIED
 }
 
 type ListSubscriptionPlansRequest struct {
@@ -395,8 +431,8 @@ func (x *ListSubscriptionPlansResponse) GetPlans() []*SubscriptionPlan {
 // Signed-in readers only. A plan that is not published is not_found, and a
 // tenant that takes no payments, or takes them through a provider that sells
 // no subscriptions, is failed_precondition. A reader who already holds a
-// subscription that is trialing, active, past due, unpaid, or paused is
-// already_exists, and so is one who has paid a checkout whose subscription
+// subscription that is trialing, active, past due, unpaid, or paused, whether
+// Stripe or a store bills it, is already_exists, and so is one who has paid a checkout whose subscription
 // Stripe has not reported as ended: one reader holds one subscription, and
 // changing it is what CreateBillingPortalSession is for. Each call spends the
 // reader's allowance for subscription checkouts, and a reader past it is
@@ -597,8 +633,9 @@ func (x *GetMySubscriptionResponse) GetSubscription() *Subscription {
 // site. What the reader changes there reaches the server through Stripe's
 // webhook.
 //
-// A reader who has never subscribed is failed_precondition, and so is a
-// tenant that takes no payments through Stripe.
+// A reader who has never subscribed through Stripe is failed_precondition, and
+// so is a tenant that takes no payments through Stripe: a subscription a store
+// bills is changed and canceled in that store.
 type CreateBillingPortalSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -687,12 +724,280 @@ func (x *CreateBillingPortalSessionResponse) GetUrl() string {
 	return ""
 }
 
+// Opens a subscription through the App Store's or Google Play's in-app
+// purchase, for a tenant whose app sells through the store. The app subscribes
+// to `product_id` with `intent_id` as the transaction's account token
+// (`appAccountToken` on iOS, `obfuscatedAccountId` on Android), which is how
+// ConfirmStoreSubscription learns whose subscription the transaction is.
+//
+// Signed-in readers only. A plan that is not published is not_found. A tenant
+// whose app does not sell through the store, a `store` that is not ready, and
+// a plan that names no product in that store are failed_precondition. A reader
+// who already holds a subscription that is trialing, active, past due, unpaid,
+// or paused, whether Stripe or a store bills it, is already_exists. Asking
+// again for the same plan answers the same intent.
+type StartStoreSubscriptionRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The store the app is about to subscribe through. Required.
+	Store InAppPurchaseStore `protobuf:"varint,2,opt,name=store,proto3,enum=publira.v1.InAppPurchaseStore" json:"store,omitempty"`
+	// The plan to subscribe to (SubscriptionPlan.id).
+	PlanId        string `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartStoreSubscriptionRequest) Reset() {
+	*x = StartStoreSubscriptionRequest{}
+	mi := &file_publira_v1_subscription_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartStoreSubscriptionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartStoreSubscriptionRequest) ProtoMessage() {}
+
+func (x *StartStoreSubscriptionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_subscription_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartStoreSubscriptionRequest.ProtoReflect.Descriptor instead.
+func (*StartStoreSubscriptionRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_subscription_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *StartStoreSubscriptionRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *StartStoreSubscriptionRequest) GetStore() InAppPurchaseStore {
+	if x != nil {
+		return x.Store
+	}
+	return InAppPurchaseStore_IN_APP_PURCHASE_STORE_UNSPECIFIED
+}
+
+func (x *StartStoreSubscriptionRequest) GetPlanId() string {
+	if x != nil {
+		return x.PlanId
+	}
+	return ""
+}
+
+type StartStoreSubscriptionResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	IntentId string                 `protobuf:"bytes,1,opt,name=intent_id,json=intentId,proto3" json:"intent_id,omitempty"`
+	// The plan's product in `store`: SubscriptionPlan.app_store_product_id or
+	// google_play_product_id.
+	ProductId     string `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartStoreSubscriptionResponse) Reset() {
+	*x = StartStoreSubscriptionResponse{}
+	mi := &file_publira_v1_subscription_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartStoreSubscriptionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartStoreSubscriptionResponse) ProtoMessage() {}
+
+func (x *StartStoreSubscriptionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_subscription_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartStoreSubscriptionResponse.ProtoReflect.Descriptor instead.
+func (*StartStoreSubscriptionResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_subscription_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *StartStoreSubscriptionResponse) GetIntentId() string {
+	if x != nil {
+		return x.IntentId
+	}
+	return ""
+}
+
+func (x *StartStoreSubscriptionResponse) GetProductId() string {
+	if x != nil {
+		return x.ProductId
+	}
+	return ""
+}
+
+// Hands a subscription the store charged to the server, which verifies it with
+// the store and records it as the reader's subscription to the plan its
+// product is sold as. It opens that plan's episodes as a Stripe subscription
+// does, for as long as the store reports it active, in its grace period, or
+// canceled before the end of the period paid for.
+//
+// A subscription recorded already answers that subscription, as the store
+// reports it now: confirming it again, as an app restoring its purchases
+// does, records whatever the store has changed since. One recorded for
+// another reader is permission_denied, and so is a transaction whose account
+// token names another reader's intent: a restore moves nothing between
+// accounts. Otherwise the account token has to name an open intent the caller
+// opened, for the product the store bills, in the tenant's own app, and the
+// product has to be one a plan of the tenant is sold as: anything else is
+// invalid_argument and creates nothing, and an intent another subscription
+// has already consumed is failed_precondition.
+//
+// The store has charged by the time the app asks, so a subscription is
+// recorded even for a reader who already holds another one. A store the
+// server cannot reach is unavailable, and the app confirms again later. Each
+// call spends the reader's allowance for store confirmations, the one
+// PurchaseService.ConfirmStorePurchase spends, and a reader past it is
+// resource_exhausted before the store is asked.
+type ConfirmStoreSubscriptionRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Store  InAppPurchaseStore     `protobuf:"varint,2,opt,name=store,proto3,enum=publira.v1.InAppPurchaseStore" json:"store,omitempty"`
+	// IN_APP_PURCHASE_STORE_APP_STORE: the JWS signed transaction StoreKit 2
+	// reports for any transaction of the subscription.
+	// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the purchase token.
+	Transaction string `protobuf:"bytes,3,opt,name=transaction,proto3" json:"transaction,omitempty"`
+	// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the subscription the token was bought
+	// as. Unused for the App Store, whose signed transaction names its product.
+	ProductId     string `protobuf:"bytes,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConfirmStoreSubscriptionRequest) Reset() {
+	*x = ConfirmStoreSubscriptionRequest{}
+	mi := &file_publira_v1_subscription_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConfirmStoreSubscriptionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfirmStoreSubscriptionRequest) ProtoMessage() {}
+
+func (x *ConfirmStoreSubscriptionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_subscription_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConfirmStoreSubscriptionRequest.ProtoReflect.Descriptor instead.
+func (*ConfirmStoreSubscriptionRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_subscription_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ConfirmStoreSubscriptionRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ConfirmStoreSubscriptionRequest) GetStore() InAppPurchaseStore {
+	if x != nil {
+		return x.Store
+	}
+	return InAppPurchaseStore_IN_APP_PURCHASE_STORE_UNSPECIFIED
+}
+
+func (x *ConfirmStoreSubscriptionRequest) GetTransaction() string {
+	if x != nil {
+		return x.Transaction
+	}
+	return ""
+}
+
+func (x *ConfirmStoreSubscriptionRequest) GetProductId() string {
+	if x != nil {
+		return x.ProductId
+	}
+	return ""
+}
+
+type ConfirmStoreSubscriptionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Subscription  *Subscription          `protobuf:"bytes,1,opt,name=subscription,proto3" json:"subscription,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConfirmStoreSubscriptionResponse) Reset() {
+	*x = ConfirmStoreSubscriptionResponse{}
+	mi := &file_publira_v1_subscription_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConfirmStoreSubscriptionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfirmStoreSubscriptionResponse) ProtoMessage() {}
+
+func (x *ConfirmStoreSubscriptionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_subscription_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConfirmStoreSubscriptionResponse.ProtoReflect.Descriptor instead.
+func (*ConfirmStoreSubscriptionResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_subscription_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ConfirmStoreSubscriptionResponse) GetSubscription() *Subscription {
+	if x != nil {
+		return x.Subscription
+	}
+	return nil
+}
+
 var File_publira_v1_subscription_proto protoreflect.FileDescriptor
 
 const file_publira_v1_subscription_proto_rawDesc = "" +
 	"\n" +
 	"\x1dpublira/v1/subscription.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\x1a\x18publira/v1/catalog.proto\"\x80\x04\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\x1a\x18publira/v1/catalog.proto\"\xe6\x04\n" +
 	"\x10SubscriptionPlan\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
@@ -708,7 +1013,9 @@ const file_publira_v1_subscription_proto_rawDesc = "" +
 	"\n" +
 	"series_ids\x18\v \x03(\tR\tseriesIds\x122\n" +
 	"\x06labels\x18\f \x03(\v2\x1a.publira.v1.PublishedLabelR\x06labels\x120\n" +
-	"\x06series\x18\r \x03(\v2\x18.publira.types.v1.SeriesR\x06series\"\x8c\x02\n" +
+	"\x06series\x18\r \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12/\n" +
+	"\x14app_store_product_id\x18\x0e \x01(\tR\x11appStoreProductId\x123\n" +
+	"\x16google_play_product_id\x18\x0f \x01(\tR\x13googlePlayProductId\"\xc2\x02\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
 	"\x04plan\x18\x02 \x01(\v2\x1c.publira.v1.SubscriptionPlanR\x04plan\x12<\n" +
@@ -716,7 +1023,8 @@ const file_publira_v1_subscription_proto_rawDesc = "" +
 	"\x12current_period_end\x18\x04 \x01(\tR\x10currentPeriodEnd\x12/\n" +
 	"\x14cancel_at_period_end\x18\x05 \x01(\bR\x11cancelAtPeriodEnd\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\xaa\x01\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x124\n" +
+	"\x05store\x18\a \x01(\x0e2\x1e.publira.v1.InAppPurchaseStoreR\x05store\"\xaa\x01\n" +
 	"\x1cListSubscriptionPlansRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
 	"\asurface\x18\x02 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
@@ -735,12 +1043,30 @@ const file_publira_v1_subscription_proto_rawDesc = "" +
 	"!CreateBillingPortalSessionRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"6\n" +
 	"\"CreateBillingPortalSessionResponse\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url2\xe4\x03\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\"\xa7\x01\n" +
+	"\x1dStartStoreSubscriptionRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x124\n" +
+	"\x05store\x18\x02 \x01(\x0e2\x1e.publira.v1.InAppPurchaseStoreR\x05store\x12\x17\n" +
+	"\aplan_id\x18\x03 \x01(\tR\x06planId\"\\\n" +
+	"\x1eStartStoreSubscriptionResponse\x12\x1b\n" +
+	"\tintent_id\x18\x01 \x01(\tR\bintentId\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x02 \x01(\tR\tproductId\"\xd1\x01\n" +
+	"\x1fConfirmStoreSubscriptionRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x124\n" +
+	"\x05store\x18\x02 \x01(\x0e2\x1e.publira.v1.InAppPurchaseStoreR\x05store\x12 \n" +
+	"\vtransaction\x18\x03 \x01(\tR\vtransaction\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x04 \x01(\tR\tproductId\"`\n" +
+	" ConfirmStoreSubscriptionResponse\x12<\n" +
+	"\fsubscription\x18\x01 \x01(\v2\x18.publira.v1.SubscriptionR\fsubscription2\xd0\x05\n" +
 	"\x13SubscriptionService\x12n\n" +
 	"\x15ListSubscriptionPlans\x12(.publira.v1.ListSubscriptionPlansRequest\x1a).publira.v1.ListSubscriptionPlansResponse\"\x00\x12z\n" +
 	"\x19StartSubscriptionCheckout\x12,.publira.v1.StartSubscriptionCheckoutRequest\x1a-.publira.v1.StartSubscriptionCheckoutResponse\"\x00\x12b\n" +
 	"\x11GetMySubscription\x12$.publira.v1.GetMySubscriptionRequest\x1a%.publira.v1.GetMySubscriptionResponse\"\x00\x12}\n" +
-	"\x1aCreateBillingPortalSession\x12-.publira.v1.CreateBillingPortalSessionRequest\x1a..publira.v1.CreateBillingPortalSessionResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x1aCreateBillingPortalSession\x12-.publira.v1.CreateBillingPortalSessionRequest\x1a..publira.v1.CreateBillingPortalSessionResponse\"\x00\x12q\n" +
+	"\x16StartStoreSubscription\x12).publira.v1.StartStoreSubscriptionRequest\x1a*.publira.v1.StartStoreSubscriptionResponse\"\x00\x12w\n" +
+	"\x18ConfirmStoreSubscription\x12+.publira.v1.ConfirmStoreSubscriptionRequest\x1a,.publira.v1.ConfirmStoreSubscriptionResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_subscription_proto_rawDescOnce sync.Once
@@ -754,7 +1080,7 @@ func file_publira_v1_subscription_proto_rawDescGZIP() []byte {
 	return file_publira_v1_subscription_proto_rawDescData
 }
 
-var file_publira_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_publira_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_publira_v1_subscription_proto_goTypes = []any{
 	(*SubscriptionPlan)(nil),                   // 0: publira.v1.SubscriptionPlan
 	(*Subscription)(nil),                       // 1: publira.v1.Subscription
@@ -766,41 +1092,56 @@ var file_publira_v1_subscription_proto_goTypes = []any{
 	(*GetMySubscriptionResponse)(nil),          // 7: publira.v1.GetMySubscriptionResponse
 	(*CreateBillingPortalSessionRequest)(nil),  // 8: publira.v1.CreateBillingPortalSessionRequest
 	(*CreateBillingPortalSessionResponse)(nil), // 9: publira.v1.CreateBillingPortalSessionResponse
-	(v1.SubscriptionInterval)(0),               // 10: publira.types.v1.SubscriptionInterval
-	(v1.SubscriptionPlanScope)(0),              // 11: publira.types.v1.SubscriptionPlanScope
-	(*PublishedLabel)(nil),                     // 12: publira.v1.PublishedLabel
-	(*v1.Series)(nil),                          // 13: publira.types.v1.Series
-	(v1.SubscriptionStatus)(0),                 // 14: publira.types.v1.SubscriptionStatus
-	(*v1.TenantContext)(nil),                   // 15: publira.types.v1.TenantContext
-	(v1.ClientSurface)(0),                      // 16: publira.types.v1.ClientSurface
+	(*StartStoreSubscriptionRequest)(nil),      // 10: publira.v1.StartStoreSubscriptionRequest
+	(*StartStoreSubscriptionResponse)(nil),     // 11: publira.v1.StartStoreSubscriptionResponse
+	(*ConfirmStoreSubscriptionRequest)(nil),    // 12: publira.v1.ConfirmStoreSubscriptionRequest
+	(*ConfirmStoreSubscriptionResponse)(nil),   // 13: publira.v1.ConfirmStoreSubscriptionResponse
+	(v1.SubscriptionInterval)(0),               // 14: publira.types.v1.SubscriptionInterval
+	(v1.SubscriptionPlanScope)(0),              // 15: publira.types.v1.SubscriptionPlanScope
+	(*PublishedLabel)(nil),                     // 16: publira.v1.PublishedLabel
+	(*v1.Series)(nil),                          // 17: publira.types.v1.Series
+	(v1.SubscriptionStatus)(0),                 // 18: publira.types.v1.SubscriptionStatus
+	(InAppPurchaseStore)(0),                    // 19: publira.v1.InAppPurchaseStore
+	(*v1.TenantContext)(nil),                   // 20: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                      // 21: publira.types.v1.ClientSurface
 }
 var file_publira_v1_subscription_proto_depIdxs = []int32{
-	10, // 0: publira.v1.SubscriptionPlan.interval:type_name -> publira.types.v1.SubscriptionInterval
-	11, // 1: publira.v1.SubscriptionPlan.scope:type_name -> publira.types.v1.SubscriptionPlanScope
-	12, // 2: publira.v1.SubscriptionPlan.labels:type_name -> publira.v1.PublishedLabel
-	13, // 3: publira.v1.SubscriptionPlan.series:type_name -> publira.types.v1.Series
+	14, // 0: publira.v1.SubscriptionPlan.interval:type_name -> publira.types.v1.SubscriptionInterval
+	15, // 1: publira.v1.SubscriptionPlan.scope:type_name -> publira.types.v1.SubscriptionPlanScope
+	16, // 2: publira.v1.SubscriptionPlan.labels:type_name -> publira.v1.PublishedLabel
+	17, // 3: publira.v1.SubscriptionPlan.series:type_name -> publira.types.v1.Series
 	0,  // 4: publira.v1.Subscription.plan:type_name -> publira.v1.SubscriptionPlan
-	14, // 5: publira.v1.Subscription.status:type_name -> publira.types.v1.SubscriptionStatus
-	15, // 6: publira.v1.ListSubscriptionPlansRequest.tenant:type_name -> publira.types.v1.TenantContext
-	16, // 7: publira.v1.ListSubscriptionPlansRequest.surface:type_name -> publira.types.v1.ClientSurface
-	0,  // 8: publira.v1.ListSubscriptionPlansResponse.plans:type_name -> publira.v1.SubscriptionPlan
-	15, // 9: publira.v1.StartSubscriptionCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	15, // 10: publira.v1.GetMySubscriptionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 11: publira.v1.GetMySubscriptionResponse.subscription:type_name -> publira.v1.Subscription
-	15, // 12: publira.v1.CreateBillingPortalSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 13: publira.v1.SubscriptionService.ListSubscriptionPlans:input_type -> publira.v1.ListSubscriptionPlansRequest
-	4,  // 14: publira.v1.SubscriptionService.StartSubscriptionCheckout:input_type -> publira.v1.StartSubscriptionCheckoutRequest
-	6,  // 15: publira.v1.SubscriptionService.GetMySubscription:input_type -> publira.v1.GetMySubscriptionRequest
-	8,  // 16: publira.v1.SubscriptionService.CreateBillingPortalSession:input_type -> publira.v1.CreateBillingPortalSessionRequest
-	3,  // 17: publira.v1.SubscriptionService.ListSubscriptionPlans:output_type -> publira.v1.ListSubscriptionPlansResponse
-	5,  // 18: publira.v1.SubscriptionService.StartSubscriptionCheckout:output_type -> publira.v1.StartSubscriptionCheckoutResponse
-	7,  // 19: publira.v1.SubscriptionService.GetMySubscription:output_type -> publira.v1.GetMySubscriptionResponse
-	9,  // 20: publira.v1.SubscriptionService.CreateBillingPortalSession:output_type -> publira.v1.CreateBillingPortalSessionResponse
-	17, // [17:21] is the sub-list for method output_type
-	13, // [13:17] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	18, // 5: publira.v1.Subscription.status:type_name -> publira.types.v1.SubscriptionStatus
+	19, // 6: publira.v1.Subscription.store:type_name -> publira.v1.InAppPurchaseStore
+	20, // 7: publira.v1.ListSubscriptionPlansRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 8: publira.v1.ListSubscriptionPlansRequest.surface:type_name -> publira.types.v1.ClientSurface
+	0,  // 9: publira.v1.ListSubscriptionPlansResponse.plans:type_name -> publira.v1.SubscriptionPlan
+	20, // 10: publira.v1.StartSubscriptionCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 11: publira.v1.GetMySubscriptionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 12: publira.v1.GetMySubscriptionResponse.subscription:type_name -> publira.v1.Subscription
+	20, // 13: publira.v1.CreateBillingPortalSessionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 14: publira.v1.StartStoreSubscriptionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 15: publira.v1.StartStoreSubscriptionRequest.store:type_name -> publira.v1.InAppPurchaseStore
+	20, // 16: publira.v1.ConfirmStoreSubscriptionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	19, // 17: publira.v1.ConfirmStoreSubscriptionRequest.store:type_name -> publira.v1.InAppPurchaseStore
+	1,  // 18: publira.v1.ConfirmStoreSubscriptionResponse.subscription:type_name -> publira.v1.Subscription
+	2,  // 19: publira.v1.SubscriptionService.ListSubscriptionPlans:input_type -> publira.v1.ListSubscriptionPlansRequest
+	4,  // 20: publira.v1.SubscriptionService.StartSubscriptionCheckout:input_type -> publira.v1.StartSubscriptionCheckoutRequest
+	6,  // 21: publira.v1.SubscriptionService.GetMySubscription:input_type -> publira.v1.GetMySubscriptionRequest
+	8,  // 22: publira.v1.SubscriptionService.CreateBillingPortalSession:input_type -> publira.v1.CreateBillingPortalSessionRequest
+	10, // 23: publira.v1.SubscriptionService.StartStoreSubscription:input_type -> publira.v1.StartStoreSubscriptionRequest
+	12, // 24: publira.v1.SubscriptionService.ConfirmStoreSubscription:input_type -> publira.v1.ConfirmStoreSubscriptionRequest
+	3,  // 25: publira.v1.SubscriptionService.ListSubscriptionPlans:output_type -> publira.v1.ListSubscriptionPlansResponse
+	5,  // 26: publira.v1.SubscriptionService.StartSubscriptionCheckout:output_type -> publira.v1.StartSubscriptionCheckoutResponse
+	7,  // 27: publira.v1.SubscriptionService.GetMySubscription:output_type -> publira.v1.GetMySubscriptionResponse
+	9,  // 28: publira.v1.SubscriptionService.CreateBillingPortalSession:output_type -> publira.v1.CreateBillingPortalSessionResponse
+	11, // 29: publira.v1.SubscriptionService.StartStoreSubscription:output_type -> publira.v1.StartStoreSubscriptionResponse
+	13, // 30: publira.v1.SubscriptionService.ConfirmStoreSubscription:output_type -> publira.v1.ConfirmStoreSubscriptionResponse
+	25, // [25:31] is the sub-list for method output_type
+	19, // [19:25] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_subscription_proto_init() }
@@ -815,7 +1156,7 @@ func file_publira_v1_subscription_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_subscription_proto_rawDesc), len(file_publira_v1_subscription_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

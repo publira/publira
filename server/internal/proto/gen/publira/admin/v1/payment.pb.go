@@ -1453,9 +1453,15 @@ type ListTenantStoreProductsResponse struct {
 	// not, so a pack's product can exist before the pack goes on sale. Only paid
 	// episodes the app may show and sell are counted. The packs are listed
 	// whether or not coins are turned on.
-	Products      []*TenantStoreProduct `protobuf:"bytes,1,rep,name=products,proto3" json:"products,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Products []*TenantStoreProduct `protobuf:"bytes,1,rep,name=products,proto3" json:"products,omitempty"`
+	// Every subscription plan of the tenant, in the order it was created,
+	// published or not and whether or not it names a store product yet, so the
+	// console can show which plans the app sells and which it does not. Each
+	// names the auto-renewable subscription it is sold as in each store, which
+	// the tenant creates there with the plan's billing period.
+	SubscriptionPlans []*AdminSubscriptionPlan `protobuf:"bytes,2,rep,name=subscription_plans,json=subscriptionPlans,proto3" json:"subscription_plans,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ListTenantStoreProductsResponse) Reset() {
@@ -1495,11 +1501,18 @@ func (x *ListTenantStoreProductsResponse) GetProducts() []*TenantStoreProduct {
 	return nil
 }
 
+func (x *ListTenantStoreProductsResponse) GetSubscriptionPlans() []*AdminSubscriptionPlan {
+	if x != nil {
+		return x.SubscriptionPlans
+	}
+	return nil
+}
+
 var File_publira_admin_v1_payment_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/admin/v1/payment.proto\x12\x10publira.admin.v1\x1a\x1bpublira/admin/v1/coin.proto\x1a\x1cpublira/admin/v1/email.proto\x1a\x1cpublira/types/v1/types.proto\"x\n" +
+	"\x1epublira/admin/v1/payment.proto\x12\x10publira.admin.v1\x1a\x1bpublira/admin/v1/coin.proto\x1a\x1cpublira/admin/v1/email.proto\x1a(publira/admin/v1/subscription_plan.proto\x1a\x1cpublira/types/v1/types.proto\"x\n" +
 	"\x16PaymentCredentialField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06secret\x18\x02 \x01(\bR\x06secret\x12\x16\n" +
@@ -1600,9 +1613,10 @@ const file_publira_admin_v1_payment_proto_rawDesc = "" +
 	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x127\n" +
 	"\tcoin_pack\x18\x05 \x01(\v2\x1a.publira.admin.v1.CoinPackR\bcoinPack\"Y\n" +
 	"\x1eListTenantStoreProductsRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"c\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xbb\x01\n" +
 	"\x1fListTenantStoreProductsResponse\x12@\n" +
-	"\bproducts\x18\x01 \x03(\v2$.publira.admin.v1.TenantStoreProductR\bproducts2\xe1\x06\n" +
+	"\bproducts\x18\x01 \x03(\v2$.publira.admin.v1.TenantStoreProductR\bproducts\x12V\n" +
+	"\x12subscription_plans\x18\x02 \x03(\v2'.publira.admin.v1.AdminSubscriptionPlanR\x11subscriptionPlans2\xe1\x06\n" +
 	"\x1bAdminPaymentSettingsService\x12w\n" +
 	"\x14ListPaymentProviders\x12-.publira.admin.v1.ListPaymentProvidersRequest\x1a..publira.admin.v1.ListPaymentProvidersResponse\"\x00\x12\x83\x01\n" +
 	"\x18GetTenantPaymentSettings\x121.publira.admin.v1.GetTenantPaymentSettingsRequest\x1a2.publira.admin.v1.GetTenantPaymentSettingsResponse\"\x00\x12\x8c\x01\n" +
@@ -1652,6 +1666,7 @@ var file_publira_admin_v1_payment_proto_goTypes = []any{
 	(SecretUpdateMode)(0),                            // 24: publira.admin.v1.SecretUpdateMode
 	(v1.AppPurchaseRoute)(0),                         // 25: publira.types.v1.AppPurchaseRoute
 	(*CoinPack)(nil),                                 // 26: publira.admin.v1.CoinPack
+	(*AdminSubscriptionPlan)(nil),                    // 27: publira.admin.v1.AdminSubscriptionPlan
 }
 var file_publira_admin_v1_payment_proto_depIdxs = []int32{
 	0,  // 0: publira.admin.v1.PaymentProvider.fields:type_name -> publira.admin.v1.PaymentCredentialField
@@ -1679,23 +1694,24 @@ var file_publira_admin_v1_payment_proto_depIdxs = []int32{
 	26, // 22: publira.admin.v1.TenantStoreProduct.coin_pack:type_name -> publira.admin.v1.CoinPack
 	23, // 23: publira.admin.v1.ListTenantStoreProductsRequest.tenant:type_name -> publira.types.v1.TenantContext
 	20, // 24: publira.admin.v1.ListTenantStoreProductsResponse.products:type_name -> publira.admin.v1.TenantStoreProduct
-	2,  // 25: publira.admin.v1.AdminPaymentSettingsService.ListPaymentProviders:input_type -> publira.admin.v1.ListPaymentProvidersRequest
-	6,  // 26: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:input_type -> publira.admin.v1.GetTenantPaymentSettingsRequest
-	9,  // 27: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:input_type -> publira.admin.v1.UpdateTenantPaymentSettingsRequest
-	14, // 28: publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings:input_type -> publira.admin.v1.GetTenantStorePaymentSettingsRequest
-	18, // 29: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings:input_type -> publira.admin.v1.UpdateTenantStorePaymentSettingsRequest
-	21, // 30: publira.admin.v1.AdminPaymentSettingsService.ListTenantStoreProducts:input_type -> publira.admin.v1.ListTenantStoreProductsRequest
-	3,  // 31: publira.admin.v1.AdminPaymentSettingsService.ListPaymentProviders:output_type -> publira.admin.v1.ListPaymentProvidersResponse
-	7,  // 32: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:output_type -> publira.admin.v1.GetTenantPaymentSettingsResponse
-	10, // 33: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:output_type -> publira.admin.v1.UpdateTenantPaymentSettingsResponse
-	15, // 34: publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings:output_type -> publira.admin.v1.GetTenantStorePaymentSettingsResponse
-	19, // 35: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings:output_type -> publira.admin.v1.UpdateTenantStorePaymentSettingsResponse
-	22, // 36: publira.admin.v1.AdminPaymentSettingsService.ListTenantStoreProducts:output_type -> publira.admin.v1.ListTenantStoreProductsResponse
-	31, // [31:37] is the sub-list for method output_type
-	25, // [25:31] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	27, // 25: publira.admin.v1.ListTenantStoreProductsResponse.subscription_plans:type_name -> publira.admin.v1.AdminSubscriptionPlan
+	2,  // 26: publira.admin.v1.AdminPaymentSettingsService.ListPaymentProviders:input_type -> publira.admin.v1.ListPaymentProvidersRequest
+	6,  // 27: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:input_type -> publira.admin.v1.GetTenantPaymentSettingsRequest
+	9,  // 28: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:input_type -> publira.admin.v1.UpdateTenantPaymentSettingsRequest
+	14, // 29: publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings:input_type -> publira.admin.v1.GetTenantStorePaymentSettingsRequest
+	18, // 30: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings:input_type -> publira.admin.v1.UpdateTenantStorePaymentSettingsRequest
+	21, // 31: publira.admin.v1.AdminPaymentSettingsService.ListTenantStoreProducts:input_type -> publira.admin.v1.ListTenantStoreProductsRequest
+	3,  // 32: publira.admin.v1.AdminPaymentSettingsService.ListPaymentProviders:output_type -> publira.admin.v1.ListPaymentProvidersResponse
+	7,  // 33: publira.admin.v1.AdminPaymentSettingsService.GetTenantPaymentSettings:output_type -> publira.admin.v1.GetTenantPaymentSettingsResponse
+	10, // 34: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings:output_type -> publira.admin.v1.UpdateTenantPaymentSettingsResponse
+	15, // 35: publira.admin.v1.AdminPaymentSettingsService.GetTenantStorePaymentSettings:output_type -> publira.admin.v1.GetTenantStorePaymentSettingsResponse
+	19, // 36: publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings:output_type -> publira.admin.v1.UpdateTenantStorePaymentSettingsResponse
+	22, // 37: publira.admin.v1.AdminPaymentSettingsService.ListTenantStoreProducts:output_type -> publira.admin.v1.ListTenantStoreProductsResponse
+	32, // [32:38] is the sub-list for method output_type
+	26, // [26:32] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_payment_proto_init() }
@@ -1705,6 +1721,7 @@ func file_publira_admin_v1_payment_proto_init() {
 	}
 	file_publira_admin_v1_coin_proto_init()
 	file_publira_admin_v1_email_proto_init()
+	file_publira_admin_v1_subscription_plan_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
