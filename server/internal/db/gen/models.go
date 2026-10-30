@@ -380,14 +380,6 @@ type EpisodeCommentReport struct {
 	ResolvedAt     sql.NullTime   `json:"resolved_at"`
 }
 
-type EpisodeContentGrant struct {
-	TenantID     uuid.UUID      `json:"tenant_id"`
-	UserID       uuid.UUID      `json:"user_id"`
-	EpisodeID    uuid.UUID      `json:"episode_id"`
-	Kind         string         `json:"kind"`
-	PurchaseKind sql.NullString `json:"purchase_kind"`
-}
-
 type EpisodeCreator struct {
 	TenantID     uuid.UUID     `json:"tenant_id"`
 	EpisodeID    uuid.UUID     `json:"episode_id"`
