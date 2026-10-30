@@ -333,6 +333,7 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 	// A refund the notification says failed is confirmed with the API, as
 	// everything else the notification says is, before it reopens anything.
 	failed := false
+	refundKey := ""
 	if refundFailed(payjpv2.PaymentRefundStatus(refund.Status)) {
 		client, err := p.client(credentials)
 		if err != nil {
@@ -346,6 +347,7 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 			return nil, errors.New("payjp returned no refund")
 		}
 		failed = res.Result.PaymentFlowId == refund.PaymentFlowID && refundFailed(res.Result.Status)
+		refundKey = refundKeyOf(*res.Result)
 	}
 
 	// A refund notification carries that refund's amount alone, and the
@@ -360,6 +362,7 @@ func (p *Provider) refundedEvent(ctx context.Context, credentials paymentprovide
 			PaymentID:      refund.PaymentFlowID,
 			AmountRefunded: total,
 			Currency:       currency,
+			RefundKey:      refundKey,
 		}, nil
 	}
 	if total == 0 {
@@ -412,12 +415,21 @@ func (p *Provider) refundedTotal(ctx context.Context, credentials paymentprovide
 
 // refundCarriesKey reports whether refund was made under refundKey.
 func refundCarriesKey(refund payjpv2.PaymentRefundResponse, refundKey string) bool {
+	return refundKeyOf(refund) == refundKey
+}
+
+// refundKeyOf answers the key refund carries under MetadataRefundKey, or an
+// empty one when it carries none.
+func refundKeyOf(refund payjpv2.PaymentRefundResponse) string {
 	value, ok := refund.Metadata[MetadataRefundKey]
 	if !ok {
-		return false
+		return ""
 	}
 	key, err := value.AsPaymentRefundResponseMetadata0()
-	return err == nil && key == refundKey
+	if err != nil {
+		return ""
+	}
+	return key
 }
 
 // Refund refunds what the payment flow has received and not yet refunded.

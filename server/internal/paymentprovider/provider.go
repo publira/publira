@@ -347,6 +347,9 @@ type RefundFailed struct {
 	AmountRefunded int64
 	// Currency is the ISO 4217 code of AmountRefunded, in capitals.
 	Currency string
+	// RefundKey is the idempotency key a refund of an amount was made under,
+	// which the failed refund carries, and empty for any other refund.
+	RefundKey string
 }
 
 // Disputed reports that the reader has disputed one payment with their bank.

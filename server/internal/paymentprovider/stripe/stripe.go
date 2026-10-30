@@ -437,6 +437,7 @@ func (p *Provider) refundFailedEvent(ctx context.Context, credentials paymentpro
 		PaymentID:      paymentIntentID,
 		AmountRefunded: intent.LatestCharge.AmountRefunded,
 		Currency:       strings.ToUpper(string(intent.LatestCharge.Currency)),
+		RefundKey:      refund.Metadata[MetadataRefundKey],
 	}, nil
 }
 

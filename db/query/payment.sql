@@ -505,9 +505,15 @@ RETURNING id;
 -- and lifting staff's moves the purchase on to staff's next attempt, which a
 -- new request is sent under: the provider would answer the failed one again.
 -- A refund in part staff asked for that is waiting for the provider stops
--- waiting for the same reason, and moves the purchase on to the next attempt:
--- whether the failed refund was that one or an earlier one, the total the
--- provider now reports is the one staff decide on.
+-- waiting for the same reason, and moves the purchase on to the next attempt,
+-- when the failed refund is that one: refund_key is the key the failed refund
+-- carries, and the waiting one carries the idempotency key of the purchase's
+-- current attempt, as purchaseRefundIdempotencyKey in adminapi spells it. Any
+-- other failed refund, such as an earlier one whose notification arrives late
+-- or again, leaves it waiting, since a new attempt would send its amount under
+-- a new key while the provider may still pay the one waiting, and lowers the
+-- total it waits for by what the recorded amount fell, which that refund no
+-- longer adds to.
 -- A total of nothing is still recorded as an amount rather than as no refund:
 -- royalty_uncarried_refunds reads a purchase with an amount, which is how a
 -- refund a closed statement already carried is carried back. A dispute keeps
@@ -536,10 +542,15 @@ SET refunded_amount = sqlc.arg('refunded_amount')::integer,
         WHEN sqlc.arg('refunded_amount')::integer < p.price_at_purchase
             AND p.revocation_reason = 'staff'
             AND p.dispute_lost_at IS NULL THEN 1
-        WHEN p.staff_refund_requested_total IS NOT NULL THEN 1
+        WHEN p.staff_refund_requested_total IS NOT NULL
+            AND sqlc.arg('refund_key')::text = format('publira-purchase-refund-%s-%s', p.id, p.staff_refund_attempt) THEN 1
         ELSE 0
     END,
-    staff_refund_requested_total = NULL
+    staff_refund_requested_total = CASE
+        WHEN sqlc.arg('refund_key')::text = format('publira-purchase-refund-%s-%s', p.id, p.staff_refund_attempt) THEN NULL
+        ELSE p.staff_refund_requested_total
+            - GREATEST(COALESCE(p.refunded_amount, 0) - sqlc.arg('refunded_amount')::integer, 0)
+    END
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.provider = sqlc.arg('provider')::text
     AND p.provider_payment_id = sqlc.arg('provider_payment_id')::text

@@ -41,6 +41,8 @@ const (
 // refund a purchase is sent under, so a provider refunds a purchase once
 // however many times staff ask, until the provider has refused or failed the
 // refund and the purchase has moved on to its next attempt.
+// RecordFailedRefundOnPurchase spells it again, to tell the failure of the
+// refund in part a purchase waits for from that of any other refund.
 func purchaseRefundIdempotencyKey(purchaseID uuid.UUID, attempt int32) string {
 	return fmt.Sprintf("publira-purchase-refund-%s-%d", purchaseID, attempt)
 }

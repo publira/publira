@@ -1772,19 +1772,25 @@ SET refunded_amount = $1::integer,
         WHEN $1::integer < p.price_at_purchase
             AND p.revocation_reason = 'staff'
             AND p.dispute_lost_at IS NULL THEN 1
-        WHEN p.staff_refund_requested_total IS NOT NULL THEN 1
+        WHEN p.staff_refund_requested_total IS NOT NULL
+            AND $2::text = format('publira-purchase-refund-%s-%s', p.id, p.staff_refund_attempt) THEN 1
         ELSE 0
     END,
-    staff_refund_requested_total = NULL
-WHERE p.tenant_id = $2
-    AND p.provider = $3::text
-    AND p.provider_payment_id = $4::text
-    AND p.currency = $5::text
+    staff_refund_requested_total = CASE
+        WHEN $2::text = format('publira-purchase-refund-%s-%s', p.id, p.staff_refund_attempt) THEN NULL
+        ELSE p.staff_refund_requested_total
+            - GREATEST(COALESCE(p.refunded_amount, 0) - $1::integer, 0)
+    END
+WHERE p.tenant_id = $3
+    AND p.provider = $4::text
+    AND p.provider_payment_id = $5::text
+    AND p.currency = $6::text
 RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id, p.series_bundle_id, p.provider_promotion_code_id, p.coin_pack_id, p.staff_refund_requested_total
 `
 
 type RecordFailedRefundOnPurchaseParams struct {
 	RefundedAmount    int32     `json:"refunded_amount"`
+	RefundKey         string    `json:"refund_key"`
 	TenantID          uuid.UUID `json:"tenant_id"`
 	Provider          string    `json:"provider"`
 	ProviderPaymentID string    `json:"provider_payment_id"`
@@ -1800,9 +1806,15 @@ type RecordFailedRefundOnPurchaseParams struct {
 // and lifting staff's moves the purchase on to staff's next attempt, which a
 // new request is sent under: the provider would answer the failed one again.
 // A refund in part staff asked for that is waiting for the provider stops
-// waiting for the same reason, and moves the purchase on to the next attempt:
-// whether the failed refund was that one or an earlier one, the total the
-// provider now reports is the one staff decide on.
+// waiting for the same reason, and moves the purchase on to the next attempt,
+// when the failed refund is that one: refund_key is the key the failed refund
+// carries, and the waiting one carries the idempotency key of the purchase's
+// current attempt, as purchaseRefundIdempotencyKey in adminapi spells it. Any
+// other failed refund, such as an earlier one whose notification arrives late
+// or again, leaves it waiting, since a new attempt would send its amount under
+// a new key while the provider may still pay the one waiting, and lowers the
+// total it waits for by what the recorded amount fell, which that refund no
+// longer adds to.
 // A total of nothing is still recorded as an amount rather than as no refund:
 // royalty_uncarried_refunds reads a purchase with an amount, which is how a
 // refund a closed statement already carried is carried back. A dispute keeps
@@ -1813,6 +1825,7 @@ type RecordFailedRefundOnPurchaseParams struct {
 func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFailedRefundOnPurchaseParams) (Purchase, error) {
 	row := q.db.QueryRowContext(ctx, RecordFailedRefundOnPurchase,
 		arg.RefundedAmount,
+		arg.RefundKey,
 		arg.TenantID,
 		arg.Provider,
 		arg.ProviderPaymentID,

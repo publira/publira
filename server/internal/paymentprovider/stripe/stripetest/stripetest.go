@@ -907,8 +907,13 @@ func (f *Fixture) RefundFailed(t testing.TB, credentials paymentprovider.Credent
 	t.Helper()
 	f.API.SetRefunded(credentials[stripe.FieldSecretKey], refund.PaymentID, refund.AmountRefunded)
 	f.API.setCurrency(credentials[stripe.FieldSecretKey], refund.PaymentID, refund.Currency)
+	metadata := map[string]any{}
+	if refund.Key != "" {
+		metadata[stripe.MetadataRefundKey] = refund.Key
+	}
 	return recorded(t, credentials, "refund.failed.json", map[string]any{
 		"currency":       strings.ToLower(refund.Currency),
+		"metadata":       metadata,
 		"payment_intent": refund.PaymentID,
 	})
 }

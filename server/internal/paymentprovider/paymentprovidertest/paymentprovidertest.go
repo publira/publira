@@ -36,6 +36,9 @@ type Refund struct {
 	// has gone through, so a later Refund on the same payment adds to an
 	// earlier one.
 	AmountRefunded int64
+	// Key is the idempotency key the refund that fails was made under, when
+	// it was a refund of an amount.
+	Key string
 }
 
 // Fixture is one provider's notifications, signed on demand so that a
@@ -544,8 +547,30 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		if !ok {
 			t.Fatalf("event = %T, want RefundFailed", event)
 		}
-		if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 200 || failed.Currency != currency {
-			t.Fatalf("failed refund = %+v, want 200 %s staying refunded on %q", failed, currency, paid.PaymentID)
+		if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 200 || failed.Currency != currency || failed.RefundKey != "" {
+			t.Fatalf("failed refund = %+v, want 200 %s staying refunded on %q, under no key", failed, currency, paid.PaymentID)
+		}
+	})
+
+	t.Run("a refund of an amount that fails later names the key it was made under", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_amount_failed_later_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, credentials, paid)
+		key := "refund_contract_amount_failed_later_" + strings.ToLower(currency)
+		if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: 300}); err != nil {
+			t.Fatalf("Refund: %v", err)
+		}
+		payload, headers := fixture.RefundFailed(t, credentials, Refund{PaymentID: paid.PaymentID, Currency: currency, AmountRefunded: 0, Key: key})
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		failed, ok := event.(paymentprovider.RefundFailed)
+		if !ok {
+			t.Fatalf("event = %T, want RefundFailed", event)
+		}
+		if failed.PaymentID != paid.PaymentID || failed.AmountRefunded != 0 || failed.RefundKey != key {
+			t.Fatalf("failed refund = %+v, want nothing staying refunded on %q, under key %q", failed, paid.PaymentID, key)
 		}
 	})
 

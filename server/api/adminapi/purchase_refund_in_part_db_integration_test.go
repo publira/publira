@@ -54,6 +54,24 @@ func (f *purchaseFixture) recordRefundNotification(t *testing.T, paymentID strin
 	}
 }
 
+// recordFailedRefundNotification records what Stripe's notification that a
+// refund on paymentID failed reports, as the webhook does: the total that stays
+// refunded on it, and the key the failed refund was made under.
+func (f *purchaseFixture) recordFailedRefundNotification(t *testing.T, paymentID string, total int32, key string) {
+	t.Helper()
+
+	if _, err := dbmodels.New(f.env.PG.DB).RecordFailedRefundOnPurchase(context.Background(), dbmodels.RecordFailedRefundOnPurchaseParams{
+		TenantID:          f.admin.Tenant.ID,
+		Provider:          stripe.ID,
+		ProviderPaymentID: paymentID,
+		Currency:          "JPY",
+		RefundedAmount:    total,
+		RefundKey:         key,
+	}); err != nil {
+		t.Fatalf("record the failed refund notification: %v", err)
+	}
+}
+
 // refundKeys answers the idempotency keys of the refunds Stripe was asked for
 // on paymentID, in order.
 func (f *purchaseFixture) refundKeys(paymentID string) []string {
@@ -266,17 +284,8 @@ func TestDBRefundPurchaseInPartStopsWaitingForARefundThatFailedLater(t *testing.
 	if _, err := f.refundInPart(purchaseID, 200); err != nil {
 		t.Fatalf("RefundPurchaseInPart: %v", err)
 	}
-	// Stripe's notification that the refund failed, as the webhook records it.
 	f.stripe.SetRefunded(purchaseTestSecretKey, "pi_part_failed_later", 0)
-	if _, err := dbmodels.New(f.env.PG.DB).RecordFailedRefundOnPurchase(context.Background(), dbmodels.RecordFailedRefundOnPurchaseParams{
-		TenantID:          f.admin.Tenant.ID,
-		Provider:          stripe.ID,
-		ProviderPaymentID: "pi_part_failed_later",
-		Currency:          "JPY",
-		RefundedAmount:    0,
-	}); err != nil {
-		t.Fatalf("record the failed refund: %v", err)
-	}
+	f.recordFailedRefundNotification(t, "pi_part_failed_later", 0, f.refundKeys("pi_part_failed_later")[0])
 	if purchase := f.get(t, purchaseID); purchase.RefundRequestedAmount != 0 || purchase.RevokedAt != "" || !purchase.Refundable {
 		t.Fatalf("purchase after its refund failed = %+v, want open, refundable, and nothing requested", purchase)
 	}
@@ -289,5 +298,43 @@ func TestDBRefundPurchaseInPartStopsWaitingForARefundThatFailedLater(t *testing.
 	}
 	if got := f.stripe.RefundedTotal(purchaseTestSecretKey, "pi_part_failed_later"); got != 300 {
 		t.Fatalf("refunded total = %d, want 300", got)
+	}
+}
+
+// The failure of another refund than the one a refund in part waits for, such
+// as an earlier one whose notification arrives late or again, leaves it
+// waiting under its key: a new attempt could refund its amount a second time
+// while the provider still pays the one waiting. It waits for a total lowered
+// by what the failed refund no longer adds, and only once.
+func TestDBRefundPurchaseInPartKeepsWaitingThroughAnotherRefundsFailure(t *testing.T) {
+	t.Parallel()
+
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_part_other_failed"})
+	if _, err := f.refundInPart(purchaseID, 100); err != nil {
+		t.Fatalf("RefundPurchaseInPart: %v", err)
+	}
+	f.recordRefundNotification(t, "pi_part_other_failed", 100)
+	if _, err := f.refundInPart(purchaseID, 200); err != nil {
+		t.Fatalf("RefundPurchaseInPart of another amount: %v", err)
+	}
+
+	earlier := f.refundKeys("pi_part_other_failed")[0]
+	for range 2 {
+		f.recordFailedRefundNotification(t, "pi_part_other_failed", 0, earlier)
+		if purchase := f.get(t, purchaseID); purchase.RefundedAmount != 0 || purchase.RefundRequestedAmount != 200 {
+			t.Fatalf("purchase after the earlier refund failed = %+v, want nothing refunded and 200 still requested", purchase)
+		}
+	}
+	if _, err := f.refundInPart(purchaseID, 200); err != nil {
+		t.Fatalf("RefundPurchaseInPart again: %v", err)
+	}
+	if keys := f.refundKeys("pi_part_other_failed"); len(keys) != 2 || keys[0] == keys[1] {
+		t.Fatalf("idempotency keys = %v, want the earlier refund's and the waiting one's", keys)
+	}
+
+	f.recordRefundNotification(t, "pi_part_other_failed", 200)
+	if purchase := f.get(t, purchaseID); purchase.RefundedAmount != 200 || purchase.RefundRequestedAmount != 0 {
+		t.Fatalf("purchase after the notification = %+v, want 200 refunded and nothing requested", purchase)
 	}
 }

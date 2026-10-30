@@ -910,6 +910,7 @@ func (s *apiServer) recordFailedRefund(
 		ProviderPaymentID: event.PaymentID,
 		Currency:          event.Currency,
 		RefundedAmount:    int32(event.AmountRefunded),
+		RefundKey:         event.RefundKey,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		// A refund held for a purchase that is not here yet is all that
