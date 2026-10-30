@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,9 +41,15 @@ type fakeAppStore struct {
 	signer       *appstoretest.Signer
 	transactions map[string]appstoretest.Transaction
 	// subscriptions are the customer's subscriptions Get All Subscription
-	// Statuses answers, keyed by their original transaction ID.
-	subscriptions map[string]fakeAppStoreSubscription
-	calls         int
+	// Statuses answers, keyed by their original transaction ID. mu guards them
+	// and calls for a test that confirms from two goroutines, and
+	// answeringStatuses, when set, runs after the answer is read and before it
+	// is returned, which is how such a test holds a confirmation inside the
+	// store's call.
+	mu                sync.Mutex
+	subscriptions     map[string]fakeAppStoreSubscription
+	answeringStatuses func()
+	calls             int
 }
 
 // fakeAppStoreSubscription is one subscription as the App Store holds it now:
@@ -57,10 +64,23 @@ type fakeAppStoreSubscription struct {
 // to, which the fake finds by its original transaction ID or by its latest
 // transaction's.
 func (f *fakeAppStore) GetAllSubscriptionStatuses(_ context.Context, credentials appstore.Credentials, environment, transactionID string) ([]appstore.SubscriptionStatus, error) {
-	f.calls++
 	if credentials.BundleIdentifier != storeTestBundleIdentifier || credentials.PrivateKey == "" {
 		f.t.Errorf("GetAllSubscriptionStatuses called with credentials for %q", credentials.BundleIdentifier)
 	}
+	statuses, hook := f.subscriptionStatuses(environment, transactionID)
+	if hook != nil {
+		hook()
+	}
+	if statuses == nil {
+		return nil, appstore.ErrTransactionNotFound
+	}
+	return statuses, nil
+}
+
+func (f *fakeAppStore) subscriptionStatuses(environment, transactionID string) ([]appstore.SubscriptionStatus, func()) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
 	for originalID, subscription := range f.subscriptions {
 		if subscription.latest.Environment != environment || (originalID != transactionID && subscription.latest.TransactionID != transactionID) {
 			continue
@@ -70,9 +90,9 @@ func (f *fakeAppStore) GetAllSubscriptionStatuses(_ context.Context, credentials
 			Status:                subscription.status,
 			SignedTransactionInfo: f.signer.Sign(f.t, subscription.latest),
 			SignedRenewalInfo:     f.signer.Sign(f.t, subscription.renewal),
-		}}, nil
+		}}, f.answeringStatuses
 	}
-	return nil, appstore.ErrTransactionNotFound
+	return nil, f.answeringStatuses
 }
 
 func (f *fakeAppStore) GetTransactionInfo(_ context.Context, credentials appstore.Credentials, environment, transactionID string) (string, error) {

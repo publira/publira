@@ -113,7 +113,12 @@ func (s *apiServer) ConfirmStoreSubscription(
 		return nil, err
 	}
 
-	var subscription storeSubscription
+	// Which subscription the transaction belongs to is known from what the app
+	// sent, so the store is asked about it only under that subscription's lock.
+	var (
+		provider, subscriptionID string
+		verify                   func() (storeSubscription, error)
+	)
 	switch req.Store {
 	case publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE:
 		// The app's copy is verified before anything else, so another reader's
@@ -126,30 +131,25 @@ func (s *apiServer) ConfirmStoreSubscription(
 		if claimed.Type != appstore.TypeAutoRenewableSubscription || claimed.OriginalTransactionID == "" {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "transaction is not for an auto-renewable subscription")
 		}
-		if err := s.refuseAnotherReadersStoreSubscription(ctx, tenant.ID, user.ID, storesubscription.ProviderAppStore, claimed.OriginalTransactionID); err != nil {
-			return nil, err
-		}
-		subscription, err = s.verifyAppStoreSubscription(ctx, tenant.ID, claimed)
-		if err != nil {
-			return nil, err
-		}
+		provider, subscriptionID = storesubscription.ProviderAppStore, claimed.OriginalTransactionID
+		verify = func() (storeSubscription, error) { return s.verifyAppStoreSubscription(ctx, tenant.ID, claimed) }
 	case publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY:
 		productID := strings.TrimSpace(req.ProductId)
 		if productID == "" {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "product_id is required for Google Play")
 		}
-		if err := s.refuseAnotherReadersStoreSubscription(ctx, tenant.ID, user.ID, storesubscription.ProviderGooglePlay, signed); err != nil {
-			return nil, err
-		}
-		subscription, err = s.verifyGooglePlaySubscription(ctx, tenant.ID, productID, signed)
-		if err != nil {
-			return nil, err
+		provider, subscriptionID = storesubscription.ProviderGooglePlay, signed
+		verify = func() (storeSubscription, error) {
+			return s.verifyGooglePlaySubscription(ctx, tenant.ID, productID, signed)
 		}
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, "store is required")
 	}
+	if err := s.refuseAnotherReadersStoreSubscription(ctx, tenant.ID, user.ID, provider, subscriptionID); err != nil {
+		return nil, err
+	}
 
-	recorded, err := s.recordStoreSubscription(ctx, tenant.ID, user.ID, subscription)
+	recorded, err := s.recordStoreSubscription(ctx, tenant.ID, user.ID, provider, subscriptionID, verify)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +160,8 @@ func (s *apiServer) ConfirmStoreSubscription(
 // store's subscription is recorded for someone other than the caller: the
 // store bills whoever subscribed, and a restore moves nothing between
 // accounts. recordStoreSubscription asks again under the subscription's lock;
-// this is so the store is not asked about a subscription that cannot be the
-// caller's.
+// this is so neither the store nor the lock is taken for a subscription that
+// cannot be the caller's.
 func (s *apiServer) refuseAnotherReadersStoreSubscription(ctx context.Context, tenantID, userID uuid.UUID, provider, subscriptionID string) error {
 	existing, err := s.queriesFor(ctx).GetStoreSubscription(ctx, dbmodels.GetStoreSubscriptionParams{
 		TenantID:            tenantID,
@@ -295,14 +295,25 @@ func (s *apiServer) verifyGooglePlaySubscription(ctx context.Context, tenantID u
 	}, nil
 }
 
-// recordStoreSubscription writes a verified subscription as the store reports
-// it now, on the plan its product is sold as, and answers it. The first
-// confirmation of a subscription consumes the intent its account token
-// names; a later one, as an app restoring its purchases sends, updates the
-// subscription already recorded for the caller. The read of the recorded row
-// and the write happen under the subscription's lock, so two confirmations of
-// the same subscription never record it twice.
-func (s *apiServer) recordStoreSubscription(ctx context.Context, tenantID, userID uuid.UUID, subscription storeSubscription) (*publirav1.Subscription, error) {
+// recordStoreSubscription asks the store for the subscription provider knows
+// as subscriptionID through verify, writes it as the store reports it now, on
+// the plan its product is sold as, and answers it. The first confirmation of a
+// subscription consumes the intent its account token names; a later one, as
+// an app restoring its purchases sends, updates the subscription already
+// recorded for the caller.
+//
+// The read from the store, the read of the recorded row, and the write all
+// happen under the subscription's lock, as recordSubscription does for a
+// Stripe one: of two confirmations that overlap, the one that writes last is
+// also the one that asked the store last, so a state the store has moved past
+// is never written over the newer one, and the subscription is never recorded
+// twice.
+func (s *apiServer) recordStoreSubscription(
+	ctx context.Context,
+	tenantID, userID uuid.UUID,
+	provider, subscriptionID string,
+	verify func() (storeSubscription, error),
+) (*publirav1.Subscription, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to begin store subscription transaction", err, "tenant_id", tenantID.String())
@@ -312,10 +323,14 @@ func (s *apiServer) recordStoreSubscription(ctx context.Context, tenantID, userI
 
 	if err := txq.LockStoreSubscription(ctx, dbmodels.LockStoreSubscriptionParams{
 		TenantID:            tenantID,
-		Provider:            subscription.provider,
-		StoreSubscriptionID: subscription.subscriptionID,
+		Provider:            provider,
+		StoreSubscriptionID: subscriptionID,
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
+	}
+	subscription, err := verify()
+	if err != nil {
+		return nil, err
 	}
 	existing, err := txq.GetStoreSubscription(ctx, dbmodels.GetStoreSubscriptionParams{
 		TenantID:            tenantID,
