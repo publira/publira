@@ -131,10 +131,13 @@
 		# `xcaddy build --with github.com/mholt/caddy-ratelimit`. Each zone lets
 		# a client send `events` requests within any `window`, which is its
 		# burst over the time its rate takes to refill it, and answers a request
-		# past that with a 429 of its own, which no backend sees. {client_ip} is
-		# the address a hop the global options trust named, or else the peer's.
-		# The console hosts are in no zone: they are left to the server's own
-		# limits.
+		# past that with a 429 of its own, which no backend sees. A window frees
+		# nothing until its oldest request leaves it, so a client that sent the
+		# whole burst at once waits the window out, where nginx and Traefik
+		# admit the rate each second; no window admits more than they would.
+		# {client_ip} is the address a hop the global options trust named, or
+		# else the peer's. The console hosts are in no zone: they are left to
+		# the server's own limits.
 		#
 		# rate_limit {
 		# 	zone api {
