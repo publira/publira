@@ -227,7 +227,7 @@ go -C server run ./cmd/publiractl policy show
 | `--series-remainder-checkout-per-minute`, `--series-remainder-checkout-per-day` | How many checkouts of the rest of a series one reader may start | 10, 50 |
 | `--subscription-checkout-per-minute`, `--subscription-checkout-per-day` | How many subscription checkouts one reader may start | 10, 50 |
 | `--coin-payment-per-minute`, `--coin-payment-per-day` | How many episodes one reader may pay for with coins | 20, 500 |
-| `--purchase-checkout-per-minute`, `--purchase-checkout-per-day` | How many checkouts of an episode, a volume, or a coin pack one reader may start, all three counted together | 10, 100 |
+| `--purchase-checkout-per-minute`, `--purchase-checkout-per-day` | How many purchases of an episode, a volume, or a coin pack one reader may start, on the web or through the app's store, all counted together | 10, 100 |
 | `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console. A sign-in whose password is right clears the count | 5, 50 |
 | `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |

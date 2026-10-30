@@ -75,7 +75,7 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.SubscriptionCheckout }),
 	minuteDayFlags("coin_payment", "coin-payment", "episodes one reader pays for with coins", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.CoinPayment }),
-	minuteDayFlags("purchase_checkout", "purchase-checkout", "checkouts of an episode, a volume, or a coin pack one reader starts", false,
+	minuteDayFlags("purchase_checkout", "purchase-checkout", "purchases of an episode, a volume, or a coin pack one reader starts, on the web or through the app's store", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PurchaseCheckout }),
 	minuteDayFlags("login_attempts_per_account", "login-attempts-per-account", "sign-in attempts for one address", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.LoginAttemptsPerAccount }),

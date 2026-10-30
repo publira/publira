@@ -2,7 +2,8 @@
 title: プラットフォーム全体の既定値とポリシー
 description: すべてのテナントに適用される既定値、セキュリティとコミュニティの上限、保持期間の決め方と、テナントが自分で変更できる範囲を説明します。
 published: 2026-10-29
-source_updated: 2026-10-26
+updated: 2026-10-30
+source_updated: 2026-10-30
 ---
 
 Publiraには、どのテナントのものでもない設定がいくつかあります。新しいテナントが最初に使う言語、タイムゾーン、通貨と、1人の読者や1つのアドレスがプラットフォームに過大な負荷をかけないようにするための上限、期限のある記録を残しておく期間です。このページでは、設定のグループごとに何を防ぐためのものか、どう変更するか、テナントの管理者が自分のテナントについてどこまで変えられるかを説明します。
@@ -103,7 +104,7 @@ publiractl platform set --default-locale en --default-timezone America/New_York 
 - 1人の読者が始める、シリーズの残りをまとめて購入する手続き。既定は1分あたり10回、1日あたり50回で、`--series-remainder-checkout-per-minute`と`--series-remainder-checkout-per-day`で変更できます。
 - 1人の読者が始めるサブスクリプションの購入手続き。既定は1分あたり10回、1日あたり50回で、`--subscription-checkout-per-minute`と`--subscription-checkout-per-day`で変更できます。
 - 1人の読者がコインで支払うエピソード。既定は1分あたり20回、1日あたり500回で、`--coin-payment-per-minute`と`--coin-payment-per-day`で変更できます。
-- 1人の読者が始めるエピソード、巻、コインパックの購入手続き。この3つはまとめて数えます。既定は1分あたり10回、1日あたり100回で、`--purchase-checkout-per-minute`と`--purchase-checkout-per-day`で変更できます。
+- 1人の読者が始めるエピソード、巻、コインパックの購入。ウェブでの購入手続きもアプリのストアでの購入もまとめて数えます。既定は1分あたり10回、1日あたり100回で、`--purchase-checkout-per-minute`と`--purchase-checkout-per-day`で変更できます。
 
 セキュリティのページを保存しても、これらの値は今の設定のまま残ります。
 

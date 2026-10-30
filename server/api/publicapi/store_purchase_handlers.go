@@ -89,6 +89,9 @@ func (s *apiServer) StartStorePurchase(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionStartPurchaseCheckout, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	if err := s.requireStoreSelling(ctx, tenant.ID, store); err != nil {
 		return nil, err
 	}
