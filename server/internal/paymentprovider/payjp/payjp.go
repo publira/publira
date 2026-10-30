@@ -497,6 +497,14 @@ func (p *Provider) Refund(ctx context.Context, credentials paymentprovider.Crede
 	return true, nil
 }
 
+func (p *Provider) RefundMade(ctx context.Context, credentials paymentprovider.Credentials, paymentID, refundKey string) (bool, error) {
+	_, made, err := p.refundedTotal(ctx, credentials, paymentID, refundKey)
+	if err != nil {
+		return false, fmt.Errorf("list payment flow refunds: %w", err)
+	}
+	return made != nil && !refundFailed(made.Status), nil
+}
+
 // refundKeyFor answers the key a refund of req carries under
 // MetadataRefundKey: its idempotency key for a refund of an amount, and none
 // for a refund of the rest.

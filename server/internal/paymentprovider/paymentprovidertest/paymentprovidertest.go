@@ -483,6 +483,34 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a refund of an amount is told apart from the payment's other refunds by its key", func(t *testing.T) {
+		paid := checkout
+		paid.PaymentID = "payment_refund_amount_made_" + strings.ToLower(currency)
+		fixture.CheckoutCompleted(t, credentials, paid)
+		key := "refund_contract_amount_made_" + strings.ToLower(currency)
+		made := func(key string, want bool) {
+			t.Helper()
+			got, err := provider.RefundMade(t.Context(), credentials, paid.PaymentID, key)
+			if err != nil {
+				t.Fatalf("RefundMade with key %q: %v", key, err)
+			}
+			if got != want {
+				t.Fatalf("RefundMade with key %q = %v, want %v", key, got, want)
+			}
+		}
+		made(key, false)
+		if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key, Amount: 300}); err != nil {
+			t.Fatalf("Refund: %v", err)
+		}
+		made(key, true)
+		made(key+"_other", false)
+		fixture.FailNextRefund(t, credentials, paid.PaymentID)
+		if _, err := provider.Refund(t.Context(), credentials, paymentprovider.RefundRequest{PaymentID: paid.PaymentID, IdempotencyKey: key + "_failed", Amount: 100}); !errors.Is(err, paymentprovider.ErrRefundRefused) {
+			t.Fatalf("Refund the provider fails: error = %v, want ErrRefundRefused", err)
+		}
+		made(key+"_failed", false)
+	})
+
 	t.Run("a refund of an amount is found again once the provider has forgotten its key", func(t *testing.T) {
 		paid := checkout
 		paid.PaymentID = "payment_refund_amount_forgotten_" + strings.ToLower(currency)

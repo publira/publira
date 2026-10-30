@@ -1,2 +1,2 @@
 ALTER TABLE purchases
-    DROP COLUMN staff_refund_requested_total;
+    DROP COLUMN staff_refund_requested_amount;

@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
@@ -43,6 +44,13 @@ func newRefundWebhookEnv(t *testing.T, slug, domain, paymentIntentID string) ref
 // purchase yet, for the deliveries that arrive before one exists.
 func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookEnv {
 	t.Helper()
+	return newUnpaidRefundWebhookEnvAnsweredBy(t, slug, domain, nil)
+}
+
+// newUnpaidRefundWebhookEnvAnsweredBy is newUnpaidRefundWebhookEnv whose
+// Stripe calls api answers, when it is not nil.
+func newUnpaidRefundWebhookEnvAnsweredBy(t *testing.T, slug, domain string, api *stripetest.API) refundWebhookEnv {
+	t.Helper()
 	pg := testutil.StartIsolatedPostgres(t)
 
 	encryptor := newPublicTestEncryptor(t)
@@ -64,6 +72,9 @@ func newUnpaidRefundWebhookEnv(t *testing.T, slug, domain string) refundWebhookE
 
 	db := pg.OpenPublicDB(t)
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
+	if api != nil {
+		server.paymentProviders = paymentprovider.NewRegistry(stripe.New(stripe.WithAPIURL(api.URL())))
+	}
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
 

@@ -160,7 +160,7 @@ VALUES (
         $8::text,
         $9::text
     )
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_total
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id, coin_pack_id, staff_refund_requested_amount
 `
 
 type CreatePurchasePaidWithCoinsParams struct {
@@ -220,7 +220,7 @@ func (q *Queries) CreatePurchasePaidWithCoins(ctx context.Context, arg CreatePur
 		&i.SeriesBundleID,
 		&i.ProviderPromotionCodeID,
 		&i.CoinPackID,
-		&i.StaffRefundRequestedTotal,
+		&i.StaffRefundRequestedAmount,
 	)
 	return i, err
 }

@@ -421,4 +421,20 @@ type Provider interface {
 	// provider's [Refunded] notification, as a refund made in the provider's
 	// own dashboard does, and a refund that fails later as [RefundFailed].
 	Refund(ctx context.Context, credentials Credentials, req RefundRequest) (bool, error)
+	// RefundMade reports whether the refund of an amount made under
+	// refundKey, the idempotency key of the [RefundRequest] that asked for
+	// it, is on the payment and has not failed or been canceled. A
+	// notification reports the total of every refund of a payment, so this
+	// is what tells whether one of them is that refund.
+	RefundMade(ctx context.Context, credentials Credentials, paymentID, refundKey string) (bool, error)
+}
+
+// StaffRefundKey is the idempotency key every request of one attempt of
+// staff's to refund a purchase is sent under, so a provider refunds a purchase
+// once however many times staff ask, until the provider has made, refused, or
+// failed the refund and the purchase has moved on to its next attempt.
+// RecordFailedRefundOnPurchase spells it again, to tell the failure of the
+// refund in part a purchase waits for from that of any other refund.
+func StaffRefundKey(purchaseID uuid.UUID, attempt int32) string {
+	return fmt.Sprintf("publira-purchase-refund-%s-%d", purchaseID, attempt)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/testutil"
@@ -40,18 +41,40 @@ func (f *purchaseFixture) get(t *testing.T, purchaseID uuid.UUID) *publiraadminv
 }
 
 // recordRefundNotification records what Stripe's notification of a refund on
-// paymentID reports, as the webhook does: total refunded on it so far.
+// paymentID reports, as the webhook does: the total refunded on it so far, and
+// the end of the wait of a refund in part once Stripe has made it.
 func (f *purchaseFixture) recordRefundNotification(t *testing.T, paymentID string, total int32) {
 	t.Helper()
 
-	if _, err := dbmodels.New(f.env.PG.DB).RecordRefundOnPurchase(context.Background(), dbmodels.RecordRefundOnPurchaseParams{
+	queries := dbmodels.New(f.env.PG.DB)
+	purchase, err := queries.RecordRefundOnPurchase(context.Background(), dbmodels.RecordRefundOnPurchaseParams{
 		TenantID:          f.admin.Tenant.ID,
 		Provider:          stripe.ID,
 		ProviderPaymentID: paymentID,
 		RefundedAmount:    sql.NullInt32{Int32: total, Valid: true},
 		Currency:          sql.NullString{String: "JPY", Valid: true},
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("record the refund notification: %v", err)
+	}
+	if !purchase.StaffRefundRequestedAmount.Valid {
+		return
+	}
+	made, err := stripe.New(stripe.WithAPIURL(f.stripe.URL())).RefundMade(context.Background(),
+		paymentprovider.Credentials{stripe.FieldSecretKey: purchaseTestSecretKey},
+		paymentID, paymentprovider.StaffRefundKey(purchase.ID, purchase.StaffRefundAttempt))
+	if err != nil {
+		t.Fatalf("look up the refund in part: %v", err)
+	}
+	if !made {
+		return
+	}
+	if _, err := queries.SettleStaffRefundInPart(context.Background(), dbmodels.SettleStaffRefundInPartParams{
+		TenantID: f.admin.Tenant.ID,
+		ID:       purchase.ID,
+		Attempt:  purchase.StaffRefundAttempt,
+	}); err != nil {
+		t.Fatalf("settle the refund in part: %v", err)
 	}
 }
 
@@ -70,6 +93,24 @@ func (f *purchaseFixture) recordFailedRefundNotification(t *testing.T, paymentID
 		RefundKey:         key,
 	}); err != nil {
 		t.Fatalf("record the failed refund notification: %v", err)
+	}
+}
+
+// markRefundInPart marks a refund in part of amount on the purchase as a
+// request cut off before it asked Stripe leaves it.
+func (f *purchaseFixture) markRefundInPart(t *testing.T, purchaseID uuid.UUID, amount int32) {
+	t.Helper()
+
+	attempt, err := dbmodels.New(f.env.PG.DB).RequestStaffRefundInPart(context.Background(), dbmodels.RequestStaffRefundInPartParams{
+		TenantID: f.admin.Tenant.ID,
+		ID:       purchaseID,
+		Amount:   amount,
+	})
+	if err != nil {
+		t.Fatalf("mark the refund in part: %v", err)
+	}
+	if attempt != 0 {
+		t.Fatalf("attempt = %d, want the first", attempt)
 	}
 }
 
@@ -238,7 +279,7 @@ func TestDBRefundPurchaseInPartRetriesARefusedRefundUnderANewKey(t *testing.T) {
 
 // A refusal heard late, by a request of an attempt Stripe refused and that
 // another request has taken back already, leaves the next attempt's request
-// waiting under its key, even for the same total.
+// waiting under its key, even for the same amount.
 func TestDBRefundPurchaseInPartKeepsTheNextAttemptThroughALateRefusal(t *testing.T) {
 	t.Parallel()
 
@@ -253,11 +294,11 @@ func TestDBRefundPurchaseInPartKeepsTheNextAttemptThroughALateRefusal(t *testing
 
 	// The slower request of the refused attempt hearing the refusal.
 	_, err = dbmodels.New(f.env.PG.DB).ClearStaffRefundInPart(context.Background(), dbmodels.ClearStaffRefundInPartParams{
-		TenantID:       f.admin.Tenant.ID,
-		ID:             purchaseID,
-		Attempt:        0,
-		RequestedTotal: 200,
-		NextAttempt:    true,
+		TenantID:        f.admin.Tenant.ID,
+		ID:              purchaseID,
+		Attempt:         0,
+		RequestedAmount: 200,
+		NextAttempt:     true,
 	})
 	if !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("taking back the refused attempt's request: error = %v, want no row", err)
@@ -281,20 +322,7 @@ func TestDBRefundPurchaseInPartFinishesARefundAnEarlierRequestLeftUnasked(t *tes
 
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_part_unasked"})
-	// A refund recorded after the purchase was read counts toward the total
-	// the mark stores, which is the one the mark answers.
-	f.recordRefundNotification(t, "pi_part_unasked", 100)
-	marked, err := dbmodels.New(f.env.PG.DB).RequestStaffRefundInPart(context.Background(), dbmodels.RequestStaffRefundInPartParams{
-		TenantID: f.admin.Tenant.ID,
-		ID:       purchaseID,
-		Amount:   200,
-	})
-	if err != nil {
-		t.Fatalf("mark the refund in part: %v", err)
-	}
-	if marked.StaffRefundRequestedTotal != 300 {
-		t.Fatalf("requested total = %d, want 300", marked.StaffRefundRequestedTotal)
-	}
+	f.markRefundInPart(t, purchaseID, 200)
 
 	for range 2 {
 		purchase, err := f.refundInPart(purchaseID, 200)
@@ -342,8 +370,7 @@ func TestDBRefundPurchaseInPartStopsWaitingForARefundThatFailedLater(t *testing.
 // The failure of another refund than the one a refund in part waits for, such
 // as an earlier one whose notification arrives late or again, leaves it
 // waiting under its key: a new attempt could refund its amount a second time
-// while the provider still pays the one waiting. It waits for a total lowered
-// by what the failed refund no longer adds, and only once.
+// while the provider still makes the one waiting.
 func TestDBRefundPurchaseInPartKeepsWaitingThroughAnotherRefundsFailure(t *testing.T) {
 	t.Parallel()
 
@@ -374,5 +401,35 @@ func TestDBRefundPurchaseInPartKeepsWaitingThroughAnotherRefundsFailure(t *testi
 	f.recordRefundNotification(t, "pi_part_other_failed", 200)
 	if purchase := f.get(t, purchaseID); purchase.RefundedAmount != 200 || purchase.RefundRequestedAmount != 0 {
 		t.Fatalf("purchase after the notification = %+v, want 200 refunded and nothing requested", purchase)
+	}
+}
+
+// A notification whose total reaches what a refund in part waiting adds, of a
+// refund made some other way, such as in Stripe's dashboard, leaves it
+// waiting: Stripe has not made the refund its key asks for, and asking again
+// is sent under that key rather than a new one, which could refund its amount
+// a second time.
+func TestDBRefundPurchaseInPartKeepsWaitingThroughAnotherRefund(t *testing.T) {
+	t.Parallel()
+
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_part_dashboard"})
+	f.markRefundInPart(t, purchaseID, 200)
+
+	f.stripe.SetRefunded(purchaseTestSecretKey, "pi_part_dashboard", 200)
+	f.recordRefundNotification(t, "pi_part_dashboard", 200)
+	if purchase := f.get(t, purchaseID); purchase.RefundedAmount != 200 || purchase.RefundRequestedAmount != 200 {
+		t.Fatalf("purchase after the dashboard refund = %+v, want 200 refunded and 200 still requested", purchase)
+	}
+
+	if _, err := f.refundInPart(purchaseID, 200); err != nil {
+		t.Fatalf("RefundPurchaseInPart again: %v", err)
+	}
+	f.recordRefundNotification(t, "pi_part_dashboard", 400)
+	if purchase := f.get(t, purchaseID); purchase.RefundedAmount != 400 || purchase.RefundRequestedAmount != 0 {
+		t.Fatalf("purchase after the refund in part = %+v, want 400 refunded and nothing requested", purchase)
+	}
+	if keys := f.refundKeys("pi_part_dashboard"); len(keys) != 1 {
+		t.Fatalf("idempotency keys = %v, want the one attempt's", keys)
 	}
 }

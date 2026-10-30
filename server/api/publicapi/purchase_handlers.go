@@ -710,7 +710,7 @@ func (s *apiServer) ProcessPaymentWebhook(
 
 	switch event := event.(type) {
 	case paymentprovider.Refunded:
-		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, provider.Declaration().ID, event); err != nil {
+		if err := s.recordRefund(ctx, s.queriesFor(ctx), tenant.ID, provider, credentials, event); err != nil {
 			return nil, err
 		}
 	case paymentprovider.RefundFailed:
@@ -804,9 +804,11 @@ func (s *apiServer) recordRefund(
 	ctx context.Context,
 	queries Querier,
 	tenantID uuid.UUID,
-	providerID string,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
 	event paymentprovider.Refunded,
 ) error {
+	providerID := provider.Declaration().ID
 	// A refund of nothing is not a refund, and one that names no currency is
 	// comparable to no price. Either way the purchase is recorded as refunded
 	// in full, which is what a refund notification means when it says nothing
@@ -877,10 +879,46 @@ func (s *apiServer) recordRefund(
 		"refunded_amount", purchase.RefundedAmount.Int32,
 		"fully_refunded", purchase.RefundedAt.Valid,
 	)
+	if purchase.StaffRefundRequestedAmount.Valid {
+		if err := s.settleStaffRefundInPart(ctx, queries, tenantID, provider, credentials, event, purchase); err != nil {
+			return err
+		}
+	}
 	// A pack refunded in part keeps its coins: they are what the reader still
 	// pays for. Refunded in full, it grants nothing more.
 	if purchase.RefundedAt.Valid {
 		return s.revokeCoinPackGrant(ctx, purchase)
+	}
+	return nil
+}
+
+// settleStaffRefundInPart ends the wait of the refund in part staff asked for
+// on purchase once the provider has made it. The notification reports the
+// total of every refund of the payment, one made in the provider's dashboard
+// among them, so the provider is asked whether the refund made under the key
+// of the attempt waiting is one of them.
+func (s *apiServer) settleStaffRefundInPart(
+	ctx context.Context,
+	queries Querier,
+	tenantID uuid.UUID,
+	provider paymentprovider.Provider,
+	credentials paymentprovider.Credentials,
+	event paymentprovider.Refunded,
+	purchase dbmodels.Purchase,
+) error {
+	made, err := provider.RefundMade(ctx, credentials, event.PaymentID, paymentprovider.StaffRefundKey(purchase.ID, purchase.StaffRefundAttempt))
+	if err != nil {
+		return s.internalError(ctx, "failed to look up the refund in part a purchase waits for", err, "event_id", event.ID, "purchase_id", purchase.ID.String())
+	}
+	if !made {
+		return nil
+	}
+	if _, err := queries.SettleStaffRefundInPart(ctx, dbmodels.SettleStaffRefundInPartParams{
+		TenantID: tenantID,
+		ID:       purchase.ID,
+		Attempt:  purchase.StaffRefundAttempt,
+	}); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return s.internalDBError(ctx, "failed to settle a refund in part", err, "event_id", event.ID, "purchase_id", purchase.ID.String())
 	}
 	return nil
 }

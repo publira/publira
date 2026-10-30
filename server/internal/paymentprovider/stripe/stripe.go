@@ -300,6 +300,18 @@ func refundMadeUnder(ctx context.Context, client *stripego.Client, req paymentpr
 	return nil, nil
 }
 
+func (p *Provider) RefundMade(ctx context.Context, credentials paymentprovider.Credentials, paymentID, refundKey string) (bool, error) {
+	client, err := p.client(credentials)
+	if err != nil {
+		return false, err
+	}
+	made, err := refundMadeUnder(ctx, client, paymentprovider.RefundRequest{PaymentID: paymentID, IdempotencyKey: refundKey})
+	if err != nil {
+		return false, fmt.Errorf("list refunds: %w", err)
+	}
+	return made != nil && made.Status != stripego.RefundStatusFailed && made.Status != stripego.RefundStatusCanceled, nil
+}
+
 // refundOutcome reads a refund Stripe made, or answered from its idempotency
 // key, as what Refund reports.
 func refundOutcome(refund *stripego.Refund) (bool, error) {

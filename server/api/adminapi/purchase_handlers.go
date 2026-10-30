@@ -37,16 +37,6 @@ const (
 	purchaseRevocationStaff   = "staff"
 )
 
-// purchaseRefundIdempotencyKey is the key every request of one attempt to
-// refund a purchase is sent under, so a provider refunds a purchase once
-// however many times staff ask, until the provider has refused or failed the
-// refund and the purchase has moved on to its next attempt.
-// RecordFailedRefundOnPurchase spells it again, to tell the failure of the
-// refund in part a purchase waits for from that of any other refund.
-func purchaseRefundIdempotencyKey(purchaseID uuid.UUID, attempt int32) string {
-	return fmt.Sprintf("publira-purchase-refund-%s-%d", purchaseID, attempt)
-}
-
 func purchaseRevocationReasonToProto(reason sql.NullString) publiraadminv1.PurchaseRevocationReason {
 	switch reason.String {
 	case purchaseRevocationRefund:
@@ -548,10 +538,7 @@ func purchaseRefundInPartAuditReason(amount int64, currency, reason string) stri
 // purchaseRefundRequestedAmount is what of the refund in part row waits for
 // the provider to report.
 func purchaseRefundRequestedAmount(row dbmodels.ListPurchasesForTenantByIDsRow) int64 {
-	if !row.StaffRefundRequestedTotal.Valid {
-		return 0
-	}
-	return max(int64(row.StaffRefundRequestedTotal.Int32)-int64(row.RefundedAmount.Int32), 0)
+	return int64(row.StaffRefundRequestedAmount.Int32)
 }
 
 // refundPurchase asks the provider the purchase was paid through to refund
@@ -604,7 +591,7 @@ func (s *adminServer) refundPurchase(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "a purchase of a pack of coins is refunded in full")
 	case amount > 0 && row.RevokedAt.Valid:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "a refund of the whole purchase is waiting for the payment provider")
-	case row.StaffRefundRequestedTotal.Valid && amount != purchaseRefundRequestedAmount(row):
+	case row.StaffRefundRequestedAmount.Valid && amount != purchaseRefundRequestedAmount(row):
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "a refund in part is waiting for the payment provider")
 	}
 
@@ -727,7 +714,7 @@ func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefun
 		if err != nil {
 			return err
 		}
-		if current.StaffRefundRequestedTotal.Valid {
+		if current.StaffRefundRequestedAmount.Valid {
 			return connect.NewError(connect.CodeFailedPrecondition, "a refund in part is waiting for the payment provider")
 		}
 	}
@@ -756,7 +743,7 @@ func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefun
 
 	refunded, err := refund.provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
 		PaymentID:      row.ProviderPaymentID.String,
-		IdempotencyKey: purchaseRefundIdempotencyKey(row.ID, row.StaffRefundAttempt),
+		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, row.StaffRefundAttempt),
 	})
 	if err != nil {
 		refused, answer := s.staffRefundError(ctx, refund, err)
@@ -795,10 +782,10 @@ func (s *adminServer) refundPurchaseWhole(ctx context.Context, refund staffRefun
 // refundPurchaseInPart refunds amount of the purchase, which keeps opening its
 // episode, as a refund in part the provider reports leaves it.
 //
-// The request is marked on the purchase before the provider is asked, with
-// the total it brings the refunds to, so that a retry, however the first
-// attempt ended, is sent under the same idempotency key until the provider's
-// notification of the refund clears the mark. Only a refusal, or a payment
+// The request is marked on the purchase with its amount before the provider is
+// asked, so that a retry, however the first attempt ended, is sent under the
+// same idempotency key until the provider's notification of the refund that
+// key made clears the mark. Only a refusal, or a payment
 // the provider has nothing left of, takes the mark back, whichever request
 // hears it. A purchase marked already is a retry of that request, whose
 // entries the request that made the mark records.
@@ -807,9 +794,8 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 	queries := s.queriesFor(ctx)
 	auditReason := purchaseRefundInPartAuditReason(amount, row.Currency, refund.reason)
 	attempt := row.StaffRefundAttempt
-	requestedTotal := row.StaffRefundRequestedTotal.Int32
 	requestedHere := false
-	if !row.StaffRefundRequestedTotal.Valid {
+	if !row.StaffRefundRequestedAmount.Valid {
 		var err error
 		requestedHere, err = s.markPurchaseForStaffRefund(ctx, refund.sessionCtx, tenantID, row.ID, auditReason, func(queries *dbmodels.Queries) error {
 			marked, err := queries.RequestStaffRefundInPart(ctx, dbmodels.RequestStaffRefundInPartParams{
@@ -817,7 +803,7 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 				ID:       row.ID,
 				Amount:   int32(amount),
 			})
-			attempt, requestedTotal = marked.StaffRefundAttempt, marked.StaffRefundRequestedTotal
+			attempt = marked
 			return err
 		})
 		if err != nil {
@@ -837,11 +823,11 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 	// failed the refund.
 	clearRequest := func(nextAttempt bool) error {
 		_, err := queries.ClearStaffRefundInPart(ctx, dbmodels.ClearStaffRefundInPartParams{
-			TenantID:       tenantID,
-			ID:             row.ID,
-			Attempt:        attempt,
-			RequestedTotal: requestedTotal,
-			NextAttempt:    nextAttempt,
+			TenantID:        tenantID,
+			ID:              row.ID,
+			Attempt:         attempt,
+			RequestedAmount: int32(amount),
+			NextAttempt:     nextAttempt,
 		})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return s.internalDBError(ctx, "failed to take back a refund in part that did not happen", err, "tenant_id", tenantID.String(), "purchase_id", row.ID.String())
@@ -851,7 +837,7 @@ func (s *adminServer) refundPurchaseInPart(ctx context.Context, refund staffRefu
 
 	refunded, err := refund.provider.Refund(ctx, credentials, paymentprovider.RefundRequest{
 		PaymentID:      row.ProviderPaymentID.String,
-		IdempotencyKey: purchaseRefundIdempotencyKey(row.ID, attempt),
+		IdempotencyKey: paymentprovider.StaffRefundKey(row.ID, attempt),
 		Amount:         amount,
 	})
 	if err != nil {
