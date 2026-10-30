@@ -4,7 +4,8 @@
 #   up → wait for the edge to serve → probe hosts / /rpc / /images
 #   → up again with no platform or image hosts → wait → probe what that leaves
 #   → for Caddy, up again terminating TLS → wait → probe over HTTPS
-#   → up again behind a trusted hop → wait → probe the client address → down
+#   → up again behind a trusted hop → wait → probe the client address
+#   → up again behind the hop with every limit on → wait → send bursts → down
 #
 # Always tears down (success, failure, or interrupt) and collects Compose
 # output — and, for Traefik, its API — into e2e/routing/.run/<proxy>/logs when
@@ -95,5 +96,20 @@ source "${PUBLIRA_ROUTING_SCRIPTS_DIR}/lib.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-trusted-hop.sh"
+
+# Each sample limits how many requests one client may send. The probes above
+# send few enough to stay within every allowance, and a burst over one is
+# answered 429 until it refills, so the bursts get a proxy of their own, with
+# every allowance full. They run behind the same hop, so that a client the hop
+# names is counted apart from every other one, and Caddy's sample, which
+# carries its limits commented out, is started with them uncommented. The
+# Platform Console's hosts are listed again, so that the bursts reach one too.
+export PUBLIRA_ROUTING_RATE_LIMITS=1
+unset PUBLIRA_ROUTING_PLATFORM_HOSTS
+# shellcheck source=lib.sh
+source "${PUBLIRA_ROUTING_SCRIPTS_DIR}/lib.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
+bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-rate-limits.sh"
 
 routing_log "=== routing check succeeded ==="

@@ -2,7 +2,7 @@
 title: Operations
 description: Running a Publira install day to day, from adding tenants and managing who signs in to configuring the services it depends on.
 published: 2026-10-06
-updated: 2026-10-21
+updated: 2026-10-30
 ---
 
 These pages are for the operator of an install that is already serving, as [Deployments](../2-deployments/index.md) left it. They cover the work that comes after the first tenant: adding more, managing who signs in to each console, keeping the platform's own accounts in order, and changing the services `publiractl setup` configured.
@@ -26,5 +26,7 @@ Most of this work can be done from either the `publiractl` command line or the P
   - [Rotating secrets](./12-security/1-rotating-secrets.md): replacing the encryption keys, database passwords, signing keys, and tokens.
   - [Two-step verification](./12-security/2-two-step-verification.md): requiring it of tenant staff and of platform operators.
   - [Audit logs](./12-security/3-audit-logs.md): what the Platform Console's log and a tenant's log record, and what neither records.
+  - [A web application firewall](./12-security/4-waf.md): the managed rules to turn on, and the exceptions Publira's uploads and webhooks need.
+  - [Rate limits](./12-security/5-rate-limits.md): which requests to limit per client in front of an install, and how to write the limits as WAF rules or in the proxy you run.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.

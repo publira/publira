@@ -2,10 +2,10 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, where each secret may go, and how to report a vulnerability.
 published: 2026-10-07
-updated: 2026-10-21
+updated: 2026-10-30
 ---
 
-An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, and where each secret may go. How to replace each secret, and what two-step verification and the audit logs give you, are on the pages under [In this section](#in-this-section).
+An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, and where each secret may go. How to replace each secret, what two-step verification and the audit logs give you, and what a web application firewall and rate limits in front of the install should do, are on the pages under [In this section](#in-this-section).
 
 ## What keeps data apart
 
@@ -54,6 +54,8 @@ A copy restored from production can read its stored credentials only with produc
 - [Rotating secrets](./1-rotating-secrets.md): replacing the secret encryption keys, a database role's password, and the signing keys and tokens.
 - [Two-step verification](./2-two-step-verification.md): requiring it of tenant staff and of platform operators, and what to do when a second factor is lost.
 - [Audit logs](./3-audit-logs.md): what the Platform Console's log and a tenant's log record, and what neither records.
+- [A web application firewall](./4-waf.md): the managed rules to turn on in AWS WAF, Cloud Armor, or Cloudflare, the exceptions Publira's uploads and webhooks need, and keeping the consoles to your own networks.
+- [Rate limits](./5-rate-limits.md): which requests to limit per client, which never to limit, and how to write the limits as WAF rules or in the proxy you run.
 
 ## Reporting a vulnerability
 

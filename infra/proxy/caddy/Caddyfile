@@ -124,6 +124,61 @@
 	@console_api path /rpc /rpc/*
 
 	route {
+		# How many requests one client may send, as infra/proxy/README.md
+		# lists them. The rate_limit handler is github.com/mholt/caddy-ratelimit,
+		# which the caddy image ships without and refuses this file with the
+		# lines uncommented, so they take a Caddy built with it, such as
+		# `xcaddy build --with github.com/mholt/caddy-ratelimit`. Each zone lets
+		# a client send `events` requests within any `window`, which is its
+		# burst over the time its rate takes to refill it, and answers a request
+		# past that with a 429 of its own, which no backend sees. A window frees
+		# nothing until its oldest request leaves it, so a client that sent the
+		# whole burst at once waits the window out, where nginx and Traefik
+		# admit the rate each second; no window admits more than they would.
+		# {client_ip} is the address a hop the global options trust named, or
+		# else the peer's. The console hosts are in no zone: they are left to
+		# the server's own limits.
+		#
+		# rate_limit {
+		# 	zone api {
+		# 		match {
+		# 			host no/host {$PUBLIRA_EDGE_SITE_HOSTS}
+		# 			path /rpc/publira.v1.*
+		# 			not path /rpc/publira.v1.CatalogService/SearchPublished*
+		# 		}
+		# 		key {client_ip}
+		# 		events 120
+		# 		window 6s
+		# 	}
+		# 	zone search_rpc {
+		# 		match {
+		# 			host no/host {$PUBLIRA_EDGE_SITE_HOSTS}
+		# 			path /rpc/publira.v1.CatalogService/SearchPublished*
+		# 		}
+		# 		key {client_ip}
+		# 		events 20
+		# 		window 10s
+		# 	}
+		# 	zone search_page {
+		# 		match {
+		# 			host no/host {$PUBLIRA_EDGE_SITE_HOSTS}
+		# 			path_regexp ^(/[a-z]{2}(-[A-Za-z]{4})?)?/search/?$
+		# 		}
+		# 		key {client_ip}
+		# 		events 20
+		# 		window 10s
+		# 	}
+		# 	zone images {
+		# 		match {
+		# 			host no/host {$PUBLIRA_EDGE_SITE_HOSTS} {$PUBLIRA_EDGE_IMAGE_HOSTS}
+		# 			path /images*
+		# 		}
+		# 		key {client_ip}
+		# 		events 600
+		# 		window 10s
+		# 	}
+		# }
+
 		# A host in no list: the edge answers it itself, and no backend sees
 		# the request, /rpc and /images included. Over HTTPS no request for
 		# such a host gets this far: Caddy has no certificate for it, so the TLS

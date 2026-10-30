@@ -82,6 +82,17 @@ fi
 # A procedure of the public API, the one namespace the edge forwards under /rpc,
 # for the probes that need a request to reach the server.
 PUBLIRA_ROUTING_PUBLIC_PROCEDURE="publira.v1.CatalogService/ListPublishedSeries"
+# A procedure of the catalog search, which has an allowance of its own.
+PUBLIRA_ROUTING_SEARCH_PROCEDURE="publira.v1.CatalogService/SearchPublishedSeries"
+
+# The allowances infra/proxy/README.md lists, as the burst a client may send at
+# once and the requests per second that refill it.
+PUBLIRA_ROUTING_API_BURST=120
+PUBLIRA_ROUTING_API_RATE=20
+PUBLIRA_ROUTING_SEARCH_BURST=20
+PUBLIRA_ROUTING_SEARCH_RATE=2
+PUBLIRA_ROUTING_IMAGES_BURST=600
+PUBLIRA_ROUTING_IMAGES_RATE=60
 
 # Logs for one stack run. Concurrent stacks that override ports or
 # PUBLIRA_ROUTING_PROJECT_NAME must not share diagnostics: a failure would overwrite
@@ -123,14 +134,23 @@ PUBLIRA_ROUTING_READY_INTERVAL_SEC="${PUBLIRA_ROUTING_READY_INTERVAL_SEC:-1}"
 export PUBLIRA_ROUTING_TRUSTED_HOP="${PUBLIRA_ROUTING_TRUSTED_HOP:-0}"
 export PUBLIRA_ROUTING_HOP_SUBNET="${PUBLIRA_ROUTING_HOP_SUBNET:-198.18.0.0/24}"
 export PUBLIRA_ROUTING_HOP_ADDRESS="${PUBLIRA_ROUTING_HOP_ADDRESS:-198.18.0.10}"
+# The pass that sends bursts over the limits infra/proxy/README.md lists,
+# which run-one.sh makes last by exporting PUBLIRA_ROUTING_RATE_LIMITS=1 beside
+# PUBLIRA_ROUTING_TRUSTED_HOP=1, so that the limits are counted per client
+# behind the hop as well. Traefik and nginx limit as their samples stand;
+# Caddy's sample carries its limits commented out, which enable_rate_limits
+# turns on, and runs on a Caddy built with the module they need.
+export PUBLIRA_ROUTING_RATE_LIMITS="${PUBLIRA_ROUTING_RATE_LIMITS:-0}"
 # Caddy is given the hop's address in its environment, as enable_trusted_hop
 # says, and every other proxy a copy of its sample. Traefik is given it in its
-# environment as well, for the router that keeps the reader's region.
+# environment as well, for the routers that keep the reader's region and count
+# a client by the address the hop names.
 export PUBLIRA_ROUTING_TRUSTED_PROXIES=""
 if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" && "${PUBLIRA_ROUTING_PROXY}" != "nginx" ]]; then
   PUBLIRA_ROUTING_TRUSTED_PROXIES="${PUBLIRA_ROUTING_HOP_ADDRESS}/32"
 fi
-if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" && "${PUBLIRA_ROUTING_PROXY}" != "caddy" ]]; then
+if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" ]] &&
+  [[ "${PUBLIRA_ROUTING_PROXY}" != "caddy" || "${PUBLIRA_ROUTING_RATE_LIMITS}" == "1" ]]; then
   export PUBLIRA_ROUTING_PROXY_DIR="${RUN_DIR}/trusted-hop/${PUBLIRA_ROUTING_PROXY}"
 else
   # Every other pass mounts the sample from infra/proxy as it stands.
@@ -164,6 +184,9 @@ case "${PUBLIRA_ROUTING_TRUSTED_HOP}:${PUBLIRA_ROUTING_PROXY}" in
       "${PUBLIRA_ROUTING_DIR}/compose.${PUBLIRA_ROUTING_PROXY}.yaml"
       "${PUBLIRA_ROUTING_DIR}/compose.hop.yaml"
     )
+    if [[ "${PUBLIRA_ROUTING_PROXY}" == "caddy" && "${PUBLIRA_ROUTING_RATE_LIMITS}" == "1" ]]; then
+      PUBLIRA_ROUTING_COMPOSE_FILES+=("${PUBLIRA_ROUTING_DIR}/compose.caddy-rate-limits.yaml")
+    fi
     ;;
   0:traefik)
     # The Dev Container file is an overlay: on its own it leaves the dependency
@@ -207,23 +230,32 @@ PUBLIRA_ROUTING_CADDY_ROOT="${RUN_DIR}/caddy-root.crt"
 # their own: they join the images router.
 PUBLIRA_ROUTING_ROUTERS=(
   web-storefront
+  web-storefront-search
   web-admin
   rpc
+  rpc-search
+  rpc-console
   images
+  images-console
 )
 if [[ -n "${PUBLIRA_ROUTING_PLATFORM_HOSTS// /}" ]]; then
   PUBLIRA_ROUTING_ROUTERS+=(web-platform)
 fi
 
 # Middleware names from the same file. The first two are attached to the
-# `web` entrypoint in the static configuration, and the third to every router,
-# so a router refuses requests until the file provider has advertised them;
+# `web` entrypoint in the static configuration, the third to every router, and
+# the rate limits to the routers of a tenant's site and image hosts, so a
+# router refuses requests until the file provider has advertised them;
 # waiting for them turns that into one readable message instead of a wall of
 # failing probes.
 PUBLIRA_ROUTING_MIDDLEWARES=(
   strip-trace-context
   strip-forwarded
   strip-country-region
+  rate-limit-api
+  rate-limit-search-rpc
+  rate-limit-search-page
+  rate-limit-images
 )
 
 # W3C Trace Context a caller could forge. echo.ts reports each of these
@@ -693,6 +725,170 @@ enable_trusted_hop() {
     routing_fail "infra/proxy/${PUBLIRA_ROUTING_PROXY}/${file} no longer carries the commented trusted-proxy setting naming ${PUBLIRA_ROUTING_SAMPLE_TRUSTED_RANGE}"
   fi
   routing_log "enabled the trusted-proxy setting of ${file} for ${PUBLIRA_ROUTING_HOP_ADDRESS}/32"
+}
+
+# Writes the Caddyfile to PUBLIRA_ROUTING_PROXY_DIR with its commented
+# rate_limit block uncommented as it is written, and fails when the Caddyfile no
+# longer carries the block in that shape. Traefik and nginx limit as their
+# samples stand, so their copies are the ones enable_trusted_hop wrote.
+enable_rate_limits() {
+  if [[ "${PUBLIRA_ROUTING_PROXY}" != "caddy" ]]; then
+    routing_log "the ${PUBLIRA_ROUTING_PROXY} sample limits requests as it stands"
+    return
+  fi
+
+  local sample="${REPO_ROOT}/infra/proxy/caddy/Caddyfile"
+  local dir="${PUBLIRA_ROUTING_PROXY_DIR}"
+
+  rm -rf "${dir}"
+  mkdir -p "${dir}"
+  sed -e '/^\t\t# rate_limit {$/,/^\t\t# }$/ s/^\(\t\t\)# \{0,1\}/\1/' \
+    "${sample}" > "${dir}/Caddyfile"
+
+  if ! grep -Eq "^"$'\t\t'"rate_limit \{$" "${dir}/Caddyfile"; then
+    routing_fail "infra/proxy/caddy/Caddyfile no longer carries the commented rate_limit block"
+  fi
+  routing_log "enabled the rate_limit block of the Caddyfile"
+}
+
+# Sends `count` requests for `path` on `host` as fast as the edge takes them,
+# eight at a time, and sets BURST_SERVED and BURST_REFUSED to how many were
+# answered 200 and 429, and BURST_SECONDS to how long it took, rounded up. Any
+# other answer fails the run. A global rather than output, like
+# read_handed_client_addresses.
+send_burst() {
+  local name="$1" method="$2" host="$3" path="$4" count="$5"
+  local args=() i codes code started
+  for ((i = 0; i < count; i++)); do
+    args+=(-o /dev/null "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}")
+  done
+  started="$(date +%s%N)"
+  codes="$(
+    curl -sS --parallel --parallel-max 8 -w '%{http_code}\n' --max-time 30 \
+      -X "${method}" -H "Host: ${host}" "${args[@]}" 2> /dev/null || true
+  )"
+  BURST_SECONDS=$((($(date +%s%N) - started + 999999999) / 1000000000))
+  BURST_SERVED=0
+  BURST_REFUSED=0
+  for code in ${codes}; do
+    case "${code}" in
+      200) BURST_SERVED=$((BURST_SERVED + 1)) ;;
+      429) BURST_REFUSED=$((BURST_REFUSED + 1)) ;;
+      *) routing_fail "${name}: HTTP ${code} in a burst (want 200 or 429) host=${host} ${method} ${path}" ;;
+    esac
+  done
+  if ((BURST_SERVED + BURST_REFUSED != count)); then
+    routing_fail "${name}: $((BURST_SERVED + BURST_REFUSED)) of ${count} requests answered host=${host} ${method} ${path}"
+  fi
+}
+
+# The same burst, sent from the hop on behalf of the client `address` names in
+# X-Forwarded-For, one request at a time over one connection.
+send_hop_burst() {
+  local name="$1" host="$2" path="$3" count="$4" address="$5"
+  local out code
+  # shellcheck disable=SC2016 # JavaScript, run inside the hop container
+  out="$(
+    compose exec -T hop node -e '
+      const [host, path, count, forwardedFor] = process.argv.slice(1);
+      const agent = new (require("node:http").Agent)({ keepAlive: true, maxSockets: 1 });
+      const get = () => new Promise((resolve) => {
+        const request = require("node:http").get(
+          { host: "proxy", port: 80, path, agent, headers: { Host: host, "X-Forwarded-For": forwardedFor } },
+          (res) => { res.resume(); res.on("end", () => resolve(res.statusCode)); }
+        );
+        request.setTimeout(5000, () => request.destroy(new Error("timed out")));
+        request.on("error", () => resolve("000"));
+      });
+      (async () => {
+        const started = Date.now();
+        const codes = [];
+        for (let i = 0; i < Number(count); i++) codes.push(await get());
+        console.log(Math.ceil((Date.now() - started) / 1000));
+        console.log(codes.join("\n"));
+        agent.destroy();
+      })();
+    ' "${host}" "${path}" "${count}" "${address}" 2> /dev/null || true
+  )"
+  BURST_SECONDS="$(printf '%s\n' "${out}" | sed -n '1p')"
+  BURST_SERVED=0
+  BURST_REFUSED=0
+  for code in $(printf '%s\n' "${out}" | tail -n +2); do
+    case "${code}" in
+      200) BURST_SERVED=$((BURST_SERVED + 1)) ;;
+      429) BURST_REFUSED=$((BURST_REFUSED + 1)) ;;
+      *) routing_fail "${name}: HTTP ${code} in a burst through the hop (want 200 or 429) host=${host} GET ${path}" ;;
+    esac
+  done
+  if ((BURST_SERVED + BURST_REFUSED != count)); then
+    routing_fail "${name}: $((BURST_SERVED + BURST_REFUSED)) of ${count} requests answered through the hop host=${host} GET ${path}"
+  fi
+}
+
+# A burst of twice the allowance from one client: the edge has to serve the
+# whole burst and what refilled while it was sent, and no more, and answer the
+# rest 429 itself. The bound above admits a second of refill on top of the
+# time the burst took, so that a slow runner does not fail it.
+check_burst() {
+  local name="$1" request="$2" burst="$3" rate="$4"
+  local most=$((burst + rate * (BURST_SECONDS + 1) + 1))
+  if ((BURST_SERVED < burst)); then
+    routing_fail "${name}: ${BURST_SERVED} served (want at least the burst of ${burst}) ${request}"
+  fi
+  if ((BURST_SERVED > most)); then
+    routing_fail "${name}: ${BURST_SERVED} served in ${BURST_SECONDS}s (want at most ${most}: a burst of ${burst} refilled at ${rate}/s) ${request}"
+  fi
+  if ((BURST_REFUSED == 0)); then
+    routing_fail "${name}: nothing refused (want 429 past the burst of ${burst}) ${request}"
+  fi
+  routing_log "ok: ${name} → ${BURST_SERVED} served, ${BURST_REFUSED} answered 429"
+}
+
+assert_rate_limited() {
+  local name="$1" method="$2" host="$3" path="$4" burst="$5" rate="$6"
+  send_burst "${name}" "${method}" "${host}" "${path}" $((burst * 2))
+  check_burst "${name}" "host=${host} ${method} ${path}" "${burst}" "${rate}"
+}
+
+assert_hop_rate_limited() {
+  local name="$1" host="$2" path="$3" burst="$4" rate="$5" address="$6"
+  send_hop_burst "${name}" "${host}" "${path}" $((burst * 2)) "${address}"
+  check_burst "${name}" "host=${host} GET ${path} for ${address} through the hop" "${burst}" "${rate}"
+}
+
+# A burst the edge has to serve whole: a path no allowance counts, or one on a
+# host whose allowances are left to the server.
+assert_not_rate_limited() {
+  local name="$1" method="$2" host="$3" path="$4" count="$5"
+  send_burst "${name}" "${method}" "${host}" "${path}" "${count}"
+  if ((BURST_REFUSED != 0)); then
+    routing_fail "${name}: ${BURST_REFUSED} of ${count} answered 429 (want none) host=${host} ${method} ${path}"
+  fi
+  routing_log "ok: ${name} → all ${count} served"
+}
+
+# A burst of one allowance, sent right after a burst that spent it on another
+# host the allowance counts: the edge has to serve only what refilled since,
+# not the burst of an allowance of its own.
+assert_allowance_shared() {
+  local name="$1" method="$2" host="$3" path="$4" burst="$5" rate="$6"
+  local most
+  send_burst "${name}" "${method}" "${host}" "${path}" "${burst}"
+  most=$((rate * (BURST_SECONDS + 1) + 1))
+  if ((BURST_SERVED > most)); then
+    routing_fail "${name}: ${BURST_SERVED} of ${burst} served in ${BURST_SECONDS}s (want at most ${most}: the allowance is spent and refills at ${rate}/s) host=${host} ${method} ${path}"
+  fi
+  routing_log "ok: ${name} → ${BURST_SERVED} of ${burst} served, the rest answered 429"
+}
+
+# The same through the hop, for the client `address` names.
+assert_hop_served() {
+  local name="$1" host="$2" path="$3" address="$4"
+  send_hop_burst "${name}" "${host}" "${path}" 1 "${address}"
+  if ((BURST_SERVED != 1)); then
+    routing_fail "${name}: answered 429 (want 200: ${address} has its own allowance) host=${host} GET ${path} through the hop"
+  fi
+  routing_log "ok: ${name} → served"
 }
 
 # A POST carrying a body of `bytes` bytes and the given `Header: value` lines:

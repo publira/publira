@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-10-25
+updated: 2026-10-30
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -164,6 +164,12 @@ Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 - **The provider reaches the path from the internet.** An IP allowlist, a sign-in prompt, or a bot challenge in front of the tenant's site has to let these requests through, or payments are taken and never recorded, and replies never reach the console.
 - **The body arrives as the provider sent it.** Each notification is signed over its exact bytes, so a hop that rewrites the body on this path makes Publira refuse it.
 - **A body of up to 33 MiB** under `/api/v1/webhook/email/`. SendGrid posts a reply with its attachments, up to its own 30 MB limit for a mail. A smaller limit turns a reply with a large attachment into a failed delivery the provider retries for days and then drops.
+
+## A WAF and rate limits
+
+A web application firewall in front of the edge, such as AWS WAF, Cloud Armor, or Cloudflare, refuses requests that look like an attack before they reach anything you run. Its managed rules refuse some of Publira's own requests, the uploads and the webhooks among them, until you make exceptions for them, as [A web application firewall](../../3-operations/12-security/4-waf.md) describes.
+
+`publira server` does not limit anonymous reads, so the public API, the search, and the images have to be limited per client in front of it, in that WAF or in the proxy at the edge, and the webhooks and the health checks never. [Rate limits](../../3-operations/12-security/5-rate-limits.md) says what to limit and by how much.
 
 ## In this section
 
