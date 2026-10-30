@@ -121,36 +121,6 @@ func TestDBGetEpisodeDetailOpensEveryEpisodeToTenantStaff(t *testing.T) {
 	}
 }
 
-// The release before reads episode_content_grants and fails a read whose grant
-// kind it does not know, so the staff grant opens nothing there while it opens
-// the episode here.
-func TestDBStaffGrantStaysOutOfThePreviousReleasesView(t *testing.T) {
-	t.Parallel()
-
-	env := newPublicDBEnv(t)
-	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Paid Series", Published: true})
-	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
-		PublicID: "EPISODEPAY01",
-		Title:    "Paid Chapter",
-		Status:   testutil.EpisodeStatusPublished,
-		Price:    500,
-	})
-	staff := seedReaderWithRole(t, env, tenant, "STAFFADMIN01", auth.RoleTenantAdmin)
-
-	ctx := testutil.WithBearer(context.Background(), tokenFor(t, tenant, staff))
-	detail, err := env.catalogClient().GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: episode.PublicID})
-	if err != nil {
-		t.Fatalf("GetEpisodeDetail: %v", err)
-	}
-	if detail.EntitlementSource != publirav1.EpisodeEntitlementSource_EPISODE_ENTITLEMENT_SOURCE_STAFF {
-		t.Fatalf("entitlement source = %v, want staff", detail.EntitlementSource)
-	}
-	if got := env.countRows(t, "SELECT COUNT(*) FROM episode_content_grants WHERE tenant_id = $1 AND user_id = $2", tenant.ID, staff.ID); got != 0 {
-		t.Fatalf("episode_content_grants rows of a member of staff = %d, want none", got)
-	}
-}
-
 // A purchase is reported as the purchase whoever made it: a member of staff
 // who bought an episode to try the checkout sees what a reader would, and a
 // reader's purchase is unaffected by the staff grant.

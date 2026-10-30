@@ -107,9 +107,6 @@ var publicDataTables = []struct {
 	// that open a priced episode, which the viewer and image-server read before
 	// they hand over a page.
 	{name: "episode_grants", count: "SELECT count(*) FROM episode_grants"},
-	// The same grants but subscriptions, which the release before reads in
-	// their place.
-	{name: "episode_content_grants", count: "SELECT count(*) FROM episode_content_grants"},
 	// Every series row the catalog returns carries its credits, joined from
 	// the creator, the credit, and the credit's role.
 	{name: "creators", count: "SELECT count(*) FROM creators"},
