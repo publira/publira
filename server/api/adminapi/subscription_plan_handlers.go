@@ -77,9 +77,26 @@ type subscriptionPlanInput struct {
 	seriesIDs     []uuid.UUID
 	published     bool
 	// appStoreProductID and googlePlayProductID are the products the app sells
-	// the plan as, NULL in a store it does not sell the plan in.
-	appStoreProductID   sql.NullString
-	googlePlayProductID sql.NullString
+	// the plan as.
+	appStoreProductID   storeProductID
+	googlePlayProductID storeProductID
+}
+
+// storeProductID is one of a plan's store product IDs as a request names it:
+// NULL in a store the app does not sell the plan in, and not set at all when
+// the request leaves the field out.
+type storeProductID struct {
+	id  sql.NullString
+	set bool
+}
+
+// or answers the product the request names, or current when it names none,
+// so a console built before the field keeps what the plan is sold as.
+func (p storeProductID) or(current sql.NullString) sql.NullString {
+	if !p.set {
+		return current
+	}
+	return p.id
 }
 
 // readSubscriptionPlanInput checks the fields a plan is saved with. Whether
@@ -159,19 +176,22 @@ func readSubscriptionPlanInput(req *publiraadminv1.SubscriptionPlanInput) (subsc
 }
 
 // readStoreProductID reads one of a plan's store product IDs, where empty is
-// none.
-func readStoreProductID(raw string, pattern *regexp.Regexp, field string) (sql.NullString, error) {
-	productID := strings.TrimSpace(raw)
+// none and unset leaves the plan's as it is.
+func readStoreProductID(raw *string, pattern *regexp.Regexp, field string) (storeProductID, error) {
+	if raw == nil {
+		return storeProductID{}, nil
+	}
+	productID := strings.TrimSpace(*raw)
 	if productID == "" {
-		return sql.NullString{}, nil
+		return storeProductID{set: true}, nil
 	}
 	if utf8.RuneCountInString(productID) > maxStoreProductIDRunes {
-		return sql.NullString{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("a store product ID is at most %d characters", maxStoreProductIDRunes), field)
+		return storeProductID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("a store product ID is at most %d characters", maxStoreProductIDRunes), field)
 	}
 	if !pattern.MatchString(productID) {
-		return sql.NullString{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the product ID holds a character the store does not take"), field)
+		return storeProductID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the product ID holds a character the store does not take"), field)
 	}
-	return sql.NullString{String: productID, Valid: true}, nil
+	return storeProductID{id: sql.NullString{String: productID, Valid: true}, set: true}, nil
 }
 
 // readSubscriptionPlanTargetIDs parses the primary keys of a plan's labels or
@@ -409,8 +429,8 @@ func (s *adminServer) CreateSubscriptionPlan(
 			Name:                   input.name,
 			Description:            input.description,
 			StripePriceID:          input.stripePriceID,
-			AppStoreProductID:      input.appStoreProductID,
-			GooglePlayProductID:    input.googlePlayProductID,
+			AppStoreProductID:      input.appStoreProductID.id,
+			GooglePlayProductID:    input.googlePlayProductID.id,
 			PriceAmount:            int32(price.Amount),
 			Currency:               price.Currency,
 			RecurringInterval:      string(price.Interval),
@@ -493,8 +513,8 @@ func (s *adminServer) UpdateSubscriptionPlan(
 		Name:                   input.name,
 		Description:            input.description,
 		StripePriceID:          input.stripePriceID,
-		AppStoreProductID:      input.appStoreProductID,
-		GooglePlayProductID:    input.googlePlayProductID,
+		AppStoreProductID:      input.appStoreProductID.or(current.AppStoreProductID),
+		GooglePlayProductID:    input.googlePlayProductID.or(current.GooglePlayProductID),
 		PriceAmount:            int32(price.Amount),
 		Currency:               price.Currency,
 		RecurringInterval:      string(price.Interval),
