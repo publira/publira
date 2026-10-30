@@ -83,8 +83,11 @@ message GetSubscriptionPlanResponse {
 // labels of the tenant and no series, and a SUBSCRIPTION_PLAN_SCOPE_SERIES
 // plan one to 100 series and no labels. Anything else is invalid_argument.
 //
-// `app_store_product_id` and `google_play_product_id` are optional, and empty
-// sells the plan in neither app. Each is at most 100 characters: an App Store
+// `app_store_product_id` and `google_play_product_id` name the products the
+// plan is sold as in each app, and empty sells it in neither. An update that
+// leaves one unset keeps the product the plan is already sold as, so a console
+// built before these fields clears neither; a create that leaves one unset
+// sells the plan in no such app. Each is at most 100 characters: an App Store
 // product ID of letters, digits, underscores, and periods, and a Google Play
 // one of lowercase letters, digits, underscores, and periods, starting with a
 // letter or a digit. Anything else is invalid_argument on that field, and one
@@ -100,8 +103,8 @@ message SubscriptionPlanInput {
   repeated string label_ids = 5;
   repeated string series_ids = 6;
   bool published = 7;
-  string app_store_product_id = 8;
-  string google_play_product_id = 9;
+  optional string app_store_product_id = 8;
+  optional string google_play_product_id = 9;
 }
 
 // A tenant that already holds 20 plans is failed_precondition with the
@@ -115,7 +118,8 @@ message CreateSubscriptionPlanResponse {
   AdminSubscriptionPlan plan = 1;
 }
 
-// Replaces every field of the plan with `plan`. A subscription already started
+// Replaces every field of the plan with `plan`, but a store product ID the
+// request leaves unset, which keeps its value. A subscription already started
 // keeps going whatever changes: a new Price or a new store product does not
 // move it, since Stripe or the store bills it at what it was started at, and a
 // narrower scope applies to it from then on.

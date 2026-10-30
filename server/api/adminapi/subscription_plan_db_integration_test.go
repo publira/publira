@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
@@ -373,8 +374,8 @@ func TestDBSubscriptionPlanNamesTheStoreProductsItIsSoldAs(t *testing.T) {
 
 	f := newSubscriptionPlanFixture(t)
 	plan := f.labelPlan()
-	plan.AppStoreProductId = " com.example.reader.Monthly "
-	plan.GooglePlayProductId = "plan_monthly"
+	plan.AppStoreProductId = proto.String(" com.example.reader.Monthly ")
+	plan.GooglePlayProductId = proto.String("plan_monthly")
 	created := f.create(t, plan)
 	if created.AppStoreProductId != "com.example.reader.Monthly" || created.GooglePlayProductId != "plan_monthly" {
 		t.Fatalf("plan is sold as %q and %q, want both products", created.AppStoreProductId, created.GooglePlayProductId)
@@ -395,12 +396,18 @@ func TestDBSubscriptionPlanNamesTheStoreProductsItIsSoldAs(t *testing.T) {
 		code  connect.Code
 		field string
 	}{
-		{"an App Store product another plan is sold as", func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = "com.example.reader.Monthly" }, connect.CodeAlreadyExists, "plan.app_store_product_id"},
-		{"a Google Play product another plan is sold as", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = "plan_monthly" }, connect.CodeAlreadyExists, "plan.google_play_product_id"},
-		{"an App Store product with a hyphen", func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = "com.example-reader.yearly" }, connect.CodeInvalidArgument, "plan.app_store_product_id"},
-		{"a Google Play product in capitals", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = "Plan_yearly" }, connect.CodeInvalidArgument, "plan.google_play_product_id"},
-		{"a Google Play product starting with a period", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = ".plan_yearly" }, connect.CodeInvalidArgument, "plan.google_play_product_id"},
-		{"a product ID past the limit", func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = strings.Repeat("a", 101) }, connect.CodeInvalidArgument, "plan.app_store_product_id"},
+		{"an App Store product another plan is sold as", func(p *publiraadminv1.SubscriptionPlanInput) {
+			p.AppStoreProductId = proto.String("com.example.reader.Monthly")
+		}, connect.CodeAlreadyExists, "plan.app_store_product_id"},
+		{"a Google Play product another plan is sold as", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = proto.String("plan_monthly") }, connect.CodeAlreadyExists, "plan.google_play_product_id"},
+		{"an App Store product with a hyphen", func(p *publiraadminv1.SubscriptionPlanInput) {
+			p.AppStoreProductId = proto.String("com.example-reader.yearly")
+		}, connect.CodeInvalidArgument, "plan.app_store_product_id"},
+		{"a Google Play product in capitals", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = proto.String("Plan_yearly") }, connect.CodeInvalidArgument, "plan.google_play_product_id"},
+		{"a Google Play product starting with a period", func(p *publiraadminv1.SubscriptionPlanInput) { p.GooglePlayProductId = proto.String(".plan_yearly") }, connect.CodeInvalidArgument, "plan.google_play_product_id"},
+		{"a product ID past the limit", func(p *publiraadminv1.SubscriptionPlanInput) {
+			p.AppStoreProductId = proto.String(strings.Repeat("a", 101))
+		}, connect.CodeInvalidArgument, "plan.app_store_product_id"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := f.client().CreateSubscriptionPlan(f.ctx(), &publiraadminv1.CreateSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), Plan: yearly(tc.edit)})
@@ -413,12 +420,26 @@ func TestDBSubscriptionPlanNamesTheStoreProductsItIsSoldAs(t *testing.T) {
 
 	// The same ID may name a product in each store, since the two stores keep
 	// apart products.
-	other := f.create(t, yearly(func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = "plan_monthly" }))
+	other := f.create(t, yearly(func(p *publiraadminv1.SubscriptionPlanInput) { p.AppStoreProductId = proto.String("plan_monthly") }))
 	if other.AppStoreProductId != "plan_monthly" || other.GooglePlayProductId != "" {
 		t.Fatalf("yearly plan is sold as %q and %q, want the App Store product alone", other.AppStoreProductId, other.GooglePlayProductId)
 	}
 
-	plan.AppStoreProductId = ""
+	// A console built before the fields sends neither, and renaming the plan
+	// there keeps both products.
+	renamed := f.labelPlan()
+	renamed.Name = "Label A, renamed"
+	kept, err := f.client().UpdateSubscriptionPlan(f.ctx(), &publiraadminv1.UpdateSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: created.Id, Plan: renamed})
+	if err != nil {
+		t.Fatalf("UpdateSubscriptionPlan without the store fields: %v", err)
+	}
+	if kept.Plan.Name != "Label A, renamed" || kept.Plan.AppStoreProductId != "com.example.reader.Monthly" || kept.Plan.GooglePlayProductId != "plan_monthly" {
+		t.Fatalf("renamed plan = %q sold as %q and %q, want both products kept", kept.Plan.Name, kept.Plan.AppStoreProductId, kept.Plan.GooglePlayProductId)
+	}
+
+	// An empty one takes the plan out of that store.
+	plan.AppStoreProductId = proto.String("")
+	plan.GooglePlayProductId = nil
 	updated, err := f.client().UpdateSubscriptionPlan(f.ctx(), &publiraadminv1.UpdateSubscriptionPlanRequest{Tenant: f.admin.tenantContext(), SubscriptionPlanId: created.Id, Plan: plan})
 	if err != nil {
 		t.Fatalf("UpdateSubscriptionPlan: %v", err)

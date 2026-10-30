@@ -425,8 +425,11 @@ func (x *GetSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
 // labels of the tenant and no series, and a SUBSCRIPTION_PLAN_SCOPE_SERIES
 // plan one to 100 series and no labels. Anything else is invalid_argument.
 //
-// `app_store_product_id` and `google_play_product_id` are optional, and empty
-// sells the plan in neither app. Each is at most 100 characters: an App Store
+// `app_store_product_id` and `google_play_product_id` name the products the
+// plan is sold as in each app, and empty sells it in neither. An update that
+// leaves one unset keeps the product the plan is already sold as, so a console
+// built before these fields clears neither; a create that leaves one unset
+// sells the plan in no such app. Each is at most 100 characters: an App Store
 // product ID of letters, digits, underscores, and periods, and a Google Play
 // one of lowercase letters, digits, underscores, and periods, starting with a
 // letter or a digit. Anything else is invalid_argument on that field, and one
@@ -443,8 +446,8 @@ type SubscriptionPlanInput struct {
 	LabelIds            []string                 `protobuf:"bytes,5,rep,name=label_ids,json=labelIds,proto3" json:"label_ids,omitempty"`
 	SeriesIds           []string                 `protobuf:"bytes,6,rep,name=series_ids,json=seriesIds,proto3" json:"series_ids,omitempty"`
 	Published           bool                     `protobuf:"varint,7,opt,name=published,proto3" json:"published,omitempty"`
-	AppStoreProductId   string                   `protobuf:"bytes,8,opt,name=app_store_product_id,json=appStoreProductId,proto3" json:"app_store_product_id,omitempty"`
-	GooglePlayProductId string                   `protobuf:"bytes,9,opt,name=google_play_product_id,json=googlePlayProductId,proto3" json:"google_play_product_id,omitempty"`
+	AppStoreProductId   *string                  `protobuf:"bytes,8,opt,name=app_store_product_id,json=appStoreProductId,proto3,oneof" json:"app_store_product_id,omitempty"`
+	GooglePlayProductId *string                  `protobuf:"bytes,9,opt,name=google_play_product_id,json=googlePlayProductId,proto3,oneof" json:"google_play_product_id,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -529,15 +532,15 @@ func (x *SubscriptionPlanInput) GetPublished() bool {
 }
 
 func (x *SubscriptionPlanInput) GetAppStoreProductId() string {
-	if x != nil {
-		return x.AppStoreProductId
+	if x != nil && x.AppStoreProductId != nil {
+		return *x.AppStoreProductId
 	}
 	return ""
 }
 
 func (x *SubscriptionPlanInput) GetGooglePlayProductId() string {
-	if x != nil {
-		return x.GooglePlayProductId
+	if x != nil && x.GooglePlayProductId != nil {
+		return *x.GooglePlayProductId
 	}
 	return ""
 }
@@ -640,7 +643,8 @@ func (x *CreateSubscriptionPlanResponse) GetPlan() *AdminSubscriptionPlan {
 	return nil
 }
 
-// Replaces every field of the plan with `plan`. A subscription already started
+// Replaces every field of the plan with `plan`, but a store product ID the
+// request leaves unset, which keeps its value. A subscription already started
 // keeps going whatever changes: a new Price or a new store product does not
 // move it, since Stripe or the store bills it at what it was started at, and a
 // narrower scope applies to it from then on.
@@ -878,7 +882,7 @@ const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x120\n" +
 	"\x14subscription_plan_id\x18\x02 \x01(\tR\x12subscriptionPlanId\"Z\n" +
 	"\x1bGetSubscriptionPlanResponse\x12;\n" +
-	"\x04plan\x18\x01 \x01(\v2'.publira.admin.v1.AdminSubscriptionPlanR\x04plan\"\xf4\x02\n" +
+	"\x04plan\x18\x01 \x01(\v2'.publira.admin.v1.AdminSubscriptionPlanR\x04plan\"\xb2\x03\n" +
 	"\x15SubscriptionPlanInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12&\n" +
@@ -887,9 +891,11 @@ const file_publira_admin_v1_subscription_plan_proto_rawDesc = "" +
 	"\tlabel_ids\x18\x05 \x03(\tR\blabelIds\x12\x1d\n" +
 	"\n" +
 	"series_ids\x18\x06 \x03(\tR\tseriesIds\x12\x1c\n" +
-	"\tpublished\x18\a \x01(\bR\tpublished\x12/\n" +
-	"\x14app_store_product_id\x18\b \x01(\tR\x11appStoreProductId\x123\n" +
-	"\x16google_play_product_id\x18\t \x01(\tR\x13googlePlayProductId\"\x95\x01\n" +
+	"\tpublished\x18\a \x01(\bR\tpublished\x124\n" +
+	"\x14app_store_product_id\x18\b \x01(\tH\x00R\x11appStoreProductId\x88\x01\x01\x128\n" +
+	"\x16google_play_product_id\x18\t \x01(\tH\x01R\x13googlePlayProductId\x88\x01\x01B\x17\n" +
+	"\x15_app_store_product_idB\x19\n" +
+	"\x17_google_play_product_id\"\x95\x01\n" +
 	"\x1dCreateSubscriptionPlanRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12;\n" +
 	"\x04plan\x18\x02 \x01(\v2'.publira.admin.v1.SubscriptionPlanInputR\x04plan\"]\n" +
@@ -979,6 +985,7 @@ func file_publira_admin_v1_subscription_plan_proto_init() {
 	if File_publira_admin_v1_subscription_plan_proto != nil {
 		return
 	}
+	file_publira_admin_v1_subscription_plan_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
