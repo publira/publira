@@ -45,6 +45,24 @@ http:
           - url: "http://localhost:${PUBLIRA_E2E_PUBLIC_API_PORT}"
 EOF
 
+# The routers as the repository writes them, with every request-rate allowance
+# raised past anything the suite sends. Every spec reaches the edge from
+# loopback, so the specs running at one moment would share one client's
+# allowance and refuse each other at random; `task e2e:routing` is what holds
+# the allowances themselves to infra/proxy/README.md.
+routes="${REPO_ROOT}/infra/proxy/traefik/dynamic/routes.yaml"
+unlimited='"average" 1000000 "burst" 1000000'
+e2e_log "writing traefik routes with the request-rate allowances raised to ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/routes.yaml"
+sed -E "s/\"average\" [0-9]+ \"burst\" [0-9]+/${unlimited}/g" "${routes}" > "${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/routes.yaml"
+# An allowance written in any other shape would be left as it is, so every one
+# routes.yaml names has to have come out raised.
+allowances="$(grep -oE '"average" [0-9]+' "${routes}" | wc -l)"
+raised="$(grep -oF "${unlimited}" "${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR}/routes.yaml" | wc -l)"
+if [[ "${allowances}" -eq 0 || "${raised}" -ne "${allowances}" ]]; then
+  e2e_err "raised ${raised} of the ${allowances} allowances in ${routes}; update up.sh to match how it writes them"
+  exit 1
+fi
+
 e2e_log "starting compose project ${COMPOSE_PROJECT_NAME}${*:+ (${*})}"
 # --wait blocks until every service healthcheck (postgres / redis / rustfs) is healthy.
 # --build so an edit to browser/Dockerfile reaches the running browser; every
