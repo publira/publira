@@ -205,12 +205,13 @@ describe("isInstallSource", () => {
     }
   });
 
-  it("drops tests, documentation, and the development tooling", () => {
+  it("drops tests, documentation, the development tooling, and the sample proxy configurations", () => {
     for (const path of [
       "server/config/runtime_test.go",
       "apps/web-storefront/lib/env.test.ts",
       "server/internal/foo/testdata/env.txt",
       "infra/deploy/README.md",
+      "infra/proxy/caddy/Caddyfile",
       "scripts/dev-env.sh",
       "e2e/playwright.config.ts",
     ]) {
@@ -389,15 +390,34 @@ describe("watchedChanges", () => {
     ]);
   });
 
-  it("reports a change to the routing but not to its README", () => {
+  it("reports a change to the edge contract but not to a sample proxy configuration", () => {
     const files: ChangedFile[] = [
       { filename: "infra/proxy/caddy/Caddyfile", status: "modified" },
+      {
+        filename: "infra/proxy/nginx/default.conf.template",
+        status: "modified",
+      },
       { filename: "infra/proxy/README.md", status: "modified" },
+      { filename: "docs/en/2-deployments/4-edge/index.md", status: "modified" },
+      { filename: "docs/ja/2-deployments/4-edge/index.md", status: "modified" },
     ];
 
     assert.deepEqual(watchedChanges(files, nowhere), [
-      "changes the routing in infra/proxy/caddy/Caddyfile",
+      "changes what the edge has to do in infra/proxy/README.md",
+      "changes what the edge has to do in docs/en/2-deployments/4-edge/index.md",
     ]);
+  });
+
+  it("reports nothing for a variable a sample proxy configuration starts reading", () => {
+    const files: ChangedFile[] = [
+      {
+        filename: "infra/proxy/caddy/Caddyfile",
+        patch: "@@ -1 +1,2 @@\n :80 {\n+\tbind {$PUBLIRA_EDGE_BIND}",
+        status: "modified",
+      },
+    ];
+
+    assert.deepEqual(watchedChanges(files, nowhere), []);
   });
 
   it("reports a change to the database roles", () => {
