@@ -174,14 +174,13 @@ services:
   # routes under one host and port the browser cannot reach a page at all.
   #
   # `network_mode: host` because every backend is a host process on loopback,
-  # which a bridged container has no route to. Only the viewer performance
-  # suite goes through here; every other suite keeps talking to web-storefront
-  # directly.
+  # which a bridged container has no route to.
   #
   # The routing is the repository's own: infra/proxy/traefik/dynamic is mounted
-  # as it stands, and only its services.yaml is replaced by one naming this
-  # run's host ports (scripts/up.sh writes it). The file provider merges what
-  # it finds in the directory.
+  # as it stands, with its services.yaml replaced by one naming this run's host
+  # ports, and its routes.yaml by a copy whose request-rate allowances are
+  # raised past what the suite sends (scripts/up.sh writes both). The file
+  # provider merges what it finds in the directory.
   traefik:
     image: traefik:v3.7.17@sha256:30ff62491aacdb862ceb8c9edcf2627da638d7deafdd4b6dab32fe34f8aa3e90
     labels: *run-dir-label
@@ -300,11 +299,12 @@ services:
       # trusts it, so the client address and the host stay the edge's own.
       PUBLIRA_EDGE_TRUSTED_PROXIES: 127.0.0.1/32
     volumes:
-      # The repository's own dynamic directory, with this run's addresses laid
-      # over the services.yaml in it. The order matters: a file mount can only
-      # land on a path that already exists inside a read-only directory mount,
-      # and services.yaml is committed, so it does.
+      # The repository's own dynamic directory, with this run's files laid over
+      # the two in it. The order matters: a file mount can only land on a path
+      # that already exists inside a read-only directory mount, and both files
+      # are committed, so they do.
       - ../infra/proxy/traefik/dynamic:/etc/traefik/dynamic:ro
+      - ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}/routes.yaml:/etc/traefik/dynamic/routes.yaml:ro
       - ${PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR:-./.run/traefik}/services.yaml:/etc/traefik/dynamic/services.yaml:ro
 
   # The browser the screenshot projects render in. Every other project drives

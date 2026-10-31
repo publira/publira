@@ -282,8 +282,9 @@ RUN_DIR="${PUBLIRA_E2E_RUN_DIR}"
 LOG_DIR="${RUN_DIR}/logs"
 PID_DIR="${RUN_DIR}/pids"
 # Traefik reads its routers from a watched directory. The backend ports are
-# overridable, so the file is written per run rather than committed, and
-# compose mounts it through this variable.
+# overridable and the request-rate allowances raised, so the two files are
+# written per run rather than committed, and compose mounts them through this
+# variable.
 export PUBLIRA_E2E_TRAEFIK_DYNAMIC_DIR="${RUN_DIR}/traefik"
 
 # Lease for the compose project. Docker resources are keyed by
