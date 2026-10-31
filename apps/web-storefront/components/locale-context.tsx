@@ -57,6 +57,7 @@ export const TenantLocalesContextProvider = ({
  */
 export const useLocale = (): Locale => {
   const locale = use(LocaleContext);
+
   if (!locale) {
     throw new Error(
       "useLocale must be called under <LocaleProvider>: the locale comes from the [locale] root parameter, and there is nothing to guess it from."
@@ -73,6 +74,7 @@ export const useLocale = (): Locale => {
  */
 export const useTenantDefaultLocale = (): Locale | null => {
   const defaultLocale = use(TenantDefaultLocaleContext);
+
   if (!defaultLocale) {
     throw new Error(
       "useTenantDefaultLocale must be called under <TenantLocalesProvider>: the tenant's stored default comes from GetTenant, and there is nothing to guess it from."
@@ -88,6 +90,7 @@ export const useTenantDefaultLocale = (): Locale | null => {
  */
 export const useTenantSupportedLocales = (): readonly Locale[] | null => {
   const supportedLocales = use(TenantSupportedLocalesContext);
+
   if (!supportedLocales) {
     throw new Error(
       "useTenantSupportedLocales must be called under <TenantLocalesProvider>: the locales the tenant offers come from GetTenant, and there is nothing to guess them from."

@@ -27,10 +27,10 @@ vi.mock("./follow", () => ({
 
 vi.mock("./auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 
@@ -38,9 +38,11 @@ vi.mock("./csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -57,6 +59,7 @@ describe("toggleFollowAction", () => {
     mockFollowTarget.mockResolvedValueOnce({ isFollowing: true, ok: true });
 
     const { toggleFollowAction } = await import("./follow-actions");
+
     const result = await toggleFollowAction(
       null,
       formData({
@@ -93,6 +96,7 @@ describe("toggleFollowAction", () => {
     mockUnfollowTarget.mockResolvedValueOnce({ isFollowing: false, ok: true });
 
     const { toggleFollowAction } = await import("./follow-actions");
+
     const result = await toggleFollowAction(
       null,
       formData({
@@ -123,6 +127,7 @@ describe("toggleFollowAction", () => {
     mockUnfollowTarget.mockResolvedValueOnce({ isFollowing: false, ok: true });
 
     const { toggleFollowAction } = await import("./follow-actions");
+
     const result = await toggleFollowAction(
       null,
       formData({
@@ -151,6 +156,7 @@ describe("toggleFollowAction", () => {
 
   it("Invalid target type does not call API", async () => {
     const { toggleFollowAction } = await import("./follow-actions");
+
     const result = await toggleFollowAction(
       null,
       formData({
@@ -179,6 +185,7 @@ describe("toggleFollowAction", () => {
     });
 
     const { toggleFollowAction } = await import("./follow-actions");
+
     const result = await toggleFollowAction(
       null,
       formData({

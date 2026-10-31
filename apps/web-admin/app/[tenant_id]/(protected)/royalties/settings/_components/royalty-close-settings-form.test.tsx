@@ -194,6 +194,7 @@ describe("RoyaltyCloseSettingsForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
   });
 

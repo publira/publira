@@ -16,11 +16,14 @@ const markFile = (name: string): Promise<Buffer> =>
 const linkedImage = async (page: Page, selector: string): Promise<Buffer> => {
   const href = await page.locator(selector).getAttribute("href");
   expect(href).not.toBeNull();
+
   const response = await page.request.get(
     new URL(href ?? "", page.url()).toString()
   );
+
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("image/png");
+
   return await response.body();
 };
 

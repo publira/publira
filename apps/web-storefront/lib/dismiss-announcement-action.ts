@@ -23,9 +23,11 @@ export const dismissAnnouncementBannerAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = dismissAnnouncementFormSchema.safeParse(
     toFormDataInput(formData, { announcementId: "value" })
   );
+
   if (!parsed.success) {
     return;
   }

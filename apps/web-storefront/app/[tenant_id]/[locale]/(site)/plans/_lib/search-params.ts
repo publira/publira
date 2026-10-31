@@ -1,4 +1,5 @@
 import { searchParamEnum } from "@publira/utils/search-params";
+import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
 /**
@@ -13,7 +14,12 @@ const plansSearchParamsSchema = z.object({
   ),
 });
 
+interface ParsePlansSearchParamsInput {
+  subscription?: SearchParamValue;
+}
+
 export type PlansSearchParams = z.output<typeof plansSearchParamsSchema>;
 
-export const parsePlansSearchParams = (input: unknown): PlansSearchParams =>
-  plansSearchParamsSchema.parse(input);
+export const parsePlansSearchParams = (
+  input: ParsePlansSearchParamsInput
+): PlansSearchParams => plansSearchParamsSchema.parse(input);

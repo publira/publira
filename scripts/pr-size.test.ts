@@ -133,6 +133,7 @@ describe("significantLinesByFile", () => {
         "",
       ].join("\n")
     );
+
     assert.deepEqual([...counts], [["server/internal/auth/session.go", 3]]);
   });
 
@@ -148,6 +149,7 @@ describe("significantLinesByFile", () => {
         "",
       ].join("\n")
     );
+
     assert.deepEqual([...counts], [["db/query/episode.sql", 2]]);
   });
 
@@ -163,6 +165,7 @@ describe("significantLinesByFile", () => {
         "",
       ].join("\n")
     );
+
     assert.deepEqual([...counts], [["apps/web-storefront/src/old.ts", 1]]);
   });
 
@@ -176,6 +179,7 @@ describe("significantLinesByFile", () => {
         "",
       ].join("\n")
     );
+
     assert.deepEqual([...counts], []);
   });
 });
@@ -197,6 +201,7 @@ describe("scoreDiff", () => {
       "+  version: 1.0.1",
       "",
     ].join("\n");
+
     const { score } = scoreDiff(diff);
     assert.equal(score, 0);
     assert.equal(bucket(score), "size/xs");
@@ -220,6 +225,7 @@ describe("scoreDiff", () => {
       "+</Card>",
       "",
     ].join("\n");
+
     assert.deepEqual(scoreDiff(diff), {
       files: [
         {
@@ -248,6 +254,7 @@ describe("scoreDiff", () => {
       "+Comments are opt-in per tenant.",
       "",
     ].join("\n");
+
     assert.equal(scoreDiff(diff).score, 3.3);
   });
 });

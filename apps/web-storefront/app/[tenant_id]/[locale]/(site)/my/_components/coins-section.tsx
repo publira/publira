@@ -52,6 +52,7 @@ const CoinsFrame = ({
  */
 export const CoinsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [settings, balance] = await Promise.all([
     getCoinSettings(tenantId, locale),
     getMyCoinBalance(tenantId, locale),
@@ -60,6 +61,7 @@ export const CoinsSection = async () => {
   if (!balance.ok && balance.requiresSignIn) {
     await redirectToLogin(locale, "/my", tenantId);
   }
+
   if ((settings.ok && !settings.value) || (balance.ok && !balance.value)) {
     return null;
   }

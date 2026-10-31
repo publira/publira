@@ -68,6 +68,7 @@ export const ReaderTickets = async ({
 }: ReaderTicketsProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (tickets.length > 0 || hasPageLinks);
 

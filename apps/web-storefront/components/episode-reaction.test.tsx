@@ -28,6 +28,7 @@ vi.mock("./client-message", () => ({
 const { rateEpisodeAction } = vi.hoisted(() => ({
   rateEpisodeAction: vi.fn(() => {
     const { promise } = Promise.withResolvers<never>();
+
     return promise;
   }),
 }));
@@ -103,6 +104,7 @@ describe("EpisodeReaction.Login", () => {
     const link = screen.getByRole("link", {
       name: "Sign in to react to this episode. Readers who reacted: 12",
     });
+
     expect(link.getAttribute("href")).toBe(
       "/login?returnTo=%2Fseries%2FSERIES01%2Fepisodes%2FEPISODE01"
     );
@@ -139,6 +141,7 @@ describe("EpisodeReaction.Form", () => {
     const button = screen.getByRole("button", {
       name: "React to this episode. Readers who reacted: 3",
     });
+
     fireEvent.click(button);
 
     expect(

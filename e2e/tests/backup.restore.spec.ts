@@ -34,6 +34,7 @@ test.describe("a restored install", () => {
     const cover = page
       .getByRole("img", { exact: true, name: SEED_TENANT.series.title })
       .first();
+
     await expect
       .poll(() =>
         cover.evaluate(

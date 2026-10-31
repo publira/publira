@@ -89,6 +89,7 @@ describe("Button", () => {
     for (const name of ["Small", "Medium", "Large"]) {
       expect(classesOf(name)).toContain("pointer-coarse:h-11");
     }
+
     expect(classesOf("Icon")).toContain("pointer-coarse:size-11");
   });
 });

@@ -29,6 +29,7 @@ const tenantIdSchema = async (locale: Locale) => {
 
   return requiredTrimmedString(t("admin.members.validation.tenant_missing"));
 };
+
 const memberSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -37,6 +38,7 @@ const memberSchema = async (locale: Locale) => {
     userId: requiredRecordId(t("admin.members.validation.member_missing")),
   });
 };
+
 const memberRoleSchema = async (locale: Locale) => {
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
@@ -49,6 +51,7 @@ const memberRoleSchema = async (locale: Locale) => {
     }),
   });
 };
+
 const invitationSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -59,6 +62,7 @@ const invitationSchema = async (locale: Locale) => {
     tenantId: await tenantIdSchema(locale),
   });
 };
+
 const inviteSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -77,6 +81,7 @@ const memberFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
   userId: { kind: "value", name: "user_id" },
 } as const;
+
 const invitationFormFields = {
   invitationId: { kind: "value", name: "invitation_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -88,21 +93,26 @@ export const updateTenantMemberRoleAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     memberRoleSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, { ...memberFormFields, role: "value" })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { role, tenantId, userId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantMemberRole({ role, tenantId, userId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -118,19 +128,24 @@ export const removeTenantMemberAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     memberSchema(locale),
   ]);
+
   const parsed = schema.safeParse(toFormDataInput(formData, memberFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { tenantId, userId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     removeTenantMember({ tenantId, userId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -146,10 +161,12 @@ export const createTenantAdminInvitationAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     inviteSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
@@ -157,14 +174,17 @@ export const createTenantAdminInvitationAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { email, role, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     createTenantAdminInvitation({ email, role, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -173,6 +193,7 @@ export const createTenantAdminInvitationAction = async (
   // so the member list changed and no invitation was written.
   if (result.roleGrantedImmediately) {
     updateTag(tenantMembersCacheTag(tenantId));
+
     return {
       message: t("admin.members.invite_granted", { email, role }),
       ok: true,
@@ -193,21 +214,26 @@ export const resendTenantAdminInvitationAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     invitationSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, invitationFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { invitationId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     resendTenantAdminInvitation({ invitationId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -223,21 +249,26 @@ export const cancelTenantAdminInvitationAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     invitationSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, invitationFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { invitationId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     cancelTenantAdminInvitation({ invitationId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

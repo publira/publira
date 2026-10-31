@@ -77,28 +77,36 @@ export const buildUsersPath = ({
   token,
 }: UsersFilters): string => {
   const search = new URLSearchParams();
+
   if (status) {
     search.set("status", status);
   }
+
   if (tenantId) {
     search.set("tenant_id", tenantId);
   }
+
   if (tenantQuery) {
     search.set("tenant_q", tenantQuery);
   }
+
   if (createdFrom) {
     search.set("created_from", createdFrom);
   }
+
   if (createdTo) {
     search.set("created_to", createdTo);
   }
+
   if (limit !== defaultUsersPageSize) {
     search.set("limit", String(limit));
   }
+
   if (token) {
     search.set("token", token);
   }
 
   const query = search.toString();
+
   return query ? `/users?${query}` : "/users";
 };

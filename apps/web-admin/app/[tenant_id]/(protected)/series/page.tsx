@@ -39,6 +39,7 @@ const SeriesManagerData = async ({
 }: Pick<SeriesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseSeriesFilters(sp);
+
   const [locale, listResult, timeZone, canEdit] = await Promise.all([
     getLocale(tenantId),
     listSeries({

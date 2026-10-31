@@ -43,11 +43,13 @@ export const POST = async (
 
   const { tenant_id } = await params;
   const path = viewPathSchema.safeParse({ tenantId: tenant_id });
+
   if (!path.success) {
     return NextResponse.json({ error: "invalid tenant path" }, { status: 400 });
   }
 
   let payload: unknown;
+
   try {
     payload = await request.json();
   } catch {
@@ -55,10 +57,12 @@ export const POST = async (
   }
 
   const body = viewBodySchema.safeParse(payload);
+
   if (!body.success) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
 
   await recordContentView({ ...body.data, tenantId: path.data.tenantId });
+
   return noContent();
 };

@@ -1,8 +1,11 @@
 import { z } from "zod";
 
+const isQueryText = (value: unknown): value is string =>
+  typeof value === "string";
+
 /** Cursor tokens are opaque, so the UI only rejects non-string query values. */
 export const cursorTokenSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value : ""),
+  (value) => (isQueryText(value) ? value : ""),
   z.string()
 );
 
@@ -12,5 +15,6 @@ export const cursorPageHref = (pathname: string, token: string): string => {
   }
 
   const search = new URLSearchParams({ token });
+
   return `${pathname}?${search.toString()}`;
 };

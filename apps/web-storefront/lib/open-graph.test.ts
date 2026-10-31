@@ -110,6 +110,7 @@ describe("resolveEpisodeOpenGraphImage", () => {
     variantType: "og",
     width: 1200,
   };
+
   const episodeOg = {
     ...seriesOg,
     url: "/images/episode-eye-catches/00000000-0000-4000-8000-000000000001/og/1200",

@@ -34,9 +34,11 @@ const statsFileName = (
 ): string => {
   // `--` separates the two ends of an ISO 8601 interval where `/` cannot go.
   const days = `${period.start}--${period.end}`;
+
   if (report.kind === "drop_off") {
     return `drop-off-${tenantPublicId}-${report.episodePublicId}-${days}.csv`;
   }
+
   return `${report.kind}-by-${report.group}-${tenantPublicId}-${days}.csv`;
 };
 
@@ -54,6 +56,7 @@ export const statsCsvResponse = async (
     getTenantForSession(tenantId),
     exportStats(tenantId, report, period),
   ]);
+
   if (
     (!tenant.ok && tenant.requiresSignIn) ||
     (!file.ok && file.reason === "signedOut")
@@ -62,11 +65,13 @@ export const statsCsvResponse = async (
       buildLoginPath(statsReportHref(report, period), { revoked: true })
     );
   }
+
   if (!(tenant.ok && file.ok)) {
     return notFound();
   }
 
   const fileName = statsFileName(tenant.tenant.publicId, report, period);
+
   return new NextResponse(file.csv, {
     headers: {
       "Cache-Control": "private, no-store",

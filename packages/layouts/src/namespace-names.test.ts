@@ -30,7 +30,7 @@ describe("compound component namespaces", () => {
     "%s keeps each part's declared name",
     (namespace, parts) => {
       for (const [key, part] of Object.entries(parts)) {
-        expect(typeof part, `${namespace}.${key}`).toBe("function");
+        expect(part, `${namespace}.${key}`).toBeTypeOf("function");
         expect(part.name, `${namespace}.${key}`).not.toBe(key);
       }
     }

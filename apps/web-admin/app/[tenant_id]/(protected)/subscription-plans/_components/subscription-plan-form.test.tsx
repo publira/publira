@@ -42,6 +42,7 @@ vi.mock("#lib/get-messages", () => ({
 const action = (): Promise<ActionForm.State> => Promise.resolve(null);
 
 const LABEL = { id: "018f0e6a-7000-7000-8000-000000000101", name: "Night Owl" };
+
 const SERIES = {
   id: "018f0e6a-7000-7000-8000-000000000201",
   name: "Harbor Lights",

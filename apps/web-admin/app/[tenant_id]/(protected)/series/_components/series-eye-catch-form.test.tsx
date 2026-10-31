@@ -122,6 +122,7 @@ describe("SeriesEyeCatchForm", () => {
         <SeriesEyeCatchForm
           action={(_state, formData) => {
             submitted.resolve(formData);
+
             return Promise.resolve(null);
           }}
           series={series}
@@ -135,6 +136,7 @@ describe("SeriesEyeCatchForm", () => {
 
     const formData = await submitted.promise;
     expect(formData.get("title")).toBe("Existing Series");
+
     for (const name of [
       "synopsis",
       "reading_period_hours",

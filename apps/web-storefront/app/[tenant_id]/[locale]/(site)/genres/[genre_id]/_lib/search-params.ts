@@ -42,6 +42,7 @@ export const parseGenreDetailParams = (input: {
   genre_id: string;
 }): string | null => {
   const parsed = genreDetailParamsSchema.safeParse(input);
+
   return parsed.success ? parsed.data.genre_id : null;
 };
 

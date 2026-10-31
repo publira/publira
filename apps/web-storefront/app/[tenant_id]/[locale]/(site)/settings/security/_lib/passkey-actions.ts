@@ -59,9 +59,11 @@ export const beginPasskeyRegistrationAction = async (
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);
+
   const parsed = passkeyFormSchema.safeParse(
     toFormDataInput(formData, { locale: "value", tenantId: "value" })
   );
+
   if (!parsed.success) {
     return {
       message: t("storefront.settings.passkey_add_failed"),
@@ -70,17 +72,20 @@ export const beginPasskeyRegistrationAction = async (
   }
 
   const { locale, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   const started = await withPublicSessionReauth(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     () => beginMyPasskeyRegistration(tenantId, accessToken),
     tenantId
   );
+
   if (!started.ok) {
     return {
       message: rpcErrorMessage(
@@ -96,6 +101,7 @@ export const beginPasskeyRegistrationAction = async (
       ok: false,
     };
   }
+
   return { message: "", ok: true, optionsJson: started.optionsJson };
 };
 
@@ -109,6 +115,7 @@ export const finishPasskeyRegistrationAction = async (
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);
+
   const parsed = passkeyCredentialSchema.safeParse(
     toFormDataInput(formData, {
       credential: "value",
@@ -116,6 +123,7 @@ export const finishPasskeyRegistrationAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: t("storefront.settings.passkey_add_failed"),
@@ -124,17 +132,20 @@ export const finishPasskeyRegistrationAction = async (
   }
 
   const { credential, locale, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   const finished = await withPublicSessionReauth(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     () => finishMyPasskeyRegistration(tenantId, credential, accessToken),
     tenantId
   );
+
   if (!finished.ok) {
     return {
       message: rpcErrorMessage(
@@ -155,6 +166,7 @@ export const finishPasskeyRegistrationAction = async (
 
   // The naming step that takes the form's place reports the addition.
   refresh();
+
   return { message: "", ok: true, passkeyId: finished.passkey.id };
 };
 
@@ -177,10 +189,12 @@ export const namePasskeyAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     namePasskeyFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -189,6 +203,7 @@ export const namePasskeyAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -200,17 +215,20 @@ export const namePasskeyAction = async (
   }
 
   const { locale, name, passkeyId, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   const renamed = await withPublicSessionReauth(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     () => renameMyPasskey(tenantId, passkeyId, name, accessToken),
     tenantId
   );
+
   if (!renamed.ok) {
     return {
       message: rpcErrorMessage(
@@ -229,6 +247,7 @@ export const namePasskeyAction = async (
 
   // The add form takes the naming step's place, and the row the new name.
   refresh();
+
   return { message: "", ok: true };
 };
 
@@ -244,6 +263,7 @@ export const deletePasskeyAction = async (
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);
+
   const parsed = passkeyFormSchema
     .extend({ passkeyId: passkeyIdFormSchema })
     .safeParse(
@@ -253,6 +273,7 @@ export const deletePasskeyAction = async (
         tenantId: "value",
       })
     );
+
   if (!parsed.success) {
     redirect(
       await buildSecuritySettingsPath(
@@ -265,17 +286,20 @@ export const deletePasskeyAction = async (
   }
 
   const { locale, passkeyId, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   const removed = await withPublicSessionReauth(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     () => deleteMyPasskey(tenantId, passkeyId, accessToken),
     tenantId
   );
+
   if (!removed.ok) {
     redirect(
       await buildSecuritySettingsPath(

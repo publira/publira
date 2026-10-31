@@ -56,9 +56,11 @@ export const EpisodeReadingLayoutForm = ({
     seriesLayout === undefined
       ? undefined
       : spreadStartPageOf(seriesLayout.spreadStartIndex);
+
   const hasNoPages = pageCount === 0;
 
   let defaultSpreadStartPage = 1;
+
   if (initialLayout.spreadStartIndex !== undefined) {
     defaultSpreadStartPage = spreadStartPageOf(initialLayout.spreadStartIndex);
   } else if (

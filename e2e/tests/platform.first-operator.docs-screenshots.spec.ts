@@ -69,6 +69,7 @@ for (const locale of DOCS_LOCALES) {
 
     test(`the initial setup screen in ${locale}`, async ({ page }) => {
       emptyPlatformOperators();
+
       try {
         await setDocsLocale(page, WEB_PLATFORM_BASE_URL, locale);
         await page.goto("/setup");

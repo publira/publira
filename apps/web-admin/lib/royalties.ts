@@ -208,6 +208,7 @@ const mapPolicy = (config: RawConfig | undefined): RoyaltyClosePolicy =>
 
 const signedOut = async (locale: Locale): Promise<ReadFailure> => {
   const t = await getMessagesFor(locale);
+
   return {
     message: t("errors.rpc.unauthenticated"),
     ok: false,
@@ -216,16 +217,17 @@ const signedOut = async (locale: Locale): Promise<ReadFailure> => {
 };
 
 const readFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<ReadFailure> => {
   const t = await getMessagesFor(locale);
+
   return {
-    message: rpcErrorMessage(error, t("admin.royalties.load_failed"), {
+    message: rpcErrorMessage(cause, t("admin.royalties.load_failed"), {
       locale,
     }),
     ok: false,
-    requiresSignIn: isUnauthenticatedError(error),
+    requiresSignIn: isUnauthenticatedError(cause),
   };
 };
 
@@ -235,6 +237,7 @@ export const getRoyaltyClosePolicy = async (
   locale: Locale
 ): Promise<GetRoyaltyClosePolicyResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return signedOut(locale);
   }
@@ -244,9 +247,11 @@ export const getRoyaltyClosePolicy = async (
       { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, policy: mapPolicy(response.config) };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return readFailure(error, locale);
   }
 };
@@ -267,6 +272,7 @@ export const updateRoyaltyClosePolicy = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -281,10 +287,12 @@ export const updateRoyaltyClosePolicy = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, policy: mapPolicy(response.config) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -303,6 +311,7 @@ export const previewRoyaltyStatement = async (
   period: string
 ): Promise<PreviewRoyaltyStatementResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return { ...(await signedOut(locale)), notOpen: false };
   }
@@ -312,6 +321,7 @@ export const previewRoyaltyStatement = async (
       { period, tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return {
       currency: readCurrency(response.currency),
       endsAt: response.endsAt ?? "",
@@ -324,6 +334,7 @@ export const previewRoyaltyStatement = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...(await readFailure(error, locale)),
       notOpen: isRpcError(error, Code.FailedPrecondition),
@@ -338,6 +349,7 @@ export const listRoyaltyStatements = async (
   options: CursorPageOptions = {}
 ): Promise<ListRoyaltyStatementsResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return signedOut(locale);
   }
@@ -347,6 +359,7 @@ export const listRoyaltyStatements = async (
       { ...cursorPageRequest(options), tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return {
       ...cursorPageTokens(response),
       ok: true,
@@ -356,6 +369,7 @@ export const listRoyaltyStatements = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return readFailure(error, locale);
   }
 };
@@ -368,6 +382,7 @@ export const getRoyaltyStatement = async (
   options: CursorPageOptions = {}
 ): Promise<GetRoyaltyStatementResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return { ...(await signedOut(locale)), notFound: false };
   }
@@ -377,6 +392,7 @@ export const getRoyaltyStatement = async (
       { ...cursorPageRequest(options), period, tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return {
       ...cursorPageTokens(response),
       lines: (response.lines ?? []).map((line) => mapLine(line)),
@@ -385,6 +401,7 @@ export const getRoyaltyStatement = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...(await readFailure(error, locale)),
       notFound: isMissingResourceRpcError(error),
@@ -398,6 +415,7 @@ export const exportRoyaltyStatement = async (
   period: string
 ): Promise<ExportRoyaltyStatementResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return { ok: false, reason: "signedOut" };
   }
@@ -407,17 +425,20 @@ export const exportRoyaltyStatement = async (
       { period, tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { csv: new Uint8Array(response.csv), ok: true };
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       return { ok: false, reason: "signedOut" };
     }
+
     if (
       isMissingResourceRpcError(error) ||
       isRpcError(error, Code.FailedPrecondition)
     ) {
       return { ok: false, reason: "missing" };
     }
+
     throw error;
   }
 };
@@ -431,6 +452,7 @@ export const closeRoyaltyStatement = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -440,10 +462,12 @@ export const closeRoyaltyStatement = async (
       { period: input.period, tenant: { tenantId: input.tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, statement: mapStatement(response.statement) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.royalties.close_failed"), {
         locale,

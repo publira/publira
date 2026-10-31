@@ -1,4 +1,5 @@
 import { searchParamEnum } from "@publira/utils/search-params";
+import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
 /**
@@ -12,8 +13,13 @@ const myNoticeSearchParamsSchema = z.object({
   subscription: searchParamEnum(["success"] as const, { fallback: "" }),
 });
 
+interface ParseMyNoticeSearchParamsInput {
+  billing?: SearchParamValue;
+  subscription?: SearchParamValue;
+}
+
 export type MyNoticeSearchParams = z.output<typeof myNoticeSearchParamsSchema>;
 
 export const parseMyNoticeSearchParams = (
-  input: unknown
+  input: ParseMyNoticeSearchParamsInput
 ): MyNoticeSearchParams => myNoticeSearchParamsSchema.parse(input);

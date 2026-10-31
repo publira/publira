@@ -18,12 +18,17 @@ import {
 } from "../src/scenarios/platform-audit-log-export";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
+interface LocaleIndex {
+  locales: { code: string }[];
+}
+
+// SAFETY: `pnpm locales:check` rejects an index whose locales lack a code.
+const localeIndex = JSON.parse(
+  readFileSync(new URL("../../locales/index.json", import.meta.url), "utf-8")
+) as LocaleIndex;
+
 /** Every locale the console ships, as `locales/index.json` registers them. */
-const LOCALES: readonly string[] = (
-  JSON.parse(
-    readFileSync(new URL("../../locales/index.json", import.meta.url), "utf-8")
-  ) as { locales: { code: string }[] }
-).locales.map(({ code }) => code);
+const LOCALES: readonly string[] = localeIndex.locales.map(({ code }) => code);
 
 /** A phone, the narrowest tablet held upright, and the desktop the suite runs at. */
 const WIDTHS = [390, 744, 1280];
@@ -41,6 +46,7 @@ const openActions = async (
     if (!(await option.isVisible())) {
       await trigger.click();
     }
+
     await expect(option).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 15_000 });
 };
@@ -52,20 +58,26 @@ const openActions = async (
 const overflow = (trigger: Locator) =>
   trigger.evaluate((element) => {
     const value = element.firstElementChild;
+
     if (!value) {
       throw new TypeError("The action filter shows no value.");
     }
+
     const styles = element.computedStyleMap();
+
     const inset = (side: "bottom" | "left" | "right" | "top"): number => {
       const border = styles.get(`border-${side}-width`);
       const padding = styles.get(`padding-${side}`);
+
       return (
         (border instanceof CSSUnitValue ? border.value : 0) +
         (padding instanceof CSSUnitValue ? padding.value : 0)
       );
     };
+
     const box = element.getBoundingClientRect();
     const text = value.getBoundingClientRect();
+
     return Math.max(
       text.bottom - (box.bottom - inset("bottom")),
       box.left + inset("left") - text.left,
@@ -157,12 +169,14 @@ const downloadLink = (page: Page): Locator =>
 const downloadAuditCsv = async (page: Page): Promise<Download> => {
   const downloading = page.waitForEvent("download");
   await downloadLink(page).click();
+
   return downloading;
 };
 
 /** A downloaded CSV's header and body rows, split on its CRLF endings. */
 const csvRows = async (download: Download): Promise<string[]> => {
   const csv = await readFile(await download.path(), "utf-8");
+
   return csv.split("\r\n").filter((row) => row !== "");
 };
 

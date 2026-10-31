@@ -63,6 +63,7 @@ export const getPublishedLabelDetail = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.getPublishedLabelDetail>
   >;
+
   try {
     response = await apiClient.catalog.getPublishedLabelDetail({
       limit,
@@ -76,6 +77,7 @@ export const getPublishedLabelDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -84,6 +86,7 @@ export const getPublishedLabelDetail = async (
   }
 
   const publicId = response.label?.publicId?.trim() ?? "";
+
   if (!response.label || publicId.length === 0) {
     return { ok: true, value: null };
   }

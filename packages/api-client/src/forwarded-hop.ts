@@ -1,4 +1,5 @@
 import { subscribe } from "node:diagnostics_channel";
+import type { ChannelListener } from "node:diagnostics_channel";
 import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
 
 const headerValue = (
@@ -26,11 +27,14 @@ export const appendPeerAddress = (
   if (!peerAddress) {
     return;
   }
+
   const forwardedFor = headerValue(headers["x-forwarded-for"]);
   const forwarded = headerValue(headers.forwarded);
+
   if (forwarded) {
     headers.forwarded = `${forwarded}, for=${forwardedNode(peerAddress)}`;
   }
+
   if (forwardedFor) {
     headers["x-forwarded-for"] = `${forwardedFor}, ${peerAddress}`;
   } else if (!forwarded) {
@@ -38,7 +42,9 @@ export const appendPeerAddress = (
   }
 };
 
-const onRequestStart = (message: unknown): void => {
+const onRequestStart: ChannelListener = (message) => {
+  // SAFETY: Node.js publishes `{ request, response, socket, server }` on
+  // `http.server.request.start`, with `request` the `IncomingMessage`.
   const { request } = message as { request: IncomingMessage };
   appendPeerAddress(request.headers, request.socket.remoteAddress);
 };

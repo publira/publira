@@ -21,10 +21,10 @@ vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 vi.mock("#lib/auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 
@@ -45,6 +45,7 @@ const privacyVersionId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 const form = (fields: Record<string, string> = {}): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     consent: "on",
     locale: "en",
@@ -54,13 +55,16 @@ const form = (fields: Record<string, string> = {}): FormData => {
   })) {
     data.set(name, value);
   }
+
   data.append("agreedPageVersionIds", termsVersionId);
   data.append("agreedPageVersionIds", privacyVersionId);
+
   return data;
 };
 
 const submit = async (data: FormData) => {
   const { agreeToLegalPagesAction } = await import("./actions");
+
   return agreeToLegalPagesAction(null, data);
 };
 

@@ -27,6 +27,7 @@ export const PlatformTimezoneCombobox = ({
 
   const items = useMemo<Combobox.Item[]>(() => {
     const zones = listSupportedTimeZones();
+
     // A stored alias (`Asia/Calcutta`) is valid but is not always enumerated by
     // the runtime's ICU build, so keep it selectable instead of dropping it.
     const values =

@@ -65,12 +65,15 @@ const toTenantCommentMode = (
     case CommentMode.DISABLED: {
       return "disabled";
     }
+
     case CommentMode.IMMEDIATE: {
       return "immediate";
     }
+
     case CommentMode.APPROVAL_REQUIRED: {
       return "approval_required";
     }
+
     default: {
       return undefined;
     }
@@ -82,9 +85,11 @@ const toCommentModeEnum = (mode: TenantCommentMode): CommentMode => {
     case "immediate": {
       return CommentMode.IMMEDIATE;
     }
+
     case "approval_required": {
       return CommentMode.APPROVAL_REQUIRED;
     }
+
     default: {
       return CommentMode.DISABLED;
     }
@@ -100,8 +105,10 @@ const getTenantCommentSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -120,8 +127,10 @@ const getTenantCommentSettingsForSession = async (
     );
 
     const commentMode = toTenantCommentMode(response.commentMode);
+
     if (commentMode === undefined) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.settings.comments.load_failed"),
         ok: false,
@@ -136,6 +145,7 @@ const getTenantCommentSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -173,7 +183,9 @@ export const updateTenantCommentSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -187,7 +199,9 @@ export const updateTenantCommentSettings = async (
       },
       withSessionHeaders(sessionId)
     );
+
     const saved = toTenantCommentMode(response.commentMode);
+
     if (saved === undefined) {
       return { message: t("admin.settings.comments.save_failed"), ok: false };
     }
@@ -200,6 +214,7 @@ export const updateTenantCommentSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

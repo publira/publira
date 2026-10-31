@@ -112,9 +112,11 @@ const purchasedTitle = (data: PurchaseReceiptData): string => {
   if (data.coin_pack_coins > 0) {
     return data.coin_name;
   }
+
   if (data.episode_title !== "") {
     return data.episode_title;
   }
+
   return data.volume_title === "" ? data.series_title : data.volume_title;
 };
 
@@ -140,16 +142,19 @@ const PurchasedItem = ({
       count: data.coin_pack_coins + data.coin_pack_bonus_coins,
     });
   }
+
   if (data.episode_title !== "") {
     return emailMessage(messages, "email.purchase_receipt.episode", {
       episode_title: data.episode_title,
     });
   }
+
   if (data.volume_title !== "") {
     return emailMessage(messages, "email.purchase_receipt.volume", {
       volume_title: data.volume_title,
     });
   }
+
   return emailMessage(messages, "email.purchase_receipt.series_bundle", {
     count: data.series_bundle_episode_count,
   });

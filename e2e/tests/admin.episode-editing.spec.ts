@@ -39,15 +39,19 @@ test.describe("admin episode editing", () => {
     test.setTimeout(180_000);
 
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       synopsis: `E2E episode editing synopsis ${suffix}`,
       title: `E2E Episode Editing Series ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Episode Editing ${suffix}`,
     });
+
     const editPath = `${WEB_ADMIN_BASE_URL}/series/${seriesId}/episodes/${episodeId}`;
 
     await page.goto(editPath);
@@ -67,15 +71,19 @@ test.describe("admin episode editing", () => {
       exact: true,
       name: "Registered page images",
     });
+
     const pageImage = (position: number) =>
       pages.getByRole("img", { exact: true, name: `Page ${position}` });
+
     await expect(pages.getByRole("listitem")).toHaveCount(3);
+
     /**
      * The image a page shows, by its path: the query carries a media token
      * that is signed again on every read.
      */
     const imagePath = async (position: number): Promise<string> => {
       const src = (await pageImage(position).getAttribute("src")) ?? "";
+
       return src.split("?")[0] ?? "";
     };
 
@@ -93,6 +101,7 @@ test.describe("admin episode editing", () => {
     const [firstBefore, secondBefore, thirdBefore] = await Promise.all(
       [1, 2, 3].map(imagePath)
     );
+
     await page.getByRole("button", { name: "Replace page 2" }).click();
     const replaceDialog = page.getByRole("dialog", { name: "Replace page 2" });
     await replaceDialog.getByLabel(/New page image/u).setInputFiles({
@@ -136,11 +145,14 @@ test.describe("admin episode editing", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       synopsis: `E2E episode pricing synopsis ${suffix}`,
       title: `E2E Episode Pricing Series ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       price: 100,
       readingPeriodHours: 72,
@@ -149,9 +161,11 @@ test.describe("admin episode editing", () => {
     });
 
     const fields = episodeFormFields(page);
+
     const save = page.getByRole("button", {
       name: "Update price and reading period",
     });
+
     await expect(fields.price).toHaveValue("100");
     await expect(fields.readingPeriodHours).toHaveValue("72");
     await expect(fields.rentalPrice).toHaveValue("");

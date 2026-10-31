@@ -108,11 +108,13 @@ const uploadAspectImage = async (
 ): Promise<void> => {
   const slot = aspectSlot(page, aspect);
   await slot.locator('input[name="aspect_image"]').setInputFiles(fixture);
+
   if (framing === "off-centre") {
     await page
       .getByRole("button", { name: "Move the crop frame" })
       .press("Shift+ArrowUp");
   }
+
   await page.getByRole("button", { name: "Done" }).click();
   await slot.getByRole("button", { name: "Replace" }).click();
 };
@@ -127,21 +129,29 @@ const aspectSources = async (page: Page): Promise<AspectSources> => {
   const previews = EYE_CATCH_ASPECTS.map((aspect) =>
     aspectSlot(page, aspect).getByRole("img")
   );
+
   await Promise.all(
     previews.map((preview) => expect(preview).toBeVisible({ timeout: 60_000 }))
   );
+
   const srcs = await Promise.all(
     previews.map((preview) => preview.getAttribute("src"))
   );
 
   const sources: Partial<AspectSources> = {};
+
   for (const [index, aspect] of EYE_CATCH_ASPECTS.entries()) {
     const src = srcs[index];
+
     if (!src) {
       throw new Error(`the ${aspect} preview has no src`);
     }
+
     sources[aspect] = src;
   }
+
+  // SAFETY: the loop above gave every aspect of EYE_CATCH_ASPECTS a src, or
+  // threw.
   return sources as AspectSources;
 };
 
@@ -157,9 +167,11 @@ const aspectSources = async (page: Page): Promise<AspectSources> => {
 const displayedDigest = async (image: Locator): Promise<string> => {
   const encoded = await image.evaluate(async (element: HTMLImageElement) => {
     await element.decode();
+
     if (element.naturalWidth === 0) {
       throw new Error("the image did not decode");
     }
+
     // A full-size copy of every ratio is enough to crash the page. A small
     // draw still changes when the picture does and stays put when it does not.
     const longest = Math.max(element.naturalWidth, element.naturalHeight);
@@ -168,12 +180,16 @@ const displayedDigest = async (image: Locator): Promise<string> => {
     canvas.width = Math.max(1, Math.round(element.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(element.naturalHeight * scale));
     const context = canvas.getContext("2d");
+
     if (!context) {
       throw new Error("the image did not decode");
     }
+
     context.drawImage(element, 0, 0, canvas.width, canvas.height);
+
     return canvas.toDataURL("image/png");
   });
+
   return createHash("sha256").update(encoded).digest("hex");
 };
 
@@ -183,9 +199,12 @@ const displayedEyeCatch = async (page: Page): Promise<AspectDigests> => {
     EYE_CATCH_ASPECTS.map(async (aspect) => {
       const image = aspectSlot(page, aspect).getByRole("img");
       await expect(image).toBeVisible();
+
       return [aspect, await displayedDigest(image)] as const;
     })
   );
+
+  // SAFETY: `entries` holds one pair for each aspect of EYE_CATCH_ASPECTS.
   return Object.fromEntries(entries) as AspectDigests;
 };
 
@@ -207,6 +226,7 @@ const expectOnlyTheReplacedURLChanged = (
   replaced: EyeCatchAspect
 ): void => {
   expect(after[replaced], replaced).not.toBe(before[replaced]);
+
   for (const aspect of EYE_CATCH_ASPECTS) {
     if (aspect !== replaced) {
       expect(after[aspect], `${aspect} after replacing ${replaced}`).toBe(
@@ -251,6 +271,7 @@ const replaceEachAspectInTurn = async (
   remaining: readonly EyeCatchAspect[]
 ): Promise<void> => {
   const [aspect, ...rest] = remaining;
+
   if (!aspect) {
     return;
   }
@@ -314,13 +335,16 @@ test.describe("admin eye-catch upload", () => {
   ): Promise<{ publicId: string; title: string }> => {
     const suffix = uniqueSuffix();
     const title = `E2E Eye-catch Series ${suffix}`;
+
     const publicId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Cover image check ${suffix}`,
       title,
     });
+
     createdSeriesIds.push(publicId);
     await page.goto(adminUrl(`/series/${publicId}?tab=eye-catch`));
+
     return { publicId, title };
   };
 
@@ -329,8 +353,10 @@ test.describe("admin eye-catch upload", () => {
       page,
       `E2E Eye-catch Label ${uniqueSuffix()}`
     );
+
     createdLabelIds.push(publicId);
     await page.goto(adminUrl(`/labels/${publicId}?tab=eye-catch`));
+
     return publicId;
   };
 
@@ -452,6 +478,7 @@ test.describe("admin eye-catch upload", () => {
     const response = await page.goto(
       storefrontUrl(storefrontPath(`/series/${publicId}`))
     );
+
     expect(response?.status(), await page.content()).toBe(200);
 
     const cover = page.getByRole("img", { name: title });
@@ -555,6 +582,7 @@ test.describe("admin eye-catch upload", () => {
     page,
   }) => {
     const { publicId: seriesPublicId } = await openSeriesEyeCatchTab(page);
+
     const episodePublicId = await createEpisodeViaUi(page, {
       seriesPublicId,
       title: `E2E Eye-catch Episode ${uniqueSuffix()}`,
@@ -615,6 +643,7 @@ test.describe("admin eye-catch upload", () => {
     const thumbnail = genreRow(page, name).getByRole("img", {
       name: `Cover image of ${name}`,
     });
+
     const openEyeCatchTab = async (): Promise<void> => {
       await genreRow(page, name).getByRole("link", { name: "Edit" }).click();
       await page.getByRole("link", { name: "Cover image" }).click();
@@ -686,8 +715,10 @@ test.describe("admin eye-catch upload", () => {
     const editHref = await genreRow(page, name)
       .getByRole("link", { name: "Edit" })
       .getAttribute("href");
+
     const genreId = editHref?.split("/").at(-1) ?? "";
     expect(genreId).not.toBe("");
+
     const openEyeCatchTab = async (): Promise<void> => {
       await page.goto(adminUrl("/genres"));
       await genreRow(page, name).getByRole("link", { name: "Edit" }).click();
@@ -702,6 +733,7 @@ test.describe("admin eye-catch upload", () => {
     const tileImages = page
       .getByRole("link", { name })
       .locator('img[src^="/images/"]');
+
     await expect(async () => {
       await page.goto(storefrontUrl(storefrontPath("/genres")));
       await expect(tileImages).toHaveAttribute(

@@ -16,6 +16,7 @@ import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./admin-auth-shared";
+import { isFormText } from "./form-schemas";
 import { getMessagesFor } from "./messages";
 import { isTenantIdFormat } from "./tenant-id-format";
 
@@ -39,11 +40,12 @@ export const nextPathSearchParamSchema = searchParamString({
  * `Promise.catch`.
  */
 export const nextPathFormSchema = z.preprocess((value) => {
-  if (typeof value !== "string") {
+  if (!isFormText(value)) {
     return "/";
   }
 
   const trimmed = value.trim();
+
   if (trimmed.length === 0 || trimmed.length > NEXT_PATH_MAX_LENGTH) {
     return "/";
   }
@@ -75,6 +77,7 @@ export const authTokenFormSchema = async (locale: Locale) => {
       error: t("admin.auth.fields.invalid_token"),
     });
 };
+
 export const inviteTokenFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -87,6 +90,7 @@ export const inviteTokenFormSchema = async (locale: Locale) => {
       error: t("admin.auth.accept_invite.invalid_token"),
     });
 };
+
 /**
  * Email shown on a login / reset screen. Not an input we act on as a
  * destination, so a malformed value is dropped rather than 404ing the page.

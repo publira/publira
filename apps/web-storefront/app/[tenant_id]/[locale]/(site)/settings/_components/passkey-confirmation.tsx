@@ -43,9 +43,11 @@ const PasskeyConfirmationContext =
 
 const usePasskeyConfirmation = (caller: string) => {
   const context = use(PasskeyConfirmationContext);
+
   if (!context) {
     throw new Error(`${caller} must be rendered inside PasskeyConfirmation.`);
   }
+
   return context;
 };
 
@@ -76,21 +78,27 @@ const PasskeyConfirmation = ({
   const confirmWithPasskey = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const { form } = event.currentTarget;
+
       if (!form?.reportValidity()) {
         return;
       }
+
       const formData = new FormData(form);
       setFailure("");
       startTransition(async () => {
         const started = await begin(formData);
+
         if (!started.ok) {
           setFailure(started.message);
+
           return;
         }
+
         try {
           const credential = await startAuthentication({
             optionsJSON: JSON.parse(started.optionsJson),
           });
+
           formData.set(CREDENTIAL_FIELD, JSON.stringify(credential));
         } catch (error) {
           // Browsers answer a closed prompt and one that timed out with the
@@ -101,9 +109,12 @@ const PasskeyConfirmation = ({
               ? t("storefront.settings.passkey_confirm_cancelled")
               : t("storefront.settings.passkey_confirm_failed")
           );
+
           return;
         }
+
         const result = await confirm(formData);
+
         if (result && !result.ok) {
           setFailure(result.message);
         }
@@ -111,6 +122,7 @@ const PasskeyConfirmation = ({
     },
     [begin, confirm, t]
   );
+
   const value = useMemo(
     () => ({ confirm: confirmWithPasskey, failure, pending }),
     [confirmWithPasskey, failure, pending]
@@ -137,11 +149,13 @@ const PasskeyConfirmationSubmit = ({
   const { confirm, pending } = usePasskeyConfirmation(
     "PasskeyConfirmationSubmit"
   );
+
   const supported = useSyncExternalStore(
     subscribeToNothing,
     browserSupportsWebAuthn,
     supportedOnServer
   );
+
   if (!supported) {
     return null;
   }

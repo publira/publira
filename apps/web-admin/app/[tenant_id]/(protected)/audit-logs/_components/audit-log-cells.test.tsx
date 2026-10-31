@@ -9,7 +9,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuditLogActionCell } from "./audit-log-cells";
 
-const messageLocale = vi.hoisted(() => ({ current: "en" as Locale }));
+/** The language the mocked catalog answers in, which a test switches. */
+interface MessageLocale {
+  current: Locale;
+}
+
+const messageLocale = vi.hoisted((): MessageLocale => ({ current: "en" }));
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>
@@ -71,6 +76,7 @@ describe("AuditLogActionCell", () => {
       );
 
       const actionName = sharedMessage(`admin.audit.actions.${action}`, locale);
+
       const targetName = sharedMessage(
         "admin.audit.targets.creator_account",
         locale
@@ -97,6 +103,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.series_wait_free_settings_updated",
         locale
       );
+
       const targetName = sharedMessage("admin.audit.targets.series", locale);
 
       expect(cell.textContent).toBe(`${actionName}${targetName} / SERIES001`);
@@ -117,6 +124,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.series_free_after_settings_updated",
         locale
       );
+
       const targetName = sharedMessage("admin.audit.targets.series", locale);
 
       expect(cell.textContent).toBe(`${actionName}${targetName} / SERIES001`);
@@ -137,6 +145,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.tenant_inbound_email_settings_updated",
         locale
       );
+
       const targetName = sharedMessage(
         "admin.audit.targets.inbound_email_config",
         locale
@@ -160,6 +169,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.tenant_analytics_settings_updated",
         locale
       );
+
       const targetName = sharedMessage(
         "admin.audit.targets.tenant_analytics_settings",
         locale
@@ -183,6 +193,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.tenant_crawler_settings_updated",
         locale
       );
+
       const targetName = sharedMessage(
         "admin.audit.targets.tenant_crawler_settings",
         locale
@@ -206,6 +217,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.tenant_sign_up_settings_updated",
         locale
       );
+
       const targetName = sharedMessage(
         "admin.audit.targets.tenant_sign_up_settings",
         locale
@@ -229,6 +241,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.tenant_site_verification_updated",
         locale
       );
+
       const targetName = sharedMessage(
         "admin.audit.targets.tenant_site_verification",
         locale
@@ -252,6 +265,7 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.tenant_email_rejection_settings_updated",
         locale
       );
+
       const targetName = sharedMessage(
         "admin.audit.targets.tenant_email_rejection_settings",
         locale
@@ -350,10 +364,12 @@ describe("AuditLogActionCell", () => {
         "admin.audit.actions.tenant_site_copy_updated",
         locale
       );
+
       const targetName = sharedMessage(
         "admin.audit.targets.tenant_site_copy",
         locale
       );
+
       const language = screen.getByText(getLocaleLabel(copyLocale));
 
       expect(cell.textContent).toBe(

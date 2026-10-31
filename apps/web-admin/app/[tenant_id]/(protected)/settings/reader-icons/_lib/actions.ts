@@ -27,6 +27,7 @@ import { TENANT_READER_ICON_POLICIES } from "#lib/reader-icon-settings-shared";
  * larger, for the multipart framing around it.
  */
 const PRESET_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
 const PRESET_IMAGE_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -85,24 +86,29 @@ export const updateReaderIconPolicyAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     policySchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       policy: { kind: "value", name: "reader_icon_policy" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { policy, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantReaderIconPolicy({ policy, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -124,22 +130,26 @@ export const uploadReaderIconPresetAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     uploadSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       icon: { kind: "file", name: "icon" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { icon, tenantId } = parsed.data;
+
   // The file is read into memory inside the callback, so an unauthorized caller
   // never gets a 10MB upload buffered on its behalf.
   const result = await withAdminSessionReauth(async () =>
@@ -152,6 +162,7 @@ export const uploadReaderIconPresetAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -170,24 +181,29 @@ export const deleteReaderIconPresetAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     deleteSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       presetId: { kind: "value", name: "preset_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { presetId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     deleteReaderIconPreset({ presetId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

@@ -28,6 +28,7 @@ const notificationMenuLimit = 5;
 
 export const PlatformUser = async () => {
   const result = await getPlatformCurrentOperator();
+
   if (!result.ok) {
     // The proxy let this request in on a cookie the API has since rejected, so
     // the console asks for the session again — with the path to come back to,
@@ -80,18 +81,22 @@ export const PlatformUser = async () => {
 
 export const PlatformNotificationBell = async () => {
   const locale = await getPlatformLocale();
+
   const [list, unread, t] = await Promise.all([
     listNotifications(locale, { limit: notificationMenuLimit }),
     countUnreadNotifications(locale),
     getMessagesFor(locale),
   ]);
+
   const count = Math.max(0, unread.unreadCount);
+
   const ariaLabel =
     count > 0
       ? t("platform.shell.notifications_unread", {
           count,
         })
       : t("platform.shell.notifications_none");
+
   let notificationContent = (
     <NotificationBell.Error>
       <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>

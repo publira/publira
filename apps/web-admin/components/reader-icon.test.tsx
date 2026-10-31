@@ -42,6 +42,7 @@ describe("ReaderIcon", () => {
     const { rerender } = render(
       <ReaderIcon alt="Reader One's icon" icon={icon} size={64} />
     );
+
     fireEvent.error(screen.getByAltText("Reader One's icon"));
 
     rerender(

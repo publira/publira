@@ -93,17 +93,20 @@ test.describe("web-platform initial setup", () => {
     const localeSelect = page.getByRole("combobox", {
       name: /^Default language/u,
     });
+
     await expect(localeSelect).toHaveText("English");
     // The time zone opens on the browser's own and is left as it is, so what
     // gets saved is the zone the operator never had to choose.
     await expect(
       page.getByRole("combobox", { name: /^Default time zone/u })
     ).toHaveValue(SETUP_TIMEZONE);
+
     // Emptying the operators deleted the settings row too, so there is no
     // saved currency to start on and the field waits for a choice.
     const currencyInput = page.getByRole("combobox", {
       name: /^Default currency/u,
     });
+
     await expect(currencyInput).toHaveValue("");
 
     await page
@@ -121,6 +124,7 @@ test.describe("web-platform initial setup", () => {
     await page
       .getByRole("option", { exact: true, name: SETUP_DEFAULT_LOCALE_LABEL })
       .click();
+
     const chooseCurrency = async (label: string): Promise<void> => {
       await currencyInput.fill(label);
       await page.getByRole("option", { exact: true, name: label }).click();

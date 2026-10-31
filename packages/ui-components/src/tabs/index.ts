@@ -4,6 +4,7 @@ export {
   TabsPanel as Panel,
   TabsTab as Tab,
 } from "./tabs";
+
 export type {
   TabsListProps as ListProps,
   TabsPanelProps as PanelProps,

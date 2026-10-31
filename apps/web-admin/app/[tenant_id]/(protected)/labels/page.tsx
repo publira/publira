@@ -40,6 +40,7 @@ const LabelManagerData = async ({
 }: Pick<LabelPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
+
   const [locale, listResult, canEdit] = await Promise.all([
     getLocale(tenantId),
     listLabels({ token }),

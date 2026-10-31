@@ -18,15 +18,19 @@ import { WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL } from "../src/urls";
 const PAYMENT_PATH = "/integrations/payment";
 
 const SAVED = "The payment settings were saved.";
+
 const READY =
   "Checkout and the webhook for paid episodes use this tenant's settings.";
+
 const DISABLED =
   "The credentials are stored, but payments are off. Checkout and the webhook do not run.";
 
 const SECRET_KEY_SOURCE =
   "The secret key (sk_live_… or sk_test_…) on the API settings page of the PAY.JP dashboard. A test key takes test payments only.";
+
 const WEBHOOK_TOKEN_SOURCE =
   "The webhook token (whook_…) shown in the account settings of the PAY.JP dashboard.";
+
 const WEBHOOK_NOTE =
   "PAY.JP sends every notification with the webhook token stored above, and one that does not carry it is refused.";
 

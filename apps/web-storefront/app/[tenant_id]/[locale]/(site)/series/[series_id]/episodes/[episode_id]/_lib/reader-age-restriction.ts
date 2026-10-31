@@ -31,6 +31,7 @@ export const getReaderAgeRestriction = async ({
   tenantId: string;
 }): Promise<ReaderAgeRestriction | undefined> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return { hasBirthDate: false, signedIn: false };
   }
@@ -43,6 +44,7 @@ export const getReaderAgeRestriction = async ({
     locale,
     checkoutSessionId
   );
+
   if (!viewer.ok || viewer.value?.access !== "age_restricted") {
     return undefined;
   }

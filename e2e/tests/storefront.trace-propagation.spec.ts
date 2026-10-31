@@ -32,6 +32,7 @@ const descendsFrom = (
       return true;
     }
   }
+
   return false;
 };
 
@@ -52,9 +53,11 @@ const traceChain = (trace: readonly TraceSpan[]): string[] => {
       kind === SpanKind.CLIENT &&
       name === SEARCH_RPC
   );
+
   if (!client) {
     return chain;
   }
+
   chain.push(`${STOREFRONT_SERVICE} client ${SEARCH_RPC}`);
 
   const server = trace.find(
@@ -64,9 +67,11 @@ const traceChain = (trace: readonly TraceSpan[]): string[] => {
       name === SEARCH_RPC &&
       parentSpanId === client.spanId
   );
+
   if (!server) {
     return chain;
   }
+
   chain.push(`${API_SERVICE} server ${SEARCH_RPC}`);
 
   if (
@@ -79,6 +84,7 @@ const traceChain = (trace: readonly TraceSpan[]): string[] => {
   ) {
     chain.push(`${API_SERVICE} db.query`);
   }
+
   return chain;
 };
 
@@ -89,21 +95,24 @@ const traceChain = (trace: readonly TraceSpan[]): string[] => {
  */
 const searchChain = (spans: readonly TraceSpan[], target: string): string[] => {
   const traceIds = new Set(
-    spans
-      .filter(
-        ({ attributes, service }) =>
-          service === STOREFRONT_SERVICE &&
-          attributes["http.target"]?.includes(target)
-      )
-      .map(({ traceId }) => traceId)
+    spans.flatMap(({ attributes, service, traceId }) =>
+      service === STOREFRONT_SERVICE &&
+      attributes["http.target"]?.includes(target)
+        ? [traceId]
+        : []
+    )
   );
+
   let longest: string[] = [];
+
   for (const id of traceIds) {
     const chain = traceChain(spans.filter(({ traceId }) => traceId === id));
+
     if (chain.length > longest.length) {
       longest = chain;
     }
   }
+
   return longest;
 };
 
@@ -122,6 +131,7 @@ test.describe("Trace propagation", () => {
     const response = await request.get(
       `${storefrontPath("/search")}?${new URLSearchParams({ q: keyword })}`
     );
+
     expect(response.status()).toBe(200);
 
     // Every SDK exports in batches, a few seconds apart.

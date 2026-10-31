@@ -9,6 +9,7 @@ import { BlockList, isIP } from "node:net";
  * An IPv4-mapped IPv6 address is checked as the IPv4 address it maps.
  */
 const RESTRICTED = new BlockList();
+
 for (const [address, prefix] of [
   ["0.0.0.0", 8],
   ["10.0.0.0", 8],
@@ -22,6 +23,7 @@ for (const [address, prefix] of [
 ] as const) {
   RESTRICTED.addSubnet(address, prefix, "ipv4");
 }
+
 for (const [address, prefix] of [
   ["::", 128],
   ["::1", 128],
@@ -35,6 +37,7 @@ for (const [address, prefix] of [
 /** Whether `address` is an IP address outside {@link RESTRICTED}. */
 export const isPublicAddress = (address: string): boolean => {
   const version = isIP(address);
+
   return (
     version !== 0 && !RESTRICTED.check(address, version === 4 ? "ipv4" : "ipv6")
   );
@@ -59,10 +62,13 @@ export class RestrictedAddressError extends Error {
  */
 const addressesOf = async (hostname: string): Promise<string[]> => {
   const literal = hostname.replaceAll(/^\[|\]$/gu, "");
+
   if (isIP(literal) !== 0) {
     return [literal];
   }
+
   const resolved = await lookup(hostname, { all: true });
+
   return resolved.map((entry) => entry.address);
 };
 
@@ -71,8 +77,10 @@ export const resolvePublicAddress = async (
 ): Promise<string> => {
   const addresses = await addressesOf(hostname);
   const address = addresses.find(isPublicAddress);
+
   if (!address) {
     throw new RestrictedAddressError(hostname);
   }
+
   return address;
 };

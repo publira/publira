@@ -37,6 +37,7 @@ export const recordEpisodeRead = async ({
   tenantId,
 }: EpisodeRead): Promise<void> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return;
   }

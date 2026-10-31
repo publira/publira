@@ -31,12 +31,16 @@ const variant = {
   width: 800,
 };
 
-const banner = (overrides: Record<string, unknown> = {}) => ({
+const BANNER = {
   altText: "Autumn sale",
   imageUpdatedAt: "2026-10-01T00:00:00Z",
   imageVariants: [variant],
   linkUrl: "/series/SERIES01",
   publicId: "BANNER01",
+};
+
+const banner = (overrides: Partial<typeof BANNER> = {}) => ({
+  ...BANNER,
   ...overrides,
 });
 

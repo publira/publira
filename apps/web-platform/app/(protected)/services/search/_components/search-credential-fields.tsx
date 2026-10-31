@@ -34,7 +34,7 @@ const credentialModeItems = [
   },
 ] as const;
 
-const isCredentialMode = (value: unknown): value is SearchCredentialMode =>
+const isCredentialMode = (value: string): value is SearchCredentialMode =>
   value === "basic" || value === "none";
 
 interface SearchCredentialFieldsProps {
@@ -61,11 +61,12 @@ export const SearchCredentialFields = ({
   const hasStoredCredential = Boolean(
     settings.username && settings.hasPassword
   );
+
   const [mode, setMode] = useState(() => searchCredentialMode(settings));
   const [isReplacing, setIsReplacing] = useState(!hasStoredCredential);
 
   const handleModeChange = useCallback(
-    (value: unknown) => {
+    (value: string) => {
       if (isCredentialMode(value)) {
         setMode(value);
         onCredentialChange();
@@ -73,10 +74,12 @@ export const SearchCredentialFields = ({
     },
     [onCredentialChange]
   );
+
   const handleStartReplace = useCallback(() => {
     setIsReplacing(true);
     onCredentialChange();
   }, [onCredentialChange]);
+
   const handleKeepStored = useCallback(() => {
     setIsReplacing(false);
     onCredentialChange();

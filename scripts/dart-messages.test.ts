@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import type { CatalogTree } from "./catalog-leaves.ts";
 import {
   dartIdentifier,
   dartParameter,
@@ -13,11 +14,8 @@ const locales = [
   { code: "en", intl: "en-US", label: "English" },
 ];
 
-const catalogs = (
-  ja: Record<string, unknown>,
-  en: Record<string, unknown>
-): Map<string, unknown> =>
-  new Map<string, unknown>([
+const catalogs = (ja: CatalogTree, en: CatalogTree): Map<string, CatalogTree> =>
+  new Map<string, CatalogTree>([
     ["ja", { errors: { validation: "確認してください。" }, mobile: ja }],
     ["en", { errors: { validation: "Check your input." }, mobile: en }],
   ]);
@@ -98,6 +96,7 @@ describe("renderDartMessages", () => {
     series: { episode_count: "{$count} 話", title: "シリーズ" },
     viewer: { page_status: "{$page} / {$total}" },
   };
+
   const en = {
     series: { episode_count: "{$count} episodes", title: "Series" },
     viewer: { page_status: "{$page} / {$total}" },
@@ -154,6 +153,7 @@ describe("renderDartMessages", () => {
   it("types a variable a numeric function takes as a num", () => {
     const count =
       ".input {$count :integer}\n.match $count\none {{{$count} episode}}\n* {{{$count} episodes}}";
+
     const output = renderDartMessages(
       locales,
       catalogs(
@@ -189,10 +189,12 @@ describe("renderDartMessages", () => {
       { code: "zh-Hans", intl: "zh-Hans-CN", label: "简体中文" },
       { code: "zh-Hant", intl: "zh-Hant-TW", label: "繁體中文" },
     ];
+
     const catalog = {
       errors: { validation: "Check your input." },
       mobile: { series: { title: "Series" } },
     };
+
     const output = renderDartMessages(
       chinese,
       new Map(chinese.map(({ code }) => [code, catalog]))
@@ -216,6 +218,7 @@ describe("renderDartMessages", () => {
       locales,
       catalogs(unsorted(), unsorted())
     );
+
     const members = [...output.matchAll(/String get (?<member>\w+) \{/gu)].map(
       (match) => match.groups?.member
     );
@@ -255,6 +258,7 @@ describe("renderDartMessages", () => {
 
   it("moves the values below a key too long to share the call's line", () => {
     const key = "a_very_long_message_key_that_cannot_share_the_line";
+
     const output = renderDartMessages(
       locales,
       catalogs(
@@ -327,7 +331,7 @@ describe("renderDartMessages", () => {
       () =>
         renderDartMessages(
           locales,
-          new Map<string, unknown>([
+          new Map<string, CatalogTree>([
             ["ja", { errors: {} }],
             ["en", { errors: {} }],
           ])

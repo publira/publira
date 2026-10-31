@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
+
 const {
   mockAssertSameOrigin,
   mockCreatePlatformTenant,
@@ -44,18 +46,25 @@ vi.mock("#lib/audit-logs", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
+
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
+
+/** The fields of the create form by name, a repeated one as a list. */
+interface TenantFormFields {
+  [field: string]: string | readonly string[];
+}
+
+const isSingleValue = (value: string | readonly string[]): value is string =>
+  typeof value === "string";
 
 /**
  * A form as the create screen submits it, offering the default language alone
  * unless `tenant_supported_locales` names the set.
  */
-const tenantFormData = (
-  overrides: Record<string, string | readonly string[]> = {}
-): FormData => {
-  const fields: Record<string, string | readonly string[]> = {
+const tenantFormData = (overrides: TenantFormFields = {}): FormData => {
+  const fields: TenantFormFields = {
     initial_admin_emails: "",
     tenant_admin_domain: "",
     tenant_default_locale: "en",
@@ -64,19 +73,23 @@ const tenantFormData = (
     tenant_name: "Example Tenant",
     ...overrides,
   };
+
   const supportedLocales = fields.tenant_supported_locales ?? [
     String(fields.tenant_default_locale),
   ];
 
   const formData = new FormData();
+
   for (const [key, value] of Object.entries(fields)) {
-    if (typeof value === "string") {
+    if (isSingleValue(value)) {
       formData.set(key, value);
     }
   }
+
   for (const code of supportedLocales) {
     formData.append("tenant_supported_locales", code);
   }
+
   return formData;
 };
 

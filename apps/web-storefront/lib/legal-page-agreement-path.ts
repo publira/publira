@@ -77,6 +77,7 @@ export const legalPageAgreementRedirect = ({
   search: string;
 }): string | null => {
   const barePathname = toBarePathname(pathname);
+
   if (
     isLegalPageAgreementPath(barePathname) ||
     exemptPaths.includes(barePathname)

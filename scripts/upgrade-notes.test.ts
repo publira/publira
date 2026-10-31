@@ -72,6 +72,7 @@ describe("readUpgradeNotes", () => {
       "",
       "Nothing changes for the build itself.",
     ].join("\n");
+
     const body = [
       "## Upgrade notes",
       "",
@@ -96,6 +97,7 @@ describe("readUpgradeNotes", () => {
       "",
       "Done.",
     ].join("\n");
+
     const body = ["## Upgrade notes", "", notes, "", "## Checklist"].join("\n");
 
     assert.equal(readUpgradeNotes(body), notes);
@@ -241,6 +243,7 @@ describe("environmentChanges", () => {
         status: "modified",
       },
     ];
+
     const lookup = lookupFrom({
       PUBLIRA_DB_URL: { "server/cmd/publiractl/db_roles.go": 1 },
     });
@@ -264,6 +267,7 @@ describe("environmentChanges", () => {
         status: "modified",
       },
     ];
+
     const lookup = lookupFrom({
       PUBLIRA_OLD_THING: {
         "infra/deploy/.env.example": 1,
@@ -285,6 +289,7 @@ describe("environmentChanges", () => {
         status: "modified",
       },
     ];
+
     const lookup = lookupFrom({
       PUBLIRA_DB_URL: {
         "server/cmd/publiractl/db.go": 2,
@@ -303,6 +308,7 @@ describe("environmentChanges", () => {
         status: "modified",
       },
     ];
+
     const lookup = lookupFrom({
       PUBLIRA_DB_URL: { "server/config/runtime.go": 2 },
     });
@@ -323,6 +329,7 @@ describe("environmentChanges", () => {
         status: "modified",
       },
     ];
+
     const lookup = lookupFrom({ PUBLIRA_MOVED: { "server/config/a.go": 1 } });
 
     assert.deepEqual(environmentChanges(files, lookup), {
@@ -340,6 +347,7 @@ describe("environmentChanges", () => {
         status: "renamed",
       },
     ];
+
     const lookup = lookupFrom({ PUBLIRA_GONE: { "server/config/old.go": 1 } });
 
     assert.deepEqual(environmentChanges(files, lookup).removed, [
@@ -408,6 +416,7 @@ describe("watchedChanges", () => {
       patch: "@@ -1 +1,3 @@\n services:\n+  search:\n+    image: opensearch",
       status: "modified",
     };
+
     const image: ChangedFile = {
       filename: "infra/deploy/compose.yaml",
       patch:

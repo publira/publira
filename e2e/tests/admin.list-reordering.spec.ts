@@ -24,6 +24,7 @@ const rowTexts = async (page: Page, listName: string): Promise<string[]> => {
     .getByRole("list", { exact: true, name: listName })
     .getByRole("listitem")
     .all();
+
   return await Promise.all(
     rows.map(async (row) => (await row.textContent()) ?? "")
   );
@@ -38,6 +39,7 @@ const episodeTitlesInOrder = async (
   titles: readonly string[]
 ): Promise<string[]> => {
   const rows = await rowTexts(page, "Episodes");
+
   return rows.flatMap((text) => titles.filter((title) => text.includes(title)));
 };
 
@@ -52,8 +54,10 @@ const episodeHandle = (page: Page, title: string): Locator =>
  */
 const imageSizesInOrder = async (page: Page): Promise<string[]> => {
   const rows = await rowTexts(page, "Registered page images");
+
   return rows.flatMap((text) => {
     const match = text.match(/(?<!\d)(?<size>\d+x\d+)/u);
+
     return match?.groups?.size ? [match.groups.size] : [];
   });
 };
@@ -72,6 +76,7 @@ const creatorRoleNamesInOrder = async (page: Page): Promise<string[]> => {
     .getByRole("list", { exact: true, name: "Author roles" })
     .getByRole("textbox")
     .all();
+
   return await Promise.all(fields.map((field) => field.inputValue()));
 };
 
@@ -120,6 +125,7 @@ test.describe("admin list reordering", () => {
 
   const trackSeries = (publicId: string): string => {
     createdSeriesIds.push(publicId);
+
     return publicId;
   };
 
@@ -127,12 +133,14 @@ test.describe("admin list reordering", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = trackSeries(
       await createSeriesViaUi(page, {
         synopsis: `E2E reorder synopsis ${suffix}`,
         title: `E2E Reorder Series ${suffix}`,
       })
     );
+
     const first = `E2E Episode A ${suffix}`;
     const second = `E2E Episode B ${suffix}`;
     await createEpisodeViaUi(page, { seriesPublicId: seriesId, title: first });
@@ -169,12 +177,14 @@ test.describe("admin list reordering", () => {
 
   test("moves a page image ahead of the one before it", async ({ page }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = trackSeries(
       await createSeriesViaUi(page, {
         synopsis: `E2E page reorder synopsis ${suffix}`,
         title: `E2E Page Reorder Series ${suffix}`,
       })
     );
+
     const episodeId = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Page Reorder Episode ${suffix}`,
@@ -235,6 +245,7 @@ test.describe("admin list reordering", () => {
     await expect
       .poll(async () => {
         const names = await creatorRoleNamesInOrder(page);
+
         return names.indexOf(second) < names.indexOf(first);
       })
       .toBe(true);
@@ -263,6 +274,7 @@ test.describe("admin list reordering", () => {
       exact: true,
       name: `Reorder ${name}`,
     });
+
     await expect(englishHandle).toHaveAccessibleDescription(
       /^To pick up a row, press Space or Enter\./u
     );
@@ -295,6 +307,7 @@ test.describe("admin list reordering", () => {
       exact: true,
       name: `${name}を並べ替え`,
     });
+
     await expect(japaneseHandle).toHaveAccessibleDescription(
       /^行を持ち上げるにはSpaceキーまたはEnterキーを押します。/u
     );

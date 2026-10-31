@@ -95,9 +95,11 @@ const slotForm = (container: HTMLElement, variantType: string) => {
   const form = container
     .querySelector(`input[name="variant_type"][value="${variantType}"]`)
     ?.closest("form");
+
   if (!form) {
     throw new Error(`the ${variantType} slot has no form`);
   }
+
   return form;
 };
 
@@ -108,14 +110,17 @@ const pickImage = (
 ): HTMLFormElement => {
   const form = slotForm(container, variantType);
   const fileInput = form.querySelector<HTMLInputElement>('input[type="file"]');
+
   if (!fileInput) {
     throw new Error(`the ${variantType} slot has no file input`);
   }
+
   fireEvent.change(fileInput, {
     target: {
       files: [new File(["x"], `${variantType}.jpg`, { type: "image/jpeg" })],
     },
   });
+
   return form;
 };
 
@@ -224,10 +229,12 @@ it("names the band only under a campaign banner's landscape slot", () => {
 
   const band =
     "The band at the top of the site's top page and of the app's catalog.";
+
   const notShown = "Not shown on the site or in the app yet.";
 
   expect(within(slotForm(container, "landscape")).getByText(band)).toBeTruthy();
   expect(screen.getAllByText(band)).toHaveLength(1);
+
   for (const variantType of ["portrait", "square"]) {
     expect(
       within(slotForm(container, variantType)).getByText(notShown)
@@ -248,6 +255,7 @@ it("neither shows nor reads out a ratio by its key", () => {
   });
 
   const keys = /\b(?:portrait|square|landscape|og)\b/u;
+
   const accessibleNames = [
     ...screen
       .getAllByRole("button")
@@ -288,12 +296,14 @@ it("asks for a cover image before opening the ratio slots", () => {
 it("shows what is stored once the upload is on its way", async () => {
   stubObjectUrls();
   const upload = Promise.withResolvers<EyeCatchAspectActionState>();
+
   const { container } = renderImages({
     uploadAction: () => upload.promise,
     variants: [variant("landscape", 1600, 900)],
   });
 
   const stored = "/images/series/img/landscape/1600";
+
   const image = () =>
     container
       .querySelector<HTMLImageElement>('img[alt="Landscape (16:9) image"]')
@@ -353,6 +363,7 @@ it("posts an episode's ID under the field the episode's upload action reads", ()
 
 it("frames the picked file where the API would have cut it anyway", () => {
   stubObjectUrls();
+
   const { container } = renderImages({
     variants: [variant("landscape", 1600, 900)],
   });
@@ -376,6 +387,7 @@ it("frames the picked file where the API would have cut it anyway", () => {
 
 it("previews the framed region rather than the whole picked file", () => {
   stubObjectUrls();
+
   const { container } = renderImages({
     variants: [variant("landscape", 1600, 900)],
   });
@@ -386,6 +398,7 @@ it("previews the framed region rather than the whole picked file", () => {
   const preview = container.querySelector<HTMLImageElement>(
     'img[alt="Landscape (16:9) image"]'
   );
+
   // The file is 2400 wide and the frame keeps all of that width, so the slot
   // shows it at its own width, shifted up by the part above the frame.
   expect(preview?.style.width).toBe("100%");
@@ -405,9 +418,11 @@ it("closes the slot's picker while its upload is in flight", async () => {
 
   const form = slotForm(container, "landscape");
   const fileInput = form.querySelector<HTMLInputElement>('input[type="file"]');
+
   if (!fileInput) {
     throw new Error("the landscape slot has no file input");
   }
+
   const picker = screen.getByRole<HTMLButtonElement>("button", {
     name: "Select an image for Landscape (16:9)",
   });

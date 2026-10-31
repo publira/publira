@@ -93,6 +93,7 @@ const renderList = async (
     token: "",
     ...props,
   });
+
   render(list);
 };
 

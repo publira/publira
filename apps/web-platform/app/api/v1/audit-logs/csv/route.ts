@@ -37,6 +37,7 @@ export const GET = async (request: Request) => {
   const query = exportQuerySchema.safeParse(
     Object.fromEntries(new URL(request.url).searchParams)
   );
+
   if (!query.success) {
     return notFound();
   }
@@ -48,21 +49,28 @@ export const GET = async (request: Request) => {
     createdTo: query.data.created_to,
     tenantPublicId: query.data.tenant_id ?? "",
   };
+
   const loginPath = buildLoginPath(buildAuditLogsPath(filters), {
     revoked: true,
   });
+
   let tenantId = "";
+
   if (filters.tenantPublicId) {
     // The tenant lookup checks the session too, but a rejected one would come
     // back to this download after login rather than to the list.
     const operator = await getPlatformCurrentOperator();
+
     if (!operator.ok && operator.requiresSignIn) {
       redirect(loginPath);
     }
+
     const tenant = await getPlatformTenant(filters.tenantPublicId);
+
     if (!(tenant.ok && tenant.tenant)) {
       return notFound();
     }
+
     tenantId = tenant.tenant.id;
   }
 
@@ -73,15 +81,18 @@ export const GET = async (request: Request) => {
     start: filters.createdFrom,
     tenantId,
   });
+
   if (!file.ok) {
     if (file.reason === "signedOut") {
       redirect(loginPath);
     }
+
     return notFound();
   }
 
   // `--` separates the two ends of an ISO 8601 interval where `/` cannot go.
   const fileName = `platform-audit-log-${filters.createdFrom}--${filters.createdTo}.csv`;
+
   return new NextResponse(file.csv, {
     headers: {
       "Cache-Control": "private, no-store",

@@ -81,8 +81,10 @@ const getTenantSiteVerificationForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -97,12 +99,14 @@ const getTenantSiteVerificationForSession = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       siteVerification: toTenantSiteVerification(response.siteVerification),
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     // The previous release's server has no such RPC, and an install may run
     // it beside this console while it upgrades. That costs this card alone,
     // closed as for any read that failed, rather than the settings page.
@@ -112,6 +116,7 @@ const getTenantSiteVerificationForSession = async (
         ok: false,
       };
     }
+
     return {
       message: rpcErrorMessage(
         error,
@@ -148,21 +153,23 @@ export const getTenantSiteVerification = async (
  * answer is the one that stands.
  */
 const refusedField = (
-  error: unknown
+  cause: unknown
 ): keyof TenantSiteVerification | undefined => {
   if (
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       "site_verification.google_site_verification"
     )
   ) {
     return "google";
   }
+
   if (
-    rpcErrorHasFieldViolation(error, "site_verification.bing_site_verification")
+    rpcErrorHasFieldViolation(cause, "site_verification.bing_site_verification")
   ) {
     return "bing";
   }
+
   return undefined;
 };
 
@@ -175,7 +182,9 @@ export const updateTenantSiteVerification = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -192,6 +201,7 @@ export const updateTenantSiteVerification = async (
         },
         withSessionHeaders(sessionId)
       );
+
     return {
       ok: true,
       siteVerification: toTenantSiteVerification(response.siteVerification),
@@ -200,10 +210,13 @@ export const updateTenantSiteVerification = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const refused = refusedField(error);
+
     if (refused) {
       const message = siteVerificationCodeMessage(t, refused, "invalid");
+
       return { fieldErrors: { [refused]: message }, message, ok: false };
     }
+
     return {
       message: rpcErrorMessage(
         error,

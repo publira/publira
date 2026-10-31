@@ -145,8 +145,10 @@ const getTenantSignInSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -161,9 +163,11 @@ const getTenantSignInSettingsForSession = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, settings: toTenantSignInSettings(response.settings) };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.settings.sign_in.load_failed"), {
         locale,
@@ -189,37 +193,45 @@ export const getTenantSignInSettings = async (
 
 /** The fields the API refused, in the words the form uses for them. */
 const refusedFieldErrors = (
-  error: unknown,
+  cause: unknown,
   input: UpdateTenantSignInSettingsInput,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): SignInSettingsFieldErrors | undefined => {
   const fieldErrors: SignInSettingsFieldErrors = {};
-  if (rpcErrorHasFieldViolation(error, "apple.services_id")) {
+
+  if (rpcErrorHasFieldViolation(cause, "apple.services_id")) {
     fieldErrors.servicesId = t(
       "admin.settings.sign_in.validation.services_id_invalid"
     );
   }
-  if (rpcErrorHasFieldViolation(error, "apple.team_id")) {
+
+  if (rpcErrorHasFieldViolation(cause, "apple.team_id")) {
     fieldErrors.teamId = t("admin.settings.sign_in.validation.team_id_invalid");
   }
-  if (rpcErrorHasFieldViolation(error, "apple.key_id")) {
+
+  if (rpcErrorHasFieldViolation(cause, "apple.key_id")) {
     fieldErrors.keyId = t("admin.settings.sign_in.validation.key_id_invalid");
   }
-  if (rpcErrorHasFieldViolation(error, "apple.private_key")) {
+
+  if (rpcErrorHasFieldViolation(cause, "apple.private_key")) {
     fieldErrors.privateKey = t(
       "admin.settings.sign_in.validation.private_key_invalid"
     );
   }
+
   // The API names Google as a whole, so every client ID entered is suspect.
-  if (rpcErrorHasFieldViolation(error, "google")) {
+  if (rpcErrorHasFieldViolation(cause, "google")) {
     const message = t("admin.settings.sign_in.validation.client_id_invalid");
+
     if (input.google.webClientId) {
       fieldErrors.webClientId = message;
     }
+
     if (input.google.iosClientId) {
       fieldErrors.iosClientId = message;
     }
   }
+
   return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
 };
 
@@ -232,7 +244,9 @@ export const updateTenantSignInSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -257,14 +271,17 @@ export const updateTenantSignInSettings = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, settings: toTenantSignInSettings(response.settings) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const fieldErrors = refusedFieldErrors(error, input, t);
+
     if (fieldErrors) {
       return { fieldErrors, message: t("errors.validation"), ok: false };
     }
+
     return {
       message: rpcErrorMessage(error, t("admin.settings.sign_in.save_failed"), {
         locale,

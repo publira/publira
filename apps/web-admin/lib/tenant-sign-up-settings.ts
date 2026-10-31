@@ -86,8 +86,10 @@ const getTenantSignUpSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -104,8 +106,10 @@ const getTenantSignUpSettingsForSession = async (
     );
 
     const settings = toTenantSignUpSettings(response.settings);
+
     if (!settings) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.settings.sign_up.load_failed"),
         ok: false,
@@ -116,6 +120,7 @@ const getTenantSignUpSettingsForSession = async (
     return { ok: true, settings };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.settings.sign_up.load_failed"), {
         locale,
@@ -147,7 +152,9 @@ export const updateTenantSignUpSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -165,6 +172,7 @@ export const updateTenantSignUpSettings = async (
     );
 
     const settings = toTenantSignUpSettings(response.settings);
+
     if (!settings) {
       return { message: t("admin.settings.sign_up.save_failed"), ok: false };
     }
@@ -173,13 +181,16 @@ export const updateTenantSignUpSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     if (rpcErrorHasFieldViolation(error, "settings.closed_message")) {
       const closedMessageError = t(
         "admin.settings.sign_up.validation.message_too_long",
         { max: MAX_SIGN_UP_CLOSED_MESSAGE_LENGTH }
       );
+
       return { closedMessageError, message: closedMessageError, ok: false };
     }
+
     return {
       message: rpcErrorMessage(error, t("admin.settings.sign_up.save_failed"), {
         locale,

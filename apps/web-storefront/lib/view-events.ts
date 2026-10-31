@@ -8,6 +8,7 @@ import { apiClient, resolveAccessToken } from "./api-client";
 
 /** Detail pages this app records a soft page view for. */
 export const contentViewKinds = ["episode", "series"] as const;
+
 export type ContentViewKind = (typeof contentViewKinds)[number];
 
 const contentViewTargetTypeByKind: Record<
@@ -75,6 +76,7 @@ const viewActorIdSchema = z.uuid().refine((value) => value !== NIL_UUID);
 
 const readStoredViewActorId = (raw: string | undefined): string => {
   const parsed = viewActorIdSchema.safeParse(raw?.trim() ?? "");
+
   return parsed.success ? parsed.data : "";
 };
 
@@ -86,9 +88,11 @@ const readStoredViewActorId = (raw: string | undefined): string => {
  */
 const resolveAnonymousViewActorId = async (): Promise<string> => {
   const cookieStore = await cookies();
+
   const stored = readStoredViewActorId(
     cookieStore.get(VIEW_ACTOR_COOKIE_NAME)?.value
   );
+
   if (stored) {
     return stored;
   }
@@ -99,6 +103,7 @@ const resolveAnonymousViewActorId = async (): Promise<string> => {
     name: VIEW_ACTOR_COOKIE_NAME,
     value: minted,
   });
+
   return minted;
 };
 
@@ -120,9 +125,11 @@ const resolveAnonymousViewActorId = async (): Promise<string> => {
  */
 const buildViewActorHeaders = async (): Promise<Record<string, string>> => {
   const accessToken = await resolveAccessToken();
+
   if (accessToken) {
     return { Authorization: `Bearer ${accessToken}` };
   }
+
   return {
     Cookie: `${API_ANONYMOUS_ID_COOKIE_NAME}=${await resolveAnonymousViewActorId()}`,
   };
@@ -149,6 +156,7 @@ export const recordContentView = async ({
   tenantId,
 }: ContentView): Promise<void> => {
   const headers = await buildViewActorHeaders();
+
   try {
     await apiClient.contentView.recordContentView(
       {

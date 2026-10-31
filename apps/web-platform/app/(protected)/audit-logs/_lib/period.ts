@@ -3,6 +3,12 @@ import { startOfDayIsoString } from "@publira/utils";
 /** The most days one download covers, as the API bounds an export. */
 export const MAX_EXPORT_DAYS = 366;
 
+/** The instants of an audit log list request; an absent end is open. */
+export interface AuditLogListPeriod {
+  createdFrom?: string;
+  createdTo?: string;
+}
+
 /**
  * The instants the list is narrowed to, from its inclusive `created_from` and
  * `created_to` days: the API takes the end exclusive, so a named last day
@@ -11,7 +17,7 @@ export const MAX_EXPORT_DAYS = 366;
 export const resolveAuditLogListPeriod = (
   filters: { createdFrom: string; createdTo: string },
   timeZone: string
-): { createdFrom?: string; createdTo?: string } => ({
+): AuditLogListPeriod => ({
   createdFrom: startOfDayIsoString(filters.createdFrom, timeZone) || undefined,
   createdTo: filters.createdTo
     ? startOfDayIsoString(
@@ -46,12 +52,15 @@ export const resolveAuditLogExportPeriod = (
   const from = filters.createdFrom
     ? Temporal.PlainDate.from(filters.createdFrom)
     : null;
+
   let end = filters.createdTo
     ? Temporal.PlainDate.from(filters.createdTo)
     : today;
+
   if (!filters.createdTo && from && Temporal.PlainDate.compare(from, end) > 0) {
     end = from;
   }
+
   const start = from ?? end.subtract({ days: MAX_EXPORT_DAYS - 1 });
 
   if (
@@ -60,5 +69,6 @@ export const resolveAuditLogExportPeriod = (
   ) {
     return { ok: false };
   }
+
   return { end: end.toString(), ok: true, start: start.toString() };
 };

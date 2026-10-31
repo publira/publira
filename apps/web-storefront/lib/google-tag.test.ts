@@ -122,6 +122,8 @@ describe("getTenantGoogleTag", () => {
   it("answers no tag for a consent mode this build does not know", async () => {
     mockGetTenantAnalyticsSettings.mockResolvedValueOnce({
       googleTag: {
+        // SAFETY: a mode a newer server sends, which the generated enum does
+        // not name yet — the case under test.
         consentMode: 99 as GoogleTagConsentMode,
         ga4MeasurementId: "",
         gatewayPath: "",

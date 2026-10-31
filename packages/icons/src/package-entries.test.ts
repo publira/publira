@@ -14,6 +14,10 @@ const iconModules = readdirSync(new URL(".", import.meta.url))
   .filter((entry) => entry.endsWith("-icon.tsx"))
   .map((entry) => entry.slice(0, -".tsx".length));
 
+interface PackageJson {
+  exports: Record<string, string | Record<string, string>>;
+}
+
 const readSource = (name: string): string =>
   readFileSync(new URL(name, import.meta.url), "utf-8");
 
@@ -35,9 +39,9 @@ describe("every icon module", () => {
   });
 
   it("has an exports subpath, and no subpath names a module that is gone", () => {
-    const packageJson = JSON.parse(
+    const packageJson: PackageJson = JSON.parse(
       readFileSync(new URL("../package.json", import.meta.url), "utf-8")
-    ) as { exports: Record<string, unknown> };
+    );
 
     expect(new Set(Object.keys(packageJson.exports))).toEqual(
       new Set([".", ...iconModules.map((icon) => `./${icon}`)])

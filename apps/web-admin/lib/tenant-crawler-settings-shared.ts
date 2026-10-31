@@ -66,12 +66,15 @@ const SPACE = /^\p{White_Space}$/u;
 const trimSpace = (value: string): string => {
   let start = 0;
   let end = value.length;
+
   while (start < end && SPACE.test(value.charAt(start))) {
     start += 1;
   }
+
   while (end > start && SPACE.test(value.charAt(end - 1))) {
     end -= 1;
   }
+
   return value.slice(start, end);
 };
 
@@ -91,15 +94,19 @@ type CrawlerPathResult =
  */
 const normalizeCrawlerPath = (value: string): CrawlerPathResult => {
   let path = trimSpace(value);
+
   while (path.length > 1 && path.endsWith("/")) {
     path = path.slice(0, -1);
   }
+
   if (!path.startsWith("/") || FORBIDDEN.test(path)) {
     return { ok: false, reason: "invalid" };
   }
+
   if (utf8Length(path) > MAX_PATH_BYTES) {
     return { ok: false, reason: "too_long" };
   }
+
   if (
     RESERVED_PATHS.has(path) ||
     path === RESERVED_PREFIX ||
@@ -107,6 +114,7 @@ const normalizeCrawlerPath = (value: string): CrawlerPathResult => {
   ) {
     return { ok: false, reason: "reserved" };
   }
+
   return { ok: true, path };
 };
 
@@ -125,22 +133,29 @@ export const parseCrawlerPaths = (
 ): CrawlerPathsResult => {
   const paths: string[] = [];
   const normalized = new Set<string>();
+
   for (const value of values) {
     const path = trimSpace(value);
+
     if (path === "") {
       continue;
     }
+
     const result = normalizeCrawlerPath(path);
+
     if (!result.ok) {
       return { ok: false, path, reason: result.reason };
     }
+
     paths.push(path);
     normalized.add(result.path);
   }
+
   // Counted after duplicates are dropped, as the server counts.
   if (normalized.size > MAX_CRAWLER_EXCLUDED_PATHS) {
     return { ok: false, reason: "too_many" };
   }
+
   return { ok: true, paths };
 };
 
@@ -153,12 +168,14 @@ export const crawlerPathMessage = (
     case "reserved": {
       return t("admin.settings.crawlers.validation.path_reserved", { path });
     }
+
     case "too_long": {
       return t("admin.settings.crawlers.validation.path_too_long", {
         max: MAX_PATH_BYTES,
         path,
       });
     }
+
     default: {
       return t("admin.settings.crawlers.validation.path_invalid", { path });
     }

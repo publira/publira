@@ -84,6 +84,7 @@ test.describe("web-storefront creator's own episode", () => {
     const nextEpisode = endPage(page).getByRole("link", {
       name: NEXT_EPISODE_TITLE,
     });
+
     expect(
       await turnToEndPage(page, nextEpisode),
       "the page after the last one was reached"

@@ -4,6 +4,10 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
+import type {
+  AuthenticationResponseJSON,
+  StartAuthenticationOpts,
+} from "@simplewebauthn/browser";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,7 +34,12 @@ const {
   browserSupportsWebAuthn: vi.fn<() => boolean>(),
   finishPasskey: vi.fn<(formData: FormData) => Promise<MfaVerifyState>>(),
   redirect: vi.fn<(path: string) => never>(),
-  startAuthentication: vi.fn<(options: unknown) => Promise<unknown>>(),
+  startAuthentication:
+    vi.fn<
+      (
+        options: StartAuthenticationOpts
+      ) => Promise<Pick<AuthenticationResponseJSON, "id">>
+    >(),
   verify:
     vi.fn<
       (

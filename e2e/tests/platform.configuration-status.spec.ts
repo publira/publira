@@ -15,10 +15,13 @@ import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 const NEEDS_SETUP_SUMMARY =
   "Some settings the platform needs aren't set up yet. Open each item marked Needs setup to finish it.";
+
 const READY_SUMMARY =
   "Everything the platform needs is set up. Optional features can stay off until you want them.";
+
 const STORAGE_UNCONFIGURED =
   "No storage is saved, so images can't be uploaded or shown.";
+
 const WEBPUSH_UNCONFIGURED =
   "Readers aren't offered browser notifications. Set this up only if you want to send them.";
 
@@ -59,6 +62,7 @@ test.describe("web-platform setup status", () => {
       restorePlatformSettingsRow("platform_storage_config", storageSnapshot);
       await revalidatePlatformTags([platformStorageSettingsTag]);
     }
+
     if (webPushSnapshot) {
       restorePlatformSettingsRow("platform_webpush_config", webPushSnapshot);
     }
@@ -76,6 +80,7 @@ test.describe("web-platform setup status", () => {
         async () => {
           await page.goto(`${WEB_PLATFORM_BASE_URL}/`);
           await expect(storage).toBeVisible();
+
           return await storage.textContent();
         },
         {

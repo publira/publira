@@ -73,6 +73,7 @@ const expectEveryImageLoaded = async (page: Page): Promise<void> => {
       [...document.images].map(async (image) => {
         try {
           await image.decode();
+
           return null;
         } catch {
           return image.currentSrc || image.src;
@@ -107,6 +108,7 @@ const expectEveryImageLoaded = async (page: Page): Promise<void> => {
 const expectNoHorizontalOverflow = async (page: Page): Promise<void> => {
   const measured = await page.evaluate(() => {
     const main = document.querySelector("main");
+
     if (!main) {
       throw new Error("the page has no <main> to measure");
     }

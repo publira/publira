@@ -153,12 +153,14 @@ const getPublicationState = (
   if (!isPublished) {
     return "draft";
   }
+
   if (
     publishedAt &&
     Temporal.Instant.compare(Temporal.Instant.from(publishedAt), now) > 0
   ) {
     return "scheduled";
   }
+
   return "published";
 };
 
@@ -188,6 +190,7 @@ const SeriesStatusBadge = async ({
   // Each branch names its key literally, so the strings the list uses stay
   // findable in this file.
   let label = t("admin.series.draft");
+
   if (state === "published") {
     label = t("admin.series.published");
   } else if (state === "scheduled") {
@@ -214,9 +217,11 @@ const SeriesSerializationMessage = ({
   if (status === "completed") {
     return <Message message="admin.series.status.completed" />;
   }
+
   if (status === "hiatus") {
     return <Message message="admin.series.status.hiatus" />;
   }
+
   return <Message message="admin.series.status.ongoing" />;
 };
 
@@ -228,14 +233,17 @@ const SeriesAgeRatingMessage = ({
   if (ageRating === "r15") {
     return <Message message="admin.series.age_rating.r15" />;
   }
+
   if (ageRating === "r18") {
     return <Message message="admin.series.age_rating.r18" />;
   }
+
   return <Message message="admin.series.age_rating.all" />;
 };
 
 const excerpt = (text: string, max = 56) => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
+
   if (normalized.length <= max) {
     return normalized || "-";
   }
@@ -429,6 +437,7 @@ export const SeriesManager = async ({
 }: SeriesManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
   const showPagination =

@@ -52,11 +52,13 @@ const EyeCatchAspectSlotContext =
 
 const useEyeCatchAspectSlot = () => {
   const context = use(EyeCatchAspectSlotContext);
+
   if (!context) {
     throw new Error(
       "EyeCatchAspectSlot slots must be rendered inside EyeCatchAspectSlot."
     );
   }
+
   return context;
 };
 
@@ -120,19 +122,23 @@ const EyeCatchAspectSlot = ({
           height: event.currentTarget.naturalHeight,
           width: event.currentTarget.naturalWidth,
         };
+
         setSource(size);
         setCrop((current) => current ?? centreCropRect(size, aspect));
       },
       onFramingChange: setIsFraming,
       onImageFileChange: (event) => {
         const file = event.currentTarget.files?.[0];
+
         if (!file) {
           return;
         }
+
         setLocalPreviewUrl((current) => {
           if (current) {
             URL.revokeObjectURL(current);
           }
+
           return URL.createObjectURL(file);
         });
         // Both belong to the file that was just replaced. The new one reports
@@ -166,14 +172,17 @@ const EyeCatchAspectSlot = ({
  */
 const EyeCatchAspectPicker = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
+
   const { aspect, crop, currentUrl, fileInputRef, localPreviewUrl, source } =
     useEyeCatchAspectSlot();
+
   const { pending } = useFormStatus();
   const { variantType } = aspect;
   const name = eyeCatchAspectName(t, variantType);
   // An upload in flight has taken the file, so the slot shows what is stored.
   const pickedUrl = pending ? "" : localPreviewUrl;
   const previewUrl = pickedUrl || currentUrl;
+
   /**
    * While a file is picked the slot shows the region the frame keeps, so what
    * it stands in for is what the upload will deliver rather than the file.

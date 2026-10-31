@@ -39,6 +39,7 @@ const DISPOSABLE_EMAIL_DOMAINS = ["throwaway.example"];
 const TOKEN_LIFETIME_SECONDS = 600;
 
 const port = Number(process.env.PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT);
+
 if (!Number.isInteger(port) || port <= 0) {
   throw new Error(
     "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT must name the port to listen on"
@@ -46,6 +47,7 @@ if (!Number.isInteger(port) || port <= 0) {
 }
 
 const keyFile = process.env.PUBLIRA_E2E_SIGN_IN_PROVIDER_KEY_FILE;
+
 if (!keyFile) {
   throw new Error(
     "PUBLIRA_E2E_SIGN_IN_PROVIDER_KEY_FILE must name where the key pair is kept"
@@ -56,17 +58,21 @@ if (!existsSync(keyFile)) {
   const { privateKey: generated } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
   });
+
   writeFileSync(
     keyFile,
     generated.export({ format: "pem", type: "pkcs8" }).toString(),
     { mode: 0o600 }
   );
 }
+
 const privateKey = createPrivateKey(readFileSync(keyFile, "utf-8"));
 const publicKey = createPublicKey(privateKey);
+
 const keyId = createHash("sha256")
   .update(publicKey.export({ format: "der", type: "spki" }))
   .digest("base64url");
+
 const keySet = JSON.stringify({
   keys: [
     {
@@ -81,27 +87,49 @@ const keySet = JSON.stringify({
 const base64url = (value: string | Buffer): string =>
   Buffer.from(value).toString("base64url");
 
-const signToken = (claims: Record<string, unknown>): string => {
+/** A value of a claim, as the JSON body of `POST /id-tokens` carries it. */
+type ClaimValue =
+  | boolean
+  | number
+  | string
+  | null
+  | readonly ClaimValue[]
+  | Claims;
+
+interface Claims {
+  readonly [name: string]: ClaimValue;
+}
+
+const isClaims = (value: ClaimValue): value is Claims =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const signToken = (claims: Claims): string => {
   const now = Math.floor(Temporal.Now.instant().epochMilliseconds / 1000);
+
   const header = base64url(
     JSON.stringify({ alg: "RS256", kid: keyId, typ: "JWT" })
   );
+
   const payload = base64url(
     JSON.stringify({ exp: now + TOKEN_LIFETIME_SECONDS, iat: now, ...claims })
   );
+
   const signature = sign(
     "sha256",
     Buffer.from(`${header}.${payload}`),
     privateKey
   );
+
   return `${header}.${payload}.${base64url(signature)}`;
 };
 
 const readBody = async (request: IncomingMessage): Promise<string> => {
   const chunks: Buffer[] = [];
+
   for await (const chunk of request) {
     chunks.push(Buffer.from(chunk));
   }
+
   return Buffer.concat(chunks).toString("utf-8");
 };
 
@@ -121,12 +149,16 @@ const handle = async (
 ): Promise<void> => {
   if (request.method === "GET" && request.url === "/readyz") {
     answer(response, 200, "application/json", '{"status":"ok"}');
+
     return;
   }
+
   if (request.method === "GET" && request.url === "/keys") {
     answer(response, 200, "application/json", keySet);
+
     return;
   }
+
   if (request.method === "GET" && request.url === "/disposable-email-domains") {
     answer(
       response,
@@ -134,21 +166,24 @@ const handle = async (
       "text/plain; charset=utf-8",
       `${DISPOSABLE_EMAIL_DOMAINS.join("\n")}\n`
     );
+
     return;
   }
+
   if (request.method === "POST" && request.url === "/id-tokens") {
-    const claims: unknown = JSON.parse(await readBody(request));
-    if (
-      typeof claims !== "object" ||
-      claims === null ||
-      Array.isArray(claims)
-    ) {
+    const claims: ClaimValue = JSON.parse(await readBody(request));
+
+    if (!isClaims(claims)) {
       answer(response, 400, "text/plain", "the body must be a JSON object");
+
       return;
     }
-    answer(response, 200, "text/plain", signToken({ ...claims }));
+
+    answer(response, 200, "text/plain", signToken(claims));
+
     return;
   }
+
   answer(response, 404, "text/plain", "not found");
 };
 

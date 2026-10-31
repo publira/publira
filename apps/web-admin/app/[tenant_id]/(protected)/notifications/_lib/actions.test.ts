@@ -17,6 +17,7 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -42,9 +43,11 @@ vi.mock("#lib/notification", () => ({
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -69,6 +72,7 @@ describe("notification actions", () => {
     mockMarkNotificationAsRead.mockResolvedValueOnce({ ok: true });
 
     const { markNotificationAsReadAction } = await import("./actions");
+
     const result = await markNotificationAsReadAction(
       null,
       formData({
@@ -90,6 +94,7 @@ describe("notification actions", () => {
 
   it("does not call the API for an invalid notification_id", async () => {
     const { markNotificationAsReadAction } = await import("./actions");
+
     const result = await markNotificationAsReadAction(
       null,
       formData({
@@ -113,6 +118,7 @@ describe("notification actions", () => {
     });
 
     const { markAllNotificationsAsReadAction } = await import("./actions");
+
     const result = await markAllNotificationsAsReadAction(
       null,
       formData({ tenant_id: "TENANT001" })
@@ -134,6 +140,7 @@ describe("notification actions", () => {
     });
 
     const { markAllNotificationsAsReadAction } = await import("./actions");
+
     const result = await markAllNotificationsAsReadAction(
       null,
       formData({ tenant_id: "TENANT001" })

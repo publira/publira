@@ -53,27 +53,35 @@ export const openGraphCardPath = (subject: OpenGraphCardSubject): string => {
     case "creator": {
       return `/og/creators/${subject.creatorId}`;
     }
+
     case "episode": {
       return `/og/series/${subject.seriesId}/episodes/${subject.episodeId}`;
     }
+
     case "genre": {
       return `/og/genres/${subject.genreId}`;
     }
+
     case "label": {
       return `/og/labels/${subject.labelId}`;
     }
+
     case "page": {
       return `/og/page/${subject.slug.join("/")}`;
     }
+
     case "series": {
       return `/og/series/${subject.seriesId}`;
     }
+
     case "site": {
       return "/og";
     }
+
     case "tag": {
       return `/og/tags/${subject.tagSlug}`;
     }
+
     default: {
       return subject satisfies never;
     }
@@ -92,9 +100,11 @@ export const tenantOpenGraphCardPath = async (
   subject: OpenGraphCardSubject
 ): Promise<string | undefined> => {
   const origin = await getTenantPublicOrigin(tenantId);
+
   if (!origin) {
     return undefined;
   }
+
   return await tenantLocalePath(tenantId, locale, openGraphCardPath(subject));
 };
 
@@ -108,6 +118,7 @@ const toCardText = <TValue>(
   if (!result.ok) {
     return result;
   }
+
   return { ok: true, value: result.value ? text(result.value) : null };
 };
 
@@ -125,10 +136,13 @@ const resolveSiteCardText = async (
     getTenantSiteInfo(tenantId),
     getTenantSiteCopy(tenantId, locale),
   ]);
+
   const name = tenant?.name.trim();
+
   if (!name) {
     return { ok: true, value: null };
   }
+
   return { ok: true, value: { title: siteTagline ?? name } };
 };
 
@@ -152,32 +166,39 @@ export const resolveOpenGraphCardText = async (
         }),
         getMessagesFor(locale),
       ]);
+
       return toCardText(result, (creator) => ({
         eyebrow: t("storefront.creators.list_title"),
         title: creator.name,
       }));
     }
+
     case "episode": {
       const [result, t] = await Promise.all([
         getEpisodeDetail(tenantId, subject.seriesId, subject.episodeId, locale),
         getMessagesFor(locale),
       ]);
+
       return toCardText(result, ({ episode, series }) => ({
         eyebrow: series.title,
         title: episodeDisplayTitle(t, episode),
       }));
     }
+
     case "genre": {
       const [result, t] = await Promise.all([
         listPublishedGenres(tenantId, locale),
         getMessagesFor(locale),
       ]);
+
       if (!result.ok) {
         return result;
       }
+
       const genre = result.value.find(
         ({ publicId }) => publicId === subject.genreId
       );
+
       return {
         ok: true,
         value: genre
@@ -185,6 +206,7 @@ export const resolveOpenGraphCardText = async (
           : null,
       };
     }
+
     case "label": {
       const [result, t] = await Promise.all([
         getPublishedLabelDetail(tenantId, subject.labelId, {
@@ -194,30 +216,39 @@ export const resolveOpenGraphCardText = async (
         }),
         getMessagesFor(locale),
       ]);
+
       return toCardText(result, (label) => ({
         eyebrow: t("storefront.labels.list_title"),
         title: label.name,
       }));
     }
+
     case "page": {
       const result = await getPublishedPage(tenantId, subject.slug, locale);
+
       return toCardText(result, (page) => ({ title: page.title }));
     }
+
     case "series": {
       const result = await getSeriesDetail(tenantId, subject.seriesId, locale);
+
       return toCardText(result, ({ series }) => ({ title: series.title }));
     }
+
     case "site": {
       return await resolveSiteCardText(tenantId, locale);
     }
+
     case "tag": {
       const result = await findPublishedTagBySlug(
         tenantId,
         subject.tagSlug,
         locale
       );
+
       return toCardText(result, (tag) => ({ title: tag.name }));
     }
+
     default: {
       return subject satisfies never;
     }

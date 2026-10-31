@@ -59,6 +59,7 @@ describe("tenantAdminInvitationDataSchema", () => {
 describe("TenantAdminInvitationEmail", () => {
   it("the ja mail carries the tenant name and the invitation URL", async () => {
     const timeZone = "UTC";
+
     const result = await renderEmail({
       data: invitationData,
       locale: "ja",
@@ -68,6 +69,7 @@ describe("TenantAdminInvitationEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -102,6 +104,7 @@ describe("TenantAdminInvitationEmail", () => {
       });
 
       expect(result.ok).toBe(true);
+
       if (!result.ok) {
         return;
       }
@@ -113,6 +116,7 @@ describe("TenantAdminInvitationEmail", () => {
 
   it("expires_at is shown in the given timeZone", async () => {
     const timeZone = "America/Los_Angeles";
+
     const result = await renderEmail({
       data: invitationData,
       locale: "en",
@@ -122,6 +126,7 @@ describe("TenantAdminInvitationEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -130,6 +135,7 @@ describe("TenantAdminInvitationEmail", () => {
       locale: "en",
       timeZone,
     });
+
     const tokyo = formatDateTime(invitationData.expires_at, {
       locale: "en",
       timeZone: "UTC",

@@ -118,7 +118,9 @@ const canAskReadersToAgree = async (
   if (!(await isSignedInTenantAdmin(tenantId))) {
     return false;
   }
+
   const legalPages = await getTenantLegalPages(tenantId, locale);
+
   return (
     legalPages.ok &&
     [legalPages.pages.termsPage, legalPages.pages.privacyPage].some(
@@ -132,15 +134,19 @@ const PageWorkspaceData = async ({
   searchParams,
 }: EditPagePageProps) => {
   const parsedParams = parseRouteParams(editPageParamsSchema, await params);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { page_id: pageId } = parsedParams;
+
   const requestedLocale =
     editPageSearchParamsSchema.parse(await searchParams).locale || undefined;
 
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [translationsResult, tenantLocales] = await Promise.all([
     listPageTranslations({ pageId, tenantId }, locale),
     findTenantLocales(tenantId),
@@ -162,11 +168,13 @@ const PageWorkspaceData = async ({
   const translatedLocales = translationsResult.translations.map(
     (translation) => translation.locale
   );
+
   const { locales, shownLocale, visibleLocales } = resolveTranslationLocales({
     requestedLocale,
     tenantLocales,
     translatedLocales,
   });
+
   const hrefFor = (code: Locale) => pageEditPath(pageId, code);
 
   if (shownLocale && !visibleLocales.includes(shownLocale)) {

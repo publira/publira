@@ -107,6 +107,7 @@ const normalizeUserIds = (input: ListPlatformEndUsersInput): string[] => [
   ...new Set(
     (input.userIds ?? []).flatMap((value) => {
       const trimmed = value.trim();
+
       return trimmed ? [trimmed] : [];
     })
   ),
@@ -139,6 +140,7 @@ const mergeTenantFilterOptions = (
     if (seen.has(tenant.publicId)) {
       continue;
     }
+
     seen.add(tenant.publicId);
     options.push(toTenantFilterOption(tenant));
   }
@@ -189,6 +191,7 @@ const listPlatformEndUsersForLocale = async (
     // as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.users.list_failed"), {
         locale,
@@ -211,6 +214,7 @@ export const listPlatformEndUsers = async (
   input: ListPlatformEndUsersInput = {}
 ): Promise<ListPlatformEndUsersResult> => {
   await verifyPlatformSession();
+
   return listPlatformEndUsersForLocale(await getPlatformLocale(), {
     createdAfter: input.createdAfter ?? "",
     createdBefore: input.createdBefore ?? "",
@@ -252,13 +256,14 @@ const searchPlatformTenantFilterOptionsForLocale = async (
 
     try {
       return await apiClient.tenants.getTenant(
-        { publicId: normalized } as never,
+        { publicId: normalized },
         headers
       );
     } catch (error) {
       if (isMissingResourceRpcError(error)) {
         return null;
       }
+
       throw error;
     }
   };
@@ -291,6 +296,7 @@ const searchPlatformTenantFilterOptionsForLocale = async (
     // soon as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       hasMore: false,
       message: rpcErrorMessage(
@@ -314,6 +320,7 @@ export const searchPlatformTenantFilterOptions = async (
   await verifyPlatformSession();
 
   const normalized = query.trim();
+
   if (!normalized) {
     return { hasMore: false, ok: true, tenants: [] };
   }
@@ -341,6 +348,7 @@ const getPlatformEndUserForLocale = async (
       { publicId },
       withServiceHeaders()
     );
+
     return {
       ok: true,
       user: response.user ? mapEndUser(response.user) : null,
@@ -351,6 +359,7 @@ const getPlatformEndUserForLocale = async (
     // as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.users.get_failed"), {
         locale,
@@ -370,6 +379,7 @@ export const getPlatformEndUser = async (
   await verifyPlatformSession();
 
   const normalizedPublicId = normalizePublicId(publicId);
+
   if (!normalizedPublicId) {
     return { ok: true, user: null };
   }
@@ -384,11 +394,13 @@ export const suspendPlatformEndUser = async (
   userId: string
 ): Promise<boolean> => {
   const normalizedUserId = userId.trim();
+
   if (!normalizedUserId) {
     return false;
   }
 
   const sid = await resolveAccessToken();
+
   if (!sid) {
     return false;
   }
@@ -398,10 +410,12 @@ export const suspendPlatformEndUser = async (
       { userId: normalizedUserId },
       buildSessionHeaders(sid)
     );
+
     return true;
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -410,11 +424,13 @@ export const unsuspendPlatformEndUser = async (
   userId: string
 ): Promise<boolean> => {
   const normalizedUserId = userId.trim();
+
   if (!normalizedUserId) {
     return false;
   }
 
   const sid = await resolveAccessToken();
+
   if (!sid) {
     return false;
   }
@@ -424,10 +440,12 @@ export const unsuspendPlatformEndUser = async (
       { userId: normalizedUserId },
       buildSessionHeaders(sid)
     );
+
     return true;
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -438,6 +456,7 @@ export const deletePlatformEndUser = async (
 ): Promise<{ ok: true } | { ok: false; message: string }> => {
   const t = await getMessagesFor(locale);
   const normalizedUserId = userId.trim();
+
   if (!normalizedUserId) {
     return {
       message: t("platform.users.invalid_id"),
@@ -446,6 +465,7 @@ export const deletePlatformEndUser = async (
   }
 
   const sid = await resolveAccessToken();
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -458,10 +478,12 @@ export const deletePlatformEndUser = async (
       { userId: normalizedUserId },
       buildSessionHeaders(sid)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
         locale,

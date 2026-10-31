@@ -41,6 +41,7 @@ const acceptInviteFormSchema = async (locale: Locale) => {
           code: "custom",
           message: t("admin.auth.errors.name_and_password_required"),
         });
+
         return;
       }
 
@@ -52,14 +53,17 @@ const acceptInviteFormSchema = async (locale: Locale) => {
       }
     });
 };
+
 const buildLoginPath = (email: string): string => {
   const params = new URLSearchParams({
     invited: "done",
     next: "/",
   });
+
   if (email) {
     params.set("email", email);
   }
+
   return `/login?${params.toString()}`;
 };
 
@@ -70,6 +74,7 @@ export const acceptInviteAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await acceptInviteFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       accountExists: { kind: "value", name: "account_exists" },
@@ -81,6 +86,7 @@ export const acceptInviteAction = async (
       token: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),

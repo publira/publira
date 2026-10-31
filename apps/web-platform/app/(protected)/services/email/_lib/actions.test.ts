@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
+
 const {
   mockAssertSameOrigin,
   mockGetPlatformLocale,
@@ -37,7 +39,8 @@ vi.mock("#lib/email-settings", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
+
   return {
     ...actual,
     getPlatformLocale: mockGetPlatformLocale,
@@ -50,6 +53,7 @@ const smtpFormData = (): FormData => {
   formData.set("host", "smtp.example.com");
   formData.set("port", "587");
   formData.set("revision", "3");
+
   return formData;
 };
 

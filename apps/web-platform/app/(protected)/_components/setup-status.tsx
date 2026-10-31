@@ -60,6 +60,7 @@ const ConfigurationSummary = async () => {
         </FormMessage>
       );
     }
+
     case "ready": {
       return (
         <FormMessage variant="success">
@@ -69,6 +70,7 @@ const ConfigurationSummary = async () => {
         </FormMessage>
       );
     }
+
     default: {
       return null;
     }
@@ -142,6 +144,7 @@ const EmailRow = async () => {
 
   const { settings } = result;
   const state = emailConfigurationState(settings);
+
   let details = (
     <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
       <Message
@@ -150,6 +153,7 @@ const EmailRow = async () => {
       />
     </Suspense>
   );
+
   if (state === "needs_setup") {
     details = settings.host.trim() ? (
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
@@ -247,10 +251,12 @@ const SearchRow = async () => {
 
   const { settings } = result;
   const state = searchConfigurationState(settings);
+
   const engines = {
     engine: searchEngineName(settings.engine),
     serving: searchEngineName(settings.serving.engine),
   };
+
   let details = (
     <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
       <Message
@@ -259,6 +265,7 @@ const SearchRow = async () => {
       />
     </Suspense>
   );
+
   if (settings.buildState === "failed") {
     details = (
       <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
@@ -358,6 +365,7 @@ const PoliciesRow = async () => {
 
   if (!(policy.ok && retention.ok)) {
     const failure = policy.ok ? retention : policy;
+
     return (
       <ConfigurationRow
         action={

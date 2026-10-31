@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { platformAuditLogsCacheTag } from "#lib/audit-logs";
+import type * as LocaleModule from "#lib/locale";
 import { platformPolicyCacheTag } from "#lib/platform-policy";
+import type * as PlatformPolicyModule from "#lib/platform-policy";
 
 const {
   mockAssertSameOrigin,
@@ -22,12 +24,14 @@ vi.mock("#lib/auth-session", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
+
   return { ...actual, getPlatformLocale: () => Promise.resolve("en") };
 });
 
 vi.mock("#lib/platform-policy", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof PlatformPolicyModule>();
+
   return {
     ...actual,
     updatePlatformSecurityPolicy: mockUpdatePlatformSecurityPolicy,
@@ -40,6 +44,7 @@ vi.mock("#lib/platform-mfa", () => ({
 
 const securityForm = (extra: Record<string, string> = {}): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     disposable_email_domains_url: "",
     login_attempts_per_account_per_day: "50",
@@ -62,6 +67,7 @@ const securityForm = (extra: Record<string, string> = {}): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 

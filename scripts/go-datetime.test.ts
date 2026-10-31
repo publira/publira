@@ -10,6 +10,7 @@ describe("renderGoDateTimeFormats", () => {
       timeStyle: "short",
       timeZone: "UTC",
     }).format(0);
+
     assert.match(formatted, /00 AM$/u);
 
     const rendered = renderGoDateTimeFormats([{ code: "en", intl: "en-US" }]);

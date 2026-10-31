@@ -25,11 +25,13 @@ const LocaleSwitcherContext = createContext<LocaleSwitcherContextValue | null>(
 
 const useLocaleSwitcher = (): LocaleSwitcherContextValue => {
   const value = useContext(LocaleSwitcherContext);
+
   if (!value) {
     throw new Error(
       "LocaleSwitcher slots must be rendered inside LocaleSwitcher."
     );
   }
+
   return value;
 };
 
@@ -81,7 +83,8 @@ export const LocaleSwitcher = ({
       // The value comes from one of this form's own option buttons, so it is
       // already one of the locales the caller offered.
       const chosenLocale = formData.get(fieldName);
-      if (typeof chosenLocale === "string") {
+
+      if (chosenLocale !== null && !(chosenLocale instanceof File)) {
         document.documentElement.lang = chosenLocale;
       }
     },

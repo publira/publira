@@ -72,6 +72,7 @@ describe("PasswordInput", () => {
     const frames: FrameRequestCallback[] = [];
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((frame) => {
       frames.push(frame);
+
       return frames.length;
     });
     renderPasswordInput();
@@ -81,6 +82,7 @@ describe("PasswordInput", () => {
 
     fireEvent.click(getToggle());
     input.setSelectionRange(0, 0);
+
     for (const frame of frames) {
       frame(0);
     }
@@ -113,6 +115,7 @@ describe("PasswordInput", () => {
     const { container } = renderPasswordInput();
     fireEvent.click(getToggle());
 
+    // SAFETY: `renderPasswordInput` renders the input inside a `<form>`.
     fireEvent.submit(container.querySelector("form") as HTMLFormElement);
 
     expect(getInput().type).toBe("password");

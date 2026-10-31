@@ -82,6 +82,7 @@ describe("checkPage", () => {
         published
       );
     }
+
     assert.deepEqual(messages(page([...VALID, "updated: 2026-13-01"])), [
       "`updated` is not a `YYYY-MM-DD` date.",
     ]);
@@ -103,6 +104,7 @@ describe("checkPage", () => {
         "  - /proxy",
       ])
     );
+
     assert.deepEqual(findings, []);
     assert.deepEqual(redirects, ["/deployments/reverse-proxy", "/proxy"]);
   });
@@ -121,6 +123,7 @@ describe("checkPage", () => {
         value
       );
     }
+
     for (const entry of [
       "deployments/reverse-proxy",
       "/deployments/reverse-proxy/",
@@ -133,6 +136,7 @@ describe("checkPage", () => {
         entry
       );
     }
+
     assert.deepEqual(
       messages(page([...VALID, "redirect_from: [/proxy, /proxy]"])),
       ["`/proxy` is in `redirect_from` twice."]
@@ -144,6 +148,7 @@ describe("checkPage", () => {
       "docs/en/1-page.md",
       page(VALID, ["# Overview", "", "## A section"])
     ).findings;
+
     assert.match(atx?.message ?? "", /`#` heading/u);
     // The frontmatter takes five lines and a blank one follows it, so the
     // heading is on line seven of the file, not line one of the body.
@@ -652,6 +657,7 @@ describe("scan", () => {
       // Named after a sibling page that does not show it.
       "index-overview.png",
     ];
+
     await Promise.all(
       names.map((name) => write(`docs/en/2-deployments/${name}`, ""))
     );

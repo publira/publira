@@ -413,6 +413,7 @@ describe("updatePlatformSearchSettings with a text analysis", () => {
   it("hands the engine's reason for a refused definition back as the field's error", async () => {
     const reason =
       "the search engine refused the analysis definition: illegal_argument_exception: Unknown tokenizer type [nori_tokenizer]";
+
     mockUpdatePlatformSearchSettings.mockRejectedValueOnce(
       new ConnectError(reason, Code.InvalidArgument, undefined, [
         {
@@ -480,6 +481,7 @@ describe("updatePlatformSearchSettings with a language's own text analysis", () 
   it("hands the engine's reason for a refused definition back as the field's error, naming its language", async () => {
     const reason =
       "en: the search engine refused the analysis definition: illegal_argument_exception: Unknown tokenizer type [nori_tokenizer]";
+
     mockUpdatePlatformSearchSettings.mockRejectedValueOnce(
       new ConnectError(reason, Code.InvalidArgument, undefined, [
         {

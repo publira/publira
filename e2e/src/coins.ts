@@ -65,10 +65,12 @@ export const takePaymentsThroughStripe = async (
   await page.getByRole("checkbox", { name: "Enable payments" }).click();
   const secretKey = `sk_test_${randomUUID().replaceAll("-", "")}`;
   await page.getByLabel(/^Secret key/u).fill(secretKey);
+
   const webhookSecret = await registerStripeWebhook(
     secretKey,
     await page.getByLabel("Webhook URL").inputValue()
   );
+
   await page.getByLabel(/^Webhook signing secret/u).fill(webhookSecret);
   await page.getByRole("button", { exact: true, name: "Save" }).click();
   await expect(

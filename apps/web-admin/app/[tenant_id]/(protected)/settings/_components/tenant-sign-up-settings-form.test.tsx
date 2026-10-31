@@ -17,16 +17,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TenantSignUpSettingsActionState } from "../settings-types";
 import { TenantSignUpSettingsForm } from "./tenant-sign-up-settings-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<TenantSignUpSettingsActionState>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantSignUpSettingsActionState>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantSignUpSettingsAction: (_state: unknown, formData: FormData) => {
+  updateTenantSignUpSettingsAction: (
+    _state: TenantSignUpSettingsActionState,
+    formData: FormData
+  ) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));

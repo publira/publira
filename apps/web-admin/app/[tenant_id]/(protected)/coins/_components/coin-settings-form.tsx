@@ -57,9 +57,11 @@ export const CoinSettingsForm = ({
   tenantLocales,
 }: CoinSettingsFormProps) => {
   const { defaultLocale, supportedLocales } = tenantLocales;
+
   const savedNames = new Map(
     settings.names.map(({ locale, name }) => [locale, name])
   );
+
   const coinNameValue = { coin_name: coinName };
 
   return (

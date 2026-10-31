@@ -23,17 +23,20 @@ const buildPageStatusFormatter =
   (t: AdminClientMessageAccessor) =>
   (value: PageStatusValue): string => {
     const visible = describeVisiblePages(value);
+
     switch (visible.kind) {
       case "none":
       case "end-page": {
         return t("admin.series.episodes.preview.no_pages");
       }
+
       case "page": {
         return t("admin.series.episodes.preview.page_status", {
           first: visible.first,
           total: visible.total,
         });
       }
+
       case "spread": {
         return t("admin.series.episodes.preview.page_status_range", {
           first: visible.first,
@@ -41,6 +44,7 @@ const buildPageStatusFormatter =
           total: visible.total,
         });
       }
+
       default: {
         return visible satisfies never;
       }
@@ -74,10 +78,12 @@ export const EpisodePreview = ({
   renewPageUrls: () => Promise<Record<string, string>>;
 }) => {
   const t = useClientMessages();
+
   const renewPageUrl = useMemo(
     () => renewFromPageUrls(renewPageUrls),
     [renewPageUrls]
   );
+
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const boxHeight = useBoxHeight(box);
   const formatPageStatus = buildPageStatusFormatter(t);

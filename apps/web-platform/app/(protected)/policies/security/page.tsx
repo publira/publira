@@ -15,6 +15,7 @@ import { SecurityPolicyForm } from "./_components/security-policy-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   return { title: t("platform.policy.security.page_title") };
 };
 
@@ -42,6 +43,7 @@ const FormSkeleton = () => (
 
 const Content = async () => {
   const result = await getPlatformPolicy();
+
   return (
     <SecurityPolicyForm
       loadErrorMessage={result.ok ? undefined : result.message}

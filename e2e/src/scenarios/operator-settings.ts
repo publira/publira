@@ -10,6 +10,7 @@
  */
 
 export const ADMIN_OPERATOR_SETTINGS_SCENARIO = "130_admin_operator_settings";
+
 export const PLATFORM_OPERATOR_SETTINGS_SCENARIO =
   "131_platform_operator_settings";
 

@@ -34,20 +34,24 @@ export const VolumeSortableList = ({
   const t = useClientMessages();
   const volumeIds = rows.map((row) => row.id);
   const [isPending, startTransition] = useTransition();
+
   const [optimisticVolumeIds, setOptimisticVolumeIds] = useOptimistic(
     volumeIds,
     (_currentVolumeIds, nextVolumeIds: string[]) => nextVolumeIds
   );
+
   const [reorderErrorMessage, setReorderErrorMessage] = useState("");
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentVolumeIds = optimisticVolumeIds;
+
       const nextVolumeIds = Sortable.withItemMoved(
         currentVolumeIds,
         identity,
         event
       );
+
       if (nextVolumeIds === currentVolumeIds) {
         return;
       }

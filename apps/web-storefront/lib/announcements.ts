@@ -56,12 +56,12 @@ export const announcementsCacheTag = tenantAnnouncementsTag;
  * cache key instead of to whichever request filled the entry.
  */
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("storefront.announcements.list_failed"), {
+  return rpcErrorMessage(cause, t("storefront.announcements.list_failed"), {
     locale,
   });
 };
@@ -141,8 +141,8 @@ export type ListMyAnnouncementsResult =
   | ({ ok: true } & MyAnnouncementsPage)
   | ({ ok: false; message: string } & MyAnnouncementsPage);
 
-const emptyListPage = {
-  announcements: [] as MemberAnnouncementItem[],
+const emptyListPage: MyAnnouncementsPage = {
+  announcements: [],
   nextToken: "",
   previousToken: "",
 };
@@ -178,6 +178,7 @@ const readAnnouncementList = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyListPage,
       message: await mapErrorToMessage(error, options.locale),
@@ -197,9 +198,11 @@ export const listMyAnnouncements = async (
     await resolveAccessToken(sessionId),
     options
   );
+
   if (unexpected && !result.ok) {
     throw new Error(result.message);
   }
+
   return result;
 };
 
@@ -240,6 +243,7 @@ const readMyAnnouncement = async (
       },
       buildSessionHeaders(sid)
     );
+
     if (!response.announcement) {
       return { value: null };
     }
@@ -247,12 +251,15 @@ const readMyAnnouncement = async (
     return { value: mapAnnouncementItem(response.announcement, locale) };
   } catch (error) {
     dropFailedCacheEntry();
+
     if (isUnauthenticatedRpcError(error)) {
       return { failure: "unauthenticated" };
     }
+
     if (rpcErrorDisposition(error) === "unexpected") {
       return { failure: "unexpected" };
     }
+
     // A missing row, and any other failure the API classified, both answer
     // "nothing to open": the action that asked simply does not navigate.
     return { value: null };
@@ -276,6 +283,7 @@ export const getMyAnnouncement = async (
     announcementId,
     tenantId,
   });
+
   if (!parsed.success) {
     // Same null as a missing row: a malformed id is not a distinct outcome.
     return null;
@@ -287,15 +295,18 @@ export const getMyAnnouncement = async (
     locale,
     await resolveAccessToken(sessionId)
   );
+
   if ("value" in result) {
     return result.value;
   }
+
   if (result.failure === "unauthenticated") {
     throw new ConnectError(
       "announcement read rejected the session",
       Code.Unauthenticated
     );
   }
+
   throw new Error("Could not read the announcement.");
 };
 
@@ -360,9 +371,11 @@ export const getAnnouncement = async (
     announcementId,
     tenantId,
   });
+
   if (!parsed.success) {
     return { ok: true, value: null };
   }
+
   applyCacheTag(announcementsCacheTag(parsed.data.tenantId));
 
   try {
@@ -371,6 +384,7 @@ export const getAnnouncement = async (
       locale,
       tenant: { tenantId: parsed.data.tenantId },
     });
+
     if (!response.announcement) {
       return { ok: true, value: null };
     }
@@ -387,6 +401,7 @@ export const getAnnouncement = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -401,6 +416,7 @@ export const markAnnouncementAsRead = async (
   sessionId?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(sessionId);
+
   if (!sid) {
     return false;
   }
@@ -419,7 +435,9 @@ export const markAnnouncementAsRead = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -429,6 +447,7 @@ export const markAllAnnouncementsAsRead = async (
   sessionId?: string
 ): Promise<number> => {
   const sid = await resolveAccessToken(sessionId);
+
   if (!sid) {
     return 0;
   }
@@ -446,7 +465,9 @@ export const markAllAnnouncementsAsRead = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return 0;
   }
 };
@@ -489,9 +510,11 @@ export const getPinnedAnnouncement = async (
   "use cache: remote";
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return null;
   }
+
   applyCacheTag(tenantPinnedAnnouncementTag(normalizedTenantId));
 
   try {
@@ -499,11 +522,13 @@ export const getPinnedAnnouncement = async (
       locale,
       tenant: { tenantId: normalizedTenantId },
     });
+
     if (!response.announcement) {
       return null;
     }
 
     const { body, id, linkUrl, title } = response.announcement;
+
     return {
       body,
       id,
@@ -515,7 +540,9 @@ export const getPinnedAnnouncement = async (
     if (!isExpectedNullableRpcError(error)) {
       console.warn("[web-storefront] getPinnedAnnouncement failed", error);
     }
+
     dropFailedCacheEntry();
+
     return null;
   }
 };

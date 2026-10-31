@@ -203,8 +203,10 @@ export const NotificationManager = async ({
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
   const hasPageLinks = Boolean(previousHref || nextHref);
+
   const showPagination =
     !listErrorMessage && (notifications.length > 0 || hasPageLinks);
+
   const hasUnread =
     unreadCount > 0 || notifications.some((item) => !item.isRead);
 

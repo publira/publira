@@ -57,6 +57,7 @@ export const NotificationList = async ({
 }: NotificationListProps) => {
   const locale = await getLocale();
   const t = await getMessagesFor(locale);
+
   const hasUnread =
     unreadCount > 0 || notifications.some((item) => !item.isRead);
 

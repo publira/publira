@@ -4,10 +4,15 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Skeleton } from "../skeleton/skeleton";
 
 type TableProps = ComponentPropsWithoutRef<"table">;
+
 type TheadProps = ComponentPropsWithoutRef<"thead">;
+
 type TbodyProps = ComponentPropsWithoutRef<"tbody">;
+
 type TrProps = ComponentPropsWithoutRef<"tr">;
+
 type ThProps = ComponentPropsWithoutRef<"th">;
+
 type TdProps = ComponentPropsWithoutRef<"td">;
 
 /**

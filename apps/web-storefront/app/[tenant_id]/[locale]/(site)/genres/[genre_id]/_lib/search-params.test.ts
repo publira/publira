@@ -49,9 +49,9 @@ describe("parseGenreDetailSearchParams", () => {
 
   it("A genre in the query is not a field of this screen", () => {
     expect(
-      parseGenreDetailSearchParams({
-        genre: "SeedGENRAAA2",
-      } as Record<string, string>)
+      parseGenreDetailSearchParams(
+        Object.fromEntries(new URLSearchParams({ genre: "SeedGENRAAA2" }))
+      )
     ).toEqual({
       free: false,
       order: "newest",

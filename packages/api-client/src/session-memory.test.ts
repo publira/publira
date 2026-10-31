@@ -39,14 +39,19 @@ const startServer = async () => {
         stream.pause();
         held.push(stream);
         uploadHeld.resolve("held");
+
         return;
       }
+
       answer(stream);
     });
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
+  // SAFETY: a server listening on a TCP port reports its address as an
+  // `AddressInfo`; only a pipe or a socket file reports a string.
   const { port } = server.address() as AddressInfo;
+
   const release = () => {
     for (const stream of held) {
       stream.resume();
@@ -55,12 +60,15 @@ const startServer = async () => {
       });
     }
   };
+
   const close = () => {
     for (const session of sessions) {
       session.destroy();
     }
+
     server.close();
   };
+
   return {
     baseUrl: `http://127.0.0.1:${port}`,
     close,
@@ -72,6 +80,7 @@ const startServer = async () => {
 const codeOf = async (call: Promise<unknown>) => {
   try {
     await call;
+
     return Code.Unknown;
   } catch (error) {
     return ConnectError.from(error).code;
@@ -94,6 +103,7 @@ describe("the gRPC transport the Next.js apps use", () => {
         archiveData: new Uint8Array(256 * 1024 * 1024),
       })
     );
+
     // Waits for the server to hold the upload rather than for a fixed time,
     // which is however long the runner takes to allocate the body and start
     // sending it. An upload that settles first fails here, not on the timeout.

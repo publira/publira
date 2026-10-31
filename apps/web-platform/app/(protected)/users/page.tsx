@@ -103,14 +103,20 @@ const emptyUsersListResult = {
   users: [],
 } satisfies ListPlatformEndUsersResult;
 
+interface UsersPageHrefs {
+  nextHref?: string;
+  previousHref?: string;
+}
+
 const buildUsersPageHrefs = (
   filters: UsersFilters,
   result: ListPlatformEndUsersResult,
   skip: boolean
-): { nextHref?: string; previousHref?: string } => {
+): UsersPageHrefs => {
   if (skip) {
     return {};
   }
+
   return {
     nextHref: result.nextToken
       ? buildUsersPath({ ...filters, token: result.nextToken })
@@ -160,6 +166,7 @@ const buildTenantFilterItems = ({
   if (tenantQuery && tenantSearch.ok) {
     return tenantSearch.tenants;
   }
+
   if (tenantId) {
     return [
       {
@@ -168,6 +175,7 @@ const buildTenantFilterItems = ({
       },
     ];
   }
+
   return [];
 };
 
@@ -185,12 +193,14 @@ const buildTenantFilterMessages = async ({
   if (!tenantQuery) {
     return [];
   }
+
   if (!tenantSearch.ok) {
     return [{ text: tenantSearch.message, variant: "destructive" }];
   }
 
   const t = await getMessagesFor(locale);
   const filterMessages: TenantFilterMessage[] = [];
+
   if (resolution.kind === "none") {
     filterMessages.push({
       text: t("platform.users.tenant_none"),
@@ -202,12 +212,14 @@ const buildTenantFilterMessages = async ({
       variant: "info",
     });
   }
+
   if (tenantSearch.hasMore) {
     filterMessages.push({
       text: t("platform.users.tenant_more"),
       variant: "info",
     });
   }
+
   return filterMessages;
 };
 
@@ -452,7 +464,9 @@ const UsersContent = async ({
     searchParams,
     getPlatformLocale(),
   ]);
+
   const filters = parseUsersFilters(rawSearchParams);
+
   const [t, tenantSearch, selectedTenantResult, timeZone] = await Promise.all([
     getMessagesFor(locale),
     filters.tenantQuery
@@ -467,24 +481,29 @@ const UsersContent = async ({
   const selectedTenant = selectedTenantResult.ok
     ? selectedTenantResult.tenant
     : null;
+
   const tenantItems = buildTenantFilterItems({
     selectedName: selectedTenant?.name.trim() ?? "",
     tenantId: filters.tenantId,
     tenantQuery: filters.tenantQuery,
     tenantSearch,
   });
+
   const resolution = resolveTenantFilter({
     matches: tenantItems,
     searchOk: tenantSearch.ok,
     tenantId: filters.tenantId,
     tenantQuery: filters.tenantQuery,
   });
+
   const tenantId = resolvedTenantId(resolution);
   const pendingTenantPick = !shouldListUsers(resolution);
+
   const listFilters = {
     ...filters,
     tenantId,
   };
+
   const tenantMessages = await buildTenantFilterMessages({
     locale,
     resolution,
@@ -504,6 +523,7 @@ const UsersContent = async ({
       });
 
   const users = result.ok ? result.users : [];
+
   const hasFilter = Boolean(
     filters.status ||
     tenantId ||
@@ -511,6 +531,7 @@ const UsersContent = async ({
     filters.createdFrom ||
     filters.createdTo
   );
+
   const { nextHref, previousHref } = buildUsersPageHrefs(
     listFilters,
     result,

@@ -72,7 +72,10 @@ describe("LabelEyeCatchForm", () => {
   it("closes the image controls while the save is in flight", async () => {
     // Never resolved: the assertions are about the window the save is open in.
     const save = Promise.withResolvers<LabelActionState>();
-    const pendingAction = vi.fn(() => save.promise);
+
+    const pendingAction = vi.fn<
+      (state: LabelActionState, formData: FormData) => Promise<LabelActionState>
+    >(() => save.promise);
 
     await act(() => {
       render(
@@ -96,10 +99,9 @@ describe("LabelEyeCatchForm", () => {
         expect(control.disabled).toBe(true);
       }
     });
-    const [, formData] = pendingAction.mock.calls[0] as unknown as [
-      LabelActionState,
-      FormData,
-    ];
+
+    const [[, formData]] = pendingAction.mock.calls;
+
     expect(formData.get("label_id")).toBe("label-1");
     expect(formData.get("name")).toBe("Monthly Novels");
     expect(formData.get("current_eye_catch_image_updated_at")).toBe(

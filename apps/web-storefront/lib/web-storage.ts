@@ -46,12 +46,14 @@ export const writeWebStorage = (
   value: string
 ): void => {
   const id = entryId(area, key);
+
   try {
     storageFor(area).setItem(key, value);
     refusedWrites.delete(id);
   } catch {
     refusedWrites.set(id, value);
   }
+
   notify(id);
 };
 
@@ -74,11 +76,13 @@ export const subscribeToWebStorage = (
       listener();
     }
   };
+
   window.addEventListener("storage", onStorage);
 
   return () => {
     window.removeEventListener("storage", onStorage);
     entry.delete(listener);
+
     if (entry.size === 0) {
       listeners.delete(id);
     }
@@ -100,6 +104,7 @@ export const useWebStorage = (
     (listener: () => void) => subscribeToWebStorage(area, key, listener),
     [area, key]
   );
+
   const read = useCallback(() => readWebStorage(area, key), [area, key]);
 
   return useSyncExternalStore(subscribe, read, nothingOnServer);

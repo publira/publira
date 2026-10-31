@@ -103,6 +103,7 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
     async () => {
       await page.goto(episodeUrl);
       await openComments(page);
+
       return await read();
     },
     {
@@ -217,6 +218,7 @@ test.describe("web-storefront episode comments", () => {
 
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
+
     try {
       await signInAsMember(
         readerPage,
@@ -246,6 +248,7 @@ test.describe("web-storefront episode comments", () => {
     const body = uniqueCommentBody(
       "A comment its author will think better of."
     );
+
     await signInAsMember(
       page,
       EPISODE_COMMENTS_AUTHOR,
@@ -292,6 +295,7 @@ test.describe("web-storefront episode comments", () => {
 
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
+
     try {
       await signInAsMember(
         readerPage,

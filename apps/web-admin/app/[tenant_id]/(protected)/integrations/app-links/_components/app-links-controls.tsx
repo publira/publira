@@ -17,11 +17,13 @@ const AppLinksPlatformContext = createContext<AppLinksPlatformState | null>(
 
 const useAppLinksPlatform = (): AppLinksPlatformState => {
   const state = useContext(AppLinksPlatformContext);
+
   if (!state) {
     throw new Error(
       "AppLinksPlatform slots must be rendered inside an AppLinksPlatform."
     );
   }
+
   return state;
 };
 
@@ -43,6 +45,7 @@ const AppLinksPlatform = ({
   initialEnabled,
 }: AppLinksPlatformProps) => {
   const [enabled, setEnabled] = useState(() => initialEnabled);
+
   const state = useMemo(
     () => ({ disabled, enabled, setEnabled }),
     [disabled, enabled]

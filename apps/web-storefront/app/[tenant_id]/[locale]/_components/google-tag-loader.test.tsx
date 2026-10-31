@@ -39,7 +39,7 @@ afterEach(() => {
   cleanup();
   // oxlint-disable-next-line unicorn/no-document-cookie -- the test plays the browser the banner writes to
   document.cookie = `${COOKIE}=; Max-Age=0; Path=/`;
-  delete (window as Window & { dataLayer?: unknown }).dataLayer;
+  delete window.dataLayer;
 });
 
 const loaded = (container: HTMLElement): string[] =>
@@ -88,6 +88,7 @@ describe("GoogleTagLoader", () => {
 
   it("starts the tags with every signal denied when the tenant's own tool asks", () => {
     mockUsePathname.mockReturnValue("/");
+
     const { container } = render(
       <GoogleTagLoader
         {...scripts}
@@ -105,12 +106,14 @@ describe("GoogleTagLoader", () => {
 
   it("holds the tags back until the reader agrees on the site's banner", () => {
     mockUsePathname.mockReturnValue("/");
+
     const { container } = render(
       <GoogleTagLoader
         {...scripts}
         consent={{ cookieName: COOKIE, mode: "opt_in" }}
       />
     );
+
     expect(loaded(container)).toEqual(["publira-gtag-consent"]);
 
     act(() => {
@@ -132,6 +135,7 @@ describe("GoogleTagLoader", () => {
   it("loads the tags at once for a reader who agreed before", () => {
     mockUsePathname.mockReturnValue("/");
     answerAnalyticsConsent(COOKIE, "granted");
+
     const { container } = render(
       <GoogleTagLoader
         {...scripts}
@@ -144,6 +148,7 @@ describe("GoogleTagLoader", () => {
 
   it("starts nothing, not even the defaults, on a page that loads no tag", () => {
     mockUsePathname.mockReturnValue("/login");
+
     const { container } = render(
       <GoogleTagLoader
         {...scripts}

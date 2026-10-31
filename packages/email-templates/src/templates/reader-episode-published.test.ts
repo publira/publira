@@ -48,6 +48,7 @@ describe("ReaderEpisodePublishedEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -70,6 +71,7 @@ describe("ReaderEpisodePublishedEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

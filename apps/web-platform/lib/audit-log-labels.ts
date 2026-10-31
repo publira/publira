@@ -170,16 +170,19 @@ export const getActorRoleLabel = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (!role) {
     return t("platform.audit.unset");
   }
 
   const operatorLabel = await getOperatorRoleLabel(role, locale);
+
   if (operatorLabel !== role) {
     return operatorLabel;
   }
 
   const tenantLabel = await getTenantRoleLabel(role, locale);
+
   if (tenantLabel !== role) {
     return tenantLabel;
   }
@@ -188,9 +191,11 @@ export const getActorRoleLabel = async (
     case "platform_owner": {
       return t("platform.audit.actor_platform");
     }
+
     case "system": {
       return t("platform.audit.actor_system");
     }
+
     default: {
       return role;
     }

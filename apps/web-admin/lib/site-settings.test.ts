@@ -161,27 +161,41 @@ describe("getTenantSiteSettings", () => {
   });
 });
 
+/** The site copy the config RPC answers for one language. */
+interface SiteCopy {
+  copyrightText: string;
+  siteDescription: string;
+  siteTagline: string;
+}
+
 describe("getTenantSiteSettingsTabs", () => {
-  const copies: Record<string, object> = {
-    en: {
-      copyrightText: "",
-      siteDescription: "",
-      siteTagline: "Read in English",
-    },
-    ja: {
-      copyrightText: "",
-      siteDescription: "",
-      siteTagline: "Read in Japanese",
-    },
-    ko: { copyrightText: " ", siteDescription: "", siteTagline: "" },
-  };
+  const copies = new Map<string, SiteCopy>([
+    [
+      "en",
+      {
+        copyrightText: "",
+        siteDescription: "",
+        siteTagline: "Read in English",
+      },
+    ],
+    [
+      "ja",
+      {
+        copyrightText: "",
+        siteDescription: "",
+        siteTagline: "Read in Japanese",
+      },
+    ],
+    ["ko", { copyrightText: " ", siteDescription: "", siteTagline: "" }],
+  ]);
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetAccessToken.mockResolvedValue("session-token");
     mockGetTenantConfigApi.mockImplementation(
-      ({ locale }: { locale: string }) => Promise.resolve(copies[locale] ?? {})
+      ({ locale }: { locale: string }) =>
+        Promise.resolve(copies.get(locale) ?? {})
     );
   });
 
@@ -269,7 +283,7 @@ describe("getTenantSiteSettingsTabs", () => {
       ({ locale }: { locale: string }) =>
         locale === "ko"
           ? Promise.reject(new ConnectError("upstream down", Code.Unavailable))
-          : Promise.resolve(copies[locale] ?? {})
+          : Promise.resolve(copies.get(locale) ?? {})
     );
     const { getTenantSiteSettingsTabs } = await import("./site-settings");
 

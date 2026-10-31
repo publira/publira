@@ -67,6 +67,7 @@ const resolveEpisodeLinkIds = (
     ("episodeId" in episode ? episode.episodeId : undefined) ??
     ("episodePublicId" in episode ? episode.episodePublicId : undefined) ??
     "";
+
   const seriesId =
     ("seriesId" in episode ? episode.seriesId : undefined) ??
     ("seriesPublicId" in episode ? episode.seriesPublicId : undefined) ??
@@ -88,6 +89,7 @@ const resolveUpdatedSeriesLinkIds = (
       ? item.latestEpisodePublicId
       : undefined) ??
     "";
+
   const seriesId =
     ("seriesId" in item ? item.seriesId : undefined) ??
     ("seriesPublicId" in item ? item.seriesPublicId : undefined) ??
@@ -105,6 +107,7 @@ export const generateStaticParams = () =>
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [siteLabel, t, alternates] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
@@ -359,10 +362,12 @@ const GenresSection = async () => {
  */
 const WeeklyScheduleSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [timeZone, t] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
     getMessagesFor(locale),
   ]);
+
   const result = await getCatalogTopWeeklySchedule(tenantId, {
     locale,
     timeZone,
@@ -820,6 +825,7 @@ const NewEpisodesSection = async () => {
     <ol className="divide-y divide-border">
       {newEpisodes.map((episode) => {
         const ids = resolveEpisodeLinkIds(episode);
+
         if (!ids) {
           return null;
         }
@@ -930,6 +936,7 @@ const UpdatedSeriesSection = async () => {
     <ol className="divide-y divide-border">
       {updatedSeries.map((item) => {
         const ids = resolveUpdatedSeriesLinkIds(item);
+
         if (!ids) {
           return null;
         }

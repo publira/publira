@@ -163,15 +163,19 @@ const MfaDisableForm = ({
 
 const MfaStatusMessage = ({ status }: { status: AdminMfaStatus }) => {
   const hasPasskey = status.passkeys.length > 0;
+
   if (status.enabled && hasPasskey) {
     return <Message message="admin.settings.mfa.status_both" />;
   }
+
   if (status.enabled) {
     return <Message message="admin.settings.mfa.status_authenticator" />;
   }
+
   if (hasPasskey) {
     return <Message message="admin.settings.mfa.status_passkey" />;
   }
+
   return <Message message="admin.settings.mfa.status_disabled" />;
 };
 

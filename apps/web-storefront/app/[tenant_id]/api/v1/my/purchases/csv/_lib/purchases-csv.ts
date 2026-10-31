@@ -24,6 +24,7 @@ const neutralize = (field: string): string =>
 /** RFC 4180 quoting, applied only where the field needs it. */
 const encodeField = (raw: string): string => {
   const field = neutralize(raw);
+
   return NEEDS_QUOTES_RE.test(field)
     ? `"${field.replaceAll('"', '""')}"`
     : field;
@@ -39,6 +40,7 @@ const encodeRow = (fields: readonly string[]): string =>
  */
 const formatAmount = (amount: number, currency: string): string => {
   const digits = currencyFractionDigits(currency);
+
   return (amount / 10 ** digits).toFixed(digits);
 };
 
@@ -47,9 +49,11 @@ const purchaseStatus = (purchase: PurchaseItem): string => {
   if (purchase.refundedAt) {
     return "refunded";
   }
+
   if (purchase.revokedAt) {
     return "canceled";
   }
+
   return purchase.isActive ? "active" : "expired";
 };
 

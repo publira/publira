@@ -33,6 +33,7 @@ const noticeTitles = (page: Page) =>
  */
 const movePage = async (page: Page, label: string): Promise<void> => {
   const fromUrl = page.url();
+
   const fromLeadingTitle = await page
     .locator("article h3")
     .first()
@@ -123,6 +124,7 @@ test.describe("web-storefront member announcements", () => {
 
     const opened =
       (await page.locator("article h3").first().textContent()) ?? "";
+
     expect(opened).not.toBe("");
     await page
       .locator("article")
@@ -133,9 +135,11 @@ test.describe("web-storefront member announcements", () => {
 
     // Back on the same page of the list, that row is now read.
     await page.goto(secondPageUrl);
+
     const readNotice = page
       .locator("article")
       .filter({ has: page.getByRole("heading", { level: 3, name: opened }) });
+
     await expect(readNotice.getByText("Read", { exact: true })).toBeVisible();
   });
 

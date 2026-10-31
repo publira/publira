@@ -10,10 +10,12 @@
  */
 export const resolveWebServiceToken = (): string => {
   const token = process.env.PUBLIRA_WEB_SERVICE_TOKEN?.trim() ?? "";
+
   if (!token) {
     throw new Error(
       "PUBLIRA_WEB_SERVICE_TOKEN is not set: web-admin reads the tenant's catalog with the token publira server accepts as PUBLIRA_WEB_SERVICE_TOKEN"
     );
   }
+
   return token;
 };

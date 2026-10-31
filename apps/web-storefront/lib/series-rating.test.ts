@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getMySeriesRating } from "./series-rating";
 
 const { read, token } = vi.hoisted(() => ({ read: vi.fn(), token: vi.fn() }));
+
 vi.mock("./api-client", () => ({
   apiClient: { rating: { getMySeriesRating: read } },
   buildSessionHeaders: (session: string) => ({
@@ -12,9 +13,11 @@ vi.mock("./api-client", () => ({
   }),
   resolveAccessToken: token,
 }));
+
 beforeEach(() => {
   vi.resetAllMocks();
 });
+
 describe("getMySeriesRating", () => {
   it("Skips the RPC for guests", async () => {
     token.mockResolvedValue(null);

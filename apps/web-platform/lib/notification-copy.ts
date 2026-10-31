@@ -23,11 +23,13 @@ const labelSchema = z.string().trim().min(1);
  */
 const optionalResourceId = z.preprocess((value) => {
   const parsed = resourceIdSchema.safeParse(value);
+
   return parsed.success ? parsed.data : undefined;
 }, resourceIdSchema.optional());
 
 const optionalLabel = z.preprocess((value) => {
   const parsed = labelSchema.safeParse(value);
+
   return parsed.success ? parsed.data : undefined;
 }, labelSchema.optional());
 
@@ -72,16 +74,19 @@ const episodeSubject = async (
       series: payload.series_title,
     });
   }
+
   if (payload.episode_title) {
     return t("platform.notifications.events.subject_episode", {
       episode: payload.episode_title,
     });
   }
+
   if (payload.series_title) {
     return t("platform.notifications.events.subject_series", {
       series: payload.series_title,
     });
   }
+
   return t("platform.notifications.events.subject_unnamed");
 };
 
@@ -95,11 +100,13 @@ export const notificationHref = (
   if (payload.tenant_id) {
     return `/tenants/${payload.tenant_id}`;
   }
+
   return undefined;
 };
 
 export const parseNotificationPayload = (raw: string): NotificationPayload => {
   const trimmed = raw.trim();
+
   if (!trimmed) {
     return {};
   }
@@ -107,6 +114,7 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
   try {
     const parsed: unknown = JSON.parse(trimmed);
     const result = payloadSchema.safeParse(parsed);
+
     return result.success ? result.data : {};
   } catch {
     return {};
@@ -126,6 +134,7 @@ const publishFailedDescription = async (
     getMessagesFor(locale),
     episodeSubject(locale, payload),
   ]);
+
   if (payload.tenant_name) {
     return t(
       "platform.notifications.events.publish_failed_description_tenant",

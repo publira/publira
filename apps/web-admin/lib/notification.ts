@@ -35,13 +35,13 @@ export const notificationsCacheTag = (tenantId: string): string =>
   `notifications-${tenantId.trim()}`;
 
 const mapErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallback, { locale });
+): string => rpcErrorMessage(cause, fallback, { locale });
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 /**
  * A `"use cache"` fill must not throw. Classify inside the cache scope, return
@@ -99,8 +99,10 @@ const readNotificationList = async (
   cacheTag(notificationsCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: t("errors.rpc.unauthenticated"),
@@ -134,6 +136,7 @@ const readNotificationList = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: mapErrorMessage(
@@ -158,8 +161,10 @@ const readUnreadNotificationCount = async (
   cacheTag(notificationsCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -182,6 +187,7 @@ const readUnreadNotificationCount = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: mapErrorMessage(
         error,
@@ -208,14 +214,17 @@ export const listNotifications = async (
   options: CursorPageOptions = {}
 ): Promise<ListNotificationsResult> => {
   const sessionId = await getAccessToken();
+
   const [{ unexpected, ...result }, t] = await Promise.all([
     readNotificationList(tenantId, options, locale, sessionId),
     getMessagesFor(locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("admin.notifications.list_failed") : result.message
   );
+
   return result;
 };
 
@@ -229,14 +238,17 @@ export const countUnreadNotifications = async (
   locale: Locale
 ): Promise<CountUnreadNotificationsResult> => {
   const sessionId = await getAccessToken();
+
   const [{ unexpected, ...result }, t] = await Promise.all([
     readUnreadNotificationCount(tenantId, locale, sessionId),
     getMessagesFor(locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("admin.notifications.count_failed") : result.message
   );
+
   return result;
 };
 
@@ -251,6 +263,7 @@ export const markNotificationAsRead = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -266,10 +279,12 @@ export const markNotificationAsRead = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,
@@ -291,6 +306,7 @@ export const markAllNotificationsAsRead = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -303,6 +319,7 @@ export const markAllNotificationsAsRead = async (
       { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return {
       markedCount: response.markedCount ?? 0,
       ok: true,
@@ -310,6 +327,7 @@ export const markAllNotificationsAsRead = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,

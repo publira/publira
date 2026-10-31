@@ -37,6 +37,7 @@ export interface AdminLayoutCurrentUser {
  */
 const getConsoleTenantName = async (): Promise<string> => {
   const tenantId = await getTenantId();
+
   return (await getTenantName(tenantId)) ?? "";
 };
 

@@ -10,12 +10,14 @@ const listFormatterCache = new Map<string, Intl.ListFormat>();
 
 const getListFormatter = (intlLocale: string): Intl.ListFormat => {
   const cached = listFormatterCache.get(intlLocale);
+
   if (cached) {
     return cached;
   }
 
   const formatter = new Intl.ListFormat(intlLocale);
   listFormatterCache.set(intlLocale, formatter);
+
   return formatter;
 };
 

@@ -40,6 +40,7 @@ export const parseSeriesFilters = (
   input: ParseSeriesFiltersInput
 ): SeriesFilters => {
   const parsed = seriesFiltersSchema.parse(input);
+
   return {
     ageRating: parsed.age_rating,
     status: parsed.status,

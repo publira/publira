@@ -2,7 +2,11 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { optionalTrimmedString, revisionFormSchema } from "#lib/form-schemas";
+import {
+  isFormText,
+  optionalTrimmedString,
+  revisionFormSchema,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
   SEARCH_ANALYSIS_MAX_BYTES,
@@ -17,7 +21,9 @@ const isEngineUrl = (value: string): boolean => {
   if (!URL.canParse(value)) {
     return false;
   }
+
   const url = new URL(value);
+
   return (
     (url.protocol === "http:" || url.protocol === "https:") &&
     url.host !== "" &&
@@ -71,7 +77,7 @@ export const searchFormSchema = async (locale: Locale) => {
       }),
       index: optionalTrimmedString(200),
       password: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z.string()
       ),
       passwordUpdateMode: z.preprocess(
@@ -89,6 +95,7 @@ export const searchFormSchema = async (locale: Locale) => {
       if (value.engine === "sql") {
         return;
       }
+
       if (!value.url) {
         ctx.addIssue({
           code: "custom",
@@ -102,6 +109,7 @@ export const searchFormSchema = async (locale: Locale) => {
           path: ["url"],
         });
       }
+
       if (!isIndexAlias(value.index)) {
         ctx.addIssue({
           code: "custom",
@@ -109,9 +117,11 @@ export const searchFormSchema = async (locale: Locale) => {
           path: ["index"],
         });
       }
+
       if (value.credentialMode !== "basic") {
         return;
       }
+
       if (!value.username) {
         ctx.addIssue({
           code: "custom",
@@ -119,6 +129,7 @@ export const searchFormSchema = async (locale: Locale) => {
           path: ["username"],
         });
       }
+
       if (
         value.passwordUpdateMode === SEARCH_PASSWORD_REPLACE &&
         !value.password
@@ -129,6 +140,7 @@ export const searchFormSchema = async (locale: Locale) => {
           path: ["password"],
         });
       }
+
       if (isEngineUrl(value.url) && new URL(value.url).protocol !== "https:") {
         ctx.addIssue({
           code: "custom",
@@ -148,6 +160,7 @@ export const searchFormSchema = async (locale: Locale) => {
           username: "",
         };
       }
+
       if (credentialMode === "none") {
         return {
           ...value,
@@ -156,6 +169,7 @@ export const searchFormSchema = async (locale: Locale) => {
           username: "",
         };
       }
+
       return {
         ...value,
         password:
@@ -173,13 +187,13 @@ export const searchAnalysisFormFields = {
   revision: "value",
 } as const;
 
+const isObjectValue = (parsed: unknown): parsed is object =>
+  typeof parsed === "object" && parsed !== null && !Array.isArray(parsed);
+
 /** Whether `value` parses as one JSON object, which is all a definition can be. */
 const isJsonObject = (value: string): boolean => {
   try {
-    const parsed: unknown = JSON.parse(value);
-    return (
-      typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
-    );
+    return isObjectValue(JSON.parse(value));
   } catch {
     return false;
   }
@@ -208,6 +222,7 @@ const compactJson = (json: string): string => {
       } else if (char === '"') {
         inString = false;
       }
+
       out += char;
     } else if (char === '"') {
       inString = true;
@@ -216,6 +231,7 @@ const compactJson = (json: string): string => {
       out += char;
     }
   }
+
   return out;
 };
 
@@ -234,7 +250,7 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
   return z
     .object({
       analysis: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z.string()
       ),
       // Empty is the shared definition.
@@ -244,13 +260,16 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
           .string()
           .transform((value, ctx) => {
             const code = parseLocale(value);
+
             if (!code) {
               ctx.addIssue({
                 code: "custom",
                 message: t("platform.search.analysis.locale_invalid"),
               });
+
               return z.NEVER;
             }
+
             return code;
           })
           .optional()
@@ -272,11 +291,14 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
           message: t("platform.search.analysis.intent_invalid"),
           path: ["intent"],
         });
+
         return z.NEVER;
       }
+
       if (value.intent !== "replace") {
         return value;
       }
+
       if (!value.analysis) {
         ctx.addIssue({
           code: "custom",
@@ -285,17 +307,22 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
             : t("platform.search.analysis.required"),
           path: ["analysis"],
         });
+
         return z.NEVER;
       }
+
       if (!isJsonObject(value.analysis)) {
         ctx.addIssue({
           code: "custom",
           message: t("platform.search.analysis.not_object"),
           path: ["analysis"],
         });
+
         return z.NEVER;
       }
+
       const analysis = compactJson(value.analysis);
+
       if (
         new TextEncoder().encode(analysis).length > SEARCH_ANALYSIS_MAX_BYTES
       ) {
@@ -304,8 +331,10 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
           message: t("platform.search.analysis.too_large"),
           path: ["analysis"],
         });
+
         return z.NEVER;
       }
+
       return { ...value, analysis };
     });
 };

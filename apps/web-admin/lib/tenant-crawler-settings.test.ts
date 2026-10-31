@@ -84,6 +84,7 @@ describe("tenant-crawler-settings", () => {
 
     const { getTenantCrawlerSettings } =
       await import("./tenant-crawler-settings");
+
     const result = await getTenantCrawlerSettings(" TENANT001 ", "en");
 
     expect(result).toEqual({
@@ -159,6 +160,7 @@ describe("tenant-crawler-settings", () => {
 
     const { getTenantCrawlerSettings } =
       await import("./tenant-crawler-settings");
+
     const result = await getTenantCrawlerSettings("TENANT001", "en");
 
     expect(result.ok).toBe(false);
@@ -192,6 +194,7 @@ describe("tenant-crawler-settings", () => {
 
     const { updateTenantCrawlerSettings } =
       await import("./tenant-crawler-settings");
+
     const result = await updateTenantCrawlerSettings(
       {
         excludedPaths: ["/drafts/", "/drafts"],
@@ -242,6 +245,7 @@ describe("tenant-crawler-settings", () => {
 
       const { updateTenantCrawlerSettings } =
         await import("./tenant-crawler-settings");
+
       const result = await updateTenantCrawlerSettings(
         {
           excludedPaths: ["/drafts", "/members"],

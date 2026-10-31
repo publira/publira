@@ -14,9 +14,13 @@ export const settleCachedRead = <
   unexpected,
   ...result
 }: CachedRead<TResult>): TResult => {
+  // SAFETY: `result` is a `CachedRead<TResult>` with only `unexpected` taken
+  // out, and `unexpected` is not a field of `TResult`.
   const settled = result as TResult;
+
   if (unexpected && !settled.ok) {
     throw new Error(settled.message);
   }
+
   return settled;
 };

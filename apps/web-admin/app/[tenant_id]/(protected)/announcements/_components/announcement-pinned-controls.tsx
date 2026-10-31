@@ -14,11 +14,13 @@ const AnnouncementPinnedContext =
 
 const useAnnouncementPinned = () => {
   const context = use(AnnouncementPinnedContext);
+
   if (!context) {
     throw new Error(
       "AnnouncementPinned slots must be rendered inside AnnouncementPinned."
     );
   }
+
   return context;
 };
 

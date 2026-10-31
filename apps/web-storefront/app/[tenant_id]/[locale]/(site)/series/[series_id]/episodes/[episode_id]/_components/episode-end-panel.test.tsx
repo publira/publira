@@ -188,6 +188,7 @@ describe("EpisodeEndPanel", () => {
     const share = screen.getByRole("button", {
       name: "Share Episode 2 Second light",
     });
+
     expect(
       share.dataset.path,
       "the share control hands over this episode's own page"

@@ -48,6 +48,7 @@ const ReaderIconPolicySelection = ({
 }) => {
   const [choice, setChoice] = useState<TenantReaderIconPolicy>();
   const selected = choice ?? saved;
+
   const clearance =
     selected === undefined ? "none" : readerIconPolicyClearance(selected);
 

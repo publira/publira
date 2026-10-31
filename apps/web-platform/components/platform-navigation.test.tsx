@@ -39,9 +39,11 @@ const currentHrefs = () =>
 /** The hrefs of the items listed under the section with this title. */
 const sectionHrefs = (title: string) => {
   const section = screen.getByText(title).parentElement;
+
   if (!section) {
     throw new Error(`No section is titled ${title}`);
   }
+
   return within(section)
     .getAllByRole("link")
     .map((link) => link.getAttribute("href"));

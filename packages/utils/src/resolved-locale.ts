@@ -92,6 +92,7 @@ export const applyResolvedLocaleCookie = (
     if (current !== undefined) {
       response.cookies.delete(RESOLVED_LOCALE_COOKIE_NAME);
     }
+
     return response;
   }
 

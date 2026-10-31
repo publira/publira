@@ -12,6 +12,7 @@ import { randomUUID } from "node:crypto";
 
 const envUrl = (name: string, fallback: string): string => {
   const value = process.env[name]?.trim();
+
   return value && value.length > 0 ? value.replace(/\/$/u, "") : fallback;
 };
 
@@ -108,6 +109,7 @@ export const PUBLIC_API_BASE_URL = envUrl(
 export const withHostname = (baseUrl: string, hostname: string): string => {
   const url = new URL(baseUrl);
   url.hostname = hostname;
+
   return url.toString().replace(/\/$/u, "");
 };
 

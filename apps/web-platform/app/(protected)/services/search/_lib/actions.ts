@@ -53,6 +53,7 @@ const toSearchInput = (
 const parseSearchForm = async (formData: FormData) => {
   const locale = await getPlatformLocale();
   const schema = await searchFormSchema(locale);
+
   return {
     locale,
     parsed: schema.safeParse(toFormDataInput(formData, searchFormFields)),
@@ -65,6 +66,7 @@ export const updatePlatformSearchSettingsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const { locale, parsed } = await parseSearchForm(formData);
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -76,6 +78,7 @@ export const updatePlatformSearchSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -84,6 +87,7 @@ export const updatePlatformSearchSettingsAction = async (
   updateTag(platformAuditLogsCacheTag);
 
   const t = await getMessagesFor(locale);
+
   return {
     message:
       result.settings.buildState === "building"
@@ -106,13 +110,16 @@ export const updatePlatformSearchAnalysisAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [schema, t] = await Promise.all([
     searchAnalysisFormSchema(locale),
     getMessagesFor(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, searchAnalysisFormFields)
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -122,21 +129,25 @@ export const updatePlatformSearchAnalysisAction = async (
   }
 
   const current = await getPlatformSearchSettings();
+
   if (!current.ok) {
     return { message: current.message, ok: false };
   }
+
   // The saved values are the ones the request restates, so they have to be
   // the ones the editor was rendered beside: a newer save would otherwise be
   // restated under the old revision, which the API refuses anyway.
   if (current.settings.revision !== String(parsed.data.revision)) {
     return { message: t("platform.search.save_conflict"), ok: false };
   }
+
   if (current.settings.engine === "sql") {
     return { message: t("platform.search.analysis.sql_engine"), ok: false };
   }
 
   const { settings } = current;
   const { analysis, analysisLocale, intent } = parsed.data;
+
   const change: Pick<PlatformSearchInput, "analysis" | "localeAnalyses"> =
     analysisLocale
       ? {
@@ -156,6 +167,7 @@ export const updatePlatformSearchAnalysisAction = async (
               ? { definition: analysis, mode: "replace" }
               : { mode: "default" },
         };
+
   const result = await withPlatformSessionReauth(() =>
     updatePlatformSearchSettings(
       {
@@ -171,6 +183,7 @@ export const updatePlatformSearchAnalysisAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     // The reason sits next to the editor; the form's own message says only
     // that nothing was saved, rather than repeating it.
@@ -201,6 +214,7 @@ export const testPlatformSearchConnectionAction = async (
 ): Promise<PlatformSearchTestState> => {
   await assertSameOrigin();
   const { locale, parsed } = await parseSearchForm(formData);
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -218,6 +232,7 @@ export const testPlatformSearchConnectionAction = async (
 
   const t = await getMessagesFor(locale);
   const { failure, succeeded } = result.result;
+
   return {
     message: succeeded ? t("platform.search.test.succeeded") : failure,
     ok: succeeded,

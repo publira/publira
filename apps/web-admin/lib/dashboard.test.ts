@@ -180,6 +180,7 @@ describe("dashboard", () => {
     if (!result.ok) {
       throw new Error("Expected ok result");
     }
+
     expect(result.queue[0].status).toBe("draft");
   });
 
@@ -218,6 +219,7 @@ describe("the operator check before a shared read", () => {
       "getDashboard",
       async () => {
         const { getDashboard } = await import("./dashboard");
+
         return await getDashboard();
       },
       mockGetDashboardApi,

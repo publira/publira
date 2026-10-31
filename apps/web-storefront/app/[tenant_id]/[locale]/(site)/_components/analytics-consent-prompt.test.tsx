@@ -30,7 +30,7 @@ afterEach(() => {
   mockUsePathname.mockReturnValue("/");
   // oxlint-disable-next-line unicorn/no-document-cookie -- the test plays the browser the banner writes to
   document.cookie = `${COOKIE}=; Max-Age=0; Path=/`;
-  delete (window as Window & { dataLayer?: unknown }).dataLayer;
+  delete window.dataLayer;
 });
 
 const banner = () =>
@@ -72,7 +72,7 @@ describe("AnalyticsConsentPrompt", () => {
 
   it("comes back from Cookie settings, and the changed answer is sent to Google", async () => {
     // The defaults the loader runs, which the answers are sent against.
-    (window as unknown as { dataLayer: unknown[] }).dataLayer = [
+    window.dataLayer = [
       { 0: "consent", 1: "default", 2: { analytics_storage: "denied" } },
     ];
     await renderChrome();
@@ -84,10 +84,14 @@ describe("AnalyticsConsentPrompt", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Decline" }));
     expect(banner()).toBeNull();
-    const { dataLayer = [] } = window as unknown as {
-      dataLayer?: Iterable<unknown>[];
-    };
-    expect(dataLayer.slice(1).map((entry) => [...entry].slice(0, 3))).toEqual([
+
+    // The commands `gtag()` pushed are `arguments` objects, whose own values
+    // are the command's arguments.
+    const { dataLayer = [] } = window;
+
+    expect(
+      dataLayer.slice(1).map((entry) => Object.values(entry).slice(0, 3))
+    ).toEqual([
       [
         "consent",
         "update",

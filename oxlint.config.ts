@@ -1,4 +1,5 @@
 import { defineConfig } from "oxlint";
+import antiSlop from "ultracite/oxlint/anti-slop";
 import core from "ultracite/oxlint/core";
 import jsPlugins, { jsPluginSettings } from "ultracite/oxlint/js-plugins";
 import next from "ultracite/oxlint/next";
@@ -6,13 +7,39 @@ import nextJsPlugins from "ultracite/oxlint/next/js-plugins";
 import react from "ultracite/oxlint/react";
 
 export default defineConfig({
-  extends: [core, react, next, jsPlugins, nextJsPlugins],
+  extends: [core, react, next, jsPlugins, nextJsPlugins, antiSlop],
   ignorePatterns: [
     ...(core.ignorePatterns ?? []),
     "**/gen/**",
     ".agents/skills/**",
   ],
   overrides: [
+    {
+      /**
+       * Next.js calls the code these tests exercise — a page, a layout, a
+       * Server Action, a Route Handler, and the components they render — with
+       * its own arguments only, and that code reaches `next/*`, the session,
+       * and the API client by importing them. No parameter is left for a test
+       * to hand it a fake through, so replacing the module is the only seam.
+       */
+      files: ["**/*.test.{ts,tsx}"],
+      rules: {
+        "anti-slop/no-module-mocking": "off",
+      },
+    },
+    {
+      // `Shapes` is the name lucide gives the icon the genre navigation shows,
+      // a picture of shapes rather than the structure of a value.
+      files: [
+        "packages/icons/src/index.ts",
+        "packages/icons/src/shapes-icon.tsx",
+        "packages/icons/src/shapes-icon.test.tsx",
+        "apps/web-admin/components/admin-navigation.tsx",
+      ],
+      rules: {
+        "anti-slop/no-shape-in-symbol-names": "off",
+      },
+    },
     {
       // These name the address ranges themselves: the proxies a request's
       // forwarded chain is believed from, and the addresses a tenant's server

@@ -56,6 +56,7 @@ const hexColorCodeSchema = async (locale: Locale) => {
     .regex(/^#[0-9a-fA-F]{6}$/u, t("admin.settings.theme.validation.hex_color"))
     .transform((value) => value.toLowerCase());
 };
+
 const tenantThemeColorsSchema = async (locale: Locale) => {
   const hexColorCode = await hexColorCodeSchema(locale);
 
@@ -106,6 +107,12 @@ const tenantThemeSchema = async (locale: Locale) => {
   });
 };
 
+/** The labels the two fields of a contrast pair carry on the form. */
+interface ThemeContrastPairLabels {
+  background: string;
+  foreground: string;
+}
+
 /**
  * The labels the two fields of a contrast pair carry on the form, keyed by the
  * pair's background. Every pair `findThemeTextContrastIssues` reports has a
@@ -114,7 +121,7 @@ const tenantThemeSchema = async (locale: Locale) => {
 const themeContrastPairLabels = (
   pair: ThemeContrastPair,
   t: AdminMessageAccessor
-): { background: string; foreground: string } => {
+): ThemeContrastPairLabels => {
   switch (pair.background) {
     case "primaryColor": {
       return {
@@ -122,60 +129,70 @@ const themeContrastPairLabels = (
         foreground: t("admin.settings.theme.colors.primary_foreground.label"),
       };
     }
+
     case "secondaryColor": {
       return {
         background: t("admin.settings.theme.colors.secondary.label"),
         foreground: t("admin.settings.theme.colors.secondary_foreground.label"),
       };
     }
+
     case "accentColor": {
       return {
         background: t("admin.settings.theme.colors.accent.label"),
         foreground: t("admin.settings.theme.colors.accent_foreground.label"),
       };
     }
+
     case "backgroundColor": {
       return {
         background: t("admin.settings.theme.colors.background.label"),
         foreground: t("admin.settings.theme.colors.foreground.label"),
       };
     }
+
     case "surfaceColor": {
       return {
         background: t("admin.settings.theme.colors.surface.label"),
         foreground: t("admin.settings.theme.colors.surface_foreground.label"),
       };
     }
+
     case "cardColor": {
       return {
         background: t("admin.settings.theme.colors.card.label"),
         foreground: t("admin.settings.theme.colors.card_foreground.label"),
       };
     }
+
     case "popoverColor": {
       return {
         background: t("admin.settings.theme.colors.popover.label"),
         foreground: t("admin.settings.theme.colors.popover_foreground.label"),
       };
     }
+
     case "mutedColor": {
       return {
         background: t("admin.settings.theme.colors.muted.label"),
         foreground: t("admin.settings.theme.colors.muted_foreground.label"),
       };
     }
+
     case "successColor": {
       return {
         background: t("admin.settings.theme.colors.success.label"),
         foreground: t("admin.settings.theme.colors.success_foreground.label"),
       };
     }
+
     case "warningColor": {
       return {
         background: t("admin.settings.theme.colors.warning.label"),
         foreground: t("admin.settings.theme.colors.warning_foreground.label"),
       };
     }
+
     case "destructiveColor": {
       return {
         background: t("admin.settings.theme.colors.destructive.label"),
@@ -184,12 +201,14 @@ const themeContrastPairLabels = (
         ),
       };
     }
+
     case "infoColor": {
       return {
         background: t("admin.settings.theme.colors.info.label"),
         foreground: t("admin.settings.theme.colors.info_foreground.label"),
       };
     }
+
     default: {
       return { background: pair.background, foreground: pair.foreground };
     }
@@ -209,6 +228,7 @@ const themeContrastPairLabels = (
  * request someone posts directly.
  */
 const BRANDING_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
 const BRANDING_IMAGE_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -229,6 +249,7 @@ const brandingImageFileSchema = async (locale: Locale) => {
       error: t("admin.settings.image.unsupported_type"),
     });
 };
+
 /** Upload and delete share one Action, told apart by `intent`. */
 const tenantIconSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -245,6 +266,7 @@ const tenantIconSchema = async (locale: Locale) => {
     }),
   ]);
 };
+
 /** Upload and delete share one Action, told apart by `intent`. */
 const tenantLogoSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -261,6 +283,7 @@ const tenantLogoSchema = async (locale: Locale) => {
     }),
   ]);
 };
+
 /** Upload and delete share one Action, told apart by `intent`. */
 const tenantSignInImageSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -286,9 +309,11 @@ const tenantSignInImageSchema = async (locale: Locale) => {
  */
 const tenantBrandMarkSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const kind = z.enum(BRAND_MARK_KINDS, {
     error: t("admin.settings.brand_marks.kind_invalid"),
   });
+
   const tenantId = requiredTrimmedString(t("admin.settings.tenant_missing"));
 
   return z.discriminatedUnion("intent", [
@@ -367,6 +392,8 @@ const parseThemeFormData = <TInput>(
   formData: FormData,
   fieldMap: readonly (readonly [string, string])[]
 ): TInput =>
+  // SAFETY: every caller's `fieldMap` names each field of `TInput`, and every
+  // field of a theme schema's input is the string a color or font field posts.
   Object.fromEntries(
     fieldMap.map(([field, formName]) => [
       field,
@@ -380,7 +407,7 @@ const mapThemeFieldErrors = (
 ): ThemeSettingsFieldErrors =>
   Object.fromEntries(
     fieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
-  ) as ThemeSettingsFieldErrors;
+  );
 
 const mapThemeContrastFieldErrors = async (
   issues: ReturnType<typeof findThemeTextContrastIssues>,
@@ -391,18 +418,20 @@ const mapThemeContrastFieldErrors = async (
   return Object.fromEntries(
     issues.flatMap((issue) => {
       const labels = themeContrastPairLabels(issue, t);
+
       const message = t("admin.settings.theme.validation.contrast", {
         actual: issue.ratio.toFixed(2),
         background: labels.background,
         foreground: labels.foreground,
         minimum: String(THEME_TEXT_CONTRAST_MIN_RATIO),
       });
+
       return [
         [issue.background, message],
         [issue.foreground, message],
       ];
     })
-  ) as ThemeSettingsFieldErrors;
+  );
 };
 
 export const updateTenantThemeSettingsAction = async (
@@ -413,6 +442,7 @@ export const updateTenantThemeSettingsAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return {
       message: t("admin.settings.tenant_missing"),
@@ -421,6 +451,7 @@ export const updateTenantThemeSettingsAction = async (
   }
 
   const schema = await tenantThemeSchema(locale);
+
   const parsed = schema.safeParse(
     parseThemeFormData<TenantThemeSchemaInput>(
       formData,
@@ -440,6 +471,7 @@ export const updateTenantThemeSettingsAction = async (
   }
 
   const contrastIssues = findThemeTextContrastIssues(parsed.data);
+
   if (contrastIssues.length > 0) {
     return {
       fieldErrors: await mapThemeContrastFieldErrors(contrastIssues, locale),
@@ -482,11 +514,14 @@ export const updateTenantDarkThemeAction = async (
 ): Promise<DarkThemeSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, colorsSchema] = await Promise.all([
     getMessagesFor(locale),
     tenantThemeColorsSchema(locale),
   ]);
+
   const schema = colorsSchema.extend(tenantIdInputSchema(t).shape);
+
   const parsed = schema.safeParse({
     ...parseThemeFormData<z.input<typeof schema>>(
       formData,
@@ -497,6 +532,7 @@ export const updateTenantDarkThemeAction = async (
 
   if (!parsed.success) {
     const { fieldErrors } = parsed.error.flatten();
+
     if (fieldErrors.tenantId) {
       return {
         message: t("admin.settings.tenant_missing"),
@@ -517,6 +553,7 @@ export const updateTenantDarkThemeAction = async (
   const { tenantId } = parsed.data;
 
   const contrastIssues = findThemeTextContrastIssues(parsed.data);
+
   if (contrastIssues.length > 0) {
     return {
       fieldErrors: await mapThemeContrastFieldErrors(contrastIssues, locale),
@@ -554,9 +591,11 @@ export const deleteTenantDarkThemeAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = tenantIdInputSchema(t).safeParse(
     toFormDataInput(formData, tenantIdFormFields)
   );
+
   if (!parsed.success) {
     return {
       message: t("admin.settings.tenant_missing"),
@@ -565,6 +604,7 @@ export const deleteTenantDarkThemeAction = async (
   }
 
   const { tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     deleteTenantDarkThemeSettings(tenantId, locale)
   );
@@ -592,10 +632,12 @@ export const updateTenantIconAction = async (
 ): Promise<TenantIconActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantIconSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       icon: { kind: "file", name: "icon" },
@@ -603,6 +645,7 @@ export const updateTenantIconAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
@@ -656,10 +699,12 @@ export const updateTenantLogoAction = async (
 ): Promise<TenantLogoActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantLogoSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       intent: { kind: "value", name: "intent" },
@@ -667,6 +712,7 @@ export const updateTenantLogoAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
@@ -720,10 +766,12 @@ export const updateTenantSignInImageAction = async (
 ): Promise<TenantSignInImageActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantSignInImageSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       image: { kind: "file", name: "sign_in_image" },
@@ -731,6 +779,7 @@ export const updateTenantSignInImageAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
@@ -784,10 +833,12 @@ export const updateTenantBrandMarkAction = async (
 ): Promise<TenantBrandMarkActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantBrandMarkSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       image: { kind: "file", name: "image" },
@@ -798,6 +849,7 @@ export const updateTenantBrandMarkAction = async (
       termsUrl: { kind: "value", name: "terms_url" },
     })
   );
+
   if (!parsed.success) {
     // The fields sit in a dialog that has closed by the time this answers, so
     // the message is the form's.

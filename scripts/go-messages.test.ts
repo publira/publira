@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import type { CatalogTree } from "./catalog-leaves.ts";
 import { renderGoMessages } from "./go-messages.ts";
 import { goLocaleEntries, goString } from "./go-source.ts";
 
@@ -10,10 +11,10 @@ const locales = [
 ];
 
 const catalogs = (
-  japanese: Record<string, unknown>,
-  english: Record<string, unknown>
-): Map<string, unknown> =>
-  new Map<string, unknown>([
+  japanese: CatalogTree,
+  english: CatalogTree
+): Map<string, CatalogTree> =>
+  new Map<string, CatalogTree>([
     ["ja", { checkout: {}, email: japanese }],
     ["en", { checkout: {}, email: english }],
   ]);

@@ -52,6 +52,7 @@ export const findAgentCoAuthors = (message: string): string[] =>
 
 const main = async () => {
   const path = process.argv.at(2);
+
   if (path === undefined) {
     console.error("usage: node scripts/check-agent-trailer.ts <message-file>");
     process.exitCode = 2;
@@ -60,6 +61,7 @@ const main = async () => {
   }
 
   const findings = findAgentCoAuthors(await readFile(path, "utf-8"));
+
   if (findings.length === 0) {
     return;
   }
@@ -67,6 +69,7 @@ const main = async () => {
   for (const finding of findings) {
     console.error(`co-author trailer names an AI agent: ${finding}`);
   }
+
   console.error(
     [
       "",

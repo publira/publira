@@ -17,6 +17,7 @@ import {
 } from "#lib/contact-message";
 import { assertSameOrigin } from "#lib/csrf";
 import {
+  isFormText,
   optionalRecordId,
   requiredRecordId,
   requiredTrimmedString,
@@ -70,9 +71,11 @@ const mark = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await contactMessageActionSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, contactMessageActionFormFields)
   );
+
   if (!parsed.success) {
     return {
       state: {
@@ -92,6 +95,7 @@ const mark = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { state: { message: result.message, ok: false } };
   }
@@ -107,9 +111,11 @@ export const markContactMessageHandledAction = async (
   formData: FormData
 ): Promise<ActionForm.State> => {
   const outcome = await mark(true, formData);
+
   if ("state" in outcome) {
     return outcome.state;
   }
+
   redirect(
     `/contact-messages/${encodeURIComponent(outcome.publicId)}?handled=1`
   );
@@ -120,9 +126,11 @@ export const reopenContactMessageAction = async (
   formData: FormData
 ): Promise<ActionForm.State> => {
   const outcome = await mark(false, formData);
+
   if ("state" in outcome) {
     return outcome.state;
   }
+
   redirect(
     `/contact-messages/${encodeURIComponent(outcome.publicId)}?reopened=1`
   );
@@ -161,9 +169,11 @@ export const assignContactMessageAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await assignActionSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, assignActionFormFields)
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -181,6 +191,7 @@ export const assignContactMessageAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -201,7 +212,7 @@ const staffNoteActionSchema = async (locale: Locale) => {
     // Counted in code points rather than by `.max()`, which counts UTF-16 code
     // units and would refuse a note full of emoji the API still accepts.
     staffNote: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim() : ""),
+      (value) => (isFormText(value) ? value.trim() : ""),
       z.string().refine(
         (value) => [...value].length <= CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH,
         t("admin.contact_messages.validation.staff_note_too_long", {
@@ -231,9 +242,11 @@ export const updateContactMessageStaffNoteAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await staffNoteActionSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, staffNoteActionFormFields)
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -251,6 +264,7 @@ export const updateContactMessageStaffNoteAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -271,7 +285,7 @@ const replyActionSchema = async (locale: Locale) => {
     // The reader's own form bounds the message the same way: required once
     // trimmed, and counted in code points as the API counts characters.
     body: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim() : ""),
+      (value) => (isFormText(value) ? value.trim() : ""),
       z
         .string()
         .min(1, t("admin.contact_messages.reply.validation.body_required"))
@@ -304,9 +318,11 @@ export const replyToContactMessageAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await replyActionSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, replyActionFormFields)
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -324,6 +340,7 @@ export const replyToContactMessageAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

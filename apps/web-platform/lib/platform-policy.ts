@@ -96,7 +96,9 @@ export const platformPolicyCacheTag = "platform:policy";
 export const platformRetentionDefaultsCacheTag = "platform:retention-defaults";
 
 type RawMinuteDay = Pick<MinuteDayLimit, "perDay" | "perMinute">;
+
 type RawHourDay = Pick<HourDayLimit, "perDay" | "perHour">;
+
 type RawCommunityLimitDefaults = Pick<
   CommunityLimitDefaults,
   | "commentPost"
@@ -108,6 +110,7 @@ type RawCommunityLimitDefaults = Pick<
   | "notificationSettings"
   | "viewerPreferences"
 >;
+
 type RawPlatformPolicy = Pick<
   RawPlatformPolicyMessage,
   | "communityLimitDefaults"
@@ -123,6 +126,7 @@ type RawPlatformPolicy = Pick<
   | "tenantCoinsAllowed"
   | "waitFreeTicketUse"
 >;
+
 type RawRetentionPeriods = Pick<
   RetentionPeriods,
   | "contentEventDays"
@@ -189,13 +193,14 @@ export const toPlatformRetentionDefaults = (
  * screen comes back as soon as the API does.
  */
 const readFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<{ message: string; ok: false }> => {
   dropFailedCacheEntry();
   const t = await getMessagesFor(locale);
+
   return {
-    message: rpcErrorMessage(error, t("platform.policy.load_failed"), {
+    message: rpcErrorMessage(cause, t("platform.policy.load_failed"), {
       locale,
     }),
     ok: false,
@@ -214,6 +219,7 @@ const getPlatformPolicyForLocale = async (
       {},
       withServiceHeaders()
     );
+
     return {
       ok: true,
       revision: String(response.revision),
@@ -234,6 +240,7 @@ export const getPlatformPolicy = async (): Promise<
   GetPlatformSettingsRowResult<PlatformPolicy>
 > => {
   await verifyPlatformSession();
+
   return getPlatformPolicyForLocale(await getPlatformLocale());
 };
 
@@ -249,6 +256,7 @@ const getPlatformRetentionDefaultsForLocale = async (
       {},
       withServiceHeaders()
     );
+
     return {
       ok: true,
       revision: String(response.revision),
@@ -267,6 +275,7 @@ export const getPlatformRetentionDefaults = async (): Promise<
   GetPlatformSettingsRowResult<PlatformRetentionDefaults>
 > => {
   await verifyPlatformSession();
+
   return getPlatformRetentionDefaultsForLocale(await getPlatformLocale());
 };
 
@@ -280,16 +289,17 @@ const OPERATOR_MFA_REQUIREMENT_FIELD =
  * anything on screen, so the screen's own wording replaces it.
  */
 const saveFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<{ message: string; ok: false }> => {
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
   const t = await getMessagesFor(locale);
+
   // The same failed precondition as a stale revision, but about the install:
   // a server that cannot seal an authenticator secret refuses to require one
   // of every operator, since nobody could then finish signing in.
-  if (rpcErrorHasFieldViolation(error, OPERATOR_MFA_REQUIREMENT_FIELD)) {
+  if (rpcErrorHasFieldViolation(cause, OPERATOR_MFA_REQUIREMENT_FIELD)) {
     return {
       message: t(
         "platform.policy.security.mfa_required_for_platform_operator_unavailable"
@@ -297,8 +307,9 @@ const saveFailure = async (
       ok: false,
     };
   }
+
   return {
-    message: rpcErrorMessage(error, t("platform.policy.save_failed"), {
+    message: rpcErrorMessage(cause, t("platform.policy.save_failed"), {
       locale,
       overrides: {
         "invalid-argument": t("platform.policy.save_invalid"),
@@ -324,8 +335,10 @@ const savePlatformPolicy = async (
   locale: Locale
 ): Promise<SavePlatformSettingsRowResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
@@ -334,6 +347,7 @@ const savePlatformPolicy = async (
       {},
       buildSessionHeaders(sessionId)
     );
+
     const { community, security } = edit(toPlatformPolicy(current.policy));
 
     await apiClient.policy.updatePlatformPolicy(
@@ -381,8 +395,10 @@ export const updatePlatformRetentionDefaults = async (
   locale: Locale
 ): Promise<SavePlatformSettingsRowResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 

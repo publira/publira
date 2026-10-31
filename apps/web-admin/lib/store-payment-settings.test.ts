@@ -108,6 +108,7 @@ describe("store-payment-settings", () => {
 
     const { getTenantStorePaymentSettings } =
       await import("./store-payment-settings");
+
     const result = await getTenantStorePaymentSettings("TENANT001", "en");
 
     expect(result).toEqual({ ok: true, settings: screenSettings });
@@ -132,6 +133,7 @@ describe("store-payment-settings", () => {
 
     const { getTenantStorePaymentSettings } =
       await import("./store-payment-settings");
+
     const result = await getTenantStorePaymentSettings("TENANT001", "en");
 
     expect(JSON.stringify(result)).not.toContain(leakedPrivateKey);
@@ -145,6 +147,7 @@ describe("store-payment-settings", () => {
 
     const { getTenantStorePaymentSettings } =
       await import("./store-payment-settings");
+
     const result = await getTenantStorePaymentSettings("TENANT001", "en");
 
     expect(result).toEqual({
@@ -167,6 +170,7 @@ describe("store-payment-settings", () => {
 
     const { getTenantStorePaymentSettings } =
       await import("./store-payment-settings");
+
     const result = await getTenantStorePaymentSettings("TENANT001", "en");
 
     expect(result).toEqual({
@@ -204,6 +208,7 @@ describe("store-payment-settings", () => {
 
     const { updateTenantStorePaymentSettings } =
       await import("./store-payment-settings");
+
     const result = await updateTenantStorePaymentSettings(updateInput, "en");
 
     expect(result).toEqual({ ok: true, settings: screenSettings });
@@ -241,6 +246,7 @@ describe("store-payment-settings", () => {
 
     const { updateTenantStorePaymentSettings } =
       await import("./store-payment-settings");
+
     const result = await updateTenantStorePaymentSettings(updateInput, "en");
 
     expect(result).toEqual({
@@ -268,6 +274,7 @@ describe("store-payment-settings", () => {
 
     const { updateTenantStorePaymentSettings } =
       await import("./store-payment-settings");
+
     const result = await updateTenantStorePaymentSettings(updateInput, "en");
 
     expect(result).toEqual({
@@ -313,6 +320,7 @@ describe("store-payment-settings", () => {
 
     const { listTenantStoreProducts } =
       await import("./store-payment-settings");
+
     const result = await listTenantStoreProducts("TENANT001", "en");
 
     expect(result).toEqual({
@@ -345,6 +353,7 @@ describe("store-payment-settings", () => {
 
     const { listTenantStoreProducts } =
       await import("./store-payment-settings");
+
     const result = await listTenantStoreProducts("TENANT001", "en");
 
     expect(result).toEqual({

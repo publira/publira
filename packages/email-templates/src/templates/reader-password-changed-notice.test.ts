@@ -45,6 +45,7 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -66,6 +67,7 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -87,6 +89,7 @@ describe("ReaderPasswordChangedNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

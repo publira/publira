@@ -60,9 +60,11 @@ const EntryListContext = createContext<EntryListContextValue | null>(null);
 
 const useEntryListContext = (): EntryListContextValue => {
   const context = use(EntryListContext);
+
   if (!context) {
     throw new Error("An entry list slot must sit inside <EntryList>.");
   }
+
   return context;
 };
 
@@ -83,9 +85,11 @@ const EntryListRowContext = createContext<EntryListRowValue | null>(null);
  */
 const useEntryListRow = (): EntryListRowValue => {
   const row = use(EntryListRowContext);
+
   if (!row) {
     throw new Error("useEntryListRow must be called inside <EntryListRows>.");
   }
+
   return row;
 };
 
@@ -142,20 +146,24 @@ const EntryList = ({
       const [first, ...rest] = splitPastedEntries(
         event.clipboardData.getData("text")
       );
+
       if (first === undefined || rest.length === 0) {
         return;
       }
+
       event.preventDefault();
       const input = event.currentTarget;
       const start = input.selectionStart ?? input.value.length;
       const end = input.selectionEnd ?? start;
       const value = `${input.value.slice(0, start)}${first}${input.value.slice(end)}`;
       const firstNewId = nextRowId(rows);
+
       const added = rest.map((entry, index) => ({
         id: firstNewId + index,
         touched: true,
         value: entry,
       }));
+
       const position = rows.findIndex((row) => row.id === id);
       setRows([
         ...rows.slice(0, position),
@@ -192,6 +200,7 @@ const EntryListRow = ({
   row: EntryRow;
 }) => {
   const position = String(index + 1);
+
   const context = useMemo(
     () => ({ id, position, touched, value }),
     [id, position, touched, value]

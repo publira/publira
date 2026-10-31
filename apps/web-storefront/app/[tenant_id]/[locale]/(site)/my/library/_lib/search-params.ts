@@ -7,6 +7,7 @@ export const defaultPurchasesPageSize = 20;
 interface ParsePurchasesSearchParamsInput {
   token?: string | string[];
 }
+
 export interface PurchasesSearchParams {
   token: string;
 }

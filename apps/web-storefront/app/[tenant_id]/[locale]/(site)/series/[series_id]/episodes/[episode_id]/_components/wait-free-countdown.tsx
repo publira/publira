@@ -15,6 +15,7 @@ const TICK_MS = 1000;
 
 const subscribeToClock = (onTick: () => void) => {
   const timer = setInterval(onTick, TICK_MS);
+
   return () => clearInterval(timer);
 };
 
@@ -45,6 +46,7 @@ export const WaitFreeCountdown = ({
   nextAvailableAt: string;
 }) => {
   const locale = useLocale();
+
   const minutesLeft = useSyncExternalStore(
     subscribeToClock,
     () => minutesUntil(nextAvailableAt, Temporal.Now.instant()),

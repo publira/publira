@@ -45,6 +45,7 @@ describe("AdminConsoleEmailChangedNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -67,6 +68,7 @@ describe("AdminConsoleEmailChangedNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

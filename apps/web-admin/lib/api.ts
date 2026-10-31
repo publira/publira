@@ -10,6 +10,7 @@ import { resolveWebServiceToken } from "./web-service-token";
 
 const readForwardedHeaders = async () => {
   const requestHeaders = await headers();
+
   return forwardedHeadersOf(requestHeaders);
 };
 
@@ -50,5 +51,6 @@ export const withServiceHeaders = (): SessionCallOptions => ({
 export const withClientAddressHeaders =
   async (): Promise<SessionCallOptions> => {
     const forwarded = await readForwardedHeaders();
+
     return { headers: forwarded };
   };

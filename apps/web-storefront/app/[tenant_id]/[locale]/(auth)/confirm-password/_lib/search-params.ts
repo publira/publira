@@ -25,6 +25,7 @@ export const parseConfirmPasswordSearchParams = (
   input: ParseConfirmPasswordSearchParamsInput
 ): ConfirmPasswordSearchParams => {
   const parsed = confirmPasswordSearchParamsSchema.parse(input);
+
   return {
     errorMessage: parsed.error || undefined,
     token: parsed.token,

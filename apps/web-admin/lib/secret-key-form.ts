@@ -6,7 +6,11 @@ import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
 } from "./email-settings-shared";
-import { flagOneFormSchema, optionalFileFormSchema } from "./form-schemas";
+import {
+  flagOneFormSchema,
+  isFormText,
+  optionalFileFormSchema,
+} from "./form-schemas";
 
 /** A key file is a few kilobytes; anything far larger is not one. */
 const MAX_SECRET_KEY_FILE_BYTES = 64 * 1024;
@@ -23,10 +27,7 @@ export const secretKeySchema = (fileTooLarge: string) =>
       fileTooLarge
     ),
     mode: z.enum(SECRET_KEY_MODES),
-    text: z.preprocess(
-      (value) => (typeof value === "string" ? value : ""),
-      z.string()
-    ),
+    text: z.preprocess((value) => (isFormText(value) ? value : ""), z.string()),
   });
 
 type SecretKeyInput = z.output<ReturnType<typeof secretKeySchema>>;
@@ -46,7 +47,9 @@ export const toSecretKeyUpdate = async (
   if (key.mode === "clear") {
     return { mode: SECRET_UPDATE_MODE_CLEAR, value: "" };
   }
+
   const value = (key.file ? await key.file.text() : key.text).trim();
+
   return value === ""
     ? { mode: SECRET_UPDATE_MODE_UNCHANGED, value: "" }
     : { mode: SECRET_UPDATE_MODE_REPLACE, value };

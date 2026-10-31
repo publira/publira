@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+/** The JSON `/readyz` answers. */
+interface Readiness {
+  status?: string;
+}
+
 /**
  * Health probes must not depend on tenant Host resolution.
  * Failures here usually mean the stack is not ready (or died mid-run).
@@ -18,7 +23,8 @@ test.describe("web-storefront health probes", () => {
     const trimmed = body.trim();
     expect(response.status(), trimmed).toBe(200);
 
-    const json = JSON.parse(trimmed) as { status?: string };
+    // SAFETY: the JSON web-storefront's `/readyz` Route Handler answers.
+    const json = JSON.parse(trimmed) as Readiness;
     expect(json.status).toBe("ok");
   });
 });

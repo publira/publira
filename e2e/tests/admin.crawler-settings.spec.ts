@@ -20,6 +20,7 @@ import { WEB_ADMIN_CRAWLER_SETTINGS_BASE_URL } from "../src/urls";
 
 const SAVE = "Save the crawler exclusions";
 const SAVED = "The crawler exclusions were saved.";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
 
@@ -34,8 +35,8 @@ const pathField = (page: Page, position: number) =>
   page.getByRole("textbox", { exact: true, name: `Path ${position}` });
 
 const pathValues = (page: Page) =>
-  pathFields(page).evaluateAll((fields) =>
-    fields.map((field) => (field as HTMLInputElement).value)
+  pathFields(page).evaluateAll((fields: HTMLInputElement[]) =>
+    fields.map((field) => field.value)
   );
 
 /** The stored row, as `user agents|paths`, or empty while there is none. */

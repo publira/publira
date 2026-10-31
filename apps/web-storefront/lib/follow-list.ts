@@ -73,14 +73,17 @@ export interface ListMyFollowsInput {
   token?: string;
 }
 
-const emptyFollowPage = {
-  follows: [] as FollowListEntry[],
+const emptyFollowPage: Pick<
+  ListMyFollowsResult,
+  "follows" | "nextToken" | "previousToken"
+> = {
+  follows: [],
   nextToken: "",
   previousToken: "",
 };
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 /**
  * Only an expired or missing session sends the reader back through login.
@@ -88,8 +91,8 @@ const isUnexpectedError = (error: unknown): boolean =>
  * the base64url shape check and still be rejected by `ListMyFollows`.
  * Treating that as sign-in would bounce the same `?token=` URL after login.
  */
-const isSignInRequiredError = (error: unknown): boolean =>
-  isRpcError(error, Code.Unauthenticated);
+const isSignInRequiredError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.Unauthenticated);
 
 const throwIfUnexpected = (unexpected: boolean, message: string): void => {
   if (unexpected) {
@@ -101,9 +104,11 @@ const mapMyFollow = (item: RawMyFollow): FollowListEntry | null => {
   const publicId = item.targetPublicId?.trim() ?? "";
   const targetId = item.targetId?.trim() ?? "";
   const targetKind = toFollowTargetKind(item.targetType);
+
   if (!(publicId && targetId && targetKind)) {
     return null;
   }
+
   return {
     followedAt: item.followedAt ?? "",
     publicId,
@@ -146,6 +151,7 @@ const readFollowList = async (
 
   const { locale } = input;
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     return {
       ...emptyFollowPage,
@@ -166,9 +172,11 @@ const readFollowList = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       follows: (response.follows ?? []).flatMap((item) => {
         const mapped = mapMyFollow(item);
+
         return mapped ? [mapped] : [];
       }),
       nextToken: response.nextToken ?? "",
@@ -178,6 +186,7 @@ const readFollowList = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyFollowPage,
       message: rpcErrorMessage(error, t("storefront.settings.follows_failed"), {
@@ -198,10 +207,12 @@ export const listMyFollows = async (
     readFollowList(tenantId, input, await resolveAccessToken()),
     getMessagesFor(input.locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("storefront.settings.follows_failed") : result.message
   );
+
   return result;
 };
 
@@ -226,22 +237,28 @@ export const resolveFollowListItems = async (
           follow.publicId,
           { limit: 1, locale }
         );
+
         if (!result.ok) {
           return availableItem(follow, follow.publicId);
         }
+
         if (!result.value) {
           return unavailableItem(follow, unpublishedTitle);
         }
+
         return availableItem(follow, result.value.name);
       }
 
       const result = await getSeriesDetail(tenantId, follow.publicId, locale);
+
       if (!result.ok) {
         return availableItem(follow, follow.publicId);
       }
+
       if (!result.value) {
         return unavailableItem(follow, unpublishedTitle);
       }
+
       return availableItem(follow, result.value.series.title);
     })
   );

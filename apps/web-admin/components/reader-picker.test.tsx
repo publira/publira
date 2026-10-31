@@ -133,6 +133,7 @@ describe("ReaderPicker", () => {
 
   it("searches once typing pauses rather than on every keystroke", async () => {
     vi.useFakeTimers();
+
     try {
       render(<ReaderPicker name="reader_id" />);
 

@@ -41,26 +41,30 @@ const concatBytes = (
   return output;
 };
 
+/** Claims that carry the `sub` a media token names its viewer by. */
+const hasSubject = (claims: unknown): claims is { sub: string } =>
+  typeof claims === "object" &&
+  claims !== null &&
+  "sub" in claims &&
+  typeof claims.sub === "string";
+
 const subjectFromMediaToken = (token: string): string | null => {
   const [, payload] = token.split(".");
+
   if (!payload) {
     return null;
   }
 
   const bytes = decodeBase64Url(payload);
+
   if (!bytes) {
     return null;
   }
 
   try {
     const claims: unknown = JSON.parse(textDecoder.decode(bytes));
-    if (
-      typeof claims === "object" &&
-      claims !== null &&
-      "sub" in claims &&
-      typeof claims.sub === "string" &&
-      claims.sub.length > 0
-    ) {
+
+    if (hasSubject(claims) && claims.sub.length > 0) {
       return claims.sub;
     }
   } catch {
@@ -96,16 +100,19 @@ const signHmacSha256 = async (
   data: Uint8Array<ArrayBuffer>
 ): Promise<Uint8Array<ArrayBuffer>> => {
   const signature = await crypto.subtle.sign("HMAC", key, data);
+
   return new Uint8Array(signature);
 };
 
 const xorByte = (left: number, right: number): number => {
   let output = 0;
+
   for (let place = 1; place <= 128; place *= 2) {
     const leftBit = Math.floor(left / place) % 2;
     const rightBit = Math.floor(right / place) % 2;
     output += (leftBit + rightBit) % 2 === 0 ? 0 : place;
   }
+
   return output;
 };
 
@@ -123,6 +130,7 @@ const decryptStreamBlocks = async (
     STREAM_BATCH_SIZE,
     Math.ceil((input.byteLength - offset) / STREAM_BLOCK_BYTES)
   );
+
   const streams = await Promise.all(
     Array.from({ length: blockCount }, (_, index) => {
       const counterBytes = new Uint8Array(8);
@@ -130,12 +138,14 @@ const decryptStreamBlocks = async (
         0,
         BigInt(offset / STREAM_BLOCK_BYTES + index)
       );
+
       return signHmacSha256(key, counterBytes);
     })
   );
 
   for (const [index, stream] of streams.entries()) {
     const streamOffset = offset + index * STREAM_BLOCK_BYTES;
+
     for (
       let streamIndex = 0;
       streamIndex < stream.byteLength &&
@@ -177,6 +187,7 @@ export const decryptImageBuffer = async (
   token: string
 ): Promise<ArrayBuffer> => {
   const tokenKey = await importHmacKey(textEncoder.encode(token));
+
   const key = await signHmacSha256(
     tokenKey,
     concatBytes(
@@ -186,6 +197,7 @@ export const decryptImageBuffer = async (
       textEncoder.encode(keyID)
     )
   );
+
   const input = new Uint8Array(ciphertext);
   const plaintext = new Uint8Array(input.byteLength);
   await decryptStreamBlocks(input, await importHmacKey(key), plaintext);
@@ -198,9 +210,11 @@ const decryptImageResponse = async (
   url: string
 ): Promise<{ buffer: ArrayBuffer; contentType?: string }> => {
   const algorithm = response.headers.get(IMAGE_ENCRYPTION_HEADER);
+
   if (algorithm === null) {
     return { buffer: await response.arrayBuffer() };
   }
+
   if (algorithm !== IMAGE_ENCRYPTION_ALGORITHM) {
     throw new Error(`unsupported image encryption algorithm: ${algorithm}`);
   }
@@ -209,6 +223,7 @@ const decryptImageResponse = async (
   const keyID = response.headers.get(IMAGE_KEY_ID_HEADER);
   const token = mediaTokenFromUrl(url);
   const subject = token ? subjectFromMediaToken(token) : null;
+
   if (!contentType?.startsWith("image/") || !keyID || !token || !subject) {
     // Throwing here reaches the viewer as this page's own load failure, which
     // draws the reload control over it and leaves the rest of the body alone.
@@ -254,6 +269,7 @@ const requestPage = (url: string, signal: AbortSignal): Promise<Response> =>
  */
 const renewedAtWidthOf = (candidate: string, renewed: string): string => {
   const width = renditionWidthOf(candidate);
+
   return width === undefined ? renewed : atRenditionWidth(renewed, width);
 };
 
@@ -295,27 +311,33 @@ export const createImageFetchPlugin = (renewPageUrl?: RenewPageUrl) => {
       const kept = renewedUrls.get(page.id);
       let source = kept === undefined ? url : renewedAtWidthOf(url, kept);
       let response = await requestPage(source, signal);
+
       if (renewPageUrl && RENEWABLE_STATUSES.has(response.status)) {
         const renewed = await renewOrNothing(renewPageUrl, page);
+
         const sized =
           renewed === undefined ? source : renewedAtWidthOf(url, renewed);
+
         if (renewed !== undefined && sized !== source) {
           renewedUrls.set(page.id, renewed);
           source = sized;
           response = await requestPage(source, signal);
         }
       }
+
       if (!response.ok) {
         throw new Error(`page request failed with ${response.status}`);
       }
 
       const image = await decryptImageResponse(response, source);
+
       // Manael may have converted a JPEG/PNG source to WebP or AVIF. The viewer
       // decodes its buffer using this page metadata, so make its MIME type agree
       // with the post-decryption response rather than the original upload.
       if (image.contentType) {
         page.mimeType = image.contentType;
       }
+
       return image.buffer;
     },
     name: "decrypt-and-accept-negotiated-images",

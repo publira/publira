@@ -42,21 +42,27 @@ const NotRefundableNote = ({ purchase }: { purchase: PurchaseItem }) => {
   if (purchase.refundedAt || purchase.revocationReason === "refund") {
     return null;
   }
+
   if (purchase.revocationReason === "staff") {
     return <Message message="admin.purchases.refund_pending" />;
   }
+
   if (purchase.revocationReason === "dispute") {
     return <Message message="admin.purchases.not_refundable.dispute" />;
   }
+
   if (purchase.store) {
     return <Message message="admin.purchases.not_refundable.store" />;
   }
+
   if (!purchase.provider) {
     return <Message message="admin.purchases.not_refundable.no_payment" />;
   }
+
   if (purchase.provider === "coins") {
     return <Message message="admin.purchases.not_refundable.coins" />;
   }
+
   return <Message message="admin.purchases.not_refundable.provider" />;
 };
 
@@ -66,12 +72,15 @@ const RevocationReasonLabel = ({ purchase }: { purchase: PurchaseItem }) => {
     case "dispute": {
       return <Message message="admin.purchases.revocation_reason.dispute" />;
     }
+
     case "refund": {
       return <Message message="admin.purchases.revocation_reason.refund" />;
     }
+
     case "staff": {
       return <Message message="admin.purchases.revocation_reason.staff" />;
     }
+
     default: {
       return null;
     }
@@ -100,6 +109,7 @@ export const PurchaseDetail = async ({
     getMessagesFor(locale),
     getPurchase(tenantId, purchaseId, locale),
   ]);
+
   await redirectToLoginIfSessionRejected(result);
 
   if (!result.ok) {
@@ -118,6 +128,7 @@ export const PurchaseDetail = async ({
   }
 
   const { purchase } = result;
+
   if (!purchase) {
     return (
       <p className="text-sm text-muted-foreground">

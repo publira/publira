@@ -39,6 +39,7 @@ const form = (
   { icon = png() }: { icon?: Blob | string | null } = {}
 ) => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     locale: "en",
     tenantId: TENANT_ID,
@@ -46,9 +47,11 @@ const form = (
   })) {
     data.set(name, value);
   }
+
   if (icon !== null) {
     data.set("icon", icon);
   }
+
   return data;
 };
 

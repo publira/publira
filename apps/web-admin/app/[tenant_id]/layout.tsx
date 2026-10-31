@@ -14,7 +14,7 @@ import { Message } from "#components/message";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantName } from "#lib/public-api";
-import { isTenantIdFormat } from "#lib/tenant-id-format";
+import { isRootParamValue, isTenantIdFormat } from "#lib/tenant-id-format";
 
 import "../globals.css";
 
@@ -23,9 +23,11 @@ export const generateStaticParams = () =>
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await tenant_id();
-  if (typeof tenantId !== "string") {
+
+  if (!isRootParamValue(tenantId)) {
     return {};
   }
+
   guardPlaceholder(tenantId);
 
   // A segment that is not a tenant UUID never went through `proxy.ts`, so there
@@ -36,6 +38,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   // `blocking-prerender-metadata-dynamic`. Deciding before the read keeps the
   // metadata static, and the not-found page titles itself.
   const normalizedTenantId = tenantId.trim();
+
   if (!isTenantIdFormat(normalizedTenantId)) {
     return {};
   }
@@ -44,6 +47,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   // costs the shell nothing: metadata is resolved in its own pass and streamed
   // into the document, so this read stays out of the route's static shell.
   const locale = await getLocale(normalizedTenantId);
+
   // `getTenantName` degrades to `null` when the public API is unavailable, so
   // an outage leaves the console titled "Admin console" instead of failing
   // every route.
@@ -51,6 +55,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
     getMessagesFor(locale),
     getTenantName(normalizedTenantId),
   ]);
+
   const base = tenantName
     ? t("admin.shell.tenant_title", { name: tenantName })
     : t("admin.shell.title");

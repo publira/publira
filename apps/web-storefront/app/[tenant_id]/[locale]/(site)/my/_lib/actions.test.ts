@@ -50,6 +50,7 @@ const billingForm = (): FormData => {
   const data = new FormData();
   data.set("locale", "en");
   data.set("tenantId", tenantId);
+
   return data;
 };
 

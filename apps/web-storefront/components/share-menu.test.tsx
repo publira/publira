@@ -6,14 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ShareMenu } from "./share-menu";
 
 vi.mock("./client-message", () => {
-  const messages: Record<string, string> = {
-    "storefront.share.action": "Share",
-    "storefront.share.copied": "Link copied",
-    "storefront.share.copy_failed": "Could not copy the link",
-    "storefront.share.copy_link": "Copy link",
-    "storefront.share.line": "Share on LINE",
-    "storefront.share.x": "Share on X",
-  };
+  const messages = new Map([
+    ["storefront.share.action", "Share"],
+    ["storefront.share.copied", "Link copied"],
+    ["storefront.share.copy_failed", "Could not copy the link"],
+    ["storefront.share.copy_link", "Copy link"],
+    ["storefront.share.line", "Share on LINE"],
+    ["storefront.share.x", "Share on X"],
+  ]);
 
   return {
     useClientMessages:
@@ -21,7 +21,7 @@ vi.mock("./client-message", () => {
       (key: string, values?: Record<string, string>): string =>
         key === "storefront.share.aria"
           ? `Share “${values?.title}”`
-          : (messages[key] ?? key),
+          : (messages.get(key) ?? key),
   };
 });
 
@@ -29,7 +29,10 @@ const TITLE = "Published Series";
 const TEXT = "Published Series by Published Author";
 const URL_UNDER_TEST = "https://example.test/en/series/SR01";
 
-const setNavigator = (key: "clipboard" | "share", value: unknown) => {
+const setNavigator = (
+  key: "clipboard" | "share",
+  value: Navigator["share"] | Partial<Clipboard> | undefined
+) => {
   Object.defineProperty(navigator, key, {
     configurable: true,
     value,

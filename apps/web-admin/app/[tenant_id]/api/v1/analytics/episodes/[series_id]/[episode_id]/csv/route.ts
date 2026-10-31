@@ -24,6 +24,7 @@ export const GET = async (
 ) => {
   const path = dropOffPathSchema.safeParse(await params);
   const query = statsCsvQuerySchema.safeParse(searchParamsOf(request));
+
   if (!(path.success && query.success)) {
     return notFound();
   }

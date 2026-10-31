@@ -14,9 +14,11 @@ vi.mock("./csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 

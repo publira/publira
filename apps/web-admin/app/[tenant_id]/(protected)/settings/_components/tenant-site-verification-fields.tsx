@@ -34,9 +34,11 @@ const CodeFieldContext = createContext<CodeFieldContextValue | null>(null);
 
 const useCodeField = (): CodeFieldContextValue => {
   const context = use(CodeFieldContext);
+
   if (!context) {
     throw new Error("A code field slot must sit inside <CodeField>.");
   }
+
   return context;
 };
 
@@ -61,6 +63,7 @@ const CodeField = ({
   const refused = state?.ok === false && state.fieldErrors?.[service];
 
   const result = parseSiteVerificationCode(service, value);
+
   const error =
     touched && !result.ok
       ? siteVerificationCodeMessage(t, service, result.reason)
@@ -71,9 +74,11 @@ const CodeField = ({
       error,
       leave: () => {
         const left = parseSiteVerificationCode(service, value);
+
         if (left.ok) {
           setValue(left.code);
         }
+
         setTouched(true);
       },
       service,
@@ -139,6 +144,7 @@ export const TenantSiteVerificationFields = ({
   const [saved, setSaved] = useState<TenantSiteVerification>(
     () => initialSiteVerification ?? { bing: "", google: "" }
   );
+
   // Bumped by each save, which remounts the fields on what the server stored.
   const [savedCount, setSavedCount] = useState(0);
 
@@ -146,6 +152,7 @@ export const TenantSiteVerificationFields = ({
     if (!settled?.ok) {
       return;
     }
+
     setSaved(settled.siteVerification);
     setSavedCount((count) => count + 1);
   });

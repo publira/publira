@@ -1,5 +1,4 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import type { PublicApiClient } from "@publira/api-client/public/client";
 import { GoogleTagServingMode } from "@publira/api-client/public/types";
 import { describe, expect, it, vi } from "vitest";
 
@@ -110,17 +109,22 @@ describe("toGoogleTagGateway", () => {
 /** `revalidatedAt` answering `null` stands for a Redis that cannot be read. */
 const setup = (options?: { revalidatedAt?: () => number | null }) => {
   let clock = 1000;
+
   const getTenantAnalyticsSettings = vi.fn(() =>
     Promise.resolve({ googleTag: gatewayTag() })
   );
+
   const readRevalidatedAt = vi.fn((_tag: string) => {
     const value = options?.revalidatedAt ? options.revalidatedAt() : 0;
+
     return Promise.resolve(value ?? undefined);
   });
+
   const resolve = createGoogleTagGatewayResolver(
-    { tenant: { getTenantAnalyticsSettings } } as unknown as PublicApiClient,
+    { tenant: { getTenantAnalyticsSettings } },
     { now: () => clock, readRevalidatedAt }
   );
+
   return {
     advance: (ms: number) => {
       clock += ms;
@@ -149,6 +153,7 @@ describe("createGoogleTagGatewayResolver", () => {
 
   it("drops a regenerated path once the settings tag is revalidated", async () => {
     let revalidatedAt: number | null = 0;
+
     const { advance, getTenantAnalyticsSettings, now, resolve } = setup({
       revalidatedAt: () => revalidatedAt,
     });
@@ -169,6 +174,7 @@ describe("createGoogleTagGatewayResolver", () => {
 
   it("answers no gateway once the tenant leaves the gateway mode", async () => {
     let revalidatedAt: number | null = 0;
+
     const { advance, getTenantAnalyticsSettings, now, resolve } = setup({
       revalidatedAt: () => revalidatedAt,
     });
@@ -186,6 +192,7 @@ describe("createGoogleTagGatewayResolver", () => {
 
   it("keeps the gateway it holds when the read fails", async () => {
     let revalidatedAt: number | null = 0;
+
     const { advance, getTenantAnalyticsSettings, now, resolve } = setup({
       revalidatedAt: () => revalidatedAt,
     });

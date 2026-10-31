@@ -2,6 +2,7 @@ import { cn } from "@publira/utils";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 type DlProps = ComponentPropsWithoutRef<"dl">;
+
 type DivProps = ComponentPropsWithoutRef<"div">;
 
 /**

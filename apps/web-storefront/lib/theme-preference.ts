@@ -22,6 +22,7 @@ export const parseThemePreference = (value: string | null): ThemePreference =>
  */
 export const applyThemePreference = (preference: ThemePreference): void => {
   const root = document.documentElement;
+
   if (preference === "system") {
     delete root.dataset.theme;
   } else {

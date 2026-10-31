@@ -68,6 +68,7 @@ export const EpisodeRatingGate = async ({
           tenantId,
         })
       : undefined;
+
   if (ageRestriction) {
     return (
       <EpisodeGateFrame

@@ -20,6 +20,7 @@ import { SearchStatus } from "./_components/search-status";
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   return { title: t("platform.search.page_title") };
 };
 

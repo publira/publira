@@ -105,9 +105,11 @@ describe("ContactMessageExchange", () => {
     renderExchange([staffAnswer]);
 
     const [entry] = within(screen.getByRole("list")).getAllByRole("listitem");
+
     if (!entry) {
       throw new Error("no entry was rendered");
     }
+
     const time = entry.querySelector("time");
     expect(time?.getAttribute("datetime")).toBe(staffAnswer.createdAt);
     // 01:00 UTC is 10:00 in Seoul.

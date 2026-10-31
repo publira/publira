@@ -27,6 +27,7 @@ const EPISODE_PRICE = 500;
  */
 const scheduledPeriod = () => {
   const startsAt = Temporal.Now.instant().add({ hours: 24 });
+
   return { endsAt: startsAt.add({ hours: 48 }), startsAt };
 };
 
@@ -101,12 +102,15 @@ test.describe("admin campaign prices", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Campaign price series ${suffix}`,
       title: `E2E Campaign Price ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       price: EPISODE_PRICE,
       seriesPublicId: seriesId,
@@ -155,12 +159,15 @@ test.describe("admin campaign prices", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Campaign price sale ${suffix}`,
       title: `E2E Campaign Price Sale ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     // Created one after another: each lands at the end of the series, so the
     // order they are created in is the order the list shows.
     const first = await createEpisodeViaUi(page, {
@@ -168,11 +175,13 @@ test.describe("admin campaign prices", () => {
       seriesPublicId: seriesId,
       title: `E2E Sale One ${suffix}`,
     });
+
     const second = await createEpisodeViaUi(page, {
       price: EPISODE_PRICE,
       seriesPublicId: seriesId,
       title: `E2E Sale Two ${suffix}`,
     });
+
     const third = await createEpisodeViaUi(page, {
       price: EPISODE_PRICE,
       seriesPublicId: seriesId,

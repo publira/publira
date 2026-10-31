@@ -28,18 +28,23 @@ const TransactionKind = ({ kind }: { kind: CoinTransactionItem["kind"] }) => {
     case "grant": {
       return <Message message="storefront.coins.kind_grant" />;
     }
+
     case "spend": {
       return <Message message="storefront.coins.kind_spend" />;
     }
+
     case "revocation": {
       return <Message message="storefront.coins.kind_revocation" />;
     }
+
     case "expiry": {
       return <Message message="storefront.coins.kind_expiry" />;
     }
+
     case "shortfall": {
       return <Message message="storefront.coins.kind_shortfall" />;
     }
+
     default: {
       return <Message message="storefront.coins.kind_settlement" />;
     }
@@ -59,15 +64,18 @@ const TransactionAmount = ({
   transaction: CoinTransactionItem;
 }) => {
   const values = { coin_name: coinName, count: transaction.coins };
+
   switch (transaction.kind) {
     case "grant": {
       return (
         <Message message="storefront.coins.amount_added" values={values} />
       );
     }
+
     case "shortfall": {
       return <Message message="storefront.coins.amount_owed" values={values} />;
     }
+
     default: {
       return (
         <Message message="storefront.coins.amount_removed" values={values} />
@@ -92,6 +100,7 @@ const TransactionRow = ({
     locale,
     timeZone,
   });
+
   const { episode } = transaction;
 
   return (
@@ -162,6 +171,7 @@ export const CoinHistory = async ({
     getLocale(),
     searchParams.then(parseCoinsSearchParams),
   ]);
+
   const [result, t, timeZone] = await Promise.all([
     listMyCoinTransactions(tenantId, { locale, token }),
     getMessagesFor(locale),
@@ -171,6 +181,7 @@ export const CoinHistory = async ({
   if (!result.ok && result.requiresSignIn) {
     await redirectToLogin(locale, coinsPageHref(token), tenantId);
   }
+
   if (!result.ok) {
     return (
       <SectionError.Root>
@@ -185,12 +196,14 @@ export const CoinHistory = async ({
       </SectionError.Root>
     );
   }
+
   // The tenant turned its coins off after the page read them.
   if (!result.value) {
     return null;
   }
 
   const { coinName, nextToken, previousToken, transactions } = result.value;
+
   if (transactions.length === 0 && !previousToken) {
     return (
       <EmptyState.Root>

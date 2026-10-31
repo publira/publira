@@ -89,6 +89,7 @@ describe("StaffContactReplyEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -114,6 +115,7 @@ describe("StaffContactReplyEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -131,6 +133,7 @@ describe("StaffContactReplyEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

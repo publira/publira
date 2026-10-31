@@ -41,6 +41,7 @@ const password = "new-password";
 
 const confirmForm = (): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     confirmPassword: password,
     locale: "en",
@@ -50,6 +51,7 @@ const confirmForm = (): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 

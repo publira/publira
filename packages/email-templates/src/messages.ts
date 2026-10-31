@@ -25,6 +25,8 @@ export type Messages = MessageAccessor<EmailCatalog>;
  * static import specifiers in one place (see `locales/README.md`).
  */
 export const loadEmailMessages = async (locale: Locale): Promise<Messages> =>
+  // SAFETY: every `locales/*.json` catalog carries the keys of `ja.json`, which
+  // the i18n package's catalog tests check, so any locale's tree reads as one.
   bindMessages((await loadLocaleMessages(locale)) as EmailCatalog, locale);
 
 export const emailMessage = (

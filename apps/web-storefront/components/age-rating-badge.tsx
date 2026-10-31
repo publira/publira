@@ -29,6 +29,7 @@ export const AgeRatingBadge = ({
         </Badge>
       );
     }
+
     case "r18": {
       return (
         <Badge tone="destructive">
@@ -38,6 +39,7 @@ export const AgeRatingBadge = ({
         </Badge>
       );
     }
+
     default: {
       return null;
     }

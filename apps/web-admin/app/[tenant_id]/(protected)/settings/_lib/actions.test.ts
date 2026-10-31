@@ -29,6 +29,7 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -120,9 +121,11 @@ vi.mock("#lib/tenant-timezone", () => ({
 
 const textFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -281,15 +284,19 @@ const localesFormData = (values: {
   tenantId?: string;
 }): FormData => {
   const formData = new FormData();
+
   if (values.tenantId !== undefined) {
     formData.set("tenant_id", values.tenantId);
   }
+
   if (values.defaultLocale !== undefined) {
     formData.set("default_locale", values.defaultLocale);
   }
+
   for (const code of values.supportedLocales) {
     formData.append("supported_locales", code);
   }
+
   return formData;
 };
 
@@ -670,12 +677,15 @@ const emailRejectionFormData = (
   tenantId: string = EMAIL_REJECTION_TENANT_ID
 ): FormData => {
   const formData = textFormData({ tenant_id: tenantId });
+
   for (const entry of entries) {
     formData.append("entries", entry);
   }
+
   if (rejectDisposableDomains !== undefined) {
     formData.set("reject_disposable_domains", rejectDisposableDomains);
   }
+
   return formData;
 };
 
@@ -695,6 +705,7 @@ describe("updateTenantEmailRejectionAction", () => {
         rejectDisposableDomains: true,
       },
     };
+
     mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce(saved);
 
     const { updateTenantEmailRejectionAction } = await import("./actions");
@@ -798,6 +809,7 @@ describe("updateTenantEmailRejectionAction", () => {
   it("puts the API's refusal of the list beside the field without revalidating", async () => {
     const message =
       "Check the list. Each entry must be one email address or domain, and at most 1000 can be listed.";
+
     mockUpdateTenantEmailRejectionSettings.mockResolvedValueOnce({
       entriesError: message,
       message,
@@ -829,12 +841,15 @@ const crawlerFormData = (
   tenantId: string = CRAWLER_TENANT_ID
 ): FormData => {
   const formData = textFormData({ tenant_id: tenantId });
+
   for (const userAgent of userAgents) {
     formData.append("excluded_user_agents", userAgent);
   }
+
   for (const path of paths) {
     formData.append("excluded_paths", path);
   }
+
   return formData;
 };
 
@@ -850,6 +865,7 @@ describe("updateTenantCrawlerSettingsAction", () => {
       excludedPaths: ["/drafts", "/members"],
       excludedUserAgents: ["GPTBot", "CCBot"],
     };
+
     mockUpdateTenantCrawlerSettings.mockResolvedValueOnce({
       ok: true,
       settings,
@@ -968,6 +984,7 @@ describe("updateTenantCrawlerSettingsAction", () => {
   it("puts the API's refusal beside the part it refused without revalidating", async () => {
     const message =
       "Applebot can no longer be excluded. Reload the page and choose again.";
+
     mockUpdateTenantCrawlerSettings.mockResolvedValueOnce({
       fieldErrors: { excludedUserAgents: message },
       message,
@@ -1002,6 +1019,7 @@ describe("updateTenantSignUpSettingsAction", () => {
       closedMessage: "We open again in spring.",
       signUpOpen: false,
     };
+
     mockUpdateTenantSignUpSettings.mockResolvedValueOnce({
       ok: true,
       settings,
@@ -1263,6 +1281,7 @@ describe("updateTenantSiteVerificationAction", () => {
   it("puts the API's refusal beside the field it refused without revalidating", async () => {
     const message =
       "Paste the whole <meta> tag, or only its content value: up to 128 letters, digits, hyphens, and underscores.";
+
     mockUpdateTenantSiteVerification.mockResolvedValueOnce({
       fieldErrors: { bing: message },
       message,

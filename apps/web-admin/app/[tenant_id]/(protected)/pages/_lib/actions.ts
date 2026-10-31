@@ -12,6 +12,7 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
+  isFormText,
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -35,11 +36,12 @@ import { normalizePageSlugInput, pageEditPath } from "../page-types";
 import type { PageFormState } from "../page-types";
 
 const formBooleanSchema = z.preprocess((value) => {
-  if (typeof value !== "string") {
+  if (!isFormText(value)) {
     return;
   }
 
   const raw = value.trim().toLowerCase();
+
   return raw === "1" || raw === "true" || raw === "on";
 }, z.boolean().optional());
 
@@ -83,6 +85,7 @@ const pageCommonSchema = async (locale: Locale) => {
     versionId: optionalTrimmedString(),
   });
 };
+
 const pageFormFields = {
   contentMarkdown: { kind: "value", name: "content_markdown" },
   displayInFooter: { kind: "value", name: "display_in_footer" },
@@ -116,9 +119,11 @@ const unofferedLocaleMessage = async (
   t: AdminMessageAccessor
 ): Promise<string | undefined> => {
   const locales = await findTenantLocales(tenantId);
+
   if (!locales) {
     return t("admin.pages.validation.locales_unavailable");
   }
+
   return locales.supportedLocales.includes(translationLocale)
     ? undefined
     : t("admin.pages.validation.locale_not_offered");
@@ -136,16 +141,20 @@ export const createPageAction = async (
 ): Promise<PageFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parsePageForm(formData, locale),
   ]);
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
+
   if (!parsed.data.title) {
     return toFailure(t("admin.pages.validation.title_required"));
   }
+
   // The page starts in the default language, which the site always offers;
   // a form that names another one was not sent by the create screen.
   if (parsed.data.translationLocale) {
@@ -154,6 +163,7 @@ export const createPageAction = async (
       parsed.data.translationLocale,
       t
     );
+
     if (unoffered) {
       return toFailure(unoffered);
     }
@@ -221,25 +231,32 @@ export const savePageAction = async (
 ): Promise<PageFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parsePageForm(formData, locale),
   ]);
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
+
   if (!parsed.data.pageId) {
     return toFailure(t("admin.pages.validation.update_id_missing"));
   }
+
   if (!parsed.data.title) {
     return toFailure(t("admin.pages.validation.title_required"));
   }
 
   const titleChanged = parsed.data.title !== parsed.data.initialTitle;
+
   const footerChanged =
     parsed.data.displayInFooter !== undefined &&
     parsed.data.displayInFooter !== parsed.data.initialDisplayInFooter;
+
   const detailsChanged = titleChanged || footerChanged;
+
   const contentChanged =
     parsed.data.contentMarkdown !== parsed.data.initialContentMarkdown;
 
@@ -317,6 +334,7 @@ export const publishVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const parsed = await parsePageForm(formData, locale);
+
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
@@ -350,6 +368,7 @@ export const unpublishPageAction = async (formData: FormData) => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const parsed = await parsePageForm(formData, locale);
+
   if (!parsed.success || !parsed.data.pageId) {
     return;
   }
@@ -385,6 +404,7 @@ export const rollbackVersionAction = async (formData: FormData) => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const parsed = await parsePageForm(formData, locale);
+
   if (!parsed.success || !parsed.data.pageId || !parsed.data.versionId) {
     return;
   }
@@ -423,28 +443,36 @@ export const addPageTranslationAction = async (
 ): Promise<PageFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parsePageForm(formData, locale),
   ]);
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
+
   const { pageId, tenantId, title, translationLocale } = parsed.data;
+
   if (!pageId) {
     return toFailure(t("admin.pages.validation.update_id_missing"));
   }
+
   if (!translationLocale) {
     return toFailure(t("admin.pages.validation.locale_invalid"));
   }
+
   if (!title) {
     return toFailure(t("admin.pages.validation.title_required"));
   }
+
   const unoffered = await unofferedLocaleMessage(
     tenantId,
     translationLocale,
     t
   );
+
   if (unoffered) {
     return toFailure(unoffered);
   }
@@ -477,17 +505,22 @@ export const deletePageTranslationAction = async (
 ): Promise<PageFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parsePageForm(formData, locale),
   ]);
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
+
   const { pageId, tenantId, translationLocale } = parsed.data;
+
   if (!pageId) {
     return toFailure(t("admin.pages.validation.update_id_missing"));
   }
+
   if (!translationLocale) {
     return toFailure(t("admin.pages.validation.locale_invalid"));
   }

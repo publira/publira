@@ -5,6 +5,7 @@ import {
 import { Code, ConnectError } from "@connectrpc/connect";
 
 export { Code, ConnectError } from "@connectrpc/connect";
+
 export {
   BadRequestSchema,
   ErrorInfoSchema,
@@ -133,13 +134,19 @@ const toWireName = (name: string): string =>
     .slice(1)
     .replaceAll(/[A-Z]/gu, (character) => `_${character.toLowerCase()}`);
 
+/** `Object.values` of a numeric enum holds its names as well as its values. */
+const isCode = (value: Code | string): value is Code =>
+  typeof value === "number";
+
 const buildCodeByWireName = (): ReadonlyMap<string, Code> => {
   const byWireName = new Map<string, Code>();
+
   for (const value of Object.values(Code)) {
-    if (typeof value === "number") {
+    if (isCode(value)) {
       byWireName.set(toWireName(Code[value]), value);
     }
   }
+
   return byWireName;
 };
 
@@ -152,11 +159,13 @@ let codeByWireName: ReadonlyMap<string, Code> | undefined;
 const codeFromMessagePrefix = (message: string): Code | null => {
   const match = /^\[(?<wireName>[a-z_]+)\]/u.exec(message);
   const wireName = match?.groups?.wireName;
+
   if (!wireName) {
     return null;
   }
 
   codeByWireName ??= buildCodeByWireName();
+
   return codeByWireName.get(wireName) ?? null;
 };
 
@@ -169,8 +178,8 @@ const codeFromMessagePrefix = (message: string): Code | null => {
  * `new Error("[not_found] …")` would classify as an RPC failure and stop
  * `rethrowUnclassifiedRpcError()` from doing its job.
  */
-const isRehydratedConnectError = (error: unknown): error is Error =>
-  error instanceof Error && error.name === "ConnectError";
+const isRehydratedConnectError = (cause: unknown): cause is Error =>
+  cause instanceof Error && cause.name === "ConnectError";
 
 /**
  * The Connect `Code` behind a caught value, or `null` when it is not an RPC
@@ -182,28 +191,32 @@ const isRehydratedConnectError = (error: unknown): error is Error =>
  * in the repository that reads that prefix — call sites classify by `Code` and
  * never by message text.
  */
-export const rpcErrorCode = (error: unknown): Code | null => {
-  if (error instanceof ConnectError) {
-    return error.code;
+export const rpcErrorCode = (cause: unknown): Code | null => {
+  if (cause instanceof ConnectError) {
+    return cause.code;
   }
-  if (isRehydratedConnectError(error)) {
-    return codeFromMessagePrefix(error.message);
+
+  if (isRehydratedConnectError(cause)) {
+    return codeFromMessagePrefix(cause.message);
   }
+
   return null;
 };
 
-/** Whether `error` is an RPC error carrying one of `codes`. */
+/** Whether `cause` is an RPC error carrying one of `codes`. */
 export const isRpcError = (
-  error: unknown,
+  cause: unknown,
   ...codes: readonly [Code, ...Code[]]
 ): boolean => {
-  const code = rpcErrorCode(error);
+  const code = rpcErrorCode(cause);
+
   return code !== null && codes.includes(code);
 };
 
 /** The handling category for a caught value. Non-RPC errors are `"unexpected"`. */
-export const rpcErrorDisposition = (error: unknown): RpcErrorDisposition => {
-  const code = rpcErrorCode(error);
+export const rpcErrorDisposition = (cause: unknown): RpcErrorDisposition => {
+  const code = rpcErrorCode(cause);
+
   return code === null ? "unexpected" : DISPOSITION_BY_CODE[code];
 };
 
@@ -219,20 +232,20 @@ export const rpcErrorDisposition = (error: unknown): RpcErrorDisposition => {
  * Callers turn this into `notFound()`, or into `null` when they run inside a
  * `"use cache"` scope where a throw is not observable by the caller.
  */
-export const isMissingResourceRpcError = (error: unknown): boolean =>
-  isRpcError(error, Code.NotFound, Code.PermissionDenied);
+export const isMissingResourceRpcError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.NotFound, Code.PermissionDenied);
 
 /** The session is absent, expired, or rejected — the caller must re-authenticate. */
-export const isUnauthenticatedRpcError = (error: unknown): boolean =>
-  isRpcError(error, Code.Unauthenticated);
+export const isUnauthenticatedRpcError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.Unauthenticated);
 
 /**
  * The set a session-scoped read may resolve to `null` / empty: no record, no
  * permission, or no valid session. Every other code is a real failure and has
  * to propagate to an error boundary.
  */
-export const isExpectedNullableRpcError = (error: unknown): boolean =>
-  isRpcError(error, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated);
+export const isExpectedNullableRpcError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated);
 
 const REJECTED_REQUEST_DISPOSITIONS: ReadonlySet<RpcErrorDisposition> = new Set(
   [
@@ -256,8 +269,8 @@ const REJECTED_REQUEST_DISPOSITIONS: ReadonlySet<RpcErrorDisposition> = new Set(
  * can fix and must reach an error boundary instead of becoming "The submitted
  * values are invalid.".
  */
-export const isRejectedRequestRpcError = (error: unknown): boolean =>
-  REJECTED_REQUEST_DISPOSITIONS.has(rpcErrorDisposition(error));
+export const isRejectedRequestRpcError = (cause: unknown): boolean =>
+  REJECTED_REQUEST_DISPOSITIONS.has(rpcErrorDisposition(cause));
 
 /**
  * Let a failure the UI cannot explain reach the error boundary.
@@ -267,9 +280,9 @@ export const isRejectedRequestRpcError = (error: unknown): boolean =>
  * `internal`, `unimplemented`, a bug in our own mapping code — is rethrown
  * instead of being flattened into "Please try again later." and lost.
  */
-export const rethrowUnclassifiedRpcError = (error: unknown): void => {
-  if (rpcErrorDisposition(error) === "unexpected") {
-    throw error;
+export const rethrowUnclassifiedRpcError = (cause: unknown): void => {
+  if (rpcErrorDisposition(cause) === "unexpected") {
+    throw cause;
   }
 };
 
@@ -282,13 +295,15 @@ export const rethrowUnclassifiedRpcError = (error: unknown): void => {
  * `rpcErrorMessage()`: a raw server message is untranslated and may leak
  * internals.
  */
-export const rpcErrorRawMessage = (error: unknown): string | null => {
-  if (error instanceof ConnectError) {
-    return error.rawMessage;
+export const rpcErrorRawMessage = (cause: unknown): string | null => {
+  if (cause instanceof ConnectError) {
+    return cause.rawMessage;
   }
-  if (isRehydratedConnectError(error)) {
-    return error.message.replace(/^\[[a-z_]+\]\s*/u, "");
+
+  if (isRehydratedConnectError(cause)) {
+    return cause.message.replace(/^\[[a-z_]+\]\s*/u, "");
   }
+
   return null;
 };
 
@@ -297,12 +312,12 @@ export const rpcErrorRawMessage = (error: unknown): string | null => {
  * and, when `reason` is given, one that carries that reason.
  */
 export const rpcErrorHasFieldViolation = (
-  error: unknown,
+  cause: unknown,
   field: string,
   reason?: RpcFieldViolationReason
 ): boolean =>
-  error instanceof ConnectError &&
-  error
+  cause instanceof ConnectError &&
+  cause
     .findDetails(BadRequestSchema)
     .some((detail) =>
       detail.fieldViolations.some(
@@ -320,11 +335,11 @@ export const rpcErrorHasFieldViolation = (
  * boundary, where Next.js re-creates it from name and message alone.
  */
 export const rpcErrorHasReason = (
-  error: unknown,
+  cause: unknown,
   reason: RpcErrorReason
 ): boolean =>
-  error instanceof ConnectError &&
-  error
+  cause instanceof ConnectError &&
+  cause
     .findDetails(ErrorInfoSchema)
     .some(
       (detail) =>
@@ -339,9 +354,9 @@ export const rpcErrorHasReason = (
  * here", so a caller must not remember it the way it remembers an unknown
  * host: resuming the tenant serves it again at once.
  */
-export const isTenantSuspendedRpcError = (error: unknown): boolean =>
-  isRpcError(error, Code.FailedPrecondition) &&
-  rpcErrorHasReason(error, RPC_ERROR_REASON.tenantSuspended);
+export const isTenantSuspendedRpcError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.FailedPrecondition) &&
+  rpcErrorHasReason(cause, RPC_ERROR_REASON.tenantSuspended);
 
 /**
  * The tenant has closed reader sign-up, so the public API refuses to open a new
@@ -349,9 +364,9 @@ export const isTenantSuspendedRpcError = (error: unknown): boolean =>
  * matches no account yet. A reader who already has an account is unaffected,
  * so a caller shows the tenant's notice rather than reporting a failure.
  */
-export const isSignUpClosedRpcError = (error: unknown): boolean =>
-  isRpcError(error, Code.FailedPrecondition) &&
-  rpcErrorHasReason(error, RPC_ERROR_REASON.signUpClosed);
+export const isSignUpClosedRpcError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.FailedPrecondition) &&
+  rpcErrorHasReason(cause, RPC_ERROR_REASON.signUpClosed);
 
 /**
  * The signed-in reader has not agreed to the version of the tenant's terms of
@@ -360,9 +375,9 @@ export const isSignUpClosedRpcError = (error: unknown): boolean =>
  * It refuses the reader rather than the request, so a caller sends them to
  * agree instead of reporting a failure.
  */
-export const isLegalPageAgreementRequiredRpcError = (error: unknown): boolean =>
-  isRpcError(error, Code.FailedPrecondition) &&
-  rpcErrorHasReason(error, RPC_ERROR_REASON.legalPageAgreementRequired);
+export const isLegalPageAgreementRequiredRpcError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.FailedPrecondition) &&
+  rpcErrorHasReason(cause, RPC_ERROR_REASON.legalPageAgreementRequired);
 
 /**
  * The numeric value stored under `key` on a Publira-owned ErrorInfo whose
@@ -373,29 +388,35 @@ export const isLegalPageAgreementRequiredRpcError = (error: unknown): boolean =>
  * caller never treats `"3 credits"` or `"1e2"` as a count.
  */
 export const rpcErrorReasonMetadataNumber = (
-  error: unknown,
+  cause: unknown,
   reason: RpcErrorReason,
   key: string
 ): number | null => {
-  if (!(error instanceof ConnectError)) {
+  if (!(cause instanceof ConnectError)) {
     return null;
   }
 
-  for (const detail of error.findDetails(ErrorInfoSchema)) {
+  for (const detail of cause.findDetails(ErrorInfoSchema)) {
     if (detail.domain !== RPC_ERROR_INFO_DOMAIN || detail.reason !== reason) {
       continue;
     }
+
     const raw = detail.metadata[key];
+
     if (raw === undefined) {
       return null;
     }
+
     if (!/^\d+$/u.test(raw)) {
       return null;
     }
+
     const value = Number(raw);
+
     if (!Number.isSafeInteger(value)) {
       return null;
     }
+
     return value;
   }
 

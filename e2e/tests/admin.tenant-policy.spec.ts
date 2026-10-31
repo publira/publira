@@ -155,9 +155,11 @@ test.describe("tenant policy settings", () => {
     await openPolicySettings(page);
 
     const commentPost = group(page, "Comment posting");
+
     const perDay = commentPost.getByRole("spinbutton", {
       name: "Comment posts per day",
     });
+
     const platformPerDay = Number(await perDay.inputValue());
 
     await usePlatformDefault(commentPost).click();

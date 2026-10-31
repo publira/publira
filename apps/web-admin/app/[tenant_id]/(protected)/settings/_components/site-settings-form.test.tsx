@@ -153,6 +153,7 @@ describe("SiteSettingsFields", () => {
     for (const field of fields()) {
       expect(field.matches(":disabled")).toBe(true);
     }
+
     expect(
       screen
         .getByRole<HTMLButtonElement>("button", { name: "Save the settings" })

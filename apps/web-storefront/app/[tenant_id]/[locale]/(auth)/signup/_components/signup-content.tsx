@@ -12,6 +12,7 @@ import { SignupFooter, SignupForm } from "./signup-form";
  */
 export const SignupContent = async () => {
   const signUp = await getTenantSignUp(await getTenantId());
+
   if (signUp.open) {
     return <SignupForm />;
   }

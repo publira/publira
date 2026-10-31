@@ -43,11 +43,22 @@ const stubReplace = (body: EpisodePagesUploadResponse, status = 200) => {
   const fetch = vi.fn((_input: string, _init: RequestInit) =>
     Promise.resolve(Response.json(body, { status }))
   );
+
   vi.stubGlobal("fetch", fetch);
+
   return fetch;
 };
 
 /** Opens the dialog for page 3 and answers its file input. */
+/** The form `input` belongs to, failing the test when it is outside one. */
+const formOf = (input: HTMLInputElement): HTMLFormElement => {
+  if (!input.form) {
+    throw new Error("the file input is not inside a form");
+  }
+
+  return input.form;
+};
+
 const openDialog = () => {
   render(
     <AdminLocaleTestProvider locale="en">
@@ -76,7 +87,7 @@ describe("EpisodeImageReplaceDialog", () => {
     const fetch = stubReplace({ message: "Page replaced.", ok: true });
     const input = openDialog();
 
-    fireEvent.submit(input.form as HTMLFormElement);
+    fireEvent.submit(formOf(input));
 
     await waitFor(() => {
       expect(mockAddToast).toHaveBeenCalledWith({
@@ -87,7 +98,12 @@ describe("EpisodeImageReplaceDialog", () => {
     const [path, init] = fetch.mock.calls[0] ?? [];
     expect(path).toBe(EPISODE_PAGE_REPLACE_PATH);
     expect(init?.method).toBe("POST");
-    const body = init?.body as FormData;
+    const body = init?.body;
+
+    if (!(body instanceof FormData)) {
+      throw new TypeError("the upload was not sent as a form");
+    }
+
     expect(body.get("episode_id")).toBe("EP001-ID");
     expect(body.get("image_id")).toBe("IMAGE003");
     expect(mockRefresh).toHaveBeenCalledOnce();
@@ -107,7 +123,7 @@ describe("EpisodeImageReplaceDialog", () => {
     );
     const input = openDialog();
 
-    fireEvent.submit(input.form as HTMLFormElement);
+    fireEvent.submit(formOf(input));
 
     expect(
       await screen.findByText(/The image could not be used/u)
@@ -125,15 +141,17 @@ describe("EpisodeImageReplaceDialog", () => {
     Object.defineProperty(oversized, "size", {
       value: EPISODE_PAGE_IMAGE_MAX_BYTES + 1,
     });
+
     const values = vi
       .spyOn(FormData.prototype, "values")
       .mockImplementation(() => [oversized].values());
+
     onTestFinished(() => {
       values.mockRestore();
     });
     const input = openDialog();
 
-    fireEvent.submit(input.form as HTMLFormElement);
+    fireEvent.submit(formOf(input));
 
     expect(
       await screen.findByText(
@@ -150,7 +168,7 @@ describe("EpisodeImageReplaceDialog", () => {
     );
     const input = openDialog();
 
-    fireEvent.submit(input.form as HTMLFormElement);
+    fireEvent.submit(formOf(input));
 
     expect(
       await screen.findByText(/the page may have been replaced/u)

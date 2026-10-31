@@ -188,8 +188,10 @@ export const NotificationManager = async ({
 }: NotificationManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (notifications.length > 0 || hasPageLinks);
+
   const hasUnread =
     unreadCount > 0 || notifications.some((item) => !item.isRead);
 

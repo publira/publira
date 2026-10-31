@@ -53,6 +53,7 @@ export const VolumeOwnershipFailure = async ({
   tenantId: string;
 }) => {
   const state = await getMySeriesPurchaseState(tenantId, seriesId, locale);
+
   if (state.ok) {
     return null;
   }
@@ -96,6 +97,7 @@ export const VolumePurchaseControl = async ({
   volume: VolumeItem;
 }) => {
   const state = await getMySeriesPurchaseState(tenantId, seriesId, locale);
+
   if (!state.ok) {
     return null;
   }

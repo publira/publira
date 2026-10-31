@@ -37,6 +37,7 @@ describe("OfflineNotice", () => {
 
   it("fills the same live region while offline and empties it on reconnect", () => {
     offline.value = true;
+
     const { container, rerender } = render(
       <OfflineNotice>You are offline.</OfflineNotice>
     );
@@ -61,6 +62,7 @@ describe("OfflineNotice", () => {
 
   it("does not take focus", () => {
     offline.value = true;
+
     const { container } = render(
       <OfflineNotice>You are offline.</OfflineNotice>
     );
@@ -82,6 +84,7 @@ describe("OfflineNotice", () => {
     const { container } = render(
       <OfflineNotice>You are offline.</OfflineNotice>
     );
+
     const region = liveRegion(container);
     togglePopover.mockClear();
 

@@ -29,6 +29,7 @@ import {
 
 const SAVE = "Save the verification codes";
 const SAVED = "The verification codes were saved.";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
 
@@ -87,16 +88,20 @@ const headCodes = async (
     `${WEB_STOREFRONT_SITE_VERIFICATION_BASE_URL}${pathname}`,
     { headers: { "user-agent": userAgent } }
   );
+
   expect(response.status()).toBe(200);
   const html = await response.text();
+
   const head =
     /<head>(?<head>[\s\S]*?)<\/head>/u.exec(html)?.groups?.head ?? "";
+
   const contents = (name: string) =>
     [
       ...head.matchAll(
         new RegExp(`<meta name="${name}" content="(?<content>[^"]*)"`, "gu")
       ),
     ].map(({ groups }) => groups?.content ?? "");
+
   return {
     bing: contents("msvalidate\\.01"),
     google: contents("google-site-verification"),

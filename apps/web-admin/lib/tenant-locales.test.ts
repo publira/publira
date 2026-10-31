@@ -1,6 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as PublicApiModule from "./public-api";
+
 const {
   mockGetAccessToken,
   mockGetTenantPublicInfo,
@@ -16,7 +18,7 @@ vi.mock("./session", () => ({
 }));
 
 vi.mock("./public-api", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof PublicApiModule>()),
   getTenantPublicInfo: mockGetTenantPublicInfo,
 }));
 

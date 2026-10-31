@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { MessageValues } from "@publira/i18n";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -20,7 +21,7 @@ vi.mock("#components/message", () => ({
     values,
   }: {
     message: string;
-    values?: Record<string, unknown>;
+    values?: MessageValues;
   }) => <span data-values={JSON.stringify(values ?? {})}>{message}</span>,
 }));
 
@@ -66,10 +67,15 @@ const kindOf = (button: HTMLElement) =>
     ?.value;
 
 /** The values the mocked `<Message>` was handed inside `button`. */
-const valuesOf = (button: HTMLElement) =>
-  JSON.parse(
+const valuesOf = (button: HTMLElement | null) => {
+  if (!button) {
+    throw new Error("the button is not on the gate");
+  }
+
+  return JSON.parse(
     button.querySelector<HTMLElement>("[data-values]")?.dataset.values ?? "{}"
   );
+};
 
 const props = {
   appPayments: { appStore: false, googlePlay: false },
@@ -191,6 +197,7 @@ describe("EpisodeAccessGate", () => {
 
       const codes = [...container.querySelectorAll("svg")];
       expect(codes).toHaveLength(2);
+
       for (const code of codes) {
         expect(code.classList.contains("hidden")).toBe(true);
         expect(code.classList.contains("md:block")).toBe(true);
@@ -216,6 +223,7 @@ describe("EpisodeAccessGate", () => {
       const appStore = screen.getByRole("link", {
         name: "storefront.episode.gate.app_store",
       });
+
       const badge = appStore.querySelector("img");
       expect(appStore.getAttribute("href")).toBe(
         "https://apps.apple.com/app/id123"
@@ -230,6 +238,7 @@ describe("EpisodeAccessGate", () => {
       const googlePlay = screen.getByRole("link", {
         name: "storefront.episode.gate.google_play",
       });
+
       expect(googlePlay.querySelector("img")).toBeNull();
       expect(googlePlay.textContent).toBe(
         "storefront.episode.gate.google_play"
@@ -496,6 +505,7 @@ describe("EpisodeAccessGate", () => {
       const button = screen.getByRole("button", {
         name: "storefront.episode.gate.purchase",
       });
+
       expect(kindOf(button)).toBe("purchase");
       expect(
         screen.queryByRole("button", {
@@ -627,6 +637,7 @@ describe("EpisodeAccessGate", () => {
       const link = screen.getByRole("link", {
         name: "storefront.episode.gate.next_free_episode",
       });
+
       expect(link.getAttribute("href")).toBe(
         "/series/SERIES_001/episodes/EPISODE_004"
       );
@@ -816,7 +827,7 @@ describe("EpisodeAccessGate", () => {
 
       const button = coinPayButton();
       expect(button?.classList.contains("bg-secondary")).toBe(true);
-      expect(valuesOf(button as HTMLElement)).toEqual({
+      expect(valuesOf(button)).toEqual({
         coin_name: "Points",
         count: 300,
       });
@@ -858,7 +869,7 @@ describe("EpisodeAccessGate", () => {
 
       expect(coinPayButton()).toBeNull();
       const button = coinPackButton();
-      expect(valuesOf(button as HTMLElement)).toMatchObject({
+      expect(valuesOf(button)).toMatchObject({
         bonus: 100,
         coin_name: "Points",
         count: 600,

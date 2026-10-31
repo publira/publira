@@ -34,6 +34,7 @@ const postAnnouncement = async (
 
   await fillField(page.getByRole("textbox", { name: /Title/u }), fields.title);
   await fillField(page.getByRole("textbox", { name: /Body/u }), fields.body);
+
   if (fields.pinned) {
     await page.getByRole("checkbox", { name: "Show as a site banner" }).check();
   }

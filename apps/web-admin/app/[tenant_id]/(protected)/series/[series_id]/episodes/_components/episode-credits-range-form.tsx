@@ -77,9 +77,11 @@ const isCreditComplete = (
   if (operation === "replace") {
     return isCompletePair(from) && isCompletePair(to);
   }
+
   if (operation === "set_share") {
     return isCompletePair(credit) && toSetShareBps(shareText) !== undefined;
   }
+
   return isCompletePair(credit);
 };
 
@@ -96,9 +98,11 @@ const canApplyCreditSelection = (input: {
   if (input.isPending || input.isEpisodePending || input.replaceSame) {
     return false;
   }
+
   if (!(input.creditComplete && input.hasCreators && input.hasRoles)) {
     return false;
   }
+
   return input.selectedCount > 0 && !input.selectionTooMany;
 };
 
@@ -124,7 +128,9 @@ const creditSelectionPreview = (input: {
   ) {
     return "";
   }
+
   const count = input.selectedCount;
+
   if (input.operation === "replace") {
     return input.t("admin.series.episodes.credits.preview_replace", {
       count,
@@ -134,6 +140,7 @@ const creditSelectionPreview = (input: {
       to_role: optionName(input.creatorRoles, input.to.roleId),
     });
   }
+
   if (input.operation === "set_share") {
     return input.t("admin.series.episodes.credits.preview_set_share", {
       count,
@@ -145,11 +152,13 @@ const creditSelectionPreview = (input: {
       ),
     });
   }
+
   const values = {
     count,
     creator: optionName(input.creators, input.credit.creatorId),
     role: optionName(input.creatorRoles, input.credit.roleId),
   };
+
   return input.operation === "add"
     ? input.t("admin.series.episodes.credits.preview_add", values)
     : input.t("admin.series.episodes.credits.preview_remove", values);
@@ -187,19 +196,23 @@ export const EpisodeCreditsRangeForm = ({
   const t = useClientMessages();
   const tenantId = useTenantId();
   const { clear, selectedIds, selectMany, toggle } = useEpisodeSelection();
+
   const runAction = useCallback(
     async (
       prevState: BulkEditEpisodeCreditsActionState,
       formData: FormData
     ): Promise<BulkEditEpisodeCreditsActionState> => {
       const next = await action(prevState, formData);
+
       if (next?.ok) {
         clear();
       }
+
       return next;
     },
     [action, clear]
   );
+
   const [state, formAction, isPending] = useActionState(runAction, null);
   const [operation, setOperation] = useState<CreditOperation>("add");
   const [credit, setCredit] = useState(() => emptyPair(creatorRoles));
@@ -216,6 +229,7 @@ export const EpisodeCreditsRangeForm = ({
         ),
     [creators, locale]
   );
+
   const roleItems = useMemo<Combobox.Item[]>(
     () =>
       creatorRoles.map((role) => ({
@@ -224,9 +238,11 @@ export const EpisodeCreditsRangeForm = ({
       })),
     [creatorRoles]
   );
+
   const selected = episodesSelectedInReadingOrder(episodes, [...selectedIds]);
   const selectionTooMany = selected.length > MAX_BULK_EPISODE_CREDIT_EPISODES;
   const replaceSame = isReplaceSame(operation, from, to);
+
   const creditComplete = isCreditComplete(
     operation,
     credit,
@@ -234,6 +250,7 @@ export const EpisodeCreditsRangeForm = ({
     to,
     shareText
   );
+
   const canSubmit = canApplyCreditSelection({
     creditComplete,
     hasCreators: creatorItems.length > 0,
@@ -244,6 +261,7 @@ export const EpisodeCreditsRangeForm = ({
     selectedCount: selected.length,
     selectionTooMany,
   });
+
   const preview = creditSelectionPreview({
     creatorRoles,
     creators,

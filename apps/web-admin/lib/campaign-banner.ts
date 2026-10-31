@@ -107,38 +107,46 @@ export const campaignBannersCacheTag = (tenantId: string): string =>
  * either the tenant's banner limit or an object store nobody has saved yet.
  */
 const saveOverrides = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
+
   const invalidArgument = (): string => {
     if (
-      rpcErrorHasFieldViolation(error, "image_data") ||
-      rpcErrorHasFieldViolation(error, "image_content_type")
+      rpcErrorHasFieldViolation(cause, "image_data") ||
+      rpcErrorHasFieldViolation(cause, "image_content_type")
     ) {
       return t("admin.campaign_banners.image_invalid");
     }
-    if (rpcErrorHasFieldViolation(error, "link_url")) {
+
+    if (rpcErrorHasFieldViolation(cause, "link_url")) {
       return t("admin.campaign_banners.validation.link_invalid");
     }
-    if (rpcErrorHasFieldViolation(error, "alt_text")) {
+
+    if (rpcErrorHasFieldViolation(cause, "alt_text")) {
       return t("admin.campaign_banners.validation.alt_text_too_long");
     }
+
     if (
-      rpcErrorHasFieldViolation(error, "starts_at") ||
-      rpcErrorHasFieldViolation(error, "ends_at")
+      rpcErrorHasFieldViolation(cause, "starts_at") ||
+      rpcErrorHasFieldViolation(cause, "ends_at")
     ) {
       return t("admin.campaign_banners.validation.period_invalid");
     }
+
     return t("errors.validation");
   };
+
   const precondition = (): string | undefined => {
-    if (rpcErrorHasReason(error, RPC_ERROR_REASON.campaignBannerLimit)) {
+    if (rpcErrorHasReason(cause, RPC_ERROR_REASON.campaignBannerLimit)) {
       return t("admin.campaign_banners.limit_reached");
     }
-    if (mentionsStorageNotConfigured(error)) {
+
+    if (mentionsStorageNotConfigured(cause)) {
       return t("admin.errors.storage_not_configured");
     }
+
     return undefined;
   };
 
@@ -177,6 +185,7 @@ const mapCampaignBanner = (banner: RawCampaignBanner): CampaignBannerItem => ({
       variantType: variant.variantType ?? "",
       width: variant.width ?? 0,
     };
+
     return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
       ? [mappedVariant]
       : [];
@@ -196,8 +205,10 @@ const listCampaignBannersForSession = async (
   cacheTag(campaignBannersCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       banners: [],
       message: t("errors.rpc.unauthenticated"),
@@ -223,6 +234,7 @@ const listCampaignBannersForSession = async (
     // request. The entry is dropped instead, so the list comes back as soon
     // as the API does, and an unexpected failure is thrown by the caller.
     dropFailedCacheEntry();
+
     return {
       banners: [],
       message: rpcErrorMessage(error, t("admin.campaign_banners.list_failed"), {
@@ -268,6 +280,7 @@ export const getCampaignBanner = async (
   locale: Locale
 ): Promise<GetCampaignBannerResult> => {
   const result = await listCampaignBanners(input.tenantId, locale);
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -279,6 +292,7 @@ export const getCampaignBanner = async (
   const banner = result.banners.find(
     (candidate) => candidate.publicId === input.publicId
   );
+
   return banner ? { banner, ok: true } : { notFound: true, ok: false };
 };
 
@@ -308,6 +322,7 @@ export const createCampaignBanner = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -335,6 +350,7 @@ export const createCampaignBanner = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.campaign_banners.save_failed"), {
         locale,
@@ -358,6 +374,7 @@ export const updateCampaignBanner = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -386,6 +403,7 @@ export const updateCampaignBanner = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.campaign_banners.save_failed"), {
         locale,
@@ -417,6 +435,7 @@ export const reorderCampaignBanners = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -435,6 +454,7 @@ export const reorderCampaignBanners = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -460,6 +480,7 @@ export const deleteCampaignBanner = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -477,6 +498,7 @@ export const deleteCampaignBanner = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -508,6 +530,7 @@ export const uploadCampaignBannerAspectImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -534,9 +557,11 @@ export const uploadCampaignBannerAspectImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     if (mentionsAspectImageRejection(error)) {
       return { imageRejected: true, ok: false };
     }
+
     return {
       message: rpcErrorMessage(error, t("admin.campaign_banners.save_failed"), {
         locale,

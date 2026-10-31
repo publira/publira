@@ -99,6 +99,7 @@ const ActionFormStateContext =
 
 const useActionFormStateContext = (caller: string) => {
   const context = useContext(ActionFormStateContext);
+
   if (!context) {
     throw new Error(`${caller} must be rendered inside an ActionForm.`);
   }
@@ -112,7 +113,10 @@ const useActionFormStateContext = (caller: string) => {
  */
 export const useActionFormState = <
   State extends ActionFormResult = ActionFormResult,
->() => useActionFormStateContext("useActionFormState").state as State | null;
+>() =>
+  // SAFETY: the context holds what the form's own Action returned, and the
+  // caller names that Action's state type, which the context cannot carry.
+  useActionFormStateContext("useActionFormState").state as State | null;
 
 /**
  * Calls `onSettled` with what the surrounding `ActionForm`'s own Action returned,
@@ -130,6 +134,8 @@ export const useActionFormSettled = <
   useEffect(
     () =>
       subscribe((state) => {
+        // SAFETY: the listener is called with what the form's own Action
+        // returned, whose state type the caller names as `State`.
         handleSettled(state as State | null);
       }),
     [subscribe]
@@ -174,9 +180,11 @@ const ActionFormControlContext = createContext<ActionFormControlAction | null>(
 const useSubmissionPending = (control: ActionFormControlAction | null) => {
   const { action, pending } = useFormStatus();
   const form = useContext(ActionFormContext);
+
   if (!pending) {
     return false;
   }
+
   if (form) {
     return form.submittedTo === control;
   }
@@ -338,6 +346,15 @@ export const ActionFormPending = ({ children }: { children: ReactNode }) =>
  * ```
  */
 
+type ActionFormRenderFunction<State extends ActionFormResult> = (
+  props: ActionFormRenderProps<State>
+) => ReactNode;
+
+const isRenderFunction = <State extends ActionFormResult>(
+  children: ReactNode | ActionFormRenderFunction<State>
+): children is ActionFormRenderFunction<State> =>
+  typeof children === "function";
+
 export interface ActionFormProps<
   State extends ActionFormResult = ActionFormResult,
 > {
@@ -345,7 +362,7 @@ export interface ActionFormProps<
     prevState: State | null,
     formData: FormData
   ) => Promise<State | null>;
-  children: ReactNode | ((props: ActionFormRenderProps<State>) => ReactNode);
+  children: ReactNode | ActionFormRenderFunction<State>;
   className?: string;
   /**
    * The `<form>`'s id, for a submit control outside it to name with `form` —
@@ -370,20 +387,26 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   const formRef = useRef<HTMLFormElement>(null);
   const controlSubmissionRef = useRef<ActionFormControlSubmission | null>(null);
   const listenersRef = useRef(new Set<ActionFormSettledListener>());
+
   const [submittedTo, setSubmittedTo] =
     useState<ActionFormControlAction | null>(null);
+
   const [state, formAction, isPending] = useActionState(
     async (prevState: State | null, formData: FormData) => {
       const nextState = await action(prevState, formData);
+
       for (const listener of listenersRef.current) {
         listener(nextState);
       }
+
       const form = formRef.current;
+
       if (nextState?.ok && form) {
         startTransition(() => {
           requestFormReset(form);
         });
       }
+
       return nextState;
     },
     null
@@ -397,10 +420,12 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
     const controlSubmission = controlSubmissionRef.current;
     controlSubmissionRef.current = null;
     const controlAction = controlSubmission?.action ?? null;
+
     const formData = new FormData(
       event.currentTarget,
       event.nativeEvent.submitter
     );
+
     // A control with its own Action is not a submit button, so the browser
     // leaves its pair out and it is added here.
     if (controlSubmission?.entry) {
@@ -409,6 +434,7 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
         controlSubmission.entry.value
       );
     }
+
     setSubmittedTo(() => controlAction);
     startTransition(() => {
       if (controlAction) {
@@ -438,6 +464,7 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
 
   const subscribe = useCallback((listener: ActionFormSettledListener) => {
     listenersRef.current.add(listener);
+
     return () => {
       listenersRef.current.delete(listener);
     };
@@ -458,7 +485,7 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
           onSubmit={handleSubmit}
           ref={formRef}
         >
-          {typeof children === "function" ? (
+          {isRenderFunction(children) ? (
             children({ isPending, state })
           ) : (
             <>

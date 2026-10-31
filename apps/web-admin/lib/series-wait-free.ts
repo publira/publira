@@ -46,6 +46,7 @@ const toSeriesWaitFreeSettings = (
   if (!settings || settings.rechargeHours < 1 || settings.accessHours < 1) {
     return;
   }
+
   return {
     accessHours: settings.accessHours,
     enabled: settings.enabled,
@@ -59,25 +60,28 @@ const toSeriesWaitFreeSettings = (
  * already checks, reached only when the two disagree.
  */
 const mapUpdateErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasFieldViolation(error, "settings.recharge_hours")) {
+
+  if (rpcErrorHasFieldViolation(cause, "settings.recharge_hours")) {
     return t("admin.series.wait_free.validation.recharge_hours_invalid", {
       max: String(MAX_WAIT_FREE_HOURS),
     });
   }
-  if (rpcErrorHasFieldViolation(error, "settings.access_hours")) {
+
+  if (rpcErrorHasFieldViolation(cause, "settings.access_hours")) {
     return t("admin.series.wait_free.validation.access_hours_invalid", {
       max: String(MAX_WAIT_FREE_HOURS),
     });
   }
-  if (rpcErrorHasFieldViolation(error, "settings.excluded_latest_count")) {
+
+  if (rpcErrorHasFieldViolation(cause, "settings.excluded_latest_count")) {
     return t("admin.series.wait_free.validation.excluded_latest_count_invalid");
   }
 
-  return rpcErrorMessage(error, t("admin.series.wait_free.save_failed"), {
+  return rpcErrorMessage(cause, t("admin.series.wait_free.save_failed"), {
     locale,
     overrides: { "not-found": t("admin.series.not_found") },
   });
@@ -96,14 +100,18 @@ const getSeriesWaitFreeSettingsForTenant = async (
   cacheTag(seriesWaitFreeSettingsCacheTag(input.tenantId, input.seriesId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const response = await apiClient.series.getSeriesWaitFreeSettings(
       { seriesId: input.seriesId, tenant: { tenantId: input.tenantId } },
       withServiceHeaders()
     );
+
     const settings = toSeriesWaitFreeSettings(response.settings);
+
     if (!settings) {
       dropFailedCacheEntry();
+
       return { message: t("admin.series.wait_free.load_failed"), ok: false };
     }
 
@@ -113,6 +121,7 @@ const getSeriesWaitFreeSettingsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.series.wait_free.load_failed"), {
         locale,
@@ -134,6 +143,7 @@ export const getSeriesWaitFreeSettings = async (input: {
   seriesId: string;
 }): Promise<SeriesWaitFreeSettingsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return getSeriesWaitFreeSettingsForTenant({ ...input, tenantId }, locale);
 };
 
@@ -146,6 +156,7 @@ export const updateSeriesWaitFreeSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -164,7 +175,9 @@ export const updateSeriesWaitFreeSettings = async (
       },
       withSessionHeaders(sessionId)
     );
+
     const settings = toSeriesWaitFreeSettings(response.settings);
+
     if (!settings) {
       return { message: t("admin.series.wait_free.save_failed"), ok: false };
     }
@@ -173,6 +186,7 @@ export const updateSeriesWaitFreeSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return { message: await mapUpdateErrorToMessage(error, locale), ok: false };
   }
 };

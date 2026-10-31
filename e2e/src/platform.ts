@@ -83,16 +83,19 @@ export const submitTenantForm = async (
   await page
     .getByRole("option", { name: input.defaultLocaleLabel ?? "English" })
     .click();
+
   if (input.adminDomain !== undefined) {
     await page
       .getByRole("textbox", { name: /^Admin domain/u })
       .fill(input.adminDomain);
   }
+
   if (input.imageDomain !== undefined) {
     await page
       .getByRole("textbox", { name: /^Image host/u })
       .fill(input.imageDomain);
   }
+
   if (input.initialAdminEmails !== undefined) {
     await page
       .getByRole("textbox", { name: /^Initial admin emails/u })
@@ -103,14 +106,17 @@ export const submitTenantForm = async (
   await page.waitForURL((url) => {
     const match = url.pathname.match(/^\/tenants\/(?<publicId>[^/]+)(?:\/|$)/u);
     const publicId = match?.groups?.publicId;
+
     return Boolean(publicId && publicId !== "new");
   });
 
   const match = page.url().match(/\/tenants\/(?<publicId>[^/?#]+)/u);
   const publicId = match?.groups?.publicId?.trim() ?? "";
+
   if (!publicId || publicId === "new") {
     throw new Error(`could not parse tenant public id from ${page.url()}`);
   }
+
   return publicId;
 };
 
@@ -123,6 +129,7 @@ export const createTenantViaUi = async (
   input: CreateTenantInput
 ): Promise<string> => {
   await page.goto(platformUrl("/tenants/new"));
+
   return await submitTenantForm(page, input);
 };
 

@@ -31,6 +31,7 @@ describe("deriveDarkPalette", () => {
     const dark = deriveDarkPalette(DEFAULT_TENANT_THEME_COLORS);
 
     expect(findThemeTextContrastIssues(dark)).toEqual([]);
+
     for (const color of Object.values(dark)) {
       expect(color).toMatch(HEX_COLOR);
     }

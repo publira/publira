@@ -109,6 +109,7 @@ describe("GenreNamesForm", () => {
     const field = screen.getByRole<HTMLInputElement>("textbox", {
       name: /Genre name/u,
     });
+
     expect(field.value).toBe("Fantaji");
     expect(field.name).toBe("name");
   });

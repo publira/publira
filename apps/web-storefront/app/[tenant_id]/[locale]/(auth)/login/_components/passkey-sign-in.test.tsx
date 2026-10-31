@@ -32,7 +32,7 @@ const {
       (options: {
         optionsJSON: unknown;
         useBrowserAutofill?: boolean;
-      }) => Promise<unknown>
+      }) => Promise<typeof ASSERTION>
     >(),
 }));
 
@@ -198,8 +198,10 @@ describe("PasskeySignIn in the autofill", () => {
 
   it("starts no autofill request once the button has asked for a passkey", async () => {
     browserSupportsWebAuthnAutofill.mockResolvedValue(true);
+
     const { promise: autofillStarted, resolve: startAutofill } =
       Promise.withResolvers<PasskeyLoginStartState>();
+
     beginPasskeyLogin.mockReturnValueOnce(autofillStarted);
 
     await renderControl();

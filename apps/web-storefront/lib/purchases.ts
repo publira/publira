@@ -82,6 +82,7 @@ export type ListPurchasesResult =
 type CachedListPurchasesResult = ListPurchasesResult & {
   unexpected: boolean;
 };
+
 export interface ListPurchasesInput {
   limit?: number;
   /** UI locale the failure wording belongs to; part of the cache key. */
@@ -89,10 +90,13 @@ export interface ListPurchasesInput {
   token?: string;
 }
 
-const emptyPurchasePage = {
+const emptyPurchasePage: Pick<
+  ListPurchasesResult,
+  "nextToken" | "previousToken" | "purchases"
+> = {
   nextToken: "",
   previousToken: "",
-  purchases: [] as PurchaseItem[],
+  purchases: [],
 };
 
 /**
@@ -149,6 +153,7 @@ const toPurchasedItem = ({
       kind: "coin_pack",
     };
   }
+
   if (volume) {
     return {
       kind: "volume",
@@ -156,12 +161,14 @@ const toPurchasedItem = ({
       title: volume.title ?? "",
     };
   }
+
   if (seriesBundle) {
     return {
       episodeCount: seriesBundle.episodeCount ?? 0,
       kind: "series_bundle",
     };
   }
+
   return {
     kind: "episode",
     orderIndex: episode?.orderIndex ?? 0,
@@ -212,6 +219,7 @@ const readPurchaseList = async (
 
   const { locale } = input;
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     return {
       ...emptyPurchasePage,
@@ -233,6 +241,7 @@ const readPurchaseList = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       nextToken: response.nextToken ?? "",
       ok: true,
@@ -242,6 +251,7 @@ const readPurchaseList = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyPurchasePage,
       message: rpcErrorMessage(error, t("storefront.library.list_failed"), {
@@ -263,6 +273,7 @@ export const listMyPurchases = async (
     input,
     await resolveAccessToken()
   );
+
   if (unexpected) {
     const t = await getMessagesFor(input.locale);
 
@@ -270,6 +281,7 @@ export const listMyPurchases = async (
       result.ok ? t("storefront.library.list_failed") : result.message
     );
   }
+
   return result;
 };
 
@@ -302,8 +314,10 @@ export const listAllMyPurchases = async (
     },
     buildSessionHeaders(accessToken)
   );
+
   const purchases = (response.purchases ?? []).map(mapPurchase);
   const nextToken = response.nextToken ?? "";
+
   return nextToken
     ? [
         ...purchases,

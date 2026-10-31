@@ -38,6 +38,7 @@ const nameSchema = async (locale: Locale) => {
     })
   );
 };
+
 const tenantIdSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -45,33 +46,39 @@ const tenantIdSchema = async (locale: Locale) => {
     t("admin.creator_roles.validation.tenant_missing")
   );
 };
+
 const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return requiredRecordId(t("admin.creator_roles.validation.id_missing"));
 };
+
 const createCreatorRoleSchema = async (locale: Locale) =>
   z.object({
     name: await nameSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
+
 const renameCreatorRoleSchema = async (locale: Locale) =>
   z.object({
     id: await idSchema(locale),
     name: await nameSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
+
 const deleteCreatorRoleSchema = async (locale: Locale) =>
   z.object({
     id: await idSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
+
 const reorderCreatorRolesSchema = async (locale: Locale) =>
   z.object({
     expectedIds: jsonRecordIdArrayFormSchema,
     ids: jsonRecordIdArrayFormSchema,
     tenantId: await tenantIdSchema(locale),
   });
+
 const rowFormFields = {
   id: { kind: "value", name: "creator_role_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -83,24 +90,29 @@ export const createCreatorRoleAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     createCreatorRoleSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       name: "value",
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { name, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     createCreatorRole({ name, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -119,21 +131,26 @@ export const renameCreatorRoleAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     renameCreatorRoleSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, { ...rowFormFields, name: "value" })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { name, id, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateCreatorRole({ id, name, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -152,19 +169,24 @@ export const deleteCreatorRoleAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     deleteCreatorRoleSchema(locale),
   ]);
+
   const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { id, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     deleteCreatorRole({ id, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -182,10 +204,12 @@ export const reorderCreatorRolesAction = async (
 ): Promise<CreatorRoleReorderResult> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     reorderCreatorRolesSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       expectedIds: {
@@ -196,6 +220,7 @@ export const reorderCreatorRolesAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -207,6 +232,7 @@ export const reorderCreatorRolesAction = async (
   }
 
   const { expectedIds, ids, tenantId } = parsed.data;
+
   if (ids.length === 0 || ids.length !== expectedIds.length) {
     return {
       message: t("admin.creator_roles.reorder_failed"),
@@ -217,6 +243,7 @@ export const reorderCreatorRolesAction = async (
   const result = await withAdminSessionReauth(() =>
     reorderCreatorRoles({ expectedIds, ids, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

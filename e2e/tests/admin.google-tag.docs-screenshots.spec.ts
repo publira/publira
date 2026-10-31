@@ -36,6 +36,7 @@ const PAGE = "console/google-tag";
 
 for (const locale of DOCS_LOCALES) {
   const t = (key: string): string => docsText(locale, key);
+
   const servingMode = (page: Page, mode: string) =>
     page.getByRole("radio", {
       exact: true,
@@ -68,12 +69,14 @@ for (const locale of DOCS_LOCALES) {
 
     test("the server container URL", async ({ page }) => {
       await servingMode(page, "server_container").click();
+
       const url = page.getByRole("textbox", {
         name: docsLabelPattern(
           locale,
           "admin.settings.google_tag.server_container_url"
         ),
       });
+
       await url.fill("https://sgtm.example.com");
 
       await expectDocsScreenshot(page, {
@@ -122,6 +125,7 @@ for (const locale of DOCS_LOCALES) {
         exact: true,
         name: t("admin.settings.google_tag.consent_modes.opt_in.label"),
       });
+
       await askFirst.click();
       await expect(
         page.getByText(

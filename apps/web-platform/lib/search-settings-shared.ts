@@ -26,9 +26,11 @@ export const searchEngineName = (engine: PlatformSearchEngine): string => {
     case "elasticsearch": {
       return "Elasticsearch";
     }
+
     case "opensearch": {
       return "OpenSearch";
     }
+
     default: {
       return "PostgreSQL";
     }

@@ -15,11 +15,14 @@ export const toSupportedLocales = (
   defaultLocale: Locale
 ): Locale[] => {
   const offered = new Set<Locale>([defaultLocale]);
+
   for (const code of codes) {
     const locale = parseLocale(code);
+
     if (locale === undefined) {
       throw new Error(`tenant supported locale is not supported: ${code}`);
     }
+
     offered.add(locale);
   }
 

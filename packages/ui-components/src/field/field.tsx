@@ -2,7 +2,11 @@
 
 import { Field as BaseField } from "@base-ui/react/field";
 import { cn } from "@publira/utils";
-import type { ComponentPropsWithoutRef, ComponentPropsWithRef } from "react";
+import type {
+  ComponentPropsWithoutRef,
+  ComponentPropsWithRef,
+  RefCallback,
+} from "react";
 import {
   createContext,
   use,
@@ -25,10 +29,13 @@ export type FieldProps = BaseField.Root.Props;
 
 export const Field = ({ className, ...props }: FieldProps) => {
   const [hasPopupTrigger, setHasPopupTrigger] = useState(false);
+
   const registerPopupTrigger = useCallback(() => {
     setHasPopupTrigger(true);
+
     return () => setHasPopupTrigger(false);
   }, []);
+
   const popupTrigger = useMemo(
     () => ({ hasPopupTrigger, registerPopupTrigger }),
     [hasPopupTrigger, registerPopupTrigger]
@@ -88,6 +95,16 @@ export type FieldPopupTriggerProps = ComponentPropsWithRef<"button">;
  * leaves attributes as the server rendered them while hydrating, so the ARIA
  * references are held back until the render right after hydration.
  */
+type TriggerRef = FieldPopupTriggerProps["ref"];
+
+const isRefCallback = (
+  ref: TriggerRef
+): ref is RefCallback<HTMLButtonElement> => typeof ref === "function";
+
+const isRefCleanup = (
+  value: ReturnType<RefCallback<HTMLButtonElement>>
+): value is () => void => typeof value === "function";
+
 export const FieldPopupTrigger = ({
   "aria-describedby": ariaDescribedBy,
   "aria-labelledby": ariaLabelledBy,
@@ -95,30 +112,38 @@ export const FieldPopupTrigger = ({
   ...props
 }: FieldPopupTriggerProps) => {
   const { registerPopupTrigger } = use(FieldPopupTriggerContext);
+
   const hydrated = useSyncExternalStore(
     subscribeToNothing,
     () => true,
     () => false
   );
+
   const triggerRef = useCallback(
     (element: HTMLButtonElement) => {
       const unregister = registerPopupTrigger?.();
-      if (typeof ref === "function") {
+
+      if (isRefCallback(ref)) {
         const cleanup = ref(element);
+
         return () => {
           unregister?.();
-          if (typeof cleanup === "function") {
+
+          if (isRefCleanup(cleanup)) {
             cleanup();
           } else {
             ref(null);
           }
         };
       }
+
       if (ref) {
         ref.current = element;
       }
+
       return () => {
         unregister?.();
+
         if (ref) {
           ref.current = null;
         }

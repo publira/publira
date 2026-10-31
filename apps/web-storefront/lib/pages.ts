@@ -46,6 +46,10 @@ export interface PublishedPageLink {
   slug: string;
 }
 
+const isSegmentList = (
+  slug: string | readonly string[]
+): slug is readonly string[] => Array.isArray(slug);
+
 /**
  * Normalize a route param or form slug to the storage form used by admin/public APIs.
  * Accepts a string or catch-all segment array.
@@ -55,9 +59,10 @@ export interface PublishedPageLink {
 export const normalizePublishedPageSlug = (
   slug: string | readonly string[]
 ): string => {
-  const joined: string = typeof slug === "string" ? slug : slug.join("/");
+  const joined = isSegmentList(slug) ? slug.join("/") : slug;
 
   let normalized = joined.trim();
+
   if (!normalized || normalized === "/") {
     return "";
   }
@@ -65,7 +70,9 @@ export const normalizePublishedPageSlug = (
   while (normalized.includes("//")) {
     normalized = normalized.replaceAll("//", "/");
   }
+
   normalized = normalized.replaceAll(/^\/|\/$/gu, "");
+
   if (!normalized) {
     return "";
   }
@@ -91,6 +98,7 @@ const fetchPublishedPageBySlug = async (
       slug,
       tenant: { tenantId },
     });
+
     return { ok: true, response };
   } catch (error) {
     return { error, ok: false };
@@ -103,6 +111,7 @@ const fetchPublishedPageBySlug = async (
  */
 export const publishedPageHrefFromSlug = (slug: string): string => {
   const normalized = normalizePublishedPageSlug(slug);
+
   return normalized || "/";
 };
 
@@ -126,6 +135,7 @@ const listPublishedPageLinksCached = async (
   applyCacheTag(tenantPagesTag(tenantId));
 
   let response: Awaited<ReturnType<typeof apiClient.pages.listPublishedPages>>;
+
   try {
     response = await apiClient.pages.listPublishedPages({
       locale,
@@ -134,21 +144,26 @@ const listPublishedPageLinksCached = async (
   } catch (error) {
     console.warn("[web-storefront] listPublishedPages failed", error);
     dropFailedCacheEntry();
+
     return [];
   }
 
   const links: PublishedPageLink[] = [];
+
   for (const page of response.pages ?? []) {
     const id = page.id?.trim() ?? "";
     const slug = page.slug?.trim() ?? "";
     const title = page.title?.trim() ?? "";
+
     if (!id || !slug || !title) {
       continue;
     }
+
     // API already filters to display_in_footer + published; keep a defensive check.
     if (page.displayInFooter === false) {
       continue;
     }
+
     links.push({
       href: publishedPageHrefFromSlug(slug),
       id,
@@ -156,6 +171,7 @@ const listPublishedPageLinksCached = async (
       slug,
     });
   }
+
   return links;
 };
 
@@ -165,6 +181,7 @@ export const listPublishedPageLinks = async (
   locale: Locale
 ): Promise<PublishedPageLink[]> => {
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return [];
   }
@@ -232,15 +249,18 @@ export const getPublishedPage = async (
   );
 
   let response: GetPublishedPageResponse;
+
   if (primary.ok) {
     ({ response } = primary);
   } else if (isMissingResourceRpcError(primary.error)) {
     const bareSlug = normalizedSlug.slice(1);
+
     const secondary = await fetchPublishedPageBySlug(
       normalizedTenantId,
       bareSlug,
       locale
     );
+
     if (secondary.ok) {
       ({ response } = secondary);
     } else if (isMissingResourceRpcError(secondary.error)) {
@@ -261,6 +281,7 @@ export const getPublishedPage = async (
   }
 
   const { page, publishedLocales, version } = response;
+
   if (!(page?.id && version)) {
     return { ok: true, value: null };
   }

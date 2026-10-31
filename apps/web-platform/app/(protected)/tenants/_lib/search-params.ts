@@ -25,17 +25,21 @@ export const buildTenantsPath = ({
   token,
 }: TenantFilters): string => {
   const search = new URLSearchParams();
+
   if (name) {
     search.set("name", name);
   }
+
   if (status) {
     search.set("status", status);
   }
+
   if (token) {
     search.set("token", token);
   }
 
   const query = search.toString();
+
   return query ? `/tenants?${query}` : "/tenants";
 };
 

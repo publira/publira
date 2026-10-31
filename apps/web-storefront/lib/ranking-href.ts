@@ -30,19 +30,24 @@ export const rankingHref = ({
   token?: string;
 }): string => {
   const params = new URLSearchParams();
+
   if (genre) {
     params.set("genre", genre);
   }
+
   if (period !== DEFAULT_RANKING_PERIOD) {
     params.set("period", period);
   }
+
   if (rating !== DEFAULT_RANKING_AGE_RATING) {
     params.set("rating", rating);
   }
+
   if (token) {
     params.set("token", token);
   }
 
   const serialized = params.toString();
+
   return serialized.length > 0 ? `/ranking?${serialized}` : "/ranking";
 };

@@ -8,6 +8,7 @@ export {
   isPlaceholderStaticParam,
   STATIC_PARAM_PLACEHOLDER,
 } from "./static-param-placeholder";
+
 export type { PlaceholderParamValue } from "./static-param-placeholder";
 
 /**

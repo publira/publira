@@ -6,6 +6,7 @@
 export const sameVersions = (left: string[], right: string[]): boolean => {
   const leftIds = new Set(left);
   const rightIds = new Set(right);
+
   return (
     leftIds.size === left.length &&
     leftIds.size === rightIds.size &&

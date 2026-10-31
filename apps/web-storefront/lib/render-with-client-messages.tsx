@@ -21,6 +21,7 @@ export const renderWithClientMessages = async (
   locale: Locale = "en"
 ) => {
   const loaded = await loadStorefrontClientMessages(locale);
+
   const messages = Object.assign(Promise.resolve(loaded), {
     status: "fulfilled",
     value: loaded,

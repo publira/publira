@@ -25,13 +25,18 @@ const {
 
 const REDIRECT_PREFIX = "NEXT_REDIRECT:";
 
+/** Whether `cookies().delete` was named the cookie rather than its options. */
+const isCookieName = (options: string | { name: string }): options is string =>
+  typeof options === "string";
+
 vi.mock("next/headers", () => ({
   cookies: () => ({
     delete: (options: string | { name: string }) => {
-      cookieJar.delete(typeof options === "string" ? options : options.name);
+      cookieJar.delete(isCookieName(options) ? options : options.name);
     },
     get: (name: string) => {
       const value = cookieJar.get(name);
+
       return value === undefined ? undefined : { name, value };
     },
     set: ({ name, value }: { name: string; value: string }) => {
@@ -75,6 +80,7 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 const startForm = (fields: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     intent: "login",
     locale: "en",
@@ -85,6 +91,7 @@ const startForm = (fields: Record<string, string>): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -99,8 +106,10 @@ const redirectedTo = async (action: Promise<void>): Promise<URL> => {
         "https://reader.example"
       );
     }
+
     throw error;
   }
+
   throw new Error("the action did not redirect");
 };
 
@@ -108,6 +117,7 @@ const redirectedTo = async (action: Promise<void>): Promise<URL> => {
 const startSignIn = async (fields: Record<string, string> = {}) => {
   const { startSocialSignInAction } =
     await import("#lib/social-sign-in-actions");
+
   return redirectedTo(startSocialSignInAction(startForm(fields)));
 };
 
@@ -115,7 +125,9 @@ const startSignIn = async (fields: Record<string, string> = {}) => {
 const startEmailChange = async () => {
   const { confirmEmailChangeWithProviderAction } =
     await import("../../../../../[locale]/(site)/settings/security/_lib/actions");
+
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     currentEmail: "reader@example.com",
     locale: "en",
@@ -125,6 +137,7 @@ const startEmailChange = async () => {
   })) {
     data.set(name, value);
   }
+
   return redirectedTo(confirmEmailChangeWithProviderAction(data));
 };
 
@@ -132,7 +145,9 @@ const startEmailChange = async () => {
 const startLink = async (provider = "google") => {
   const { linkIdentityAction } =
     await import("../../../../../[locale]/(site)/settings/security/_lib/actions");
+
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     locale: "en",
     provider,
@@ -140,6 +155,7 @@ const startLink = async (provider = "google") => {
   })) {
     data.set(name, value);
   }
+
   return redirectedTo(linkIdentityAction(data));
 };
 
@@ -148,6 +164,7 @@ const postAnswer = async (
   fields: Record<string, string>
 ): Promise<Response> => {
   const { POST } = await import("./route");
+
   return POST(
     new Request(`https://reader.example/api/v1/auth/${provider}/callback`, {
       body: new URLSearchParams(fields),
@@ -240,10 +257,12 @@ describe("Apple and Google sign-in round trip", () => {
     });
 
     expect(mockLoginWithIdToken).not.toHaveBeenCalled();
+
     const location = new URL(
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/en/login");
     expect(location.searchParams.get("error")).toBe(
       "Could not sign in. Please try again."
@@ -301,6 +320,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.searchParams.get("error")).toBe(
       "This account cannot sign in here. Sign in with your email address instead."
     );
@@ -325,6 +345,7 @@ describe("Apple and Google sign-in round trip", () => {
       intent: "delete",
       returnTo: "/settings",
     });
+
     mockDeleteMe.mockResolvedValueOnce("deleted");
 
     const response = await postAnswer("google", {
@@ -380,10 +401,12 @@ describe("Apple and Google sign-in round trip", () => {
       "access-token"
     );
     expect(mockLoginWithIdToken).not.toHaveBeenCalled();
+
     const location = new URL(
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/en/settings/security");
     expect(location.searchParams.get("status")).toBe("success");
   });
@@ -401,6 +424,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/en/settings/security");
     expect(location.searchParams.get("status")).toBe("error");
     expect(location.searchParams.get("message")).toBe(
@@ -424,6 +448,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.searchParams.get("status")).toBe("error");
     expect(location.searchParams.get("message")).toBe(
       "This site does not accept this email address. Use another email address."
@@ -445,6 +470,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/login");
     expect(location.searchParams.get("returnTo")).toBe("/settings/security");
   });
@@ -454,6 +480,7 @@ describe("Apple and Google sign-in round trip", () => {
       intent: "delete",
       returnTo: "/settings",
     });
+
     cookieJar.set(PUBLIC_SESSION_COOKIE_NAME, "sealed-session");
     mockDeleteMe.mockResolvedValueOnce("failed");
 
@@ -466,6 +493,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/en/settings");
     expect(location.searchParams.get("status")).toBe("error");
     expect(location.searchParams.get("message")).toBe(
@@ -479,6 +507,7 @@ describe("Apple and Google sign-in round trip", () => {
       intent: "delete",
       returnTo: "/settings",
     });
+
     cookieJar.set(PUBLIC_SESSION_COOKIE_NAME, "sealed-session");
     mockDeleteMe.mockResolvedValueOnce("last_tenant_admin");
 
@@ -491,6 +520,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/en/settings");
     expect(location.searchParams.get("status")).toBe("error");
     expect(location.searchParams.get("message")).toBe(
@@ -527,10 +557,12 @@ describe("Apple and Google sign-in round trip", () => {
       "access-token"
     );
     expect(mockLoginWithIdToken).not.toHaveBeenCalled();
+
     const location = new URL(
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/en/settings/security");
     expect(location.searchParams.get("status")).toBe("success");
     expect(location.searchParams.get("message")).toBe(
@@ -581,6 +613,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/en/settings/security");
     expect(location.searchParams.get("status")).toBe("error");
     expect(location.searchParams.get("message")).toBe(message);
@@ -614,6 +647,7 @@ describe("Apple and Google sign-in round trip", () => {
       response.headers.get("Location") ?? "",
       "https://reader.example"
     );
+
     expect(location.pathname).toBe("/login");
     expect(location.searchParams.get("returnTo")).toBe("/settings/security");
   });

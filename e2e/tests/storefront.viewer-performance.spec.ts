@@ -107,6 +107,7 @@ const installViewerMetrics = (progressLabel: string) => {
       trackTransitions: 0,
     },
   };
+
   window.__publiraViewerMetrics = metrics;
 
   // The library gives its track this class whatever `className` the app adds,
@@ -124,10 +125,13 @@ const installViewerMetrics = (progressLabel: string) => {
 
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
+      // SAFETY: the observer watches `layout-shift` alone, and every entry of
+      // that type is a `LayoutShift`, which the DOM types do not declare.
       const shift = entry as PerformanceEntry & {
         hadRecentInput: boolean;
         value: number;
       };
+
       if (!shift.hadRecentInput) {
         metrics.cumulativeLayoutShift += shift.value;
       }
@@ -151,11 +155,13 @@ const installViewerMetrics = (progressLabel: string) => {
     ) {
       return;
     }
+
     requestAnimationFrame(() => {
       metrics.firstPageDrawnMs ??= performance.now();
     });
     firstPaintObserver.disconnect();
   });
+
   // `document`, not `documentElement`: an init script runs before the parser
   // has produced an `<html>` element to observe.
   firstPaintObserver.observe(document, {
@@ -179,26 +185,34 @@ const installViewerMetrics = (progressLabel: string) => {
       "keydown",
       () => {
         const start = performance.now();
+
         const tick = () => {
           const elapsed = performance.now() - start;
+
           if (metrics.turn.responseMs === null && readProgress() !== before) {
             metrics.turn.responseMs = elapsed;
           }
+
           if (metrics.turn.pageReadyMs === null && isDrawn(targetPageLabel)) {
             metrics.turn.pageReadyMs = elapsed;
           }
+
           if (
             metrics.turn.responseMs !== null &&
             metrics.turn.pageReadyMs !== null
           ) {
             metrics.turn.settledAtMs = performance.now();
+
             return;
           }
+
           if (elapsed > TURN_TIMEOUT_MS) {
             return;
           }
+
           requestAnimationFrame(tick);
         };
+
         requestAnimationFrame(tick);
       },
       { once: true }
@@ -234,6 +248,7 @@ const readOneSpread = async (page: Page) => {
   await page.keyboard.press("ArrowLeft");
   await page.waitForFunction(() => {
     const turn = window.__publiraViewerMetrics?.turn;
+
     return (
       turn?.pageReadyMs !== undefined &&
       turn.pageReadyMs !== null &&
@@ -245,6 +260,7 @@ const readOneSpread = async (page: Page) => {
   // that much time has passed with the new spread on screen.
   await page.waitForFunction((settleMs) => {
     const turn = window.__publiraViewerMetrics?.turn;
+
     return (
       turn?.settledAtMs !== undefined &&
       turn.settledAtMs !== null &&
@@ -254,6 +270,7 @@ const readOneSpread = async (page: Page) => {
 
   return await page.evaluate(() => {
     const metrics = window.__publiraViewerMetrics;
+
     return {
       cumulativeLayoutShift: metrics?.cumulativeLayoutShift ?? 0,
       firstPageDrawnMs: metrics?.firstPageDrawnMs ?? null,
@@ -275,6 +292,7 @@ test.describe("web-storefront viewer rendering performance", () => {
    */
   test.beforeAll(async ({ browser }) => {
     const warmUpPage = await browser.newPage();
+
     try {
       await readOneSpread(warmUpPage);
     } finally {

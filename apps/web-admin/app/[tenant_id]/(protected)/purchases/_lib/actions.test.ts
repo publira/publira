@@ -38,6 +38,7 @@ const refundFormData = (reason: string): FormData => {
   formData.set("tenant_id", "TENANT001");
   formData.set("purchase_id", PURCHASE_ID);
   formData.set("reason", reason);
+
   return formData;
 };
 
@@ -58,6 +59,7 @@ describe("refundPurchaseAction", () => {
     mockRefundPurchase.mockResolvedValue({ ok: true, purchase: {} });
 
     const { refundPurchaseAction } = await import("./actions");
+
     const state = await refundPurchaseAction(
       null,
       refundFormData("  Bought twice by mistake.  ")
@@ -93,6 +95,7 @@ describe("refundPurchaseAction", () => {
 
   it("refuses a reason longer than the API records", async () => {
     const { refundPurchaseAction } = await import("./actions");
+
     const state = await refundPurchaseAction(
       null,
       refundFormData("x".repeat(1001))
@@ -112,6 +115,7 @@ describe("refundPurchaseAction", () => {
     });
 
     const { refundPurchaseAction } = await import("./actions");
+
     const state = await refundPurchaseAction(
       null,
       refundFormData("Bought twice by mistake.")

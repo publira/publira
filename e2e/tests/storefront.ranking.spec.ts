@@ -163,6 +163,7 @@ test.describe("web-storefront ranking", () => {
     const tile = page
       .locator("main li")
       .filter({ has: page.getByRole("link", { name: RANKED_GENRE.name }) });
+
     const covers = tile.locator("img");
     await expect(covers).toHaveCount(RANKED_GENRE.coverSeriesNumbers.length);
 
@@ -175,6 +176,7 @@ test.describe("web-storefront ranking", () => {
           )?.groups?.id
       )
     );
+
     expect(imageIds).toEqual(
       RANKED_GENRE.coverSeriesNumbers.map(seedSeriesImageId)
     );

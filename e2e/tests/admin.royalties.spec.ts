@@ -30,6 +30,7 @@ const signIn = (page: Page, nextPath: string): Promise<void> =>
 const lineRows = async (page: Page): Promise<string[]> => {
   const rows = page.getByRole("table").locator("tbody tr");
   await expect(rows.getByText("Subtotal", { exact: true })).toHaveCount(2);
+
   return rows.allInnerTexts();
 };
 
@@ -133,10 +134,12 @@ test.describe("royalties", () => {
     // counted in UTC here too.
     const today = Temporal.Now.plainDateISO("UTC");
     const currentPeriod = today.toPlainYearMonth().toString();
+
     const previousPeriod = today
       .toPlainYearMonth()
       .subtract({ months: 1 })
       .toString();
+
     const closeDate = today
       .with({ day: 1 })
       .add({ months: 1 })

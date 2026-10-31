@@ -51,6 +51,7 @@ describe("ContactMessageFilterForm", () => {
     );
 
     fireEvent.click(screen.getByRole("combobox", { name: "Status" }));
+
     const labels = within(await screen.findByRole("listbox"))
       .getAllByRole("option")
       .map((option) => option.textContent);

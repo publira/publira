@@ -60,9 +60,11 @@ const redirectToLogin = (
   const response = NextResponse.redirect(
     buildLoginUrl(request.nextUrl, locale, defaultLocale)
   );
+
   if (clearSession) {
     response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
   }
+
   return response;
 };
 
@@ -85,6 +87,7 @@ const redirectToPathname = (
 ): NextResponse => {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
+
   return NextResponse.redirect(url, status);
 };
 
@@ -102,10 +105,13 @@ const withoutTrailingSlash = (pathname: string): string | null => {
   ) {
     return null;
   }
+
   let end = pathname.length;
+
   while (end > 1 && pathname[end - 1] === "/") {
     end -= 1;
   }
+
   return pathname.slice(0, end);
 };
 
@@ -116,10 +122,13 @@ const withoutTrailingSlash = (pathname: string): string | null => {
  */
 const answerBeforeTenant = (request: NextRequest): NextResponse | null => {
   const { pathname } = request.nextUrl;
+
   if (isHealthProbePath(pathname)) {
     return NextResponse.next();
   }
+
   const slashless = withoutTrailingSlash(pathname);
+
   return slashless ? redirectToPathname(request, slashless, 308) : null;
 };
 
@@ -132,6 +141,7 @@ const movedPublicPathname = (pathname: string): string | null => {
   if (pathname === "/authors") {
     return "/creators";
   }
+
   return pathname.startsWith("/authors/")
     ? `/creators/${pathname.slice("/authors/".length)}`
     : null;
@@ -144,9 +154,11 @@ const redirectMovedPathname = (
   pathname: string
 ): NextResponse | null => {
   const movedPathname = movedPublicPathname(pathname);
+
   if (!movedPathname) {
     return null;
   }
+
   return redirectToPathname(
     request,
     requestedLocale ? `/${requestedLocale}${movedPathname}` : movedPathname,
@@ -168,6 +180,7 @@ const suspendedSiteResponse = (
   pathLocale: Locale | null
 ): NextResponse => {
   const locale = suspendedTenantLocale(request, pathLocale);
+
   return suspendedTenantResponse({
     description: sharedMessage(
       "storefront.errors.suspended_description",
@@ -189,6 +202,7 @@ const resolveTenant = async (
   pathLocale: Locale | null
 ): Promise<ResolvedTenant | { response: NextResponse }> => {
   let tenant: ResolvedTenant | typeof SUSPENDED_TENANT | null;
+
   try {
     tenant = await resolveTenantByDomain(
       getTenantDomainCandidates(request.headers)
@@ -200,6 +214,7 @@ const resolveTenant = async (
   if (!tenant) {
     return { response: new NextResponse("Not Found", { status: 404 }) };
   }
+
   if (tenant === SUSPENDED_TENANT) {
     return { response: suspendedSiteResponse(request, pathLocale) };
   }
@@ -237,14 +252,18 @@ const forwardGoogleTagGatewayPath = async (
   tenantId: string
 ): Promise<NextResponse | null> => {
   const gatewayPathSegment = gatewayPathSegmentOf(request.nextUrl.pathname);
+
   if (!gatewayPathSegment) {
     return null;
   }
+
   try {
     const gateway = await resolveGoogleTagGateway(tenantId);
+
     if (gateway?.path !== gatewayPathSegment) {
       return null;
     }
+
     return await forwardToGoogleTagGateway(
       request,
       gateway,
@@ -253,6 +272,7 @@ const forwardGoogleTagGatewayPath = async (
   } catch (error) {
     // A failure the gateway cannot recover from fails its path alone.
     console.error("[web-storefront] google tag gateway failed", error);
+
     return new NextResponse("Bad Gateway", { status: 502 });
   }
 };
@@ -267,19 +287,23 @@ const resolveSiteTenant = async (
   pathLocale: Locale | null
 ): Promise<ResolvedTenant | { response: NextResponse }> => {
   const tenant = await resolveTenant(request, pathLocale);
+
   if ("response" in tenant) {
     return tenant;
   }
+
   const gatewayResponse = await forwardGoogleTagGatewayPath(
     request,
     tenant.tenantId
   );
+
   return gatewayResponse ? { response: gatewayResponse } : tenant;
 };
 
 const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
+
   return NextResponse.rewrite(url);
 };
 
@@ -287,6 +311,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;
 
   const answered = answerBeforeTenant(request);
+
   if (answered) {
     return answered;
   }
@@ -296,15 +321,19 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   // onto the tenant alone and never gain a locale segment.
   if (isLocaleExemptPathname(pathname)) {
     const tenant = await resolveTenant(request, null);
+
     if ("response" in tenant) {
       return tenant.response;
     }
+
     return rewriteTo(request, `/${tenant.tenantId}${pathname}`);
   }
 
   const { locale: requestedLocale, pathname: publicPath } =
     splitLocalePathname(pathname);
+
   const tenant = await resolveSiteTenant(request, requestedLocale);
+
   if ("response" in tenant) {
     return tenant.response;
   }
@@ -323,6 +352,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   // A published page is served at its slug in place of the redirects and
   // session rules below; the admin API keeps the paths they must hold.
   const publishedSlugs = await resolvePublishedPageSlugs(tenant.tenantId);
+
   const isPublishedPagePath =
     getPublishedPageSlugFromPathname(publicPath, publishedSlugs) !== null;
 
@@ -334,6 +364,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const movedResponse = isPublishedPagePath
     ? null
     : redirectMovedPathname(request, requestedLocale, publicPath);
+
   if (movedResponse) {
     return withResolvedLocale(movedResponse);
   }
@@ -348,6 +379,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   // the old compatibility redirect, this keeps the reader on the canonical
   // URL while the App Router receives its required `[locale]` segment.
   const locale = requestedLocale ?? tenant.defaultLocale;
+
   const rewritePathname = buildTenantRewritePathname(
     tenant.tenantId,
     locale,
@@ -393,9 +425,11 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   }
 
   const response = rewriteTo(request, rewritePathname);
+
   if (isRejectedSession && hasStoredSessionCookie) {
     response.cookies.delete(PUBLIC_SESSION_COOKIE_NAME);
   }
+
   return withResolvedLocale(response);
 };
 

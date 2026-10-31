@@ -17,6 +17,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CreateAnnouncementActionState } from "../announcement-types";
 import { AnnouncementForm } from "./announcement-form";
 
+type CreateAnnouncementAction = (
+  state: CreateAnnouncementActionState,
+  formData: FormData
+) => Promise<CreateAnnouncementActionState>;
+
 vi.mock("#components/message", () => ({
   Message: ({
     message,
@@ -95,7 +100,7 @@ describe("AnnouncementForm", () => {
   });
 
   it("posts the banner's stop time as an instant in the tenant's zone", async () => {
-    const action = vi.fn(() =>
+    const action = vi.fn<CreateAnnouncementAction>(() =>
       Promise.resolve<CreateAnnouncementActionState>(null)
     );
 
@@ -107,6 +112,7 @@ describe("AnnouncementForm", () => {
         timeZone: "Asia/Tokyo",
       })
     );
+
     fillIn();
 
     expect(container.querySelector("input[name='pinned_until']")).toBeNull();
@@ -114,10 +120,16 @@ describe("AnnouncementForm", () => {
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Show as a site banner" })
     );
-    fireEvent.change(
-      container.querySelector("input[name='pinned_until_local']") as Element,
-      { target: { value: "2099-06-01T09:00" } }
+
+    const pinnedUntil = container.querySelector(
+      "input[name='pinned_until_local']"
     );
+
+    if (!pinnedUntil) {
+      throw new Error("the banner's stop time is not on screen");
+    }
+
+    fireEvent.change(pinnedUntil, { target: { value: "2099-06-01T09:00" } });
     fireEvent.click(
       screen.getByRole("button", { name: "Deliver the announcement" })
     );
@@ -125,10 +137,9 @@ describe("AnnouncementForm", () => {
     await waitFor(() => {
       expect(action).toHaveBeenCalledOnce();
     });
-    const [, formData] = action.mock.calls[0] as unknown as [
-      CreateAnnouncementActionState,
-      FormData,
-    ];
+
+    const [[, formData]] = action.mock.calls;
+
     expect(formData.get("tenant_id")).toBe("TENANT001");
     expect(formData.get("pinned")).toBe("on");
     expect(formData.get("pinned_until")).toBe("2099-06-01T00:00:00Z");
@@ -140,7 +151,7 @@ describe("AnnouncementForm", () => {
   ])(
     "posts the delivery the Send to everyone checkbox asks for: %s",
     async (checked, delivery) => {
-      const action = vi.fn(() =>
+      const action = vi.fn<CreateAnnouncementAction>(() =>
         Promise.resolve<CreateAnnouncementActionState>(null)
       );
 
@@ -157,11 +168,14 @@ describe("AnnouncementForm", () => {
       const checkbox = screen.getByRole("checkbox", {
         name: "Send to everyone",
       });
+
       // Off unless the editor turns it on.
       expect(checkbox.getAttribute("aria-checked")).toBe("false");
+
       if (checked) {
         fireEvent.click(checkbox);
       }
+
       fireEvent.click(
         screen.getByRole("button", { name: "Deliver the announcement" })
       );
@@ -169,10 +183,9 @@ describe("AnnouncementForm", () => {
       await waitFor(() => {
         expect(action).toHaveBeenCalledOnce();
       });
-      const [, formData] = action.mock.calls[0] as unknown as [
-        CreateAnnouncementActionState,
-        FormData,
-      ];
+
+      const [[, formData]] = action.mock.calls;
+
       expect(formData.get("delivery")).toBe(delivery);
     }
   );
@@ -209,7 +222,7 @@ describe("AnnouncementForm", () => {
   });
 
   it("posts every language's title and body in one submission", async () => {
-    const action = vi.fn(() =>
+    const action = vi.fn<CreateAnnouncementAction>(() =>
       Promise.resolve<CreateAnnouncementActionState>(null)
     );
 
@@ -237,10 +250,9 @@ describe("AnnouncementForm", () => {
     await waitFor(() => {
       expect(action).toHaveBeenCalledOnce();
     });
-    const [, formData] = action.mock.calls[0] as unknown as [
-      CreateAnnouncementActionState,
-      FormData,
-    ];
+
+    const [[, formData]] = action.mock.calls;
+
     // The tabs post in the row's order, the default language's with an empty
     // locale.
     expect(formData.getAll("translation_locale")).toEqual(["en", ""]);
@@ -255,7 +267,7 @@ describe("AnnouncementForm", () => {
   });
 
   it("opens the default language's tab when its title is missing", async () => {
-    const action = vi.fn(() =>
+    const action = vi.fn<CreateAnnouncementAction>(() =>
       Promise.resolve<CreateAnnouncementActionState>(null)
     );
 

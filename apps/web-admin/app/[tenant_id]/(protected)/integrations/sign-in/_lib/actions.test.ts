@@ -10,6 +10,7 @@ const { mockAssertSameOrigin, mockUpdateTag, mockUpdateTenantSignInSettings } =
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -24,7 +25,7 @@ vi.mock("next/cache", () => ({
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/auth-session", () => ({
-  withAdminSessionReauth: (run: () => Promise<unknown>) => run(),
+  withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
 vi.mock("#lib/tenant-sign-in-settings", () => ({
@@ -45,6 +46,7 @@ const signInFormData = (
   files: Record<string, File> = {}
 ): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries({
     apple_private_key_configured: "0",
     apple_private_key_mode: "replace",
@@ -53,9 +55,11 @@ const signInFormData = (
   })) {
     formData.set(name, value);
   }
+
   for (const [name, file] of Object.entries(files)) {
     formData.set(name, file);
   }
+
   return formData;
 };
 
@@ -80,6 +84,7 @@ describe("updateTenantSignInSettingsAction", () => {
     });
 
     const { updateTenantSignInSettingsAction } = await import("./actions");
+
     const result = await updateTenantSignInSettingsAction(
       null,
       signInFormData(
@@ -180,6 +185,7 @@ describe("updateTenantSignInSettingsAction", () => {
 
   it("asks for everything an enabled provider needs before saving", async () => {
     const { updateTenantSignInSettingsAction } = await import("./actions");
+
     const result = await updateTenantSignInSettingsAction(
       null,
       signInFormData({
@@ -207,6 +213,7 @@ describe("updateTenantSignInSettingsAction", () => {
 
   it("refuses a malformed value whether or not its provider is on", async () => {
     const { updateTenantSignInSettingsAction } = await import("./actions");
+
     const result = await updateTenantSignInSettingsAction(
       null,
       signInFormData({
@@ -237,6 +244,7 @@ describe("updateTenantSignInSettingsAction", () => {
 
   it("refuses a file too large to be a key", async () => {
     const { updateTenantSignInSettingsAction } = await import("./actions");
+
     const result = await updateTenantSignInSettingsAction(
       null,
       signInFormData(
@@ -260,6 +268,7 @@ describe("updateTenantSignInSettingsAction", () => {
 
   it("does not save without a tenant", async () => {
     const { updateTenantSignInSettingsAction } = await import("./actions");
+
     const result = await updateTenantSignInSettingsAction(
       null,
       signInFormData({ tenant_id: " " })
@@ -278,9 +287,11 @@ describe("updateTenantSignInSettingsAction", () => {
       message: VALIDATION,
       ok: false,
     };
+
     mockUpdateTenantSignInSettings.mockResolvedValueOnce(refused);
 
     const { updateTenantSignInSettingsAction } = await import("./actions");
+
     const result = await updateTenantSignInSettingsAction(
       null,
       signInFormData({ apple_private_key: "not a key" })

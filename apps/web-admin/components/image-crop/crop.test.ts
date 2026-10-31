@@ -15,9 +15,11 @@ const aspectOf = (variantType: string): CropAspect => {
   const aspect = EYE_CATCH_ASPECTS.find(
     (candidate) => candidate.variantType === variantType
   );
+
   if (!aspect) {
     throw new Error(`no ${variantType} ratio`);
   }
+
   return aspect;
 };
 
@@ -38,7 +40,7 @@ describe("centreCropRect", () => {
     ["og", "taller than wide", 2400, 3200, 0, 970, 2400, 1260],
   ])(
     "centres a %s frame in a source %s",
-    (variantType, _shape, width, height, x, y, cropWidth, cropHeight) => {
+    (variantType, _source, width, height, x, y, cropWidth, cropHeight) => {
       expect(centreCropRect({ height, width }, aspectOf(variantType))).toEqual({
         height: cropHeight,
         width: cropWidth,
@@ -96,6 +98,7 @@ describe("resizeCropRectToPointer", () => {
       x: 1600,
       y: largest.y + 900,
     });
+
     expect(resized).toMatchObject({ x: largest.x, y: largest.y });
     expect(resized.width).toBeLessThan(largest.width);
   });
@@ -105,6 +108,7 @@ describe("resizeCropRectToPointer", () => {
       x: 400,
       y: 1000,
     });
+
     expect(resized.x + resized.width).toBe(largest.x + largest.width);
     expect(resized.y + resized.height).toBe(largest.y + largest.height);
   });
@@ -114,6 +118,7 @@ describe("resizeCropRectToPointer", () => {
       x: 1800,
       y: largest.y + 1012,
     });
+
     expect(resized.width / resized.height).toBeCloseTo(16 / 9, 2);
   });
 
@@ -122,6 +127,7 @@ describe("resizeCropRectToPointer", () => {
       x: largest.x + 1,
       y: largest.y + 1,
     });
+
     expect(resized.width).toBe(landscape.minWidth);
   });
 
@@ -130,6 +136,7 @@ describe("resizeCropRectToPointer", () => {
       x: 99_999,
       y: 99_999,
     });
+
     expect(resized.width).toBe(largest.width);
     expect(resized.x + resized.width).toBeLessThanOrEqual(bounds.source.width);
     expect(resized.y + resized.height).toBeLessThanOrEqual(
@@ -141,10 +148,12 @@ describe("resizeCropRectToPointer", () => {
     // Below portrait's 1200x1600 minimum: there is nothing narrower to pick,
     // and the API refuses the upload for the image rather than the selection.
     const small = cropBounds({ height: 800, width: 600 }, portrait);
+
     const resized = resizeCropRectToPointer(small.largest, small, "se", {
       x: 0,
       y: 0,
     });
+
     expect(resized.width).toBe(small.largest.width);
   });
 });

@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { optionalBoundedIntFormSchema } from "#lib/form-schemas";
+import { isFormText, optionalBoundedIntFormSchema } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import type { TenantCommunityLimitOverrides } from "#lib/tenant-community-limits";
 import type { HourDayLimit, MinuteDayLimit } from "#lib/tenant-policy-shared";
@@ -22,7 +22,7 @@ type Translate = Awaited<ReturnType<typeof getMessagesFor>>;
  */
 const revisionSchema = (t: Translate) =>
   z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
+    (value) => (isFormText(value) ? value.trim() : ""),
     z
       .string()
       .regex(/^\d{1,19}$/u, t("admin.settings.policy.revision_invalid"))
@@ -64,6 +64,7 @@ const refineLimitPairs =
     } of pairs) {
       const perDay = value[day];
       const perShort = value[short];
+
       if ((perDay === undefined) !== (perShort === undefined)) {
         ctx.addIssue({
           code: "custom",
@@ -156,30 +157,39 @@ export const communityLimitsFormSchema = async (
 ): Promise<z.ZodType<CommunityLimitsFormValues, unknown>> => {
   const t = await getMessagesFor(locale);
   const commentPost = t("admin.settings.policy.community.comment_post_legend");
+
   const commentReport = t(
     "admin.settings.policy.community.comment_report_legend"
   );
+
   const episodeRating = t(
     "admin.settings.policy.community.episode_rating_legend"
   );
+
   const perAccount = t(
     "admin.settings.policy.community.contact_per_account_legend"
   );
+
   const perClient = t(
     "admin.settings.policy.community.contact_per_client_legend"
   );
+
   const viewerPreferences = t(
     "admin.settings.policy.community.viewer_preferences_legend"
   );
+
   const notificationSettings = t(
     "admin.settings.policy.community.notification_settings_legend"
   );
+
   const dayBelowMinute = (setting: string) =>
     t("admin.settings.policy.community.validation.day_below_minute", {
       setting,
     });
+
   const dayBelowHour = (setting: string) =>
     t("admin.settings.policy.community.validation.day_below_hour", { setting });
+
   const incomplete = (setting: string) =>
     t("admin.settings.policy.community.validation.incomplete", { setting });
 
@@ -313,6 +323,7 @@ export const retentionSettingsFormSchema = async (
   locale: Locale
 ): Promise<z.ZodType<RetentionSettingsFormValues, unknown>> => {
   const t = await getMessagesFor(locale);
+
   const days = (setting: string) =>
     optionalBoundedIntFormSchema(
       t("admin.settings.policy.retention.validation.days_invalid", { setting }),

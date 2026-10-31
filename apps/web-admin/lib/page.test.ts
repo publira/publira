@@ -86,6 +86,7 @@ describe("listPages", () => {
     });
 
     const { listPages } = await import("./page");
+
     const result = await listPages("TENANT001", "en", {
       limit: 20,
       token: "current-page",
@@ -145,6 +146,7 @@ describe("listPages", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listPages } = await import("./page");
+
     const result = await listPages("TENANT001", "en", {
       token: "current-page",
     });
@@ -169,6 +171,7 @@ describe("listPages", () => {
     );
 
     const { listPages } = await import("./page");
+
     const result = await listPages("TENANT001", "en", {
       token: "current-page",
     });
@@ -453,6 +456,7 @@ describe("listPageTranslations", () => {
     });
 
     const { listPageTranslations } = await import("./page");
+
     const result = await listPageTranslations(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -493,6 +497,7 @@ describe("listPageTranslations", () => {
     });
 
     const { listPageTranslations } = await import("./page");
+
     const result = await listPageTranslations(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -509,6 +514,7 @@ describe("listPageTranslations", () => {
     );
 
     const { listPageTranslations } = await import("./page");
+
     const result = await listPageTranslations(
       { pageId: "PAGE404", tenantId: "TENANT001" },
       "en"
@@ -522,6 +528,7 @@ describe("listPageTranslations", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listPageTranslations } = await import("./page");
+
     const result = await listPageTranslations(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -542,6 +549,7 @@ describe("listPageTranslations", () => {
     );
 
     const { listPageTranslations } = await import("./page");
+
     const result = await listPageTranslations(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -586,6 +594,7 @@ describe("getPage", () => {
     mockGetPage.mockResolvedValue({ page: page("PAGE001", "Privacy") });
 
     const { getPage } = await import("./page");
+
     const result = await getPage(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -599,6 +608,7 @@ describe("getPage", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { getPage } = await import("./page");
+
     const result = await getPage(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -619,6 +629,7 @@ describe("getPage", () => {
     );
 
     const { getPage } = await import("./page");
+
     const result = await getPage(
       { pageId: "PAGE404", tenantId: "TENANT001" },
       "en"
@@ -634,6 +645,7 @@ describe("getPage", () => {
     );
 
     const { getPage } = await import("./page");
+
     const result = await getPage(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -686,6 +698,7 @@ describe("listPageVersions", () => {
     });
 
     const { listPageVersions } = await import("./page");
+
     const result = await listPageVersions(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -702,6 +715,7 @@ describe("listPageVersions", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listPageVersions } = await import("./page");
+
     const result = await listPageVersions(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -726,6 +740,7 @@ describe("listPageVersions", () => {
     );
 
     const { listPageVersions } = await import("./page");
+
     const result = await listPageVersions(
       { pageId: "PAGE001", tenantId: "TENANT001" },
       "en"
@@ -774,6 +789,7 @@ describe("the translation a page RPC works on", () => {
     });
 
     const { getPage } = await import("./page");
+
     const result = await getPage(
       { pageId: "PAGE001", tenantId: "TENANT001", translationLocale: "en" },
       "en"

@@ -62,6 +62,7 @@ export const FollowControl = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
+
   const [t, defaultLocale, result] = await Promise.all([
     getMessagesFor(locale),
     getTenantDefaultLocale(tenantId),

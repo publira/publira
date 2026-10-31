@@ -77,9 +77,11 @@ const renderBell = ({
 describe("NotificationBell", () => {
   it("does not show a count when there are no notifications", () => {
     renderBell();
+
     const trigger = screen.getByRole("button", {
       name: "Notifications, none unread",
     });
+
     expect(trigger.textContent).not.toContain("0");
     fireEvent.click(trigger);
     expect(screen.getByText("No notifications yet.")).toBeDefined();
@@ -134,9 +136,11 @@ describe("NotificationBell", () => {
 
   it("returns focus to the trigger when closed with Escape", () => {
     renderBell();
+
     const trigger = screen.getByRole("button", {
       name: "Notifications, none unread",
     });
+
     trigger.focus();
     fireEvent.click(trigger);
     expect(screen.getByRole("dialog")).toBeDefined();

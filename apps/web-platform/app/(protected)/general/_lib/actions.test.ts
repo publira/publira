@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
+
 const {
   mockAssertSameOrigin,
   mockGetPlatformLocale,
@@ -33,7 +35,8 @@ vi.mock("#lib/api-client", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
+
   return {
     ...actual,
     getPlatformLocale: mockGetPlatformLocale,
@@ -54,20 +57,24 @@ vi.mock("#lib/platform-settings", () => ({
 const timezoneFormData = (defaultTimezone: string): FormData => {
   const formData = new FormData();
   formData.set("default_timezone", defaultTimezone);
+
   return formData;
 };
 
 const localeFormData = (defaultLocale: string): FormData => {
   const formData = new FormData();
   formData.set("default_locale", defaultLocale);
+
   return formData;
 };
 
 const currencyFormData = (defaultCurrency?: string): FormData => {
   const formData = new FormData();
+
   if (defaultCurrency !== undefined) {
     formData.set("default_currency", defaultCurrency);
   }
+
   return formData;
 };
 

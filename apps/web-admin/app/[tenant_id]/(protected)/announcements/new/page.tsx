@@ -23,10 +23,12 @@ import { createAnnouncementAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isEditor] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantEditor(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -50,6 +52,7 @@ const AnnouncementFormSkeleton = () => (
 
 const AnnouncementFormData = async () => {
   const tenantId = await getTenantId();
+
   const [tenantLocales, timeZone] = await Promise.all([
     findTenantLocales(tenantId),
     getTenantDisplayTimeZone(tenantId),

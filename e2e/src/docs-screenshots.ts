@@ -29,32 +29,47 @@ export const DOCS_LOCALES: readonly string[] = readdirSync(DOCS_ROOT, {
   .flatMap((entry) => (entry.isDirectory() ? [entry.name] : []))
   .toSorted();
 
+type CatalogNode = string | CatalogTree;
+
+/** A parsed `locales/<locale>.json`, nested keys down to the messages. */
+interface CatalogTree {
+  readonly [key: string]: CatalogNode;
+}
+
+const isMessage = (node: CatalogNode | undefined): node is string =>
+  typeof node === "string";
+
 /**
  * The message catalogs the consoles render their copy from, one per locale,
  * read once each.
  */
 const LOCALES_ROOT = path.resolve(import.meta.dirname, "../../locales");
-const catalogs = new Map<string, unknown>();
+const catalogs = new Map<string, CatalogTree>();
 
 /** The message at `key` in `locales/<locale>.json`, as the catalog spells it. */
 const catalogMessage = (locale: string, key: string): string => {
   let catalog = catalogs.get(locale);
+
   if (catalog === undefined) {
+    // SAFETY: `pnpm locales:check` rejects a catalog with a leaf that is not a
+    // string.
     catalog = JSON.parse(
       readFileSync(path.join(LOCALES_ROOT, `${locale}.json`), "utf-8")
-    ) as unknown;
+    ) as CatalogTree;
     catalogs.set(locale, catalog);
   }
-  let message: unknown = catalog;
+
+  let message: CatalogNode | undefined = catalog;
+
   for (const part of key.split(".")) {
     message =
-      typeof message === "object" && message !== null
-        ? (message as Record<string, unknown>)[part]
-        : undefined;
+      message === undefined || isMessage(message) ? undefined : message[part];
   }
-  if (typeof message !== "string") {
+
+  if (!isMessage(message)) {
     throw new TypeError(`locales/${locale}.json has no message at ${key}.`);
   }
+
   return message;
 };
 
@@ -71,11 +86,13 @@ const catalogMessage = (locale: string, key: string): string => {
  */
 export const docsText = (locale: string, key: string): string => {
   const message = catalogMessage(locale, key);
+
   if (/(?<!\\)[{}]/u.test(message)) {
     throw new Error(
       `${key} in locales/${locale}.json takes a value, so its text on screen is not known.`
     );
   }
+
   return message.replaceAll(/\\(?<escaped>[\\{}|])/gu, "$<escaped>");
 };
 
@@ -94,12 +111,15 @@ const escapeRegExp = (text: string): string =>
  */
 export const docsTextPattern = (locale: string, key: string): RegExp => {
   const message = catalogMessage(locale, key);
+
   if (message.startsWith(".") || message.includes("\\")) {
     throw new Error(
       `${key} in locales/${locale}.json chooses between variants or escapes a character, which no pattern here follows.`
     );
   }
+
   const parts = message.split(/\{[^{}]*\}/u);
+
   return new RegExp(`^${parts.map(escapeRegExp).join(".+")}$`, "u");
 };
 
@@ -226,13 +246,16 @@ const docsImagePath = ({ locale, page, subject }: DocsShot): string[] => {
 
   const segments = page.split("/");
   const directories: string[] = [];
+
   for (const [index, segment] of segments.entries()) {
     // Only the last segment can be a page of its own; any other is a directory.
     const last = index === segments.length - 1;
+
     const entry = readdirSync(path.join(DOCS_ROOT, locale, ...directories), {
       withFileTypes: true,
     }).find((candidate) => {
       const name = ENTRY_NAME.exec(candidate.name)?.groups;
+
       return (
         name?.slug === segment &&
         (name.page === undefined
@@ -240,14 +263,17 @@ const docsImagePath = ({ locale, page, subject }: DocsShot): string[] => {
           : last && candidate.isFile())
       );
     });
+
     if (!entry) {
       throw new Error(
         `docs/${locale}/ has no page at ${page}. A shot is named after the page that shows it.`
       );
     }
+
     if (entry.isFile()) {
       return [locale, ...directories, `${segment}-${subject}.png`];
     }
+
     directories.push(entry.name);
   }
 
@@ -278,15 +304,16 @@ interface Region {
  * keeps its margin of the dimmed screen behind it.
  */
 const regionOf = async (element: DocsShot["element"]): Promise<Region> => {
-  const ends: readonly Locator[] = Array.isArray(element)
-    ? element
-    : [element as Locator];
+  const ends: readonly Locator[] = [element].flat();
+
   const boxes = await Promise.all(
     ends.map(async (locator) => {
       await expect(locator).toBeVisible();
+
       return locator.evaluate((node) => {
         const box = node.getBoundingClientRect();
         const main = node.closest("main")?.getBoundingClientRect();
+
         return {
           bounds: main
             ? {
@@ -311,22 +338,27 @@ const regionOf = async (element: DocsShot["element"]): Promise<Region> => {
       });
     })
   );
+
   const left = Math.max(
     ...boxes.map(({ bounds }) => bounds.left),
     Math.min(...boxes.map(({ box }) => box.left)) - REGION_MARGIN
   );
+
   const top = Math.max(
     ...boxes.map(({ bounds }) => bounds.top),
     Math.min(...boxes.map(({ box }) => box.top)) - REGION_MARGIN
   );
+
   const right = Math.min(
     ...boxes.map(({ bounds }) => bounds.right),
     Math.max(...boxes.map(({ box }) => box.right)) + REGION_MARGIN
   );
+
   const bottom = Math.min(
     ...boxes.map(({ bounds }) => bounds.bottom),
     Math.max(...boxes.map(({ box }) => box.bottom)) + REGION_MARGIN
   );
+
   return { height: bottom - top, width: right - left, x: left, y: top };
 };
 
@@ -354,15 +386,18 @@ const settledRegionOf = async (
       async () => {
         measurements.push(await regionOf(element));
         const [previous, latest] = measurements.slice(-2);
+
         return previous !== undefined && isDeepStrictEqual(previous, latest);
       },
       { intervals: [REGION_SETTLE_INTERVAL] }
     )
     .toBe(true);
   const region = measurements.at(-1);
+
   if (region === undefined) {
     throw new Error("The region was never measured.");
   }
+
   return region;
 };
 
@@ -404,6 +439,7 @@ const resolveFontsAtEmulatedScale = async (page: Page): Promise<void> => {
       "publira-docs-screenshot",
       "local(publira-docs-screenshot)"
     );
+
     document.fonts.add(face);
     root.getBoundingClientRect();
     document.fonts.delete(face);
@@ -450,6 +486,7 @@ export const expectDocsScreenshot = async (
   // its animations stopped at their end.
   await page.evaluate(async () => {
     const finishing: Promise<Animation>[] = [];
+
     for (const animation of document.getAnimations()) {
       if (
         animation.effect?.getComputedTiming().endTime !==
@@ -458,6 +495,7 @@ export const expectDocsScreenshot = async (
         finishing.push(animation.finished);
       }
     }
+
     // A canceled animation rejects, and is as finished as one that ran out.
     await Promise.allSettled(finishing);
   });

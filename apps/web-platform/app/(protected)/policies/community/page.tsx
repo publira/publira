@@ -15,6 +15,7 @@ import { CommunityLimitsForm } from "./_components/community-limits-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   return { title: t("platform.policy.community.page_title") };
 };
 
@@ -39,6 +40,7 @@ const FormSkeleton = () => (
 
 const Content = async () => {
   const result = await getPlatformPolicy();
+
   return (
     <CommunityLimitsForm
       loadErrorMessage={result.ok ? undefined : result.message}

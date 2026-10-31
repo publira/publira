@@ -18,6 +18,7 @@ const tokenOrEmpty = async (
 ): Promise<string> => {
   const schema = await authTokenFormSchema(locale);
   const parsed = schema.safeParse(value);
+
   return parsed.success ? parsed.data : "";
 };
 
@@ -51,14 +52,17 @@ const buildConfirmPasswordPath = ({
   if (error) {
     params.set("error", error);
   }
+
   if (status) {
     params.set("status", status);
   }
+
   if (token) {
     params.set("token", token);
   }
 
   const query = params.toString();
+
   return query ? `/confirm-password?${query}` : "/confirm-password";
 };
 
@@ -76,13 +80,17 @@ export const confirmPasswordAction = async (
     password: "value",
     token: "value",
   });
+
   const schema = await confirmPasswordFormSchema(locale);
   const parsed = schema.safeParse(input);
+
   if (!parsed.success) {
     const token = await tokenOrEmpty(locale, input.token);
+
     if (!token) {
       redirect(buildConfirmPasswordPath({ status: "invalid" }));
     }
+
     redirect(
       buildConfirmPasswordPath({
         error: toFormErrorMessage(parsed.error, { locale }),
@@ -93,6 +101,7 @@ export const confirmPasswordAction = async (
 
   const { password, token } = parsed.data;
   const result = await confirmPlatformPasswordReset(token, password, locale);
+
   if (!result.ok) {
     if (result.reason === "expired" || result.reason === "invalid") {
       redirect(buildConfirmPasswordPath({ status: result.reason }));

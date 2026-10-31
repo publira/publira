@@ -61,6 +61,7 @@ export const createPlatformApiClient = (
   const tenantHeaderInterceptor = createTenantHeaderInterceptor({
     tenantId,
   });
+
   const interceptors = [
     createTracingInterceptor(transport),
     ...(tenantHeaderInterceptor ? [tenantHeaderInterceptor] : []),

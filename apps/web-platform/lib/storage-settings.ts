@@ -102,27 +102,35 @@ export const storageTestFailureMessage = async (
     case "STORAGE_TEST_BUCKET_NOT_FOUND": {
       return t("platform.storage.test.reasons.bucket_not_found");
     }
+
     case "STORAGE_TEST_CONNECTION": {
       return t("platform.storage.test.reasons.connection");
     }
+
     case "STORAGE_TEST_CREDENTIALS": {
       return t("platform.storage.test.reasons.credentials");
     }
+
     case "STORAGE_TEST_OBJECT_ALTERED": {
       return t("platform.storage.test.reasons.object_altered");
     }
+
     case "STORAGE_TEST_OBJECT_MISSING": {
       return t("platform.storage.test.reasons.object_missing");
     }
+
     case "STORAGE_TEST_PERMISSION": {
       return t("platform.storage.test.reasons.permission");
     }
+
     case "STORAGE_TEST_TIMEOUT": {
       return t("platform.storage.test.reasons.timeout");
     }
+
     case "STORAGE_TEST_UNKNOWN": {
       return t("platform.storage.test.reasons.unknown");
     }
+
     default: {
       return undefined;
     }
@@ -140,20 +148,25 @@ const toCheckResults = async (
   locale: Locale
 ): Promise<PlatformStorageCheckResult[]> => {
   const t = await getMessagesFor(locale);
+
   const operationLabel = (operation: (typeof storageOperations)[number]) => {
     switch (operation) {
       case 1: {
         return t("platform.storage.test.operations.put_object");
       }
+
       case 2: {
         return t("platform.storage.test.operations.get_object");
       }
+
       case 3: {
         return t("platform.storage.test.operations.list_objects");
       }
+
       case 4: {
         return t("platform.storage.test.operations.delete_object");
       }
+
       default: {
         return String(operation);
       }
@@ -163,9 +176,11 @@ const toCheckResults = async (
   return await Promise.all(
     storageOperations.map(async (operation) => {
       const label = operationLabel(operation);
+
       const check = checks.find(
         (candidate) => candidate.operation === operation
       );
+
       if (!check) {
         return {
           detail: t("platform.storage.test.skipped"),
@@ -173,9 +188,11 @@ const toCheckResults = async (
           status: "skipped" as const,
         };
       }
+
       if (check.succeeded) {
         return { detail: "", label, status: "succeeded" as const };
       }
+
       return {
         detail:
           (await storageTestFailureMessage(check.reason, locale)) ??
@@ -193,19 +210,20 @@ const toCheckResults = async (
  * categories take the shared copy.
  */
 const writeFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   fallbackKey: PlatformMessageKey
 ): Promise<{ message: string; ok: false }> => {
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
   const t = await getMessagesFor(locale);
   const fallback = t(fallbackKey);
+
   return {
-    message: rpcErrorMessage(error, fallback, {
+    message: rpcErrorMessage(cause, fallback, {
       locale,
       overrides: {
-        "invalid-argument": rpcErrorRawMessage(error)?.trim() || fallback,
+        "invalid-argument": rpcErrorRawMessage(cause)?.trim() || fallback,
         precondition: t("platform.storage.save_conflict"),
       },
     }),
@@ -225,6 +243,7 @@ const getPlatformStorageSettingsForLocale = async (
       {},
       withServiceHeaders()
     );
+
     return { ok: true, settings: toPlatformStorageSettings(response.settings) };
   } catch (error) {
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
@@ -232,6 +251,7 @@ const getPlatformStorageSettingsForLocale = async (
     // soon as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.storage.load_failed"), {
         locale,
@@ -251,6 +271,7 @@ const getPlatformStorageSettingsForLocale = async (
 export const getPlatformStorageSettings =
   async (): Promise<GetPlatformStorageSettingsResult> => {
     await verifyPlatformSession();
+
     return getPlatformStorageSettingsForLocale(await getPlatformLocale());
   };
 
@@ -265,8 +286,10 @@ export const updatePlatformStorageSettings = async (
   locale: Locale
 ): Promise<UpdatePlatformStorageSettingsResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
@@ -276,6 +299,7 @@ export const updatePlatformStorageSettings = async (
         { ...input, expectedRevision },
         buildSessionHeaders(sessionId)
       );
+
     return { ok: true, settings: toPlatformStorageSettings(response.settings) };
   } catch (error) {
     return writeFailure(error, locale, "platform.storage.save_failed");
@@ -287,8 +311,10 @@ export const testPlatformStorageConnection = async (
   locale: Locale
 ): Promise<TestPlatformStorageConnectionResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
@@ -298,6 +324,7 @@ export const testPlatformStorageConnection = async (
         input,
         buildSessionHeaders(sessionId)
       );
+
     return {
       checks: await toCheckResults(response.checks, locale),
       ok: true,

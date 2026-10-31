@@ -91,6 +91,7 @@ const CODE_ELEMENTS = new Set(["code", "pre"]);
 const enclosingElement = (source: string, index: number): string | null => {
   const openings = source.slice(0, index).matchAll(/<(?<tag>[A-Za-z][\w.]*)/gu);
   let last: string | null = null;
+
   for (const opening of openings) {
     last = opening.groups?.tag ?? null;
   }
@@ -110,6 +111,7 @@ export interface Finding {
 
 export const findInFile = (file: string, source: string): Finding[] => {
   const findings: Finding[] = [];
+
   for (const rule of RULES) {
     for (const match of source.matchAll(rule.pattern)) {
       findings.push({
@@ -123,9 +125,11 @@ export const findInFile = (file: string, source: string): Finding[] => {
 
   for (const match of source.matchAll(MONOSPACE)) {
     const element = enclosingElement(source, match.index);
+
     if (element && CODE_ELEMENTS.has(element)) {
       continue;
     }
+
     findings.push({
       advice:
         "The console has one typeface for its data. `font-mono` belongs on a `<code>` or `<pre>` element; an identifier is set in the sans face with `tabular-nums`, beside a copy control where the exact value matters (`Identifier` in @publira/ui-components).",
@@ -140,12 +144,15 @@ export const findInFile = (file: string, source: string): Finding[] => {
 
 const walk = async (directory: string): Promise<string[]> => {
   const entries = await readdir(directory, { withFileTypes: true });
+
   const files = await Promise.all(
     entries.map(async (entry) => {
       const entryPath = path.join(directory, entry.name);
+
       if (entry.isDirectory()) {
         return SKIP_DIRECTORIES.has(entry.name) ? [] : await walk(entryPath);
       }
+
       if (isTestFile(entry.name)) {
         return [];
       }
@@ -174,11 +181,14 @@ const generatedFiles = async (
     ["check-attr", "-z", "--stdin", "linguist-generated"],
     { cwd: repository, stdio: ["pipe", "pipe", "inherit"] }
   );
+
   git.stdin.end(files.join("\0"));
+
   const [output, [code]] = await Promise.all([
     text(git.stdout),
     once(git, "close"),
   ]);
+
   if (code !== 0) {
     throw new Error(`git check-attr exited with ${code}`);
   }
@@ -186,6 +196,7 @@ const generatedFiles = async (
   // `-z` prints each path, attribute, and value as a NUL-terminated triple.
   const fields = output.split("\0");
   const generated = new Set<string>();
+
   for (let index = 0; index + 2 < fields.length; index += 3) {
     if (fields[index + 2] === "set") {
       generated.add(fields[index] ?? "");
@@ -206,8 +217,10 @@ export const scan = async (
   const walked = await Promise.all(
     roots.map((root) => walk(path.join(repository, root)))
   );
+
   const files = walked.flat().map((file) => path.relative(repository, file));
   const generated = await generatedFiles(repository, files);
+
   const sources = await Promise.all(
     files
       .filter((file) => !generated.has(file))
@@ -222,6 +235,7 @@ export const scan = async (
 
 const report = (finding: Finding): void => {
   const message = `\`${finding.match}\` is not a class this design uses. ${finding.advice}`;
+
   if (process.env.GITHUB_ACTIONS) {
     console.error(
       `::error file=${finding.file},line=${finding.line}::${message}`
@@ -229,6 +243,7 @@ const report = (finding: Finding): void => {
 
     return;
   }
+
   console.error(`${finding.file}:${finding.line}: ${message}`);
 };
 
@@ -239,6 +254,7 @@ const main = async (): Promise<void> => {
     for (const finding of findings) {
       report(finding);
     }
+
     process.exitCode = 1;
 
     return;

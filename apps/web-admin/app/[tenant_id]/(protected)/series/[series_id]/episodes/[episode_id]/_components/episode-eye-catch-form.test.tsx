@@ -89,7 +89,13 @@ describe("EpisodeEyeCatchForm", () => {
   it("closes the image controls while the save is in flight", async () => {
     // Never resolved: the assertions are about the window the save is open in.
     const save = Promise.withResolvers<EpisodeEditActionState>();
-    const pendingAction = vi.fn(() => save.promise);
+
+    const pendingAction = vi.fn<
+      (
+        state: EpisodeEditActionState,
+        formData: FormData
+      ) => Promise<EpisodeEditActionState>
+    >(() => save.promise);
 
     await act(() => {
       render(
@@ -113,10 +119,9 @@ describe("EpisodeEyeCatchForm", () => {
         expect(control.disabled).toBe(true);
       }
     });
-    const [, formData] = pendingAction.mock.calls[0] as unknown as [
-      EpisodeEditActionState,
-      FormData,
-    ];
+
+    const [[, formData]] = pendingAction.mock.calls;
+
     expect(formData.get("tenant_id")).toBe("TENANT001");
     expect(formData.get("episode_id")).toBe("episode-1");
     expect(formData.get("current_eye_catch_image_updated_at")).toBe(
@@ -126,7 +131,13 @@ describe("EpisodeEyeCatchForm", () => {
 
   it("sends the delete toggle when the editor removes the eye-catch", async () => {
     const save = Promise.withResolvers<EpisodeEditActionState>();
-    const pendingAction = vi.fn(() => save.promise);
+
+    const pendingAction = vi.fn<
+      (
+        state: EpisodeEditActionState,
+        formData: FormData
+      ) => Promise<EpisodeEditActionState>
+    >(() => save.promise);
 
     await act(() => {
       render(
@@ -147,10 +158,9 @@ describe("EpisodeEyeCatchForm", () => {
     await waitFor(() => {
       expect(pendingAction).toHaveBeenCalled();
     });
-    const [, formData] = pendingAction.mock.calls[0] as unknown as [
-      EpisodeEditActionState,
-      FormData,
-    ];
+
+    const [[, formData]] = pendingAction.mock.calls;
+
     expect(formData.get("clear_eye_catch_image")).toBe("1");
   });
 });

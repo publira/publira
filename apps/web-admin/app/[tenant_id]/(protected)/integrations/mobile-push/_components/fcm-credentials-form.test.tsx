@@ -73,9 +73,11 @@ describe("FcmCredentialsForm", () => {
     const { form } = screen.getByRole<HTMLButtonElement>("button", {
       name: "Save the credentials",
     });
+
     if (!form) {
       throw new Error("the save button belongs to no form");
     }
+
     fireEvent.submit(form);
 
     await waitFor(() => {

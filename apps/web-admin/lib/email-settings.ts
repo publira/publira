@@ -93,13 +93,14 @@ export const tenantEmailSettingsCacheTag = (tenantId: string): string =>
  * the shared copy — a raw `[internal]` message is not something to show.
  */
 const parseErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const fallback = t("admin.settings.email.failed");
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
-  return rpcErrorMessage(error, fallback, {
+  const serverMessage = rpcErrorRawMessage(cause)?.trim() || fallback;
+
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "invalid-argument": serverMessage,
@@ -109,15 +110,15 @@ const parseErrorMessage = async (
 };
 
 const parseSmtpTestErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const fallback = t("admin.settings.email.failed");
 
   return (
-    smtpTestFailureErrorMessage(error, locale) ??
-    rpcErrorMessage(error, fallback, {
+    smtpTestFailureErrorMessage(cause, locale) ??
+    rpcErrorMessage(cause, fallback, {
       locale,
       overrides: { precondition: fallback },
     })
@@ -169,6 +170,7 @@ const getTenantEmailSettingsForSession = async (
 
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -189,6 +191,7 @@ const getTenantEmailSettingsForSession = async (
     return { ok: true, settings: toTenantSmtpSettings(response.settings) };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: await parseErrorMessage(error, locale),
       ok: false,
@@ -230,6 +233,7 @@ const getTenantEmailSenderForSession = async (
 
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -254,6 +258,7 @@ const getTenantEmailSenderForSession = async (
     return { fromAddress: response.fromAddress, ok: true };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -292,6 +297,7 @@ export const updateTenantEmailSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
@@ -312,7 +318,7 @@ export const updateTenantEmailSettings = async (
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantId: normalizedTenantId },
         username: input.username,
-      } as never,
+      },
       withSessionHeaders(sessionId)
     );
 
@@ -320,6 +326,7 @@ export const updateTenantEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     // The one refusal naming the username is a password, entered or kept from
     // the stored settings, with no username to authenticate it.
     if (rpcErrorHasFieldViolation(error, "username")) {
@@ -331,6 +338,7 @@ export const updateTenantEmailSettings = async (
         ok: false,
       };
     }
+
     return { message: await parseErrorMessage(error, locale), ok: false };
   }
 };
@@ -343,6 +351,7 @@ export const sendTenantSmtpTestEmail = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
 
   if (!normalizedTenantId || !sessionId) {
@@ -365,7 +374,7 @@ export const sendTenantSmtpTestEmail = async (
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantId: normalizedTenantId },
         username: input.username,
-      } as never,
+      },
       withSessionHeaders(sessionId)
     );
 
@@ -373,6 +382,7 @@ export const sendTenantSmtpTestEmail = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     // The dialog has no username field of its own, so the refusal is its
     // message.
     if (rpcErrorHasFieldViolation(error, "username")) {
@@ -381,6 +391,7 @@ export const sendTenantSmtpTestEmail = async (
         ok: false,
       };
     }
+
     return {
       message: await parseSmtpTestErrorMessage(error, locale),
       ok: false,

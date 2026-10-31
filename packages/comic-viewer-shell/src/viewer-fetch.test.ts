@@ -127,6 +127,7 @@ describe("acceptNegotiatedImages", () => {
       .mockResolvedValue(
         encryptedResponse(entitled.ciphertext, entitled.keyID)
       );
+
     vi.stubGlobal("fetch", fetchMock);
     const viewerPage = page();
 
@@ -255,16 +256,20 @@ const fetchCandidate = (
 describe("createImageFetchPlugin", () => {
   it("asks again at a renewed URL once the page's own is refused, and goes there from then on", async () => {
     const imageBuffer = Uint8Array.from([7, 8, 9]).buffer;
+
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 403 }))
       .mockResolvedValueOnce(new Response(imageBuffer))
       .mockResolvedValueOnce(new Response(imageBuffer));
+
     vi.stubGlobal("fetch", fetchMock);
     const viewerPage = page("?t=expired");
+
     const renewPageUrl = vi.fn<RenewPageUrl>(() =>
       Promise.resolve("/images/episodes/page-1?t=fresh")
     );
+
     const plugin = createImageFetchPlugin(renewPageUrl);
 
     await expect(fetchWith(plugin, viewerPage)).resolves.toEqual(imageBuffer);
@@ -288,12 +293,15 @@ describe("createImageFetchPlugin", () => {
 
   it("asks for a refused candidate again at its own width", async () => {
     const imageBuffer = Uint8Array.from([7, 8, 9]).buffer;
+
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 401 }))
       .mockResolvedValueOnce(new Response(imageBuffer));
+
     vi.stubGlobal("fetch", fetchMock);
     const viewerPage = page("?t=expired");
+
     const plugin = createImageFetchPlugin(() =>
       Promise.resolve("/images/episodes/page-1?t=fresh")
     );
@@ -313,15 +321,19 @@ describe("createImageFetchPlugin", () => {
 
   it("fetches a wider candidate of a renewed page at that candidate's width", async () => {
     const imageBuffer = Uint8Array.from([7, 8, 9]).buffer;
+
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 403 }))
       .mockImplementation(() => Promise.resolve(new Response(imageBuffer)));
+
     vi.stubGlobal("fetch", fetchMock);
     const viewerPage = page("?t=expired");
+
     const renewPageUrl = vi.fn<RenewPageUrl>(() =>
       Promise.resolve("/images/episodes/page-1?t=fresh")
     );
+
     const plugin = createImageFetchPlugin(renewPageUrl);
 
     await fetchCandidate(
@@ -348,8 +360,10 @@ describe("createImageFetchPlugin", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 403 }));
+
     vi.stubGlobal("fetch", fetchMock);
     const viewerPage = page("?t=expired");
+
     const plugin = createImageFetchPlugin(() =>
       Promise.resolve(viewerPage.src)
     );
@@ -365,6 +379,7 @@ describe("createImageFetchPlugin", () => {
       "fetch",
       vi.fn().mockResolvedValue(new Response(null, { status: 403 }))
     );
+
     const plugin = createImageFetchPlugin(() =>
       Promise.reject(new Error("the session ended"))
     );

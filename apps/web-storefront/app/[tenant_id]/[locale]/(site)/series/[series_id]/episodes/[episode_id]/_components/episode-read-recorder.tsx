@@ -45,12 +45,14 @@ export const EpisodeReadRecorder = ({
 }) => {
   const { currentIndex, pages, spreadStartIndex, viewMode } =
     useViewerContext();
+
   const isFinished = isLastPageVisible({
     currentIndex,
     pageCount: pages.length,
     spreadStartIndex,
     viewMode,
   });
+
   const reportRef = useRef<Report | null>(null);
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export const EpisodeReadRecorder = ({
     reportRef.current = createReport({
       deliver: () => postReport(episodeReadBeaconPath(episode.id)),
     });
+
     return () => {
       reportRef.current = null;
     };

@@ -15,6 +15,7 @@ export const GET = async (
 ) => {
   const segments = await params;
   const parsed = parseRouteParams(paramsSchema, segments);
+
   return openGraphCardResponse(
     segments,
     parsed && { creatorId: parsed.creator_id, kind: "creator" }

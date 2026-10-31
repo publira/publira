@@ -67,12 +67,14 @@ const daysUntilPurge = (
   timeZone: string
 ): number | null => {
   const due = parseInstant(purgeDueAt);
+
   if (!due) {
     return null;
   }
 
   const today = Temporal.Now.zonedDateTimeISO(timeZone).toPlainDate();
   const deadline = due.toZonedDateTimeISO(timeZone).toPlainDate();
+
   return today.until(deadline, { largestUnit: "day" }).days;
 };
 
@@ -93,9 +95,11 @@ const PurgeNotice = ({
 }) => {
   const at = formatCommentDateTime(comment.purgeDueAt, locale, timeZone);
   const days = daysUntilPurge(comment.purgeDueAt, timeZone);
+
   if (days === null || days <= 0) {
     return <Message message="admin.comments.purge_due_now" values={{ at }} />;
   }
+
   return (
     <Message message="admin.comments.purge_due_days" values={{ at, days }} />
   );
@@ -405,6 +409,7 @@ export const CommentManager = async ({
 }: CommentManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (comments.length > 0 || hasPageLinks);
 

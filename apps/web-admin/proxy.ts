@@ -55,6 +55,7 @@ const serviceUnavailableResponse = () =>
  */
 const suspendedConsoleResponse = (request: NextRequest): NextResponse => {
   const locale = suspendedTenantLocale(request);
+
   return suspendedTenantResponse({
     description: sharedMessage("admin.errors.suspended_description", locale),
     locale,
@@ -92,13 +93,16 @@ export const proxy = async (request: NextRequest) => {
   // browser asked for.
   let tenantId: string | null;
   let defaultLocale: Locale | null;
+
   try {
     const routing = await resolveTenantRouting(
       getTenantDomainCandidates(request.headers)
     );
+
     if (routing === SUSPENDED_TENANT) {
       return suspendedConsoleResponse(request);
     }
+
     ({ defaultLocale, tenantId } = routing);
   } catch {
     return serviceUnavailableResponse();
@@ -124,12 +128,14 @@ export const proxy = async (request: NextRequest) => {
 
   if (PUBLIC_PATHS.has(pathname)) {
     const response = NextResponse.rewrite(rewriteUrl);
+
     // The API rejected this session while a page was rendering, where the
     // cookie cannot be touched. Clearing it here is what keeps the console from
     // waving the operator back in with the same dead credentials.
     if (hasStoredSessionCookie && isSessionRevokedRedirect(request.nextUrl)) {
       response.cookies.delete(ADMIN_SESSION_COOKIE_NAME);
     }
+
     return withLocale(response);
   }
 
@@ -142,6 +148,7 @@ export const proxy = async (request: NextRequest) => {
       RETURN_TO_HEADER_NAME,
       buildReturnToPath(request.nextUrl)
     );
+
     return withLocale(
       NextResponse.rewrite(rewriteUrl, {
         request: { headers: requestHeaders },
@@ -150,11 +157,13 @@ export const proxy = async (request: NextRequest) => {
   }
 
   const response = NextResponse.redirect(buildLoginUrl(request.nextUrl));
+
   // A cookie that no longer decrypts or has run out is not worth carrying to
   // the login page, where it would only be rejected again.
   if (hasStoredSessionCookie) {
     response.cookies.delete(ADMIN_SESSION_COOKIE_NAME);
   }
+
   return withLocale(response);
 };
 

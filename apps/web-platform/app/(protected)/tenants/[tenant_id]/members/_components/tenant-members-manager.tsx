@@ -53,12 +53,15 @@ const invitationStatusTone = (status: string) => {
   if (status === "pending") {
     return "warning" as const;
   }
+
   if (status === "accepted") {
     return "success" as const;
   }
+
   if (status === "expired") {
     return "muted" as const;
   }
+
   return "destructive" as const;
 };
 
@@ -75,6 +78,7 @@ const TenantRoleLabel = ({ role }: { role: string }) => {
         </Suspense>
       );
     }
+
     case "tenant_auditor": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -82,6 +86,7 @@ const TenantRoleLabel = ({ role }: { role: string }) => {
         </Suspense>
       );
     }
+
     case "tenant_editor": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -89,6 +94,7 @@ const TenantRoleLabel = ({ role }: { role: string }) => {
         </Suspense>
       );
     }
+
     case "tenant_member": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -96,6 +102,7 @@ const TenantRoleLabel = ({ role }: { role: string }) => {
         </Suspense>
       );
     }
+
     case "tenant_owner": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -103,6 +110,7 @@ const TenantRoleLabel = ({ role }: { role: string }) => {
         </Suspense>
       );
     }
+
     default: {
       return role;
     }
@@ -119,6 +127,7 @@ const AccountStatusLabel = ({ status }: { status: string }) => {
         </Suspense>
       );
     }
+
     case "inactive": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -126,6 +135,7 @@ const AccountStatusLabel = ({ status }: { status: string }) => {
         </Suspense>
       );
     }
+
     case "suspended": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -133,6 +143,7 @@ const AccountStatusLabel = ({ status }: { status: string }) => {
         </Suspense>
       );
     }
+
     default: {
       return status;
     }
@@ -149,6 +160,7 @@ const InvitationStatusLabel = ({ status }: { status: string }) => {
         </Suspense>
       );
     }
+
     case "canceled": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -156,6 +168,7 @@ const InvitationStatusLabel = ({ status }: { status: string }) => {
         </Suspense>
       );
     }
+
     case "expired": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -163,6 +176,7 @@ const InvitationStatusLabel = ({ status }: { status: string }) => {
         </Suspense>
       );
     }
+
     case "pending": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -170,6 +184,7 @@ const InvitationStatusLabel = ({ status }: { status: string }) => {
         </Suspense>
       );
     }
+
     default: {
       return status;
     }
@@ -390,6 +405,7 @@ const TenantInvitationActions = ({
 }) => {
   const canResend =
     invitation.status === "pending" || invitation.status === "expired";
+
   const canCancel = invitation.status === "pending";
   const cancelFormId = `tenant-invitation-cancel-${invitation.id}`;
 

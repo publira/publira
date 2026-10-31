@@ -23,6 +23,7 @@ export const EpisodeStatusPrice = ({
   // Each branch names its key literally. `draft` is the only other value the
   // database accepts.
   let statusLabel = t("admin.series.episodes.status_draft");
+
   if (status === "scheduled") {
     statusLabel = t("admin.series.episodes.status_scheduled");
   } else if (status === "published") {

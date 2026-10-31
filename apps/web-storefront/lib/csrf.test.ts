@@ -6,6 +6,7 @@ const { mockForbidden, mockHeaders } = vi.hoisted(() => ({
 }));
 
 vi.mock("next/headers", () => ({ headers: mockHeaders }));
+
 vi.mock("next/navigation", () => ({ forbidden: mockForbidden }));
 
 const requestHeaders = (values: Record<string, string>): Headers =>

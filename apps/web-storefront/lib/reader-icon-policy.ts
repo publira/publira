@@ -30,6 +30,7 @@ const toPresetOptions = (
 ): ReaderIconPresetOption[] =>
   presets.flatMap((preset) => {
     const icon = toAccountIcon(preset.variants);
+
     return icon ? [{ icon, id: preset.id }] : [];
   });
 
@@ -52,6 +53,7 @@ export const getTenantReaderIconChoice = async (
   cacheLife({ stale: 30 });
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return { kind: "disabled" };
   }
@@ -62,13 +64,16 @@ export const getTenantReaderIconChoice = async (
     const response = await apiClient.tenant.getTenantReaderIconPolicy({
       tenant: { tenantId: normalizedTenantId },
     });
+
     switch (response.policy) {
       case ReaderIconPolicy.UPLOAD: {
         return { kind: "upload" };
       }
+
       case ReaderIconPolicy.PRESET: {
         return { kind: "preset", presets: toPresetOptions(response.presets) };
       }
+
       default: {
         return { kind: "disabled" };
       }
@@ -78,6 +83,7 @@ export const getTenantReaderIconChoice = async (
       console.warn("[web-storefront] getTenantReaderIconChoice failed", error);
       dropFailedCacheEntry();
     }
+
     return { kind: "disabled" };
   }
 };
@@ -95,9 +101,11 @@ export const offersReaderIconField = (
     case "disabled": {
       return false;
     }
+
     case "preset": {
       return choice.presets.length > 0 || hasIcon;
     }
+
     default: {
       return true;
     }

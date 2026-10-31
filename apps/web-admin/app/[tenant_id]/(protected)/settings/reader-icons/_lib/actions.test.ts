@@ -44,9 +44,11 @@ const PRESET_ID = "0199e3a4-5b6c-7d8e-9f01-23456789abcd";
 
 const formDataOf = (values: Record<string, File | string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 

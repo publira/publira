@@ -102,6 +102,7 @@ describe("SocialSignInButtons", () => {
     const button = screen.getByRole("button", {
       name: "Continue with Google",
     });
+
     expect(
       screen.queryByRole("button", { name: "Continue with Apple" })
     ).toBeNull();

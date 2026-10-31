@@ -29,20 +29,24 @@ export const CoinPackSortableList = ({
 }: CoinPackSortableListProps) => {
   const packIds = rows.map((row) => row.id);
   const [isPending, startTransition] = useTransition();
+
   const [optimisticPackIds, setOptimisticPackIds] = useOptimistic(
     packIds,
     (_currentPackIds, nextPackIds: string[]) => nextPackIds
   );
+
   const [reorderErrorMessage, setReorderErrorMessage] = useState("");
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentPackIds = optimisticPackIds;
+
       const nextPackIds = Sortable.withItemMoved(
         currentPackIds,
         identity,
         event
       );
+
       if (nextPackIds === currentPackIds) {
         return;
       }

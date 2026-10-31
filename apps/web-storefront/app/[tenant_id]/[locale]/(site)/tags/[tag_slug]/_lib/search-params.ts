@@ -49,6 +49,7 @@ export const parseTagDetailParams = (input: {
   tag_slug: string;
 }): string | null => {
   const parsed = tagDetailParamsSchema.safeParse(input);
+
   return parsed.success ? parsed.data.tag_slug : null;
 };
 

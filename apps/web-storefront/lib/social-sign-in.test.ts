@@ -1,22 +1,37 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+/** The attributes `cookies().set` was given beside the name and the value. */
+interface CookieAttributes {
+  httpOnly?: boolean;
+  maxAge?: number;
+  path?: string;
+  sameSite?: string;
+  secure?: boolean;
+}
+
 const { cookieJar } = vi.hoisted(() => ({
-  cookieJar: new Map<
-    string,
-    { options: Record<string, unknown>; value: string }
-  >(),
+  cookieJar: new Map<string, { options: CookieAttributes; value: string }>(),
 }));
+
+/** Whether `cookies().delete` was named the cookie rather than its options. */
+const isCookieName = (options: string | { name: string }): options is string =>
+  typeof options === "string";
 
 vi.mock("next/headers", () => ({
   cookies: () => ({
     delete: (options: string | { name: string }) => {
-      cookieJar.delete(typeof options === "string" ? options : options.name);
+      cookieJar.delete(isCookieName(options) ? options : options.name);
     },
     get: (name: string) => {
       const cookie = cookieJar.get(name);
+
       return cookie ? { name, value: cookie.value } : undefined;
     },
-    set: ({ name, value, ...options }: { name: string; value: string }) => {
+    set: ({
+      name,
+      value,
+      ...options
+    }: CookieAttributes & { name: string; value: string }) => {
       cookieJar.set(name, { options, value });
     },
   }),
@@ -117,6 +132,7 @@ describe("social sign-in", () => {
   it("answers null for a cookie this deployment did not seal", async () => {
     const { readSignInRequest, SIGN_IN_REQUEST_COOKIE_NAME } =
       await import("./social-sign-in");
+
     cookieJar.set(SIGN_IN_REQUEST_COOKIE_NAME, {
       options: {},
       value: "not-a-sealed-value",
@@ -128,6 +144,7 @@ describe("social sign-in", () => {
   it("spends the request", async () => {
     const { clearSignInRequest, readSignInRequest, writeSignInRequest } =
       await import("./social-sign-in");
+
     await writeSignInRequest(signInRequest);
 
     await clearSignInRequest();
@@ -141,6 +158,7 @@ describe("social sign-in", () => {
       readPendingSignUp,
       writePendingSignUp,
     } = await import("./social-sign-in");
+
     const pending = {
       authorizationCode: "",
       idToken: "header.payload.signature",

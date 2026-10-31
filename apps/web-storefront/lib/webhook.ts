@@ -43,9 +43,11 @@ export const parseWebhookPath = (
   { provider, tenantId }: { provider: string; tenantId: string }
 ): { provider: string; tenantId: string } | NextResponse => {
   const path = webhookPathSchema.safeParse({ provider, tenantId });
+
   if (path.success) {
     return path.data;
   }
+
   return path.error.issues.some((issue) => issue.path[0] === "provider")
     ? notFound(kind)
     : invalidTenantPath();
@@ -59,9 +61,9 @@ export const parseWebhookPath = (
  * An accepted request is answered 200: a Mailgun Route retries any other
  * status but 406 for 8 hours, and every other provider takes any 2xx.
  */
-export const answerWebhook = async (
+export const answerWebhook = async <TResponse>(
   kind: WebhookKind,
-  forward: () => Promise<unknown>
+  forward: () => Promise<TResponse>
 ): Promise<NextResponse> => {
   try {
     await forward();
@@ -69,15 +71,18 @@ export const answerWebhook = async (
     if (isRpcError(error, Code.NotFound)) {
       return notFound(kind);
     }
+
     if (isRpcError(error, Code.InvalidArgument)) {
       return NextResponse.json({ error: "invalid webhook" }, { status: 400 });
     }
+
     if (isRpcError(error, Code.Unauthenticated)) {
       return NextResponse.json(
         { error: "invalid webhook credentials" },
         { status: 401 }
       );
     }
+
     if (
       isRpcError(error, Code.FailedPrecondition) ||
       isRpcError(error, Code.Unavailable)
@@ -87,7 +92,9 @@ export const answerWebhook = async (
         { status: 503 }
       );
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return NextResponse.json(
       { error: "webhook processing failed" },
       { status: 500 }

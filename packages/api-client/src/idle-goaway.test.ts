@@ -1,4 +1,5 @@
 import { subscribe, unsubscribe } from "node:diagnostics_channel";
+import type { ChannelListener } from "node:diagnostics_channel";
 import { once } from "node:events";
 import * as http2 from "node:http2";
 import type { AddressInfo, Socket } from "node:net";
@@ -31,7 +32,10 @@ const startServer = async () => {
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
+  // SAFETY: a server listening on a TCP port reports its address as an
+  // `AddressInfo`; only a pipe or a socket file reports a string.
   const { port } = server.address() as AddressInfo;
+
   return { baseUrl: `http://127.0.0.1:${port}`, server, sessions };
 };
 
@@ -47,6 +51,7 @@ const closeOf = async (socket: Socket) => {
 const getMe = async (client: ReturnType<typeof createAdminApiClient>) => {
   try {
     await client.auth.getMe({});
+
     return Code.Unknown;
   } catch (error) {
     return ConnectError.from(error).code;
@@ -55,11 +60,16 @@ const getMe = async (client: ReturnType<typeof createAdminApiClient>) => {
 
 describe("the gRPC transport the Next.js apps use", () => {
   let uncaught: unknown[];
-  const onUncaught = (error: unknown) => {
-    uncaught.push(error);
+
+  const onUncaught = (cause: unknown) => {
+    uncaught.push(cause);
   };
+
   let sockets: Socket[];
-  const onSocket = (message: unknown) => {
+
+  const onSocket: ChannelListener = (message) => {
+    // SAFETY: Node.js publishes `{ socket }` on `net.client.socket`, carrying
+    // the `net.Socket` a client has just created.
     sockets.push((message as { socket: Socket }).socket);
   };
 
@@ -100,6 +110,7 @@ describe("the gRPC transport the Next.js apps use", () => {
     for (const session of sessions) {
       session.destroy();
     }
+
     server.close();
 
     expect(uncaught).toEqual([]);

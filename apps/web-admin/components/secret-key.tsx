@@ -19,9 +19,11 @@ const SecretKeyContext = createContext<SecretKeyContextValue | null>(null);
 
 const useSecretKey = () => {
   const context = use(SecretKeyContext);
+
   if (!context) {
     throw new Error("SecretKey slots must be rendered inside SecretKey.");
   }
+
   return context;
 };
 
@@ -44,6 +46,7 @@ const SecretKey = ({
   const [mode, setMode] = useState<SecretKeyMode>(
     configured ? "keep" : "replace"
   );
+
   const context = useMemo(
     () => ({ accept, mode, name, setMode }),
     [accept, mode, name]

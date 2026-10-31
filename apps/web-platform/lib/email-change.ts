@@ -29,10 +29,12 @@ export const requestPlatformEmailChange = async (
 ): Promise<EmailChangeRequestResult> => {
   const normalizedCurrentEmail = currentEmail.trim();
   const normalizedNewEmail = newEmail.trim();
+
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -61,6 +63,7 @@ export const requestPlatformEmailChange = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -92,9 +95,11 @@ export const verifyPlatformEmailChangeToken = async (
 ): Promise<EmailChangeTokenVerifyResult | null> => {
   try {
     const response = await apiClient.auth.verifyEmailChangeToken({ token });
+
     return { valid: response.valid };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return null;
   }
 };
@@ -142,6 +147,7 @@ const confirmPlatformEmailChangeOnce = async (
       { token },
       await buildClientAddressHeaders()
     );
+
     return {
       result: {
         changed: response.changed,
@@ -152,6 +158,7 @@ const confirmPlatformEmailChangeOnce = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       result: null,
       unexpected: rpcErrorDisposition(error) === "unexpected",
@@ -167,8 +174,10 @@ export const confirmPlatformEmailChange = async (
   token: string
 ): Promise<EmailChangeConfirmResult | null> => {
   const { result, unexpected } = await confirmPlatformEmailChangeOnce(token);
+
   if (unexpected) {
     throw new Error("The email change confirmation failed unexpectedly.");
   }
+
   return result;
 };

@@ -99,6 +99,7 @@ export const listPublishedCreators = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.listPublishedCreators>
   >;
+
   try {
     response = await apiClient.catalog.listPublishedCreators({
       limit,
@@ -119,6 +120,7 @@ export const listPublishedCreators = async (
     value: {
       creators: (response.creators ?? []).map((creator) => {
         const mapped = mapPublishedCreator(creator);
+
         return {
           iconImageUrl: mapped.iconImageUrl,
           id: mapped.id,
@@ -162,6 +164,7 @@ export const searchPublishedCreators = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.searchPublishedCreators>
   >;
+
   try {
     response = await apiClient.catalog.searchPublishedCreators({
       limit,
@@ -183,6 +186,7 @@ export const searchPublishedCreators = async (
     value: {
       creators: (response.creators ?? []).map((creator) => {
         const mapped = mapPublishedCreator(creator);
+
         return {
           iconImageUrl: mapped.iconImageUrl,
           id: mapped.id,
@@ -226,6 +230,7 @@ export const getPublishedCreatorDetail = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.getPublishedCreatorDetail>
   >;
+
   try {
     response = await apiClient.catalog.getPublishedCreatorDetail({
       limit,
@@ -239,6 +244,7 @@ export const getPublishedCreatorDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(
       error,
       locale,

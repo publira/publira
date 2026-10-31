@@ -42,6 +42,7 @@ const acceptFormData = (password: string, confirmPassword = password) => {
   formData.set("name", "Invitee");
   formData.set("password", password);
   formData.set("confirm_password", confirmPassword);
+
   return formData;
 };
 

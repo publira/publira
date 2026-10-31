@@ -68,6 +68,7 @@ const EmailRejectionEntriesMessage = () => {
       </EntryList.Message>
     );
   }
+
   return (
     <EntryList.Message>
       {state?.ok === false ? state.fieldErrors?.entries : undefined}
@@ -99,9 +100,11 @@ export const TenantEmailRejectionFields = ({
   const [rejectDisposableDomains, setRejectDisposableDomains] = useState(
     () => initialSettings?.rejectDisposableDomains ?? false
   );
+
   const [entries, setEntries] = useState(() => initialSettings?.entries ?? []);
   // Bumped by each save, which remounts the list on what the server stored.
   const [savedCount, setSavedCount] = useState(0);
+
   const [listAvailable, setListAvailable] = useState(
     () => disposableDomainListAvailable
   );
@@ -110,6 +113,7 @@ export const TenantEmailRejectionFields = ({
     if (!settled?.ok) {
       return;
     }
+
     setRejectDisposableDomains(settled.settings.rejectDisposableDomains);
     setEntries(settled.settings.entries);
     setSavedCount((count) => count + 1);

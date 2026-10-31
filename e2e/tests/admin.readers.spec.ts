@@ -47,12 +47,14 @@ test.describe("web-admin readers", () => {
     await page.getByRole("button", { name: "Apply" }).click();
 
     await expect(page).toHaveURL(/[?&]q=member%40example\.com/u);
+
     // The search is a substring match, and the scenario accounts other specs
     // add to this tenant (`settings-member@example.com` and the like) match it
     // too, so the row is picked by an exact email cell.
     const row = page.getByRole("row").filter({
       has: page.getByRole("cell", { exact: true, name: SEED_READER.email }),
     });
+
     await expect(row).toHaveCount(1);
     await expect(row.getByText("Active")).toBeVisible();
     await expect(
@@ -122,6 +124,7 @@ test.describe("web-admin readers", () => {
     const adminRow = page.getByRole("row").filter({
       has: page.getByRole("cell", { exact: true, name: SEED_ADMIN.email }),
     });
+
     await expect(adminRow).toHaveCount(1);
     await expect(
       adminRow.getByText("Tenant admin", { exact: true })
@@ -132,9 +135,11 @@ test.describe("web-admin readers", () => {
       .fill(SEED_READER.email);
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page).toHaveURL(/[?&]q=member%40example\.com/u);
+
     const readerRow = page.getByRole("row").filter({
       has: page.getByRole("cell", { exact: true, name: SEED_READER.email }),
     });
+
     await expect(readerRow).toHaveCount(1);
     await expect(readerRow.getByText("Active")).toBeVisible();
     await expect(
@@ -223,12 +228,14 @@ test.describe("web-admin readers", () => {
     }) => {
       const listPath = `/readers?q=${READER_MODERATION_ICON.email}`;
       await signInAsSeedAdmin(page, listPath);
+
       const row = page.getByRole("row").filter({
         has: page.getByRole("cell", {
           exact: true,
           name: READER_MODERATION_ICON.email,
         }),
       });
+
       await expect(row).toHaveCount(1);
       await expect(row.locator("img")).toBeVisible();
 
@@ -238,9 +245,11 @@ test.describe("web-admin readers", () => {
       await expect(page).toHaveURL(
         new RegExp(`/readers/${READER_MODERATION_ICON.publicId}$`, "u")
       );
+
       const icon = page.getByRole("img", {
         name: `${READER_MODERATION_ICON.name}'s icon`,
       });
+
       await expect(icon).toBeVisible();
 
       await page

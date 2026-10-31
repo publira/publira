@@ -25,11 +25,13 @@ export const requestPasswordResetAction = async (
   const locale = await getPlatformLocale();
 
   const schema = await requestPasswordResetFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -39,6 +41,7 @@ export const requestPasswordResetAction = async (
 
   const { email } = parsed.data;
   const result = await requestPlatformPasswordReset(email, locale);
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

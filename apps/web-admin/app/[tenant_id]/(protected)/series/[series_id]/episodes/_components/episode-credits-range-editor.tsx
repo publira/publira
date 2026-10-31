@@ -101,6 +101,7 @@ const ShareField = ({
   shareText: string;
 }) => {
   const t = useClientMessages();
+
   const invalid =
     shareText.trim().length > 0 && sharePercentToBps(shareText) === undefined;
 
@@ -220,7 +221,9 @@ const episodeMatchesQuery = (
   if (query.length === 0) {
     return true;
   }
+
   const needle = query.toLowerCase();
+
   return (
     episode.title.toLowerCase().includes(needle) ||
     episode.publicId.toLowerCase().includes(needle)
@@ -256,15 +259,20 @@ const EpisodeSelectionFields = ({
   const selectVisibleId = useId();
   const listId = useId();
   const [query, setQuery] = useState("");
+
   const visibleEpisodes = episodes.filter((episode) =>
     episodeMatchesQuery(episode, query.trim())
   );
+
   const visibleIds = visibleEpisodes.map((episode) => episode.id);
+
   const selectedVisibleCount = visibleIds.filter((id) =>
     selectedIds.has(id)
   ).length;
+
   const allVisibleSelected =
     visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+
   const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
   const listDisabled = isEpisodePending || episodes.length === 0;
 
@@ -346,6 +354,7 @@ const EpisodeSelectionFields = ({
           <div className="grid gap-2">
             {visibleEpisodes.map((episode) => {
               const rowId = `${listId}-${episode.id}`;
+
               return (
                 <label
                   className="flex items-center gap-2 text-sm"

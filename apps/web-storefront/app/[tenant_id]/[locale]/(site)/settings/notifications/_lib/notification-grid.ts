@@ -62,9 +62,11 @@ export const cellGroupState = (
   group: NotificationCell[]
 ): CellGroupState => {
   const on = group.filter((cell) => cells[cell]).length;
+
   if (on === group.length) {
     return "on";
   }
+
   return on === 0 ? "off" : "mixed";
 };
 
@@ -78,6 +80,7 @@ export const toggleCellGroup = (
   group: NotificationCell[]
 ): NotificationPreferenceCells => {
   const next = cellGroupState(cells, group) !== "on";
+
   return {
     ...cells,
     ...Object.fromEntries(group.map((cell) => [cell, next])),

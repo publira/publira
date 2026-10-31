@@ -62,6 +62,7 @@ const getPlatformWebPushSettingsForSession = async (
   if (!sessionId) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -74,6 +75,7 @@ const getPlatformWebPushSettingsForSession = async (
       {},
       buildSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       settings: toPlatformWebPushSettings(response.settings),
@@ -83,6 +85,7 @@ const getPlatformWebPushSettingsForSession = async (
     // after the API recovers.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.webpush.load_failed"), {
         locale,
@@ -120,8 +123,10 @@ export const updatePlatformWebPushSubject = async (
   locale: Locale
 ): Promise<UpdatePlatformWebPushSubjectResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
@@ -131,6 +136,7 @@ export const updatePlatformWebPushSubject = async (
         { expectedRevision, subject },
         buildSessionHeaders(sessionId)
       );
+
     return {
       ok: true,
       settings: toPlatformWebPushSettings(response.settings),
@@ -139,6 +145,7 @@ export const updatePlatformWebPushSubject = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.webpush.save_failed"), {
         locale,

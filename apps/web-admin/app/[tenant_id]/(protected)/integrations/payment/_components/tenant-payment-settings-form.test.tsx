@@ -520,7 +520,7 @@ describe("TenantPaymentSettingsForm", () => {
     fireEvent.click(
       screen.getAllByRole("button", {
         name: "Change",
-      })[0] as HTMLButtonElement
+      })[0]
     );
 
     const secretInput = screen.getByLabelText<HTMLInputElement>("Secret key");
@@ -555,10 +555,12 @@ describe("TenantPaymentSettingsForm", () => {
 
   it("drops the typed secret after saving and shows only the hint", async () => {
     const leakedSecret = "plaintext-secret-value";
+
     const savedSettings = {
       ...readySettings,
       fields: stripeFields("sk_test_••••••••NEW1", "whsec_••••••••WXYZ"),
     };
+
     action.current = vi.fn().mockResolvedValue({
       message: "The payment settings were saved.",
       ok: true,
@@ -577,7 +579,7 @@ describe("TenantPaymentSettingsForm", () => {
     fireEvent.click(
       screen.getAllByRole("button", {
         name: "Change",
-      })[0] as HTMLButtonElement
+      })[0]
     );
     fireEvent.change(screen.getByLabelText("Secret key"), {
       target: { value: leakedSecret },

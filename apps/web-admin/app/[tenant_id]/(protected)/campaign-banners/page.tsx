@@ -35,11 +35,13 @@ export const generateStaticParams = () =>
 const CampaignBannerManagerData = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [listResult, canEdit, timeZone] = await Promise.all([
     listCampaignBanners(tenantId, locale),
     isSignedInTenantEditor(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   await redirectToLoginIfSessionRejected(listResult);
 
   return (

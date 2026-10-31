@@ -49,9 +49,11 @@ const plan = (
 
 const rowOf = (name: string) => {
   const row = screen.getByRole("cell", { name }).closest("tr");
+
   if (!row) {
     throw new Error(`no row for ${name}`);
   }
+
   return within(row);
 };
 

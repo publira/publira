@@ -92,16 +92,20 @@ const getOutcomeTone = (
     case "success": {
       return "success";
     }
+
     case "failure":
     case "failed": {
       return "destructive";
     }
+
     case "pending": {
       return "warning";
     }
+
     case "": {
       return "muted";
     }
+
     default: {
       return "info";
     }
@@ -174,6 +178,7 @@ const AuditLogsFilters = async ({
   tenantFilter: AuditLogTenantFilter;
 }) => {
   const locale = await getPlatformLocale();
+
   const [t, actionItems] = await Promise.all([
     getMessagesFor(locale),
     getAuditActionOptions(locale),
@@ -260,6 +265,7 @@ const AuditLogsPagination = async ({
   result: ListPlatformAuditLogsResult;
 }) => {
   const locale = await getPlatformLocale();
+
   const [t, summaryText] = await Promise.all([
     getMessagesFor(locale),
     getSummaryText(result, locale),
@@ -284,12 +290,15 @@ const auditLogReason = async (
   if (log.action === "platform_smtp_test_email_sent") {
     return smtpTestFailureMessage(log.reason, locale) ?? log.reason;
   }
+
   if (log.action === "platform_search_connection_tested") {
     return (await searchTestFailureMessage(log.reason, locale)) ?? log.reason;
   }
+
   if (log.action === "platform_storage_connection_tested") {
     return (await storageTestFailureMessage(log.reason, locale)) ?? log.reason;
   }
+
   return log.reason;
 };
 
@@ -323,6 +332,7 @@ const readAuditLogs = async (
   if (tenantFilter.kind === "unknown") {
     return { auditLogs: [], nextToken: "", ok: true, previousToken: "" };
   }
+
   if (tenantFilter.kind === "failed") {
     return {
       auditLogs: [],
@@ -333,6 +343,7 @@ const readAuditLogs = async (
       requiresSignIn: false,
     };
   }
+
   return await listPlatformAuditLogs({
     ...input,
     tenantId:
@@ -447,7 +458,9 @@ const AuditLogsContent = async ({
     searchParams,
     getPlatformLocale(),
   ]);
+
   const actionItems = await getAuditActionOptions(locale);
+
   const { token, ...filters } = parseAuditLogFilters(
     search,
     toAllowedActionValues(actionItems)
@@ -460,6 +473,7 @@ const AuditLogsContent = async ({
     filters.createdTo ||
     filters.tenantPublicId
   );
+
   // Timestamps and the period's days follow the platform default time zone,
   // not the host's or the browser's, so every operator reads the same wall
   // clock.
@@ -469,10 +483,12 @@ const AuditLogsContent = async ({
       : ({ ok: true, tenant: null } as const),
     getPlatformDisplayTimeZone(),
   ]);
+
   const tenantFilter = resolveAuditLogTenantFilter(
     filters.tenantPublicId,
     tenant
   );
+
   const result = await readAuditLogs(tenantFilter, {
     ...resolveAuditLogListPeriod(filters, timeZone),
     action: filters.action || undefined,
@@ -485,12 +501,15 @@ const AuditLogsContent = async ({
   await redirectToLoginIfSessionRejected(result);
 
   const exportPeriod = resolveAuditLogExportPeriod(filters, timeZone);
+
   const previousHref = result.previousToken
     ? buildAuditLogsPath(filters, result.previousToken)
     : undefined;
+
   const nextHref = result.nextToken
     ? buildAuditLogsPath(filters, result.nextToken)
     : undefined;
+
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">

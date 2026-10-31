@@ -154,6 +154,7 @@ describe("payment-settings", () => {
     expect(result.ok).toBe(true);
     expect(JSON.stringify(result)).not.toContain(leakedSecretKey);
     expect(JSON.stringify(result)).not.toContain(leakedWebhookSecret);
+
     if (result.ok) {
       expect(result.settings.fields[0]).toEqual({
         configured: true,

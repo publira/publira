@@ -12,6 +12,7 @@ import path from "node:path";
 // lives in.
 import { catalogMessageError } from "../packages/i18n/src/mf2.ts";
 import { namespaceLeaves, variableMismatches } from "./catalog-leaves.ts";
+import type { CatalogTree } from "./catalog-leaves.ts";
 import {
   cjkLatinSpaces,
   leavesSpacingToRenderer,
@@ -20,6 +21,8 @@ import { renderDartMessages } from "./dart-messages.ts";
 import { renderGoCurrencyFormats } from "./go-currency.ts";
 import { renderGoDateTimeFormats } from "./go-datetime.ts";
 import { renderGoLocales, renderGoMessages } from "./go-messages.ts";
+import { isJsonObject, isJsonString } from "./json-value.ts";
+import type { JsonValue } from "./json-value.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const indexPath = path.resolve(root, "locales/index.json");
@@ -32,18 +35,20 @@ const fail = (message: string): never => {
   throw new Error(`Invalid locales/index.json: ${message}`);
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+const i18nPackage: JsonValue = JSON.parse(
+  readFileSync(i18nPackagePath, "utf-8")
+);
 
-const i18nPackage: unknown = JSON.parse(readFileSync(i18nPackagePath, "utf-8"));
 const packageExports =
-  isRecord(i18nPackage) && isRecord(i18nPackage.exports)
+  isJsonObject(i18nPackage) && isJsonObject(i18nPackage.exports)
     ? i18nPackage.exports
     : undefined;
+
 const catalogExport =
-  packageExports && isRecord(packageExports["./catalog"])
+  packageExports && isJsonObject(packageExports["./catalog"])
     ? packageExports["./catalog"]
     : undefined;
+
 if (!catalogExport || catalogExport.types !== catalogTypePath) {
   throw new Error(
     `packages/i18n/package.json must export ${catalogTypePath} as the @publira/i18n/catalog type entry`
@@ -58,93 +63,103 @@ if (!catalogExport || catalogExport.types !== catalogTypePath) {
  * CJK text and a Latin or digit run, which the renderer draws. Returns the
  * parsed catalog for the generators that read it.
  */
-const checkCatalog = (code: string): unknown => {
+const checkCatalog = (code: string): CatalogTree => {
   const catalogPath = `locales/${code}.json`;
-  const catalog: unknown = JSON.parse(
+
+  const catalog: JsonValue = JSON.parse(
     readFileSync(path.resolve(root, catalogPath), "utf-8")
   );
+
   const problems: string[] = [];
   const spacingIsRendered = leavesSpacingToRenderer(code);
 
-  const walk = (node: unknown, key: string) => {
-    if (typeof node === "string") {
-      const problem = catalogMessageError(node);
-      if (problem) {
-        problems.push(`  ${key}: ${problem}`);
-      }
-      if (spacingIsRendered) {
-        for (const excerpt of cjkLatinSpaces(node)) {
-          problems.push(
-            `  ${key}: a space between CJK and Latin text in ${JSON.stringify(excerpt)}`
-          );
-        }
-      }
-      return;
+  const checkMessage = (message: string, key: string) => {
+    const problem = catalogMessageError(message);
+
+    if (problem) {
+      problems.push(`  ${key}: ${problem}`);
     }
 
-    if (typeof node !== "object" || node === null || Array.isArray(node)) {
-      problems.push(`  ${key}: leaves must be strings`);
-      return;
-    }
-
-    for (const [name, child] of Object.entries(node)) {
-      walk(child, key ? `${key}.${name}` : name);
+    if (spacingIsRendered) {
+      for (const excerpt of cjkLatinSpaces(message)) {
+        problems.push(
+          `  ${key}: a space between CJK and Latin text in ${JSON.stringify(excerpt)}`
+        );
+      }
     }
   };
 
-  walk(catalog, "");
+  /** Whether every leaf below `node` is a string, each one checked as a message. */
+  const isCatalogTree = (node: JsonValue, key: string): node is CatalogTree => {
+    if (!isJsonObject(node)) {
+      problems.push(`  ${key}: leaves must be strings`);
 
-  if (problems.length > 0) {
+      return false;
+    }
+
+    let valid = true;
+
+    for (const [name, child] of Object.entries(node)) {
+      const childKey = key ? `${key}.${name}` : name;
+
+      if (isJsonString(child)) {
+        checkMessage(child, childKey);
+      } else if (!isCatalogTree(child, childKey)) {
+        valid = false;
+      }
+    }
+
+    return valid;
+  };
+
+  if (!isCatalogTree(catalog, "") || problems.length > 0) {
     throw new Error(`Invalid ${catalogPath}:\n${problems.join("\n")}`);
   }
 
   return catalog;
 };
 
-const index: unknown = JSON.parse(readFileSync(indexPath, "utf-8"));
-if (
-  typeof index !== "object" ||
-  index === null ||
-  !("locales" in index) ||
-  !Array.isArray(index.locales) ||
-  index.locales.length === 0
-) {
-  fail("locales must be a non-empty array");
-}
+const index: JsonValue = JSON.parse(readFileSync(indexPath, "utf-8"));
+
+const listedLocales =
+  isJsonObject(index) &&
+  Array.isArray(index.locales) &&
+  index.locales.length > 0
+    ? index.locales
+    : fail("locales must be a non-empty array");
 
 const localeCode = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/u;
-const locales = index.locales.map(
-  (locale): { code: string; intl: string; label: string } => {
-    if (
-      typeof locale !== "object" ||
-      locale === null ||
-      !("code" in locale) ||
-      !("intl" in locale) ||
-      !("label" in locale) ||
-      typeof locale.code !== "string" ||
-      !localeCode.test(locale.code) ||
-      typeof locale.intl !== "string" ||
-      !locale.intl ||
-      typeof locale.label !== "string" ||
-      !locale.label
-    ) {
-      return fail("each locale needs a valid code, intl value, and label");
-    }
 
-    return locale;
+const locales = listedLocales.map((locale) => {
+  if (
+    !isJsonObject(locale) ||
+    !isJsonString(locale.code) ||
+    !localeCode.test(locale.code) ||
+    !isJsonString(locale.intl) ||
+    !locale.intl ||
+    !isJsonString(locale.label) ||
+    !locale.label
+  ) {
+    return fail("each locale needs a valid code, intl value, and label");
   }
-);
+
+  return { code: locale.code, intl: locale.intl, label: locale.label };
+});
 
 const codes = new Set<string>();
-const catalogs = new Map<string, unknown>();
+const catalogs = new Map<string, CatalogTree>();
+
 for (const locale of locales) {
   if (codes.has(locale.code)) {
     fail(`locale code ${JSON.stringify(locale.code)} is duplicated`);
   }
+
   codes.add(locale.code);
+
   if (!existsSync(path.resolve(root, `locales/${locale.code}.json`))) {
     fail(`catalog locales/${locale.code}.json does not exist`);
   }
+
   catalogs.set(locale.code, checkCatalog(locale.code));
 }
 
@@ -154,21 +169,25 @@ const catalogCodes = new Set(
     .map((entry) => entry.name.slice(0, -".json".length))
     .filter((code) => code !== "index")
 );
+
 for (const code of codes) {
   catalogCodes.delete(code);
 }
+
 if (catalogCodes.size > 0) {
   fail(`catalogs missing from locales: ${[...catalogCodes].join(", ")}`);
 }
 
 const [firstCatalog] = catalogs.values();
+
 const mismatches = variableMismatches(
   namespaceLeaves(
     locales,
     catalogs,
-    isRecord(firstCatalog) ? Object.keys(firstCatalog) : []
+    firstCatalog ? Object.keys(firstCatalog) : []
   )
 );
+
 if (mismatches.length > 0) {
   const lines = mismatches.map((line) => `  ${line}`).join(newline);
   throw new Error(
@@ -203,6 +222,7 @@ const property = (code: string): string =>
  * would produce keeps a locale added later from rewriting the lines above it.
  */
 const printWidth = 80;
+
 const fitted = (oneLine: string, wrapped: string): string =>
   oneLine.length <= printWidth ? oneLine : wrapped;
 
@@ -212,48 +232,59 @@ const imports = locales
       `import ${binding(code)} from "../../../../locales/${code}.json" with { type: "json" };`
   )
   .join(newline);
+
 const typeImports = locales
   .map(
     ({ code }) =>
       `import type ${binding(code)} from "../../../../locales/${code}.json";`
   )
   .join(newline);
+
 const dynamicImports = locales
   .map(({ code }) => {
     const call = `import("../../../../locales/${code}.json", { with: { type: "json" } })`;
     const oneLine = `  ${property(code)}: () => ${call},`;
+
     return fitted(oneLine, `  ${property(code)}: () =>${newline}    ${call},`);
   })
   .join(newline);
+
 const catalogMembers = locales.map(({ code }) => `typeof ${binding(code)}`);
 
 /** The union a catalog type alias is declared as, wrapped the way the formatter wraps one. */
 const unionSeparator = `${newline}  | `;
+
 const catalogUnion = (declaration: string): string =>
   fitted(
     `${declaration} = ${catalogMembers.join(" | ")};`,
     `${declaration} =${unionSeparator}${catalogMembers.join(unionSeparator)};`
   );
+
 const codesLiteral = locales.map(({ code }) => quote(code)).join(", ");
+
 const localeDetails = locales
   .map(
     ({ code, intl, label }) =>
       `  ${property(code)}: { intl: ${quote(intl)}, label: ${quote(label)} },`
   )
   .join(newline);
+
 const catalogEntries = locales
   .map(({ code }) => `  ${property(code)}: ${binding(code)}MatchesCatalogs,`)
   .join(newline);
+
 const exactCatalogs = locales
   .map(({ code }) => {
     const name = `${binding(code)}MatchesCatalogs`;
     const oneLine = `const ${name}: ExactCatalog<typeof ${binding(code)}, LocaleMessages> = ${binding(code)};`;
+
     return fitted(
       oneLine,
       `const ${name}: ExactCatalog<${newline}  typeof ${binding(code)},${newline}  LocaleMessages${newline}> = ${binding(code)};`
     );
   })
   .join(newline);
+
 const generatedHeader =
   "// Code generated by scripts/generate-locale-registry.ts; DO NOT EDIT.";
 
@@ -289,6 +320,7 @@ const files = new Map([
 
 for (const [outputPath, content] of files) {
   const absolutePath = path.resolve(root, outputPath);
+
   if (check) {
     if (
       !existsSync(absolutePath) ||
@@ -296,6 +328,7 @@ for (const [outputPath, content] of files) {
     ) {
       fail(`${outputPath} is out of date; run pnpm locales:generate`);
     }
+
     continue;
   }
 

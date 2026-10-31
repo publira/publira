@@ -26,6 +26,7 @@ export const addVirtualAuthenticator = async (
 ): Promise<VirtualAuthenticator> => {
   const session = await page.context().newCDPSession(page);
   await session.send("WebAuthn.enable");
+
   const { authenticatorId } = await session.send(
     "WebAuthn.addVirtualAuthenticator",
     {
@@ -45,6 +46,7 @@ export const addVirtualAuthenticator = async (
       const { credentials } = await session.send("WebAuthn.getCredentials", {
         authenticatorId,
       });
+
       await Promise.all(
         credentials.map(async (credential) => {
           await session.send("WebAuthn.removeCredential", {

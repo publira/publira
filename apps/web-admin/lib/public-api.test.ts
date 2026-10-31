@@ -1,4 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
+import type { PublicApiClientOptions } from "@publira/api-client/public/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -19,8 +20,9 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("@publira/api-client/public/client", () => ({
-  createPublicApiClient: (options: unknown) => {
+  createPublicApiClient: (options: PublicApiClientOptions) => {
     mockCreatePublicApiClient(options);
+
     return {
       tenant: {
         getTenant: mockGetTenant,

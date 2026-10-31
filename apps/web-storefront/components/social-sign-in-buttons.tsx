@@ -69,10 +69,12 @@ export const SocialSignInButtons = async ({
   returnTo: string;
 }) => {
   const tenantId = await getTenantId();
+
   const [clients, tenant] = await Promise.all([
     getTenantSignInClients(tenantId),
     getTenantSiteInfo(tenantId),
   ]);
+
   if (!clients.apple && !clients.google && !children) {
     return null;
   }

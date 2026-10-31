@@ -25,9 +25,11 @@ const SmtpOverrideContext = createContext<SmtpOverrideContextValue | null>(
 
 const useSmtpOverrideState = () => {
   const context = use(SmtpOverrideContext);
+
   if (!context) {
     throw new Error("SmtpOverride slots must be rendered inside SmtpOverride.");
   }
+
   return context;
 };
 
@@ -46,6 +48,7 @@ const SmtpOverride = ({
   initialEnabled: boolean;
 }) => {
   const [enabled, setEnabled] = useState(initialEnabled);
+
   const context = useMemo(
     () => ({
       canEdit,

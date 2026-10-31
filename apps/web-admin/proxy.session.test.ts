@@ -1,5 +1,5 @@
 import { encryptSessionPayload } from "@publira/web-session";
-import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockResolveTenantRouting } = vi.hoisted(() => ({
@@ -29,25 +29,14 @@ const sealedCookie = (expiresAt: string): Promise<string> =>
 const activeCookie = (): Promise<string> =>
   sealedCookie(Temporal.Now.instant().add({ minutes: 5 }).toString());
 
-/**
- * The proxy only reads `nextUrl`, `url`, `headers`, and `cookies.get`, so a
- * `NextRequest` is more machinery than these cases need.
- */
 const request = (url: string, cookie?: string): NextRequest => {
-  const nextUrl = Object.assign(new URL(url), {
-    clone: () => new URL(url),
-  });
-  return {
-    cookies: {
-      get: (name: string) =>
-        name === COOKIE_NAME && cookie !== undefined
-          ? { name, value: cookie }
-          : undefined,
-    },
-    headers: new Headers({ host: new URL(url).host }),
-    nextUrl,
-    url,
-  } as unknown as NextRequest;
+  const headers = new Headers({ host: new URL(url).host });
+
+  if (cookie !== undefined) {
+    headers.set("cookie", `${COOKIE_NAME}=${cookie}`);
+  }
+
+  return new NextRequest(url, { headers });
 };
 
 const deletedCookieNames = (response: { headers: Headers }): string[] =>
@@ -85,6 +74,7 @@ describe("web-admin proxy session handling", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().subtract({ minutes: 1 }).toString()
     );
+
     const { proxy } = await import("./proxy");
 
     const response = await proxy(

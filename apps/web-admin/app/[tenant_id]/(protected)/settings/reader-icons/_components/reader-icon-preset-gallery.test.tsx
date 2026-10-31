@@ -11,6 +11,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -18,16 +19,27 @@ import type { ReaderIconPresetItem } from "#lib/reader-icon-settings";
 
 import { ReaderIconPresetGallery } from "./reader-icon-preset-gallery";
 
-const { remove } = vi.hoisted(() => ({
-  remove: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<ActionForm.State>;
+  formData?: FormData;
+}
+
+const { remove } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<ActionForm.State>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { remove: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  deleteReaderIconPresetAction: (_state: unknown, formData: FormData) => {
+  deleteReaderIconPresetAction: (
+    _state: ActionForm.State,
+    formData: FormData
+  ) => {
     remove.formData = formData;
+
     return remove.current.promise;
   },
   uploadReaderIconPresetAction: () => Promise.resolve(null),
@@ -111,9 +123,7 @@ describe("ReaderIconPresetGallery", () => {
     );
     expect(remove.formData).toBeUndefined();
 
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Delete" }).at(-1) as HTMLElement
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => {
       expect(remove.formData?.get("preset_id")).toBe(

@@ -45,6 +45,7 @@ const MfaPageContent = async () => {
     getTenantId(),
     readStoredMfaChallenge(),
   ]);
+
   if (!challenge || challenge.tenantId !== tenantId) {
     redirect(buildLoginPath(challenge?.nextPath));
   }

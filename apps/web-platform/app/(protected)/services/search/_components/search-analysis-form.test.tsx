@@ -17,9 +17,12 @@ import type { PlatformMessageAccessor } from "#lib/messages";
 
 import { SearchAnalysisForm } from "./search-analysis-form";
 
-const state = vi.hoisted(() => ({
-  t: undefined as PlatformMessageAccessor | undefined,
-}));
+/** The catalog the mocked `<Message>` renders from, once a test resolves it. */
+interface CatalogState {
+  t?: PlatformMessageAccessor;
+}
+
+const state = vi.hoisted((): CatalogState => ({}));
 
 // `<Message>` is an async Server Component that only the Next.js compiler can
 // render. The catalog is the real one, resolved ahead so the tree renders
@@ -28,12 +31,13 @@ vi.mock("#components/message", () => ({
   Message: ({ message, values }: MessageProps) => state.t?.(message, values),
 }));
 
-const { save } = vi.hoisted(() => ({
-  save: {
-    calls: [] as FormData[],
-    current: Promise.withResolvers<ActionForm.State>(),
-  },
-}));
+const { save } = vi.hoisted(() => {
+  const calls: FormData[] = [];
+
+  return {
+    save: { calls, current: Promise.withResolvers<ActionForm.State>() },
+  };
+});
 
 vi.mock("../_lib/actions", () => ({
   updatePlatformSearchAnalysisAction: (
@@ -41,6 +45,7 @@ vi.mock("../_lib/actions", () => ({
     data: FormData
   ) => {
     save.calls.push(data);
+
     return save.current.promise;
   },
 }));
@@ -101,9 +106,11 @@ describe("SearchAnalysisForm", () => {
     expect(editor().value).toBe(DEFINITION);
     expect(screen.getByText("In use: the default definition.")).toBeTruthy();
     expect(screen.getByText("Used by every language.")).toBeTruthy();
+
     for (const role of ["written_form", "alternate_form", "exact_match"]) {
       expect(screen.getByText(role)).toBeTruthy();
     }
+
     // The default is already in force, so there is nothing to reset.
     expect(
       screen.queryByRole("button", { name: "Reset to default" })
@@ -251,6 +258,7 @@ describe("SearchAnalysisForm", () => {
         }}
       />
     );
+
     fireEvent.change(editor(), { target: { value: NORI_DEFINITION } });
 
     rerender(

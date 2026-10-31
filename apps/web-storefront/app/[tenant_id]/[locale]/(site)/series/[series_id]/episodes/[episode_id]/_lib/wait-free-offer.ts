@@ -47,18 +47,23 @@ export const toWaitFreeOffer = ({
   if (!rule) {
     return undefined;
   }
+
   if (!waitFreeEpisodeEligible(rule, episodeId)) {
     return { kind: "excluded" };
   }
+
   if (!ticketState) {
     return { kind: "guest" };
   }
+
   if (!ticketState.ok) {
     return { kind: "unavailable", message: ticketState.message };
   }
+
   if (!ticketState.value) {
     return undefined;
   }
+
   return ticketState.value.ready
     ? { accessHours: rule.accessHours, kind: "ready" }
     : {

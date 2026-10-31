@@ -38,12 +38,15 @@ const entryDigest = (
 ): string | undefined => {
   const rest = lines.slice(header + 1);
   const end = rest.findIndex((line) => !ENTRY_CONTINUATION.test(line));
+
   for (const line of end === -1 ? rest : rest.slice(0, end)) {
     const digest = ENTRY_DIGEST.exec(line)?.groups?.digest;
+
     if (digest) {
       return digest;
     }
   }
+
   return undefined;
 };
 
@@ -64,6 +67,7 @@ export const unexpectedServerLogLines = async (
   expectedErrors: readonly RegExp[]
 ): Promise<string[]> => {
   const runDir = process.env.PUBLIRA_E2E_RUN_DIR;
+
   if (!runDir) {
     throw new Error(
       "PUBLIRA_E2E_RUN_DIR is unset: run the suite through `task e2e:test`, which sources e2e/scripts/lib.sh"
@@ -73,11 +77,14 @@ export const unexpectedServerLogLines = async (
   const log = await readFile(path.join(runDir, "logs", `${app}.log`), "utf-8");
   const allowed = [...ALLOWED_OUTPUT, ...expectedErrors];
   const lines = log.split("\n");
+
   return lines.flatMap((line, index) => {
     if (allowed.some((pattern) => pattern.test(line))) {
       return [];
     }
+
     const digest = entryDigest(lines, index);
+
     return [digest ? `${line} (digest ${digest})` : line];
   });
 };

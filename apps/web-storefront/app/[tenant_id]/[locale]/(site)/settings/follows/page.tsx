@@ -41,7 +41,9 @@ const FollowListData = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { token } = parseFollowsSearchParams(resolvedSearchParams);
+
   const [listResult, timeZone] = await Promise.all([
     listMyFollows(tenantId, {
       limit: defaultFollowsPageSize,

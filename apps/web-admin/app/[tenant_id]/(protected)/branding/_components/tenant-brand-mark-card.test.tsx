@@ -21,12 +21,16 @@ import { BRAND_MARK_GUIDELINE_URLS } from "../_lib/brand-mark-guidelines";
 import type { TenantBrandMarkActionState } from "../branding-types";
 import { TenantBrandMarkCard } from "./tenant-brand-mark-card";
 
-const { save } = vi.hoisted(() => ({
-  save: {
-    calls: [] as FormData[],
-    current: Promise.withResolvers<TenantBrandMarkActionState>(),
-  },
-}));
+const { save } = vi.hoisted(() => {
+  const calls: FormData[] = [];
+
+  return {
+    save: {
+      calls,
+      current: Promise.withResolvers<TenantBrandMarkActionState>(),
+    },
+  };
+});
 
 vi.mock("../_lib/actions", () => ({
   updateTenantBrandMarkAction: (
@@ -34,6 +38,7 @@ vi.mock("../_lib/actions", () => ({
     data: FormData
   ) => {
     save.calls.push(data);
+
     return save.current.promise;
   },
 }));
@@ -92,6 +97,7 @@ const renderCard = async (mark: TenantBrandMark | null) =>
 
 const openUploadDialog = async (name: string) => {
   fireEvent.click(screen.getByRole("button", { name }));
+
   return await screen.findByRole("dialog");
 };
 
@@ -161,9 +167,11 @@ describe("TenantBrandMarkCard", () => {
         .getAttribute("href")
     ).toBe(BRAND_MARK_GUIDELINE_URLS.x_share);
     const file = within(dialog).getByLabelText<HTMLInputElement>("Mark image");
+
     const submit = within(dialog).getByRole("button", {
       name: "Upload the mark",
     });
+
     expect(file.matches(":disabled")).toBe(true);
     expect(submit.matches(":disabled")).toBe(true);
 
@@ -188,9 +196,11 @@ describe("TenantBrandMarkCard", () => {
         name: "I have read these guidelines and accept them.",
       })
     );
+
     const submit = within(dialog).getByRole("button", {
       name: "Upload the mark",
     });
+
     await waitFor(() => {
       expect(submit.matches(":disabled")).toBe(false);
     });

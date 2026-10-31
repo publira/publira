@@ -87,12 +87,14 @@ export const readStoredMfaChallenge =
   async (): Promise<StoredMfaChallenge | null> => {
     const cookieStore = await cookies();
     const raw = cookieStore.get(MFA_CHALLENGE_COOKIE_NAME)?.value?.trim();
+
     if (!raw) {
       return null;
     }
 
     const payload = await decryptPayload(raw, resolveAuthSecret());
     const parsed = storedMfaChallengeSchema.safeParse(payload);
+
     if (!parsed.success || isSessionExpired(parsed.data.expiresAt)) {
       return null;
     }
@@ -103,6 +105,7 @@ export const readStoredMfaChallenge =
 /** The pending challenge this request carries, or `null` when there is none to act on. */
 export const readMfaChallenge = async (): Promise<MfaChallenge | null> => {
   const stored = await readStoredMfaChallenge();
+
   return stored && "challengeToken" in stored ? stored : null;
 };
 
@@ -117,6 +120,7 @@ export const writeMfaChallenge = async (
   challenge: StoredMfaChallenge
 ): Promise<void> => {
   const expiresAt = parseInstant(challenge.expiresAt);
+
   if (!expiresAt) {
     // The caller built this from a timestamp the API just answered, so a value
     // that is not an instant is a bug here rather than a challenge to store

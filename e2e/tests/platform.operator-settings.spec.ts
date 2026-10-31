@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Response } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql, runSql } from "../src/db";
@@ -36,16 +36,23 @@ const SETTINGS_PATHS = ["/account", "/services/email"] as const;
 
 const EMAIL_CHANGE_REQUESTED_MESSAGE =
   "Confirmation emails were sent to both the current and new addresses. Open both links to finish the change.";
+
 const CHANGED_MESSAGE = "Your email address has been changed.";
+
 const PENDING_NEW_EMAIL_MESSAGE =
   "This confirmation is done. The change applies once the new email address is confirmed as well.";
+
 const FAILED_MESSAGE =
   "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.";
+
 const WRONG_PASSWORD_MESSAGE =
   "The password is incorrect. Check it and try again.";
+
 const SMTP_SAVED_MESSAGE = "Email settings saved.";
+
 const SMTP_SAVE_CONFLICT_MESSAGE =
   "Another session changed the platform settings, so nothing was saved. Reload the screen and try again.";
+
 const CONFLICTING_REPLY_TO = "conflict@platform.local";
 
 const signIn = (page: Page, nextPath: string): Promise<void> =>
@@ -96,6 +103,7 @@ const openCurrentEmailSettings = async (page: Page): Promise<void> => {
     .poll(
       async () => {
         await page.goto(platformUrl("/services/email"));
+
         return await revision.inputValue();
       },
       {
@@ -109,6 +117,7 @@ const openCurrentEmailSettings = async (page: Page): Promise<void> => {
 const emailChangeTokenCount = (newEmail?: string): string => {
   const emailFilter =
     newEmail === undefined ? "" : ` AND t.new_email = '${newEmail}'`;
+
   return querySql(`
     SELECT COUNT(*)
     FROM platform_user_email_change_tokens t
@@ -133,6 +142,7 @@ const requestEmailChange = async (
 
 const confirmationTokenFor = async (recipient: string): Promise<string> => {
   const message = await waitForMessageTo(recipient);
+
   return tokenFromLink(message, CONFIRM_EMAIL_PATH);
 };
 
@@ -144,7 +154,10 @@ const confirmationTokenFor = async (recipient: string): Promise<string> => {
  * listens on nor a scheme this stack serves, so the token is carried over
  * rather than the whole link followed.
  */
-const openConfirmation = (page: Page, token: string): Promise<unknown> =>
+const openConfirmation = (
+  page: Page,
+  token: string
+): Promise<Response | null> =>
   page.goto(
     platformUrl(`${CONFIRM_EMAIL_PATH}?token=${encodeURIComponent(token)}`)
   );
@@ -250,6 +263,7 @@ test.describe("web-platform operator settings", () => {
       EMAIL_CHANGE_REQUESTED_MESSAGE
     );
     await waitForEmailChangeToken(PLATFORM_OPERATOR_SETTINGS_EXPIRED_EMAIL);
+
     const token = await confirmationTokenFor(
       PLATFORM_OPERATOR_SETTINGS_EXPIRED_EMAIL
     );
@@ -285,9 +299,11 @@ test.describe("web-platform operator settings", () => {
       EMAIL_CHANGE_REQUESTED_MESSAGE
     );
     await waitForEmailChangeToken(PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL);
+
     const currentEmailToken = await confirmationTokenFor(
       PLATFORM_OPERATOR_SETTINGS_OPERATOR.email
     );
+
     const newEmailToken = await confirmationTokenFor(
       PLATFORM_OPERATOR_SETTINGS_NEW_EMAIL
     );

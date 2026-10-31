@@ -18,16 +18,27 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { TenantSiteVerificationActionState } from "../settings-types";
 import { TenantSiteVerificationForm } from "./tenant-site-verification-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<TenantSiteVerificationActionState>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantSiteVerificationActionState>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantSiteVerificationAction: (_state: unknown, formData: FormData) => {
+  updateTenantSiteVerificationAction: (
+    _state: TenantSiteVerificationActionState,
+    formData: FormData
+  ) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -43,8 +54,10 @@ vi.mock("#components/message", () => ({
 }));
 
 const SUBMIT = "Save the verification codes";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
+
 const INVALID =
   "Paste the whole <meta> tag, or only its content value: up to 128 letters, digits, hyphens, and underscores.";
 

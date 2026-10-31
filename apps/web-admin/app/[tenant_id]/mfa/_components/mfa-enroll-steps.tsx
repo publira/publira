@@ -39,6 +39,7 @@ const MfaEnrollSteps = ({
   const [confirmed, setConfirmed] = useState<ConfirmedMfaEnrollment | null>(
     null
   );
+
   if (finished && !confirmed) {
     redirect(nextPath);
   }

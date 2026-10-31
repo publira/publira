@@ -19,6 +19,7 @@ export const tenantLocalePath = async (
   href: string
 ): Promise<string> => {
   const defaultLocale = await getTenantDefaultLocale(tenantId);
+
   return withLocalePrefix(currentLocale, defaultLocale, href);
 };
 
@@ -38,6 +39,7 @@ export const tenantLocaleUrl = async (
   href: string
 ): Promise<string | null> => {
   const origin = await getTenantPublicOrigin(tenantId);
+
   if (!origin) {
     return null;
   }
@@ -59,6 +61,7 @@ export const tenantLocaleAlternates = async (
   href: string
 ): Promise<LocaleAlternates | undefined> => {
   const origin = await getTenantPublicOrigin(tenantId);
+
   if (!origin) {
     return undefined;
   }
@@ -67,6 +70,7 @@ export const tenantLocaleAlternates = async (
     getTenantDefaultLocale(tenantId),
     getTenantSupportedLocales(tenantId),
   ]);
+
   return localeAlternates(currentLocale, defaultLocale, supportedLocales, href);
 };
 
@@ -83,6 +87,7 @@ export const tenantPublishedLocaleAlternates = async (
   servedLocale: Locale
 ): Promise<LocaleAlternates | undefined> => {
   const origin = await getTenantPublicOrigin(tenantId);
+
   if (!origin) {
     return undefined;
   }
@@ -91,6 +96,7 @@ export const tenantPublishedLocaleAlternates = async (
     getTenantDefaultLocale(tenantId),
     getTenantSupportedLocales(tenantId),
   ]);
+
   return publishedLocaleAlternates(
     defaultLocale,
     supportedLocales,

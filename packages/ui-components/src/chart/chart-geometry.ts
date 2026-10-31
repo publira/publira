@@ -29,6 +29,7 @@ export const chartScale = (values: readonly number[]): ChartScale => {
   const low = Math.min(0, ...values);
   const highest = Math.max(0, ...values);
   const high = highest === low ? low + 1 : highest;
+
   const y = (value: number): number =>
     PLOT_HEIGHT - ((value - low) / (high - low)) * PLOT_HEIGHT;
 
@@ -73,15 +74,19 @@ export const barGeometry = (values: readonly number[]): BarGeometry[] => {
  */
 export const linePoints = (values: readonly number[]): string => {
   const scale = chartScale(values);
+
   if (values.length === 0) {
     return "";
   }
+
   if (values.length === 1) {
     const y = scale.y(values[0] ?? 0);
+
     return `0,${y} ${scale.width},${y}`;
   }
 
   const step = scale.width / (values.length - 1);
+
   return values
     .map((value, index) => `${index * step},${scale.y(value)}`)
     .join(" ");
@@ -99,6 +104,7 @@ export const stepPath = (values: readonly number[]): string => {
     .map((value, index) => {
       const y = scale.y(value);
       const right = (index + 1) * SLOT_WIDTH;
+
       return index === 0 ? `M0 ${y} H${right}` : `V${y} H${right}`;
     })
     .join(" ");

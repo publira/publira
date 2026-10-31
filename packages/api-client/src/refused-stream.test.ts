@@ -61,13 +61,17 @@ const startServer = async (
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
+  // SAFETY: a server listening on a TCP port reports its address as an
+  // `AddressInfo`; only a pipe or a socket file reports a string.
   const { port } = server.address() as AddressInfo;
   onTestFinished(() => {
     for (const session of sessions) {
       session.destroy();
     }
+
     server.close();
   });
+
   return {
     baseUrl: `http://127.0.0.1:${port}`,
     sessions,
@@ -78,9 +82,11 @@ const startServer = async (
 const getTenant = async (client: ReturnType<typeof createPublicApiClient>) => {
   try {
     await client.tenant.getTenant({});
+
     return { code: Code.Unknown, message: "" };
   } catch (error) {
     const { code, rawMessage } = ConnectError.from(error);
+
     return { code, message: rawMessage };
   }
 };
@@ -91,10 +97,13 @@ describe("the gRPC transport the Next.js apps use", () => {
       const { baseUrl, streams } = await startServer((stream, index) => {
         if (index === 1) {
           refuse(stream);
+
           return;
         }
+
         answer(stream);
       });
+
       const client = createPublicApiClient({ baseUrl, transport: "grpc" });
 
       expect(await getTenant(client)).toMatchObject({ code: Code.NotFound });
@@ -118,6 +127,7 @@ describe("the gRPC transport the Next.js apps use", () => {
     const { baseUrl, streams } = await startServer((stream) => {
       stream.close(http2.constants.NGHTTP2_INTERNAL_ERROR);
     });
+
     const client = createPublicApiClient({ baseUrl, transport: "grpc" });
 
     expect(await getTenant(client)).toEqual({

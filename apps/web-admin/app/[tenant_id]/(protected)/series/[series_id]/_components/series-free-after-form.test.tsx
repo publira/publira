@@ -98,6 +98,7 @@ describe("SeriesFreeAfterForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve<ActionForm.State>(null)
     );
+
     renderForm(action);
 
     submit();
@@ -122,6 +123,7 @@ describe("SeriesFreeAfterForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve<ActionForm.State>(null)
     );
+
     renderForm(action);
 
     fireEvent.click(
@@ -152,6 +154,7 @@ describe("SeriesFreeAfterForm", () => {
         ok: false,
       })
     );
+
     const daysAfterPublication = screen.getByRole<HTMLInputElement>(
       "spinbutton",
       { name: /Days after publication/u }

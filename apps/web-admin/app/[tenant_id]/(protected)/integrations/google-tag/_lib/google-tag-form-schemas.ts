@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { checkboxOnFormSchema, requiredTrimmedString } from "#lib/form-schemas";
+import {
+  checkboxOnFormSchema,
+  isFormText,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import type { UpdateTenantAnalyticsSettingsInput } from "#lib/tenant-analytics-settings";
 import {
@@ -13,8 +17,10 @@ import {
 // trimming and capitalizing.
 const MEASUREMENT_ID_RE = /^G-[A-Z0-9]{1,30}$/u;
 const CONTAINER_ID_RE = /^GTM-[A-Z0-9]{1,28}$/u;
+
 const HOSTNAME_RE =
   /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/u;
+
 // The scheme, the longest host DNS carries, and a port.
 const MAX_SERVER_CONTAINER_URL_LENGTH =
   "https://".length + 253 + ":65535".length;
@@ -35,11 +41,15 @@ export const isServerContainerOrigin = (value: string): boolean => {
   ) {
     return false;
   }
+
   const url = new URL(value);
+
   if (url.username || url.password || url.port === "0") {
     return false;
   }
+
   const labels = url.hostname.split(".");
+
   // A last label that is a number is an IPv4 address, `URL` having already
   // spelled `127.1` out as `127.0.0.1`; an IPv6 one is bracketed and fails the
   // pattern.
@@ -56,8 +66,10 @@ export const googleTagFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
-const trimmed = (value: unknown): string =>
-  typeof value === "string" ? value.trim() : "";
+const trimmed = z.preprocess(
+  (value) => (isFormText(value) ? value.trim() : ""),
+  z.string()
+);
 
 /**
  * The form as the API will take it. The server container URL is posted only
@@ -74,16 +86,10 @@ export const googleTagFormSchema = async (
       consentMode: z.enum(GOOGLE_TAG_CONSENT_MODES, {
         error: t("admin.settings.google_tag.validation.consent_mode_invalid"),
       }),
-      ga4MeasurementId: z.preprocess(
-        (value) => trimmed(value).toUpperCase(),
-        z.string()
-      ),
-      gtmContainerId: z.preprocess(
-        (value) => trimmed(value).toUpperCase(),
-        z.string()
-      ),
+      ga4MeasurementId: trimmed.transform((value) => value.toUpperCase()),
+      gtmContainerId: trimmed.transform((value) => value.toUpperCase()),
       regenerateGatewayPath: checkboxOnFormSchema,
-      serverContainerUrl: z.preprocess(trimmed, z.string()),
+      serverContainerUrl: trimmed,
       servingMode: z.enum(GOOGLE_TAG_SERVING_MODES, {
         error: t("admin.settings.google_tag.validation.serving_mode_invalid"),
       }),
@@ -110,6 +116,7 @@ export const googleTagFormSchema = async (
           path: ["ga4MeasurementId"],
         });
       }
+
       if (value.gtmContainerId && !CONTAINER_ID_RE.test(value.gtmContainerId)) {
         ctx.addIssue({
           code: "custom",
@@ -129,6 +136,7 @@ export const googleTagFormSchema = async (
           path: ["gtmContainerId"],
         });
       }
+
       if (
         value.serverContainerUrl &&
         !isServerContainerOrigin(value.serverContainerUrl)

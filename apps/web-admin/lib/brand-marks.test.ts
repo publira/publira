@@ -142,8 +142,11 @@ describe("brand-marks", () => {
       TenantBrandMarkKind.LINE_SHARE,
       "line_share"
     );
+
     mockListTenantBrandMarksApi.mockResolvedValueOnce({
       brandMarks: [
+        // SAFETY: a kind a newer server can send, which this build's enum
+        // does not name yet; the wire carries any number in the field.
         storedMarkResponse(99 as TenantBrandMarkKind, "future_mark"),
         { ...withoutImage, mark: { ...withoutImage.mark, imageVariants: [] } },
       ],
@@ -204,6 +207,7 @@ describe("brand-marks", () => {
     const { uploadTenantBrandMark } = await import("./brand-marks");
 
     const imageData = new Uint8Array([1, 2, 3]);
+
     const result = await uploadTenantBrandMark(
       {
         imageContentType: "image/png",

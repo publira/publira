@@ -149,12 +149,14 @@ const mapPurchasedItem = (item: RawPurchase): PurchasedItem => {
       kind: "coin_pack",
     };
   }
+
   if (item.seriesBundle) {
     return {
       episodeCount: item.seriesBundle.episodeCount,
       kind: "series_bundle",
     };
   }
+
   if (item.volumePublicId) {
     return {
       kind: "volume",
@@ -162,6 +164,7 @@ const mapPurchasedItem = (item: RawPurchase): PurchasedItem => {
       title: item.volumeTitle,
     };
   }
+
   return {
     kind: "episode",
     publicId: item.episodePublicId,
@@ -215,8 +218,10 @@ const listPurchasesForSession = async (
   cacheLife("minutes");
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: t("errors.rpc.unauthenticated"),
@@ -247,6 +252,7 @@ const listPurchasesForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: rpcErrorMessage(error, t("admin.purchases.list_failed"), {
@@ -290,8 +296,10 @@ const listReaderPurchasesForSession = async (
   cacheLife("minutes");
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: t("errors.rpc.unauthenticated"),
@@ -318,6 +326,7 @@ const listReaderPurchasesForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: rpcErrorMessage(error, t("admin.purchases.list_failed"), {
@@ -363,8 +372,10 @@ const getPurchaseForSession = async (
   cacheLife("minutes");
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -377,6 +388,7 @@ const getPurchaseForSession = async (
       { purchaseId, tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       purchase: response.purchase ? mapPurchase(response.purchase) : null,
@@ -387,7 +399,9 @@ const getPurchaseForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, purchase: null };
     }
+
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.purchases.detail_failed"), {
         locale,
@@ -426,6 +440,7 @@ export const refundPurchase = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -442,13 +457,16 @@ export const refundPurchase = async (
       },
       withSessionHeaders(sessionId)
     );
+
     if (!response.purchase) {
       return { message: t("admin.purchases.refund_failed"), ok: false };
     }
+
     return { ok: true, purchase: mapPurchase(response.purchase) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.purchases.refund_failed"), {
         locale,

@@ -60,6 +60,7 @@ const openLocaleMenu = async (
     if (!(await option.isVisible())) {
       await trigger.click();
     }
+
     await expect(option).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 15_000 });
 };
@@ -78,6 +79,7 @@ export const openStorefrontLocaleMenu = async (
     page.getByRole("button", { name: HOST_SWITCHER_TRIGGER[from] }),
     option
   );
+
   return option;
 };
 
@@ -132,6 +134,7 @@ export const storedLocaleCookie = async (
   page: Page
 ): Promise<string | undefined> => {
   const cookies = await page.context().cookies();
+
   return cookies.find((cookie) => cookie.name === "publira_locale")?.value;
 };
 
@@ -150,16 +153,19 @@ export const redirectStatus = async (
   response: Response | null
 ): Promise<number | undefined> => {
   let first = response?.request().redirectedFrom();
+
   if (!first) {
     return undefined;
   }
 
   let earlier = first.redirectedFrom();
+
   while (earlier) {
     first = earlier;
     earlier = first.redirectedFrom();
   }
 
   const firstResponse = await first.response();
+
   return firstResponse?.status();
 };

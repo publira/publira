@@ -121,15 +121,19 @@ type CatalogTopScheduleOptions = CatalogTopDataOptions & { timeZone: string };
 const compareNewestFirst = (left: string, right: string): number => {
   const leftAt = parseInstant(left);
   const rightAt = parseInstant(right);
+
   if (!(leftAt || rightAt)) {
     return 0;
   }
+
   if (!leftAt) {
     return 1;
   }
+
   if (!rightAt) {
     return -1;
   }
+
   return Temporal.Instant.compare(rightAt, leftAt);
 };
 
@@ -174,6 +178,7 @@ const loadSeriesDetailRows = async (
     limit: seriesLimit,
     locale,
   });
+
   if (!seriesPage.ok) {
     return cachedReadFailure(seriesPage.message);
   }
@@ -188,6 +193,7 @@ const loadSeriesDetailRows = async (
   );
 
   const rows: SeriesDetailRow[] = [];
+
   for (const { detail, seriesItem } of seriesDetails) {
     if (!detail.ok) {
       return cachedReadFailure(detail.message);
@@ -198,14 +204,19 @@ const loadSeriesDetailRows = async (
       continue;
     }
 
-    rows.push({
-      ...(seriesItem.ageRating ? { ageRating: seriesItem.ageRating } : {}),
+    const row: SeriesDetailRow = {
       credits: seriesItem.credits,
       episodes: detail.value.episodes,
       eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
       publicId: seriesItem.publicId,
       title: seriesItem.title,
-    });
+    };
+
+    if (seriesItem.ageRating) {
+      row.ageRating = seriesItem.ageRating;
+    }
+
+    rows.push(row);
   }
 
   return { ok: true, value: rows };
@@ -236,6 +247,7 @@ export const getCatalogTopRecommendedSeries = async (
     limit: maxRecommended,
     locale,
   });
+
   if (!page.ok) {
     return cachedReadFailure(page.message);
   }
@@ -260,14 +272,17 @@ export const getCatalogTopReaderRecommendedSeries = async (
   { locale, maxRecommended = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   const accessToken = await resolveAccessToken();
+
   if (accessToken) {
     const mine = await listMyRecommendedSeries(tenantId, accessToken, {
       limit: maxRecommended,
       locale,
     });
+
     if (!mine.ok) {
       return mine;
     }
+
     if (mine.value.access === "signed_in") {
       return { ok: true, value: mine.value.page.series };
     }
@@ -302,6 +317,7 @@ export const getCatalogTopFreeSeries = async (
     limit: maxFreeSeries,
     locale,
   });
+
   if (!page.ok) {
     return cachedReadFailure(page.message);
   }
@@ -369,6 +385,7 @@ export const getCatalogTopWeeklySchedule = async (
   );
 
   const days: CatalogTopScheduledDay[] = [];
+
   for (const { page, weekday } of pages) {
     // One unreadable day makes the whole strip wrong: the reader would page
     // through a week with a silent hole in it and read the gap as "nothing
@@ -411,6 +428,7 @@ export const getCatalogTopPopularSeries = async (
     locale,
     period: "weekly",
   });
+
   if (!ranking.ok) {
     return ranking;
   }
@@ -426,6 +444,7 @@ export const getCatalogTopPopularSeries = async (
     locale,
     maxRecommended,
   });
+
   if (!recommended.ok) {
     return recommended;
   }
@@ -459,16 +478,19 @@ export const getCatalogTopFeaturedWork = async (
     locale,
     maxRecommended,
   });
+
   if (!recommended.ok) {
     return cachedReadFailure(recommended.message);
   }
 
   const [series] = recommended.value;
+
   if (!series) {
     return { ok: true, value: null };
   }
 
   const detail = await getSeriesDetail(tenantId, series.publicId, locale);
+
   if (!detail.ok) {
     return cachedReadFailure(detail.message);
   }
@@ -477,24 +499,26 @@ export const getCatalogTopFeaturedWork = async (
     .filter((episode) => episode.publishedAt.trim().length > 0)
     .toSorted(byNewestDateDesc);
 
-  return {
-    ok: true,
-    value: {
-      ...(series.ageRating ? { ageRating: series.ageRating } : {}),
-      credits: series.credits,
-      eyeCatchImageVariants: series.eyeCatchImageVariants,
-      latestEpisode: latestEpisode
-        ? {
-            episodeId: latestEpisode.publicId,
-            orderIndex: latestEpisode.orderIndex,
-            publishedAt: latestEpisode.publishedAt,
-            title: latestEpisode.title,
-          }
-        : undefined,
-      seriesId: series.publicId,
-      seriesTitle: series.title,
-    },
+  const work: CatalogTopFeaturedWork = {
+    credits: series.credits,
+    eyeCatchImageVariants: series.eyeCatchImageVariants,
+    latestEpisode: latestEpisode
+      ? {
+          episodeId: latestEpisode.publicId,
+          orderIndex: latestEpisode.orderIndex,
+          publishedAt: latestEpisode.publishedAt,
+          title: latestEpisode.title,
+        }
+      : undefined,
+    seriesId: series.publicId,
+    seriesTitle: series.title,
   };
+
+  if (series.ageRating) {
+    work.ageRating = series.ageRating;
+  }
+
+  return { ok: true, value: work };
 };
 
 export const getCatalogTopNewEpisodes = async (
@@ -518,30 +542,39 @@ export const getCatalogTopNewEpisodes = async (
     seriesLimit,
     detailFetchLimit
   );
+
   if (!detailRows.ok) {
     return cachedReadFailure(detailRows.message);
   }
 
   const episodes = detailRows.value
     .flatMap((row) =>
-      row.episodes.flatMap((episode) =>
-        episode.publishedAt.trim().length > 0
-          ? [
-              {
-                ...(row.ageRating ? { ageRating: row.ageRating } : {}),
-                episodeId: episode.publicId,
-                episodeOrderIndex: episode.orderIndex,
-                episodeTitle: episode.title,
-                eyeCatchImageVariants:
-                  episode.eyeCatchImageVariants ?? row.eyeCatchImageVariants,
-                ...(episode.freeUntil ? { freeUntil: episode.freeUntil } : {}),
-                publishedAt: episode.publishedAt,
-                seriesId: row.publicId,
-                seriesTitle: row.title,
-              },
-            ]
-          : []
-      )
+      row.episodes.flatMap((episode) => {
+        if (episode.publishedAt.trim().length === 0) {
+          return [];
+        }
+
+        const item: CatalogTopEpisodeItem = {
+          episodeId: episode.publicId,
+          episodeOrderIndex: episode.orderIndex,
+          episodeTitle: episode.title,
+          eyeCatchImageVariants:
+            episode.eyeCatchImageVariants ?? row.eyeCatchImageVariants,
+          publishedAt: episode.publishedAt,
+          seriesId: row.publicId,
+          seriesTitle: row.title,
+        };
+
+        if (row.ageRating) {
+          item.ageRating = row.ageRating;
+        }
+
+        if (episode.freeUntil) {
+          item.freeUntil = episode.freeUntil;
+        }
+
+        return [item];
+      })
     )
     .toSorted(byNewestDateDesc)
     .slice(0, maxNewEpisodes);
@@ -570,6 +603,7 @@ export const getCatalogTopUpdatedSeries = async (
     seriesLimit,
     detailFetchLimit
   );
+
   if (!detailRows.ok) {
     return cachedReadFailure(detailRows.message);
   }
@@ -584,19 +618,22 @@ export const getCatalogTopUpdatedSeries = async (
         return [];
       }
 
-      return [
-        {
-          ...(row.ageRating ? { ageRating: row.ageRating } : {}),
-          credits: row.credits,
-          eyeCatchImageVariants: row.eyeCatchImageVariants,
-          latestEpisodeId: latestEpisode.publicId,
-          latestEpisodeOrderIndex: latestEpisode.orderIndex,
-          latestEpisodeTitle: latestEpisode.title,
-          latestPublishedAt: latestEpisode.publishedAt,
-          seriesId: row.publicId,
-          seriesTitle: row.title,
-        },
-      ];
+      const item: CatalogTopUpdatedSeriesItem = {
+        credits: row.credits,
+        eyeCatchImageVariants: row.eyeCatchImageVariants,
+        latestEpisodeId: latestEpisode.publicId,
+        latestEpisodeOrderIndex: latestEpisode.orderIndex,
+        latestEpisodeTitle: latestEpisode.title,
+        latestPublishedAt: latestEpisode.publishedAt,
+        seriesId: row.publicId,
+        seriesTitle: row.title,
+      };
+
+      if (row.ageRating) {
+        item.ageRating = row.ageRating;
+      }
+
+      return [item];
     })
     .toSorted((left, right) =>
       compareNewestFirst(left.latestPublishedAt, right.latestPublishedAt)
@@ -627,6 +664,7 @@ export const getCatalogTopFeaturedLabels = async (
     limit: maxLabels,
     locale,
   });
+
   if (!labels.ok) {
     // Re-marking the outer entry is deliberate: the inner cache life does
     // propagate, but this scope owning its own drop keeps the guarantee local.
@@ -648,6 +686,7 @@ export const getCatalogTopFeaturedCreators = async (
     limit: maxCreators,
     locale,
   });
+
   if (!creatorsResult.ok) {
     return cachedReadFailure(creatorsResult.message);
   }

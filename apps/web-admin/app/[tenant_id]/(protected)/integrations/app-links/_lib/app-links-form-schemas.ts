@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { checkboxOnFormSchema, requiredTrimmedString } from "#lib/form-schemas";
+import {
+  checkboxOnFormSchema,
+  isFormText,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import { MAX_ANDROID_CERT_FINGERPRINTS } from "#lib/tenant-mobile-app-association";
 import type { TenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
@@ -23,16 +27,20 @@ export const appLinksFormFields = {
 } as const;
 
 /** The textarea's fingerprints, one per line, with blank lines dropped. */
-const fingerprintLines = (value: unknown): string[] =>
-  typeof value === "string"
-    ? value.split(/\r?\n/u).flatMap((line) => {
-        const fingerprint = line.trim().toUpperCase();
-        return fingerprint ? [fingerprint] : [];
-      })
-    : [];
+const fingerprintLines = z
+  .preprocess((value) => (isFormText(value) ? value : ""), z.string())
+  .transform((value) =>
+    value.split(/\r?\n/u).flatMap((line) => {
+      const fingerprint = line.trim().toUpperCase();
 
-const trimmed = (value: unknown): string =>
-  typeof value === "string" ? value.trim() : "";
+      return fingerprint ? [fingerprint] : [];
+    })
+  );
+
+const trimmed = z.preprocess(
+  (value) => (isFormText(value) ? value.trim() : ""),
+  z.string()
+);
 
 export interface AppLinksFormValues {
   association: TenantMobileAppAssociation;
@@ -50,15 +58,12 @@ export const appLinksFormSchema = async (
 
   return z
     .object({
-      androidApplicationId: z.preprocess(trimmed, z.string()),
+      androidApplicationId: trimmed,
       androidEnabled: checkboxOnFormSchema,
-      androidFingerprints: z.preprocess(fingerprintLines, z.array(z.string())),
-      iosBundleIdentifier: z.preprocess(trimmed, z.string()),
+      androidFingerprints: fingerprintLines,
+      iosBundleIdentifier: trimmed,
       iosEnabled: checkboxOnFormSchema,
-      iosTeamId: z.preprocess(
-        (value) => trimmed(value).toUpperCase(),
-        z.string()
-      ),
+      iosTeamId: trimmed.transform((value) => value.toUpperCase()),
       tenantId: requiredTrimmedString(t("admin.settings.tenant_missing")),
     })
     .superRefine((data, ctx) => {
@@ -72,7 +77,9 @@ export const appLinksFormSchema = async (
             path: ["androidApplicationId"],
           });
         }
+
         const fingerprints = data.androidFingerprints;
+
         if (
           fingerprints.length === 0 ||
           fingerprints.length > MAX_ANDROID_CERT_FINGERPRINTS
@@ -88,12 +95,15 @@ export const appLinksFormSchema = async (
             path: ["androidFingerprints"],
           });
         }
+
         const malformed = fingerprints.find(
           (fingerprint) => !SHA256_FINGERPRINT_RE.test(fingerprint)
         );
+
         const repeated = fingerprints.find(
           (fingerprint, index) => fingerprints.indexOf(fingerprint) !== index
         );
+
         if (malformed !== undefined) {
           ctx.addIssue({
             code: "custom",
@@ -114,6 +124,7 @@ export const appLinksFormSchema = async (
           });
         }
       }
+
       if (data.iosEnabled) {
         if (!APPLE_TEAM_ID_RE.test(data.iosTeamId)) {
           ctx.addIssue({
@@ -122,6 +133,7 @@ export const appLinksFormSchema = async (
             path: ["iosTeamId"],
           });
         }
+
         if (!IOS_BUNDLE_IDENTIFIER_RE.test(data.iosBundleIdentifier)) {
           ctx.addIssue({
             code: "custom",

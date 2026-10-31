@@ -9,10 +9,7 @@ const revalidateRequestSchema = z.strictObject({
   tags: z.array(z.string().trim().min(1).max(256)).min(1),
 });
 
-const readEnv = (name: string): string => {
-  const value = process.env[name];
-  return typeof value === "string" ? value.trim() : "";
-};
+const readEnv = (name: string): string => process.env[name]?.trim() ?? "";
 
 /**
  * Compares the digests rather than the tokens, so neither the time taken nor
@@ -36,6 +33,7 @@ export const handleRevalidateRequest = async (
   request: Request
 ): Promise<Response> => {
   const token = readEnv(REVALIDATE_TOKEN_ENV);
+
   if (!token) {
     return Response.json(
       { error: `${REVALIDATE_TOKEN_ENV} is not configured` },
@@ -44,11 +42,13 @@ export const handleRevalidateRequest = async (
   }
 
   const headerToken = request.headers.get("x-revalidate-token")?.trim();
+
   if (!(headerToken && tokensMatch(token, headerToken))) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
   let payload: unknown;
+
   try {
     payload = await request.json();
   } catch {
@@ -56,6 +56,7 @@ export const handleRevalidateRequest = async (
   }
 
   const parsed = revalidateRequestSchema.safeParse(payload);
+
   if (!parsed.success) {
     return Response.json(
       {
@@ -70,8 +71,10 @@ export const handleRevalidateRequest = async (
   }
 
   const tags = [...new Set(parsed.data.tags)];
+
   for (const tag of tags) {
     revalidateTag(tag, "max");
   }
+
   return Response.json({ revalidated: tags.length, tags });
 };

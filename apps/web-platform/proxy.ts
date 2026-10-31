@@ -57,6 +57,7 @@ export const proxy = async (request: NextRequest) => {
   // platform saved rather than the one the visitor's browser asked for.
   const { completed: setupCompleted, defaultLocale } =
     await resolveSetupState();
+
   const withLocale = (response: NextResponse) =>
     applyResolvedLocaleCookie(request, response, defaultLocale);
 
@@ -70,16 +71,19 @@ export const proxy = async (request: NextRequest) => {
   const sessionCookie = request.cookies.get(
     PLATFORM_SESSION_COOKIE_NAME
   )?.value;
+
   const hasStoredSessionCookie = Boolean(sessionCookie?.trim());
 
   if (PUBLIC_PATHS.has(pathname)) {
     const response = NextResponse.next();
+
     // The API rejected this session while a page was rendering, where the
     // cookie cannot be touched. Clearing it here is what keeps the console from
     // waving the operator back in with the same dead credentials.
     if (hasStoredSessionCookie && isSessionRevokedRedirect(request.nextUrl)) {
       response.cookies.delete(PLATFORM_SESSION_COOKIE_NAME);
     }
+
     return withLocale(response);
   }
 
@@ -92,6 +96,7 @@ export const proxy = async (request: NextRequest) => {
       RETURN_TO_HEADER_NAME,
       buildReturnToPath(request.nextUrl)
     );
+
     return withLocale(
       NextResponse.next({ request: { headers: requestHeaders } })
     );
@@ -100,11 +105,13 @@ export const proxy = async (request: NextRequest) => {
   const response = setupCompleted
     ? NextResponse.redirect(buildLoginUrl(request.nextUrl))
     : NextResponse.redirect(new URL("/setup", request.url));
+
   // A cookie that no longer decrypts or has run out is not worth carrying to
   // the login page, where it would only be rejected again.
   if (hasStoredSessionCookie) {
     response.cookies.delete(PLATFORM_SESSION_COOKIE_NAME);
   }
+
   return withLocale(response);
 };
 

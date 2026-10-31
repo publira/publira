@@ -22,6 +22,7 @@ import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./auth-shared";
+import { isFormText } from "./form-schemas";
 import { getMessagesFor } from "./messages";
 
 /** Paths in `next` can carry a query string; 255 would clip real ones. */
@@ -41,11 +42,12 @@ export const nextPathSearchParamSchema = searchParamString({
  * `Promise.catch`.
  */
 export const nextPathFormSchema = z.preprocess((value) => {
-  if (typeof value !== "string") {
+  if (!isFormText(value)) {
     return "/";
   }
 
   const trimmed = value.trim();
+
   if (trimmed.length === 0 || trimmed.length > NEXT_PATH_MAX_LENGTH) {
     return "/";
   }

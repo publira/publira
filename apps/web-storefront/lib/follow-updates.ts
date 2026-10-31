@@ -59,6 +59,7 @@ type RawFollowUpdate = Pick<FollowUpdate, "episode" | "series">;
 const mapFollowUpdate = (update: RawFollowUpdate): FollowUpdateItem | null => {
   const episodePublicId = update.episode?.publicId?.trim() ?? "";
   const seriesPublicId = update.series?.publicId?.trim() ?? "";
+
   if (!(episodePublicId && seriesPublicId)) {
     return null;
   }
@@ -101,10 +102,12 @@ export const listMyFollowUpdates = async (
   input: ListMyFollowUpdatesInput
 ): Promise<ListMyFollowUpdatesResult> => {
   const { locale } = input;
+
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -124,15 +127,18 @@ export const listMyFollowUpdates = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       updates: (response.updates ?? []).flatMap((update) => {
         const mapped = mapFollowUpdate(update);
+
         return mapped ? [mapped] : [];
       }),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

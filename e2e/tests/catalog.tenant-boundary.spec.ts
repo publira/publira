@@ -72,6 +72,7 @@ test.describe("web-storefront tenant boundary", () => {
     const covers = page.locator(
       `main a[href^="${storefrontPath("/series/")}"]:not([href*="/episodes/"])`
     );
+
     await expect(covers).toHaveCount(1);
     await expect(covers).toContainText(OTHER_TENANT.publishedSeries.title);
     await expect(
@@ -107,6 +108,7 @@ test.describe("web-storefront tenant boundary", () => {
         `/series/${OTHER_TENANT.publishedSeries.publicId}/episodes/${OTHER_TENANT.publishedSeries.scheduledEpisodeId}`
       )
     );
+
     expect(scheduled?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.scheduledEpisodeTitle)
@@ -132,6 +134,7 @@ test.describe("web-storefront tenant boundary", () => {
     const foreign = await page.goto(
       otherTenantUrl(`/series/${SEED_TENANT.series.publicId}`)
     );
+
     expect(foreign?.status(), await page.content()).toBe(404);
     await expect(page.getByText(SEED_TENANT.series.title)).toHaveCount(0);
 
@@ -139,6 +142,7 @@ test.describe("web-storefront tenant boundary", () => {
     const reverse = await page.goto(
       `/series/${OTHER_TENANT.publishedSeries.publicId}`
     );
+
     expect(reverse?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.title)
@@ -154,6 +158,7 @@ test.describe("web-storefront tenant boundary", () => {
         `/series/${OTHER_TENANT.publishedSeries.publicId}/episodes/${SEED_TENANT.series.freeEpisodeId}`
       )
     );
+
     expect(foreign?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(SEED_TENANT.series.freeEpisodeTitle)
@@ -161,9 +166,11 @@ test.describe("web-storefront tenant boundary", () => {
 
     // …and the same in the other direction.
     const [otherEpisodeId] = OTHER_TENANT.publishedSeries.episodeIds;
+
     const reverse = await page.goto(
       `/series/${SEED_TENANT.series.publicId}/episodes/${otherEpisodeId}`
     );
+
     expect(reverse?.status(), await page.content()).toBe(404);
     await expect(
       page.getByText(OTHER_TENANT.publishedSeries.episodeTitles[0])
@@ -218,6 +225,7 @@ test.describe("web-storefront tenant boundary", () => {
         `/search?q=${encodeURIComponent(OTHER_TENANT.publishedSeries.title)}`
       )
     );
+
     expect(own?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "Search" })

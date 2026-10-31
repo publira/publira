@@ -20,9 +20,11 @@ export const getTenantStatusLabel = async (
     case "active": {
       return t("platform.common.tenant_status.active");
     }
+
     case "suspended": {
       return t("platform.common.tenant_status.suspended");
     }
+
     default: {
       return status;
     }
@@ -34,9 +36,11 @@ export const getTenantStatusTone = (status: string): TenantStatusTone => {
     case "active": {
       return "success";
     }
+
     case "suspended": {
       return "destructive";
     }
+
     default: {
       return "info";
     }
@@ -53,18 +57,23 @@ export const getTenantRoleLabel = async (
     case "tenant_admin": {
       return t("platform.common.roles.tenant_admin");
     }
+
     case "tenant_auditor": {
       return t("platform.common.roles.tenant_auditor");
     }
+
     case "tenant_editor": {
       return t("platform.common.roles.tenant_editor");
     }
+
     case "tenant_member": {
       return t("platform.common.roles.tenant_member");
     }
+
     case "tenant_owner": {
       return t("platform.common.roles.tenant_owner");
     }
+
     default: {
       return role;
     }
@@ -81,15 +90,19 @@ export const getInvitationStatusLabel = async (
     case "accepted": {
       return t("platform.common.invitation_status.accepted");
     }
+
     case "canceled": {
       return t("platform.common.invitation_status.canceled");
     }
+
     case "expired": {
       return t("platform.common.invitation_status.expired");
     }
+
     case "pending": {
       return t("platform.common.invitation_status.pending");
     }
+
     default: {
       return status;
     }

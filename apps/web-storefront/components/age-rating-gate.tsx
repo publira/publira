@@ -24,11 +24,13 @@ const AgeRatingGateContext = createContext<AgeRatingGateState | null>(null);
 
 const useAgeRatingGateState = (): AgeRatingGateState => {
   const state = useContext(AgeRatingGateContext);
+
   if (!state) {
     throw new Error(
       "AgeRatingGate slots must be rendered inside an AgeRatingGate."
     );
   }
+
   return state;
 };
 
@@ -69,9 +71,11 @@ const AgeRatingGate = ({
 }) => {
   const tenantId = useTenantId();
   const confirmed = useConfirmedAgeRating(tenantId);
+
   const open =
     ageRatingSatisfiedBy(rating, provenAgeRating) ||
     ageRatingSatisfiedBy(rating, confirmed);
+
   const state = useMemo(() => ({ open, rating }), [open, rating]);
 
   return <AgeRatingGateContext value={state}>{children}</AgeRatingGateContext>;

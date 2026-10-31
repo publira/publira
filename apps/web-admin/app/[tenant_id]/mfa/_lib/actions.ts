@@ -51,6 +51,7 @@ const requireChallenge = async (
 ): Promise<MfaChallenge> => {
   const challenge = await readMfaChallenge();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (
     !challenge ||
     challenge.kind !== kind ||
@@ -58,6 +59,7 @@ const requireChallenge = async (
   ) {
     redirect(buildLoginPath(challenge?.nextPath, { revoked: true }));
   }
+
   return challenge;
 };
 
@@ -73,9 +75,11 @@ const parseCode = async (
 ): Promise<{ code: string } | { message: string }> => {
   const t = await getMessagesFor(locale);
   const parsed = mfaCodeFormSchema.safeParse(formData.get("code"));
+
   if (!parsed.success) {
     return { message: t("admin.auth.mfa.code_required") };
   }
+
   return { code: parsed.data };
 };
 
@@ -89,12 +93,15 @@ const parseCredential = async (
   locale: Locale
 ): Promise<{ credentialJson: string } | { message: string }> => {
   const t = await getMessagesFor(locale);
+
   const parsed = passkeyCredentialFormSchema.safeParse(
     formData.get("credential")
   );
+
   if (!parsed.success) {
     return { message: t("admin.auth.mfa.errors.passkey_failed") };
   }
+
   return { credentialJson: parsed.data };
 };
 
@@ -111,8 +118,10 @@ const toCeremonyStartState = async (
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
+
   return { message: "", ok: true, optionsJson: result.optionsJson };
 };
 
@@ -126,10 +135,12 @@ const storeSession = async (
 ): Promise<boolean> => {
   try {
     await writeAdminSessionCookie(tenantId, session);
+
     return true;
   } catch (error) {
     // Sealing or writing the cookie broke; the reason is only in the log.
     console.error("[web-admin] mfa session cookie seal failed", error);
+
     return false;
   }
 };
@@ -141,10 +152,12 @@ export const verifyMfaAction = async (
   await assertSameOrigin();
   const challenge = await requireChallenge(formData, "verify");
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parseCode(formData, locale),
   ]);
+
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }
@@ -155,24 +168,29 @@ export const verifyMfaAction = async (
     parsed.code,
     locale
   );
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 
   const stored = await storeSession(challenge.tenantId, result.session);
+
   if (!stored) {
     return {
       message: t("admin.auth.errors.login_processing_failed"),
       ok: false,
     };
   }
+
   // A recovery code is one the account can never use again, so the screen says
   // so and offers the way back to a full set before moving on.
   if (result.recoveryCodeUsed) {
     await finishMfaChallenge(challenge);
+
     return {
       message: t("admin.auth.mfa.recovery_used_description", {
         count: result.remainingRecoveryCodes,
@@ -218,10 +236,12 @@ export const finishPasskeyVerificationAction = async (
   await assertSameOrigin();
   const challenge = await requireChallenge(formData, "verify");
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parseCredential(formData, locale),
   ]);
+
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }
@@ -232,14 +252,17 @@ export const finishPasskeyVerificationAction = async (
     parsed.credentialJson,
     locale
   );
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 
   const stored = await storeSession(challenge.tenantId, result.session);
+
   if (!stored) {
     return {
       message: t("admin.auth.errors.login_processing_failed"),
@@ -264,10 +287,12 @@ export const startMfaEnrollmentAction = async (
     challenge.challengeToken,
     locale
   );
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 
@@ -287,6 +312,7 @@ export const confirmMfaEnrollmentAction = async (
   const challenge = await requireChallenge(formData, "enroll");
   const locale = await getActionLocale(formData);
   const parsed = await parseCode(formData, locale);
+
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }
@@ -297,16 +323,19 @@ export const confirmMfaEnrollmentAction = async (
     parsed.code,
     locale
   );
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 
   const signedIn = result.session
     ? await storeSession(challenge.tenantId, result.session)
     : false;
+
   await finishMfaChallenge(challenge);
 
   return {
@@ -351,6 +380,7 @@ export const finishPasskeyRegistrationAction = async (
   const challenge = await requireChallenge(formData, "enroll");
   const locale = await getActionLocale(formData);
   const parsed = await parseCredential(formData, locale);
+
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }
@@ -361,16 +391,19 @@ export const finishPasskeyRegistrationAction = async (
     parsed.credentialJson,
     locale
   );
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 
   const signedIn = result.session
     ? await storeSession(challenge.tenantId, result.session)
     : false;
+
   await finishMfaChallenge(challenge);
 
   return {

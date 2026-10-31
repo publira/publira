@@ -78,5 +78,6 @@ export const RANKED_GENRE = {
  */
 export const seedSeriesImageId = (seriesNumber: number): string => {
   const sequence = seriesNumber.toString(16);
+
   return `018f0e76-${sequence.padStart(4, "0")}-7000-8000-${sequence.padStart(12, "0")}`;
 };

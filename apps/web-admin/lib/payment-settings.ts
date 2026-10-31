@@ -32,6 +32,7 @@ export type {
   PaymentProvider,
   TenantPaymentSettings,
 } from "./payment-settings-shared";
+
 export {
   emptyTenantPaymentSettings,
   paymentSettingsStatus,
@@ -88,12 +89,13 @@ export const tenantPaymentSettingsCacheTag = (tenantId: string): string =>
  * take the shared copy — a raw `[internal]` message is not something to show.
  */
 const parseErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): string => {
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
-  return rpcErrorMessage(error, fallback, {
+  const serverMessage = rpcErrorRawMessage(cause)?.trim() || fallback;
+
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "invalid-argument": serverMessage,
@@ -164,6 +166,7 @@ const requestPaymentProviders = async (
     { tenant: { tenantId } },
     withSessionHeaders(sessionId)
   );
+
   return (response.providers ?? []).map(toPaymentProvider);
 };
 
@@ -182,8 +185,10 @@ const getTenantPaymentSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -207,6 +212,7 @@ const getTenantPaymentSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: parseErrorMessage(
         error,
@@ -241,8 +247,10 @@ const listPaymentProvidersForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -259,6 +267,7 @@ const listPaymentProvidersForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: parseErrorMessage(
         error,
@@ -299,7 +308,9 @@ export const getPaymentProvider = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -309,7 +320,9 @@ export const getPaymentProvider = async (
       normalizedTenantId,
       sessionId
     );
+
     const provider = providers.find((candidate) => candidate.id === providerId);
+
     return provider
       ? { ok: true, provider }
       : {
@@ -319,6 +332,7 @@ export const getPaymentProvider = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,
@@ -338,7 +352,9 @@ export const updateTenantPaymentSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -363,6 +379,7 @@ export const updateTenantPaymentSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,

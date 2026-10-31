@@ -24,11 +24,13 @@ import { StorefrontMessagesContext } from "./storefront-messages-context";
  */
 export const useClientMessages = (): StorefrontClientMessageAccessor => {
   const messages = use(StorefrontMessagesContext);
+
   if (messages === null) {
     throw new Error("StorefrontMessagesProvider is required.");
   }
 
   const { catalog, locale } = use(messages);
+
   return bindMessages(catalog, locale);
 };
 

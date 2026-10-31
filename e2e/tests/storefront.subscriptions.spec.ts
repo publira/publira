@@ -65,15 +65,18 @@ const takePaymentsThroughStripe = async (page: Page): Promise<string> => {
   await page.getByRole("checkbox", { name: "Enable payments" }).click();
   const secretKey = `sk_test_${randomUUID().replaceAll("-", "")}`;
   await page.getByLabel(/^Secret key/u).fill(secretKey);
+
   const webhookSecret = await registerStripeWebhook(
     secretKey,
     await page.getByLabel("Webhook URL").inputValue()
   );
+
   await page.getByLabel(/^Webhook signing secret/u).fill(webhookSecret);
   await page.getByRole("button", { exact: true, name: "Save" }).click();
   await expect(
     page.getByText("The payment settings were saved.")
   ).toBeVisible();
+
   return secretKey;
 };
 
@@ -108,14 +111,17 @@ test.describe("web-storefront subscriptions", () => {
     uploadEpisodePages(STOREFRONT_SUBSCRIPTIONS_EPISODE.publicId);
 
     const page = await browser.newPage();
+
     try {
       const secretKey = await takePaymentsThroughStripe(page);
+
       const priceId = await createStripePrice(secretKey, {
         amount: 980,
         currency: "jpy",
         interval: "month",
         name: STOREFRONT_SUBSCRIPTIONS_PLAN.name,
       });
+
       // The plan bills the Price this run's account holds, which the
       // scenario cannot name ahead of the run.
       runSql(

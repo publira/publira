@@ -60,6 +60,9 @@ export type FormDataInput<T extends Record<string, FormDataFieldSpec>> = {
   [K in keyof T]: FormDataFieldValue<FieldKindOf<T[K]>>;
 };
 
+const isFieldKind = (spec: FormDataFieldSpec): spec is FormDataFieldKind =>
+  typeof spec === "string";
+
 const toFile = (entry: FormDataEntryValue | null): File | undefined =>
   entry instanceof File && entry.size > 0 ? entry : undefined;
 
@@ -75,6 +78,7 @@ const readField = (
   if (kind === "files") {
     return formData.getAll(name).flatMap((entry) => {
       const file = toFile(entry);
+
       return file ? [file] : [];
     });
   }
@@ -86,7 +90,8 @@ const readField = (
   }
 
   const value = formData.get(name);
-  return typeof value === "string" ? value : undefined;
+
+  return value === null || value instanceof File ? undefined : value;
 };
 
 /**
@@ -98,10 +103,14 @@ export const toFormDataInput = <T extends Record<string, FormDataFieldSpec>>(
   formData: FormData,
   fields: T
 ): FormDataInput<T> =>
+  // SAFETY: there is one entry per key of `fields`, and `readField` returns the
+  // value type `FormDataFieldValue` maps that key's field kind to.
   Object.fromEntries(
     Object.entries(fields).map(([key, spec]) => {
-      const kind = typeof spec === "string" ? spec : spec.kind;
-      const name = typeof spec === "string" ? key : spec.name;
+      const { kind, name } = isFieldKind(spec)
+        ? { kind: spec, name: key }
+        : spec;
+
       return [key, readField(formData, name, kind)];
     })
   ) as FormDataInput<T>;

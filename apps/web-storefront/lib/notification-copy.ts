@@ -38,11 +38,13 @@ const hiddenReasonSchema = z.enum([
  */
 const optionalResourceId = z.preprocess((value) => {
   const parsed = resourceIdSchema.safeParse(value);
+
   return parsed.success ? parsed.data : undefined;
 }, resourceIdSchema.optional());
 
 const optionalLabel = z.preprocess((value) => {
   const parsed = labelSchema.safeParse(value);
+
   return parsed.success ? parsed.data : undefined;
 }, labelSchema.optional());
 
@@ -52,6 +54,7 @@ const optionalLabel = z.preprocess((value) => {
  */
 const optionalHiddenReason = z.preprocess((value) => {
   const parsed = hiddenReasonSchema.safeParse(value);
+
   return parsed.success ? parsed.data : undefined;
 }, hiddenReasonSchema.optional());
 
@@ -93,16 +96,19 @@ const episodeSubject = async (
       series_title: payload.series_title,
     });
   }
+
   if (payload.episode_title) {
     return t("storefront.notifications.episode_subject", {
       episode_title: payload.episode_title,
     });
   }
+
   if (payload.series_title) {
     return t("storefront.notifications.episode_subject_series", {
       series_title: payload.series_title,
     });
   }
+
   return undefined;
 };
 
@@ -121,14 +127,17 @@ export const notificationHref = (
   if (payload.series_id && payload.episode_id) {
     return `/series/${payload.series_id}/episodes/${payload.episode_id}`;
   }
+
   if (payload.series_id) {
     return `/series/${payload.series_id}`;
   }
+
   return undefined;
 };
 
 export const parseNotificationPayload = (raw: string): NotificationPayload => {
   const trimmed = raw.trim();
+
   if (!trimmed) {
     return {};
   }
@@ -136,6 +145,7 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
   try {
     const parsed: unknown = JSON.parse(trimmed);
     const result = payloadSchema.safeParse(parsed);
+
     return result.success ? result.data : {};
   } catch {
     return {};
@@ -156,11 +166,13 @@ const commentHiddenDescription = (
       subject,
     });
   }
+
   if (payload.hidden_reason === COMMENT_HIDDEN_REASON_AUTO_REPORTS) {
     return t("storefront.notifications.comment_hidden_description_reports", {
       subject,
     });
   }
+
   return t("storefront.notifications.comment_hidden_description", { subject });
 };
 

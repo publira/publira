@@ -42,6 +42,7 @@ const startUpstream = async (
   respond: (response: ServerResponse) => void
 ): Promise<{ origin: string; received: Received[] }> => {
   const received: Received[] = [];
+
   const server = createServer((request, response) => {
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -55,13 +56,17 @@ const startUpstream = async (
       respond(response);
     });
   });
+
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   closers.push(async () => {
     server.close();
     await once(server, "close");
   });
+  // SAFETY: a server listening on a TCP port answers its `AddressInfo`; only
+  // one on a pipe or a socket path answers a string.
   const { port } = server.address() as AddressInfo;
+
   return { origin: `http://127.0.0.1:${port}`, received };
 };
 
@@ -71,16 +76,21 @@ const startListener = async (): Promise<{
   port: number;
 }> => {
   let connections = 0;
+
   const server = createNetServer((socket) => {
     connections += 1;
     socket.destroy();
   });
+
   server.listen(0);
   await once(server, "listening");
   closers.push(async () => {
     server.close();
     await once(server, "close");
   });
+
+  // SAFETY: a server listening on a TCP port answers its `AddressInfo`; only
+  // one on a pipe or a socket path answers a string.
   return {
     connections: () => connections,
     port: (server.address() as AddressInfo).port,
@@ -239,6 +249,7 @@ describe("forwardToGoogleTagGateway", () => {
       });
       response.end("ok");
     });
+
     vi.stubEnv(GOOGLE_TAG_GATEWAY_URL_ENV, upstream.origin);
 
     const response = await forwardToGoogleTagGateway(
@@ -282,6 +293,7 @@ describe("forwardToGoogleTagGateway", () => {
       response.writeHead(302, { location: "https://elsewhere.example/" });
       response.end();
     });
+
     vi.stubEnv(GOOGLE_TAG_GATEWAY_URL_ENV, upstream.origin);
 
     const response = await forwardToGoogleTagGateway(
@@ -301,6 +313,7 @@ describe("forwardToGoogleTagGateway", () => {
       response.writeHead(200, { "content-type": "application/javascript" });
       response.write("// the start of a loader");
     });
+
     vi.stubEnv(GOOGLE_TAG_GATEWAY_URL_ENV, upstream.origin);
 
     const response = await forwardToGoogleTagGateway(
@@ -319,6 +332,7 @@ describe("forwardToGoogleTagGateway", () => {
       response.writeHead(200, { "content-type": "application/javascript" });
       response.write("// the start of a loader");
     });
+
     vi.stubEnv(GOOGLE_TAG_GATEWAY_URL_ENV, upstream.origin);
     const reader = new AbortController();
 
@@ -329,6 +343,7 @@ describe("forwardToGoogleTagGateway", () => {
       GOOGLE_GATEWAY,
       null
     );
+
     const body = response.text();
     reader.abort();
 

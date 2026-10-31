@@ -21,9 +21,12 @@ import type {
 
 import { TenantMembersManager } from "./tenant-members-manager";
 
-const state = vi.hoisted(() => ({
-  t: undefined as PlatformMessageAccessor | undefined,
-}));
+/** The catalog the mocked `<Message>` renders from, once a test resolves it. */
+interface CatalogState {
+  t?: PlatformMessageAccessor;
+}
+
+const state = vi.hoisted((): CatalogState => ({}));
 
 // `<Message>` is an async Server Component that only the Next.js compiler can
 // render. The catalog is the real one, resolved ahead so the tree renders
@@ -96,6 +99,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   cleanup();
+
   for (const action of Object.values(actions)) {
     action.mockReset();
   }
@@ -105,6 +109,7 @@ const membersRow = () => screen.getByRole("row", { name: /Avery Editor/u });
 
 const invitationButtons = (email: string) => {
   const row = screen.getByRole("row", { name: new RegExp(email, "u") });
+
   return {
     cancel: within(row).getByRole("button", { name: "Cancel" }),
     resend: within(row).getByRole("button", { name: "Resend" }),
@@ -137,8 +142,10 @@ describe("TenantMembersManager", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
+
     const formData: FormData =
       actions.updateTenantMemberRoleAction.mock.calls[0]?.[1];
+
     expect(formData.get("member_role")).toBe("tenant_admin");
     expect(formData.get("member_user_id")).toBe(member.userId);
     expect(formData.get("tenant_id")).toBe(tenantId);
@@ -180,8 +187,10 @@ describe("TenantMembersManager", () => {
 
     const message = await screen.findByText("Member removed.");
     expect(membersRow().contains(message)).toBe(false);
+
     const formData: FormData =
       actions.removeTenantMemberAction.mock.calls[0]?.[1];
+
     expect(formData.get("member_user_id")).toBe(member.userId);
     expect(formData.get("tenant_id")).toBe(tenantId);
   });
@@ -213,9 +222,11 @@ describe("TenantMembersManager", () => {
     const editorRow = screen.getByRole("row", {
       name: /new-editor@tenant\.example/u,
     });
+
     const auditorRow = screen.getByRole("row", {
       name: /new-auditor@tenant\.example/u,
     });
+
     expect(
       within(editorRow).getByRole("cell", { name: "Editor" })
     ).toBeTruthy();

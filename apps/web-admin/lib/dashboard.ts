@@ -38,12 +38,12 @@ export const tenantDashboardCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:dashboard`;
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.dashboard.load_error"), { locale });
+  return rpcErrorMessage(cause, t("admin.dashboard.load_error"), { locale });
 };
 
 const getDashboardForTenant = async (
@@ -82,6 +82,7 @@ const getDashboardForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(error, locale),
       ok: false,
@@ -97,5 +98,6 @@ const getDashboardForTenant = async (
  */
 export const getDashboard = async (): Promise<GetDashboardResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return getDashboardForTenant(tenantId, locale);
 };

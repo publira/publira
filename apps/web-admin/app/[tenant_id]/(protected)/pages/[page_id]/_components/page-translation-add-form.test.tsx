@@ -58,6 +58,7 @@ describe("PageTranslationAddForm", () => {
     const action = vi.fn<
       (state: PageFormState, formData: FormData) => Promise<PageFormState>
     >(() => Promise.resolve(null));
+
     await renderForm(action);
 
     fireEvent.change(screen.getByRole("textbox", { name: /Title/u }), {

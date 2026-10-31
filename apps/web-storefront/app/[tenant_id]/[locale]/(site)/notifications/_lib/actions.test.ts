@@ -27,10 +27,10 @@ vi.mock("#lib/notification", () => ({
 
 vi.mock("#lib/auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 
@@ -38,9 +38,11 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -58,6 +60,7 @@ describe("notification actions", () => {
     mockMarkNotificationAsRead.mockResolvedValueOnce({ ok: true });
 
     const { markNotificationAsReadAction } = await import("./actions");
+
     const result = await markNotificationAsReadAction(
       null,
       formData({
@@ -85,6 +88,7 @@ describe("notification actions", () => {
 
   it("Invalid notificationId will not call API", async () => {
     const { markNotificationAsReadAction } = await import("./actions");
+
     const result = await markNotificationAsReadAction(
       null,
       formData({
@@ -109,6 +113,7 @@ describe("notification actions", () => {
     });
 
     const { markAllNotificationsAsReadAction } = await import("./actions");
+
     const result = await markAllNotificationsAsReadAction(
       null,
       formData({ locale: "en", tenantId })
@@ -134,6 +139,7 @@ describe("notification actions", () => {
     });
 
     const { markAllNotificationsAsReadAction } = await import("./actions");
+
     const result = await markAllNotificationsAsReadAction(
       null,
       formData({ locale: "en", tenantId })

@@ -98,12 +98,15 @@ const toTenantReaderIconPolicy = (
     case ReaderIconPolicy.UPLOAD: {
       return "upload";
     }
+
     case ReaderIconPolicy.PRESET: {
       return "preset";
     }
+
     case ReaderIconPolicy.DISABLED: {
       return "disabled";
     }
+
     default: {
       return undefined;
     }
@@ -117,9 +120,11 @@ const toReaderIconPolicyEnum = (
     case "preset": {
       return ReaderIconPolicy.PRESET;
     }
+
     case "disabled": {
       return ReaderIconPolicy.DISABLED;
     }
+
     default: {
       return ReaderIconPolicy.UPLOAD;
     }
@@ -134,6 +139,7 @@ type RawReaderIconPresetVariant = Pick<
   UserIconVariant,
   "contentType" | "fileSizeBytes" | "height" | "label" | "url" | "width"
 >;
+
 type RawReaderIconPreset = Pick<ReaderIconPreset, "id"> & {
   variants: readonly RawReaderIconPresetVariant[];
 };
@@ -171,8 +177,10 @@ const getTenantReaderIconPolicyForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -189,8 +197,10 @@ const getTenantReaderIconPolicyForSession = async (
     );
 
     const policy = toTenantReaderIconPolicy(response.policy);
+
     if (policy === undefined) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.settings.reader_icons.policy.load_failed"),
         ok: false,
@@ -201,6 +211,7 @@ const getTenantReaderIconPolicyForSession = async (
     return { ok: true, policy };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -235,8 +246,10 @@ const listReaderIconPresetsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -258,6 +271,7 @@ const listReaderIconPresetsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -291,7 +305,9 @@ export const updateTenantReaderIconPolicy = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -305,7 +321,9 @@ export const updateTenantReaderIconPolicy = async (
         },
         withSessionHeaders(sessionId)
       );
+
     const saved = toTenantReaderIconPolicy(response.policy);
+
     if (saved === undefined) {
       return {
         message: t("admin.settings.reader_icons.policy.save_failed"),
@@ -317,6 +335,7 @@ export const updateTenantReaderIconPolicy = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -334,18 +353,21 @@ export const updateTenantReaderIconPolicy = async (
  * tenant holds as many presets as it may.
  */
 const uploadPreconditionMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string | undefined> => {
   const t = await getMessagesFor(locale);
-  if (mentionsStorageNotConfigured(error)) {
+
+  if (mentionsStorageNotConfigured(cause)) {
     return t("admin.errors.storage_not_configured");
   }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIconPresetLimit)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.readerIconPresetLimit)) {
     return t("admin.settings.reader_icons.presets.limit_reached", {
       limit: READER_ICON_PRESET_LIMIT,
     });
   }
+
   return undefined;
 };
 
@@ -363,7 +385,9 @@ export const uploadReaderIconPreset = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -377,10 +401,12 @@ export const uploadReaderIconPreset = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -410,7 +436,9 @@ export const deleteReaderIconPreset = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -420,10 +448,12 @@ export const deleteReaderIconPreset = async (
       { presetId: input.presetId, tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

@@ -22,6 +22,7 @@ export const MySeriesRating = async ({
   locale: Locale;
 }) => {
   const average = await getMySeriesRating(tenantId, seriesId);
+
   return average === null ? null : (
     <span className="tabular-nums">
       <Message

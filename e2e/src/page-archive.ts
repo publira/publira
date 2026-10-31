@@ -11,6 +11,7 @@ const pngChunk = (type: string, data: Buffer): Buffer => {
   const typeAndData = Buffer.concat([Buffer.from(type, "ascii"), data]);
   const checksum = Buffer.alloc(4);
   checksum.writeUInt32BE(crc32(typeAndData));
+
   return Buffer.concat([length, typeAndData, checksum]);
 };
 
@@ -29,6 +30,7 @@ export const noisePng = (width: number, height: number): Buffer => {
 
   const rowBytes = 1 + width * 3;
   const pixels = randomBytes(rowBytes * height);
+
   // Each row starts with its filter type, 0 for none.
   for (let row = 0; row < height; row += 1) {
     pixels[row * rowBytes] = 0;

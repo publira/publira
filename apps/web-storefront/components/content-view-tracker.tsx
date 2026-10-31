@@ -26,11 +26,13 @@ interface ContentViewTrackerProps {
  */
 const ConsentAwareBeacon = async ({ id, kind }: ContentViewTrackerProps) => {
   const settings = await getTenantGoogleTag(await getTenantId());
+
   if (settings?.consentMode !== "opt_in") {
     return <ContentViewBeacon id={id} kind={kind} />;
   }
 
   const signedIn = (await resolveAccessToken()) !== "";
+
   return signedIn ? (
     <ContentViewBeacon id={id} kind={kind} />
   ) : (

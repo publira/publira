@@ -20,6 +20,12 @@ import {
 const SITE_UNAVAILABLE = "This site is unavailable";
 const CONSOLE_UNAVAILABLE = "This admin console is unavailable";
 
+/** Where a reader and a staff member reach the tenant. */
+interface TenantHosts {
+  console: string;
+  site: string;
+}
+
 /**
  * The tenant's site and console under host names made up for this attempt.
  *
@@ -29,19 +35,22 @@ const CONSOLE_UNAVAILABLE = "This admin console is unavailable";
  * looked up yet. No list of the edge's names them, so they are reached on the
  * apps' own ports.
  */
-const moveTenantToFreshHosts = (): { console: string; site: string } => {
+const moveTenantToFreshHosts = (): TenantHosts => {
   const label = `suspend-${randomUUID()}`;
   const site = withHostname(WEB_STOREFRONT_INTERNAL_URL, `${label}.localhost`);
+
   const admin = withHostname(
     WEB_ADMIN_INTERNAL_URL,
     `admin.${label}.localhost`
   );
+
   runSql(`
     UPDATE tenants
     SET domain = '${new URL(site).host}',
         admin_domain = '${new URL(admin).host}'
     WHERE public_id = '${SUSPENSION_TENANT.publicId}';
   `);
+
   return { console: admin, site };
 };
 
@@ -53,6 +62,7 @@ const openVisitor = async (
   browser: Browser
 ): Promise<{ context: BrowserContext; page: Page }> => {
   const context = await browser.newContext({ locale: "en-US" });
+
   return { context, page: await context.newPage() };
 };
 
@@ -95,10 +105,13 @@ test.describe("a suspended tenant", () => {
   }) => {
     const hosts = moveTenantToFreshHosts();
     const siteUrl = (pathname: string): string => `${hosts.site}${pathname}`;
+
     const consoleUrl = (pathname: string): string =>
       `${hosts.console}${pathname}`;
+
     const reader = await openVisitor(browser);
     const staff = await openVisitor(browser);
+
     try {
       await plantSessionCookie(
         staff.page,

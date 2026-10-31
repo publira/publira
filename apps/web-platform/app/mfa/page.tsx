@@ -39,6 +39,7 @@ const MfaPageFallback = () => (
  */
 const MfaPageContent = async () => {
   const challenge = await readStoredMfaChallenge();
+
   if (!challenge) {
     redirect(buildLoginPath("/"));
   }

@@ -16,7 +16,7 @@ const { begin, browserSupportsWebAuthn, confirm, startAuthentication } =
     browserSupportsWebAuthn: vi.fn<() => boolean>(),
     confirm: vi.fn<(formData: FormData) => Promise<ActionForm.State>>(),
     startAuthentication:
-      vi.fn<(options: { optionsJSON: unknown }) => Promise<unknown>>(),
+      vi.fn<(options: { optionsJSON: unknown }) => Promise<typeof ASSERTION>>(),
   }));
 
 // jsdom has no WebAuthn; the browser's half of the ceremony is what these
@@ -102,9 +102,10 @@ describe("PasskeyConfirmation", () => {
     expect(submitted?.get("newEmail")).toBe("moved@example.com");
     expect(submitted?.get("passkeyCredential")).toBe(JSON.stringify(ASSERTION));
     // A refusal keeps what the reader typed.
-    expect(
-      (screen.getByLabelText("New email address") as HTMLInputElement).value
-    ).toBe("moved@example.com");
+    expect(screen.getByLabelText("New email address")).toHaveProperty(
+      "value",
+      "moved@example.com"
+    );
   });
 
   it("asks for nothing while the form's own fields are not filled in", async () => {
@@ -148,7 +149,7 @@ describe("PasskeyConfirmation", () => {
     ).toBeDefined();
     expect(confirm).not.toHaveBeenCalled();
     await waitFor(() => {
-      expect((confirmButton() as HTMLButtonElement).disabled).toBe(false);
+      expect(confirmButton()).toHaveProperty("disabled", false);
     });
   });
 });

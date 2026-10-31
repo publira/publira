@@ -84,10 +84,13 @@ export const generateMetadata = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(creatorDetailParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { creator_id } = parsedParams;
 
   const [result, t, alternates, siteLabel, cardPath] = await Promise.all([
@@ -296,10 +299,13 @@ const CreatorDetailContent = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(creatorDetailParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { creator_id } = parsedParams;
 
   // The creator is looked up from the path alone, before `searchParams` is
@@ -324,6 +330,7 @@ const CreatorDetailContent = async ({
   }
 
   const { token } = parseCreatorDetailSearchParams(await searchParams);
+
   const result = token
     ? await loadPublishedCreatorDetail(tenantId, creator_id, locale, token)
     : firstPage;

@@ -22,6 +22,7 @@ const openGraphImage = async (page: Page): Promise<string> => {
     "content",
     url
   );
+
   return url;
 };
 

@@ -40,6 +40,7 @@ describe("toQrCodePath", () => {
     const { path, size } = toQrCodePath(OTPAUTH_URI);
 
     const coordinates = Array.from({ length: size }, (_, index) => index);
+
     const drawnInQuietZone = coordinates.flatMap((y) =>
       coordinates
         .filter((x) => isInQuietZone(x, y, size) && drawsModuleAt(path, x, y))

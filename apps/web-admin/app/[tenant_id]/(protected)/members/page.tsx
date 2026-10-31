@@ -39,10 +39,12 @@ type MembersPageProps = PageProps<"/[tenant_id]/members">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -58,10 +60,12 @@ const MemberListData = async ({
 }: Pick<MembersPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const pageParams = parseMembersSearchParams(sp);
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const listResult = await listTenantMembers(tenantId, locale, {
     token: pageParams.membersToken,
   });
@@ -86,10 +90,12 @@ const InvitationListData = async ({
 }: Pick<MembersPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const pageParams = parseMembersSearchParams(sp);
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const listResult = await listTenantAdminInvitations(tenantId, locale, {
     token: pageParams.invitationsToken,
   });

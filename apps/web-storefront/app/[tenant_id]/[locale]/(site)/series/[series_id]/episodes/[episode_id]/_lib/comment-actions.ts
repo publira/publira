@@ -127,10 +127,12 @@ export const postEpisodeCommentAction = async (
   // so every answer below is worded in the reader's language, the rejections
   // included.
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     postCommentSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       body: "value",
@@ -141,6 +143,7 @@ export const postEpisodeCommentAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -150,18 +153,22 @@ export const postEpisodeCommentAction = async (
 
   const { body, episodeId, episodePublicId, locale, returnTo, tenantId } =
     parsed.data;
+
   await requirePublicSession(locale, returnTo, tenantId);
+
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
     () => postEpisodeComment({ body, episodeId, locale, tenantId }),
     tenantId
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
   updateTag(tenantEpisodeCommentsTag(tenantId, episodePublicId));
+
   return {
     message: result.awaitingApproval
       ? t("storefront.episode.comments.posted_awaiting_approval")
@@ -180,6 +187,7 @@ export const withdrawEpisodeCommentAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+
   const parsed = withdrawCommentSchema.safeParse(
     toFormDataInput(formData, {
       commentId: "value",
@@ -189,6 +197,7 @@ export const withdrawEpisodeCommentAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -198,19 +207,23 @@ export const withdrawEpisodeCommentAction = async (
 
   const { commentId, episodePublicId, locale, returnTo, tenantId } =
     parsed.data;
+
   await requirePublicSession(locale, returnTo, tenantId);
+
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
     () => withdrawEpisodeComment({ commentId, locale, tenantId }),
     tenantId
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
   updateTag(tenantEpisodeCommentsTag(tenantId, episodePublicId));
   const t = await getMessagesFor(locale);
+
   return {
     message: t("storefront.episode.comments.deleted"),
     ok: true,
@@ -232,10 +245,12 @@ export const reportEpisodeCommentAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     reportCommentSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       commentId: "value",
@@ -246,6 +261,7 @@ export const reportEpisodeCommentAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -255,12 +271,14 @@ export const reportEpisodeCommentAction = async (
 
   const { commentId, locale, note, reason, returnTo, tenantId } = parsed.data;
   await requirePublicSession(locale, returnTo, tenantId);
+
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
     () => reportEpisodeComment({ commentId, locale, note, reason, tenantId }),
     tenantId
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

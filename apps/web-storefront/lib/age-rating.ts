@@ -23,9 +23,11 @@ export const toRestrictedAgeRating = (
   if (rating === SeriesAgeRating.R15) {
     return "r15";
   }
+
   if (rating === SeriesAgeRating.R18) {
     return "r18";
   }
+
   return undefined;
 };
 
@@ -41,12 +43,15 @@ export const ageRatingSatisfiedBy = (
   if (!required) {
     return true;
   }
+
   if (!held) {
     return false;
   }
+
   if (required === "r15") {
     return true;
   }
+
   return held === "r18";
 };
 
@@ -62,9 +67,11 @@ export const ageVerificationCovers = (
   if (rating === "r18") {
     return rule !== "none";
   }
+
   if (rating === "r15") {
     return rule === "r15_and_r18";
   }
+
   return false;
 };
 
@@ -85,17 +92,21 @@ export const provenAgeRating = (
   today: Temporal.PlainDate
 ): RestrictedAgeRating | undefined => {
   const born = plainDateOrNull(birthDate);
+
   if (!born) {
     return undefined;
   }
 
   const { years } = today.since(born, { largestUnit: "year" });
+
   if (years >= MINIMUM_AGE.r18) {
     return "r18";
   }
+
   if (years >= MINIMUM_AGE.r15) {
     return "r15";
   }
+
   return undefined;
 };
 
@@ -105,6 +116,7 @@ export const withRestrictedAgeRating = <T extends object>(
   rating?: SeriesAgeRating | number
 ): T & { ageRating?: RestrictedAgeRating } => {
   const ageRating = toRestrictedAgeRating(rating);
+
   return ageRating ? { ...value, ageRating } : value;
 };
 

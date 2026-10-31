@@ -182,6 +182,7 @@ describe("ActionForm", () => {
 
   it("sends the fields to a control's own formAction and keeps them", async () => {
     const save = vi.fn(succeed);
+
     const test = vi.fn((_previousState: null, _formData: FormData) =>
       Promise.resolve(null)
     );
@@ -241,8 +242,9 @@ describe("ActionForm", () => {
   });
 
   it("sends a submit control's name and value to the form's Action", async () => {
-    const save = vi.fn((_previousState: unknown, _formData: FormData) =>
-      Promise.resolve<ActionForm.State>({ message: "Deleted.", ok: true })
+    const save = vi.fn(
+      (_previousState: ActionForm.State | null, _formData: FormData) =>
+        Promise.resolve<ActionForm.State>({ message: "Deleted.", ok: true })
     );
 
     render(
@@ -288,9 +290,11 @@ describe("ActionForm", () => {
     render(<TestedForm save={() => save.promise} test={test} />);
 
     const form = screen.getByLabelText("Bucket").closest("form");
+
     if (!form) {
       throw new Error("The field is outside a form.");
     }
+
     fireEvent.submit(form);
 
     await waitFor(() => {
@@ -398,6 +402,7 @@ describe("ActionForm", () => {
     const button = screen.getByRole("button", {
       name: "Unfollow Night Train",
     });
+
     expect(button.getAttribute("aria-pressed")).toBe("true");
     expect(button.hasAttribute("aria-busy")).toBe(false);
   });
@@ -506,11 +511,13 @@ describe("ActionForm", () => {
 
   it("sends the Action the fields and the submitter's name and value", async () => {
     let received: FormData | undefined;
+
     const record = (
       _prevState: ActionForm.State,
       formData: FormData
     ): Promise<ActionForm.State> => {
       received = formData;
+
       return fail();
     };
 
@@ -565,8 +572,10 @@ describe("ActionForm", () => {
 
   it("clears a field's error once a submission succeeds", async () => {
     let answer: typeof saveName = refuseName;
+
     const answerName = (prevState: NameFormState, formData: FormData) =>
       answer(prevState, formData);
+
     render(
       <ActionForm.Root action={answerName}>
         <input aria-label="Name" name="name" />
@@ -634,6 +643,7 @@ describe("ActionForm", () => {
   it("does not call a settled listener for a control's own formAction", async () => {
     const onSettled = vi.fn();
     const test = vi.fn(() => Promise.resolve(null));
+
     const Form = () => {
       const [, dispatchTest] = useActionState(test, null);
 

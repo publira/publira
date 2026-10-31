@@ -34,10 +34,10 @@ const CHANGE_EVENT = "publira:analytics-consent";
 const REOPEN_EVENT = "publira:analytics-consent-reopen";
 
 const sendsGlobalPrivacyControl = (): boolean =>
-  (navigator as Navigator & { globalPrivacyControl?: boolean })
-    .globalPrivacyControl === true;
+  "globalPrivacyControl" in navigator &&
+  navigator.globalPrivacyControl === true;
 
-const isAnswer = (value: string): value is AnalyticsConsentAnswer =>
+const isAnswer = (value: unknown): value is AnalyticsConsentAnswer =>
   value === "granted" || value === "denied";
 
 const readStoredAnswer = (
@@ -45,11 +45,14 @@ const readStoredAnswer = (
 ): AnalyticsConsentAnswer | undefined => {
   for (const pair of document.cookie.split("; ")) {
     const separator = pair.indexOf("=");
+
     if (pair.slice(0, separator) === cookieName) {
       const value = pair.slice(separator + 1);
+
       return isAnswer(value) ? value : undefined;
     }
   }
+
   return undefined;
 };
 
@@ -59,6 +62,7 @@ export const readAnalyticsConsent = (
   if (sendsGlobalPrivacyControl()) {
     return "global_privacy_control";
   }
+
   return readStoredAnswer(cookieName) ?? "unanswered";
 };
 
@@ -69,11 +73,26 @@ export const readAnalyticsConsent = (
  */
 // oxlint-disable-next-line func-style -- an arrow function has no `arguments`
 function gtag(..._command: unknown[]): void {
-  const page = window as Window & { dataLayer?: unknown[] };
-  page.dataLayer ??= [];
+  window.dataLayer ??= [];
   // oxlint-disable-next-line prefer-rest-params, sonarjs/arguments-usage -- see above
-  page.dataLayer.push(arguments);
+  window.dataLayer.push(arguments);
 }
+
+/** A `consent` command `gtag()` left on the `dataLayer`. */
+const isConsentCommand = (entry: unknown): entry is ArrayLike<unknown> =>
+  typeof entry === "object" &&
+  entry !== null &&
+  "0" in entry &&
+  entry[0] === "consent";
+
+/** The signals of a `consent` command, when they grant analytics storage. */
+const grantsAnalyticsStorage = (
+  signals: unknown
+): signals is { analytics_storage: "granted" } =>
+  typeof signals === "object" &&
+  signals !== null &&
+  "analytics_storage" in signals &&
+  signals.analytics_storage === "granted";
 
 /**
  * What this document last told Google, read off its own `dataLayer`, or
@@ -81,17 +100,15 @@ function gtag(..._command: unknown[]): void {
  * another tab may have changed it since this one last sent anything.
  */
 const signalledConsent = (): AnalyticsConsentAnswer | undefined => {
-  const { dataLayer = [] } = window as unknown as {
-    dataLayer?: Record<number, unknown>[];
-  };
-  const command = dataLayer.findLast((entry) => entry[0] === "consent");
+  const { dataLayer = [] } = window;
+
+  const command = dataLayer.findLast((entry) => isConsentCommand(entry));
+
   if (!command) {
     return undefined;
   }
-  return (command[2] as { analytics_storage?: string } | undefined)
-    ?.analytics_storage === "granted"
-    ? "granted"
-    : "denied";
+
+  return grantsAnalyticsStorage(command[2]) ? "granted" : "denied";
 };
 
 /**
@@ -102,12 +119,15 @@ const signalledConsent = (): AnalyticsConsentAnswer | undefined => {
  */
 const signalConsent = (answer: AnalyticsConsentAnswer): void => {
   const signalled = signalledConsent();
+
   if (signalled === undefined || signalled === answer) {
     return;
   }
+
   if (answer === "granted" && sendsGlobalPrivacyControl()) {
     return;
   }
+
   gtag("consent", "update", consentSignals(answer));
 };
 
@@ -124,13 +144,15 @@ const openChannel = (): BroadcastChannel | undefined => {
   if (channel || typeof BroadcastChannel === "undefined") {
     return channel;
   }
+
   channel = new BroadcastChannel(CHANNEL_NAME);
   channel.addEventListener("message", (event: MessageEvent<unknown>) => {
-    if (typeof event.data === "string" && isAnswer(event.data)) {
+    if (isAnswer(event.data)) {
       signalConsent(event.data);
       window.dispatchEvent(new Event(CHANGE_EVENT));
     }
   });
+
   return channel;
 };
 
@@ -160,6 +182,7 @@ export const answerAnalyticsConsent = (
 const subscribe = (onChange: () => void): (() => void) => {
   openChannel();
   window.addEventListener(CHANGE_EVENT, onChange);
+
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange);
   };
@@ -192,6 +215,7 @@ export const onAnalyticsConsentBannerReopen = (
   onReopen: () => void
 ): (() => void) => {
   window.addEventListener(REOPEN_EVENT, onReopen);
+
   return () => {
     window.removeEventListener(REOPEN_EVENT, onReopen);
   };

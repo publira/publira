@@ -13,20 +13,31 @@ export interface GoogleAccount {
   subject: string;
 }
 
+/** The claims of an ID token Google issues, as a site's callback reads them. */
+export interface IdTokenClaims {
+  aud: string | null;
+  email: string;
+  email_verified: boolean;
+  iss: string;
+  name: string;
+  nonce: string | null;
+  sub: string;
+}
+
 /**
  * Sign the ID token a provider would have issued, with the key the E2E stack's
  * server trusts in place of the provider's.
  */
-export const signIdToken = async (
-  claims: Record<string, unknown>
-): Promise<string> => {
+export const signIdToken = async (claims: IdTokenClaims): Promise<string> => {
   const response = await fetch(`${SIGN_IN_PROVIDER_BASE_URL}/id-tokens`, {
     body: JSON.stringify(claims),
     method: "POST",
   });
+
   if (!response.ok) {
     throw new Error(`sign-in-provider refused the claims: ${response.status}`);
   }
+
   return response.text();
 };
 
@@ -38,12 +49,15 @@ export const disposableEmailDomains = async (): Promise<string[]> => {
   const response = await fetch(
     `${SIGN_IN_PROVIDER_BASE_URL}/disposable-email-domains`
   );
+
   if (!response.ok) {
     throw new Error(
       `sign-in-provider did not serve the disposable domain list: ${response.status}`
     );
   }
+
   const list = await response.text();
+
   return list
     .split("\n")
     .map((line) => line.trim())
@@ -84,6 +98,7 @@ export const stubGoogleSignIn = async (
   await page.unroute(`${GOOGLE_AUTHORIZATION_ENDPOINT}**`);
   await page.route(`${GOOGLE_AUTHORIZATION_ENDPOINT}**`, async (route) => {
     const request = new URL(route.request().url());
+
     const idToken = await signIdToken({
       aud: audience ?? request.searchParams.get("client_id"),
       email: account.email,
@@ -93,6 +108,7 @@ export const stubGoogleSignIn = async (
       nonce: request.searchParams.get("nonce"),
       sub: account.subject,
     });
+
     await route.fulfill({
       body: formPostPage(request.searchParams.get("redirect_uri") ?? "", {
         id_token: idToken,

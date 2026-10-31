@@ -43,11 +43,13 @@ const ContactMessageEntryAuthor = ({
       />
     );
   }
+
   if (!entry.authorName) {
     return (
       <Message message="admin.contact_messages.exchange.staff_entry_former" />
     );
   }
+
   return (
     <Message
       message="admin.contact_messages.exchange.staff_entry"

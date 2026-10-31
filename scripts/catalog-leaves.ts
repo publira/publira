@@ -13,21 +13,28 @@ export interface CatalogLocale {
   readonly code: string;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+/**
+ * A parsed `locales/*.json`, once `scripts/generate-locale-registry.ts` has
+ * checked that every leaf of it is a message.
+ */
+export interface CatalogTree {
+  readonly [name: string]: CatalogTree | string;
+}
+
+const isMessage = (node: CatalogTree | string): node is string =>
+  typeof node === "string";
 
 const flatten = (
-  node: unknown,
+  node: CatalogTree | string,
   prefix: string,
   into: Map<string, string>
 ): void => {
-  if (typeof node === "string") {
+  if (isMessage(node)) {
     into.set(prefix, node);
+
     return;
   }
-  if (!isRecord(node)) {
-    throw new Error(`${prefix}: leaves must be strings`);
-  }
+
   for (const [name, child] of Object.entries(node)) {
     flatten(child, `${prefix}.${name}`, into);
   }
@@ -35,18 +42,21 @@ const flatten = (
 
 /** The messages of `namespaces` in one catalog, keyed by full path. */
 const compiledLeaves = (
-  catalog: unknown,
+  catalog: CatalogTree | undefined,
   code: string,
   namespaces: readonly string[]
 ): Map<string, string> => {
   const leaves = new Map<string, string>();
-  if (!isRecord(catalog)) {
+
+  if (catalog === undefined) {
     throw new Error(`locales/${code}.json is not an object`);
   }
+
   for (const namespace of namespaces) {
     if (!(namespace in catalog)) {
       throw new Error(`locales/${code}.json has no ${namespace} namespace`);
     }
+
     flatten(catalog[namespace], namespace, leaves);
   }
 
@@ -66,7 +76,7 @@ export interface CatalogLeaves {
  */
 export const namespaceLeaves = (
   locales: readonly CatalogLocale[],
-  catalogs: ReadonlyMap<string, unknown>,
+  catalogs: ReadonlyMap<string, CatalogTree>,
   namespaces: readonly string[]
 ): CatalogLeaves => {
   const leavesByCode = new Map(
@@ -75,19 +85,25 @@ export const namespaceLeaves = (
       compiledLeaves(catalogs.get(code), code, namespaces),
     ])
   );
+
   const [reference, ...others] = locales.map(({ code }) => code);
   const referenceLeaves = leavesByCode.get(reference);
+
   if (referenceLeaves === undefined) {
     throw new Error("at least one locale is needed");
   }
+
   for (const code of others) {
     const leaves = leavesByCode.get(code);
+
     const missing = [...referenceLeaves.keys()].filter(
       (key) => !leaves?.has(key)
     );
+
     const extra = [...(leaves?.keys() ?? [])].filter(
       (key) => !referenceLeaves.has(key)
     );
+
     if (missing.length > 0 || extra.length > 0) {
       throw new Error(
         `locales/${code}.json does not match locales/${reference}.json: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`
@@ -114,6 +130,7 @@ export const variableMismatches = ({
   leavesByCode,
 }: CatalogLeaves): string[] => {
   const mismatches: string[] = [];
+
   for (const key of keys) {
     const read = [...leavesByCode].map(([code, leaves]): [string, string] => [
       code,
@@ -121,10 +138,12 @@ export const variableMismatches = ({
         .map(({ name }) => `$${name}`)
         .join(", ") || "nothing",
     ]);
+
     if (new Set(read.map(([, variables]) => variables)).size > 1) {
       const reads = read.map(
         ([code, variables]) => `${code} reads ${variables}`
       );
+
       mismatches.push(`${key}: ${reads.join("; ")}`);
     }
   }

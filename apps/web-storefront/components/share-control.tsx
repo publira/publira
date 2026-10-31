@@ -56,6 +56,7 @@ export const ShareControl = async ({
   title: string;
 }) => {
   const locale = await getLocale();
+
   const [url, tenant] = await Promise.all([
     tenantLocaleUrl(tenantId, locale, path),
     getTenantSiteInfo(tenantId),

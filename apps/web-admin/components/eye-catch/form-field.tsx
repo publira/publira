@@ -32,9 +32,11 @@ export const EyeCatchFormField = ({
   const { pending } = useFormStatus();
   const [clearEyeCatchImage, setClearEyeCatchImage] = useState(false);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+
   const [selectedVariantType, setSelectedVariantType] = useState<string | null>(
     null
   );
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(
@@ -54,11 +56,13 @@ export const EyeCatchFormField = ({
     ChangeEventHandler<HTMLInputElement>
   >((event) => {
     const file = event.currentTarget.files?.[0];
+
     if (file) {
       setLocalPreviewUrl((current) => {
         if (current) {
           URL.revokeObjectURL(current);
         }
+
         return URL.createObjectURL(file);
       });
       setClearEyeCatchImage(false);

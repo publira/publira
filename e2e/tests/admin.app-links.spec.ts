@@ -65,6 +65,7 @@ const fetchAssociation = async (
     headers: { "Cache-Control": "no-cache" },
     maxRedirects: 0,
   });
+
   return {
     body: response.ok() ? await response.json() : null,
     contentType: response.headers()["content-type"],

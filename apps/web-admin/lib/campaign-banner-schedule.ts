@@ -28,10 +28,13 @@ export const isCampaignBannerLink = (value: string): boolean => {
   if (value.startsWith("/")) {
     return !(value.startsWith("//") || value.startsWith("/\\"));
   }
+
   if (!URL.canParse(value)) {
     return false;
   }
+
   const url = new URL(value);
+
   return (
     (url.protocol === "https:" || url.protocol === "http:") &&
     url.host.length > 0
@@ -63,20 +66,24 @@ export const toCampaignBannerWindow = async (
   const t = await getMessagesFor(locale);
   const startsAt = toInstantIsoString(input.startsAt, options.timeZone);
   const start = parseInstant(startsAt);
+
   if (!start) {
     return {
       message: t("admin.campaign_banners.validation.starts_at_invalid"),
       ok: false,
     };
   }
+
   const endsAt = toInstantIsoString(input.endsAt, options.timeZone);
   const end = parseInstant(endsAt);
+
   if (!end) {
     return {
       message: t("admin.campaign_banners.validation.ends_at_invalid"),
       ok: false,
     };
   }
+
   if (
     Temporal.Instant.compare(end, start) <= 0 ||
     (options.requireFutureEnd && Temporal.Instant.compare(end, now) <= 0)
@@ -109,13 +116,17 @@ export const campaignBannerStatus = (
   if (!banner.published) {
     return "unpublished";
   }
+
   const start = parseInstant(banner.startsAt);
   const end = parseInstant(banner.endsAt);
+
   if (end && Temporal.Instant.compare(end, now) <= 0) {
     return "ended";
   }
+
   if (start && Temporal.Instant.compare(start, now) > 0) {
     return "scheduled";
   }
+
   return "showing";
 };

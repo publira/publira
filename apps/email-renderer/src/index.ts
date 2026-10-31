@@ -11,6 +11,7 @@ const serveUntilSignal = async (): Promise<void> => {
     once(process, "SIGINT"),
     once(process, "SIGTERM"),
   ]);
+
   await using server = createEmailRendererServer();
   server.listen({ host, port });
   await signalled;

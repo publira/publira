@@ -24,9 +24,11 @@ export const resolveAuditLogExportPeriod = (
 ): AuditLogExportPeriod => {
   const from = filters.from ? Temporal.PlainDate.from(filters.from) : null;
   let end = filters.to ? Temporal.PlainDate.from(filters.to) : today;
+
   if (!filters.to && from && Temporal.PlainDate.compare(from, end) > 0) {
     end = from;
   }
+
   const start = from ?? end.subtract({ days: MAX_EXPORT_DAYS - 1 });
 
   if (
@@ -35,5 +37,6 @@ export const resolveAuditLogExportPeriod = (
   ) {
     return { ok: false };
   }
+
   return { end: end.toString(), ok: true, start: start.toString() };
 };

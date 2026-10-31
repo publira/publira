@@ -17,16 +17,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TenantAgeVerificationActionState } from "../settings-types";
 import { TenantAgeVerificationForm } from "./tenant-age-verification-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<TenantAgeVerificationActionState>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantAgeVerificationActionState>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantAgeVerificationAction: (_state: unknown, formData: FormData) => {
+  updateTenantAgeVerificationAction: (
+    _state: TenantAgeVerificationActionState,
+    formData: FormData
+  ) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -72,6 +83,7 @@ describe("TenantAgeVerificationForm", () => {
     const radios = screen.getAllByRole("radio");
 
     expect(radios).toHaveLength(3);
+
     const r18Radio = await screen.findByRole("radio", {
       name: /Check R18 only/u,
     });
@@ -125,6 +137,7 @@ describe("TenantAgeVerificationForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(
@@ -145,6 +158,7 @@ describe("TenantAgeVerificationForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(/Could not load the age verification./u)

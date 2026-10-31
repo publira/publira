@@ -132,9 +132,11 @@ const toMfaSession = (
 ): AdminMfaSession | null => {
   const accessToken = token?.trim() ?? "";
   const expiresAt = parseInstant(expiresAtRaw ?? "");
+
   if (!(accessToken && expiresAt)) {
     return null;
   }
+
   return { accessToken, expiresAt };
 };
 
@@ -146,16 +148,19 @@ const toMfaSession = (
  * only thing separating "that code is wrong" from "your session is gone".
  */
 const mfaCodeRejectionMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string | null> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaLocked)) {
     return t("admin.auth.mfa.errors.locked");
   }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaInvalidCode)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaInvalidCode)) {
     return t("admin.auth.mfa.errors.invalid_code");
   }
+
   return null;
 };
 
@@ -192,22 +197,23 @@ const mfaFailureCopy = (
  * redirect rather than a dead end next to the code field.
  */
 const sessionMfaFailureMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   requires: MfaRequirement
 ): Promise<string> => {
-  const rejected = await mfaCodeRejectionMessage(error, locale);
+  const rejected = await mfaCodeRejectionMessage(cause, locale);
+
   if (rejected) {
     return rejected;
   }
 
   const t = await getMessagesFor(locale);
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
 
   const copy = mfaFailureCopy(t, requires);
 
-  return rpcErrorMessage(error, copy.fallback, {
+  return rpcErrorMessage(cause, copy.fallback, {
     locale,
     overrides: { precondition: copy.precondition },
   });
@@ -221,29 +227,31 @@ const sessionMfaFailureMessage = async (
  * reports that and sends the operator back to `/login`.
  */
 const challengeMfaFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   requires: MfaRequirement
 ): Promise<{ message: string; challengeExpired: boolean }> => {
-  const rejected = await mfaCodeRejectionMessage(error, locale);
+  const rejected = await mfaCodeRejectionMessage(cause, locale);
+
   if (rejected) {
     return { challengeExpired: false, message: rejected };
   }
 
   const t = await getMessagesFor(locale);
-  if (isUnauthenticatedRpcError(error)) {
+
+  if (isUnauthenticatedRpcError(cause)) {
     return {
       challengeExpired: true,
       message: t("admin.auth.mfa.expired"),
     };
   }
 
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnclassifiedRpcError(cause);
   const copy = mfaFailureCopy(t, requires);
 
   return {
     challengeExpired: false,
-    message: rpcErrorMessage(error, copy.fallback, {
+    message: rpcErrorMessage(cause, copy.fallback, {
       locale,
       overrides: { precondition: copy.precondition },
     }),
@@ -260,18 +268,20 @@ const challengeMfaFailure = async (
  * for a code.
  */
 const challengePasskeyFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   ceremony: "registration" | "verification"
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaLocked)) {
     return {
       challengeExpired: false,
       message: t("admin.auth.mfa.errors.locked"),
     };
   }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return {
       challengeExpired: false,
       message:
@@ -280,23 +290,24 @@ const challengePasskeyFailure = async (
           : t("admin.auth.mfa.errors.passkey_registration_refused"),
     };
   }
-  if (isUnauthenticatedRpcError(error)) {
+
+  if (isUnauthenticatedRpcError(cause)) {
     return { challengeExpired: true, message: t("admin.auth.mfa.expired") };
   }
 
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnclassifiedRpcError(cause);
 
   return {
     challengeExpired: false,
     message:
       ceremony === "verification"
-        ? rpcErrorMessage(error, t("admin.auth.mfa.errors.passkey_failed"), {
+        ? rpcErrorMessage(cause, t("admin.auth.mfa.errors.passkey_failed"), {
             locale,
             overrides: {
               precondition: t("admin.auth.mfa.errors.passkey_not_registered"),
             },
           })
-        : rpcErrorMessage(error, t("admin.auth.mfa.errors.enroll_failed"), {
+        : rpcErrorMessage(cause, t("admin.auth.mfa.errors.enroll_failed"), {
             locale,
             overrides: {
               conflict: t("admin.auth.mfa.errors.passkey_already_registered"),
@@ -314,20 +325,21 @@ const challengePasskeyFailure = async (
  * takes the operation's own wording from `overrides` or `fallback`.
  */
 const sessionPasskeyFailureMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   fallback: string,
   overrides: RpcErrorMessageOverrides
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return t("admin.auth.mfa.errors.passkey_registration_refused");
   }
 
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
 
-  return rpcErrorMessage(error, fallback, { locale, overrides });
+  return rpcErrorMessage(cause, fallback, { locale, overrides });
 };
 
 /**
@@ -340,21 +352,23 @@ const sessionPasskeyFailureMessage = async (
  * with is the failed precondition.
  */
 const sessionPasskeyConfirmationFailureMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaLocked)) {
     return t("admin.auth.mfa.errors.locked");
   }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return t("admin.auth.mfa.errors.passkey_refused");
   }
 
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
 
-  return rpcErrorMessage(error, t("admin.auth.mfa.errors.passkey_failed"), {
+  return rpcErrorMessage(cause, t("admin.auth.mfa.errors.passkey_failed"), {
     locale,
     overrides: {
       precondition: t("admin.settings.mfa.regenerate_passkey_missing"),
@@ -380,6 +394,7 @@ const getAdminMfaStatusForSession = async (
 
   if (!token) {
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: true };
   }
 
@@ -412,13 +427,16 @@ const getAdminMfaStatusForSession = async (
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       dropFailedCacheEntry();
+
       return { ok: false, requiresSignIn: true };
     }
+
     // Any other failure is the error screen, thrown by the caller. Only the
     // verdict crosses the cache boundary, so the cause is logged here, where
     // the error is still whole.
     console.warn("[web-admin] getAdminMfaStatus failed", error);
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
@@ -436,9 +454,11 @@ export const getAdminMfaStatus = async (
     tenantId,
     await getAccessToken()
   );
+
   if (unexpected) {
     throw new Error("The second factor's status could not be read.");
   }
+
   return result;
 };
 
@@ -460,6 +480,7 @@ export const verifyAdminMfa = async (
       response.accessToken?.token,
       response.accessToken?.expiresAt
     );
+
     if (!session) {
       return {
         challengeExpired: false,
@@ -510,6 +531,7 @@ export const startAdminMfaEnrollment = async (
 
     const secret = response.secret.trim();
     const otpauthUri = response.otpauthUri.trim();
+
     if (!(secret && otpauthUri)) {
       return {
         challengeExpired: false,
@@ -590,6 +612,7 @@ export const disableAdminMfa = async (
       { code, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true };
   } catch (error) {
     return {
@@ -616,6 +639,7 @@ export const regenerateAdminMfaRecoveryCodes = async (
       { ...proof, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true, recoveryCodes: response.recoveryCodes };
   } catch (error) {
     return {
@@ -643,6 +667,7 @@ export const beginAdminPasskeyConfirmation = async (
       { tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true, optionsJson: response.requestOptionsJson };
   } catch (error) {
     return {
@@ -663,6 +688,7 @@ export const beginAdminPasskeyVerification = async (
       { challengeToken, tenant: { tenantId } },
       await withClientAddressHeaders()
     );
+
     return { ok: true, optionsJson: response.requestOptionsJson };
   } catch (error) {
     return {
@@ -691,6 +717,7 @@ export const finishAdminPasskeyVerification = async (
       response.accessToken?.token,
       response.accessToken?.expiresAt
     );
+
     if (!session) {
       return {
         challengeExpired: false,
@@ -713,7 +740,7 @@ export const finishAdminPasskeyVerification = async (
  * already holding the credential is the one refusal with copy of its own.
  */
 const sessionPasskeyRegistrationFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const t = await getMessagesFor(locale);
@@ -721,7 +748,7 @@ const sessionPasskeyRegistrationFailure = async (
   return {
     challengeExpired: false,
     message: await sessionPasskeyFailureMessage(
-      error,
+      cause,
       locale,
       t("admin.settings.mfa.passkey_add_failed"),
       { conflict: t("admin.auth.mfa.errors.passkey_already_registered") }
@@ -754,6 +781,7 @@ export const beginAdminPasskeyRegistration = async (
           { challengeToken: "", tenant: { tenantId } },
           withSessionHeaders(sessionToken)
         );
+
     return { ok: true, optionsJson: response.creationOptionsJson };
   } catch (error) {
     return {
@@ -829,6 +857,7 @@ export const renameAdminPasskey = async (
       { id, name, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true };
   } catch (error) {
     return {
@@ -866,6 +895,7 @@ export const deleteAdminPasskey = async (
       { id, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true };
   } catch (error) {
     return {

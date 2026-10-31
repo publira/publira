@@ -10,8 +10,11 @@ import {
 } from "./operators";
 
 type GetOperatorMethod = PlatformApiClient["operators"]["getOperator"];
+
 type GetOperatorResponse = Awaited<ReturnType<GetOperatorMethod>>;
+
 type ListOperatorsMethod = PlatformApiClient["operators"]["listOperators"];
+
 type ListOperatorsResponse = Awaited<ReturnType<ListOperatorsMethod>>;
 
 const createOperator = (

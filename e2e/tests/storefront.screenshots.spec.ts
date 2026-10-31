@@ -123,9 +123,11 @@ test.describe("web-storefront screenshots", () => {
         // that lands before hydration is dropped; a visible tab cannot tell.
         // oxlint-disable-next-line sonarjs/no-networkidle-wait
         await page.waitForLoadState("networkidle");
+
         const schedule = page.getByRole("region", {
           name: SCREENSHOT_WEEKDAY_SECTION,
         });
+
         await schedule.getByRole("tab", { name: SCREENSHOT_WEEKDAY }).click();
         await expect(
           schedule.getByRole("tab", { name: SCREENSHOT_WEEKDAY })

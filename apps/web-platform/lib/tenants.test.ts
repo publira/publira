@@ -26,6 +26,7 @@ import {
 const tenantId = "01a0deb5-0000-7000-8000-000000000002";
 
 type ListTenantsMethod = PlatformApiClient["tenants"]["listTenants"];
+
 type ListTenantsResponse = Awaited<ReturnType<ListTenantsMethod>>;
 
 const createListTenantsResponse = ({

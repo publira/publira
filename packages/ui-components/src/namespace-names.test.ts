@@ -49,6 +49,9 @@ const namespaces = {
 // `Figure` is the part's full name as well as its key.
 const fullNameKeys = new Set(["FigureLine.Figure"]);
 
+const isFunction = (part: unknown): part is (...args: never[]) => void =>
+  typeof part === "function";
+
 describe("compound component namespaces", () => {
   // A part is renamed only where its subpath exports it, so React DevTools,
   // error overlays, and stack traces keep naming the component a tree holds
@@ -57,10 +60,7 @@ describe("compound component namespaces", () => {
     "%s keeps each part's declared name",
     (namespace, parts) => {
       for (const [key, part] of Object.entries(parts)) {
-        if (
-          typeof part === "function" &&
-          !fullNameKeys.has(`${namespace}.${key}`)
-        ) {
+        if (isFunction(part) && !fullNameKeys.has(`${namespace}.${key}`)) {
           expect(part.name, `${namespace}.${key}`).not.toBe(key);
         }
       }

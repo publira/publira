@@ -44,6 +44,7 @@ const GOOGLE_TAG_ORIGIN = "https://www.googletagmanager.com";
 
 const withId = (url: URL, id: string): string => {
   url.searchParams.set("id", id);
+
   return url.href;
 };
 
@@ -72,12 +73,14 @@ export const googleTagScripts = (
   let ga4Path: string;
   let gtmScriptUrl: string | undefined;
   let ga4Config: Record<string, string> | undefined;
+
   switch (serving.mode) {
     case "google": {
       base = new URL(GOOGLE_TAG_ORIGIN);
       ga4Path = "/gtag/js";
       break;
     }
+
     case "server_container": {
       base = new URL(serving.serverContainerUrl);
       ga4Path = "/gtag/js";
@@ -85,15 +88,18 @@ export const googleTagScripts = (
       ga4Config = { server_container_url: base.origin };
       break;
     }
+
     case "gateway": {
       if (!origin) {
         return null;
       }
+
       base = new URL(`/${serving.gatewayPath}/`, origin);
       ga4Path = base.pathname;
       gtmScriptUrl = base.href;
       break;
     }
+
     default: {
       return null;
     }
@@ -135,7 +141,10 @@ export const loadsGoogleTagOn = (barePathname: string): boolean =>
     (path) => barePathname === path || barePathname.startsWith(`${path}/`)
   );
 
-const scriptLiteral = (value: unknown): string =>
+/** What a script below writes into a `gtag()` call: an id or a parameter map. */
+type ScriptArgument = string | Readonly<Record<string, number | string>>;
+
+const scriptLiteral = (value: ScriptArgument): string =>
   JSON.stringify(value).replaceAll("<", "\\u003c");
 
 /**
@@ -149,6 +158,7 @@ export const gtagInitScript = ({
   const configArguments = [measurementId, ...(config ? [config] : [])]
     .map(scriptLiteral)
     .join(",");
+
   return [
     "window.dataLayer=window.dataLayer||[];",
     "function gtag(){dataLayer.push(arguments);}",

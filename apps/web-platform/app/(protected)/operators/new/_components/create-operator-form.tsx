@@ -16,6 +16,7 @@ import { createOperatorAction } from "../_lib/actions";
 
 export const CreateOperatorForm = async () => {
   const locale = await getPlatformLocale();
+
   const [t, roleItems] = await Promise.all([
     getMessagesFor(locale),
     getOperatorRoleSelectItems(locale),

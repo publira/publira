@@ -6,6 +6,12 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import type * as ActionForm from "@publira/ui-components/action-form";
 import * as Toast from "@publira/ui-components/toast";
+import type {
+  AuthenticationResponseJSON,
+  RegistrationResponseJSON,
+  StartAuthenticationOpts,
+  StartRegistrationOpts,
+} from "@simplewebauthn/browser";
 import {
   act,
   cleanup,
@@ -20,6 +26,7 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import type * as MfaEnrollmentModule from "#components/mfa-enrollment";
 import type { AdminMfaStatus } from "#lib/admin-mfa";
 import type {
   MfaEnrollmentConfirmState,
@@ -95,8 +102,18 @@ const {
         formData: FormData
       ) => Promise<MfaEnrollmentStartState>
     >(),
-  startAuthentication: vi.fn<(options: unknown) => Promise<unknown>>(),
-  startRegistration: vi.fn<(options: unknown) => Promise<unknown>>(),
+  startAuthentication:
+    vi.fn<
+      (
+        options: StartAuthenticationOpts
+      ) => Promise<Pick<AuthenticationResponseJSON, "id">>
+    >(),
+  startRegistration:
+    vi.fn<
+      (
+        options: StartRegistrationOpts
+      ) => Promise<Pick<RegistrationResponseJSON, "id">>
+    >(),
 }));
 
 // The Actions are `"use server"`, so the module they live in cannot be
@@ -151,7 +168,7 @@ vi.mock("#lib/tenant-id", () => ({
 }));
 
 vi.mock("#components/mfa-enrollment", async (importOriginal) => {
-  const MfaEnrollment = await importOriginal<Record<string, unknown>>();
+  const MfaEnrollment = await importOriginal<typeof MfaEnrollmentModule>();
 
   return { ...MfaEnrollment, Secret: MfaEnrollment.SecretText };
 });
@@ -228,7 +245,9 @@ const formOf = async (buttonName: string) => {
     { name: buttonName },
     onScreen
   );
+
   const form = button.closest("form");
+
   if (!form) {
     throw new Error(`${buttonName} is not inside a form`);
   }
@@ -593,6 +612,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       ok: true,
     });
     const phonePasskey = { ...laptopPasskey, id: "PASSKEY00002", name: "" };
+
     const twoPasskeys: AdminMfaStatus = {
       ...passkeyOnly,
       passkeys: [laptopPasskey, phonePasskey],
@@ -621,11 +641,17 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
 
     const rows = await screen.findAllByRole("listitem", {}, onScreen);
-    const phoneRow = within(
-      rows.find((row) =>
-        row.textContent?.includes("Unnamed passkey")
-      ) as HTMLElement
+
+    const unnamed = rows.find((row) =>
+      row.textContent?.includes("Unnamed passkey")
     );
+
+    if (!unnamed) {
+      throw new Error("the unnamed passkey is not listed");
+    }
+
+    const phoneRow = within(unnamed);
+
     fireEvent.click(phoneRow.getByRole("button", { name: "Remove" }));
     fireEvent.click(
       await within(await screen.findByRole("alertdialog")).findByRole(
@@ -654,6 +680,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
   it("asks before removing a passkey and shows a refusal next to it", async () => {
     const refusal =
       "This is the last second factor on your account, and this tenant requires two-step verification for administrators. Add another passkey or set up an authenticator app before removing it.";
+
     deletePasskey.mockResolvedValue({ message: refusal, ok: false });
 
     renderCard(passkeyOnly);

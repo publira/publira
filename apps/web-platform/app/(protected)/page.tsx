@@ -47,14 +47,17 @@ const RecentEventMessage = ({
     case "tenant_created": {
       return <Message message="platform.dashboard.events.tenant_created" />;
     }
+
     case "operator_role_granted": {
       return (
         <Message message="platform.dashboard.events.operator_role_granted" />
       );
     }
+
     case "end_user_created": {
       return <Message message="platform.dashboard.events.end_user_created" />;
     }
+
     default: {
       return event.action;
     }
@@ -68,10 +71,12 @@ const buildTargetHref = (
     case "tenant_created": {
       return event.target ? `/tenants/${event.target}` : null;
     }
+
     case "operator_role_granted":
     case "end_user_created": {
       return event.target ? `/users/${event.target}` : null;
     }
+
     default: {
       return null;
     }

@@ -35,19 +35,23 @@ export const EyeCatchVariantSelector = ({
   const handleButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       const { typeKey } = event.currentTarget.dataset;
+
       if (typeKey) {
         onSelectVariantType(typeKey);
       }
+
       onImageClick();
     },
     [onImageClick, onSelectVariantType]
   );
 
   const variantsByType = new Map<string, typeof variants>();
+
   for (const variant of variants) {
     if (!variantsByType.has(variant.variantType)) {
       variantsByType.set(variant.variantType, []);
     }
+
     variantsByType.get(variant.variantType)?.push(variant);
   }
 
@@ -72,10 +76,13 @@ export const EyeCatchVariantSelector = ({
       {displayGroups.map(([typeKey, typeVariants]) => {
         const isSelected = selectedVariantType === typeKey;
         const aspectName = eyeCatchAspectName(t, typeKey);
+
         const variantAlt = t("admin.eye_catch.variant_alt", {
           aspect: aspectName,
         });
+
         const fallbackVariant = typeVariants.at(-1);
+
         if (!fallbackVariant) {
           return null;
         }
@@ -121,6 +128,7 @@ export const EyeCatchVariantSelector = ({
                       index > 0
                         ? sourcesToRender[index - 1].width
                         : fallbackVariant.width;
+
                     return (
                       <source
                         key={variant.label}

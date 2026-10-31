@@ -37,6 +37,7 @@ const loadTenantCopyAndSession = async (locale: Locale) => {
     loadTenantCopy(locale),
     resolveAccessToken(),
   ]);
+
   return { locale: resolvedLocale, sid, t };
 };
 
@@ -193,6 +194,7 @@ const listPlatformTenantsForLocale = async (
       query,
       withServiceHeaders()
     );
+
     return {
       nextToken: response.nextToken ?? "",
       ok: true,
@@ -213,6 +215,7 @@ const listPlatformTenantsForLocale = async (
     // as the API does.
     dropFailedCacheEntry();
     const { t } = await loadTenantCopy(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.tenants.list_failed"), {
         locale,
@@ -235,6 +238,7 @@ export const listPlatformTenants = async (
   input: ListPlatformTenantsInput = {}
 ): Promise<ListPlatformTenantsResult> => {
   await verifyPlatformSession();
+
   return listPlatformTenantsForLocale(await getPlatformLocale(), {
     limit: input.limit ?? 20,
     name: input.name ?? "",
@@ -291,9 +295,11 @@ const getPlatformTenantForLocale = async (
       { publicId },
       withServiceHeaders()
     );
+
     if (response.tenant) {
       cacheTag(platformTenantCacheTag(response.tenant.id));
     }
+
     return { ok: true, tenant: mapTenant(response.tenant) };
   } catch (error) {
     // The caller turns `tenant: null` into `notFound()`. Anything else is not
@@ -301,11 +307,13 @@ const getPlatformTenantForLocale = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, tenant: null };
     }
+
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
     // request. The entry is dropped instead, so the tenant comes back as soon
     // as the API does.
     dropFailedCacheEntry();
     const { t } = await loadTenantCopy(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.tenants.get_failed"), {
         locale,
@@ -327,6 +335,7 @@ export const getPlatformTenant = async (
   await verifyPlatformSession();
 
   const normalized = publicId.trim();
+
   if (!normalized) {
     return { ok: true, tenant: null };
   }
@@ -376,6 +385,7 @@ const listPlatformTenantMembersForLocale = async (
       query,
       withServiceHeaders()
     );
+
     return {
       members: (response.members ?? []).map((member) => ({
         createdAt: member.createdAt,
@@ -395,6 +405,7 @@ const listPlatformTenantMembersForLocale = async (
     // soon as the API does.
     dropFailedCacheEntry();
     const { t } = await loadTenantCopy(locale);
+
     return {
       members: [],
       message: rpcErrorMessage(
@@ -419,6 +430,7 @@ export const listPlatformTenantMembers = async (
   input: ListPlatformTenantMembersInput
 ): Promise<ListPlatformTenantMembersResult> => {
   await verifyPlatformSession();
+
   return listPlatformTenantMembersForLocale(await getPlatformLocale(), {
     limit: input.limit ?? 20,
     tenantId: input.tenantId.trim(),
@@ -430,6 +442,7 @@ export const suspendPlatformTenant = async (
   tenantId: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken();
+
   if (!tenantId.trim() || !sid) {
     return false;
   }
@@ -439,10 +452,12 @@ export const suspendPlatformTenant = async (
       { tenantId },
       buildSessionHeaders(sid)
     );
+
     return true;
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -451,6 +466,7 @@ export const resumePlatformTenant = async (
   tenantId: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken();
+
   if (!tenantId.trim() || !sid) {
     return false;
   }
@@ -460,10 +476,12 @@ export const resumePlatformTenant = async (
       { tenantId },
       buildSessionHeaders(sid)
     );
+
     return true;
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -474,21 +492,24 @@ export const resumePlatformTenant = async (
  * when its message changes.
  */
 const duplicateDomainMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   kind: "create" | "update"
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasFieldViolation(error, "admin_domain")) {
+  if (rpcErrorHasFieldViolation(cause, "admin_domain")) {
     return t("platform.tenants.admin_domain_taken");
   }
-  if (rpcErrorHasFieldViolation(error, "image_domain")) {
+
+  if (rpcErrorHasFieldViolation(cause, "image_domain")) {
     return t("platform.tenants.image_domain_taken");
   }
-  if (rpcErrorHasFieldViolation(error, "domain")) {
+
+  if (rpcErrorHasFieldViolation(cause, "domain")) {
     return t("platform.tenants.domain_taken");
   }
+
   return kind === "create"
     ? t("platform.tenants.duplicate_create")
     : t("platform.tenants.duplicate_update");
@@ -502,6 +523,7 @@ export const createPlatformTenant = async (
     sid,
     t,
   } = await loadTenantCopyAndSession(input.locale);
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -513,9 +535,11 @@ export const createPlatformTenant = async (
   const domain = input.domain.trim();
   const adminDomain = input.adminDomain?.trim() ?? "";
   const imageDomain = input.imageDomain?.trim() ?? "";
+
   const initialAdminEmails = (input.initialAdminEmails ?? []).flatMap(
     (email) => {
       const trimmed = email.trim();
+
       return trimmed.length > 0 ? [trimmed] : [];
     }
   );
@@ -541,6 +565,7 @@ export const createPlatformTenant = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     const conflict = await duplicateDomainMessage(
       error,
       resolvedLocale,
@@ -637,6 +662,7 @@ const listPlatformTenantAdminInvitationsForLocale = async (
       query,
       withServiceHeaders()
     );
+
     return {
       invitations: (response.invitations ?? []).map((invitation) =>
         mapInvitation(invitation)
@@ -651,6 +677,7 @@ const listPlatformTenantAdminInvitationsForLocale = async (
     // soon as the API does.
     dropFailedCacheEntry();
     const { t } = await loadTenantCopy(locale);
+
     return {
       invitations: [],
       message: rpcErrorMessage(
@@ -674,6 +701,7 @@ export const listPlatformTenantAdminInvitations = async (
   input: ListPlatformTenantAdminInvitationsInput
 ): Promise<ListPlatformTenantAdminInvitationsResult> => {
   await verifyPlatformSession();
+
   return listPlatformTenantAdminInvitationsForLocale(
     await getPlatformLocale(),
     {
@@ -694,12 +722,14 @@ export const createPlatformTenantAdminInvitation = async (
     sid,
     t,
   } = await loadTenantCopyAndSession(locale);
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
+
   if (!tenantId.trim() || !email.trim()) {
     return {
       message: t("platform.common.required"),
@@ -715,6 +745,7 @@ export const createPlatformTenantAdminInvitation = async (
       },
       buildSessionHeaders(sid)
     );
+
     return {
       invitation: response.invitation
         ? mapInvitation(response.invitation)
@@ -725,6 +756,7 @@ export const createPlatformTenantAdminInvitation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -752,12 +784,14 @@ export const resendPlatformTenantAdminInvitation = async (
     sid,
     t,
   } = await loadTenantCopyAndSession(locale);
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
+
   if (!tenantId.trim() || !invitationId.trim()) {
     return {
       message: t("platform.common.required"),
@@ -773,6 +807,7 @@ export const resendPlatformTenantAdminInvitation = async (
       },
       buildSessionHeaders(sid)
     );
+
     return {
       invitation: response.invitation
         ? mapInvitation(response.invitation)
@@ -782,6 +817,7 @@ export const resendPlatformTenantAdminInvitation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -809,12 +845,14 @@ export const cancelPlatformTenantAdminInvitation = async (
     sid,
     t,
   } = await loadTenantCopyAndSession(locale);
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
+
   if (!tenantId.trim() || !invitationId.trim()) {
     return {
       message: t("platform.common.required"),
@@ -830,6 +868,7 @@ export const cancelPlatformTenantAdminInvitation = async (
       },
       buildSessionHeaders(sid)
     );
+
     return {
       invitation: response.invitation
         ? mapInvitation(response.invitation)
@@ -839,6 +878,7 @@ export const cancelPlatformTenantAdminInvitation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -877,30 +917,37 @@ export const updatePlatformTenant = async (
     sid,
     t,
   } = await loadTenantCopyAndSession(locale);
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
     };
   }
+
   let fields: PlatformTenantChange;
+
   if ("name" in change) {
     const name = change.name.trim();
+
     if (!name) {
       return {
         message: t("platform.tenants.name_required"),
         ok: false,
       };
     }
+
     fields = { name };
   } else {
     const domain = change.domain.trim();
+
     if (!domain) {
       return {
         message: t("platform.tenants.domain_required"),
         ok: false,
       };
     }
+
     fields = {
       adminDomain: change.adminDomain.trim(),
       domain,
@@ -913,10 +960,12 @@ export const updatePlatformTenant = async (
       { ...fields, tenantId },
       buildSessionHeaders(sid)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     const conflict = await duplicateDomainMessage(
       error,
       resolvedLocale,
@@ -952,6 +1001,7 @@ export const addPlatformTenantMember = async (
   }
 
   const sid = await resolveAccessToken();
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -968,10 +1018,12 @@ export const addPlatformTenantMember = async (
       },
       buildSessionHeaders(sid)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("platform.tenants.add_member_failed"), {
         locale: resolvedLocale,
@@ -996,6 +1048,7 @@ export const updatePlatformTenantMemberRole = async (
     sid,
     t,
   } = await loadTenantCopyAndSession(locale);
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1024,6 +1077,7 @@ export const updatePlatformTenantMemberRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -1050,6 +1104,7 @@ export const removePlatformTenantMember = async (
     sid,
     t,
   } = await loadTenantCopyAndSession(locale);
+
   if (!sid) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1077,6 +1132,7 @@ export const removePlatformTenantMember = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

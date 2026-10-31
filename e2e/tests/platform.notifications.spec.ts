@@ -16,6 +16,7 @@ test.describe("web-platform notification bell", () => {
     const bell = page.getByRole("button", {
       name: "Notifications, none unread",
     });
+
     await expect(bell).toBeVisible();
 
     await bell.click();

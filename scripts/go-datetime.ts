@@ -33,6 +33,16 @@ const KINDS = new Map([
 /** The kinds whose every possible value is written out as a table. */
 const TABLE_KINDS = new Set(["month", "hour", "dayPeriod"]);
 
+const isTableKind = (
+  type: Intl.DateTimeFormatPartTypes
+): type is "dayPeriod" | "hour" | "month" => TABLE_KINDS.has(type);
+
+/** The kinds written as a number padded to one width. */
+const isWidthKind = (
+  type: Intl.DateTimeFormatPartTypes
+): type is "day" | "minute" | "year" =>
+  type === "day" || type === "minute" || type === "year";
+
 interface Instant {
   readonly day: number;
   readonly hour: number;
@@ -91,7 +101,7 @@ const partsOf = (
     .map((part) => ({ ...part, value: part.value.replaceAll("\u202F", " ") }));
 
 /** The part types and the literal text between them, as one comparable line. */
-const shapeOf = (parts: readonly Intl.DateTimeFormatPart[]): string =>
+const layoutOf = (parts: readonly Intl.DateTimeFormatPart[]): string =>
   parts
     .map((part) =>
       part.type === "literal" ? `literal(${part.value})` : part.type
@@ -103,6 +113,7 @@ const partValue = (
   type: string
 ): string => {
   const part = parts.find((candidate) => candidate.type === type);
+
   if (part === undefined) {
     throw new Error(`the formatted value has no ${type}`);
   }
@@ -119,19 +130,23 @@ const patternOf = (
   formatter: Intl.DateTimeFormat
 ): Intl.DateTimeFormatPart[] => {
   const moments = probes();
+
   const [first, ...rest] = moments.map((instant) =>
     partsOf(formatter, instant)
   );
+
   if (first === undefined) {
     throw new Error("at least one probe is needed");
   }
+
   for (const [index, parts] of rest.entries()) {
-    if (shapeOf(parts) !== shapeOf(first)) {
+    if (layoutOf(parts) !== layoutOf(first)) {
       throw new Error(
-        `${intl} formats ${JSON.stringify(moments[index + 1])} as "${shapeOf(parts)}", not as "${shapeOf(first)}"`
+        `${intl} formats ${JSON.stringify(moments[index + 1])} as "${layoutOf(parts)}", not as "${layoutOf(first)}"`
       );
     }
   }
+
   for (const part of first) {
     if (part.type !== "literal" && !KINDS.has(part.type)) {
       throw new Error(`${intl} formats a ${part.type}, which Go cannot render`);
@@ -152,14 +167,19 @@ const widthOf = (
 ): number => {
   const numberOf = (instant: Instant): number =>
     type === "year" ? PROBE_YEAR : instant[type];
+
   const moments = probes();
   const [first] = moments;
+
   if (first === undefined) {
     throw new Error("at least one probe is needed");
   }
+
   const width = partValue(partsOf(formatter, first), type).length;
+
   for (const instant of moments) {
     const rendered = partValue(partsOf(formatter, instant), type);
+
     if (rendered !== String(numberOf(instant)).padStart(width, "0")) {
       throw new Error(
         `${intl} writes the ${type} of ${JSON.stringify(instant)} as ${JSON.stringify(rendered)}, which is not a padded decimal`
@@ -187,11 +207,13 @@ const tableOf = (
       partsOf(formatter, { day: 2, hour, minute: 0, month: 1 }),
       type
     );
+
     for (const minute of MINUTES) {
       const other = partValue(
         partsOf(formatter, { day: 2, hour, minute, month: 1 }),
         type
       );
+
       if (other !== rendered) {
         throw new Error(
           `${intl} writes the ${type} of ${hour}:${minute} as ${JSON.stringify(other)} but of ${hour}:00 as ${JSON.stringify(rendered)}`
@@ -213,25 +235,24 @@ const fieldLiteral = (
   }
 
   const kind = KINDS.get(part.type);
+
   if (kind === undefined) {
     throw new Error(`${intl} formats a ${part.type}, which Go cannot render`);
   }
-  if (TABLE_KINDS.has(part.type)) {
-    const table = tableOf(
-      intl,
-      formatter,
-      part.type as "dayPeriod" | "hour" | "month"
-    );
+
+  if (isTableKind(part.type)) {
+    const table = tableOf(intl, formatter, part.type);
+
     const values = table.map((value) => goString(value)).join(", ");
 
     return `{Kind: ${kind}, Values: []string{${values}}}`;
   }
 
-  const width = widthOf(
-    intl,
-    formatter,
-    part.type as "day" | "minute" | "year"
-  );
+  if (!isWidthKind(part.type)) {
+    throw new Error(`${intl} formats a ${part.type}, which Go cannot render`);
+  }
+
+  const width = widthOf(intl, formatter, part.type);
 
   return `{Kind: ${kind}, Width: ${width}}`;
 };
@@ -268,14 +289,18 @@ export const renderGoDateTimeFormats = (
     "// server and the web apps word the same moment the same way.",
     "var DateTimeFormats = map[string][]Field{",
   ];
+
   for (const { code, intl } of locales) {
     const formatter = formatterFor(intl);
     lines.push(`${INDENT}${goString(code)}: {`);
+
     for (const part of patternOf(intl, formatter)) {
       lines.push(`${INDENT.repeat(2)}${fieldLiteral(intl, formatter, part)},`);
     }
+
     lines.push(`${INDENT}},`);
   }
+
   lines.push("}");
 
   return `${lines.join("\n")}\n`;

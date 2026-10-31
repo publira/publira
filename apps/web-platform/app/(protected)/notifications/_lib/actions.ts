@@ -27,11 +27,13 @@ export const markNotificationAsReadAction = async (
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       notificationId: { kind: "value", name: "notification_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: t("errors.validation"),
@@ -42,6 +44,7 @@ export const markNotificationAsReadAction = async (
   const result = await withPlatformSessionReauth(() =>
     markNotificationAsRead(parsed.data, locale)
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -50,6 +53,7 @@ export const markNotificationAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag);
+
   return { message: "", ok: true };
 };
 
@@ -59,9 +63,11 @@ export const markAllNotificationsAsReadAction = async (
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const result = await withPlatformSessionReauth(() =>
     markAllNotificationsAsRead(locale)
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -70,5 +76,6 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag);
+
   return { message: "", ok: true };
 };

@@ -1,6 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AdminAuthModule from "./admin-auth";
+
 const {
   mockGetAccessToken,
   mockGetAdminCurrentUser,
@@ -33,7 +35,7 @@ vi.mock("./session", () => ({
 }));
 
 vi.mock("./admin-auth", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AdminAuthModule>()),
   getAdminCurrentUser: mockGetAdminCurrentUser,
 }));
 
@@ -243,6 +245,7 @@ describe("signed-in role checks", () => {
     ["tenant_auditor", false, false],
   ])("answers a %s as admin %s and editor %s", async (role, admin, editor) => {
     signedInAs(role);
+
     const { isSignedInTenantAdmin, isSignedInTenantEditor } =
       await importAuthSession();
 
@@ -256,6 +259,7 @@ describe("signed-in role checks", () => {
       ok: false,
       requiresSignIn: false,
     });
+
     const { isSignedInTenantAdmin, isSignedInTenantEditor } =
       await importAuthSession();
 

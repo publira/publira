@@ -26,11 +26,13 @@ export const getPublishedPageSlugFromPathname = (
     .split("/")
     .map((segment) => segment.trim().toLowerCase())
     .filter((segment) => segment.length > 0);
+
   if (segments.length === 0 || segments[0] === OPEN_GRAPH_CARD_SEGMENT) {
     return null;
   }
 
   const slug = segments.join("/");
+
   return publishedSlugs.has(`/${slug}`) ? slug : null;
 };
 
@@ -51,17 +53,21 @@ export const buildTenantRewritePathname = (
   publishedSlugs: ReadonlySet<string> | null
 ): string => {
   const prefix = `/${tenantId.trim()}/${locale}`;
+
   const publishedSlug = getPublishedPageSlugFromPathname(
     pathname,
     publishedSlugs
   );
+
   if (publishedSlug) {
     return `${prefix}/page/${publishedSlug}`;
   }
 
   const suffix = pathname.startsWith("/") ? pathname : `/${pathname}`;
+
   if (suffix === "/") {
     return prefix;
   }
+
   return `${prefix}${suffix}`;
 };

@@ -203,10 +203,12 @@ test.describe("Purchases", () => {
     const confirmation = page.getByRole("dialog", {
       name: "Refund this purchase?",
     });
+
     const confirm = confirmation.getByRole("button", {
       exact: true,
       name: "Refund",
     });
+
     await expect(confirm).toBeDisabled();
 
     const reason = confirmation.getByRole("textbox", { name: /Reason/u });

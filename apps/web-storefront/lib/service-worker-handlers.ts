@@ -7,6 +7,15 @@
  * test with a stand-in scope instead of a real worker.
  */
 
+/** A value `JSON.parse` can answer with, which is what a push body decodes to. */
+export type JsonValue =
+  | JsonValue[]
+  | boolean
+  | number
+  | string
+  | { [key: string]: JsonValue }
+  | null;
+
 /**
  * The message the outbox worker sends (`server/internal/push/web.go`). `title`
  * and `body` are the tenant's own content rather than copy, and `data` is the
@@ -30,7 +39,7 @@ export interface PushWorkerNotification {
 }
 
 export interface PushWorkerPushEvent {
-  data: { json: () => unknown } | null;
+  data: { json: () => JsonValue } | null;
   waitUntil: (promise: Promise<unknown>) => void;
 }
 
@@ -40,9 +49,15 @@ export interface PushWorkerNotificationClickEvent {
 }
 
 export interface PushWorkerClient {
-  focus: () => Promise<unknown>;
-  navigate: (url: string) => Promise<unknown>;
+  focus: () => Promise<PushWorkerClient>;
+  navigate: (url: string) => Promise<PushWorkerClient | null>;
   url: string;
+}
+
+export interface PushWorkerNotificationOptions {
+  body?: string;
+  data?: unknown;
+  tag?: string;
 }
 
 export interface PushWorkerScope {
@@ -59,22 +74,37 @@ export interface PushWorkerScope {
       includeUncontrolled: boolean;
       type: "window";
     }) => Promise<PushWorkerClient[]>;
-    openWindow: (url: string) => Promise<unknown>;
+    openWindow: (url: string) => Promise<PushWorkerClient | null>;
   };
   location: { origin: string };
   registration: {
     showNotification: (
       title: string,
-      options: { body?: string; data?: unknown; tag?: string }
+      options: PushWorkerNotificationOptions
     ) => Promise<void>;
   };
 }
 
-const isStringRecord = (value: unknown): value is Record<string, string> =>
-  typeof value === "object" &&
-  value !== null &&
-  !Array.isArray(value) &&
-  Object.values(value).every((entry) => typeof entry === "string");
+const isText = (value: JsonValue | undefined): value is string =>
+  typeof value === "string";
+
+const isJsonObject = (
+  value: JsonValue | undefined
+): value is { [key: string]: JsonValue } =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const isStringRecord = (
+  value: JsonValue | undefined
+): value is Record<string, string> =>
+  isJsonObject(value) && Object.values(value).every((entry) => isText(entry));
+
+/** Whether a notification's data names a path on this site to open. */
+const namesRoute = (data: unknown): data is { route: string } =>
+  typeof data === "object" &&
+  data !== null &&
+  "route" in data &&
+  typeof data.route === "string" &&
+  data.route.startsWith("/");
 
 /**
  * `null` for a payload this worker cannot draw a notification from. A push
@@ -88,27 +118,26 @@ const isStringRecord = (value: unknown): value is Record<string, string> =>
  * outright.
  */
 const parsePushMessage = (event: PushWorkerPushEvent): PushMessage | null => {
-  let raw: unknown;
+  let raw: JsonValue | undefined;
+
   try {
     raw = event.data?.json();
   } catch {
     return null;
   }
-  if (typeof raw !== "object" || raw === null) {
+
+  if (!isJsonObject(raw)) {
     return null;
   }
 
-  const { body, data, title } = raw as {
-    body?: unknown;
-    data?: unknown;
-    title?: unknown;
-  };
-  if (typeof title !== "string" || title.trim() === "") {
+  const { body, data, title } = raw;
+
+  if (!isText(title) || title.trim() === "") {
     return null;
   }
 
   return {
-    body: typeof body === "string" ? body : "",
+    body: isText(body) ? body : "",
     data: isStringRecord(data) ? data : {},
     title,
   };
@@ -128,17 +157,18 @@ const parsePushMessage = (event: PushWorkerPushEvent): PushMessage | null => {
  * resolves it to `https://host/path`, because a special scheme reads a
  * backslash as a separator.
  */
-const clickTargetUrl = (scope: PushWorkerScope, data: unknown): string => {
-  const route =
-    typeof data === "object" && data !== null && "route" in data
-      ? (data as { route?: unknown }).route
-      : undefined;
+const clickTargetUrl = (
+  scope: PushWorkerScope,
+  { data }: PushWorkerNotification
+): string => {
   const siteRoot = new URL("/", scope.location.origin);
-  if (typeof route !== "string" || !route.startsWith("/")) {
+
+  if (!namesRoute(data)) {
     return siteRoot.toString();
   }
 
-  const target = new URL(route, siteRoot);
+  const target = new URL(data.route, siteRoot);
+
   return target.origin === siteRoot.origin
     ? target.toString()
     : siteRoot.toString();
@@ -150,13 +180,18 @@ const showPushNotification = async (
 ): Promise<void> => {
   const notificationId = message.data.notification_id;
 
-  await scope.registration.showNotification(message.title, {
+  const options: PushWorkerNotificationOptions = {
     body: message.body,
     data: message.data,
-    // One notification per record, so a resent message replaces the one
-    // already on screen instead of stacking a duplicate beside it.
-    ...(notificationId ? { tag: notificationId } : {}),
-  });
+  };
+
+  // One notification per record, so a resent message replaces the one
+  // already on screen instead of stacking a duplicate beside it.
+  if (notificationId) {
+    options.tag = notificationId;
+  }
+
+  await scope.registration.showNotification(message.title, options);
 };
 
 /**
@@ -172,12 +207,15 @@ const openPushTarget = async (
     includeUncontrolled: true,
     type: "window",
   });
+
   const existing = clients.find((client) =>
     client.url.startsWith(scope.location.origin)
   );
+
   if (existing) {
     await existing.focus();
     await existing.navigate(target);
+
     return;
   }
 
@@ -188,6 +226,7 @@ const openPushTarget = async (
 export const registerPushHandlers = (scope: PushWorkerScope): void => {
   scope.addEventListener("push", (event) => {
     const message = parsePushMessage(event);
+
     if (!message) {
       return;
     }
@@ -198,7 +237,7 @@ export const registerPushHandlers = (scope: PushWorkerScope): void => {
   scope.addEventListener("notificationclick", (event) => {
     event.notification.close();
     event.waitUntil(
-      openPushTarget(scope, clickTargetUrl(scope, event.notification.data))
+      openPushTarget(scope, clickTargetUrl(scope, event.notification))
     );
   });
 };

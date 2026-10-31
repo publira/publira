@@ -59,16 +59,20 @@ const actionErrorMessage = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   switch (action) {
     case "approve": {
       return t("admin.comments.approve_failed");
     }
+
     case "hide": {
       return t("admin.comments.hide_failed");
     }
+
     case "restore": {
       return t("admin.comments.restore_failed");
     }
+
     default: {
       return t("admin.comments.purge_failed");
     }
@@ -83,13 +87,17 @@ const commentStatuses: ReadonlySet<string> = new Set(COMMENT_STATUSES);
  * A comment whose state cannot be read is still work waiting to be looked at,
  * so it belongs in the queue rather than silently in the published list.
  */
+const isCommentStatus = (raw: string): raw is CommentStatus =>
+  commentStatuses.has(raw);
+
 const toCommentStatus = (raw: string): CommentStatus =>
-  commentStatuses.has(raw) ? (raw as CommentStatus) : "pending";
+  isCommentStatus(raw) ? raw : "pending";
 
 const toHiddenReason = (raw: string): CommentHiddenReason => {
   if (raw === "staff" || raw === "auto_reports") {
     return raw;
   }
+
   return "unknown";
 };
 
@@ -141,8 +149,11 @@ const commentReportStatuses: ReadonlySet<string> = new Set(
  * A report whose state cannot be read is still work waiting to be looked at,
  * so it belongs in the queue rather than silently among the decided ones.
  */
+const isCommentReportStatus = (raw: string): raw is CommentReportStatus =>
+  commentReportStatuses.has(raw);
+
 const toCommentReportStatus = (raw: string): CommentReportStatus =>
-  commentReportStatuses.has(raw) ? (raw as CommentReportStatus) : "open";
+  isCommentReportStatus(raw) ? raw : "open";
 
 const toCommentReportReason = (raw: string): CommentReportReason => {
   if (
@@ -153,6 +164,7 @@ const toCommentReportReason = (raw: string): CommentReportReason => {
   ) {
     return raw;
   }
+
   return "unknown";
 };
 
@@ -253,6 +265,7 @@ export const listComments = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -283,6 +296,7 @@ export const listComments = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...emptyCursorPageTokens,
       comments: [],
@@ -316,6 +330,7 @@ export const listCommentReports = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -343,6 +358,7 @@ export const listCommentReports = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...emptyCursorPageTokens,
       message: rpcErrorMessage(error, t("admin.comments.reports.list_failed"), {
@@ -378,6 +394,7 @@ export const resolveCommentReport = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -392,10 +409,12 @@ export const resolveCommentReport = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -429,6 +448,7 @@ export const countPendingComments = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -447,6 +467,7 @@ export const countPendingComments = async (
     return { ok: true, pendingCount: response.pendingCount ?? 0 };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.comments.count_failed"), {
         locale,
@@ -481,21 +502,28 @@ const callModeration = async (
     reason: input.reason,
     tenant: { tenantId: input.tenantId },
   };
+
   const headers = withSessionHeaders(sessionId);
 
   switch (input.action) {
     case "approve": {
       await apiClient.comments.approveComment(request, headers);
+
       return;
     }
+
     case "hide": {
       await apiClient.comments.hideComment(request, headers);
+
       return;
     }
+
     case "restore": {
       await apiClient.comments.restoreComment(request, headers);
+
       return;
     }
+
     default: {
       await apiClient.comments.purgeComment(request, headers);
     }
@@ -519,16 +547,19 @@ export const moderateComment = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
     await callModeration(input, sessionId);
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

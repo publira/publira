@@ -6,6 +6,7 @@ export type {
   AnnouncementItem,
   NotificationPreferences,
 } from "../gen/publira/v1/auth_pb.js";
+
 export type {
   CoinBalance,
   CoinDisclosures,
@@ -13,10 +14,12 @@ export type {
   CoinSettings,
   CoinTransaction,
 } from "../gen/publira/v1/coin_pb.js";
+
 export type {
   EpisodeComment,
   MyEpisodeComment,
 } from "../gen/publira/v1/comment_pb.js";
+
 export type {
   CampaignBanner,
   EpisodeNeighbor,
@@ -32,11 +35,14 @@ export type {
   WaitFreeRule,
   WaitFreeTicket,
 } from "../gen/publira/v1/catalog_pb.js";
+
 export type { NotificationItem } from "../gen/publira/v1/notification_pb.js";
+
 export type {
   Subscription,
   SubscriptionPlan,
 } from "../gen/publira/v1/subscription_pb.js";
+
 export type {
   TenantGoogleTag,
   TenantSiteVerification,

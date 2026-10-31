@@ -6,6 +6,7 @@ import {
   startAuthentication,
   startRegistration,
 } from "@simplewebauthn/browser";
+import type { PublicKeyCredentialJSON } from "@simplewebauthn/browser";
 
 import { useClientMessages } from "#components/client-message";
 import type { AdminClientMessageAccessor } from "#lib/messages";
@@ -29,16 +30,19 @@ type CeremonyOutcome = { ok: true; credential: string } | PasskeyFailure;
  * but try again or use another factor instead.
  */
 const ceremonyFailureMessage = (
-  error: unknown,
+  cause: unknown,
   t: AdminClientMessageAccessor
 ): string => {
-  const name = error instanceof Error ? error.name : "";
+  const name = cause instanceof Error ? cause.name : "";
+
   if (name === "NotAllowedError" || name === "AbortError") {
     return t("admin.auth.mfa.errors.passkey_cancelled");
   }
+
   if (name === "InvalidStateError") {
     return t("admin.auth.mfa.errors.passkey_already_registered");
   }
+
   return t("admin.auth.mfa.errors.passkey_failed");
 };
 
@@ -47,12 +51,13 @@ const ceremonyFailureMessage = (
  * with, answering the credential as the JSON the API parses.
  */
 const runCeremony = async (
-  ceremony: (optionsJson: string) => Promise<unknown>,
+  ceremony: (optionsJson: string) => Promise<PublicKeyCredentialJSON>,
   optionsJson: string,
   t: AdminClientMessageAccessor
 ): Promise<CeremonyOutcome> => {
   try {
     const credential = await ceremony(optionsJson);
+
     return { credential: JSON.stringify(credential), ok: true };
   } catch (error) {
     return { message: ceremonyFailureMessage(error, t), ok: false };
@@ -74,7 +79,7 @@ const runCeremony = async (
  */
 export const usePasskeyCeremony = <State extends ActionForm.Result | null>(
   begin: (formData: FormData) => Promise<PasskeyCeremonyStartState>,
-  ceremony: (optionsJson: string) => Promise<unknown>,
+  ceremony: (optionsJson: string) => Promise<PublicKeyCredentialJSON>,
   finish: (formData: FormData) => Promise<State>
 ) => {
   const t = useClientMessages();
@@ -91,15 +96,19 @@ export const usePasskeyCeremony = <State extends ActionForm.Result | null>(
     }
 
     const started = await begin(formData);
+
     if (!started.ok) {
       return started;
     }
+
     const outcome = await runCeremony(ceremony, started.optionsJson, t);
+
     if (!outcome.ok) {
       return outcome;
     }
 
     formData.set("credential", outcome.credential);
+
     return finish(formData);
   };
 };

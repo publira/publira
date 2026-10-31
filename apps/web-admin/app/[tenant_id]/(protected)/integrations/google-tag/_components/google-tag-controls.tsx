@@ -1,4 +1,5 @@
 "use client";
+
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import type { RadioGroupProps } from "@publira/ui-components/radio-group";
@@ -31,6 +32,7 @@ const GoogleTagModeContext = createContext<GoogleTagModeContextValue | null>(
 
 const useGoogleTagMode = () => {
   const context = use(GoogleTagModeContext);
+
   if (!context) {
     throw new Error("Rendered outside a GoogleTagModeScope.");
   }
@@ -58,11 +60,14 @@ const GoogleTagModeScope = ({
   initialServingMode: GoogleTagServingMode;
 }) => {
   const [servingMode, setServingMode] = useState(initialServingMode);
+
   const [serverContainerUrl, setServerContainerUrl] = useState(
     initialServerContainerUrl
   );
+
   const [consentMode, setConsentMode] = useState(initialConsentMode);
   const [gtmContainerId, setGtmContainerId] = useState(initialGtmContainerId);
+
   const context = useMemo(
     () => ({
       consentMode,

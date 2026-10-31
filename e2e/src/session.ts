@@ -29,11 +29,13 @@ const textEncoder = new TextEncoder();
 
 const resolveJwtSecret = (): Uint8Array => {
   const secret = process.env.PUBLIRA_AUTH_JWT_SECRET?.trim() ?? "";
+
   if (textEncoder.encode(secret).length < 32) {
     throw new Error(
       "PUBLIRA_AUTH_JWT_SECRET is required to mint access tokens (set by e2e scripts)"
     );
   }
+
   return textEncoder.encode(secret);
 };
 
@@ -151,6 +153,7 @@ export const mintExpiredAccessToken = (
   claims: AccessTokenClaims
 ): Promise<string> => {
   const now = Temporal.Now.instant();
+
   return signAccessToken(
     claims,
     now.subtract({ hours: 2 }),

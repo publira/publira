@@ -29,7 +29,7 @@ const {
       (state: ActionForm.State, formData: FormData) => Promise<ActionForm.State>
     >(),
   startRegistration:
-    vi.fn<(options: { optionsJSON: unknown }) => Promise<unknown>>(),
+    vi.fn<(options: { optionsJSON: unknown }) => Promise<typeof CREDENTIAL>>(),
 }));
 
 // The Actions are `"use server"`, so the module they live in cannot be

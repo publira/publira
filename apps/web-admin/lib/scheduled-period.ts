@@ -25,20 +25,24 @@ export const toScheduledPeriod = async (
   const t = await getMessagesFor(locale);
   const startsAt = toInstantIsoString(input.startsAt, timeZone);
   const start = parseInstant(startsAt);
+
   if (!start) {
     return {
       message: t("admin.series.episodes.period.starts_at_invalid"),
       ok: false,
     };
   }
+
   const endsAt = toInstantIsoString(input.endsAt, timeZone);
   const end = parseInstant(endsAt);
+
   if (!end) {
     return {
       message: t("admin.series.episodes.period.ends_at_invalid"),
       ok: false,
     };
   }
+
   if (
     Temporal.Instant.compare(end, start) <= 0 ||
     Temporal.Instant.compare(end, now) <= 0
@@ -66,11 +70,14 @@ export const scheduledPeriodStatus = (
 ): ScheduledPeriodStatus => {
   const start = parseInstant(period.startsAt);
   const end = parseInstant(period.endsAt);
+
   if (end && Temporal.Instant.compare(end, now) <= 0) {
     return "ended";
   }
+
   if (start && Temporal.Instant.compare(start, now) > 0) {
     return "scheduled";
   }
+
   return "open";
 };

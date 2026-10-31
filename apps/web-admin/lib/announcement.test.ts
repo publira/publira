@@ -58,6 +58,7 @@ describe("announcement lib", () => {
     });
 
     const { listAnnouncements } = await import("./announcement");
+
     const result = await listAnnouncements("TENANT001", "en", {
       limit: 20,
       token: "current-page",
@@ -182,6 +183,7 @@ describe("announcement lib", () => {
     mockGetSessionId.mockResolvedValue("");
 
     const { listAnnouncements } = await import("./announcement");
+
     const result = await listAnnouncements("TENANT001", "en", {
       token: "current-page",
     });
@@ -206,6 +208,7 @@ describe("announcement lib", () => {
     );
 
     const { listAnnouncements } = await import("./announcement");
+
     const result = await listAnnouncements("TENANT001", "en", {
       token: "current-page",
     });
@@ -241,6 +244,7 @@ describe("announcement lib", () => {
     });
 
     const { createAnnouncement } = await import("./announcement");
+
     const result = await createAnnouncement(
       {
         delivery: "everyone",

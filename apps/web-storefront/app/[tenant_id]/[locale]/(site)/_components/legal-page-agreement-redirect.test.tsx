@@ -86,9 +86,11 @@ describe("LegalPageAgreementRedirect", () => {
     navigation.pathname = AGREEMENT_PATH;
     navigation.search = "returnTo=%2Fmy";
     const check = vi.fn(() => Promise.resolve(null));
+
     const { rerender } = render(
       gate({ check, exemptPaths: OWED, mode: "hidden" })
     );
+
     expect(navigation.redirect).not.toHaveBeenCalled();
 
     // The reader agrees and is returned to the page they were on.
@@ -129,6 +131,7 @@ describe("LegalPageAgreementRedirect", () => {
       .fn<() => Promise<string[] | null>>()
       .mockResolvedValueOnce(OWED)
       .mockResolvedValueOnce(null);
+
     const { rerender } = render(gate({ check, exemptPaths: null }));
     navigation.pathname = "/labels";
     await act(async () => {

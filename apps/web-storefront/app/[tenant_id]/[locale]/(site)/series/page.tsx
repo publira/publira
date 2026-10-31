@@ -57,6 +57,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  */
 const SeriesListDescription = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
@@ -82,6 +83,7 @@ const SeriesListFilters = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const query = parseSeriesListSearchParams(resolvedSearchParams);
   const genres = await listPublishedGenres(tenantId, locale);
 
@@ -153,6 +155,7 @@ const SeriesListData = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const query = parseSeriesListSearchParams(resolvedSearchParams);
 
   const result = await listPublishedSeries(tenantId, {

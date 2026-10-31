@@ -58,10 +58,13 @@ test.describe("web-storefront wait-for-free", () => {
     const latestRow = page.getByRole("link", {
       name: new RegExp(WAIT_FREE_EPISODES.latest.title, "u"),
     });
+
     await expect(latestRow.getByText("No free ticket")).toBeVisible();
+
     const firstRow = page.getByRole("link", {
       name: new RegExp(WAIT_FREE_EPISODES.first.title, "u"),
     });
+
     await expect(firstRow.getByText("No free ticket")).toHaveCount(0);
   });
 

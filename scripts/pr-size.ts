@@ -27,13 +27,16 @@ import { text } from "node:stream/consumers";
  */
 export const globToRegExp = (pattern: string): RegExp => {
   let source = "";
+
   for (let index = 0; index < pattern.length; index += 1) {
     const char = pattern[index];
+
     if (char === "*") {
       if (pattern[index + 1] === "*") {
         while (pattern[index + 1] === "*") {
           index += 1;
         }
+
         if (pattern[index + 1] === "/") {
           index += 1;
           source += "(?:[^/]+/)*";
@@ -49,11 +52,13 @@ export const globToRegExp = (pattern: string): RegExp => {
       source += char.replace(/[.+^${}()|[\]\\]/u, "\\$&");
     }
   }
+
   return new RegExp(`^${source}$`, "u");
 };
 
 const matcher = (patterns: readonly string[]) => {
   const expressions = patterns.map(globToRegExp);
+
   return (file: string) =>
     expressions.some((expression) => expression.test(file));
 };
@@ -70,12 +75,16 @@ const gitattributes = await readFile(
 
 const generatedPatterns = (): string[] => {
   const patterns: string[] = [];
+
   for (const line of gitattributes.split("\n")) {
     const trimmed = line.trim();
+
     if (trimmed === "" || trimmed.startsWith("#")) {
       continue;
     }
+
     const [pattern, ...attributes] = trimmed.split(/\s+/u);
+
     if (
       pattern &&
       attributes.some(
@@ -87,6 +96,7 @@ const generatedPatterns = (): string[] => {
       patterns.push(pattern);
     }
   }
+
   return patterns;
 };
 
@@ -197,6 +207,7 @@ const JSX_TAG_ONLY = /^(?:<\/?[A-Za-z][\w.]*\s*\/?>|<\/?>|\/?>)$/u;
 
 export const isSignificant = (line: string): boolean => {
   const trimmed = line.trim();
+
   return (
     trimmed !== "" &&
     !DELIMITER_ONLY.test(trimmed) &&
@@ -213,6 +224,7 @@ export interface FileScore {
 
 const stripPrefix = (value: string): string => {
   const [filePath = ""] = value.split("\t", 1);
+
   return filePath.replace(/^[ab]\//u, "");
 };
 
@@ -237,29 +249,37 @@ export const significantLinesByFile = (diff: string): Map<string, number> => {
       inHunk = false;
       continue;
     }
+
     if (line.startsWith("@@")) {
       inHunk = true;
       continue;
     }
+
     if (inHunk) {
       if (line === "" || line.startsWith(" ") || line.startsWith("\\")) {
         continue;
       }
+
       if (line.startsWith("+") || line.startsWith("-")) {
         if (isSignificant(line.slice(1))) {
           counts.set(file, (counts.get(file) ?? 0) + 1);
         }
+
         continue;
       }
+
       inHunk = false;
     }
+
     if (line.startsWith("--- ")) {
       oldPath = stripPrefix(line.slice(4));
       continue;
     }
+
     if (line.startsWith("+++ ")) {
       const newPath = stripPrefix(line.slice(4));
       file = newPath === "/dev/null" ? oldPath : newPath;
+
       if (file) {
         counts.set(file, counts.get(file) ?? 0);
       }
@@ -269,12 +289,16 @@ export const significantLinesByFile = (diff: string): Map<string, number> => {
   return counts;
 };
 
-export const scoreDiff = (
-  diff: string
-): { files: FileScore[]; score: number } => {
+export interface DiffScore {
+  files: FileScore[];
+  score: number;
+}
+
+export const scoreDiff = (diff: string): DiffScore => {
   const files = [...significantLinesByFile(diff)].map(
     ([file, significantLines]): FileScore => {
       const weight = coefficient(file);
+
       return {
         coefficient: weight,
         file,
@@ -283,7 +307,9 @@ export const scoreDiff = (
       };
     }
   );
+
   const total = files.reduce((sum, entry) => sum + entry.score, 0);
+
   return { files, score: Math.round(total * 10) / 10 };
 };
 
@@ -305,9 +331,11 @@ export const LABELS: readonly string[] = BUCKETS.map(({ label }) => label);
 
 export const bucket = (score: number): string => {
   const found = BUCKETS.find(({ max }) => score <= max);
+
   if (!found) {
     throw new Error(`No bucket for score ${score}`);
   }
+
   return found.label;
 };
 
@@ -315,6 +343,7 @@ if (import.meta.main) {
   const diff = await text(process.stdin);
   const { files, score } = scoreDiff(diff);
   const label = bucket(score);
+
   if (process.argv.includes("--json")) {
     process.stdout.write(
       `${JSON.stringify({ files, label, score }, null, 2)}\n`

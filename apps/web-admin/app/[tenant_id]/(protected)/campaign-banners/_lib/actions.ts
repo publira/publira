@@ -51,11 +51,13 @@ const tenantIdSchema = async (locale: Locale) => {
     t("admin.campaign_banners.validation.tenant_missing")
   );
 };
+
 const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return requiredRecordId(t("admin.campaign_banners.validation.id_missing"));
 };
+
 /** The fields a create and an update both post, held to the API's rules. */
 const bannerFieldsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -80,6 +82,7 @@ const bannerFieldsSchema = async (locale: Locale) => {
     tenantId: await tenantIdSchema(locale),
   });
 };
+
 const bannerFormFields = {
   altText: { kind: "value", name: "alt_text" },
   endsAt: { kind: "value", name: "ends_at" },
@@ -89,6 +92,7 @@ const bannerFormFields = {
   startsAt: { kind: "value", name: "starts_at" },
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
+
 const rowFormFields = {
   id: { kind: "value", name: "campaign_banner_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -117,12 +121,14 @@ const unconfirmedImageMessage = (
   if (banner.imageVariants.length === 0) {
     return t("admin.campaign_banners.image_variants_missing");
   }
+
   if (
     previousImageUpdatedAt.length > 0 &&
     banner.imageUpdatedAt === previousImageUpdatedAt
   ) {
     return t("admin.campaign_banners.image_upload_not_reflected");
   }
+
   return undefined;
 };
 
@@ -137,22 +143,27 @@ export const createCampaignBannerAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     bannerFieldsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(toFormDataInput(formData, bannerFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { altText, image, linkUrl, published, tenantId } = parsed.data;
+
   if (!image) {
     return {
       message: t("admin.campaign_banners.validation.image_required"),
       ok: false,
     };
   }
+
   const window = await toCampaignBannerWindow(
     parsed.data,
     {
@@ -161,11 +172,13 @@ export const createCampaignBannerAction = async (
     },
     locale
   );
+
   if (!window.ok) {
     return { message: window.message, ok: false };
   }
 
   const imageData = new Uint8Array(await image.arrayBuffer());
+
   const result = await withAdminSessionReauth(() =>
     createCampaignBanner(
       {
@@ -181,6 +194,7 @@ export const createCampaignBannerAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -213,11 +227,13 @@ const saveCampaignBanner = async (
 > => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, baseSchema, id] = await Promise.all([
     getMessagesFor(locale),
     bannerFieldsSchema(locale),
     idSchema(locale),
   ]);
+
   const parsed = baseSchema
     .extend({ currentImageUpdatedAt: optionalTrimmedString(), id })
     .safeParse(
@@ -230,6 +246,7 @@ const saveCampaignBanner = async (
         id: { kind: "value", name: "campaign_banner_id" },
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -242,12 +259,14 @@ const saveCampaignBanner = async (
     published,
     tenantId,
   } = parsed.data;
+
   if (options.requireImage && !image) {
     return {
       message: t("admin.campaign_banners.validation.image_required"),
       ok: false,
     };
   }
+
   const window = await toCampaignBannerWindow(
     parsed.data,
     {
@@ -256,11 +275,13 @@ const saveCampaignBanner = async (
     },
     locale
   );
+
   if (!window.ok) {
     return { message: window.message, ok: false };
   }
 
   const { imageContentType, imageData } = await toImage(image);
+
   const result = await withAdminSessionReauth(() =>
     updateCampaignBanner(
       {
@@ -277,6 +298,7 @@ const saveCampaignBanner = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -289,6 +311,7 @@ const saveCampaignBanner = async (
       result.banner,
       currentImageUpdatedAt
     );
+
     if (unconfirmed) {
       return { message: unconfirmed, ok: false };
     }
@@ -302,6 +325,7 @@ export const updateCampaignBannerAction = async (
   formData: FormData
 ): Promise<ActionForm.State> => {
   const saved = await saveCampaignBanner(formData, { requireImage: false });
+
   if (!saved.ok) {
     return saved;
   }
@@ -314,6 +338,7 @@ export const updateCampaignBannerImageAction = async (
   formData: FormData
 ): Promise<ActionForm.State> => {
   const saved = await saveCampaignBanner(formData, { requireImage: true });
+
   if (!saved.ok) {
     return saved;
   }
@@ -327,14 +352,17 @@ export const deleteCampaignBannerAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, id, tenantId] = await Promise.all([
     getMessagesFor(locale),
     idSchema(locale),
     tenantIdSchema(locale),
   ]);
+
   const parsed = z
     .object({ id, tenantId })
     .safeParse(toFormDataInput(formData, rowFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -342,6 +370,7 @@ export const deleteCampaignBannerAction = async (
   const result = await withAdminSessionReauth(() =>
     deleteCampaignBanner(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -356,10 +385,12 @@ export const reorderCampaignBannersAction = async (
 ): Promise<CampaignBannerReorderResult> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, tenantId] = await Promise.all([
     getMessagesFor(locale),
     tenantIdSchema(locale),
   ]);
+
   const parsed = z
     .object({
       expectedIds: jsonRecordIdArrayFormSchema,
@@ -373,6 +404,7 @@ export const reorderCampaignBannersAction = async (
         tenantId: { kind: "value", name: "tenant_id" },
       })
     );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -384,6 +416,7 @@ export const reorderCampaignBannersAction = async (
   }
 
   const { expectedIds, ids } = parsed.data;
+
   if (ids.length === 0 || ids.length !== expectedIds.length) {
     return { message: t("admin.campaign_banners.reorder_failed"), ok: false };
   }
@@ -391,6 +424,7 @@ export const reorderCampaignBannersAction = async (
   const result = await withAdminSessionReauth(() =>
     reorderCampaignBanners(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -406,11 +440,13 @@ export const uploadCampaignBannerAspectImageAction = async (
 ): Promise<EyeCatchAspectActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, id, tenantId] = await Promise.all([
     getMessagesFor(locale),
     idSchema(locale),
     tenantIdSchema(locale),
   ]);
+
   const parsed = z
     .object({
       aspectImage: optionalFileFormSchema,
@@ -429,16 +465,19 @@ export const uploadCampaignBannerAspectImageAction = async (
         variantType: { kind: "value", name: "variant_type" },
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { aspectImage, crop, variantType } = parsed.data;
+
   if (!aspectImage) {
     return { message: t("admin.eye_catch.aspect.image_required"), ok: false };
   }
 
   const imageData = new Uint8Array(await aspectImage.arrayBuffer());
+
   const result = await withAdminSessionReauth(() =>
     uploadCampaignBannerAspectImage(
       {
@@ -452,6 +491,7 @@ export const uploadCampaignBannerAspectImageAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return {
       message:

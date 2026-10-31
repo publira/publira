@@ -10,8 +10,11 @@ import {
 } from "./chart-geometry";
 
 type FigureProps = ComponentPropsWithoutRef<"figure">;
+
 type DivProps = ComponentPropsWithoutRef<"div">;
+
 type SpanProps = ComponentPropsWithoutRef<"span">;
+
 type FigcaptionProps = ComponentPropsWithoutRef<"figcaption">;
 
 export type ChartPlotProps = Omit<

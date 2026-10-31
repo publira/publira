@@ -117,6 +117,7 @@ const listPlatformOperatorsForLocale = async (
       { limit, token },
       withServiceHeaders()
     );
+
     return {
       nextToken: response.nextToken ?? "",
       ok: true,
@@ -129,6 +130,7 @@ const listPlatformOperatorsForLocale = async (
     // as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.operators.list_failed"), {
         locale,
@@ -151,6 +153,7 @@ export const listPlatformOperators = async (
   input: ListPlatformOperatorsInput = {}
 ): Promise<ListPlatformOperatorsResult> => {
   await verifyPlatformSession();
+
   return listPlatformOperatorsForLocale(
     await getPlatformLocale(),
     input.limit ?? 20,
@@ -162,8 +165,10 @@ export const createPlatformOperator = async (
   input: CreatePlatformOperatorInput
 ): Promise<CreatePlatformOperatorResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(input.locale);
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -175,11 +180,13 @@ export const createPlatformOperator = async (
       { email: input.email, name: input.name, role: input.role },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true, publicId: response.operator?.publicId };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(input.locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
         locale: input.locale,
@@ -198,19 +205,24 @@ export const suspendPlatformOperator = async (
   if (!operatorId.trim()) {
     return false;
   }
+
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return false;
   }
+
   try {
     await apiClient.operators.suspendOperator(
       { operatorId },
       buildSessionHeaders(sessionId)
     );
+
     return true;
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -221,19 +233,24 @@ export const unsuspendPlatformOperator = async (
   if (!operatorId.trim()) {
     return false;
   }
+
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return false;
   }
+
   try {
     await apiClient.operators.unsuspendOperator(
       { operatorId },
       buildSessionHeaders(sessionId)
     );
+
     return true;
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -251,6 +268,7 @@ const getPlatformOperatorForLocale = async (
       { publicId },
       withServiceHeaders()
     );
+
     return {
       ok: true,
       operator: response.operator ? mapOperator(response.operator) : null,
@@ -259,11 +277,13 @@ const getPlatformOperatorForLocale = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, operator: null };
     }
+
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
     // request. The entry is dropped instead, so the operator comes back as
     // soon as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.operators.get_failed"), {
         locale,
@@ -283,6 +303,7 @@ export const getPlatformOperator = async (
   await verifyPlatformSession();
 
   const parsed = getPlatformOperatorInputSchema.safeParse({ publicId });
+
   if (!parsed.success) {
     // Same answer as a missing operator: the URL is not a resource, and
     // wording that said "malformed" would only help an attacker probe which
@@ -310,8 +331,10 @@ export const updatePlatformOperatorRole = async (
   input: UpdatePlatformOperatorRoleInput
 ): Promise<UpdatePlatformOperatorRoleResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(input.locale);
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -323,11 +346,13 @@ export const updatePlatformOperatorRole = async (
       { operatorId: input.operatorId, role: input.role },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(input.locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
         locale: input.locale,
@@ -343,16 +368,20 @@ export const deactivatePlatformOperator = async (
   if (!operatorId.trim()) {
     return false;
   }
+
   const sid = await resolveAccessToken();
+
   try {
     await apiClient.operators.deactivateOperator(
       { operatorId },
       buildSessionHeaders(sid)
     );
+
     return true;
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };

@@ -53,15 +53,18 @@ export const POST = async (
   }
 
   const { episode_id, tenant_id } = await params;
+
   const path = readingPositionPathSchema.safeParse({
     episodeId: episode_id,
     tenantId: tenant_id,
   });
+
   if (!path.success) {
     return NextResponse.json({ error: "invalid path" }, { status: 400 });
   }
 
   let payload: unknown;
+
   try {
     payload = await request.json();
   } catch {
@@ -69,6 +72,7 @@ export const POST = async (
   }
 
   const body = readingPositionBodySchema.safeParse(payload);
+
   if (!body.success) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
@@ -78,5 +82,6 @@ export const POST = async (
     pageIndex: body.data.pageIndex,
     tenantId: path.data.tenantId,
   });
+
   return noContent();
 };

@@ -87,9 +87,11 @@ describe("NotificationBell.Menu", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Notifications, none unread" })
     );
+
     const notification = screen.getByRole("link", {
       name: /An episode could not be published/u,
     });
+
     expect(notification.getAttribute("href")).toBe("/series/SR01");
 
     fireEvent.click(notification);
@@ -110,9 +112,11 @@ describe("NotificationBell.Menu", () => {
 
   it("returns focus to the trigger when Escape closes it", () => {
     renderBell();
+
     const trigger = screen.getByRole("button", {
       name: "Notifications, none unread",
     });
+
     trigger.focus();
     fireEvent.click(trigger);
 

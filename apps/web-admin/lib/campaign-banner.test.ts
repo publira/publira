@@ -201,6 +201,7 @@ describe("createCampaignBanner", () => {
     mockCreateCampaignBanner.mockResolvedValueOnce({ banner: rawBanner });
 
     const { createCampaignBanner } = await import("./campaign-banner");
+
     const result = await createCampaignBanner(
       {
         ...saveInput,
@@ -232,6 +233,7 @@ describe("createCampaignBanner", () => {
     );
 
     const { createCampaignBanner } = await import("./campaign-banner");
+
     const result = await createCampaignBanner(
       { ...saveInput, imageData: new Uint8Array([1]) },
       "en"
@@ -261,6 +263,7 @@ describe("createCampaignBanner", () => {
       mockCreateCampaignBanner.mockRejectedValue(invalidField(field));
 
       const { createCampaignBanner } = await import("./campaign-banner");
+
       const result = await createCampaignBanner(
         { ...saveInput, imageData: new Uint8Array([1]) },
         "en"
@@ -300,6 +303,7 @@ describe("reorderCampaignBanners", () => {
     mockReorderCampaignBanners.mockResolvedValueOnce({ banners: [] });
 
     const { reorderCampaignBanners } = await import("./campaign-banner");
+
     const result = await reorderCampaignBanners(
       { expectedIds: ["a", "b"], ids: ["b", "a"], tenantId: "TENANT001" },
       "en"
@@ -322,6 +326,7 @@ describe("reorderCampaignBanners", () => {
     );
 
     const { reorderCampaignBanners } = await import("./campaign-banner");
+
     const result = await reorderCampaignBanners(
       { expectedIds: ["a", "b"], ids: ["b", "a"], tenantId: "TENANT001" },
       "en"
@@ -340,6 +345,7 @@ describe("deleteCampaignBanner", () => {
     mockDeleteCampaignBanner.mockResolvedValueOnce({});
 
     const { deleteCampaignBanner } = await import("./campaign-banner");
+
     const result = await deleteCampaignBanner(
       { id: rawBanner.id, tenantId: "TENANT001" },
       "en"
@@ -361,6 +367,7 @@ describe("uploadCampaignBannerAspectImage", () => {
 
     const { uploadCampaignBannerAspectImage } =
       await import("./campaign-banner");
+
     const result = await uploadCampaignBannerAspectImage(
       {
         id: rawBanner.id,

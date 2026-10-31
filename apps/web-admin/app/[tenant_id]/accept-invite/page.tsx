@@ -69,9 +69,11 @@ const AcceptInviteUnusable = ({
     case "accepted": {
       return <Message message="admin.auth.accept_invite.accepted" />;
     }
+
     case "canceled": {
       return <Message message="admin.auth.accept_invite.canceled" />;
     }
+
     default: {
       return <Message message="admin.auth.accept_invite.expired" />;
     }

@@ -19,13 +19,25 @@ const vapidPublicKey = (): string => {
   const key = querySql(
     "SELECT vapid_public_key FROM platform_webpush_config WHERE subject IS NOT NULL;"
   );
+
   if (!key) {
     throw new Error(
       "Web Push is not configured on this stack (applied by e2e/scripts/db-setup.sh)"
     );
   }
+
   return key;
 };
+
+/** The `PushSubscription` the stubbed push service hands back. */
+interface StubSubscription {
+  endpoint: string;
+  toJSON: () => {
+    endpoint: string;
+    keys: { auth: string; p256dh: string };
+  };
+  unsubscribe: () => Promise<boolean>;
+}
 
 /**
  * Stand in for the browser's Push API, so a run can drive the notification
@@ -49,23 +61,24 @@ export const stubPushApi = async (
   permission: "denied" | "granted"
 ): Promise<void> => {
   await page.addInitScript(
-    ([endpoint, expectedKey, granted]) => {
+    ([endpoint, expectedKey, granted]: readonly [string, string, boolean]) => {
       // The key as `pushManager.subscribe` receives it: base64url off the
       // wire, bytes in the call.
-      const base64 = (expectedKey as string)
-        .replaceAll("-", "+")
-        .replaceAll("_", "/");
+      const base64 = expectedKey.replaceAll("-", "+").replaceAll("_", "/");
+
       const padded = base64.padEnd(
         base64.length + ((4 - (base64.length % 4)) % 4),
         "="
       );
+
       const binary = window.atob(padded);
       const expectedKeyBytes = new Uint8Array(binary.length);
       expectedKeyBytes.set(
         Array.from(binary, (character) => character.codePointAt(0) ?? 0)
       );
 
-      let subscription: unknown = null;
+      let subscription: StubSubscription | null = null;
+
       const registration = {
         pushManager: {
           getSubscription: () => Promise.resolve(subscription),
@@ -78,11 +91,14 @@ export const stubPushApi = async (
                 new Error("stub push service: userVisibleOnly must be true")
               );
             }
+
             const key = options.applicationServerKey;
             const actual = key instanceof Uint8Array ? key : new Uint8Array();
+
             const matches =
               actual.length === expectedKeyBytes.length &&
               expectedKeyBytes.every((byte, index) => actual[index] === byte);
+
             if (!matches) {
               return Promise.reject(
                 new Error(
@@ -99,9 +115,11 @@ export const stubPushApi = async (
               }),
               unsubscribe: () => {
                 subscription = null;
+
                 return Promise.resolve(true);
               },
             };
+
             return Promise.resolve(subscription);
           },
         },

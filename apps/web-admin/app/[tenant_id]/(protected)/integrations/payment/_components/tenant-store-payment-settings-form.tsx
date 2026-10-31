@@ -32,14 +32,17 @@ const StoreStatusLabel = ({ status }: { status: StoreStatus }) => {
     case "disabled": {
       return <Message message="admin.settings.store_payment.status.disabled" />;
     }
+
     case "incomplete": {
       return (
         <Message message="admin.settings.store_payment.status.incomplete" />
       );
     }
+
     case "ready": {
       return <Message message="admin.settings.store_payment.status.ready" />;
     }
+
     default: {
       return <Message message="admin.settings.store_payment.status.unset" />;
     }
@@ -53,16 +56,19 @@ const StoreStatusDescription = ({ status }: { status: StoreStatus }) => {
         <Message message="admin.settings.store_payment.status.disabled_description" />
       );
     }
+
     case "incomplete": {
       return (
         <Message message="admin.settings.store_payment.status.incomplete_description" />
       );
     }
+
     case "ready": {
       return (
         <Message message="admin.settings.store_payment.status.ready_description" />
       );
     }
+
     default: {
       return (
         <Message message="admin.settings.store_payment.status.unset_description" />
@@ -125,6 +131,7 @@ export const TenantStorePaymentSettingsForm = ({
   // A failed read leaves nothing to seed the fields with, and a save from that
   // state would write over what is stored.
   const fieldsDisabled = !canEdit || settings === undefined;
+
   // The store route needs a store that is ready as saved; one being set up in
   // this same save becomes selectable once it is.
   const storeRouteAvailable =

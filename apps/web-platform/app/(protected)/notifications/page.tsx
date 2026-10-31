@@ -32,11 +32,13 @@ const NotificationManagerData = async ({
 }: Pick<NotificationsPageProps, "searchParams">) => {
   const { token } = parseNotificationsSearchParams(await searchParams);
   const locale = await getPlatformLocale();
+
   const [listResult, unreadResult, timeZone] = await Promise.all([
     listNotifications(locale, { token }),
     countUnreadNotifications(locale),
     getPlatformDisplayTimeZone(),
   ]);
+
   await redirectToLoginIfSessionRejected(listResult, unreadResult);
 
   return (

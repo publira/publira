@@ -38,8 +38,10 @@ const siteUrl = (pathname: string): string =>
 const MEASUREMENT_ID = "G-E2EMEASURE1";
 const CONTAINER_ID = "GTM-E2EMSRD";
 const SERVER_CONTAINER_URL = "https://sgtm.example.com";
+
 /** The page whose view the site counts. */
 const SERIES_PATH = `/series/${STOREFRONT_GOOGLE_TAG_SERIES.publicId}`;
+
 /** A gateway path in the shape the server generates. */
 const GATEWAY_PATH = "_measuregatewayaa";
 
@@ -169,10 +171,12 @@ const recordTagRequests = (page: Page): string[] => {
   const requested: string[] = [];
   page.on("request", (request: Request) => {
     const url = new URL(request.url());
+
     if (TAG_HOST.test(url.hostname) || url.href.startsWith(GATEWAY_ORIGIN)) {
       requested.push(url.href);
     }
   });
+
   return requested;
 };
 
@@ -192,6 +196,7 @@ const openUntilRequested = async (
     const requested = Promise.all(
       loaders.map((loader) => page.waitForRequest(loader, { timeout: 5000 }))
     );
+
     await page.goto(siteUrl(pathname));
     await requested;
   }).toPass({ timeout: 30_000 });
@@ -207,12 +212,27 @@ const settle = async (page: Page): Promise<void> => {
   await page.waitForLoadState("networkidle");
 };
 
+/**
+ * An entry of the page's `dataLayer`: a `gtag()` command, which is the
+ * `arguments` object of the call, or an event object of the container's, which
+ * names its event and holds no arguments.
+ */
+interface DataLayerEntry extends ArrayLike<unknown>, Iterable<unknown> {
+  readonly event?: string;
+}
+
+declare global {
+  interface Window {
+    /** What {@link TAG_STAND_IN} keeps of the page views a tag would send. */
+    __e2eGoogleTag?: { pageViews: string[] };
+    /** The tags the stand-in for Google's gateway loaded. */
+    __e2eGatewayTag?: { loaded: string[] };
+    dataLayer?: DataLayerEntry[];
+  }
+}
+
 const pageViews = (page: Page): Promise<string[]> =>
-  page.evaluate(
-    () =>
-      (window as unknown as { __e2eGoogleTag?: { pageViews: string[] } })
-        .__e2eGoogleTag?.pageViews ?? []
-  );
+  page.evaluate(() => window.__e2eGoogleTag?.pageViews ?? []);
 
 const hasDataLayer = (page: Page): Promise<boolean> =>
   page.evaluate(() => "dataLayer" in window);
@@ -224,15 +244,9 @@ const hasDataLayer = (page: Page): Promise<boolean> =>
  */
 const consentCommands = (page: Page): Promise<unknown[][]> =>
   page.evaluate(() =>
-    (
-      (
-        window as unknown as {
-          dataLayer?: (Iterable<unknown> & Record<number, unknown>)[];
-        }
-      ).dataLayer ?? []
+    (window.dataLayer ?? []).flatMap((entry) =>
+      entry[0] === "consent" ? [[...entry]] : []
     )
-      .filter((entry) => entry[0] === "consent")
-      .map((entry) => [...entry])
   );
 
 const CONSENT_COOKIE = "publira_web_storefront_analytics_consent";
@@ -268,6 +282,7 @@ const recordViewBeacons = (page: Page): string[] => {
       sent.push(request.postData() ?? "");
     }
   });
+
   return sent;
 };
 
@@ -276,6 +291,7 @@ const storedCookie = async (
   name: string
 ): Promise<string | undefined> => {
   const cookies = await context.cookies(siteUrl("/"));
+
   return cookies.find((cookie) => cookie.name === name)?.value;
 };
 
@@ -364,16 +380,16 @@ test.describe("the tenant's Google tag on its site", () => {
         new Set(requested.filter((url) => !url.startsWith(origin)))
       ).toEqual(new Set());
 
-      const config = await page.evaluate(
-        () =>
-          [
-            ...(
-              window as unknown as {
-                dataLayer: ArrayLike<unknown>[];
-              }
-            ).dataLayer,
-          ].find((entry) => entry[0] === "config")?.[2] ?? null
-      );
+      const config = await page.evaluate(() => {
+        if (!window.dataLayer) {
+          throw new Error("the page has no dataLayer");
+        }
+
+        return (
+          window.dataLayer.find((entry) => entry[0] === "config")?.[2] ?? null
+        );
+      });
+
       expect(config).toEqual(
         mode === "server_container"
           ? { server_container_url: SERVER_CONTAINER_URL }
@@ -439,6 +455,7 @@ test.describe("the tenant's Google tag on its site", () => {
         : openUntilRequested(page, "/", gtmLoader(GOOGLE_TAG_ORIGIN)));
 
       const requested = recordTagRequests(page);
+
       const expectNothing = async (pathname: string) => {
         await page.goto(siteUrl(pathname));
         await settle(page);
@@ -563,6 +580,7 @@ test.describe("a tenant that asks readers first", () => {
       page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN)),
       page.waitForRequest(gtagLoader(GOOGLE_TAG_ORIGIN)),
     ]);
+
     await consentBanner(page).getByRole("button", { name: "Accept" }).click();
     await loaders;
     await expect(consentBanner(page)).toHaveCount(0);
@@ -695,6 +713,7 @@ test.describe("a tenant that asks readers first", () => {
     page,
   }) => {
     const beacons = recordViewBeacons(page);
+
     const counted = page.waitForRequest(
       (request) =>
         request.method() === "POST" &&
@@ -740,6 +759,7 @@ test.describe("a tenant whose own consent tool asks", () => {
       const requested = page.waitForRequest(gtmLoader(GOOGLE_TAG_ORIGIN), {
         timeout: 5000,
       });
+
       await page.goto(siteUrl(SERIES_PATH));
       await requested;
       expect(await consentCommands(page)).toEqual([CONSENT_DEFAULT]);
@@ -748,13 +768,16 @@ test.describe("a tenant whose own consent tool asks", () => {
 
     // A command is an `arguments` object and the container's start an event
     // object, so each is named by what it is.
-    const order = await page.evaluate(() =>
-      (
-        window as unknown as { dataLayer: Record<string, unknown>[] }
-      ).dataLayer.map((entry) =>
+    const order = await page.evaluate(() => {
+      if (!window.dataLayer) {
+        throw new Error("the page has no dataLayer");
+      }
+
+      return window.dataLayer.map((entry) =>
         entry[0] === "consent" ? "consent" : entry.event
-      )
-    );
+      );
+    });
+
     expect(order.indexOf("consent")).toBeLessThan(order.indexOf("gtm.js"));
     await expect(consentBanner(page)).toHaveCount(0);
     await expect(cookieSettings(page)).toHaveCount(0);
@@ -806,12 +829,7 @@ test.describe("the Google tag gateway on the site's own origin", () => {
     );
     await expect
       .poll(() =>
-        page.evaluate(
-          () =>
-            (
-              window as unknown as { __e2eGatewayTag?: { loaded: string[] } }
-            ).__e2eGatewayTag?.loaded.toSorted() ?? []
-        )
+        page.evaluate(() => window.__e2eGatewayTag?.loaded.toSorted() ?? [])
       )
       .toEqual([CONTAINER_ID, MEASUREMENT_ID].toSorted());
 
@@ -830,15 +848,18 @@ test.describe("the Google tag gateway on the site's own origin", () => {
       .toEqual([CONTAINER_ID, MEASUREMENT_ID].toSorted());
 
     const forwarded = await googleTagGatewayRequests();
+
     const loaders = forwardedTo(forwarded, `/${GATEWAY_PATH}/`).map(
       (request) => request.url
     );
+
     expect(loaders).toEqual(
       expect.arrayContaining([
         `/${GATEWAY_PATH}/?id=${CONTAINER_ID}`,
         `/${GATEWAY_PATH}/?id=${MEASUREMENT_ID}`,
       ])
     );
+
     for (const request of forwarded) {
       expect(request.headers.host, request.url).toBe(GATEWAY_TAG_HOST);
     }
@@ -864,14 +885,17 @@ test.describe("the Google tag gateway on the site's own origin", () => {
         headers: { Authorization: "Bearer e2e-reader-token" },
         method: "POST",
       });
+
       return response.status;
     }, `/${GATEWAY_PATH}/g/collect?v=2&en=e2e_probe`);
+
     expect(status).toBe(204);
 
     const [probe] = forwardedTo(
       await googleTagGatewayRequests(),
       `/${GATEWAY_PATH}/g/collect`
     );
+
     expect(probe?.url).toBe(`/${GATEWAY_PATH}/g/collect?v=2&en=e2e_probe`);
     expect(probe?.body).toBe("en=e2e_probe");
     expect(probe?.headers.cookie).toBe("_ga=GA1.1.e2e-reader");
@@ -882,9 +906,11 @@ test.describe("the Google tag gateway on the site's own origin", () => {
     expect(probe?.headers["x-forwarded-for"]).toMatch(/^[\d.:a-f]+$/u);
 
     const stored = await context.cookies(site);
+
     const cookies = Object.fromEntries(
       stored.map(({ name, value }) => [name, value])
     );
+
     expect(cookies).toMatchObject({
       FPLC: "e2e-stand-in",
       _ga: "GA1.1.e2e-stand-in",
@@ -909,14 +935,17 @@ test.describe("the Google tag gateway on the site's own origin", () => {
         headers: { "X-Forwarded-CountryRegion": "JP-13" },
         method: "POST",
       });
+
       return response.status;
     }, `/${GATEWAY_PATH}/g/collect?v=2&en=e2e_region`);
+
     expect(status).toBe(204);
 
     const [probe] = forwardedTo(
       await googleTagGatewayRequests(),
       `/${GATEWAY_PATH}/g/collect`
     );
+
     expect(probe?.body).toBe("en=e2e_region");
     expect(probe?.headers["x-forwarded-countryregion"]).toBe("JP-13");
   });
@@ -933,9 +962,11 @@ test.describe("the Google tag gateway on the site's own origin", () => {
       gtmContainerId: CONTAINER_ID,
       mode: "google",
     });
+
     const otherMode = await page.goto(
       siteUrl(`/${GATEWAY_PATH}/?id=${CONTAINER_ID}`)
     );
+
     expect(otherMode?.status()).toBe(404);
 
     expect(await googleTagGatewayRequests()).toEqual([]);

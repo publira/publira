@@ -60,6 +60,7 @@ export const CoinPacks = ({
             currency: pack.currency,
             locale,
           });
+
           return (
             <li
               className="grid content-between gap-4 border border-border bg-background p-4"

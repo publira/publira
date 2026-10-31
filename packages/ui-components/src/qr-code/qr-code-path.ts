@@ -23,6 +23,7 @@ export const toQrCodePath = (text: string): QrCodePath => {
   const { data, size } = encode(text, { border: QUIET_ZONE_MODULES });
 
   const modules: string[] = [];
+
   for (const [y, row] of data.entries()) {
     for (const [x, filled] of row.entries()) {
       if (filled) {

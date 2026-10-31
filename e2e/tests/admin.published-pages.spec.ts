@@ -107,6 +107,7 @@ test.describe("admin published pages", () => {
 
   const trackPage = (pageId: string): string => {
     createdPageIds.push(pageId);
+
     return pageId;
   };
 
@@ -528,6 +529,7 @@ test.describe("admin published pages", () => {
     const response = await page.goto(
       adminUrl(`/pages/${OTHER_TENANT.page.id}`)
     );
+
     // Cache Components commits the shell with 200. What renders below it is the
     // console not-found page, never the foreign page's workspace.
     expect(response?.status(), await page.content()).toBe(200);

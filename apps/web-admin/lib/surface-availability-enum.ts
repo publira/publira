@@ -30,6 +30,7 @@ export const toSurfaceAvailabilityValue = (
   ) {
     return "";
   }
+
   return SURFACE_AVAILABILITIES.find(
     (value) => SURFACE_AVAILABILITY_ENUM[value] === availability
   );

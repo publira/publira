@@ -72,6 +72,7 @@ it("keeps the ids unique when it is mounted twice", async () => {
     PageForm({ action, tenantId: "TENANT001" }),
     PageForm({ action, tenantId: "TENANT001" }),
   ]);
+
   render(
     <>
       {first}
@@ -99,24 +100,38 @@ const submit = () => {
 const slugInput = () =>
   document.querySelector<HTMLInputElement>('input[name="slug"]');
 
+/** The slug field, failing the test when the form has none. */
+const requiredSlugInput = (): HTMLInputElement => {
+  const input = slugInput();
+
+  if (!input) {
+    throw new Error("the slug field is not on screen");
+  }
+
+  return input;
+};
+
 /** Whether `message` sits between the slug input and the title input. */
 const isBesideSlug = (message: HTMLElement): boolean => {
   const order = [...document.querySelectorAll("*")];
+
   const at = (element: Element | null) =>
     element ? order.indexOf(element) : -1;
+
   const slug = at(slugInput());
   const title = at(screen.getByLabelText<HTMLInputElement>(/Title/u));
+
   return slug < at(message) && at(message) < title;
 };
 
 it("names the URL the slug makes, tidied once the field is left", async () => {
   await renderForm();
 
-  fireEvent.change(slugInput() as HTMLInputElement, {
+  fireEvent.change(requiredSlugInput(), {
     target: { value: "//help//faq/" },
   });
   // React listens for `focusout` to raise `onBlur`.
-  fireEvent.focusOut(slugInput() as HTMLInputElement);
+  fireEvent.focusOut(requiredSlugInput());
 
   expect(slugInput()?.value).toBe("/help/faq");
   expect(
@@ -130,6 +145,7 @@ it("shows a slug failure beside the slug field", async () => {
     message: "Please check the information you entered.",
     ok: false,
   };
+
   await renderForm(() => Promise.resolve(failure));
 
   submit();
@@ -137,6 +153,7 @@ it("shows a slug failure beside the slug field", async () => {
   const message = await screen.findByText(
     "The site keeps this path for signing in."
   );
+
   expect(isBesideSlug(message)).toBe(true);
   expect(slugInput()?.getAttribute("aria-invalid")).toBe("true");
   expect(
@@ -156,7 +173,11 @@ it("shows any other failure under the fields", async () => {
 });
 
 it("posts whether the page is shown in the footer either way", async () => {
-  const create = vi.fn(action);
+  const create =
+    vi.fn<(state: PageFormState, formData: FormData) => Promise<PageFormState>>(
+      action
+    );
+
   await renderForm(create);
 
   submit();
@@ -164,10 +185,9 @@ it("posts whether the page is shown in the footer either way", async () => {
   await waitFor(() => {
     expect(create).toHaveBeenCalledOnce();
   });
-  const [, formData] = create.mock.calls[0] as unknown as [
-    PageFormState,
-    FormData,
-  ];
+
+  const [[, formData]] = create.mock.calls;
+
   expect(formData.get("tenant_id")).toBe("TENANT001");
   expect(formData.get("title")).toBe("Help");
   expect(formData.get("display_in_footer")).toBe("false");

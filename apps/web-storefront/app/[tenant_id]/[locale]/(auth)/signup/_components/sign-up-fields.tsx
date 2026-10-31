@@ -23,10 +23,12 @@ import { getTenantId } from "#lib/tenant-id";
  */
 export const BirthDateField = async () => {
   const tenantId = await getTenantId();
+
   const [ageVerification, t] = await Promise.all([
     getTenantAgeVerification(tenantId),
     getMessages(),
   ]);
+
   if (ageVerification === "none") {
     return null;
   }
@@ -50,6 +52,7 @@ export const BirthDateField = async () => {
 export const ConsentField = async () => {
   const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
   const pages = consentPages(await getTenantLegalPages(tenantId, locale));
+
   if (pages.length === 0) {
     return null;
   }

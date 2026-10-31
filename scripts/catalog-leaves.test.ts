@@ -2,16 +2,14 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { namespaceLeaves, variableMismatches } from "./catalog-leaves.ts";
+import type { CatalogTree } from "./catalog-leaves.ts";
 
 const locales = [{ code: "ja" }, { code: "en" }];
 
-const leaves = (
-  first: Record<string, unknown>,
-  second: Record<string, unknown>
-) =>
+const leaves = (first: CatalogTree, second: CatalogTree) =>
   namespaceLeaves(
     locales,
-    new Map<string, unknown>([
+    new Map<string, CatalogTree>([
       ["ja", { storefront: first }],
       ["en", { storefront: second }],
     ]),

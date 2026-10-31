@@ -37,6 +37,7 @@ describe("platformConsolePasswordResetDataSchema", () => {
 describe("PlatformConsolePasswordResetEmail", () => {
   it("the ja mail carries the link and the expiry in the given time zone", async () => {
     const timeZone = "UTC";
+
     const result = await renderEmail({
       data,
       locale: "ja",
@@ -46,6 +47,7 @@ describe("PlatformConsolePasswordResetEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -61,6 +63,7 @@ describe("PlatformConsolePasswordResetEmail", () => {
 
   it("the en mail comes from the English catalog and its own time zone", async () => {
     const timeZone = "America/Los_Angeles";
+
     const result = await renderEmail({
       data,
       locale: "en",
@@ -70,6 +73,7 @@ describe("PlatformConsolePasswordResetEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

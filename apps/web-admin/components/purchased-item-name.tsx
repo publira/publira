@@ -17,9 +17,11 @@ export const PurchasedItemName = ({
 }) => {
   const href = purchasedItemHref(purchase);
   const label = purchasedItemLabel(purchase, t);
+
   if (href === null) {
     return <span className="font-medium">{label}</span>;
   }
+
   return (
     <Link
       className="font-medium underline-offset-4 hover:underline"

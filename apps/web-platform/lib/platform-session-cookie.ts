@@ -25,9 +25,11 @@ export const toPlatformSession = (
 ): PlatformSession | null => {
   const accessToken = token?.trim() ?? "";
   const expiresAt = parseInstant(expiresAtRaw ?? "");
+
   if (!(accessToken && expiresAt)) {
     return null;
   }
+
   return { accessToken, expiresAt };
 };
 
@@ -49,6 +51,7 @@ export const writePlatformSessionCookie = async (
     },
     resolveAuthSecret()
   );
+
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions(toCookieExpires(session.expiresAt)),

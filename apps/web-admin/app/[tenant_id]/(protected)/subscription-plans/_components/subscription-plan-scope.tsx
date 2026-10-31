@@ -27,6 +27,7 @@ const SubscriptionPlanScopeContext =
 
 const useSubscriptionPlanScope = () => {
   const context = use(SubscriptionPlanScopeContext);
+
   if (!context) {
     throw new Error("Rendered outside a SubscriptionPlanScope.");
   }
@@ -53,6 +54,7 @@ const SubscriptionPlanScopeRoot = ({
   const [scope, setScope] = useState(initialScope);
   const [labelIds, setLabelIds] = useState(initialLabelIds);
   const [seriesIds, setSeriesIds] = useState(initialSeriesIds);
+
   const context = useMemo(
     () => ({ labelIds, scope, seriesIds, setLabelIds, setScope, setSeriesIds }),
     [labelIds, scope, seriesIds]

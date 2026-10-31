@@ -24,6 +24,7 @@ export const shareText = (
   credits: readonly CreatorCredit[]
 ): string => {
   const names = credits.map((credit) => credit.name);
+
   if (names.length === 0) {
     return title;
   }

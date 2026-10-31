@@ -17,12 +17,16 @@ const readThemeCssFallbacks = async (): Promise<Record<string, string>> => {
     new URL(import.meta.resolve("@publira/brand/theme.css")),
     "utf-8"
   );
+
   const declaration =
     /var\(\s*(?<property>--publira-color-[a-z-]+),\s*(?<value>#[0-9a-f]{6})\s*\)/gu;
+
   const fallbacks: Record<string, string> = {};
+
   for (const [, property, value] of source.matchAll(declaration)) {
     fallbacks[property] = value;
   }
+
   return fallbacks;
 };
 
@@ -46,6 +50,7 @@ describe("default palette copies", () => {
 
   it("gives every email color the same value as the theme token it copies", async () => {
     const fallbacks = await readThemeCssFallbacks();
+
     const expected = Object.fromEntries(
       Object.entries(emailColorTokens).map(([name, token]) => [
         name,

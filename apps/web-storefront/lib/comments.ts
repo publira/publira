@@ -205,6 +205,7 @@ export const listEpisodeComments = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: emptyPage };
     }
+
     return await localizedReadFailure<EpisodeCommentPage>(
       error,
       input.locale,
@@ -236,6 +237,7 @@ export const listMyEpisodeComments = async (
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     // Not a failure: a reader without a session has no comments of their own,
     // and the section renders the sign-in prompt rather than a message.
@@ -267,7 +269,9 @@ export const listMyEpisodeComments = async (
     if (isMissingResourceRpcError(error) || isUnauthenticatedRpcError(error)) {
       return { ok: true, value: [] };
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -292,19 +296,25 @@ const compareNewestFirst = (
 ): number => {
   const leftAt = parseInstant(left.createdAt);
   const rightAt = parseInstant(right.createdAt);
+
   if (leftAt && rightAt) {
     const byTime = Temporal.Instant.compare(rightAt, leftAt);
+
     if (byTime !== 0) {
       return byTime;
     }
+
     return right.id.localeCompare(left.id);
   }
+
   if (leftAt) {
     return -1;
   }
+
   if (rightAt) {
     return 1;
   }
+
   return right.id.localeCompare(left.id);
 };
 
@@ -324,14 +334,19 @@ const withinPageWindow = (
   bounds: { newest?: string; oldest?: string }
 ): boolean => {
   const at = parseInstant(createdAt);
+
   if (!at) {
     return false;
   }
+
   const newest = bounds.newest ? parseInstant(bounds.newest) : null;
+
   if (newest && Temporal.Instant.compare(at, newest) > 0) {
     return false;
   }
+
   const oldest = bounds.oldest ? parseInstant(bounds.oldest) : null;
+
   return !(oldest && Temporal.Instant.compare(at, oldest) < 0);
 };
 
@@ -364,16 +379,20 @@ export const mergeOwnEpisodeComments = (
   }
 
   const published = new Set(page.comments.map((comment) => comment.id));
+
   const unpublished = ownComments.filter(
     (comment) => !published.has(comment.id)
   );
+
   if (unpublished.length === 0) {
     return page.comments;
   }
+
   if (page.comments.length === 0) {
     if (page.nextToken || page.previousToken) {
       return page.comments;
     }
+
     return unpublished.toSorted(compareNewestFirst);
   }
 
@@ -381,6 +400,7 @@ export const mergeOwnEpisodeComments = (
     newest: page.previousToken ? page.comments[0]?.createdAt : undefined,
     oldest: page.nextToken ? page.comments.at(-1)?.createdAt : undefined,
   };
+
   const placed = unpublished.filter((comment) =>
     withinPageWindow(comment.createdAt, bounds)
   );
@@ -412,6 +432,7 @@ export const postEpisodeComment = async (
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     // The Action resolves the session before calling this, so an empty token
     // here means it expired in between; the caller sends the reader to sign in.
@@ -431,6 +452,7 @@ export const postEpisodeComment = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       awaitingApproval: response.comment?.awaitingApproval === true,
       ok: true,
@@ -439,7 +461,9 @@ export const postEpisodeComment = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -481,6 +505,7 @@ export const withdrawEpisodeComment = async (
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("storefront.episode.comments.delete_failed"),
@@ -496,12 +521,15 @@ export const withdrawEpisodeComment = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -574,6 +602,7 @@ export const reportEpisodeComment = async (
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("storefront.episode.comments.report_failed"),
@@ -592,12 +621,15 @@ export const reportEpisodeComment = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

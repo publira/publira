@@ -33,6 +33,7 @@ const MfaSection = async () => {
 
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
+
     return (
       <SectionError.Root>
         <SectionError.Heading>

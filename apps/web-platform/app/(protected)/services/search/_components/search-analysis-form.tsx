@@ -125,12 +125,15 @@ const SharedUsedBy = ({
   const sharedBy = getLocales().filter(
     (code) => settings.localeAnalyses[code] === undefined
   );
+
   if (sharedBy.length === 0) {
     return <Message message="platform.search.analysis.shared_used_by_none" />;
   }
+
   if (sharedBy.length === getLocales().length) {
     return <Message message="platform.search.analysis.shared_used_by_all" />;
   }
+
   return (
     <Message
       message="platform.search.analysis.shared_used_by"

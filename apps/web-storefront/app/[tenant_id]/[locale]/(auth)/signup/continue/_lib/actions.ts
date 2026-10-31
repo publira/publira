@@ -62,10 +62,12 @@ export const continueSignUpAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     continueSignUpFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       agreedPageVersionIds: "values",
@@ -75,6 +77,7 @@ export const continueSignUpAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -84,6 +87,7 @@ export const continueSignUpAction = async (
 
   const { agreedPageVersionIds, birthDate, locale, tenantId } = parsed.data;
   const pending = await readPendingSignUp();
+
   if (!pending || pending.tenantId !== tenantId) {
     redirect(
       await signInFailurePath(
@@ -94,10 +98,12 @@ export const continueSignUpAction = async (
   }
 
   const publishedVersionIds = await readConsentPageVersionIds(tenantId, locale);
+
   if (!sameVersions(agreedPageVersionIds, publishedVersionIds)) {
     // The form's cached pages are the stale ones, so dropping them is what
     // re-renders it with the current pages to agree to.
     updateTag(tenantSiteTag(tenantId));
+
     return { message: t("storefront.auth.errors.consent_changed"), ok: false };
   }
 
@@ -106,18 +112,23 @@ export const continueSignUpAction = async (
     birthDate,
     name: pending.name,
   });
+
   if (outcome.kind === "consent_required") {
     updateTag(tenantSiteTag(tenantId));
+
     return { message: t("storefront.auth.errors.consent_changed"), ok: false };
   }
+
   if (outcome.kind === "sign_up_closed") {
     await clearPendingSignUp();
     redirect(
       await signUpClosedPath({ locale, returnTo: pending.returnTo, tenantId })
     );
   }
+
   if (outcome.kind === "refused") {
     rethrowUnclassifiedRpcError(outcome.error);
+
     // A birth date the API refused is the reader's to correct; anything else
     // ends the sign-in, which has to start over with a fresh token.
     if (rpcErrorDisposition(outcome.error) === "invalid-argument") {
@@ -130,6 +141,7 @@ export const continueSignUpAction = async (
         ok: false,
       };
     }
+
     await clearPendingSignUp();
     redirect(
       await signInFailurePath(

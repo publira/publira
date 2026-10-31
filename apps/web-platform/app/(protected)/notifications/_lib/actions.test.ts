@@ -36,9 +36,11 @@ vi.mock("#lib/notification", () => ({
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -57,6 +59,7 @@ describe("notification actions", () => {
     mockMarkNotificationAsRead.mockResolvedValueOnce({ ok: true });
 
     const { markNotificationAsReadAction } = await import("./actions");
+
     const result = await markNotificationAsReadAction(
       null,
       formData({ notification_id: notificationId })
@@ -72,6 +75,7 @@ describe("notification actions", () => {
 
   it("does not call the API for an invalid notification_id", async () => {
     const { markNotificationAsReadAction } = await import("./actions");
+
     const result = await markNotificationAsReadAction(
       null,
       formData({ notification_id: "not-a-uuid" })

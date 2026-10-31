@@ -20,6 +20,7 @@ describe("renewFromPageUrls", () => {
         "page-2": "/images/episodes/page-2?t=fresh",
       })
     );
+
     const renewPageUrl = renewFromPageUrls(readPageUrls);
 
     await expect(
@@ -35,6 +36,7 @@ describe("renewFromPageUrls", () => {
     const readPageUrls = vi.fn(() =>
       Promise.resolve({ "page-1": "/images/episodes/page-1?t=fresh" })
     );
+
     const renewPageUrl = renewFromPageUrls(readPageUrls);
 
     await renewPageUrl(firstPage);

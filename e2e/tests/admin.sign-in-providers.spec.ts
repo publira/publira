@@ -87,14 +87,19 @@ interface OfferedProviders {
  */
 const offeredProviders = async (page: Page): Promise<OfferedProviders> => {
   const tenantId = querySql(`SELECT ${tenantRow};`);
+
   const body = await page.evaluate(async (id) => {
     const response = await fetch("/rpc/publira.v1.TenantService/GetTenant", {
       body: JSON.stringify({ tenant: { tenantId: id } }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
     });
+
+    // SAFETY: the JSON the Connect handler for TenantService.GetTenant
+    // returns, which carries the offered providers at the top level.
     return (await response.json()) as OfferedProviders;
   }, tenantId);
+
   return { appleSignIn: body.appleSignIn, googleSignIn: body.googleSignIn };
 };
 
@@ -131,11 +136,14 @@ interface SignInButtons {
  */
 const signInButtons = async (page: Page): Promise<SignInButtons> => {
   await page.goto(SITE_LOGIN_URL);
+
   const marked = async (name: string): Promise<boolean> => {
     const button = page.getByRole("button", { exact: true, name });
     await expect(button).toBeVisible();
+
     return await button.evaluate((element) => {
       const image = element.firstElementChild;
+
       return (
         image instanceof HTMLImageElement &&
         image.complete &&
@@ -143,6 +151,7 @@ const signInButtons = async (page: Page): Promise<SignInButtons> => {
       );
     });
   };
+
   return {
     appleMarked: await marked("Continue with Apple"),
     googleMarked: await marked("Continue with Google"),

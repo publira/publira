@@ -10,9 +10,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CommentCreatorMark } from "./comment-creator-mark";
 
-const { renderLocale } = vi.hoisted(() => ({
-  renderLocale: { current: "en" as Locale },
-}));
+/** The language the mocked catalog answers in, which a test switches. */
+interface MessageLocale {
+  current: Locale;
+}
+
+const { renderLocale } = vi.hoisted(() => {
+  const locale: MessageLocale = { current: "en" };
+
+  return { renderLocale: locale };
+});
 
 vi.mock("#components/message", () => ({
   Message: ({

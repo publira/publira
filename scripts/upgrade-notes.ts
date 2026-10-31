@@ -57,10 +57,12 @@ export const readUpgradeNotes = (
   body: string | null | undefined
 ): string | undefined => {
   const source = (body ?? "").replaceAll("\r\n", "\n").replaceAll(COMMENT, "");
+
   const tree = fromMarkdown(source, {
     extensions: [gfm()],
     mdastExtensions: [gfmFromMarkdown()],
   });
+
   const headings = tree.children.flatMap((node) =>
     node.type === "heading" && node.depth <= 2 && node.position !== undefined
       ? [
@@ -71,9 +73,11 @@ export const readUpgradeNotes = (
         ]
       : []
   );
+
   const at = headings.findIndex(({ end, start }) =>
     HEADING.test(source.slice(start, end).trimStart())
   );
+
   if (at === -1) {
     return undefined;
   }
@@ -128,6 +132,11 @@ const namesIn = (lines: readonly string[]): Set<string> =>
  */
 export type BaseLookup = (name: string) => Map<string, number>;
 
+export interface EnvironmentChanges {
+  added: string[];
+  removed: string[];
+}
+
 /**
  * The environment variables the diff starts or stops reading. A name only
  * added is new when the base branch names it nowhere, and a name only removed
@@ -138,12 +147,13 @@ export type BaseLookup = (name: string) => Map<string, number>;
 export const environmentChanges = (
   files: readonly ChangedFile[],
   lookup: BaseLookup
-): { added: string[]; removed: string[] } => {
+): EnvironmentChanges => {
   const shipped = files.filter(
     ({ filename, previous_filename: previous }) =>
       isInstallSource(filename) ||
       (previous !== undefined && isInstallSource(previous))
   );
+
   const plus = shipped.map((file) => changedLines(file.patch, "+"));
   const minus = shipped.map((file) => changedLines(file.patch, "-"));
   const addedNames = namesIn(plus.flat());
@@ -160,9 +170,11 @@ export const environmentChanges = (
         const index = shipped.findIndex(
           (file) => (file.previous_filename ?? file.filename) === path
         );
+
         if (index === -1) {
           return false;
         }
+
         const pattern = new RegExp(`\\b${name}\\b`, "u");
 
         return (
@@ -201,27 +213,35 @@ export const watchedChanges = (
       changes.push(`adds the migration ${file.filename}`);
     }
   }
+
   const routing = files.filter(({ filename, previous_filename: previous }) =>
     [filename, previous].some(
       (path) => path?.startsWith("infra/proxy/") && !path.endsWith(".md")
     )
   );
+
   for (const file of routing) {
     changes.push(`changes the routing in ${file.filename}`);
   }
+
   if (files.some(({ filename }) => filename === ROLES)) {
     changes.push(`changes the database roles in ${ROLES}`);
   }
+
   const compose = files.find(({ filename }) => filename === COMPOSE);
+
   if (compose?.patch?.split("\n").some((line) => COMPOSE_ENTRY.test(line))) {
     changes.push(
       `adds or removes a service, a secret, or a volume in ${COMPOSE}`
     );
   }
+
   const { added, removed } = environmentChanges(files, lookup);
+
   for (const name of added) {
     changes.push(`starts reading ${name}`);
   }
+
   for (const name of removed) {
     changes.push(`stops reading ${name}`);
   }
@@ -235,6 +255,7 @@ const GIT = "/usr/bin/git";
 /** {@link BaseLookup} over the checkout the process runs in. */
 const gitGrep: BaseLookup = (name) => {
   let output = "";
+
   try {
     output = execFileSync(
       GIT,
@@ -286,16 +307,23 @@ export const renderReleaseNotes = (
   previousTag: string | null
 ): string => {
   const lines = ["## Upgrade notes", ""];
+
   if (previousTag === null) {
     return [...lines, FIRST_RELEASE, ""].join("\n");
   }
+
   const entries = pulls
-    .map((pull) => ({ ...pull, notes: readUpgradeNotes(pull.body) ?? "" }))
-    .filter(({ notes }) => notes !== "" && !declaresNone(notes))
+    .flatMap((pull) => {
+      const notes = readUpgradeNotes(pull.body) ?? "";
+
+      return notes !== "" && !declaresNone(notes) ? [{ ...pull, notes }] : [];
+    })
     .toSorted((a, b) => a.number - b.number);
+
   if (entries.length === 0) {
     return [...lines, NOTHING, ""].join("\n");
   }
+
   for (const { notes, number, title } of entries) {
     lines.push(`### ${title} (#${number})`, "", notes, "");
   }
@@ -309,20 +337,25 @@ const check = (input: {
   files: ChangedFile[];
 }): void => {
   const changes = watchedChanges(input.files, gitGrep, input.changedFiles);
+
   if (changes.length === 0) {
     console.log("Nothing in this diff is a change an operator acts on.");
 
     return;
   }
+
   const notes = readUpgradeNotes(input.body);
+
   for (const change of changes) {
     console.log(`This pull request ${change}.`);
   }
+
   if (notes !== undefined && notes !== "") {
     console.log("\nIts Upgrade notes section answers for them.");
 
     return;
   }
+
   console.error(
     [
       "",
@@ -340,6 +373,7 @@ const check = (input: {
 if (import.meta.main) {
   const command = process.argv.at(2);
   const input = JSON.parse(await text(process.stdin));
+
   if (command === "check") {
     check(input);
   } else if (command === "render") {

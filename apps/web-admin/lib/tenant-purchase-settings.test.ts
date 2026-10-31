@@ -72,6 +72,7 @@ describe("tenant-purchase-settings", () => {
 
     const { getTenantPurchaseSettings } =
       await import("./tenant-purchase-settings");
+
     const result = await getTenantPurchaseSettings("TENANT001", "en");
 
     expect(result).toEqual({
@@ -102,6 +103,7 @@ describe("tenant-purchase-settings", () => {
 
     const { getTenantPurchaseSettings } =
       await import("./tenant-purchase-settings");
+
     const result = await getTenantPurchaseSettings("TENANT001", "en");
 
     expect(result).toEqual({
@@ -121,6 +123,7 @@ describe("tenant-purchase-settings", () => {
 
     const { getTenantPurchaseSettings } =
       await import("./tenant-purchase-settings");
+
     const result = await getTenantPurchaseSettings("TENANT001", "en");
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
@@ -139,6 +142,7 @@ describe("tenant-purchase-settings", () => {
 
     const { getTenantPurchaseSettings } =
       await import("./tenant-purchase-settings");
+
     const result = await getTenantPurchaseSettings("TENANT001", "en");
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: false });
@@ -181,6 +185,7 @@ describe("tenant-purchase-settings", () => {
 
     const { updateTenantPurchaseSettings } =
       await import("./tenant-purchase-settings");
+
     const result = await updateTenantPurchaseSettings(
       {
         appStoreUrl: "",
@@ -228,6 +233,7 @@ describe("tenant-purchase-settings", () => {
 
     const { updateTenantPurchaseSettings } =
       await import("./tenant-purchase-settings");
+
     const result = await updateTenantPurchaseSettings(
       {
         appStoreUrl: "https://apps.apple.com/app/id123",

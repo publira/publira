@@ -28,6 +28,7 @@ export const RankingAgeGate = ({
 }) => {
   let closedBecause: ReactNode;
   let ageAction: ReactNode = null;
+
   if (!signedIn) {
     closedBecause = (
       <Message message="storefront.ranking.age_gate.guest_description" />

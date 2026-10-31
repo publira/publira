@@ -31,15 +31,19 @@ export const purchaseStatus = (
   if (purchase.revocationReason === "dispute") {
     return "disputed";
   }
+
   if (purchase.refundedAt || purchase.revocationReason === "refund") {
     return "refunded";
   }
+
   if (purchase.revocationReason === "staff") {
     return "refunding";
   }
+
   if (purchase.refundedAmount > 0) {
     return "partly_refunded";
   }
+
   if (
     purchase.expiresAt &&
     Temporal.Instant.compare(Temporal.Instant.from(purchase.expiresAt), now) <=
@@ -47,6 +51,7 @@ export const purchaseStatus = (
   ) {
     return "expired";
   }
+
   return "active";
 };
 
@@ -68,21 +73,27 @@ const PurchaseStatusLabel = ({ status }: { status: PurchaseStatus }) => {
     case "active": {
       return <Message message="admin.purchases.status.active" />;
     }
+
     case "disputed": {
       return <Message message="admin.purchases.status.disputed" />;
     }
+
     case "expired": {
       return <Message message="admin.purchases.status.expired" />;
     }
+
     case "partly_refunded": {
       return <Message message="admin.purchases.status.partly_refunded" />;
     }
+
     case "refunded": {
       return <Message message="admin.purchases.status.refunded" />;
     }
+
     case "refunding": {
       return <Message message="admin.purchases.status.refunding" />;
     }
+
     default: {
       return null;
     }
@@ -138,9 +149,11 @@ export const PurchasePaidThrough = ({
       </Suspense>
     );
   }
+
   if (purchase.provider) {
     return providerNames.get(purchase.provider) ?? purchase.provider;
   }
+
   switch (purchase.store) {
     case "": {
       return (
@@ -149,6 +162,7 @@ export const PurchasePaidThrough = ({
         </Suspense>
       );
     }
+
     case "app_store": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -156,6 +170,7 @@ export const PurchasePaidThrough = ({
         </Suspense>
       );
     }
+
     case "google_play": {
       return (
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
@@ -163,6 +178,7 @@ export const PurchasePaidThrough = ({
         </Suspense>
       );
     }
+
     default: {
       return purchase.store;
     }

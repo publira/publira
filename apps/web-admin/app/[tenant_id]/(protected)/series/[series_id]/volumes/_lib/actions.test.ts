@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { VolumeItem } from "#lib/volume";
+
 const {
   mockAssertSameOrigin,
   mockCreateVolume,
@@ -71,7 +73,7 @@ const OTHER_VOLUME_ID = "018f0e6a-6000-7000-8000-0000000000b2";
 const EPISODE_ONE = "018f0e6a-6000-7000-8000-0000000000c1";
 const EPISODE_TWO = "018f0e6a-6000-7000-8000-0000000000c2";
 
-const savedVolume = (overrides: Record<string, unknown> = {}) => ({
+const savedVolume = (overrides: Partial<VolumeItem> = {}) => ({
   coverImageUpdatedAt: "",
   coverImageVariants: [],
   episodeIds: [],
@@ -99,9 +101,11 @@ const formData = (fields: Record<string, string | File>) => {
   const data = new FormData();
   data.set("tenant_id", "TENANT001");
   data.set("series_id", SERIES_ID);
+
   for (const [name, value] of Object.entries(fields)) {
     data.set(name, value);
   }
+
   return data;
 };
 

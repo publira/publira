@@ -54,11 +54,13 @@ interface OtlpTraces {
 
 const jaegerBaseUrl = (): string => {
   const url = process.env.PUBLIRA_E2E_JAEGER_BASE_URL?.trim();
+
   if (!url) {
     throw new Error(
       "PUBLIRA_E2E_JAEGER_BASE_URL is unset: run the suite through `task e2e:tracing`, which starts the stack with PUBLIRA_E2E_TRACING=on"
     );
   }
+
   return url.replace(/\/$/u, "");
 };
 
@@ -98,20 +100,27 @@ export const tracesOfService = async (
       .toString(),
     "query.start_time_min": since.toString(),
   });
+
   const response = await fetch(`${jaegerBaseUrl()}/api/v3/traces?${query}`);
+
   // The API answers a search that matched nothing with a 404.
   if (response.status === 404) {
     return [];
   }
+
   if (!response.ok) {
     throw new Error(
       `Jaeger did not answer the trace search: ${response.status} ${await response.text()}`
     );
   }
+
+  // SAFETY: the OTLP JSON Jaeger's `/api/v3/traces` answers a search with.
   const { result } = (await response.json()) as OtlpTraces;
+
   return (result?.resourceSpans ?? []).flatMap(({ resource, scopeSpans }) => {
     const serviceName =
       attributeRecord(resource?.attributes)["service.name"] ?? "";
+
     return (scopeSpans ?? []).flatMap(({ spans }) =>
       (spans ?? []).map((span) => ({
         attributes: attributeRecord(span.attributes),

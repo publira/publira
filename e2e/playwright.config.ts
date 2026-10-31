@@ -823,6 +823,7 @@ const withinGroup = (
   projects: PlaywrightTestProject[]
 ): PlaywrightTestProject[] => {
   const names = new Set(projects.map(({ name }) => name));
+
   return projects.map((project) => ({
     ...project,
     dependencies: project.dependencies?.filter((name) => names.has(name)),

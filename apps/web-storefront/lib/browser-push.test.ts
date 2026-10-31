@@ -18,7 +18,12 @@ const ENDPOINT = "https://push.test/subscriptions/abc";
  */
 const VAPID_PUBLIC_KEY = "AAECAwQFBgcICQoLDA0ODw";
 
-const installPushApi = (registration?: unknown) => {
+/** The part of a `ServiceWorkerRegistration` a test gives the module. */
+interface FakeRegistration {
+  pushManager?: Partial<Record<"getSubscription" | "subscribe", () => void>>;
+}
+
+const installPushApi = (registration?: FakeRegistration) => {
   const register = vi.fn().mockResolvedValue(registration);
   Object.defineProperty(navigator, "serviceWorker", {
     configurable: true,
@@ -129,7 +134,7 @@ describe("toWebPushSubscriptionKeys", () => {
         endpoint: ENDPOINT,
         keys: { auth: "auth-key", p256dh: "p256dh-key" },
       }),
-    } as unknown as PushSubscription;
+    };
 
     expect(toWebPushSubscriptionKeys(subscription)).toEqual({
       auth: "auth-key",
@@ -141,7 +146,7 @@ describe("toWebPushSubscriptionKeys", () => {
   it("reports a subscription missing a key rather than registering it half-filled", () => {
     const subscription = {
       toJSON: () => ({ endpoint: ENDPOINT, keys: { auth: "auth-key" } }),
-    } as unknown as PushSubscription;
+    };
 
     expect(toWebPushSubscriptionKeys(subscription)).toBeNull();
   });

@@ -10,6 +10,7 @@ export const GET = async (
 ) => {
   const segments = await params;
   const genreId = parseGenreDetailParams(segments);
+
   return openGraphCardResponse(
     segments,
     genreId ? { genreId, kind: "genre" } : null

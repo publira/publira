@@ -20,16 +20,27 @@ import type { KnownCrawler } from "#lib/tenant-crawler-settings-shared";
 import type { TenantCrawlerSettingsActionState } from "../settings-types";
 import { TenantCrawlerSettingsForm } from "./tenant-crawler-settings-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<TenantCrawlerSettingsActionState>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantCrawlerSettingsActionState>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantCrawlerSettingsAction: (_state: unknown, formData: FormData) => {
+  updateTenantCrawlerSettingsAction: (
+    _state: TenantCrawlerSettingsActionState,
+    formData: FormData
+  ) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -45,6 +56,7 @@ vi.mock("#components/message", () => ({
 }));
 
 const SUBMIT = "Save the crawler exclusions";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
 
@@ -197,6 +209,7 @@ describe("TenantCrawlerSettingsForm", () => {
 
   it("names a path the server would refuse once its field is left", () => {
     renderForm();
+
     const refusal =
       '"/sitemap.xml" cannot be excluded, since crawlers need robots.txt and the sitemap to read the site.';
 
@@ -266,8 +279,10 @@ describe("TenantCrawlerSettingsForm", () => {
     await waitFor(() => {
       expect(save.formData).toBeDefined();
     });
+
     const refusal =
       "CCBot can no longer be excluded. Reload the page and choose again.";
+
     save.current.resolve({
       fieldErrors: { excludedUserAgents: refusal },
       message: refusal,

@@ -317,6 +317,7 @@ describe("createGenre", () => {
     );
 
     const { createGenre } = await import("./genre");
+
     const result = await createGenre(
       { name: "fantasy", tenantId: "TENANT001" },
       "en"
@@ -339,6 +340,7 @@ describe("createGenre", () => {
     });
 
     const { createGenre } = await import("./genre");
+
     const result = await createGenre(
       { name: "Fantasy", tenantId: "TENANT001" },
       "en"
@@ -370,6 +372,7 @@ describe("updateGenre", () => {
     );
 
     const { updateGenre } = await import("./genre");
+
     const result = await updateGenre(
       { id: "GENRE001", name: "!!!", tenantId: "TENANT001" },
       "en"
@@ -396,6 +399,7 @@ describe("saveGenreNames", () => {
     mockDeleteGenreTranslation.mockResolvedValue({ genre: savedGenre });
 
     const { saveGenreNames } = await import("./genre");
+
     const result = await saveGenreNames(
       {
         id: "genre-1",
@@ -438,6 +442,7 @@ describe("saveGenreNames", () => {
       );
 
     const { saveGenreNames } = await import("./genre");
+
     const result = await saveGenreNames(
       {
         id: "genre-1",
@@ -467,6 +472,7 @@ describe("saveGenreNames", () => {
     );
 
     const { saveGenreNames } = await import("./genre");
+
     const result = await saveGenreNames(
       {
         id: "genre-1",
@@ -596,6 +602,7 @@ describe("updateGenre with an eye-catch", () => {
     );
 
     const { updateGenre } = await import("./genre");
+
     const result = await updateGenre(
       {
         eyeCatchImageData: new Uint8Array([1]),
@@ -628,6 +635,7 @@ describe("uploadGenreEyeCatchAspectImage", () => {
     });
 
     const { uploadGenreEyeCatchAspectImage } = await import("./genre");
+
     const result = await uploadGenreEyeCatchAspectImage(
       {
         id: "GENRE001",
@@ -662,6 +670,7 @@ describe("uploadGenreEyeCatchAspectImage", () => {
     );
 
     const { uploadGenreEyeCatchAspectImage } = await import("./genre");
+
     const result = await uploadGenreEyeCatchAspectImage(
       {
         id: "GENRE001",
@@ -696,6 +705,7 @@ describe("reorderGenres", () => {
     });
 
     const { reorderGenres } = await import("./genre");
+
     const result = await reorderGenres(
       {
         expectedIds: ["GENRE001", "GENRE002"],
@@ -722,6 +732,7 @@ describe("reorderGenres", () => {
     );
 
     const { reorderGenres } = await import("./genre");
+
     const result = await reorderGenres(
       {
         expectedIds: ["GENRE001"],
@@ -749,6 +760,7 @@ describe("deleteGenre", () => {
     );
 
     const { deleteGenre } = await import("./genre");
+
     const result = await deleteGenre(
       { id: "GENRE001", tenantId: "TENANT001" },
       "en"
@@ -765,6 +777,7 @@ describe("deleteGenre", () => {
     mockDeleteGenre.mockResolvedValue({});
 
     const { deleteGenre } = await import("./genre");
+
     const result = await deleteGenre(
       { id: "GENRE001", tenantId: "TENANT001" },
       "en"
@@ -785,6 +798,7 @@ describe("the operator check before a shared read", () => {
       "listGenres",
       async () => {
         const { listGenres } = await import("./genre");
+
         return await listGenres();
       },
       mockListGenres,

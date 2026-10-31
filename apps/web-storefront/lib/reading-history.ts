@@ -53,10 +53,13 @@ export interface ListEpisodeReadsInput {
   token?: string;
 }
 
-const emptyEpisodeReadPage = {
+const emptyEpisodeReadPage: Pick<
+  ListEpisodeReadsResult,
+  "nextToken" | "previousToken" | "reads"
+> = {
   nextToken: "",
   previousToken: "",
-  reads: [] as EpisodeReadItem[],
+  reads: [],
 };
 
 /**
@@ -108,10 +111,12 @@ export const listMyEpisodeReads = async (
   input: ListEpisodeReadsInput
 ): Promise<ListEpisodeReadsResult> => {
   const { locale } = input;
+
   const [t, sessionId] = await Promise.all([
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       ...emptyEpisodeReadPage,
@@ -132,6 +137,7 @@ export const listMyEpisodeReads = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       nextToken: response.nextToken ?? "",
       ok: true,
@@ -140,6 +146,7 @@ export const listMyEpisodeReads = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...emptyEpisodeReadPage,
       message: rpcErrorMessage(error, t("storefront.my.history_failed"), {

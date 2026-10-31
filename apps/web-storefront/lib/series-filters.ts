@@ -90,22 +90,28 @@ export const seriesListQueryHref = (
   { free, genre = "", order, status, token }: SeriesListQuery
 ): string => {
   const params = new URLSearchParams();
+
   if (genre) {
     params.set("genre", genre);
   }
+
   if (order !== "newest") {
     params.set("order", order);
   }
+
   if (status) {
     params.set("status", status);
   }
+
   if (free) {
     params.set("free", "1");
   }
+
   if (token) {
     params.set("token", token);
   }
 
   const serialized = params.toString();
+
   return serialized.length > 0 ? `${pathname}?${serialized}` : pathname;
 };

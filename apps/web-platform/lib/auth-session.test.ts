@@ -189,6 +189,7 @@ describe("web-platform auth-session", () => {
       publicId: "usr_1",
       role: "platform_super_admin",
     };
+
     mockGetPlatformCurrentOperator.mockResolvedValueOnce({
       ok: true,
       operator,

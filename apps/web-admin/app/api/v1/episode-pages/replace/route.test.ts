@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AdminAuthModule from "#lib/admin-auth";
 import {
   EPISODE_PAGE_IMAGE_MAX_BYTES,
   EPISODE_PAGE_REPLACE_MAX_BYTES,
@@ -33,7 +34,7 @@ vi.mock("#lib/tenant", () => ({
 vi.mock("#lib/locale", () => ({ getLocale: () => Promise.resolve("en") }));
 
 vi.mock("#lib/admin-auth", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AdminAuthModule>()),
   getAdminCurrentUser: mockGetAdminCurrentUser,
 }));
 
@@ -56,9 +57,11 @@ const replaceForm = (image?: File) => {
   const formData = new FormData();
   formData.set("episode_id", EPISODE_ID);
   formData.set("image_id", IMAGE_ID);
+
   if (image) {
     formData.set("image", image);
   }
+
   return formData;
 };
 
@@ -71,6 +74,7 @@ const replace = async (
 ) => {
   const encoded = new Request(URL, { body: formData, method: "POST" });
   const body = await encoded.arrayBuffer();
+
   const request = new NextRequest(URL, {
     body,
     headers: {
@@ -81,6 +85,7 @@ const replace = async (
     },
     method: "POST",
   });
+
   return { request, response: await POST(request) };
 };
 

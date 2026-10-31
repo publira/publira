@@ -17,6 +17,7 @@ export const renderServerComponent = async (
 ) => {
   // An error inside a boundary only reaches `onError`; this fails the render.
   const { promise: failed, reject } = Promise.withResolvers<never>();
+
   const { prelude } = await Promise.race([
     prerender(ui, {
       onError: (error) => {
@@ -31,6 +32,7 @@ export const renderServerComponent = async (
     }),
     failed,
   ]);
+
   const html = await new Response(prelude).text();
 
   return render(

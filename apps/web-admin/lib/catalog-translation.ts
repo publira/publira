@@ -40,6 +40,7 @@ export const toSeriesTranslations = (
 ): SeriesTranslationItem[] =>
   (translations ?? []).flatMap((translation) => {
     const locale = parseLocale(translation.locale?.trim());
+
     return locale
       ? [
           {
@@ -57,5 +58,6 @@ export const toEpisodeTranslations = (
 ): EpisodeTranslationItem[] =>
   (translations ?? []).flatMap((translation) => {
     const locale = parseLocale(translation.locale?.trim());
+
     return locale ? [{ locale, title: translation.title ?? "" }] : [];
   });

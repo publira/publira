@@ -22,5 +22,6 @@ const checks: HealthCheck[] = [
 // connection() keeps `next build` from prerendering this handler and running the checks.
 export const GET = async () => {
   await connection();
+
   return createReadyzResponse(checks);
 };

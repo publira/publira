@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { revisionFormSchema } from "#lib/form-schemas";
+import { isFormText, revisionFormSchema } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
 /** Mirrors `webpushsettings.maxSubjectLength`. */
@@ -19,10 +19,13 @@ export const isWebPushSubject = (value: string): boolean => {
   if (value.length > MAX_SUBJECT_LENGTH || !URL.canParse(value)) {
     return false;
   }
+
   const url = new URL(value);
+
   if (url.protocol === "mailto:") {
     return BARE_ADDRESS_RE.test(url.pathname);
   }
+
   // A WHATWG parser reads `https:example.com` as absolute; Go does not.
   return (
     url.protocol === "https:" &&
@@ -44,7 +47,7 @@ export const webPushFormSchema = async (locale: Locale) => {
   return z.object({
     revision: revisionFormSchema(t("platform.policy.revision_invalid")),
     subject: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim() : ""),
+      (value) => (isFormText(value) ? value.trim() : ""),
       z
         .string()
         .min(1, t("platform.webpush.form.subject_required"))

@@ -43,6 +43,7 @@ export const AdminLocaleContextProvider = ({
  */
 export const useAdminLocale = (): Locale => {
   const locale = use(AdminLocaleContext);
+
   if (locale === null) {
     throw new Error("AdminLocaleProvider is required.");
   }

@@ -35,6 +35,7 @@ import { parse } from "opentype.js/dist/opentype.mjs";
 /** The `google/fonts` commit the font is read at. */
 const FONT_COMMIT = "d0b2d1307ad5d6b579d627a6e5abd25952484b96";
 const FONT_PATH = "ofl/shipporiminchob1/ShipporiMinchoB1-ExtraBold.ttf";
+
 /** SHA-256 of the file at `FONT_PATH` in `FONT_COMMIT`. */
 const FONT_SHA256 =
   "bee99a242f32128e8d6a4acff2b3f1742cd42ea90748758e6e10456871887e76";
@@ -42,8 +43,10 @@ const FONT_SHA256 =
 const FAMILY = "Shippori Mincho B1";
 const WEIGHT = 800;
 const CHARACTER = "ぱ";
+
 /** Sumi, the brand's foreground, for the tile. The mark never takes Shu. */
 const SUMI = "#1F1D1A";
+
 /** The brand's paper background, for the glyph. */
 const PAPER = "#F5F5F2";
 
@@ -53,6 +56,7 @@ const PAPER = "#F5F5F2";
  * icon, and a margin wide enough that the handakuten does not crowd a corner.
  */
 const TILE = 1280;
+
 /**
  * An eighth of the side, so that at the 32px favicon the corner is 4px — the
  * `--radius-control` of `@publira/brand/theme.css`.
@@ -77,21 +81,27 @@ const downloadFont = async (): Promise<ArrayBuffer> => {
   const url = `https://raw.githubusercontent.com/google/fonts/${FONT_COMMIT}/${FONT_PATH}`;
   const signal = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);
   let bytes: ArrayBuffer;
+
   try {
     const response = await fetch(url, { signal });
+
     if (!response.ok) {
       fail(`GET ${url} answered ${response.status} ${response.statusText}.`);
     }
+
     bytes = await response.arrayBuffer();
   } catch (error) {
     if (signal.aborted) {
       fail(`GET ${url} did not finish in ${DOWNLOAD_TIMEOUT_MS / 1000} s.`);
     }
+
     throw error;
   }
+
   const digest = createHash("sha256")
     .update(new Uint8Array(bytes))
     .digest("hex");
+
   if (digest !== FONT_SHA256) {
     fail(
       [
@@ -102,6 +112,7 @@ const downloadFont = async (): Promise<ArrayBuffer> => {
       ].join("\n")
     );
   }
+
   return bytes;
 };
 
@@ -129,6 +140,7 @@ type PathCommand =
 /** An English entry of the font's `name` table, or a failure naming it. */
 const fontName = (names: NameTable, key: string): string => {
   const value = names.windows?.[key]?.en ?? names.macintosh?.[key]?.en;
+
   return value ?? fail(`the font's name table has no English "${key}".`);
 };
 
@@ -140,6 +152,7 @@ const coordinate = (value: number): string => {
   if (!Number.isInteger(value * 2)) {
     fail(`the outline has a coordinate that is not a half unit: ${value}.`);
   }
+
   return String(value);
 };
 
@@ -151,15 +164,19 @@ const pathData = (commands: PathCommand[]): string =>
         case "L": {
           return `${command.type}${coordinate(command.x)} ${coordinate(command.y)}`;
         }
+
         case "Q": {
           return `Q${coordinate(command.x1)} ${coordinate(command.y1)} ${coordinate(command.x)} ${coordinate(command.y)}`;
         }
+
         case "C": {
           return `C${coordinate(command.x1)} ${coordinate(command.y1)} ${coordinate(command.x2)} ${coordinate(command.y2)} ${coordinate(command.x)} ${coordinate(command.y)}`;
         }
+
         case "Z": {
           return "Z";
         }
+
         default: {
           return fail(`unexpected path command ${JSON.stringify(command)}.`);
         }
@@ -175,11 +192,13 @@ const [version] = fontName(names, "version").split(";");
 const license = fontName(names, "license");
 const copyright = fontName(names, "copyright");
 const weight = font.tables.os2?.usWeightClass;
+
 if (family !== FAMILY || weight !== WEIGHT) {
   fail(`expected ${FAMILY} at weight ${WEIGHT}, got ${family} at ${weight}.`);
 }
 
 const glyph = font.charToGlyph(CHARACTER);
+
 if (glyph.index === 0) {
   fail(`${FAMILY} has no glyph for ${CHARACTER}.`);
 }
@@ -190,9 +209,11 @@ if (glyph.index === 0) {
 const bounds = glyph.getPath(0, 0, font.unitsPerEm).getBoundingBox();
 const width = bounds.x2 - bounds.x1;
 const height = bounds.y2 - bounds.y1;
+
 if (Math.max(width, height) + RADIUS > TILE) {
   fail(`${CHARACTER} is ${width}x${height} units, too large for the tile.`);
 }
+
 const path = glyph.getPath(
   Math.round((TILE - width) / 2) - bounds.x1,
   Math.round((TILE - height) / 2) - bounds.y1,
@@ -229,4 +250,5 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${TILE}" height="${T
 `;
 
 await writeFile(OUTPUT, svg);
+
 console.log(`assets/brand/logo-mark.svg (${TILE}x${TILE})`);

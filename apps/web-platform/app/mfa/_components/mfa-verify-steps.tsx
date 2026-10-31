@@ -28,6 +28,7 @@ const MfaVerifySteps = ({
   verify: ReactNode;
 }) => {
   const [message, setMessage] = useState<string | null>(null);
+
   if (finished && message === null) {
     redirect(nextPath);
   }

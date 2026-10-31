@@ -84,6 +84,7 @@ const TenantsContent = async ({
         token: result.previousToken,
       })
     : undefined;
+
   const nextHref = result.nextToken
     ? buildTenantsPath({
         ...filters,

@@ -128,7 +128,9 @@ const formOf = async (buttonName: string) => {
     { name: buttonName },
     onScreen
   );
+
   const form = button.closest("form");
+
   if (!form) {
     throw new Error(`${buttonName} is not inside a form`);
   }

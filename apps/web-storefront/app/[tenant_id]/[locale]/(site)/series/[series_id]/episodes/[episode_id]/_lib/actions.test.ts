@@ -71,6 +71,7 @@ const checkoutForm = (): FormData => {
   data.set("locale", "en");
   data.set("seriesPublicId", "SERIES_001");
   data.set("tenantId", tenantId);
+
   return data;
 };
 
@@ -266,6 +267,7 @@ const coinPaymentForm = (): FormData => {
   const data = checkoutForm();
   data.set("coins", "300");
   data.set("idempotencyKey", "payment-key");
+
   return data;
 };
 

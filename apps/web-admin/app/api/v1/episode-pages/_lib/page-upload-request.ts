@@ -32,6 +32,7 @@ export const refuse = (message: string, status: number) =>
 export const signInAgain = (request: NextRequest, t: AdminMessageAccessor) => {
   let returnTo: string | null = null;
   const referer = request.headers.get("referer");
+
   if (referer) {
     try {
       const url = new URL(referer);
@@ -80,10 +81,12 @@ export const readPageUploadForm = async (
   await assertSameOrigin();
 
   let tenantId: string | null;
+
   try {
     const routing = await resolveTenantRouting(
       getTenantDomainCandidates(request.headers)
     );
+
     // The screen the upload was sent from was open when the tenant was
     // suspended. Its next navigation lands on the page the proxy answers for
     // a suspended console, and until then the message says the same.
@@ -98,6 +101,7 @@ export const readPageUploadForm = async (
         ),
       };
     }
+
     ({ tenantId } = routing);
   } catch {
     return {
@@ -107,6 +111,7 @@ export const readPageUploadForm = async (
       }),
     };
   }
+
   if (!tenantId) {
     return { response: new NextResponse("Not Found", { status: 404 }) };
   }
@@ -115,6 +120,7 @@ export const readPageUploadForm = async (
     getLocale(tenantId),
     getAdminCurrentUser(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   if (!operator.ok) {
@@ -124,6 +130,7 @@ export const readPageUploadForm = async (
         : refuse(t("errors.rpc.forbidden"), 403),
     };
   }
+
   if (!isTenantEditorRole(operator.user.role)) {
     return { response: refuse(t("errors.rpc.forbidden"), 403) };
   }
@@ -131,9 +138,11 @@ export const readPageUploadForm = async (
   // A browser always declares the length of a form it sends, and Node holds
   // the body to it, so the length is the size of what would be read.
   const contentLength = Number(request.headers.get("content-length") ?? "");
+
   if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
     return { response: refuse(t("admin.series.episodes.upload_failed"), 411) };
   }
+
   if (contentLength > maxBytes) {
     return { response: refuse(tooLarge(t), 413) };
   }

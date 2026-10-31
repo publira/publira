@@ -31,11 +31,16 @@ export const currentCalendarMonth = (
 export const shiftCalendarMonth = (month: string, months: number): string =>
   firstDayOf(month).add({ months }).toPlainYearMonth().toString();
 
+/** A period the API reads, from its first day to its last. */
+export interface CalendarMonthPeriod {
+  endDate: string;
+  startDate: string;
+}
+
 /** The first and the last day of `month`, as the period the API reads. */
-export const calendarMonthPeriod = (
-  month: string
-): { endDate: string; startDate: string } => {
+export const calendarMonthPeriod = (month: string): CalendarMonthPeriod => {
   const first = firstDayOf(month);
+
   return {
     endDate: first.add({ months: 1 }).subtract({ days: 1 }).toString(),
     startDate: first.toString(),
@@ -49,22 +54,27 @@ export const calendarMonthPeriod = (
  */
 export const calendarMonthWeeks = (month: string): (string | null)[][] => {
   const first = firstDayOf(month);
+
   const cells: (string | null)[] = Array.from(
     // `dayOfWeek` counts Monday as 1 and Sunday as 7.
     { length: first.dayOfWeek % 7 },
     () => null
   );
+
   for (let day = 0; day < first.daysInMonth; day += 1) {
     cells.push(first.add({ days: day }).toString());
   }
+
   while (cells.length % 7 !== 0) {
     cells.push(null);
   }
 
   const weeks: (string | null)[][] = [];
+
   for (let index = 0; index < cells.length; index += 7) {
     weeks.push(cells.slice(index, index + 7));
   }
+
   return weeks;
 };
 
@@ -85,6 +95,8 @@ export const groupByDay = (
         .toPlainDate()
         .toString() ?? ""
   );
+
   days.delete("");
+
   return days;
 };

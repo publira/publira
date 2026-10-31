@@ -21,6 +21,7 @@ const ReadingDirectionSelect = ({
   const t = useClientMessages();
 
   let followSeries = t("admin.series.episodes.layout.follow_series");
+
   if (seriesDirection === "rtl") {
     followSeries = t("admin.series.episodes.layout.follow_series_direction", {
       direction: t("admin.series.form.reading_direction_options.rtl"),

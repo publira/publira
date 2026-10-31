@@ -47,6 +47,7 @@ export const RelativeTime = ({
   value,
 }: RelativeTimeProps) => {
   const locale = useLocale();
+
   const hydrated = useSyncExternalStore(
     subscribeToNothing,
     isHydrated,

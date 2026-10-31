@@ -105,6 +105,7 @@ export const toEyeCatchImageVariants = (
       variantType: variant.variantType ?? "",
       width: variant.width ?? 0,
     };
+
     return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
       ? [mappedVariant]
       : [];
@@ -153,6 +154,7 @@ const toCreatorCredits = (
 ): CreatorCredit[] =>
   (creators ?? []).flatMap((creator) => {
     const name = (creator.name ?? "").trim();
+
     return name.length > 0
       ? [
           {
@@ -420,6 +422,7 @@ const toEpisodeReadingDirection = (
   if (direction === ReadingDirection.LEFT_TO_RIGHT) {
     return "ltr";
   }
+
   return DEFAULT_READING_DIRECTION;
 };
 
@@ -440,9 +443,11 @@ export const toEpisodePurchaseSurface = (
   if (availability === SurfaceAvailability.APP) {
     return "app";
   }
+
   if (availability === SurfaceAvailability.WEB) {
     return "web";
   }
+
   return "all";
 };
 
@@ -537,15 +542,19 @@ export const toEpisodeAccessState = (
   if (access === EpisodeAccess.FREE) {
     return "free";
   }
+
   if (access === EpisodeAccess.ENTITLED) {
     return "entitled";
   }
+
   if (access === EpisodeAccess.LOCKED) {
     return "locked";
   }
+
   if (access === EpisodeAccess.AGE_RESTRICTED) {
     return "age_restricted";
   }
+
   return price > 0 ? "locked" : "free";
 };
 
@@ -570,15 +579,19 @@ export const toEpisodeEntitlementSource = (
   if (source === EpisodeEntitlementSource.PURCHASE) {
     return "purchase";
   }
+
   if (source === EpisodeEntitlementSource.ACCESS_TICKET) {
     return "access_ticket";
   }
+
   if (source === EpisodeEntitlementSource.CREATOR) {
     return "creator";
   }
+
   if (source === EpisodeEntitlementSource.STAFF) {
     return "staff";
   }
+
   return undefined;
 };
 
@@ -650,6 +663,7 @@ const mapEpisodeNeighbor = (
   neighbor: RawEpisodeNeighbor | undefined
 ): EpisodeNeighborItem | undefined => {
   const publicId = neighbor?.publicId ?? "";
+
   if (!neighbor || !publicId) {
     return undefined;
   }
@@ -700,12 +714,15 @@ const toSeriesSerializationStatus = (
     case SeriesStatus.ONGOING: {
       return "ongoing";
     }
+
     case SeriesStatus.COMPLETED: {
       return "completed";
     }
+
     case SeriesStatus.HIATUS: {
       return "hiatus";
     }
+
     default: {
       return undefined;
     }
@@ -747,6 +764,7 @@ const toSeriesGenreItem = (
 ): SeriesGenreItem[] => {
   const name = genre.name?.trim() ?? "";
   const publicId = genre.publicId?.trim() ?? "";
+
   return name.length > 0 && publicId.length > 0
     ? [
         {
@@ -771,6 +789,7 @@ type RawSeriesTag = Pick<Tag, "name" | "slug">;
 const toSeriesTagItem = (tag: RawSeriesTag): SeriesTagItem[] => {
   const name = tag.name?.trim() ?? "";
   const slug = tag.slug?.trim() ?? "";
+
   return name.length > 0 && slug.length > 0 ? [{ name, slug }] : [];
 };
 
@@ -912,9 +931,11 @@ const toSeriesCommentMode = (
     case CommentMode.IMMEDIATE: {
       return "immediate";
     }
+
     case CommentMode.APPROVAL_REQUIRED: {
       return "approval_required";
     }
+
     default: {
       return "disabled";
     }
@@ -1048,6 +1069,7 @@ export const listPublishedSeries = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.listPublishedSeries>
   >;
+
   try {
     response = await apiClient.catalog.listPublishedSeries({
       genrePublicId,
@@ -1120,6 +1142,7 @@ const toGenreFeaturedSeriesItem = (
   series: RawGenreFeaturedSeries
 ): GenreFeaturedSeriesItem[] => {
   const publicId = series.publicId?.trim() ?? "";
+
   return publicId.length > 0
     ? [
         {
@@ -1178,6 +1201,7 @@ export const listPublishedGenres = async (
   locale: Locale
 ): Promise<CachedReadResult<PublishedGenreItem[]>> => {
   "use cache";
+
   try {
     // The ranking batch reorders the covers daily without a write that drops
     // the tag, and having it drop the series list tag would rebuild every list
@@ -1196,6 +1220,7 @@ export const listPublishedGenres = async (
 
   const genres: PublishedGenreItem[] = [];
   let stop: CursorWalkStop;
+
   try {
     stop = await forEachPageWithToken(
       async (token, limit) => {
@@ -1206,6 +1231,7 @@ export const listPublishedGenres = async (
           tenant: { tenantId: normalizedTenantId },
           token,
         });
+
         return {
           items: response.genres ?? [],
           nextToken: response.nextToken ?? "",
@@ -1279,6 +1305,7 @@ export const findPublishedTagBySlug = async (
 
   let match: PublishedTagItem | null = null;
   let stop: CursorWalkStop;
+
   try {
     stop = await forEachPageWithToken(
       async (token, limit) => {
@@ -1288,6 +1315,7 @@ export const findPublishedTagBySlug = async (
           tenant: { tenantId: normalizedTenantId },
           token,
         });
+
         return {
           items: response.tags ?? [],
           nextToken: response.nextToken ?? "",
@@ -1295,8 +1323,10 @@ export const findPublishedTagBySlug = async (
       },
       (items) => {
         const found = items.find((item) => item.slug === normalizedSlug);
+
         if (found) {
           match = toPublishedTagItem(found);
+
           return false;
         }
       }
@@ -1348,6 +1378,7 @@ export const listRecommendedSeries = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: ListRecommendedSeriesResponse;
+
   try {
     response = await apiClient.catalog.listRecommendedSeries({
       limit,
@@ -1411,6 +1442,7 @@ export const listMyRecommendedSeries = async (
   }: { limit?: number; locale: Locale; token?: string }
 ): Promise<CachedReadResult<MyRecommendedSeriesPage>> => {
   "use cache: private";
+
   try {
     cacheLife({ stale: 30 });
   } catch {
@@ -1426,11 +1458,13 @@ export const listMyRecommendedSeries = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   const sessionId = accessToken.trim();
+
   if (!sessionId) {
     return { ok: true, value: { access: "signed_out" } };
   }
 
   let response: ListMyRecommendedSeriesResponse;
+
   try {
     response = await apiClient.catalog.listMyRecommendedSeries(
       {
@@ -1446,6 +1480,7 @@ export const listMyRecommendedSeries = async (
     if (isUnauthenticatedRpcError(error)) {
       return { ok: true, value: { access: "signed_out" } };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -1516,6 +1551,7 @@ export const listRelatedSeries = async (
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   let response: ListRelatedSeriesResponse;
+
   try {
     response = await apiClient.catalog.listRelatedSeries({
       limit,
@@ -1532,6 +1568,7 @@ export const listRelatedSeries = async (
         value: { nextToken: "", previousToken: "", series: [] },
       };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -1676,6 +1713,7 @@ export const listRankedSeries = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   let response: ListRankedSeriesResponse;
+
   try {
     response = await apiClient.catalog.listRankedSeries({
       ageRating: rankingAgeRatings[ageRating],
@@ -1720,6 +1758,7 @@ export const listReaderRankedSeries = async (
   { ageRating, limit = 20, locale, period, token = "" }: RankedSeriesQuery
 ): Promise<CachedReadResult<ReaderRankedSeriesPage>> => {
   "use cache: private";
+
   try {
     cacheLife({ stale: 30 });
   } catch {
@@ -1731,11 +1770,13 @@ export const listReaderRankedSeries = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
 
   const sessionId = accessToken.trim();
+
   if (!sessionId) {
     return { ok: true, value: { access: "age_restricted" } };
   }
 
   let response: ListRankedSeriesResponse;
+
   try {
     response = await apiClient.catalog.listRankedSeries(
       {
@@ -1753,6 +1794,7 @@ export const listReaderRankedSeries = async (
     if (isRpcError(error, Code.PermissionDenied)) {
       return { ok: true, value: { access: "age_restricted" } };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -1801,6 +1843,7 @@ export const searchPublishedSeries = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.searchPublishedSeries>
   >;
+
   try {
     response = await apiClient.catalog.searchPublishedSeries({
       limit,
@@ -1862,6 +1905,7 @@ export const listPublishedLabels = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.listPublishedLabels>
   >;
+
   try {
     response = await apiClient.catalog.listPublishedLabels({
       hasPublishedSeries,
@@ -1911,6 +1955,7 @@ export const searchPublishedLabels = async (
   let response: Awaited<
     ReturnType<typeof apiClient.catalog.searchPublishedLabels>
   >;
+
   try {
     response = await apiClient.catalog.searchPublishedLabels({
       limit,
@@ -1950,11 +1995,13 @@ const toSeriesDetail = (
   requestedLocale: Locale
 ): SeriesDetail | undefined => {
   const { series } = response;
+
   if (!series) {
     return undefined;
   }
 
   const locale = servedLocaleFrom(series.locale, requestedLocale);
+
   return withRestrictedAgeRating(
     {
       commentMode: toSeriesCommentMode(response.commentMode),
@@ -2014,6 +2061,7 @@ export const getSeriesDetail = async (
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   let response;
+
   try {
     response = await apiClient.catalog.getSeriesDetail({
       locale,
@@ -2025,6 +2073,7 @@ export const getSeriesDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -2033,6 +2082,7 @@ export const getSeriesDetail = async (
   }
 
   const series = toSeriesDetail(response, locale);
+
   if (!series) {
     return { ok: true, value: null };
   }
@@ -2089,6 +2139,7 @@ export const getEpisodeDetail = async (
   } | null>
 > => {
   "use cache";
+
   try {
     // A free episode's image URLs carry the key material its pages are
     // encrypted under, which rotates daily and is guaranteed to be good for at
@@ -2108,6 +2159,7 @@ export const getEpisodeDetail = async (
   applyCacheTag(tenantSeriesTag(normalizedTenantId, normalizedSeriesPublicId));
 
   let response;
+
   try {
     response = await apiClient.catalog.getEpisodeDetail({
       locale,
@@ -2119,6 +2171,7 @@ export const getEpisodeDetail = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -2195,6 +2248,7 @@ export const getEpisodeViewer = async (
   } | null>
 > => {
   "use cache: private";
+
   try {
     cacheLife({ stale: 30 });
   } catch {
@@ -2213,11 +2267,13 @@ export const getEpisodeViewer = async (
   // Including it in this private cache key makes the first post-payment reader
   // check fresh rather than reusing the locked body cached before Checkout.
   void checkoutSessionId.trim();
+
   if (!sessionId) {
     return { ok: true, value: { access: "locked", images: [] } };
   }
 
   let response;
+
   try {
     response = await apiClient.catalog.getEpisodeDetail(
       {
@@ -2236,9 +2292,11 @@ export const getEpisodeViewer = async (
     if (isRpcError(error, Code.PermissionDenied)) {
       return { ok: true, value: { access: "locked", images: [] } };
     }
+
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -2247,6 +2305,7 @@ export const getEpisodeViewer = async (
   }
 
   const seriesPublicIdFromResponse = response.series?.publicId ?? "";
+
   if (
     !response.episode ||
     seriesPublicIdFromResponse !== normalizedSeriesPublicId
@@ -2288,11 +2347,13 @@ export const renewEpisodeImageUrls = async ({
   tenantId: string;
 }): Promise<Record<string, string>> => {
   const sessionId = accessToken.trim();
+
   if (!sessionId) {
     return {};
   }
 
   let response;
+
   try {
     response = await apiClient.catalog.getEpisodeDetail(
       {
@@ -2305,6 +2366,7 @@ export const renewEpisodeImageUrls = async ({
     );
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {};
   }
 
@@ -2314,7 +2376,9 @@ export const renewEpisodeImageUrls = async ({
   ) {
     return {};
   }
+
   const access = toEpisodeAccessState(response.access, response.episode.price);
+
   if (access !== "entitled" && !isPublicEpisodeBody(access)) {
     return {};
   }

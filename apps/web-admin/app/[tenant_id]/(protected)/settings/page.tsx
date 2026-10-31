@@ -164,6 +164,7 @@ const readEmailRejectionSettings = async (
   currentUser: Promise<AdminCurrentUser>
 ): Promise<TenantEmailRejectionSettingsResult | null> => {
   const { role } = await currentUser;
+
   return isTenantAdminRole(role)
     ? getTenantEmailRejectionSettings(tenantId, locale)
     : null;
@@ -190,6 +191,7 @@ const readSiteVerification = async (
   currentUser: Promise<AdminCurrentUser>
 ): Promise<TenantSiteVerificationResult | null> => {
   const { role } = await currentUser;
+
   return isTenantAdminRole(role)
     ? getTenantSiteVerification(tenantId, locale)
     : null;

@@ -56,12 +56,15 @@ const MfaCodeHelp = ({ accepts }: MfaCodeFieldProps) => {
     case "authenticator": {
       return <Message message="admin.auth.mfa.code_help_totp_only" />;
     }
+
     case "authenticator_or_recovery": {
       return <Message message="admin.auth.mfa.code_help" />;
     }
+
     case "recovery": {
       return <Message message="admin.auth.mfa.code_help_recovery_only" />;
     }
+
     default: {
       return accepts satisfies never;
     }

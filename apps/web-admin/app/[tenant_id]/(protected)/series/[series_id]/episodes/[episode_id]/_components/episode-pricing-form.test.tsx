@@ -128,6 +128,7 @@ describe("EpisodePricingForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
+
     renderForm(action);
 
     fireEvent.change(priceInput(), { target: { value: "0" } });

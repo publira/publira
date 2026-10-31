@@ -30,6 +30,7 @@ export const SeriesPurchaseAvailabilitySelect = ({
   const [value, setValue] = useState(initialValue);
 
   let followTenant = t("admin.series.form.purchase_availability_follow_tenant");
+
   if (tenantPurchaseAvailability === "all") {
     followTenant = t(
       "admin.series.form.purchase_availability_follow_tenant_value",

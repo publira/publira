@@ -106,9 +106,11 @@ describe("EpisodeReadingLayoutForm", () => {
 
     expect(posted("reading_direction")).toEqual(["rtl"]);
     expect(posted("spread_start_source")).toEqual(["episode"]);
+
     const page = screen.getByRole<HTMLInputElement>("spinbutton", {
       name: /Spreads start at page/u,
     });
+
     expect(page.value).toBe("1");
     expect(page.min).toBe("1");
     expect(page.max).toBe("24");

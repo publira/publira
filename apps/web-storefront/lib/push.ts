@@ -40,6 +40,7 @@ export const registerWebPushDevice = async (input: {
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -55,12 +56,15 @@ export const registerWebPushDevice = async (input: {
       },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -85,6 +89,7 @@ export const unregisterWebPushDevice = async (input: {
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -97,12 +102,15 @@ export const unregisterWebPushDevice = async (input: {
       },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

@@ -81,15 +81,18 @@ export interface ListMyRecentSeriesInput {
  * nothing naming the cause.
  */
 type RawRecentSeries = Pick<RecentSeries, "episode" | "series">;
+
 type RawSeriesProgress = Pick<SeriesProgress, "episode" | "isFinished">;
 
 const mapEpisode = (
   episode: RawRecentSeries["episode"]
 ): ReadingProgressEpisode | null => {
   const publicId = episode?.publicId?.trim() ?? "";
+
   if (!publicId) {
     return null;
   }
+
   return {
     orderIndex: episode?.orderIndex ?? 0,
     publicId,
@@ -100,9 +103,11 @@ const mapEpisode = (
 const mapRecentSeries = (item: RawRecentSeries): RecentSeriesItem | null => {
   const episode = mapEpisode(item.episode);
   const seriesPublicId = item.series?.publicId?.trim() ?? "";
+
   if (!(episode && seriesPublicId)) {
     return null;
   }
+
   return {
     episode,
     series: withRestrictedAgeRating(
@@ -124,10 +129,13 @@ const mapSeriesProgress = (
   if (!progress) {
     return null;
   }
+
   const episode = mapEpisode(progress.episode);
+
   if (!episode) {
     return null;
   }
+
   return { episode, isFinished: progress.isFinished ?? false };
 };
 
@@ -151,6 +159,7 @@ export const listMyRecentSeries = async (
   input: ListMyRecentSeriesInput
 ): Promise<ListMyRecentSeriesResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return { ok: true, series: [] };
   }
@@ -166,19 +175,24 @@ export const listMyRecentSeries = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       series: (response.series ?? []).flatMap((item) => {
         const mapped = mapRecentSeries(item);
+
         return mapped ? [mapped] : [];
       }),
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     if (isUnauthenticatedRpcError(error)) {
       return { ok: true, series: [] };
     }
+
     const t = await getMessagesFor(input.locale);
+
     return {
       message: rpcErrorMessage(error, t("storefront.top.continue_failed"), {
         locale: input.locale,
@@ -211,6 +225,7 @@ export const getMySeriesProgress = cache(
     locale: Locale
   ): Promise<SeriesProgressResult> => {
     const sessionId = await resolveAccessToken();
+
     if (!sessionId) {
       return {
         finishedEpisodePublicIds: [],
@@ -225,6 +240,7 @@ export const getMySeriesProgress = cache(
         { locale, seriesId, surface: ClientSurface.WEB, tenant: { tenantId } },
         buildSessionHeaders(sessionId)
       );
+
       return {
         finishedEpisodePublicIds: response.finishedEpisodePublicIds ?? [],
         ok: true,
@@ -233,6 +249,7 @@ export const getMySeriesProgress = cache(
       };
     } catch (error) {
       rethrowUnclassifiedRpcError(error);
+
       if (isUnauthenticatedRpcError(error)) {
         return {
           finishedEpisodePublicIds: [],
@@ -241,7 +258,9 @@ export const getMySeriesProgress = cache(
           signedIn: false,
         };
       }
+
       const t = await getMessagesFor(locale);
+
       return {
         message: rpcErrorMessage(
           error,

@@ -19,18 +19,22 @@ const TENANT_ID = "018f0e6a-1000-7000-8000-000000000001";
  */
 const setupRevalidation = (revalidatedAt: () => number | undefined) => {
   let clock = 1000;
+
   const getTenantByDomain = vi.fn().mockResolvedValue({
     defaultLocale: "ja",
     supportedLocales: ["ja", "en", "ko"],
     tenantId: TENANT_ID,
   });
+
   const readRevalidatedAt = vi.fn((_tag: string) =>
     Promise.resolve(revalidatedAt())
   );
+
   const resolver = createTenantResolver(
-    { domain: { getTenantByDomain } } as never,
+    { domain: { getTenantByDomain } },
     { max: 10, now: () => clock, readRevalidatedAt, ttl: 300_000 }
   );
+
   return {
     advance: (ms: number) => {
       clock += ms;
@@ -45,8 +49,9 @@ const setupRevalidation = (revalidatedAt: () => number | undefined) => {
 describe("createTenantResolver", () => {
   it("If the candidate is empty, do not call the API and return null", async () => {
     const getTenantByDomain = vi.fn();
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 1000 }
     );
 
@@ -60,8 +65,9 @@ describe("createTenantResolver", () => {
       supportedLocales: ["en"],
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -78,8 +84,9 @@ describe("createTenantResolver", () => {
       supportedLocales: ["en", "ja"],
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -94,8 +101,9 @@ describe("createTenantResolver", () => {
       supportedLocales: ["en", "fr"],
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -109,8 +117,9 @@ describe("createTenantResolver", () => {
       defaultLocale: "fr",
       tenantId: "018f0e6a-1000-7000-8000-000000000001",
     });
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -124,8 +133,9 @@ describe("createTenantResolver", () => {
       defaultLocale: "ja",
       tenantId: " 018f0e6a-1000-7000-8000-000000000001 ",
     });
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -147,8 +157,9 @@ describe("createTenantResolver", () => {
     const getTenantByDomain = vi
       .fn()
       .mockRejectedValue(new ConnectError("tenant not found", Code.NotFound));
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -162,8 +173,9 @@ describe("createTenantResolver", () => {
     const getTenantByDomain = vi
       .fn()
       .mockRejectedValue(new ConnectError("upstream down", Code.Unavailable));
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -196,8 +208,9 @@ describe("createTenantResolver", () => {
         defaultLocale: "en",
         tenantId: "tenant-1",
       });
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -215,6 +228,7 @@ describe("createTenantResolver", () => {
 
   it("reads a held tenant again once its site tag is revalidated", async () => {
     let revalidatedAt: number | undefined = 0;
+
     const { advance, getTenantByDomain, now, readRevalidatedAt, resolver } =
       setupRevalidation(() => revalidatedAt);
 
@@ -238,6 +252,7 @@ describe("createTenantResolver", () => {
 
   it("keeps serving a held tenant when the read its moved tag asks for fails", async () => {
     let revalidatedAt: number | undefined = 0;
+
     const { advance, getTenantByDomain, now, resolver } = setupRevalidation(
       () => revalidatedAt
     );
@@ -259,6 +274,7 @@ describe("createTenantResolver", () => {
 
   it("answers a suspension even while a tenant is held", async () => {
     let revalidatedAt: number | undefined = 0;
+
     const { advance, getTenantByDomain, now, resolver } = setupRevalidation(
       () => revalidatedAt
     );
@@ -308,9 +324,11 @@ describe("createTenantResolver", () => {
     const getTenantByDomain = vi
       .fn()
       .mockRejectedValue(new ConnectError("tenant not found", Code.NotFound));
+
     const readRevalidatedAt = vi.fn(() => Promise.resolve(Number.MAX_VALUE));
+
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, readRevalidatedAt, ttl: 10_000 }
     );
 

@@ -49,6 +49,7 @@ const asStaff = async (
   steps: (page: Page) => Promise<void>
 ): Promise<void> => {
   const context = await browser.newContext();
+
   try {
     const page = await context.newPage();
     await signIn(page, staff, nextPath);
@@ -78,8 +79,10 @@ const openSelect = async (
     if (!(await option.isVisible())) {
       await select.click();
     }
+
     await expect(option).toBeVisible({ timeout: 2000 });
   }).toPass({ timeout: 30_000 });
+
   return option;
 };
 
@@ -168,6 +171,7 @@ const submitThroughPublicApi = async (
   await page.goto(
     `${WEB_STOREFRONT_CONTACT_WORKFLOW_BASE_URL}${storefrontPath("/")}`
   );
+
   return page.evaluate(
     async ({ path, request }) => {
       const response = await fetch(path, {
@@ -175,6 +179,7 @@ const submitThroughPublicApi = async (
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
+
       return { body: await response.json(), status: response.status };
     },
     {
@@ -413,6 +418,7 @@ test.describe("web-admin contact-message workflow between staff", () => {
   test("staff edit the shared note and clear it", async ({ browser, page }) => {
     const edited =
       "The reader is on an older tablet. Sent the support article.";
+
     await signIn(page, CONTACT_WORKFLOW_ADMIN, WALKED_MESSAGE_PATH);
 
     await saveStaffNote(page, edited);
@@ -462,6 +468,7 @@ test.describe("web-admin contact-message workflow between staff", () => {
       replyToEmail: CONTACT_WORKFLOW_IN_PROGRESS.replyToEmail,
       subject: CONTACT_WORKFLOW_IN_PROGRESS.subject,
     });
+
     expect(response).toEqual({ body: {}, status: 200 });
   });
 });

@@ -29,6 +29,7 @@ export const parseLabelDetailParams = (input: {
   label_id: string;
 }): string | null => {
   const parsed = labelDetailParamsSchema.safeParse(input);
+
   return parsed.success ? parsed.data.label_id : null;
 };
 

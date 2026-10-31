@@ -11,7 +11,9 @@ export type TextareaProps = Omit<
 
 export const Textarea = ({ className, ...props }: TextareaProps) => (
   <BaseField.Control
-    {...(props as unknown as BaseField.Control.Props)}
+    // SAFETY: `Control` types its props for an `<input>`, but forwards them to
+    // the `<textarea>` it renders through `render`, which is what they are for.
+    {...(props as BaseField.Control.Props)}
     render={<textarea />}
     className={cn(
       "min-h-24 w-full rounded-control border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors duration-state ease-state placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",

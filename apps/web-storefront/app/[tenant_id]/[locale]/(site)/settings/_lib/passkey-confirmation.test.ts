@@ -33,10 +33,10 @@ vi.mock("#lib/auth", () => ({
 vi.mock("#lib/auth-session", () => ({
   clearPublicSessionCookie: mockClearPublicSessionCookie,
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 
@@ -52,6 +52,7 @@ const passkeyCredential = '{"id":"credential","type":"public-key"}';
 
 const form = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     locale: "en",
     tenantId,
@@ -59,6 +60,7 @@ const form = (values: Record<string, string>): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -78,6 +80,7 @@ describe("beginPasskeyConfirmationAction", () => {
       ok: true,
       optionsJson: '{"challenge":"abc"}',
     });
+
     const { beginPasskeyConfirmationAction } =
       await importConfirmationActions();
 
@@ -105,6 +108,7 @@ describe("beginPasskeyConfirmationAction", () => {
       error: new ConnectError("none", Code.FailedPrecondition),
       ok: false,
     });
+
     const { beginPasskeyConfirmationAction } =
       await importConfirmationActions();
 

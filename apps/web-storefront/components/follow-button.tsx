@@ -55,6 +55,7 @@ const FollowButton = ({
 );
 
 export { FollowButton as Root };
+
 export {
   FollowButtonFollow as Follow,
   FollowButtonUnfollow as Unfollow,

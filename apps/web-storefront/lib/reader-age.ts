@@ -16,7 +16,9 @@ export const getReaderProvenAgeRating = async (
       getMe(tenantId),
       getTenantDisplayTimeZone(tenantId),
     ]);
+
     const birthDate = me?.birthDate.trim();
+
     if (!birthDate) {
       return undefined;
     }
@@ -37,6 +39,7 @@ export const readerHasBirthDate = async (
 ): Promise<boolean> => {
   try {
     const me = await getMe(tenantId);
+
     return Boolean(me?.birthDate.trim());
   } catch {
     return false;

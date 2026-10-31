@@ -27,19 +27,24 @@ const pages: Page[] = [
 /** Stands in for the caller's catalog. */
 const formatPageStatus = (value: PageStatusValue): string => {
   const visible = describeVisiblePages(value);
+
   switch (visible.kind) {
     case "none": {
       return "No pages";
     }
+
     case "end-page": {
       return "The end";
     }
+
     case "page": {
       return `Page ${visible.first} of ${visible.total}`;
     }
+
     case "spread": {
       return `Pages ${visible.first}–${visible.last} of ${visible.total}`;
     }
+
     default: {
       return visible satisfies never;
     }
@@ -143,6 +148,7 @@ describe("Viewer.Root", () => {
     await vi.waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
     });
+
     for (const [url, init] of fetchMock.mock.calls) {
       expect(pages.map((page) => page.src)).toContain(String(url));
       expect(new Headers(init?.headers).get("Accept")).toContain("image/avif");
@@ -186,6 +192,7 @@ describe("Viewer.Page", () => {
     const fetchMock = vi.fn<typeof fetch>(() =>
       Promise.resolve(new Response(null, { status: 503 }))
     );
+
     vi.stubGlobal("fetch", fetchMock);
 
     render(
@@ -195,12 +202,17 @@ describe("Viewer.Page", () => {
     );
 
     const [reload] = await screen.findAllByRole("button", { name: "Reload" });
+
+    if (!reload) {
+      throw new Error("Expected a Reload button");
+    }
+
     expect(screen.getAllByRole("alert")[0]?.textContent).toContain(
       "This page could not be loaded."
     );
     const attempts = fetchMock.mock.calls.length;
 
-    fireEvent.click(reload as HTMLElement);
+    fireEvent.click(reload);
 
     expect(screen.getByText("rtl:1:0")).toBeDefined();
     await vi.waitFor(() => {
@@ -240,6 +252,7 @@ describe("Viewer.Toolbar", () => {
 
   it("keeps room for the app's own controls only where it has some", () => {
     const { container, rerender } = render(<Shell />);
+
     const toolbar = () =>
       container.querySelector("[data-viewer-toolbar-actions]");
 

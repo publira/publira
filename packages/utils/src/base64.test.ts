@@ -5,6 +5,7 @@ import { decodeBase64Url } from "./base64";
 describe("decodeBase64Url", () => {
   it("decodes unpadded Base64URL into bytes", () => {
     const value = decodeBase64Url("eyJzdWIiOiJyZWFkZXItcHVibGljLWlkIn0");
+
     if (!value) {
       throw new Error("expected the Base64URL value to decode");
     }

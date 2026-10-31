@@ -15,6 +15,7 @@ export const ActorFilterCombobox = ({
   items,
 }: ActorFilterComboboxProps) => {
   const t = useClientMessages();
+
   const [selectedValues, setSelectedValues] = useState<string[]>(
     defaultValue ? [defaultValue] : []
   );

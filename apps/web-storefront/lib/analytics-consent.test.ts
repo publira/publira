@@ -12,11 +12,9 @@ import {
 const COOKIE = "publira_web_storefront_analytics_consent";
 
 // `@next/third-parties` declares the `dataLayer` as plain objects; the commands
-// on it are `arguments` objects, which spread.
-const page = window as unknown as { dataLayer?: Iterable<unknown>[] };
-
+// on it are `arguments` objects, whose own values are the command's arguments.
 const commands = (): unknown[][] =>
-  (page.dataLayer ?? []).map((entry) => [...entry]);
+  (window.dataLayer ?? []).map((entry) => Object.values(entry));
 
 const signals = (answer: "denied" | "granted") => ({
   ad_personalization: answer,
@@ -34,7 +32,7 @@ function asCommand(..._args: unknown[]): Iterable<unknown> {
 
 /** What the defaults script leaves for a reader who has not agreed. */
 const runDefaults = () => {
-  page.dataLayer = [asCommand("consent", "default", signals("denied"))];
+  window.dataLayer = [asCommand("consent", "default", signals("denied"))];
 };
 
 const clearCookie = () => {
@@ -44,7 +42,7 @@ const clearCookie = () => {
 
 beforeEach(() => {
   clearCookie();
-  delete page.dataLayer;
+  delete window.dataLayer;
 });
 
 afterEach(() => {

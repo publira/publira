@@ -26,6 +26,7 @@ const createOperatorFormSchema = async (locale: Locale) => {
     getMessagesFor(locale),
     emailFormSchema(locale),
   ]);
+
   const requiredAll = t("platform.operators.required_all");
 
   return z.object({
@@ -53,6 +54,7 @@ export const createOperatorAction = async (
       role: { kind: "value", name: "operator_role" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),

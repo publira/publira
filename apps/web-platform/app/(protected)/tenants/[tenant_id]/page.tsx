@@ -52,11 +52,13 @@ export const generateMetadata = async ({
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
   const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
+
   if (!parsedParams) {
     return { title: t("platform.tenants.heading") };
   }
 
   const tenantResult = await getPlatformTenant(parsedParams.tenant_id);
+
   const name =
     tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
 
@@ -116,9 +118,11 @@ const TenantDetailContent = async ({
   params,
 }: Pick<TenantDetailPageProps, "params">) => {
   const parsedParams = parseRouteParams(tenantDetailParamsSchema, await params);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { tenant_id: tenantId } = parsedParams;
   const locale = await getPlatformLocale();
 
@@ -133,9 +137,11 @@ const TenantDetailContent = async ({
   }
 
   const { tenant } = tenantResult;
+
   if (!tenant) {
     notFound();
   }
+
   const tenantStatusLabel = await getTenantStatusLabel(tenant.status, locale);
   const tenantStatusTone = getTenantStatusTone(tenant.status);
   const saveLabel = t("platform.common.save");

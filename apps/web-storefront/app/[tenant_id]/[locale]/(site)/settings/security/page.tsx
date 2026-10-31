@@ -73,6 +73,7 @@ const readHasPassword = async (
   locale: Locale
 ): Promise<boolean> => {
   const mine = await readMyIdentities(tenantId, locale);
+
   return mine?.hasPassword ?? true;
 };
 
@@ -175,10 +176,12 @@ const PasswordlessEmailChangeForm = async ({
     readMyIdentities(tenantId, locale),
     getTenantSignInClients(tenantId),
   ]);
+
   const linked = new Set(mine?.identities.map((identity) => identity.provider));
   const canConfirmWithApple = linked.has("apple") && Boolean(clients.apple);
   const canConfirmWithGoogle = linked.has("google") && Boolean(clients.google);
   const canConfirmWithPasskey = mine?.hasPasskey ?? false;
+
   if (!(canConfirmWithApple || canConfirmWithGoogle || canConfirmWithPasskey)) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -317,6 +320,7 @@ const PasswordSetSection = () => (
 
 const PasswordChangeSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   if (!(await readHasPassword(tenantId, locale))) {
     return <PasswordSetSection />;
   }
@@ -443,24 +447,30 @@ const linkedAccountButtonClassName =
  */
 const LinkedAccountsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [mine, clients, t, timeZone] = await Promise.all([
     readMyIdentities(tenantId, locale),
     getTenantSignInClients(tenantId),
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   if (!mine) {
     return null;
   }
+
   const linked = new Map(
     mine.identities.map((identity) => [identity.provider, identity])
   );
+
   const providers = SIGN_IN_PROVIDERS.filter(
     (provider) => linked.has(provider) || Boolean(clients[provider])
   );
+
   if (providers.length === 0) {
     return null;
   }
+
   const keepsLast =
     !(mine.hasPassword || mine.hasPasskey) && mine.identities.length === 1;
 
@@ -482,6 +492,7 @@ const LinkedAccountsSection = async () => {
         {providers.map((provider) => {
           const identity = linked.get(provider);
           const name = SIGN_IN_PROVIDER_NAMES[provider];
+
           return (
             <li
               className="flex flex-wrap items-center justify-between gap-3"
@@ -640,6 +651,7 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
  */
 const PasskeysSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [mine, passkeys, t, timeZone] = await Promise.all([
     readMyIdentities(tenantId, locale),
     withPublicSessionReauth(
@@ -651,14 +663,17 @@ const PasskeysSection = async () => {
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   if (!passkeys) {
     return null;
   }
+
   const keepsLast =
     mine !== null &&
     !mine.hasPassword &&
     mine.identities.length === 0 &&
     passkeys.length === 1;
+
   const dates = { fallback: "-", locale, timeZone };
 
   return (
@@ -677,6 +692,7 @@ const PasskeysSection = async () => {
           {passkeys.map((passkey) => {
             const name =
               passkey.name || t("storefront.settings.passkey_unnamed");
+
             return (
               <li
                 className="flex flex-wrap items-center justify-between gap-3"

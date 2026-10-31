@@ -9,6 +9,7 @@ export {
   TableRow as Row,
   TableSkeleton as Skeleton,
 } from "./table";
+
 export type {
   TableEmptyRowProps as EmptyRowProps,
   TableLoadingRowProps as LoadingRowProps,

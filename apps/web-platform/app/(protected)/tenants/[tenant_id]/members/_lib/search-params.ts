@@ -23,6 +23,7 @@ export const parseMemberInvitationFilters = (
   input: ParseMemberPageSearchParamsInput
 ): MemberPageSearchParams => {
   const parsed = memberPageSearchParamsSchema.parse(input);
+
   return {
     membersToken: parsed.members_token,
     token: parsed.token,
@@ -34,14 +35,18 @@ const membersPagePath = (
   { membersToken, token }: MemberPageSearchParams
 ): string => {
   const search = new URLSearchParams();
+
   if (token) {
     search.set("token", token);
   }
+
   if (membersToken) {
     search.set("members_token", membersToken);
   }
+
   const query = search.toString();
   const pathname = `/tenants/${encodeURIComponent(tenantId)}/members`;
+
   return query ? `${pathname}?${query}` : pathname;
 };
 

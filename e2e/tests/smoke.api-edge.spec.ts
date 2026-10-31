@@ -10,6 +10,7 @@ import {
 
 const CATALOG_PROCEDURE = "/publira.v1.CatalogService/ListPublishedSeries";
 const ADMIN_PROCEDURE = "/publira.admin.v1.AdminSeriesService/ListSeries";
+
 const PLATFORM_PROCEDURE =
   "/publira.platform.v1.PlatformTenantService/ListTenants";
 
@@ -19,10 +20,21 @@ const edgeHosts = [
   ["the platform console", WEB_PLATFORM_BASE_URL],
 ] as const;
 
+/** The JSON body of a procedure call, naming the tenant when it needs one. */
+interface EdgeRequest {
+  tenant?: { tenantId: string };
+}
+
 interface EdgeAnswer {
   code: string | undefined;
   status: number;
 }
+
+const isConnectError = (value: unknown): value is { code: string } =>
+  typeof value === "object" &&
+  value !== null &&
+  "code" in value &&
+  typeof value.code === "string";
 
 /**
  * The request is sent from inside the page so it carries that page's Host, and
@@ -30,12 +42,12 @@ interface EdgeAnswer {
  * machine the runner is on. It carries no session cookie of the API's own, so
  * a console procedure that reached the server would see an anonymous caller.
  */
-const postThroughEdge = (
+const postThroughEdge = async (
   page: Page,
   procedure: string,
-  body: object = {}
-): Promise<EdgeAnswer> =>
-  page.evaluate(
+  body: EdgeRequest = {}
+): Promise<EdgeAnswer> => {
+  const answered = await page.evaluate(
     async ([path, json]) => {
       const response = await fetch(path, {
         body: json,
@@ -43,23 +55,20 @@ const postThroughEdge = (
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
-      let answer: unknown = null;
-      try {
-        answer = await response.json();
-      } catch {
-        // Anything but a Connect error leaves the code undefined.
-      }
-      const code =
-        typeof answer === "object" &&
-        answer !== null &&
-        "code" in answer &&
-        typeof answer.code === "string"
-          ? answer.code
-          : undefined;
-      return { code, status: response.status };
+
+      const answer: unknown = await response.json().catch(() => null);
+
+      return { answer, status: response.status };
     },
     [procedure, JSON.stringify(body)] as const
   );
+
+  // Anything but a Connect error leaves the code undefined.
+  return {
+    code: isConnectError(answered.answer) ? answered.answer.code : undefined,
+    status: answered.status,
+  };
+};
 
 /**
  * One process serves all three Connect namespaces under `/rpc`, but

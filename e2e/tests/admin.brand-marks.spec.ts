@@ -41,9 +41,11 @@ const deleteXMark = async (page: Page): Promise<void> => {
  */
 const deleteXMarkIfSet = async (page: Page): Promise<void> => {
   await expect(xMarkForm(page)).toBeVisible({ timeout: 30_000 });
+
   if (!(await xMarkDeleteButton(page).isVisible())) {
     return;
   }
+
   await deleteXMark(page);
 };
 
@@ -56,6 +58,7 @@ const openXShareRow = async (page: Page): Promise<Locator> => {
   await page.getByRole("button", { name: /^Share “/u }).click();
   const row = page.getByRole("link", { exact: true, name: "Share on X" });
   await expect(row).toBeVisible();
+
   return row;
 };
 
@@ -65,8 +68,10 @@ const openXShareRow = async (page: Page): Promise<Locator> => {
  */
 const xRowDrawsMark = async (page: Page): Promise<boolean> => {
   const row = await openXShareRow(page);
+
   return await row.evaluate((link) => {
     const image = link.querySelector("img");
+
     return image !== null && image.complete && image.naturalWidth > 0;
   });
 };
@@ -74,6 +79,7 @@ const xRowDrawsMark = async (page: Page): Promise<boolean> => {
 /** Whether the X row is its label and nothing else, as it is with no mark. */
 const xRowIsLabelAlone = async (page: Page): Promise<boolean> => {
   const row = await openXShareRow(page);
+
   return await row.evaluate(
     (link) => link.childElementCount === 0 && link.textContent === "Share on X"
   );

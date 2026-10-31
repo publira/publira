@@ -142,10 +142,13 @@ for (const locale of DOCS_LOCALES) {
         const button = page.getByRole("button", {
           name: docsTextPattern(locale, "platform.shell.account_menu"),
         });
+
         await button.click();
+
         const settings = page.getByRole("menuitem", {
           name: t("platform.shell.account_settings"),
         });
+
         await expect(settings).toBeVisible();
 
         await expectDocsScreenshot(page, {

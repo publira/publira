@@ -41,7 +41,9 @@ const NotificationListData = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { token } = parseNotificationsSearchParams(resolvedSearchParams);
+
   const [listResult, unreadResult, timeZone] = await Promise.all([
     listNotifications(tenantId, {
       limit: defaultNotificationsPageSize,

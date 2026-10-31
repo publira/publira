@@ -56,11 +56,13 @@ test.describe("admin wait-for-free settings", () => {
 
   test("saves a series' rule and records the change", async ({ page }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Wait-for-free series ${suffix}`,
       title: `E2E Wait Free ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
 
     await page.goto(adminUrl(`/series/${seriesId}`));

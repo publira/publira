@@ -49,9 +49,11 @@ import { createServer, request as httpRequest } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 const port = Number(process.env.PUBLIRA_E2E_STRIPE_PORT);
+
 if (!Number.isInteger(port) || port <= 0) {
   throw new Error("PUBLIRA_E2E_STRIPE_PORT must name the port to listen on");
 }
+
 const origin = `http://127.0.0.1:${port}`;
 
 interface WebhookEndpoint {
@@ -132,29 +134,43 @@ interface BillingPortalSession {
 /** The endpoints each secret key registered, one per URL. */
 const endpoints = new Map<string, WebhookEndpoint[]>();
 const sessions = new Map<string, CheckoutSession>();
+
 /** The payment intents each secret key paid, by secret key and id. */
 const paymentIntents = new Map<string, PaymentIntent>();
+
 /** The Prices each secret key made, by secret key and id. */
 const prices = new Map<string, Price>();
+
 /** The fixed amount each coupon takes off, by secret key and coupon id. */
 const coupons = new Map<string, number>();
+
 /** The subscriptions each secret key's checkouts started, by secret key and id. */
 const subscriptions = new Map<string, Subscription>();
 const portals = new Map<string, BillingPortalSession>();
+
+/** An object a create request answered, as Stripe's API names its kind. */
+interface CreatedObject {
+  object: string;
+  /** The payment intent a refund was made from, or a checkout paid. */
+  payment_intent?: string | null;
+}
+
 /**
  * What each secret key's idempotency key was first answered, which Stripe
  * answers again however the session has moved on since.
  */
-const idempotent = new Map<string, unknown>();
+const idempotent = new Map<string, CreatedObject>();
 
 const randomId = (prefix: string): string =>
   `${prefix}${randomBytes(12).toString("hex")}`;
 
 const readBody = async (request: IncomingMessage): Promise<string> => {
   const chunks: Buffer[] = [];
+
   for await (const chunk of request) {
     chunks.push(Buffer.from(chunk));
   }
+
   return Buffer.concat(chunks).toString("utf-8");
 };
 
@@ -168,10 +184,10 @@ const answer = (
   response.end(body);
 };
 
-const answerJSON = (
+const answerJSON = <Body>(
   response: ServerResponse,
   status: number,
-  body: unknown
+  body: Body
 ): void => answer(response, status, "application/json", JSON.stringify(body));
 
 /**
@@ -186,7 +202,7 @@ const answerError = (
   type = "invalid_request_error"
 ): void =>
   answerJSON(response, status, {
-    error: { ...(code ? { code } : {}), message, type },
+    error: code ? { code, message, type } : { message, type },
   });
 
 const secretKeyOf = (request: IncomingMessage): string =>
@@ -194,25 +210,21 @@ const secretKeyOf = (request: IncomingMessage): string =>
 
 /** The values of a form-encoded list such as `enabled_events[0]`. */
 const listOf = (form: URLSearchParams, name: string): string[] =>
-  [...form.entries()]
-    .filter(([key]) => key === `${name}[]` || key.startsWith(`${name}[`))
-    .map(([, value]) => value);
+  [...form.entries()].flatMap(([key, value]) =>
+    key === `${name}[]` || key.startsWith(`${name}[`) ? [value] : []
+  );
 
 /** The entries of a form-encoded hash such as `metadata[tenant_id]`. */
-const hashOf = (
-  form: URLSearchParams,
-  name: string
-): Record<string, string> => {
-  const entries: Record<string, string> = {};
-  for (const [key, value] of form.entries()) {
-    const field = new RegExp(`^${name}\\[(?<field>[^\\]]+)\\]$`, "u").exec(key)
-      ?.groups?.field;
-    if (field) {
-      entries[field] = value;
-    }
-  }
-  return entries;
-};
+const hashOf = (form: URLSearchParams, name: string): Record<string, string> =>
+  Object.fromEntries(
+    [...form.entries()].flatMap(([key, value]) => {
+      const field = new RegExp(`^${name}\\[(?<field>[^\\]]+)\\]$`, "u").exec(
+        key
+      )?.groups?.field;
+
+      return field ? [[field, value]] : [];
+    })
+  );
 
 const sessionObject = (session: CheckoutSession) => ({
   amount_subtotal: session.amount + session.discount,
@@ -242,17 +254,22 @@ const createWebhookEndpoint = async (
 ): Promise<void> => {
   const form = new URLSearchParams(await readBody(request));
   const url = form.get("url") ?? "";
+
   if (!URL.canParse(url)) {
     answerError(response, 400, "Invalid URL: url must be an absolute URL.");
+
     return;
   }
+
   const secretKey = secretKeyOf(request);
+
   const endpoint: WebhookEndpoint = {
     enabledEvents: listOf(form, "enabled_events"),
     id: randomId("we_test_"),
     secret: randomId("whsec_"),
     url,
   };
+
   // A suite that starts over registers its URL again under a secret key it
   // stored again, so the newer endpoint replaces the one it left behind
   // rather than delivering a second time with a secret nobody holds.
@@ -277,9 +294,10 @@ const createWebhookEndpoint = async (
  */
 const replayKeyOf = (request: IncomingMessage, secretKey: string): string => {
   const idempotencyKey = request.headers["idempotency-key"];
-  return typeof idempotencyKey === "string"
-    ? `${secretKey}\n${idempotencyKey}`
-    : "";
+
+  return idempotencyKey === undefined || Array.isArray(idempotencyKey)
+    ? ""
+    : `${secretKey}\n${idempotencyKey}`;
 };
 
 /**
@@ -293,19 +311,25 @@ const createCoupon = async (
   const form = new URLSearchParams(await readBody(request));
   const secretKey = secretKeyOf(request);
   const replayKey = replayKeyOf(request, secretKey);
+
   if (idempotent.has(replayKey)) {
     answerJSON(response, 200, idempotent.get(replayKey));
+
     return;
   }
 
   const amountOff = Number(form.get("amount_off"));
   const currency = form.get("currency") ?? "";
+
   if (!Number.isInteger(amountOff) || amountOff <= 0 || !currency) {
     answerError(response, 400, "A coupon needs an amount_off and a currency.");
+
     return;
   }
+
   const id = randomId("coupon_test_");
   coupons.set(`${secretKey}\n${id}`, amountOff);
+
   const created = {
     amount_off: amountOff,
     currency,
@@ -318,23 +342,31 @@ const createCoupon = async (
     percent_off: null,
     valid: true,
   };
+
   if (replayKey) {
     idempotent.set(replayKey, created);
   }
+
   answerJSON(response, 200, created);
 };
 
+interface LineItems {
+  currency: string;
+  items: LineItem[];
+}
+
 /** Every `line_items[n]` of the request, in order, as one currency's prices. */
-const lineItemsOf = (
-  form: URLSearchParams
-): { currency: string; items: LineItem[] } => {
+const lineItemsOf = (form: URLSearchParams): LineItems => {
   const items: LineItem[] = [];
   let currency = "";
+
   for (let index = 0; ; index += 1) {
     const item = `line_items[${index}][price_data]`;
+
     if (!form.has(`${item}[unit_amount]`)) {
       return { currency, items };
     }
+
     currency ||= form.get(`${item}[currency]`) ?? "";
     items.push({
       amount: Number(form.get(`${item}[unit_amount]`)),
@@ -360,9 +392,11 @@ const checkoutItemsOf = (
   if (form.get("mode") !== "subscription") {
     return { ...lineItemsOf(form), mode: "payment" };
   }
+
   const price = prices.get(
     `${secretKey}\n${form.get("line_items[0][price]") ?? ""}`
   );
+
   return price
     ? {
         currency: price.currency,
@@ -380,12 +414,15 @@ const createCheckoutSession = async (
   const form = new URLSearchParams(await readBody(request));
   const secretKey = secretKeyOf(request);
   const replayKey = replayKeyOf(request, secretKey);
+
   if (idempotent.has(replayKey)) {
     answerJSON(response, 200, idempotent.get(replayKey));
+
     return;
   }
 
   const sold = checkoutItemsOf(form, secretKey);
+
   if (!sold) {
     answerError(
       response,
@@ -393,16 +430,22 @@ const createCheckoutSession = async (
       `No such price: '${form.get("line_items[0][price]") ?? ""}'`,
       "resource_missing"
     );
+
     return;
   }
+
   const { currency, items, mode, price: subscriptionPrice } = sold;
   const couponId = form.get("discounts[0][coupon]");
   const discount = couponId ? coupons.get(`${secretKey}\n${couponId}`) : 0;
+
   if (discount === undefined) {
     answerError(response, 400, `No such coupon: '${couponId}'`);
+
     return;
   }
+
   const subtotal = items.reduce((sum, { amount }) => sum + amount, 0);
+
   const session: CheckoutSession = {
     amount: subtotal - discount,
     apiVersion: String(request.headers["stripe-version"] ?? ""),
@@ -422,6 +465,7 @@ const createCheckoutSession = async (
     subscriptionPrice: subscriptionPrice?.id ?? "",
     successURL: form.get("success_url") ?? "",
   };
+
   if (
     items.length === 0 ||
     items.some(({ amount }) => !Number.isInteger(amount) || amount <= 0) ||
@@ -434,13 +478,17 @@ const createCheckoutSession = async (
       400,
       "Line items with a price and a success URL are required."
     );
+
     return;
   }
+
   sessions.set(session.id, session);
   const created = sessionObject(session);
+
   if (replayKey) {
     idempotent.set(replayKey, created);
   }
+
   answerJSON(response, 200, created);
 };
 
@@ -476,6 +524,7 @@ const createPrice = async (
   const currency = (form.get("currency") ?? "").toLowerCase();
   const interval = form.get("recurring[interval]") ?? "";
   const intervalCount = Number(form.get("recurring[interval_count]") ?? "1");
+
   if (
     !Number.isInteger(amount) ||
     amount < 0 ||
@@ -489,8 +538,10 @@ const createPrice = async (
       400,
       "A Price needs a unit_amount, a currency, and a recurring interval."
     );
+
     return;
   }
+
   const price: Price = {
     amount,
     currency,
@@ -499,6 +550,7 @@ const createPrice = async (
     intervalCount,
     name: form.get("product_data[name]") ?? "Subscription",
   };
+
   prices.set(`${secretKeyOf(request)}\n${price.id}`, price);
   answerJSON(response, 200, priceObject(price));
 };
@@ -509,10 +561,13 @@ const getPrice = (
   response: ServerResponse
 ): void => {
   const price = prices.get(`${secretKeyOf(request)}\n${id}`);
+
   if (!price) {
     answerError(response, 404, `No such price: '${id}'`, "resource_missing");
+
     return;
   }
+
   answerJSON(response, 200, priceObject(price));
 };
 
@@ -535,6 +590,27 @@ const paymentIntentObject = (intent: PaymentIntent) => ({
   status: "succeeded",
 });
 
+/** The body of `POST /payment-intents`, as `e2e/src/stripe.ts` sends it. */
+interface PaymentIntentRequest {
+  amount: number;
+  currency: string;
+  id: string;
+}
+
+const isPaymentIntentRequest = (body: unknown): body is PaymentIntentRequest =>
+  typeof body === "object" &&
+  body !== null &&
+  "id" in body &&
+  typeof body.id === "string" &&
+  body.id !== "" &&
+  "amount" in body &&
+  typeof body.amount === "number" &&
+  Number.isInteger(body.amount) &&
+  body.amount > 0 &&
+  "currency" in body &&
+  typeof body.currency === "string" &&
+  body.currency !== "";
+
 /**
  * Make `id` a payment intent the secret key was paid `amount` on, with nothing
  * refunded of it, as the payment a scenario seeds for a purchase stands for.
@@ -544,33 +620,27 @@ const registerPaymentIntent = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
-  const { amount, currency, id } = JSON.parse(await readBody(request)) as {
-    amount?: unknown;
-    currency?: unknown;
-    id?: unknown;
-  };
-  if (
-    typeof id !== "string" ||
-    !id ||
-    typeof amount !== "number" ||
-    !Number.isInteger(amount) ||
-    amount <= 0 ||
-    typeof currency !== "string" ||
-    !currency
-  ) {
+  const body: unknown = JSON.parse(await readBody(request));
+
+  if (!isPaymentIntentRequest(body)) {
     answerError(
       response,
       400,
       "A payment intent needs an id, an amount, and a currency."
     );
+
     return;
   }
+
+  const { amount, currency, id } = body;
+
   const intent: PaymentIntent = {
     amount,
     currency: currency.toLowerCase(),
     id,
     refunded: 0,
   };
+
   paymentIntents.set(`${secretKeyOf(request)}\n${id}`, intent);
   answerJSON(response, 200, paymentIntentObject(intent));
 };
@@ -581,6 +651,7 @@ const getPaymentIntent = (
   response: ServerResponse
 ): void => {
   const intent = paymentIntents.get(`${secretKeyOf(request)}\n${id}`);
+
   if (!intent) {
     answerError(
       response,
@@ -588,8 +659,10 @@ const getPaymentIntent = (
       `No such payment_intent: '${id}'`,
       "resource_missing"
     );
+
     return;
   }
+
   answerJSON(response, 200, paymentIntentObject(intent));
 };
 
@@ -607,8 +680,10 @@ const createRefund = async (
   const secretKey = secretKeyOf(request);
   const id = form.get("payment_intent") ?? "";
   const replayKey = replayKeyOf(request, secretKey);
-  if (idempotent.has(replayKey)) {
-    const replayed = idempotent.get(replayKey) as { payment_intent?: string };
+
+  const replayed = idempotent.get(replayKey);
+
+  if (replayed !== undefined) {
     if (replayed.payment_intent !== id) {
       answerError(
         response,
@@ -617,13 +692,17 @@ const createRefund = async (
         "",
         "idempotency_error"
       );
+
       return;
     }
+
     answerJSON(response, 200, replayed);
+
     return;
   }
 
   const intent = paymentIntents.get(`${secretKey}\n${id}`);
+
   if (!intent) {
     answerError(
       response,
@@ -631,9 +710,12 @@ const createRefund = async (
       `No such payment_intent: '${id}'`,
       "resource_missing"
     );
+
     return;
   }
+
   const left = intent.amount - intent.refunded;
+
   if (left <= 0) {
     answerError(
       response,
@@ -641,9 +723,12 @@ const createRefund = async (
       "Charge has already been refunded.",
       "charge_already_refunded"
     );
+
     return;
   }
+
   const amount = form.has("amount") ? Number(form.get("amount")) : left;
+
   if (!Number.isInteger(amount) || amount <= 0 || amount > left) {
     answerError(
       response,
@@ -651,9 +736,12 @@ const createRefund = async (
       "Refund amount is greater than unrefunded amount on charge.",
       "amount_too_large"
     );
+
     return;
   }
+
   intent.refunded += amount;
+
   const created = {
     amount,
     charge: `ch_${intent.id}`,
@@ -663,9 +751,11 @@ const createRefund = async (
     payment_intent: intent.id,
     status: "succeeded",
   };
+
   if (replayKey) {
     idempotent.set(replayKey, created);
   }
+
   answerJSON(response, 200, created);
 };
 
@@ -675,6 +765,7 @@ const getCheckoutSession = (
   response: ServerResponse
 ): void => {
   const session = sessions.get(id);
+
   if (!session || session.secretKey !== secretKeyOf(request)) {
     answerError(
       response,
@@ -682,8 +773,10 @@ const getCheckoutSession = (
       `No such checkout.session: '${id}'`,
       "resource_missing"
     );
+
     return;
   }
+
   answerJSON(response, 200, sessionObject(session));
 };
 
@@ -694,6 +787,7 @@ const expireCheckoutSession = (
   response: ServerResponse
 ): void => {
   const session = sessions.get(id);
+
   if (!session || session.secretKey !== secretKeyOf(request)) {
     answerError(
       response,
@@ -701,16 +795,20 @@ const expireCheckoutSession = (
       `No such checkout.session: '${id}'`,
       "resource_missing"
     );
+
     return;
   }
+
   if (session.status !== "open") {
     answerError(
       response,
       400,
       'Only Checkout Sessions with a status in ["open"] can be expired.'
     );
+
     return;
   }
+
   session.status = "expired";
   answerJSON(response, 200, sessionObject(session));
 };
@@ -743,6 +841,7 @@ const getSubscription = (
   response: ServerResponse
 ): void => {
   const subscription = subscriptions.get(`${secretKeyOf(request)}\n${id}`);
+
   if (!subscription) {
     answerError(
       response,
@@ -750,8 +849,10 @@ const getSubscription = (
       `No such subscription: '${id}'`,
       "resource_missing"
     );
+
     return;
   }
+
   answerJSON(response, 200, subscriptionObject(subscription));
 };
 
@@ -760,15 +861,19 @@ const createBillingPortalSession = async (
   response: ServerResponse
 ): Promise<void> => {
   const form = new URLSearchParams(await readBody(request));
+
   const portal: BillingPortalSession = {
     customer: form.get("customer") ?? "",
     id: randomId("bps_test_"),
     returnURL: form.get("return_url") ?? "",
   };
+
   if (!portal.customer || !URL.canParse(portal.returnURL)) {
     answerError(response, 400, "A customer and a return URL are required.");
+
     return;
   }
+
   portals.set(portal.id, portal);
   answerJSON(response, 200, {
     customer: portal.customer,
@@ -784,6 +889,7 @@ const createBillingPortalSession = async (
 const periodEndOf = (price: Price | undefined): number => {
   const unit = price?.interval ?? "month";
   const count = price?.intervalCount ?? 1;
+
   return Math.floor(
     Temporal.Now.zonedDateTimeISO("UTC").add({ [`${unit}s`]: count })
       .epochMilliseconds / 1000
@@ -793,9 +899,11 @@ const periodEndOf = (price: Price | undefined): number => {
 /** What Stripe puts in `Stripe-Signature`: a timestamp and its HMAC. */
 const signature = (payload: string, secret: string): string => {
   const timestamp = Math.floor(Temporal.Now.instant().epochMilliseconds / 1000);
+
   const digest = createHmac("sha256", secret)
     .update(`${timestamp}.${payload}`)
     .digest("hex");
+
   return `t=${timestamp},v1=${digest}`;
 };
 
@@ -810,11 +918,14 @@ const deliver = async (
   payload: string
 ): Promise<{ body: string; status: number }> => {
   const target = new URL(endpoint.url);
+
   if (target.protocol !== "http:") {
     throw new Error(`cannot deliver to ${endpoint.url}: only http is served`);
   }
+
   const { hostname } = target;
   const loopback = hostname === "localhost" || hostname.endsWith(".localhost");
+
   const outgoing = httpRequest({
     headers: {
       "content-length": Buffer.byteLength(payload),
@@ -827,8 +938,11 @@ const deliver = async (
     path: `${target.pathname}${target.search}`,
     port: target.port || 80,
   });
+
   outgoing.end(payload);
+  // SAFETY: a ClientRequest emits `response` with the one IncomingMessage.
   const [incoming] = (await once(outgoing, "response")) as [IncomingMessage];
+
   return { body: await readBody(incoming), status: incoming.statusCode ?? 0 };
 };
 
@@ -845,7 +959,9 @@ const formatAmount = (amount: number, currency: string): string => {
     currency: currency.toUpperCase(),
     style: "currency",
   });
+
   const digits = format.resolvedOptions().maximumFractionDigits ?? 0;
+
   return format.format(amount / 10 ** digits);
 };
 
@@ -866,19 +982,23 @@ ${body}
  */
 const itemsHTML = (session: CheckoutSession): string => {
   const [first] = session.lineItems;
+
   if (session.lineItems.length === 1 && first) {
     return `<h1>${escapeHTML(first.name)}</h1>`;
   }
+
   const items = session.lineItems
     .map(
       ({ amount, name }) =>
         `<li>${escapeHTML(name)} ${escapeHTML(formatAmount(amount, session.currency))}</li>`
     )
     .join("\n");
+
   const discount =
     session.discount > 0
       ? `\n<p>Discount ${escapeHTML(formatAmount(-session.discount, session.currency))}</p>`
       : "";
+
   return `<h1>${session.lineItems.length} items</h1>
 <ul>
 ${items}
@@ -911,6 +1031,7 @@ const pay = async (
   // A subscription checkout starts its subscription before the event that
   // names it is delivered, as the server reads it back on receiving it.
   const paid = { ...session, status: "complete" as const };
+
   if (session.mode === "subscription") {
     paid.customer ||= randomId("cus_test_");
     paid.subscription = randomId("sub_test_");
@@ -924,6 +1045,7 @@ const pay = async (
       price: session.subscriptionPrice,
     });
   }
+
   const payload = JSON.stringify({
     api_version: session.apiVersion,
     created: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
@@ -934,16 +1056,19 @@ const pay = async (
     pending_webhooks: 1,
     type,
   });
+
   const subscribed = (endpoints.get(session.secretKey) ?? []).filter(
     ({ enabledEvents }) =>
       enabledEvents.includes("*") || enabledEvents.includes(type)
   );
+
   const deliveries = await Promise.all(
     subscribed.map(async (endpoint) => ({
       ...(await deliver(endpoint, payload)),
       url: endpoint.url,
     }))
   );
+
   for (const delivered of deliveries) {
     if (delivered.status < 200 || delivered.status >= 300) {
       answer(
@@ -957,10 +1082,13 @@ const pay = async (
 <pre>${escapeHTML(delivered.body)}</pre>`
         )
       );
+
       return;
     }
   }
+
   Object.assign(session, paid);
+
   if (session.mode === "payment") {
     paymentIntents.set(`${session.secretKey}\n${session.paymentIntent}`, {
       amount: session.amount,
@@ -969,6 +1097,7 @@ const pay = async (
       refunded: 0,
     });
   }
+
   response.writeHead(303, {
     location: session.successURL.replaceAll(
       "{CHECKOUT_SESSION_ID}",
@@ -993,22 +1122,31 @@ const handleCheckout = async (
   response: ServerResponse
 ): Promise<void> => {
   const session = sessions.get(id);
+
   if (!session) {
     answer(response, 404, "text/plain", "no such checkout session");
+
     return;
   }
+
   if (session.status !== "open") {
     answer(response, 410, "text/plain", "the checkout session is complete");
+
     return;
   }
+
   if (request.method === "GET") {
     answer(response, 200, "text/html; charset=utf-8", checkoutPage(session));
+
     return;
   }
+
   if (request.method === "POST") {
     await pay(session, response);
+
     return;
   }
+
   answer(response, 405, "text/plain", "method not allowed");
 };
 
@@ -1040,10 +1178,13 @@ const showBillingPortal = (
   response: ServerResponse
 ): void => {
   const portal = portals.get(id);
+
   if (!portal) {
     answer(response, 404, "text/plain", "no such billing portal session");
+
     return;
   }
+
   answer(response, 200, "text/html; charset=utf-8", billingPortalPage(portal));
 };
 
@@ -1073,31 +1214,45 @@ const handle = async (
   response: ServerResponse
 ): Promise<void> => {
   const { pathname } = new URL(request.url ?? "/", origin);
+
   if (request.method === "GET" && pathname === "/readyz") {
     answerJSON(response, 200, { status: "ok" });
+
     return;
   }
+
   const route = apiRoutes.get(`${request.method} ${pathname}`);
+
   if ((route || pathname.startsWith("/v1/")) && !secretKeyOf(request)) {
     answerError(response, 401, "You did not provide an API key.");
+
     return;
   }
+
   if (route) {
     await route(request, response);
+
     return;
   }
+
   for (const [method, pattern, answerRecord] of recordRoutes) {
     const id = pattern.exec(pathname)?.groups?.id;
+
     if (id && request.method === method) {
       answerRecord(id, request, response);
+
       return;
     }
   }
+
   const checkout = /^\/checkout\/(?<id>[^/]+)$/u.exec(pathname)?.groups?.id;
+
   if (checkout) {
     await handleCheckout(checkout, request, response);
+
     return;
   }
+
   answer(response, 404, "text/plain", "not found");
 };
 

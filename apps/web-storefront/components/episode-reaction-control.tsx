@@ -38,6 +38,7 @@ export const EpisodeReactionControl = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
+
   const [defaultLocale, result] = await Promise.all([
     getTenantDefaultLocale(tenantId),
     getMyEpisodeRating(tenantId, episodeId, locale),

@@ -98,11 +98,13 @@ export const EpisodeViewer = async ({
   }
 
   const locale = await getLocale();
+
   const [t, tenantId, accessToken] = await Promise.all([
     getMessagesFor(locale),
     getTenantId(),
     resolveAccessToken(),
   ]);
+
   const [savedPageIndex, viewerPreferences] = await Promise.all([
     getMyReadingPosition({
       accessToken,
@@ -111,9 +113,11 @@ export const EpisodeViewer = async ({
     }),
     getMyViewerPreferences({ accessToken, tenantId }),
   ]);
+
   const nextHref = nextEpisode
     ? episodePath(series.publicId, nextEpisode.publicId)
     : undefined;
+
   const previousHref = previousEpisode
     ? episodePath(series.publicId, previousEpisode.publicId)
     : undefined;

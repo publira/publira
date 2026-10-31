@@ -118,6 +118,7 @@ describe("CloseStatementButton", () => {
     // settled before the test ends rather than left running into the next.
     const { promise, resolve } =
       Promise.withResolvers<CloseRoyaltyStatementActionState>();
+
     close.mockReturnValue(promise);
 
     await renderButton();

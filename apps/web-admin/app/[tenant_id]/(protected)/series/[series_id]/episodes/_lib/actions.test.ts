@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AuthSessionModule from "#lib/auth-session";
+
 const {
   mockAssertSameOrigin,
   mockBulkEditEpisodeCredits,
@@ -35,6 +37,7 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -61,7 +64,7 @@ vi.mock("#lib/dashboard", () => ({
 }));
 
 vi.mock("#lib/auth-session", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AuthSessionModule>()),
   verifyAdminSession: mockVerifyAdminSession,
 }));
 
@@ -112,6 +115,7 @@ const createEpisodeFormData = (): FormData => {
   formData.set("reading_period_hours", "24");
   formData.set("availability", "");
   formData.set("purchase_availability", "");
+
   return formData;
 };
 
@@ -385,6 +389,7 @@ const bulkCreditFormData = (): FormData => {
   formData.set("from_role_id", "018f0e6a-8000-7000-8000-00000000000a");
   formData.set("to_creator_id", "018f0e6a-7000-7000-8000-00000000000c");
   formData.set("to_role_id", "018f0e6a-8000-7000-8000-00000000000a");
+
   return formData;
 };
 
@@ -394,6 +399,7 @@ const setShareFormData = (share: string): FormData => {
   formData.set("creator_id", "018f0e6a-7000-7000-8000-00000000000b");
   formData.set("role_id", "018f0e6a-8000-7000-8000-00000000000a");
   formData.set("share", share);
+
   return formData;
 };
 
@@ -418,6 +424,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
     });
 
     const { bulkEditEpisodeCreditsAction } = await import("./actions");
+
     const result = await bulkEditEpisodeCreditsAction(
       null,
       bulkCreditFormData()
@@ -446,9 +453,11 @@ describe("bulkEditEpisodeCreditsAction", () => {
     expect(result).toMatchObject({
       ok: true,
     });
+
     if (!result?.ok) {
       return;
     }
+
     expect(result.changedEpisodeIds).toHaveLength(11);
     expect(result.changedEpisodeIds.at(-1)).toBe(
       "018f0e6a-4000-7000-8000-000000000011"
@@ -542,6 +551,7 @@ describe("bulkEditEpisodeCreditsAction", () => {
     "refuses a set-share whose share box holds %j",
     async (share) => {
       const { bulkEditEpisodeCreditsAction } = await import("./actions");
+
       const result = await bulkEditEpisodeCreditsAction(
         null,
         setShareFormData(share)
@@ -569,6 +579,7 @@ const reorderFormData = (): FormData => {
     "ordered_episode_ids",
     JSON.stringify([fortyEpisodes[1]?.id, fortyEpisodes[0]?.id])
   );
+
   return formData;
 };
 
@@ -623,6 +634,7 @@ describe("listEpisodeCreditRangeOptionsAction", () => {
 
   it("answers the episodes, creators, and roles of the tenant it names", async () => {
     const { listEpisodeCreditRangeOptionsAction } = await import("./actions");
+
     const result = await listEpisodeCreditRangeOptionsAction(
       "TENANT001",
       "018f0e6a-2000-7000-8000-000000000001",
@@ -662,9 +674,11 @@ describe("createSeriesFreeWindowsAction", () => {
     formData.set("ends_at", endsAt);
     formData.set("episode_ids", "[]");
     formData.set("first_count", "1");
+
     for (const [name, value] of Object.entries(fields)) {
       formData.set(name, value);
     }
+
     return formData;
   };
 
@@ -688,6 +702,7 @@ describe("createSeriesFreeWindowsAction", () => {
 
   it("schedules the checked episodes in reading order and clears the windows' tag", async () => {
     const { createSeriesFreeWindowsAction } = await import("./actions");
+
     const result = await createSeriesFreeWindowsAction(
       null,
       bulkFormData({
@@ -746,6 +761,7 @@ describe("createSeriesFreeWindowsAction", () => {
 
   it("asks for a check when none of the checked episodes is in the series", async () => {
     const { createSeriesFreeWindowsAction } = await import("./actions");
+
     const result = await createSeriesFreeWindowsAction(
       null,
       bulkFormData({ episode_ids: "[]", target: "selected" })
@@ -762,6 +778,7 @@ describe("createSeriesFreeWindowsAction", () => {
     mockListAllEpisodes.mockResolvedValueOnce({ episodes: [], ok: true });
 
     const { createSeriesFreeWindowsAction } = await import("./actions");
+
     const result = await createSeriesFreeWindowsAction(
       null,
       bulkFormData({ target: "all" })
@@ -775,6 +792,7 @@ describe("createSeriesFreeWindowsAction", () => {
 
   it("refuses a count of first episodes outside the bound", async () => {
     const { createSeriesFreeWindowsAction } = await import("./actions");
+
     const result = await createSeriesFreeWindowsAction(
       null,
       bulkFormData({ first_count: "0", target: "first" })
@@ -788,6 +806,7 @@ describe("createSeriesFreeWindowsAction", () => {
 
   it("refuses a target the form could not have offered", async () => {
     const { createSeriesFreeWindowsAction } = await import("./actions");
+
     const result = await createSeriesFreeWindowsAction(
       null,
       bulkFormData({ target: "random" })
@@ -804,6 +823,7 @@ describe("createSeriesFreeWindowsAction", () => {
     });
 
     const { createSeriesFreeWindowsAction } = await import("./actions");
+
     const result = await createSeriesFreeWindowsAction(
       null,
       bulkFormData({ target: "all" })
@@ -831,9 +851,11 @@ describe("createSeriesCampaignPricesAction", () => {
       "episode_ids",
       JSON.stringify([campaignEpisodeId(3), campaignEpisodeId(1)])
     );
+
     for (const [name, value] of Object.entries(fields)) {
       formData.set(name, value);
     }
+
     return formData;
   };
 
@@ -857,6 +879,7 @@ describe("createSeriesCampaignPricesAction", () => {
 
   it("schedules the checked episodes in reading order and clears the campaigns' tag", async () => {
     const { createSeriesCampaignPricesAction } = await import("./actions");
+
     const result = await createSeriesCampaignPricesAction(
       null,
       bulkFormData({})
@@ -886,6 +909,7 @@ describe("createSeriesCampaignPricesAction", () => {
 
   it("asks for a check when no episode is checked", async () => {
     const { createSeriesCampaignPricesAction } = await import("./actions");
+
     const result = await createSeriesCampaignPricesAction(
       null,
       bulkFormData({ episode_ids: "[]" })
@@ -900,6 +924,7 @@ describe("createSeriesCampaignPricesAction", () => {
 
   it("refuses the selection when a checked episode has left the series", async () => {
     const { createSeriesCampaignPricesAction } = await import("./actions");
+
     const result = await createSeriesCampaignPricesAction(
       null,
       bulkFormData({
@@ -920,6 +945,7 @@ describe("createSeriesCampaignPricesAction", () => {
 
   it("refuses a price of zero, which would make the episodes free", async () => {
     const { createSeriesCampaignPricesAction } = await import("./actions");
+
     const result = await createSeriesCampaignPricesAction(
       null,
       bulkFormData({ price: "0" })
@@ -935,6 +961,7 @@ describe("createSeriesCampaignPricesAction", () => {
 
   it("refuses a period that has already ended without calling the API", async () => {
     const { createSeriesCampaignPricesAction } = await import("./actions");
+
     const result = await createSeriesCampaignPricesAction(
       null,
       bulkFormData({
@@ -957,6 +984,7 @@ describe("createSeriesCampaignPricesAction", () => {
     });
 
     const { createSeriesCampaignPricesAction } = await import("./actions");
+
     const result = await createSeriesCampaignPricesAction(
       null,
       bulkFormData({})

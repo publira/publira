@@ -27,5 +27,6 @@ export const verifyAdminPageSession = async (): Promise<AdminPageSession> => {
   // fail, and failing before a rejected session settled would bring up the
   // error screen instead of the login redirect.
   await verifyAdminSession(tenantId);
+
   return { locale: await getLocale(tenantId), tenantId };
 };

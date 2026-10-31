@@ -42,9 +42,11 @@ vi.mock("#lib/tenant-retention-settings", () => ({
 
 const textFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 

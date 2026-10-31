@@ -18,6 +18,7 @@ const setCookies = (...pairs: string[]) => {
 const clearCookies = () => {
   for (const entry of document.cookie.split(";")) {
     const name = entry.split("=")[0]?.trim();
+
     if (name) {
       document.cookie = `${name}=; path=/; max-age=0`;
     }

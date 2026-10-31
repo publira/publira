@@ -119,9 +119,11 @@ it("points each label at its own input when it is mounted twice", async () => {
 const pickIcon = (container: HTMLElement, width: number, height: number) => {
   const fileInput =
     container.querySelector<HTMLInputElement>('input[type="file"]');
+
   if (!fileInput) {
     throw new Error("the form has no icon file input");
   }
+
   fireEvent.change(fileInput, {
     target: { files: [new File(["x"], "icon.jpg", { type: "image/jpeg" })] },
   });
@@ -176,6 +178,7 @@ it("previews the framed square rather than the whole picked file", async () => {
   const preview = container.querySelector<HTMLImageElement>(
     'img[alt="The selected image, framed as the icon will be cut"]'
   );
+
   // The file is 400 tall and the square keeps all of that height, so the
   // preview shows it at its own height, shifted left by the part beside it.
   expect(preview?.style.height).toBe("100%");
@@ -240,9 +243,11 @@ it("posts the removal of the saved icon while its box is ticked", async () => {
   const { form } = screen.getByRole<HTMLButtonElement>("button", {
     name: "Update author",
   });
+
   if (!form) {
     throw new Error("the update button belongs to no form");
   }
+
   expect(new FormData(form).get("clear_icon_image")).toBe("0");
 
   fireEvent.click(

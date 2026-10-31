@@ -161,6 +161,7 @@ export const coinStatus = (
   if (!settings.enabled) {
     return "off";
   }
+
   return settings.selling ? "selling" : "not_selling";
 };
 
@@ -224,6 +225,7 @@ const toCoinNames = (
 ): CoinName[] =>
   (names ?? []).flatMap((name) => {
     const locale = parseLocale(name.locale?.trim());
+
     return locale ? [{ locale, name: name.name ?? "" }] : [];
   });
 
@@ -273,8 +275,10 @@ const getCoinSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -289,9 +293,11 @@ const getCoinSettingsForSession = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, ...toCoinSettingsRead(response) };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.coins.load_failed"), {
         locale,
@@ -320,8 +326,10 @@ const listCoinPacksForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -337,9 +345,11 @@ const listCoinPacksForSession = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, packs: (response.packs ?? []).map(toCoinPack) };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.coins.packs.list_failed"), {
         locale,
@@ -366,12 +376,13 @@ export const listCoinPacks = async (
  * passed can still come back here.
  */
 const refusedSettingsFieldErrors = (
-  error: unknown,
+  cause: unknown,
   names: readonly CoinName[],
   defaultLocale: Locale,
   t: AdminMessageAccessor
 ): CoinSettingsFieldErrors | undefined => {
   const fieldErrors: CoinSettingsFieldErrors = {};
+
   const fields = [
     [
       "coin_unit_amount",
@@ -396,15 +407,17 @@ const refusedSettingsFieldErrors = (
     ["contact", "contact", "admin.coins.settings.validation.contact_invalid"],
     ["notice", "notice", "admin.coins.settings.validation.notice_invalid"],
   ] as const;
+
   for (const [field, key, message] of fields) {
-    if (rpcErrorHasFieldViolation(error, `settings.${field}`)) {
+    if (rpcErrorHasFieldViolation(cause, `settings.${field}`)) {
       fieldErrors[key] = t(message);
     }
   }
+
   for (const [index, name] of names.entries()) {
     if (
-      rpcErrorHasFieldViolation(error, `settings.names[${index}].name`) ||
-      rpcErrorHasFieldViolation(error, `settings.names[${index}].locale`)
+      rpcErrorHasFieldViolation(cause, `settings.names[${index}].name`) ||
+      rpcErrorHasFieldViolation(cause, `settings.names[${index}].locale`)
     ) {
       fieldErrors[coinNameField(name.locale)] = t(
         "admin.coins.settings.validation.name_invalid",
@@ -412,13 +425,15 @@ const refusedSettingsFieldErrors = (
       );
     }
   }
+
   // A name missing in the default locale while coins are being turned on.
-  if (rpcErrorHasFieldViolation(error, "settings.names")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.names")) {
     fieldErrors[coinNameField(defaultLocale)] = t(
       "admin.coins.settings.validation.default_name_required",
       { language: getLocaleLabel(defaultLocale) }
     );
   }
+
   return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
 };
 
@@ -438,6 +453,7 @@ const cannotTurnOnMessage = async (
       { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     if (!response.platformAllowsCoins) {
       return t("admin.coins.settings.not_allowed");
     }
@@ -445,6 +461,7 @@ const cannotTurnOnMessage = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
   }
+
   return t("admin.coins.settings.cannot_sell");
 };
 
@@ -465,12 +482,15 @@ export const updateCoinSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const tenantId = input.tenantId.trim();
+
   if (!tenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   const { settings } = input;
+
   try {
     const response = await apiClient.coins.updateTenantCoinSettings(
       {
@@ -493,11 +513,13 @@ export const updateCoinSettings = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, ...toCoinSettingsRead(response) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const coinName = { coin_name: input.coinName };
+
     if (rpcErrorHasFieldViolation(error, "currency")) {
       return {
         fieldErrors: {
@@ -507,20 +529,24 @@ export const updateCoinSettings = async (
         ok: false,
       };
     }
+
     const fieldErrors = refusedSettingsFieldErrors(
       error,
       settings.names,
       input.defaultLocale,
       t
     );
+
     if (fieldErrors) {
       return { fieldErrors, message: t("errors.validation"), ok: false };
     }
+
     const readerCount = rpcErrorReasonMetadataNumber(
       error,
       RPC_ERROR_REASON.coinBalancesOutstanding,
       RPC_ERROR_METADATA.readerCount
     );
+
     if (
       readerCount !== null ||
       rpcErrorHasReason(error, RPC_ERROR_REASON.coinBalancesOutstanding)
@@ -536,6 +562,7 @@ export const updateCoinSettings = async (
         ok: false,
       };
     }
+
     if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinUnitAmountFixed)) {
       return {
         fieldErrors: {
@@ -545,6 +572,7 @@ export const updateCoinSettings = async (
         ok: false,
       };
     }
+
     if (rpcErrorDisposition(error) === "precondition") {
       return {
         fieldErrors: {
@@ -554,6 +582,7 @@ export const updateCoinSettings = async (
         ok: false,
       };
     }
+
     return {
       message: rpcErrorMessage(error, t("admin.coins.settings.save_failed"), {
         locale,
@@ -565,36 +594,41 @@ export const updateCoinSettings = async (
 
 /** The wording of a refused pack write, for the field or the rule it broke. */
 const packErrorMessage = (
-  error: unknown,
+  cause: unknown,
   coinName: string,
   t: AdminMessageAccessor,
   locale: Locale,
   fallback: string
 ): string => {
-  if (rpcErrorHasFieldViolation(error, "pack.currency")) {
+  if (rpcErrorHasFieldViolation(cause, "pack.currency")) {
     return t("admin.series.episodes.currency_changed");
   }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinPackSold)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.coinPackSold)) {
     return t("admin.coins.packs.validation.sold", { coin_name: coinName });
   }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinPackLimit)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.coinPackLimit)) {
     return t("admin.coins.packs.validation.limit", {
       count: COIN_PACK_LIMIT,
     });
   }
+
   let invalidArgument = t("errors.validation");
-  if (rpcErrorHasFieldViolation(error, "pack.coins")) {
+
+  if (rpcErrorHasFieldViolation(cause, "pack.coins")) {
     invalidArgument = t("admin.coins.packs.validation.coins_invalid", {
       coin_name: coinName,
     });
-  } else if (rpcErrorHasFieldViolation(error, "pack.bonus_coins")) {
+  } else if (rpcErrorHasFieldViolation(cause, "pack.bonus_coins")) {
     invalidArgument = t("admin.coins.packs.validation.bonus_coins_invalid", {
       coin_name: coinName,
     });
-  } else if (rpcErrorHasFieldViolation(error, "pack.price")) {
+  } else if (rpcErrorHasFieldViolation(cause, "pack.price")) {
     invalidArgument = t("admin.coins.packs.validation.price_invalid");
   }
-  return rpcErrorMessage(error, fallback, {
+
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "invalid-argument": invalidArgument,
@@ -620,7 +654,9 @@ export const createCoinPack = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const tenantId = input.tenantId.trim();
+
   if (!tenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -630,13 +666,16 @@ export const createCoinPack = async (
       { pack: toPackInput(input.pack), tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     if (!response.pack) {
       return { message: t("admin.coins.packs.save_failed"), ok: false };
     }
+
     return { ok: true, pack: toCoinPack(response.pack) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: packErrorMessage(
         error,
@@ -663,7 +702,9 @@ export const updateCoinPack = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const tenantId = input.tenantId.trim();
+
   if (!tenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -677,13 +718,16 @@ export const updateCoinPack = async (
       },
       withSessionHeaders(sessionId)
     );
+
     if (!response.pack) {
       return { message: t("admin.coins.packs.save_failed"), ok: false };
     }
+
     return { ok: true, pack: toCoinPack(response.pack) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: packErrorMessage(
         error,
@@ -710,7 +754,9 @@ export const readCoinPacksForWrite = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false, packs: [] };
   }
@@ -720,10 +766,12 @@ export const readCoinPacksForWrite = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, packs: (response.packs ?? []).map(toCoinPack) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.coins.packs.list_failed"), {
         locale,
@@ -752,11 +800,13 @@ export const reorderCoinPacks = async (
     getMessagesFor(locale),
     readCoinPacksForWrite(input.tenantId, locale),
   ]);
+
   if (!current.ok) {
     return { message: current.message, ok: false };
   }
 
   const currentIds = current.packs.map((pack) => pack.id);
+
   if (
     !sameIds(currentIds, input.expectedIds) ||
     !sameIds(currentIds.toSorted(), input.ids.toSorted())
@@ -765,10 +815,13 @@ export const reorderCoinPacks = async (
   }
 
   const byId = new Map(current.packs.map((pack) => [pack.id, pack]));
+
   const moved = input.ids.flatMap((id, sortOrder) => {
     const pack = byId.get(id);
+
     return pack && pack.sortOrder !== sortOrder ? [{ pack, sortOrder }] : [];
   });
+
   // Each pack is a write of its own, so the moves are sent together. The
   // price is the stored one, in whatever currency it was set in, so it is
   // written unchecked, and only the position changes.
@@ -785,9 +838,11 @@ export const reorderCoinPacks = async (
       )
     )
   );
+
   if (results.some((result) => !result.ok)) {
     return { message: t("admin.coins.packs.reorder_failed"), ok: false };
   }
+
   return { ok: true };
 };
 
@@ -799,7 +854,9 @@ export const retireCoinPack = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const tenantId = input.tenantId.trim();
+
   if (!tenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -809,10 +866,12 @@ export const retireCoinPack = async (
       { coinPackId: input.id, tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.coins.packs.retire_failed"), {
         locale,

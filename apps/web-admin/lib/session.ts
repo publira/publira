@@ -27,15 +27,18 @@ const getAccessTokenFromCookie = async (): Promise<string> => {
 
   const cookieStore = await cookies();
   const raw = cookieStore.get(ADMIN_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
+
   if (!raw) {
     return "";
   }
 
   const payload = await decryptSessionPayload(raw, resolveAuthSecret());
+
   if (payload) {
     if (isSessionExpired(payload.expiresAt)) {
       return "";
     }
+
     return payload.accessToken.trim();
   }
 
@@ -58,5 +61,6 @@ const getAccessTokenFromCookie = async (): Promise<string> => {
  */
 export const getAccessToken = async (): Promise<string> => {
   await io();
+
   return await getAccessTokenFromCookie();
 };

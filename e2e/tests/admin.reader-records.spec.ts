@@ -52,6 +52,7 @@ test.describe("web-admin reader purchases and tickets", () => {
     const purchase = sectionRows(page, "Purchases").filter({
       hasText: READER_RECORDS_PURCHASE.episodeTitle,
     });
+
     await expect(purchase).toHaveCount(1);
     await expect(purchase.getByText("Active")).toBeVisible();
     await expect(
@@ -75,6 +76,7 @@ test.describe("web-admin reader purchases and tickets", () => {
     const ticket = sectionRows(page, "Access tickets").filter({
       hasText: READER_RECORDS_TICKET.note,
     });
+
     await expect(ticket).toHaveCount(1);
     await expect(ticket.getByText("Active")).toBeVisible();
     await expect(
@@ -96,6 +98,7 @@ test.describe("web-admin reader purchases and tickets", () => {
     const ticket = sectionRows(page, "Access tickets").filter({
       hasText: READER_RECORDS_TICKET.note,
     });
+
     await ticket.getByRole("button", { name: "Revoke" }).click();
     // The confirmation carries the same label as the trigger that opened it,
     // so the dialog is what tells the two apart.
@@ -120,9 +123,11 @@ test.describe("web-admin reader purchases and tickets", () => {
     await section(page, "Access tickets")
       .getByRole("button", { name: "Issue a ticket" })
       .click();
+
     const dialog = page.getByRole("dialog", {
       name: `Issue a ticket to ${READER_RECORDS_BUYER.name}`,
     });
+
     await expect(dialog).toBeVisible();
     // The page already names the reader, so the form asks only for the rest.
     await expect(dialog.getByRole("combobox", { name: /Reader/u })).toHaveCount(
@@ -149,9 +154,11 @@ test.describe("web-admin reader purchases and tickets", () => {
     await expect(page).toHaveURL(
       new RegExp(`/readers/${READER_RECORDS_BUYER.publicId}$`, "u")
     );
+
     const issued = sectionRows(page, "Access tickets").filter({
       hasText: ISSUED_EPISODE.note,
     });
+
     await expect(issued.getByText("Active")).toBeVisible();
     await expect(
       issued.getByRole("link", { exact: true, name: ISSUED_EPISODE.title })

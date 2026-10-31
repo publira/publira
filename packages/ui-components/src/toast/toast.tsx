@@ -75,6 +75,7 @@ export const ToastClose = ({
 
 const ToastStack = () => {
   const { toasts } = useToastManager();
+
   return (
     <ToastViewport>
       {toasts.map((toast) => (

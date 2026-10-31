@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { optionalTrimmedString, revisionFormSchema } from "#lib/form-schemas";
+import {
+  isFormText,
+  optionalTrimmedString,
+  revisionFormSchema,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
   STORAGE_SECRET_CLEAR,
@@ -21,10 +25,13 @@ const isStoreUrl = (value: string): boolean => {
   if (!value) {
     return true;
   }
+
   if (!URL.canParse(value)) {
     return false;
   }
+
   const url = new URL(value);
+
   return (
     (url.protocol === "http:" || url.protocol === "https:") &&
     url.host !== "" &&
@@ -61,7 +68,7 @@ export const storageFormSchema = async (locale: Locale) => {
     .object({
       accessKeyId: optionalTrimmedString(128),
       bucket: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z
           .string()
           .min(1, t("platform.storage.form.bucket_required"))
@@ -81,7 +88,7 @@ export const storageFormSchema = async (locale: Locale) => {
         t("platform.storage.form.public_base_url_invalid")
       ),
       region: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z
           .string()
           .min(1, t("platform.storage.form.region_required"))
@@ -89,7 +96,7 @@ export const storageFormSchema = async (locale: Locale) => {
       ),
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
       secretAccessKey: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z.string()
       ),
       secretAccessKeyUpdateMode: z.preprocess(
@@ -104,6 +111,7 @@ export const storageFormSchema = async (locale: Locale) => {
       if (value.credentialMode !== "access_key") {
         return;
       }
+
       if (!value.accessKeyId) {
         ctx.addIssue({
           code: "custom",
@@ -111,6 +119,7 @@ export const storageFormSchema = async (locale: Locale) => {
           path: ["accessKeyId"],
         });
       }
+
       if (
         value.secretAccessKeyUpdateMode === STORAGE_SECRET_REPLACE &&
         !value.secretAccessKey

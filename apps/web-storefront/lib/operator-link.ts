@@ -10,6 +10,7 @@
  */
 export const toSafeOperatorLinkUrl = (value: string): string | null => {
   const trimmed = value.trim();
+
   if (trimmed.length === 0 || trimmed.length > 2048) {
     return null;
   }
@@ -18,6 +19,7 @@ export const toSafeOperatorLinkUrl = (value: string): string | null => {
     trimmed.startsWith("/") &&
     !trimmed.startsWith("//") &&
     !trimmed.startsWith("/\\");
+
   if (
     isInternalPath ||
     trimmed.startsWith("https://") ||

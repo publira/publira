@@ -29,15 +29,18 @@ export const TenantLocalesFields = ({
   const t = useClientMessages();
   const supportedDescriptionId = useId();
   const [defaultLocale, setDefaultLocale] = useState(initialDefaultLocale);
+
   const [offered, setOffered] = useState<ReadonlySet<Locale>>(
     () => new Set(initialSupportedLocales)
   );
 
   const chooseDefault = (value: string) => {
     const code = parseLocale(value);
+
     if (!code) {
       return;
     }
+
     setDefaultLocale(code);
     setOffered((current) => new Set(current).add(code));
   };
@@ -45,11 +48,13 @@ export const TenantLocalesFields = ({
   const setOfferedLocale = (code: Locale, checked: boolean) => {
     setOffered((current) => {
       const next = new Set(current);
+
       if (checked) {
         next.add(code);
       } else {
         next.delete(code);
       }
+
       return next;
     });
   };

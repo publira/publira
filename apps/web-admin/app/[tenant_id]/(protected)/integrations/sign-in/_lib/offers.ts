@@ -38,6 +38,7 @@ export const signInOffers = (
   const appleWeb = apple.ready && apple.servicesId !== "";
   const appleIos = apple.ready && apple.bundleIdentifier !== "";
   const googleWeb = google.ready && google.webClientId !== "";
+
   return {
     apple: [
       { offered: appleWeb, surface: "site" },

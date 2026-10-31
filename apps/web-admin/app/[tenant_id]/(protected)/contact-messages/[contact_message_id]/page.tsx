@@ -48,10 +48,12 @@ type ContactMessageDetailPageProps =
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -74,6 +76,7 @@ const contactMessageReplyRoute = (
   if (!result.ok) {
     return "unknown";
   }
+
   return result.ready ? "inbound" : "staff";
 };
 
@@ -91,11 +94,14 @@ const ContactMessageDetailContent = async ({
     contactMessageParamsSchema,
     await params
   );
+
   if (!parsedParams) {
     notFound();
   }
+
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [
     result,
     timeZone,

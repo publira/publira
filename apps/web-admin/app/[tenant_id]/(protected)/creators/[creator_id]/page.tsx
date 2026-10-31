@@ -64,13 +64,16 @@ const EditCreatorFormData = async ({
   params,
 }: Pick<EditCreatorPageProps, "params">) => {
   const parsedParams = parseRouteParams(editCreatorParamsSchema, await params);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { creator_id: creatorPublicId } = parsedParams;
 
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const result = await getCreator(
     {
       publicId: creatorPublicId,
@@ -125,21 +128,25 @@ const CreatorAccountsSection = async ({
   params,
 }: Pick<EditCreatorPageProps, "params">) => {
   const parsedParams = parseRouteParams(editCreatorParamsSchema, await params);
+
   if (!parsedParams) {
     return null;
   }
 
   const tenantId = await getTenantId();
   const currentUser = await getAdminCurrentUser(tenantId);
+
   if (!currentUser.ok || !isTenantAdminRole(currentUser.user.role)) {
     return null;
   }
 
   const locale = await getLocale(tenantId);
+
   const [result, timeZone] = await Promise.all([
     getCreator({ publicId: parsedParams.creator_id, tenantId }, locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   if (!result.ok) {
     return null;
   }

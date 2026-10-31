@@ -47,6 +47,7 @@ export const clearPlatformSessionCookie = async (): Promise<void> => {
  */
 const resolveReturnTo = async (): Promise<string> => {
   const requestHeaders = await headers();
+
   return sanitizeRedirectPath(requestHeaders.get(RETURN_TO_HEADER_NAME));
 };
 
@@ -91,10 +92,12 @@ export const redirectToLoginIfSessionRejected = async (
 export const verifyPlatformSession =
   async (): Promise<PlatformCurrentOperator> => {
     const result = await getPlatformCurrentOperator();
+
     if (!result.ok) {
       await redirectToLoginIfSessionRejected(result);
       redirect("/login");
     }
+
     return result.operator;
   };
 
@@ -106,9 +109,11 @@ export const verifyPlatformSession =
  */
 export const requirePlatformSession = async (): Promise<string> => {
   const accessToken = await resolveAccessToken();
+
   if (!accessToken) {
     await redirectToLogin();
   }
+
   return accessToken;
 };
 
@@ -136,6 +141,7 @@ export const withPlatformSessionReauth = async <T>(
     if (isUnauthenticatedError(error)) {
       await redirectToLogin();
     }
+
     throw error;
   }
 };

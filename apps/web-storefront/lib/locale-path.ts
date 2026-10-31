@@ -55,8 +55,15 @@ export const isLocaleExemptTopLevelSegment = (segment: string): boolean =>
  */
 export const isLocaleExemptPathname = (pathname: string): boolean => {
   const [first] = splitSegments(pathname);
+
   return first !== undefined && isLocaleExemptTopLevelSegment(first);
 };
+
+/** A public pathname with its leading locale segment, if any, taken off. */
+export interface LocalePathname {
+  locale: Locale | null;
+  pathname: string;
+}
 
 /**
  * Split a leading locale segment off a public pathname.
@@ -65,11 +72,10 @@ export const isLocaleExemptPathname = (pathname: string): boolean => {
  * is how `proxy.ts` recognises a bookmark from before the locale prefix
  * existed. `pathname` is what remains, always starting with `/`.
  */
-export const splitLocalePathname = (
-  pathname: string
-): { locale: Locale | null; pathname: string } => {
+export const splitLocalePathname = (pathname: string): LocalePathname => {
   const segments = splitSegments(pathname);
   const [first] = segments;
+
   if (first === undefined || !isLocale(first)) {
     return { locale: null, pathname: joinSegments(segments) };
   }
@@ -134,12 +140,11 @@ export const localeAlternates = (
   supportedLocales: readonly Locale[],
   href: string
 ): LocaleAlternates => {
-  const languages = Object.fromEntries(
-    supportedLocales.map((code) => [
-      code,
-      withLocalePrefix(code, defaultLocale, href),
-    ])
-  ) as Partial<Record<Locale, string>>;
+  const languages: Partial<Record<Locale, string>> = {};
+
+  for (const code of supportedLocales) {
+    languages[code] = withLocalePrefix(code, defaultLocale, href);
+  }
 
   return {
     canonical: withLocalePrefix(locale, defaultLocale, href),
@@ -168,6 +173,7 @@ export const publishedLocaleAlternates = (
   const published = new Set<Locale>([...publishedLocales, servedLocale]);
 
   const languages: Partial<Record<Locale, string>> = {};
+
   for (const code of supportedLocales) {
     if (published.has(code)) {
       languages[code] = withLocalePrefix(code, defaultLocale, href);
@@ -199,6 +205,7 @@ export const publishedLocaleAlternates = (
  */
 export const toBarePathname = (pathname: string): string => {
   const segments = splitSegments(pathname);
+
   const withoutTenant =
     segments[0] !== undefined && isTenantIdFormat(segments[0])
       ? segments.slice(1)

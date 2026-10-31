@@ -18,7 +18,7 @@ vi.mock("next/cache", () => ({
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/auth-session", () => ({
-  withAdminSessionReauth: (run: () => unknown) => run(),
+  withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
 vi.mock("#lib/tenant-mobile-app-association", () => ({
@@ -44,9 +44,11 @@ const FINGERPRINT_B = Array.from({ length: 32 }, () => "0b").join(":");
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
   data.set("tenant_id", "TENANT001");
+
   for (const [name, value] of Object.entries(fields)) {
     data.set(name, value);
   }
+
   return data;
 };
 

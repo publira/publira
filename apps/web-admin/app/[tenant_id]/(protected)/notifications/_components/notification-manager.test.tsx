@@ -11,7 +11,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NotificationItem } from "../notification-types";
 import { NotificationManager } from "./notification-manager";
 
-const mockLocale = vi.hoisted(() => ({ current: "en" as Locale }));
+/** The language the mocked catalog answers in, which a test switches. */
+interface MessageLocale {
+  current: Locale;
+}
+
+const mockLocale = vi.hoisted((): MessageLocale => ({ current: "en" }));
 
 vi.mock("#lib/messages", () => ({
   getMessagesFor: () =>
@@ -151,6 +156,7 @@ describe("NotificationManager", () => {
     const titleLink = screen.getByRole("link", {
       name: "An episode was published",
     });
+
     expect(titleLink.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
     expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(screen.getByText("Unread")).toBeDefined();

@@ -88,9 +88,7 @@ export const DEFAULT_TENANT_THEME: TenantTheme = {
   serifFontFamily: "",
 };
 
-const themeColorToCssVar: {
-  [K in keyof TenantThemeColors]: `--publira-color-${string}`;
-} = {
+const themeColorToCssVar = {
   accentColor: "--publira-color-accent",
   accentForegroundColor: "--publira-color-accent-foreground",
   backgroundColor: "--publira-color-background",
@@ -118,7 +116,15 @@ const themeColorToCssVar: {
   surfaceForegroundColor: "--publira-color-surface-foreground",
   warningColor: "--publira-color-warning",
   warningForegroundColor: "--publira-color-warning-foreground",
+} satisfies {
+  [K in keyof TenantThemeColors]: `--publira-color-${string}`;
 };
+
+// SAFETY: `themeColorToCssVar` is an object literal that `satisfies` a mapped
+// type over `keyof TenantThemeColors`, so its own keys are exactly those keys.
+const themeColorKeys = Object.keys(
+  themeColorToCssVar
+) as (keyof TenantThemeColors)[];
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/u;
 const MAXIMUM_FONT_FAMILY_LENGTH = 512;
@@ -134,9 +140,11 @@ const isHexColor = (value: string): boolean => HEX_COLOR.test(value);
  */
 export const isTenantThemeFontFamily = (value: string): boolean => {
   const trimmed = value.trim();
+
   if (!trimmed) {
     return true;
   }
+
   if (
     new TextEncoder().encode(trimmed).byteLength > MAXIMUM_FONT_FAMILY_LENGTH ||
     FORBIDDEN_FONT_FAMILY_CHARACTER.test(trimmed)
@@ -147,27 +155,34 @@ export const isTenantThemeFontFamily = (value: string): boolean => {
   const families: string[] = [];
   let family = "";
   let quote = "";
+
   for (const character of trimmed) {
     if (character === "'" || character === '"') {
       quote = quote === character ? "" : quote || character;
     }
+
     if (character === "," && !quote) {
       families.push(family.trim());
       family = "";
       continue;
     }
+
     family += character;
   }
+
   if (quote) {
     return false;
   }
+
   families.push(family.trim());
 
   return families.every((name) => {
     if (!name) {
       return false;
     }
+
     const [first] = name;
+
     if (first === "'" || first === '"') {
       return (
         name.length >= 3 &&
@@ -175,6 +190,7 @@ export const isTenantThemeFontFamily = (value: string): boolean => {
         name.slice(1, -1).trim().length > 0
       );
     }
+
     return UNQUOTED_FONT_FAMILY.test(name);
   });
 };
@@ -192,14 +208,15 @@ export const resolveTenantThemeColors = (
 ): TenantTheme => {
   const source = theme ?? {};
   const resolved = { ...DEFAULT_TENANT_THEME_COLORS };
-  for (const key of Object.keys(
-    DEFAULT_TENANT_THEME_COLORS
-  ) as (keyof TenantThemeColors)[]) {
+
+  for (const key of themeColorKeys) {
     const raw = source[key]?.trim() ?? "";
+
     if (isHexColor(raw)) {
       resolved[key] = raw.toLowerCase();
     }
   }
+
   return {
     ...resolved,
     sansFontFamily: isTenantThemeFontFamily(source.sansFontFamily ?? "")
@@ -225,28 +242,29 @@ export const resolveTenantThemePalette = (
   if (!palette) {
     return undefined;
   }
+
   const resolved = { ...DEFAULT_TENANT_THEME_COLORS };
-  for (const key of Object.keys(
-    DEFAULT_TENANT_THEME_COLORS
-  ) as (keyof TenantThemeColors)[]) {
+
+  for (const key of themeColorKeys) {
     const raw = palette[key]?.trim() ?? "";
+
     if (!isHexColor(raw)) {
       return undefined;
     }
+
     resolved[key] = raw.toLowerCase();
   }
+
   return resolved;
 };
 
-const toColorCssVariables = (
-  colors: TenantThemeColors
-): Record<string, string> => {
+const toColorCssVariables = (colors: TenantThemeColors) => {
   const vars: Record<string, string> = {};
-  for (const key of Object.keys(
-    themeColorToCssVar
-  ) as (keyof TenantThemeColors)[]) {
+
+  for (const key of themeColorKeys) {
     vars[themeColorToCssVar[key]] = colors[key];
   }
+
   return vars;
 };
 
@@ -264,12 +282,15 @@ export const toPubliraThemeCssVariables = (
 ): Record<string, string> => {
   const resolved = resolveTenantThemeColors(theme);
   const vars = toColorCssVariables(resolved);
+
   if (resolved.serifFontFamily) {
     vars["--publira-font-serif"] = resolved.serifFontFamily;
   }
+
   if (resolved.sansFontFamily) {
     vars["--publira-font-sans"] = resolved.sansFontFamily;
   }
+
   return vars;
 };
 
@@ -290,9 +311,12 @@ export const toPubliraThemeCssText = (
   darkPalette?: TenantThemeColors
 ): string => {
   const light = `:root{${toDeclarations(toPubliraThemeCssVariables(theme))}}`;
+
   if (!darkPalette) {
     return light;
   }
+
   const dark = `color-scheme:dark;${toDeclarations(toColorCssVariables(darkPalette))}`;
+
   return `${light}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${dark}}}:root[data-theme="dark"]{${dark}}`;
 };

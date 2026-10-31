@@ -47,9 +47,11 @@ export const freeWindowEpisodes = <T extends { id: string }>(
     target.target === "first"
       ? episodes.slice(0, target.firstCount)
       : episodesSelectedInReadingOrder(episodes, target.episodeIds);
+
   if (covered.length === 0) {
     return { ok: false, reason: "empty" };
   }
+
   if (covered.length > MAX_SERIES_FREE_WINDOW_EPISODES) {
     return { ok: false, reason: "too-many" };
   }

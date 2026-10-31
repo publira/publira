@@ -26,6 +26,7 @@ export const toReadingDirectionValue = (
   if (direction === undefined || direction === ReadingDirection.UNSPECIFIED) {
     return "";
   }
+
   return READING_DIRECTIONS.find(
     (value) => READING_DIRECTION_ENUM[value] === direction
   );

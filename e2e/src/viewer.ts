@@ -55,6 +55,7 @@ export const turnToEndPage = async (
 
   try {
     await control.waitFor({ state: "visible", timeout: TURN_SETTLE_MS });
+
     return true;
   } catch (error) {
     if (!(error instanceof Error && error.name === "TimeoutError")) {
@@ -67,5 +68,6 @@ export const turnToEndPage = async (
   }
 
   await page.keyboard.press("ArrowLeft");
+
   return turnToEndPage(page, control, turns - 1);
 };

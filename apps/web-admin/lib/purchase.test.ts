@@ -112,6 +112,7 @@ describe("listPurchases", () => {
     });
 
     const { listPurchases } = await import("./purchase");
+
     const result = await listPurchases("TENANT001", "en", {
       episodePublicId: "EPISODE001",
       purchasedFrom: "2026-02-28T15:00:00Z",
@@ -237,6 +238,7 @@ describe("listReaderPurchases", () => {
     });
 
     const { listReaderPurchases } = await import("./purchase");
+
     const result = await listReaderPurchases("TENANT001", "en", READER_ID, {
       token: "current-page",
     });
@@ -332,6 +334,7 @@ describe("refundPurchase", () => {
     });
 
     const { refundPurchase } = await import("./purchase");
+
     const result = await refundPurchase(
       {
         purchaseId: PURCHASE_ID,
@@ -364,6 +367,7 @@ describe("refundPurchase", () => {
     );
 
     const { refundPurchase } = await import("./purchase");
+
     const result = await refundPurchase(
       {
         purchaseId: PURCHASE_ID,

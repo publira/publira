@@ -23,6 +23,7 @@ import {
 } from "#lib/email-settings-shared";
 import {
   checkboxOnFormSchema,
+  isFormText,
   optionalBoundedIntFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -46,17 +47,20 @@ import type {
  * value can never remove it.
  */
 const secretUpdateModeFormSchema = z.preprocess((value) => {
-  const raw = typeof value === "string" ? value.trim() : "";
+  const raw = isFormText(value) ? value.trim() : "";
+
   if (raw === String(SECRET_UPDATE_MODE_REPLACE)) {
     return SECRET_UPDATE_MODE_REPLACE;
   }
+
   return raw === String(SECRET_UPDATE_MODE_CLEAR)
     ? SECRET_UPDATE_MODE_CLEAR
     : SECRET_UPDATE_MODE_UNCHANGED;
 }, z.number());
 
 const recipientTypeFormSchema = z.preprocess((value) => {
-  const raw = typeof value === "string" ? value.trim() : "";
+  const raw = isFormText(value) ? value.trim() : "";
+
   return raw === String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
     ? TEST_EMAIL_RECIPIENT_TYPE_CUSTOM
     : TEST_EMAIL_RECIPIENT_TYPE_SELF;
@@ -72,14 +76,14 @@ const tenantSmtpFormSchema = async (locale: Locale) => {
 
   return z.object({
     encryption: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim().toLowerCase() : ""),
+      (value) => (isFormText(value) ? value.trim().toLowerCase() : ""),
       z.string()
     ),
     fromAddress: optionalTrimmedString(),
     fromName: optionalTrimmedString(),
     host: optionalTrimmedString(),
     password: z.preprocess(
-      (value) => (typeof value === "string" ? value : ""),
+      (value) => (isFormText(value) ? value : ""),
       z.string()
     ),
     passwordUpdateMode: secretUpdateModeFormSchema,
@@ -115,6 +119,7 @@ const tenantSmtpFormFields = {
 
 const parseTenantSmtpFormData = async (formData: FormData, locale: Locale) => {
   const schema = await tenantSmtpFormSchema(locale);
+
   return schema.safeParse(toFormDataInput(formData, tenantSmtpFormFields));
 };
 
@@ -124,18 +129,22 @@ export const updateTenantEmailSettingsAction = async (
 ): Promise<TenantEmailSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parseTenantSmtpFormData(formData, locale),
   ]);
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+
   const input = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
     updateTenantEmailSettings(input, locale)
   );
+
   if (!result.ok) {
     return {
       fieldErrors: result.fieldErrors,
@@ -159,18 +168,22 @@ export const sendTenantSmtpTestEmailAction = async (
 ): Promise<TenantSmtpTestFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parseTenantSmtpFormData(formData, locale),
   ]);
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+
   const input = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
     sendTenantSmtpTestEmail(input, locale)
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -225,10 +238,12 @@ export const updateTenantInboundEmailSettingsAction = async (
 ): Promise<TenantInboundEmailSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantInboundEmailSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       domain: "value",
@@ -237,6 +252,7 @@ export const updateTenantInboundEmailSettingsAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -248,6 +264,7 @@ export const updateTenantInboundEmailSettingsAction = async (
   const declared = await withAdminSessionReauth(() =>
     getInboundEmailProvider(parsed.data.tenantId, parsed.data.provider, locale)
   );
+
   if (!declared.ok) {
     return { message: declared.message, ok: false };
   }
@@ -262,6 +279,7 @@ export const updateTenantInboundEmailSettingsAction = async (
       ),
     }
   );
+
   if (!credentials.ok) {
     return {
       fieldErrors: credentials.fieldErrors,
@@ -282,6 +300,7 @@ export const updateTenantInboundEmailSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return result.domainInvalid
       ? {

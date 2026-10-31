@@ -184,6 +184,7 @@ test.describe("admin passkey sign-in", () => {
       exact: true,
       name: "Use a passkey",
     });
+
     await expect(usePasskey).toBeVisible();
     await expect(page.getByLabel("Recovery code")).toHaveCount(0);
 

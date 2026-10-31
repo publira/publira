@@ -20,6 +20,7 @@ export const applyReactionPress = (
   if (current.score >= MAX_EPISODE_REACTION_SCORE) {
     return current;
   }
+
   return {
     ratingCount:
       current.score === 0 ? current.ratingCount + 1 : current.ratingCount,
@@ -38,9 +39,11 @@ export const reactionFillRatio = (
   if (score <= 0) {
     return 0;
   }
+
   if (mode === "single") {
     return 1;
   }
+
   return (
     Math.min(score, MAX_EPISODE_REACTION_SCORE) / MAX_EPISODE_REACTION_SCORE
   );

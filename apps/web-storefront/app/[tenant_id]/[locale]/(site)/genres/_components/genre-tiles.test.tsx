@@ -121,6 +121,7 @@ describe("GenreTiles", () => {
     const names = [
       ...tileLink(/Fantasy \(Japanese edition\)/u).querySelectorAll("[lang]"),
     ];
+
     expect(names.map((name) => name.textContent)).toStrictEqual([
       "Fantasy (Japanese edition)",
       "Fantasy (Japanese edition)",
@@ -226,6 +227,7 @@ describe("GenreTiles", () => {
     const flat = [
       ...tileLink(/Fantasy/u).querySelectorAll('[aria-hidden="true"]'),
     ];
+
     expect(flat).toHaveLength(1);
     expect(flat[0]?.textContent).toBe("Fantasy");
   });

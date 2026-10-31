@@ -1,4 +1,5 @@
 "use client";
+
 import { Checkbox } from "@publira/ui-components/checkbox";
 import * as Field from "@publira/ui-components/field";
 import { createContext, use, useMemo, useState } from "react";
@@ -14,11 +15,13 @@ const CredentialsEnabledContext =
 
 const useCredentialsEnabled = () => {
   const context = use(CredentialsEnabledContext);
+
   if (!context) {
     throw new Error(
       "CredentialsEnabled slots must be rendered inside CredentialsEnabled."
     );
   }
+
   return context;
 };
 

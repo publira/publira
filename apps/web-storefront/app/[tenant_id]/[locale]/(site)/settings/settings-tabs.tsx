@@ -18,6 +18,7 @@ const isTabActive = (pathname: string, href: string): boolean => {
   if (href === "/settings") {
     return pathname === "/settings";
   }
+
   return pathname.startsWith(href);
 };
 

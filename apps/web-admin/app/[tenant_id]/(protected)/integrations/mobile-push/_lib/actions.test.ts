@@ -38,7 +38,17 @@ vi.mock("#lib/fcm-settings", () => ({
 const PRIVATE_KEY =
   "-----BEGIN PRIVATE KEY-----\nnot-a-real-key\n-----END PRIVATE KEY-----\n";
 
-const serviceAccountKey = (overrides: Record<string, unknown> = {}): string =>
+/** The fields of a service account key file the form checks. */
+interface ServiceAccountKeyFields {
+  client_email: string;
+  private_key: string;
+  project_id: string;
+  type: string;
+}
+
+const serviceAccountKey = (
+  overrides: Partial<ServiceAccountKeyFields> = {}
+): string =>
   JSON.stringify({
     client_email: "push@example-app.iam.gserviceaccount.com",
     private_key: PRIVATE_KEY,
@@ -51,12 +61,14 @@ const saveFormData = (projectId: string, keyFile?: string): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("project_id", projectId);
+
   if (keyFile !== undefined) {
     formData.set(
       "service_account_file",
       new File([keyFile], "key.json", { type: "application/json" })
     );
   }
+
   return formData;
 };
 

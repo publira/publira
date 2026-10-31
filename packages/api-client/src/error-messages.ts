@@ -30,31 +30,34 @@ const smtpTestFailureMessageKeys = {
 
 type SmtpTestFailureReason = keyof typeof smtpTestFailureMessageKeys;
 
+const isSmtpTestFailureReason = (
+  reason: string
+): reason is SmtpTestFailureReason =>
+  Object.hasOwn(smtpTestFailureMessageKeys, reason);
+
 /** Returns localized SMTP test failure copy for a server-stored reason code. */
 export const smtpTestFailureMessage = (
   reason: string,
   locale: Locale
 ): string | undefined => {
-  if (!Object.hasOwn(smtpTestFailureMessageKeys, reason)) {
+  if (!isSmtpTestFailureReason(reason)) {
     return undefined;
   }
 
-  return sharedMessage(
-    smtpTestFailureMessageKeys[reason as SmtpTestFailureReason],
-    locale
-  );
+  return sharedMessage(smtpTestFailureMessageKeys[reason], locale);
 };
 
 /** Returns localized SMTP test failure copy from a Connect ErrorInfo detail. */
 export const smtpTestFailureErrorMessage = (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): string | undefined => {
   for (const reason of smtpTestFailureReasons) {
-    if (rpcErrorHasReason(error, reason)) {
+    if (rpcErrorHasReason(cause, reason)) {
       return smtpTestFailureMessage(reason, locale);
     }
   }
+
   return undefined;
 };
 
@@ -94,11 +97,11 @@ export interface RpcErrorMessageOptions {
  * either, so it has a locale to resolve before it has an error to report.
  */
 export const rpcErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   options: RpcErrorMessageOptions
 ): string => {
-  const disposition = rpcErrorDisposition(error);
+  const disposition = rpcErrorDisposition(cause);
 
   return (
     options.overrides?.[disposition] ??

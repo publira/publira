@@ -58,9 +58,11 @@ const affixesOf = (
   const numeric = new Set(["decimal", "fraction", "group", "integer"]);
   const first = parts.findIndex((part) => numeric.has(part.type));
   const last = parts.findLastIndex((part) => numeric.has(part.type));
+
   if (first === -1) {
     throw new Error(`${intl} writes ${currency} with no number`);
   }
+
   for (const part of parts.slice(first, last + 1)) {
     if (!numeric.has(part.type)) {
       throw new Error(
@@ -68,6 +70,7 @@ const affixesOf = (
       );
     }
   }
+
   return {
     prefix: textOf(parts.slice(0, first)),
     suffix: textOf(parts.slice(last + 1)),
@@ -77,8 +80,10 @@ const affixesOf = (
 /** The separators of `intl`, read from a currency with a minor unit. */
 const symbolsOf = (intl: string): Symbols => {
   const parts = formatterFor(intl, "USD").formatToParts(1_234_567.5);
+
   const value = (type: string): string => {
     const part = parts.find((candidate) => candidate.type === type);
+
     if (part === undefined) {
       throw new Error(`${intl} writes no ${type} in a USD amount`);
     }
@@ -103,9 +108,11 @@ export const writeAmount = (
   const scale = 10 ** digits;
   const integer = String(Math.floor(amount / scale));
   const groups: string[] = [];
+
   for (let end = integer.length; end > 0; end -= GROUP_SIZE) {
     groups.unshift(integer.slice(Math.max(0, end - GROUP_SIZE), end));
   }
+
   const fraction =
     digits > 0
       ? `${symbols.decimal}${String(amount % scale).padStart(digits, "0")}`
@@ -133,23 +140,28 @@ export const renderGoCurrencyFormats = (
       const formatter = formatterFor(intl, currency);
       const currencyDigits = digitsOf(formatter);
       const known = digits.get(currency);
+
       if (known !== undefined && known !== currencyDigits) {
         throw new Error(
           `${intl} gives ${currency} ${currencyDigits} fraction digits, not ${known}`
         );
       }
+
       digits.set(currency, currencyDigits);
 
       const currencyAffixes = affixesOf(intl, currency, formatter);
       localeAffixes.set(currency, currencyAffixes);
+
       for (const amount of PROBES) {
         const expected = formatter.format(amount / 10 ** currencyDigits);
+
         const written = writeAmount(
           amount,
           currencyDigits,
           localeSymbols,
           currencyAffixes
         );
+
         if (written !== expected) {
           throw new Error(
             `${intl} writes ${amount} in the minor unit of ${currency} as ${JSON.stringify(expected)}, but the compiled pattern gives ${JSON.stringify(written)}`
@@ -215,15 +227,19 @@ export const renderGoCurrencyFormats = (
     "// the web apps word the same price the same way.",
     "var CurrencyFormats = map[string]map[string]CurrencyAffixes{",
   ];
+
   for (const [code, localeAffixes] of affixes) {
     lines.push(`${INDENT}${goString(code)}: {`);
+
     for (const [currency, currencyAffixes] of localeAffixes) {
       lines.push(
         `${INDENT.repeat(2)}${goString(currency)}: ${affixLiteral(currencyAffixes)},`
       );
     }
+
     lines.push(`${INDENT}},`);
   }
+
   lines.push("}");
 
   return `${lines.join("\n")}\n`;

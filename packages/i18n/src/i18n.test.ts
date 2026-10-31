@@ -68,12 +68,14 @@ const zhHantFixture = {
 /** Compile-time: the root catalogs must match each other with no extra keys. */
 const enMatchesJa: ExactCatalog<typeof enCatalog, typeof jaCatalog> = enCatalog;
 const koMatchesEn: ExactCatalog<typeof koCatalog, typeof enCatalog> = koCatalog;
+
 const zhHansMatchesEn: ExactCatalog<typeof zhHansCatalog, typeof enCatalog> =
   zhHansCatalog;
+
 const zhHantMatchesEn: ExactCatalog<typeof zhHantCatalog, typeof enCatalog> =
   zhHantCatalog;
 
-const missing: unknown = undefined;
+const missing: string | undefined = undefined;
 
 /**
  * What the layout rendered into `<html lang>` before the script ran. Any value
@@ -91,6 +93,7 @@ const applyLangScript = (cookie: string): string => {
     cookie,
     documentElement: { lang: RENDERED_LANG },
   };
+
   runInNewContext(LOCALE_LANG_SCRIPT, { document: documentStub });
 
   return documentStub.documentElement.lang;
@@ -105,6 +108,7 @@ const applyPathLangScript = (pathname: string, cookie: string): string => {
     cookie,
     documentElement: { lang: RENDERED_LANG },
   };
+
   runInNewContext(PATH_LOCALE_LANG_SCRIPT, {
     document: documentStub,
     location: { pathname },
@@ -121,9 +125,13 @@ const asModuleNamespace = <T extends object>(value: T): T =>
 describe("getLocales", () => {
   it("matches the locale index", () => {
     expect(getLocales()).toEqual(localeIndex.locales.map(({ code }) => code));
+
     for (const { code, label } of localeIndex.locales) {
+      // SAFETY: the codes of the locale index are exactly `getLocales()`, as
+      // the assertion above checks.
       expect(getLocaleLabel(code as Locale)).toBe(label);
     }
+
     expect(LOCALE_COOKIE_NAME).toBe("publira_locale");
     expect(RESOLVED_LOCALE_COOKIE_NAME).toBe("publira_resolved_locale");
     expect(LOCALE_COOKIE_MAX_AGE).toBe(31_536_000);
@@ -247,6 +255,7 @@ describe("parseLocale", () => {
     expect(parseLocale("")).toBeUndefined();
     expect(parseLocale(null)).toBeUndefined();
     expect(parseLocale(missing)).toBeUndefined();
+    // @ts-expect-error -- a value that is not a string is rejected at runtime too.
     expect(parseLocale({ locale: "en" })).toBeUndefined();
   });
 });
@@ -263,13 +272,14 @@ describe("parseLocaleCookie", () => {
     expect(parseLocaleCookie("   ")).toBeUndefined();
     expect(parseLocaleCookie("de")).toBeUndefined();
     expect(parseLocaleCookie(null)).toBeUndefined();
-    expect(parseLocaleCookie(missing as string | undefined)).toBeUndefined();
+    expect(parseLocaleCookie(missing)).toBeUndefined();
   });
 });
 
 describe("toIntlLocale", () => {
   it("maps each UI locale to its BCP 47 tag", () => {
     for (const { code, intl } of localeIndex.locales) {
+      // SAFETY: the codes of the locale index are exactly `getLocales()`.
       expect(toIntlLocale(code as Locale)).toBe(intl);
     }
   });
@@ -278,25 +288,31 @@ describe("toIntlLocale", () => {
 describe("loadMessages", () => {
   it("imports only the requested locale module", async () => {
     const imported: Locale[] = [];
+
     const catalog = await loadMessages<MessageTree>("en", {
       en: () => {
         imported.push("en");
+
         return Promise.resolve(enFixture);
       },
       ja: () => {
         imported.push("ja");
+
         return Promise.resolve(jaFixture);
       },
       ko: () => {
         imported.push("ko");
+
         return Promise.resolve(koFixture);
       },
       "zh-Hans": () => {
         imported.push("zh-Hans");
+
         return Promise.resolve(zhHansFixture);
       },
       "zh-Hant": () => {
         imported.push("zh-Hant");
+
         return Promise.resolve(zhHantFixture);
       },
     });
@@ -324,6 +340,7 @@ describe("loadMessages", () => {
       default: { greeting: "既定" },
       other: "ほか",
     };
+
     const loaded = await loadMessages<MessageTree>("ja", {
       en: () => Promise.resolve(enFixture),
       ja: () => Promise.resolve(catalogWithDefault),
@@ -408,6 +425,7 @@ describe("getMessage", () => {
       nav: { home: "Nested" },
       "nav.home": "Flat",
     };
+
     expect(getMessage(catalog, "en", "nav.home")).toBe("Flat");
   });
 
@@ -519,6 +537,8 @@ describe("bindMessages", () => {
 
     it("throws outside production", () => {
       vi.stubEnv("NODE_ENV", "development");
+      // SAFETY: widens the key type only, so the test can ask for a key the
+      // catalog lacks; the accessor takes any string at runtime.
       const t = bindMessages(jaFixture, "ja") as (key: string) => string;
 
       expect(() => t("nav.missing")).toThrow(
@@ -528,6 +548,8 @@ describe("bindMessages", () => {
 
     it("returns the key in production", () => {
       vi.stubEnv("NODE_ENV", "production");
+      // SAFETY: widens the key type only, so the test can ask for a key the
+      // catalog lacks; the accessor takes any string at runtime.
       const t = bindMessages(jaFixture, "ja") as (key: string) => string;
 
       expect(t("nav.missing")).toBe("nav.missing");

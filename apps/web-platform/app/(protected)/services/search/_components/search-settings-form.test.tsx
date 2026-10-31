@@ -24,9 +24,12 @@ import type { PlatformSearchSettings } from "#lib/search-settings-shared";
 
 import { SearchSettingsForm } from "./search-settings-form";
 
-const state = vi.hoisted(() => ({
-  t: undefined as PlatformMessageAccessor | undefined,
-}));
+/** The catalog the mocked `<Message>` renders from, once a test resolves it. */
+interface CatalogState {
+  t?: PlatformMessageAccessor;
+}
+
+const state = vi.hoisted((): CatalogState => ({}));
 
 // `<Message>` is an async Server Component that only the Next.js compiler can
 // render. The catalog is the real one, resolved ahead so the tree renders
@@ -79,18 +82,22 @@ const renderForm = async (settings: PlatformSearchSettings) => {
     rendered = render(withMessages(<SearchSettingsForm settings={settings} />));
     await messages;
   });
+
   if (!rendered) {
     throw new Error("The form did not render.");
   }
+
   return rendered;
 };
 
 /** The form data the last call of `action` was submitted with. */
 const submitted = (action: ReturnType<typeof vi.fn>): FormData => {
   const formData = action.mock.calls.at(-1)?.[1];
+
   if (!(formData instanceof FormData)) {
     throw new TypeError("The action was not submitted.");
   }
+
   return formData;
 };
 
@@ -216,6 +223,7 @@ describe("SearchSettingsForm", () => {
       const results = await screen.findByRole("list", {
         name: "Connection test results",
       });
+
       expect(
         within(results)
           .getAllByRole("listitem")

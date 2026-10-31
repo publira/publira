@@ -216,6 +216,7 @@ export const TicketManager = async ({
 }: TicketManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (tickets.length > 0 || hasPageLinks);
 

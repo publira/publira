@@ -90,11 +90,13 @@ export const EpisodeComments = async ({
   }
 
   const locale = await getLocale();
+
   const [t, timeZone, viewer] = await Promise.all([
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
     getMe(tenantId),
   ]);
+
   const episodePath = `/series/${seriesPublicId}/episodes/${episodePublicId}`;
 
   const [publicResult, ownResult] = await Promise.all([
@@ -117,6 +119,7 @@ export const EpisodeComments = async ({
   const page = publicResult.ok
     ? publicResult.value
     : { comments: [], nextToken: "", previousToken: "" };
+
   const ownComments = ownResult.ok ? ownResult.value : [];
   const comments = mergeOwnEpisodeComments(page, ownComments);
 

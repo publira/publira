@@ -25,6 +25,7 @@ import { createServer } from "node:http";
 import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
 
 const port = Number(process.env.PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT);
+
 if (!Number.isInteger(port) || port <= 0) {
   throw new Error(
     "PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT must name the port to listen on"
@@ -45,9 +46,11 @@ const recorded: RecordedRequest[] = [];
 
 const readBody = async (request: IncomingMessage): Promise<string> => {
   const chunks: Buffer[] = [];
+
   for await (const chunk of request) {
-    chunks.push(chunk as Buffer);
+    chunks.push(Buffer.from(chunk));
   }
+
   return Buffer.concat(chunks).toString();
 };
 
@@ -73,17 +76,22 @@ const server = createServer(async (request, response) => {
   if (pathname === "/readyz") {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({ status: "ok" }));
+
     return;
   }
+
   if (pathname === "/__e2e/requests") {
     if (request.method === "DELETE") {
       recorded.length = 0;
       response.writeHead(204);
       response.end();
+
       return;
     }
+
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify(recorded));
+
     return;
   }
 
@@ -97,8 +105,10 @@ const server = createServer(async (request, response) => {
   if (pathname.endsWith("/healthy")) {
     response.writeHead(200, { "content-type": "text/plain" });
     response.end("ok");
+
     return;
   }
+
   if (pathname.endsWith("/g/collect")) {
     response.writeHead(204, {
       "clear-site-data": '"cookies"',
@@ -110,20 +120,26 @@ const server = createServer(async (request, response) => {
       ],
     });
     response.end();
+
     return;
   }
+
   if (pathname.endsWith("/")) {
     response.writeHead(200, {
       "cache-control": "no-store",
       "content-type": "application/javascript; charset=utf-8",
     });
     response.end(loaderScript(searchParams.get("id") ?? ""));
+
     return;
   }
+
   response.writeHead(404, { "content-type": "text/plain" });
   response.end("not found");
 });
 
 server.listen(port, "127.0.0.1");
+
 await once(server, "listening");
+
 console.log(`google-tag-gateway stand-in listening on 127.0.0.1:${port}`);

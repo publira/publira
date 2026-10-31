@@ -27,6 +27,7 @@ export const parseLoginSearchParams = (
   input: ParseLoginSearchParamsInput
 ): LoginSearchParams => {
   const parsed = loginSearchParamsSchema.parse(input);
+
   return {
     nextPath: parsed.next,
     passwordResetDone: parsed.reset === "done",

@@ -15,6 +15,7 @@ import { createAnnouncement, unpinAnnouncement } from "#lib/announcement";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
+  isFormText,
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -76,6 +77,7 @@ const translationsSchema = (t: AdminMessageAccessor) =>
           message: t("admin.announcements.validation.title_required"),
         });
       }
+
       for (const [index, { body, locale, title }] of translations.entries()) {
         // The default language's translation is what a reader browsing in a
         // language left empty is shown, so it is the one that is required.
@@ -87,6 +89,7 @@ const translationsSchema = (t: AdminMessageAccessor) =>
               path: [index, "title"],
             });
           }
+
           if (body === "") {
             ctx.addIssue({
               code: "custom",
@@ -130,7 +133,7 @@ const announcementFormSchema = async (locale: Locale) => {
       // An unchecked checkbox posts nothing at all, which is the "no banner"
       // answer rather than a missing field.
       pinned: z.preprocess(
-        (value) => typeof value === "string" && value.trim() !== "",
+        (value) => isFormText(value) && value.trim() !== "",
         z.boolean()
       ),
       pinnedUntil: optionalTrimmedString(64),
@@ -142,6 +145,7 @@ const announcementFormSchema = async (locale: Locale) => {
     .superRefine((value, ctx) => {
       const isInternalPath =
         value.linkUrl.startsWith("/") && !value.linkUrl.startsWith("//");
+
       if (
         value.linkUrl !== "" &&
         !isInternalPath &&
@@ -178,14 +182,17 @@ const toPinnedUntil = async (
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const value = toInstantIsoString(raw, timeZone);
   const parsed = parseInstant(value);
+
   if (!parsed) {
     return {
       message: t("admin.announcements.validation.pinned_until_invalid"),
       ok: false,
     };
   }
+
   if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
     return {
       message: t("admin.announcements.validation.pinned_until_future"),
@@ -203,6 +210,7 @@ export const createAnnouncementAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await announcementFormSchema(locale);
+
   const { bodies, titles, translationLocales, ...fields } = toFormDataInput(
     formData,
     {
@@ -216,10 +224,12 @@ export const createAnnouncementAction = async (
       translationLocales: { kind: "values", name: "translation_locale" },
     }
   );
+
   const parsed = schema.safeParse({
     ...fields,
     translations: zipTranslations({ bodies, titles, translationLocales }),
   });
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -230,6 +240,7 @@ export const createAnnouncementAction = async (
   const pinnedUntil = parsed.data.pinned
     ? await toPinnedUntil(parsed.data.pinnedUntil, parsed.data.tenantId, locale)
     : ({ ok: true, value: "" } as const);
+
   if (!pinnedUntil.ok) {
     return {
       message: pinnedUntil.message,
@@ -287,12 +298,14 @@ export const unpinAnnouncementAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await unpinAnnouncementFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       announcementId: { kind: "value", name: "announcement_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -309,6 +322,7 @@ export const unpinAnnouncementAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -317,5 +331,6 @@ export const unpinAnnouncementAction = async (
   }
 
   updateTag(`announcements-${parsed.data.tenantId}`);
+
   return null;
 };

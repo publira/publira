@@ -33,9 +33,11 @@ export const openBillingPortalAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = billingFormSchema.safeParse(
     toFormDataInput(formData, { locale: "value", tenantId: "value" })
   );
+
   if (!parsed.success) {
     redirect("/");
   }
@@ -46,21 +48,25 @@ export const openBillingPortalAction = async (
 
   let portalURL = "";
   let failure: "error" | "unavailable" | null = null;
+
   try {
     const response = await apiClient.subscription.createBillingPortalSession(
       { tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     portalURL = response.url.trim();
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
+
     rethrowUnclassifiedRpcError(error);
     failure = isRpcError(error, Code.FailedPrecondition)
       ? "unavailable"
       : "error";
   }
+
   if (failure || !portalURL) {
     redirect(
       await tenantLocalePath(
@@ -70,5 +76,6 @@ export const openBillingPortalAction = async (
       )
     );
   }
+
   redirect(portalURL);
 };

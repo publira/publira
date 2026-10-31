@@ -61,13 +61,17 @@ const CalendarContent = async ({
   searchParams,
 }: Pick<CalendarPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const today = todayIn(timeZone);
+
   const month =
     parseCalendarSearchParams(sp).month || currentCalendarMonth(timeZone);
+
   const result = await listEpisodePublications(calendarMonthPeriod(month));
 
   return (

@@ -5,10 +5,13 @@ import { getMessagesFor } from "./messages";
 import { buildQueryString } from "./query-string";
 
 export const NOTIFICATION_TYPE_EPISODE_PUBLISHED = "episode_published";
+
 export const NOTIFICATION_TYPE_EPISODE_PUBLISH_FAILED =
   "episode_publish_failed";
+
 export const NOTIFICATION_TYPE_COMMENT_AWAITING_APPROVAL =
   "comment_awaiting_approval";
+
 export const NOTIFICATION_TYPE_COMMENT_REPORTED = "comment_reported";
 export const NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED = "announcement_posted";
 
@@ -35,11 +38,13 @@ const labelSchema = z.string().trim().min(1);
  */
 const optionalResourceId = z.preprocess((value) => {
   const parsed = resourceIdSchema.safeParse(value);
+
   return parsed.success ? parsed.data : undefined;
 }, resourceIdSchema.optional());
 
 const optionalLabel = z.preprocess((value) => {
   const parsed = labelSchema.safeParse(value);
+
   return parsed.success ? parsed.data : undefined;
 }, labelSchema.optional());
 
@@ -79,22 +84,26 @@ const episodeSubject = async (
   unnamed: string
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (payload.episode_title && payload.series_title) {
     return t("admin.notifications.events.subject_in_series", {
       episode: payload.episode_title,
       series: payload.series_title,
     });
   }
+
   if (payload.episode_title) {
     return t("admin.notifications.events.subject_episode", {
       episode: payload.episode_title,
     });
   }
+
   if (payload.series_title) {
     return t("admin.notifications.events.subject_series", {
       series: payload.series_title,
     });
   }
+
   return unnamed;
 };
 
@@ -104,14 +113,17 @@ export const notificationHref = (
   if (payload.series_id && payload.episode_id) {
     return `/series/${payload.series_id}/episodes/${payload.episode_id}`;
   }
+
   if (payload.series_id) {
     return `/series/${payload.series_id}`;
   }
+
   return undefined;
 };
 
 export const parseNotificationPayload = (raw: string): NotificationPayload => {
   const trimmed = raw.trim();
+
   if (!trimmed) {
     return {};
   }
@@ -119,6 +131,7 @@ export const parseNotificationPayload = (raw: string): NotificationPayload => {
   try {
     const parsed: unknown = JSON.parse(trimmed);
     const result = payloadSchema.safeParse(parsed);
+
     return result.success ? result.data : {};
   } catch {
     return {};

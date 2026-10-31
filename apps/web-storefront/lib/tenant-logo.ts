@@ -12,8 +12,10 @@ export const resolveTenantLogoVariant = (
   info: Pick<TenantSiteInfo, "logoImageVariants"> | null
 ): TenantImageVariant | null => {
   const variant = info?.logoImageVariants?.[0];
+
   if (!(variant?.url.trim() && variant.width > 0 && variant.height > 0)) {
     return null;
   }
+
   return variant;
 };

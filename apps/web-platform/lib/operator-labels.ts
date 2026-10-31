@@ -21,12 +21,15 @@ export const getOperatorRoleLabel = async (
     case "platform_auditor": {
       return t("platform.common.roles.platform_auditor");
     }
+
     case "platform_operator": {
       return t("platform.common.roles.platform_operator");
     }
+
     case "platform_super_admin": {
       return t("platform.common.roles.platform_super_admin");
     }
+
     default: {
       return role;
     }
@@ -43,12 +46,15 @@ export const getOperatorStatusLabel = async (
     case "active": {
       return t("platform.common.account_status.active");
     }
+
     case "inactive": {
       return t("platform.common.account_status.inactive");
     }
+
     case "suspended": {
       return t("platform.common.account_status.suspended");
     }
+
     default: {
       return status;
     }
@@ -89,8 +95,10 @@ export const getOperatorRoleCardDescription = async (
   if (isSelf) {
     return t("platform.operators.cannot_change_own_role");
   }
+
   if (!isSuperAdmin) {
     return t("platform.operators.cannot_change_role");
   }
+
   return t("platform.operators.change_role_description");
 };

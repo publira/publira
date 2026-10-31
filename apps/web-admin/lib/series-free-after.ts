@@ -46,6 +46,7 @@ const toSeriesFreeAfterSettings = (
   if (!settings || settings.daysAfterPublication < 1) {
     return;
   }
+
   return {
     daysAfterPublication: settings.daysAfterPublication,
     enabled: settings.enabled,
@@ -58,11 +59,12 @@ const toSeriesFreeAfterSettings = (
  * already checks, reached only when the two disagree.
  */
 const mapUpdateErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasFieldViolation(error, "settings.days_after_publication")) {
+
+  if (rpcErrorHasFieldViolation(cause, "settings.days_after_publication")) {
     return t(
       "admin.series.free_after.validation.days_after_publication_invalid",
       {
@@ -70,13 +72,14 @@ const mapUpdateErrorToMessage = async (
       }
     );
   }
-  if (rpcErrorHasFieldViolation(error, "settings.excluded_latest_count")) {
+
+  if (rpcErrorHasFieldViolation(cause, "settings.excluded_latest_count")) {
     return t(
       "admin.series.free_after.validation.excluded_latest_count_invalid"
     );
   }
 
-  return rpcErrorMessage(error, t("admin.series.free_after.save_failed"), {
+  return rpcErrorMessage(cause, t("admin.series.free_after.save_failed"), {
     locale,
     overrides: { "not-found": t("admin.series.not_found") },
   });
@@ -95,14 +98,18 @@ const getSeriesFreeAfterSettingsForTenant = async (
   cacheTag(seriesFreeAfterSettingsCacheTag(input.tenantId, input.seriesId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const response = await apiClient.series.getSeriesFreeAfterSettings(
       { seriesId: input.seriesId, tenant: { tenantId: input.tenantId } },
       withServiceHeaders()
     );
+
     const settings = toSeriesFreeAfterSettings(response.settings);
+
     if (!settings) {
       dropFailedCacheEntry();
+
       return { message: t("admin.series.free_after.load_failed"), ok: false };
     }
 
@@ -112,6 +119,7 @@ const getSeriesFreeAfterSettingsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -137,6 +145,7 @@ export const getSeriesFreeAfterSettings = async (input: {
   seriesId: string;
 }): Promise<SeriesFreeAfterSettingsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return getSeriesFreeAfterSettingsForTenant({ ...input, tenantId }, locale);
 };
 
@@ -149,6 +158,7 @@ export const updateSeriesFreeAfterSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -166,7 +176,9 @@ export const updateSeriesFreeAfterSettings = async (
       },
       withSessionHeaders(sessionId)
     );
+
     const settings = toSeriesFreeAfterSettings(response.settings);
+
     if (!settings) {
       return { message: t("admin.series.free_after.save_failed"), ok: false };
     }
@@ -175,6 +187,7 @@ export const updateSeriesFreeAfterSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return { message: await mapUpdateErrorToMessage(error, locale), ok: false };
   }
 };

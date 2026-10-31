@@ -112,8 +112,10 @@ describe("hasActivePlatformSessionCookie", () => {
   afterAll(() => {
     if (originalAuthSecret === undefined) {
       delete process.env.PUBLIRA_AUTH_SECRET;
+
       return;
     }
+
     process.env.PUBLIRA_AUTH_SECRET = originalAuthSecret;
   });
 
@@ -121,6 +123,7 @@ describe("hasActivePlatformSessionCookie", () => {
     const active = await sealed(
       Temporal.Now.instant().add({ minutes: 5 }).toString()
     );
+
     const expired = await sealed(
       Temporal.Now.instant().subtract({ minutes: 1 }).toString()
     );

@@ -47,6 +47,7 @@ export const FreeUntilBadge = ({
       </Badge>
     );
   }
+
   return (
     <Badge tone="success">
       <time dateTime={freeUntil}>

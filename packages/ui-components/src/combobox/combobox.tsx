@@ -61,6 +61,7 @@ export const Combobox = ({
   value,
 }: ComboboxProps) => {
   const itemToStringLabel = useCallback((item: ComboboxItem) => item.label, []);
+
   const selectedItem = useMemo(
     () => items.find((item) => item.value === value) ?? null,
     [items, value]
@@ -70,6 +71,7 @@ export const Combobox = ({
     (nextValue: ComboboxItem | ComboboxItem[] | null) => {
       if (!nextValue || Array.isArray(nextValue)) {
         onValueChange("");
+
         return;
       }
 

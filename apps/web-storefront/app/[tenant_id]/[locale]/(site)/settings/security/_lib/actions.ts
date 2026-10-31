@@ -65,10 +65,12 @@ export const requestEmailChangeAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     requestEmailChangeFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEmail: "value",
@@ -78,6 +80,7 @@ export const requestEmailChangeAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
@@ -88,16 +91,19 @@ export const requestEmailChangeAction = async (
         locale: submittedLocale,
       })
     );
+
     redirect(errorPath);
   }
 
   const { currentEmail, currentPassword, locale, newEmail, tenantId } =
     parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   // A wrong `currentPassword` is `invalid_argument` with a field violation, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
   const emailChange = await withPublicSessionReauth(
@@ -113,6 +119,7 @@ export const requestEmailChangeAction = async (
       ),
     tenantId
   );
+
   if (!emailChange.ok) {
     const errorPath = await buildSecuritySettingsPath(
       locale,
@@ -124,6 +131,7 @@ export const requestEmailChangeAction = async (
         t("storefront.settings.email_change_failed")
       )
     );
+
     redirect(errorPath);
   }
 
@@ -133,6 +141,7 @@ export const requestEmailChangeAction = async (
     "success",
     t("storefront.settings.email_change_requested")
   );
+
   redirect(successPath);
 };
 
@@ -162,8 +171,10 @@ export const confirmEmailChangeWithProviderAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const schema =
     await confirmEmailChangeWithProviderFormSchema(submittedLocale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEmail: "value",
@@ -173,6 +184,7 @@ export const confirmEmailChangeWithProviderAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
@@ -183,15 +195,18 @@ export const confirmEmailChangeWithProviderAction = async (
         locale: submittedLocale,
       })
     );
+
     redirect(errorPath);
   }
 
   const { currentEmail, locale, newEmail, provider, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   await sendToProvider({
     accessToken,
     emailChange: { currentEmail, newEmail },
@@ -229,10 +244,12 @@ export const requestEmailChangeWithPasskeyAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     requestEmailChangeWithPasskeyFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEmail: "value",
@@ -242,6 +259,7 @@ export const requestEmailChangeWithPasskeyAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -254,11 +272,13 @@ export const requestEmailChangeWithPasskeyAction = async (
 
   const { currentEmail, locale, newEmail, passkeyCredential, tenantId } =
     parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   // An assertion that does not verify is `invalid_argument` on
   // `passkey_credential_json`, not `unauthenticated`, so it stays a form error
   // instead of ending the session.
@@ -275,6 +295,7 @@ export const requestEmailChangeWithPasskeyAction = async (
       ),
     tenantId
   );
+
   if (!emailChange.ok) {
     return {
       message: emailRefusalMessage(
@@ -336,10 +357,12 @@ export const changePasswordAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     changePasswordFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
@@ -349,6 +372,7 @@ export const changePasswordAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
@@ -359,15 +383,18 @@ export const changePasswordAction = async (
         locale: submittedLocale,
       })
     );
+
     redirect(errorPath);
   }
 
   const { currentPassword, locale, newPassword, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   // A wrong `currentPassword` is `invalid_argument` with a field violation, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
   const changed = await withPublicSessionReauth(
@@ -377,6 +404,7 @@ export const changePasswordAction = async (
       changePublicPassword(tenantId, currentPassword, newPassword, accessToken),
     tenantId
   );
+
   if (!changed) {
     const errorPath = await buildSecuritySettingsPath(
       locale,
@@ -384,6 +412,7 @@ export const changePasswordAction = async (
       "error",
       t("storefront.settings.password_change_failed")
     );
+
     redirect(errorPath);
   }
 
@@ -398,6 +427,7 @@ export const changePasswordAction = async (
     "success",
     t("storefront.settings.password_changed")
   );
+
   redirect(successPath);
 };
 
@@ -420,10 +450,12 @@ const linkedAccountFormSchema = async (locale: Locale) => {
 export const linkIdentityAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     linkedAccountFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -431,6 +463,7 @@ export const linkIdentityAction = async (formData: FormData): Promise<void> => {
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
@@ -438,15 +471,18 @@ export const linkIdentityAction = async (formData: FormData): Promise<void> => {
       "error",
       t("storefront.settings.linked_account_link_failed")
     );
+
     redirect(errorPath);
   }
 
   const { locale, provider, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   await sendToProvider({
     accessToken,
     intent: "link",
@@ -462,10 +498,12 @@ export const unlinkIdentityAction = async (
 ): Promise<void> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     linkedAccountFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -473,6 +511,7 @@ export const unlinkIdentityAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
@@ -480,21 +519,25 @@ export const unlinkIdentityAction = async (
       "error",
       t("storefront.settings.linked_account_unlink_failed")
     );
+
     redirect(errorPath);
   }
 
   const { locale, provider, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     tenantId
   );
+
   const result = await withPublicSessionReauth(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
     () => unlinkMyIdentity(tenantId, provider, accessToken),
     tenantId
   );
+
   if (!result.ok) {
     const errorPath = await buildSecuritySettingsPath(
       locale,
@@ -511,6 +554,7 @@ export const unlinkIdentityAction = async (
         }
       )
     );
+
     redirect(errorPath);
   }
 
@@ -520,5 +564,6 @@ export const unlinkIdentityAction = async (
     "success",
     t("storefront.settings.linked_account_unlinked")
   );
+
   redirect(successPath);
 };

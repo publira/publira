@@ -22,13 +22,18 @@ import {
  */
 
 const SAVE = "Save the sign-up settings";
+
 const SAVED_CLOSED =
   "Sign-up is closed. Visitors see your message in place of the sign-up form.";
+
 const SAVED_OPEN = "Sign-up is open. Visitors can create a reader account.";
+
 const CLOSED_NOTICE =
   /^Sign-up is closed\. Nobody can create a new reader account/u;
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
+
 const MESSAGE = "We open again in spring.";
 
 const signupUrl = `${WEB_STOREFRONT_SIGN_UP_SETTINGS_BASE_URL}${storefrontPath("/signup")}`;

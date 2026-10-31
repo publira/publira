@@ -74,6 +74,7 @@ export const tenantCommunityLimitsCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:community-limits`;
 
 type RawMinuteDayLimit = Pick<MinuteDayLimitMessage, "perDay" | "perMinute">;
+
 type RawHourDayLimit = Pick<HourDayLimitMessage, "perDay" | "perHour">;
 
 type RawCommunityLimits = Pick<
@@ -181,11 +182,13 @@ export const findLooserCommunityLimit = (
   if (minuteDayIsLooser(overrides.commentPost, platformDefaults.commentPost)) {
     return "commentPost";
   }
+
   if (
     minuteDayIsLooser(overrides.commentReport, platformDefaults.commentReport)
   ) {
     return "commentReport";
   }
+
   if (
     hourDayIsLooser(
       overrides.contactMessagePerAccount,
@@ -194,6 +197,7 @@ export const findLooserCommunityLimit = (
   ) {
     return "contactMessagePerAccount";
   }
+
   if (
     hourDayIsLooser(
       overrides.contactMessagePerClient,
@@ -202,6 +206,7 @@ export const findLooserCommunityLimit = (
   ) {
     return "contactMessagePerClient";
   }
+
   if (
     overrides.duplicateCommentWindowMinutes !== undefined &&
     overrides.duplicateCommentWindowMinutes <
@@ -209,11 +214,13 @@ export const findLooserCommunityLimit = (
   ) {
     return "duplicateCommentWindowMinutes";
   }
+
   if (
     minuteDayIsLooser(overrides.episodeRating, platformDefaults.episodeRating)
   ) {
     return "episodeRating";
   }
+
   if (
     minuteDayIsLooser(
       overrides.viewerPreferences,
@@ -222,6 +229,7 @@ export const findLooserCommunityLimit = (
   ) {
     return "viewerPreferences";
   }
+
   if (
     minuteDayIsLooser(
       overrides.notificationSettings,
@@ -246,24 +254,31 @@ const communityLimitName = (
     case "commentPost": {
       return t("admin.settings.policy.community.comment_post_legend");
     }
+
     case "commentReport": {
       return t("admin.settings.policy.community.comment_report_legend");
     }
+
     case "contactMessagePerAccount": {
       return t("admin.settings.policy.community.contact_per_account_legend");
     }
+
     case "contactMessagePerClient": {
       return t("admin.settings.policy.community.contact_per_client_legend");
     }
+
     case "duplicateCommentWindowMinutes": {
       return t("admin.settings.policy.community.duplicate_window_legend");
     }
+
     case "episodeRating": {
       return t("admin.settings.policy.community.episode_rating_legend");
     }
+
     case "notificationSettings": {
       return t("admin.settings.policy.community.notification_settings_legend");
     }
+
     default: {
       return t("admin.settings.policy.community.viewer_preferences_legend");
     }
@@ -279,8 +294,10 @@ const getTenantCommunityLimitSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -305,6 +322,7 @@ const getTenantCommunityLimitSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -346,7 +364,9 @@ export const updateTenantCommunityLimitSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -357,10 +377,12 @@ export const updateTenantCommunityLimitSettings = async (
         { tenant: { tenantId: normalizedTenantId } },
         withSessionHeaders(sessionId)
       );
+
     const looser = findLooserCommunityLimit(
       input.overrides,
       toCommunityLimits(current.platformDefaults)
     );
+
     if (looser) {
       return {
         message: t("admin.settings.policy.community.too_loose", {
@@ -394,6 +416,7 @@ export const updateTenantCommunityLimitSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

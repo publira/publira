@@ -28,6 +28,7 @@ export const LegalPageAgreementGate = async () => {
     getLocale(),
     resolveAccessToken(),
   ]);
+
   if (!accessToken) {
     return null;
   }

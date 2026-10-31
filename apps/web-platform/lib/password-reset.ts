@@ -34,8 +34,10 @@ export const requestPlatformPasswordReset = async (
   locale: Locale
 ): Promise<PlatformPasswordResetRequestResult> => {
   const normalizedEmail = email.trim();
+
   if (!normalizedEmail) {
     const t = await getMessagesFor(locale);
+
     return {
       message: t("platform.auth.fields.email_required"),
       ok: false,
@@ -79,6 +81,7 @@ export const verifyPlatformPasswordResetToken = async (
   token: string
 ): Promise<boolean> => {
   const normalizedToken = token.trim();
+
   if (!normalizedToken) {
     return false;
   }
@@ -87,9 +90,11 @@ export const verifyPlatformPasswordResetToken = async (
     const response = await apiClient.auth.verifyPasswordResetToken({
       token: normalizedToken,
     });
+
     return response.valid;
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -134,6 +139,7 @@ export const confirmPlatformPasswordReset = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     const disposition = rpcErrorDisposition(error);
+
     if (disposition === "precondition") {
       return {
         message: t("platform.auth.errors.reset_link_expired"),
@@ -141,6 +147,7 @@ export const confirmPlatformPasswordReset = async (
         reason: "expired",
       };
     }
+
     // An unknown token and a malformed one both mean "start over".
     if (disposition === "not-found" || disposition === "invalid-argument") {
       return {

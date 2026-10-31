@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AdminAuthModule from "#lib/admin-auth";
 import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
 
 const {
@@ -30,7 +31,7 @@ vi.mock("#lib/tenant", () => ({
 vi.mock("#lib/locale", () => ({ getLocale: () => Promise.resolve("en") }));
 
 vi.mock("#lib/admin-auth", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AdminAuthModule>()),
   getAdminCurrentUser: mockGetAdminCurrentUser,
 }));
 
@@ -53,9 +54,11 @@ const pagesForm = (fields: Record<string, File | string>) => {
   const formData = new FormData();
   formData.set("episode_id", EPISODE_ID);
   formData.set("series_id", SERIES_ID);
+
   for (const [name, value] of Object.entries(fields)) {
     formData.append(name, value);
   }
+
   return formData;
 };
 
@@ -66,6 +69,7 @@ const upload = async (
 ) => {
   const encoded = new Request(URL, { body: formData, method: "POST" });
   const body = await encoded.arrayBuffer();
+
   const request = new NextRequest(URL, {
     body,
     headers: {
@@ -76,6 +80,7 @@ const upload = async (
     },
     method: "POST",
   });
+
   return { request, response: await POST(request) };
 };
 
@@ -257,6 +262,7 @@ describe("POST /api/v1/episode-pages", () => {
       archive: new File(["zip"], "pages.zip", { type: "application/zip" }),
       upload_mode: "zip",
     });
+
     formData.delete("series_id");
 
     const { response } = await upload(formData);

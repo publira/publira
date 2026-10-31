@@ -17,6 +17,7 @@ export const expectNothingAnimates = async (page: Page): Promise<void> => {
     for (const element of document.querySelectorAll("*")) {
       for (const pseudo of [null, "::before", "::after"]) {
         const style = getComputedStyle(element, pseudo);
+
         const still =
           style.animationName === "none" &&
           style.transitionDuration

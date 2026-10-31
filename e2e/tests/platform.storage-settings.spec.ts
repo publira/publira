@@ -20,6 +20,7 @@ const BUCKET = STACK_STORAGE.bucket;
 const REGION = STACK_STORAGE.region;
 const ENDPOINT = STACK_STORAGE.endpoint;
 const ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID?.trim() || "publira";
+
 const SECRET_ACCESS_KEY =
   process.env.AWS_SECRET_ACCESS_KEY?.trim() || "publirapass";
 
@@ -27,10 +28,13 @@ const WRONG_SECRET_ACCESS_KEY = "e2e-wrong-secret-access-key";
 
 const SAVED_MESSAGE = "Storage settings saved.";
 const UNCONFIGURED_MESSAGE = /Object storage isn't configured yet/u;
+
 const TEST_SUCCEEDED_MESSAGE =
   "The connection works. Publira can upload, read, list, and delete objects in this bucket.";
+
 const TEST_FAILED_MESSAGE =
   "The connection test failed. The steps below show where.";
+
 const SECRET_STORED = "Saved (hidden)";
 
 const storedSecretCiphertext = (): string =>
@@ -65,6 +69,7 @@ const openUnconfiguredStorageSettings = async (page: Page): Promise<void> => {
     .poll(
       async () => {
         await page.goto(`${WEB_PLATFORM_BASE_URL}${STORAGE_PATH}`);
+
         return await bucket.inputValue();
       },
       {

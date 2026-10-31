@@ -33,10 +33,12 @@ type AccessTicketsPageProps = PageProps<"/[tenant_id]/access-tickets">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -66,6 +68,7 @@ const TicketManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parseAccessTicketFilters(sp);
   const locale = await getLocale(tenantId);
+
   const [listResult, timeZone] = await Promise.all([
     listAccessTickets(tenantId, locale, {
       activeOnly: filters.active,

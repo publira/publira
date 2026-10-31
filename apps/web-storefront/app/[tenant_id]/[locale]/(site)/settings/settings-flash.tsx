@@ -11,6 +11,7 @@ import { parseSettingsFlashSearchParams } from "./_lib/search-params";
  */
 export const SettingsFlash = () => {
   const searchParams = useSearchParams();
+
   const { message, status } = parseSettingsFlashSearchParams({
     message: searchParams.get("message") ?? undefined,
     status: searchParams.get("status") ?? undefined,

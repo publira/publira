@@ -21,9 +21,11 @@ export const resolveNeighborSide = (
   if (key === "ArrowLeft") {
     return readingDirection === "rtl" ? "next" : "previous";
   }
+
   if (key === "ArrowRight") {
     return readingDirection === "rtl" ? "previous" : "next";
   }
+
   return undefined;
 };
 

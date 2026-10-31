@@ -3,10 +3,18 @@ import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
-type CatalogNode = string | { [key: string]: CatalogNode };
+type CatalogNode = string | CatalogTree;
+
+/** A parsed `locales/<locale>.json`, nested keys down to the messages. */
+interface CatalogTree {
+  readonly [key: string]: CatalogNode;
+}
+
+const isMessage = (node: CatalogNode): node is string =>
+  typeof node === "string";
 
 const leafStrings = (node: CatalogNode): string[] =>
-  typeof node === "string" ? [node] : Object.values(node).flatMap(leafStrings);
+  isMessage(node) ? [node] : Object.values(node).flatMap(leafStrings);
 
 /**
  * Copy long enough that its presence means the catalog entry, and spelled in
@@ -29,19 +37,23 @@ export const expectDocumentWithoutCatalogNamespaces = async (
   path: string,
   { excluded, included }: { excluded: string[]; included: string[] }
 ): Promise<void> => {
+  // SAFETY: `pnpm locales:check` rejects a catalog with a leaf that is not a
+  // string.
   const catalog = JSON.parse(
     await readFile(new URL("../../locales/en.json", import.meta.url), "utf-8")
-  ) as Record<string, CatalogNode>;
+  ) as CatalogTree;
 
   const allowed = new Set(
     included.flatMap((namespace) => leafStrings(catalog[namespace] ?? {}))
   );
+
   const copyByNamespace = excluded.map((namespace) => ({
     copy: leafStrings(catalog[namespace] ?? {}).filter(
       (value) => DISTINCTIVE_COPY.test(value) && !allowed.has(value)
     ),
     namespace,
   }));
+
   expect(
     copyByNamespace.filter(({ copy }) => copy.length === 0),
     "every excluded namespace has copy to look for"

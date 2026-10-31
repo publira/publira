@@ -44,19 +44,23 @@ const ConfirmEmailSentence = ({
     case "changed": {
       return <Message message="platform.auth.confirm_email.changed" />;
     }
+
     case "invalid_link": {
       return <Message message="platform.auth.confirm_email.invalid_link" />;
     }
+
     case "pending_current_email": {
       return (
         <Message message="platform.auth.confirm_email.pending_current_email" />
       );
     }
+
     case "pending_new_email": {
       return (
         <Message message="platform.auth.confirm_email.pending_new_email" />
       );
     }
+
     default: {
       return <Message message="platform.auth.confirm_email.failed" />;
     }

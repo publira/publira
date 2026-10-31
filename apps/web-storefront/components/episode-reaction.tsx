@@ -73,9 +73,11 @@ interface EpisodeReactionFace {
 }
 
 const EpisodeReactionSizeContext = createContext<EpisodeReactionSize>("lg");
+
 const EpisodeReactionFaceContext = createContext<EpisodeReactionFace | null>(
   null
 );
+
 const EpisodeReactionNameIdContext = createContext<string | null>(null);
 
 const reactionButtonClassName = "shrink-0 tabular-nums";
@@ -88,21 +90,25 @@ const skeletonClassNameForSize = (size: EpisodeReactionSize): string =>
 
 const useEpisodeReactionFace = (): EpisodeReactionFace => {
   const face = use(EpisodeReactionFaceContext);
+
   if (!face) {
     throw new Error(
       "EpisodeReaction slots must be rendered inside EpisodeReactionLogin or EpisodeReactionForm."
     );
   }
+
   return face;
 };
 
 const useEpisodeReactionNameId = (): string => {
   const id = use(EpisodeReactionNameIdContext);
+
   if (!id) {
     throw new Error(
       "EpisodeReactionName must be rendered inside EpisodeReactionLogin or EpisodeReactionSubmit."
     );
   }
+
   return id;
 };
 
@@ -176,6 +182,7 @@ const EpisodeReactionLogin = ({
 }) => {
   const size = use(EpisodeReactionSizeContext);
   const nameId = useId();
+
   const face = useMemo(
     (): EpisodeReactionFace => ({
       error: null,
@@ -222,19 +229,23 @@ const EpisodeReactionForm = ({
   ratingCount: number;
   score: number;
 }) => {
-  const [state, formAction] = useActionState(
+  const [state, formAction] = useActionState<RateEpisodeActionState, FormData>(
     rateEpisodeAction,
-    null as RateEpisodeActionState
+    null
   );
+
   const confirmed = state?.ok
     ? { ratingCount: state.ratingCount, score: state.score }
     : { ratingCount, score };
+
   const [optimistic, addOptimistic] = useOptimistic(confirmed, (current) =>
     applyReactionPress(current, mode)
   );
+
   const displayRef = useRef<EpisodeReactionState | null>(null);
   const queuedPressesRef = useRef(0);
   const flushPromiseRef = useRef<Promise<void> | null>(null);
+
   const face = useMemo(
     (): EpisodeReactionFace => ({
       error: state && !state.ok ? state.message : null,
@@ -254,12 +265,15 @@ const EpisodeReactionForm = ({
             ratingCount: optimistic.ratingCount,
             score: optimistic.score,
           };
+
           if (current.score >= MAX_EPISODE_REACTION_SCORE) {
             if (flushPromiseRef.current) {
               await flushPromiseRef.current;
             }
+
             return;
           }
+
           const next = applyReactionPress(current, mode);
           displayRef.current = next;
           addOptimistic(1);
@@ -267,6 +281,7 @@ const EpisodeReactionForm = ({
 
           if (flushPromiseRef.current) {
             await flushPromiseRef.current;
+
             return;
           }
 
@@ -281,6 +296,7 @@ const EpisodeReactionForm = ({
               formAction(formData);
             });
           })();
+
           flushPromiseRef.current = flush;
           await flush;
         }}
@@ -329,9 +345,11 @@ const EpisodeReactionName = ({ children }: { children: ReactNode }) => {
 
 const EpisodeReactionNameIdle = ({ children }: { children: ReactNode }) => {
   const { score } = useEpisodeReactionFace();
+
   if (score > 0) {
     return null;
   }
+
   return children;
 };
 
@@ -342,6 +360,7 @@ const EpisodeReactionNameProgress = ({
 }) => {
   const t = useClientMessages();
   const { mode, score } = useEpisodeReactionFace();
+
   if (
     mode !== "multiple" ||
     score <= 0 ||
@@ -358,9 +377,11 @@ const EpisodeReactionNameProgress = ({
 
 const EpisodeReactionNameDone = ({ children }: { children: ReactNode }) => {
   const { score } = useEpisodeReactionFace();
+
   if (score < MAX_EPISODE_REACTION_SCORE) {
     return null;
   }
+
   return children;
 };
 
@@ -379,9 +400,11 @@ const EpisodeReactionNameReaders = ({
 
 const EpisodeReactionError = () => {
   const { error } = useEpisodeReactionFace();
+
   if (!error) {
     return null;
   }
+
   return <FormMessage variant="destructive">{error}</FormMessage>;
 };
 
@@ -406,4 +429,5 @@ export {
   EpisodeReactionSkeleton as Skeleton,
   EpisodeReactionSubmit as Submit,
 };
+
 export type { EpisodeReactionSize as Size };

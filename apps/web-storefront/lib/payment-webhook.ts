@@ -21,11 +21,13 @@ export const forwardPaymentWebhook = async (
   { provider, tenantId }: { provider: string; tenantId: string }
 ): Promise<NextResponse> => {
   const path = parseWebhookPath("payment", { provider, tenantId });
+
   if (path instanceof NextResponse) {
     return path;
   }
 
   const payload = new Uint8Array(await request.arrayBuffer());
+
   return answerWebhook("payment", () =>
     apiClient.purchase.processPaymentWebhook({
       headers: Object.fromEntries(request.headers),
@@ -47,11 +49,13 @@ export const forwardAppStoreNotification = async (
   { tenantId }: { tenantId: string }
 ): Promise<NextResponse> => {
   const tenant = tenantIdSchema.safeParse(tenantId);
+
   if (!tenant.success) {
     return invalidTenantPath();
   }
 
   const payload = new Uint8Array(await request.arrayBuffer());
+
   return answerWebhook("payment", () =>
     apiClient.purchase.processAppStoreNotification({
       payload,

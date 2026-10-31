@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Response } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql, runSql } from "../src/db";
@@ -24,8 +24,10 @@ const storefrontUrl = (pathname: string): string =>
 const CONFIRM_EMAIL_PATH = "/confirm-email";
 
 const CHANGED_MESSAGE = "Your email address has been changed.";
+
 const PENDING_NEW_EMAIL_MESSAGE =
   "This confirmation is complete. The change takes effect once the new address is confirmed as well.";
+
 const FAILED_MESSAGE =
   "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.";
 
@@ -74,13 +76,17 @@ const requestEmailChange = async (
 /** The token out of the confirmation link mailed to `recipient`. */
 const confirmationTokenFor = async (recipient: string): Promise<string> => {
   const message = await waitForMessageTo(recipient);
+
   return tokenFromLink(message, CONFIRM_EMAIL_PATH);
 };
 
 /**
  * Open a confirmation link on the origin the browser reaches web-storefront on.
  */
-const openConfirmation = (page: Page, token: string): Promise<unknown> =>
+const openConfirmation = (
+  page: Page,
+  token: string
+): Promise<Response | null> =>
   page.goto(
     storefrontUrl(`${CONFIRM_EMAIL_PATH}?token=${encodeURIComponent(token)}`)
   );
@@ -153,9 +159,11 @@ test.describe("web-storefront email address change", () => {
       EMAIL_CHANGE_MEMBER.email,
       EMAIL_CHANGE_NEW_EMAIL
     );
+
     const currentEmailToken = await confirmationTokenFor(
       EMAIL_CHANGE_MEMBER.email
     );
+
     const newEmailToken = await confirmationTokenFor(EMAIL_CHANGE_NEW_EMAIL);
 
     await openConfirmation(page, currentEmailToken);

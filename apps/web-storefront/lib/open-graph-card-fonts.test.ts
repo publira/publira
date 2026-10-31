@@ -7,6 +7,7 @@ const fontNames = async (
   text: string
 ) => {
   const { fonts } = await loadOpenGraphCardFonts(locale, [text]);
+
   return fonts.map(({ name }) => name);
 };
 
@@ -28,6 +29,7 @@ describe("loadOpenGraphCardFonts", () => {
       const names = await fontNames(locale, text);
 
       expect(names.length).toBeGreaterThan(0);
+
       for (const name of names) {
         expect(name.startsWith(prefix)).toBe(true);
       }

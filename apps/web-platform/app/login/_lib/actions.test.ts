@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 const {
@@ -36,7 +37,8 @@ vi.mock("#lib/platform-session-cookie", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
+
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
 
@@ -45,6 +47,7 @@ const loginFormData = (): FormData => {
   formData.set("email", "operator@example.com");
   formData.set("next", "/tenants");
   formData.set("password", "correct horse battery staple");
+
   return formData;
 };
 
@@ -60,6 +63,7 @@ describe("loginAction", () => {
       accessToken: "session-token",
       expiresAt: Temporal.Instant.from("2026-10-01T00:00:00Z"),
     };
+
     mockLoginPlatform.mockResolvedValueOnce({
       kind: "session",
       ok: true,

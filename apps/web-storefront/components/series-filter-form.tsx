@@ -62,6 +62,7 @@ export const SeriesFilterForm = async ({
   query: SeriesListQuery;
 }) => {
   const locale = await getLocale();
+
   const [t, action] = await Promise.all([
     getMessagesFor(locale),
     localePath(basePath),

@@ -42,9 +42,11 @@ vi.mock("#lib/tenant-members", () => ({
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
   data.set("tenant_id", "TENANT001");
+
   for (const [name, value] of Object.entries(fields)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -159,6 +161,7 @@ describe("updateTenantMemberRoleAction", () => {
   it("passes the API's refusal through unchanged", async () => {
     const refusal =
       "This member is the tenant's last tenant admin. Make someone else a tenant admin before changing this role.";
+
     mockUpdateRole.mockResolvedValueOnce({ message: refusal, ok: false });
     const { updateTenantMemberRoleAction } = await import("./actions");
 

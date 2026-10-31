@@ -8,17 +8,25 @@ import { getAuditActionOptions } from "#lib/audit-log-labels";
 
 import { AuditActionName } from "./audit-action-name";
 
-const state = vi.hoisted(() => ({ locale: "en" as Locale }));
+/** The locale the mocked `getPlatformLocale` answers with. */
+interface LocaleState {
+  locale: Locale;
+}
+
+const state = vi.hoisted((): LocaleState => ({ locale: "en" }));
 
 vi.mock("#lib/locale", () => ({
   getPlatformLocale: () => Promise.resolve(state.locale),
 }));
 
 /** The text the element renders, resolving the `<Message>` it returns. */
-const renderText = async (node: ReactNode): Promise<unknown> => {
+const renderText = async (node: ReactNode): Promise<ReactNode> => {
   if (!isValidElement<MessageProps>(node)) {
     return node;
   }
+
+  // SAFETY: the element the component returns is a `<Message>`, an async
+  // function component taking `MessageProps`.
   const render = node.type as (props: MessageProps) => Promise<string>;
 
   return await render(node.props);
@@ -50,6 +58,7 @@ describe("AuditActionName", () => {
 
   it("names every action the filter offers with the filter's label", async () => {
     const options = await getAuditActionOptions("en");
+
     const names = await Promise.all(
       options.map(({ value }) => renderText(AuditActionName({ action: value })))
     );

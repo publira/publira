@@ -47,6 +47,7 @@ describe("AccountIcon", () => {
     const { rerender } = render(
       <AccountIcon alt="Your icon" fallback={fallback} icon={icon} size={80} />
     );
+
     fireEvent.error(screen.getByAltText("Your icon"));
 
     rerender(

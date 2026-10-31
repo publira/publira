@@ -30,6 +30,7 @@ export const CampaignBannerManager = async ({
   timeZone,
 }: CampaignBannerManagerProps) => {
   const t = await getMessagesFor(locale);
+
   // A failed read still hands an empty array; the empty state next to the
   // error would read as "this tenant has no banners".
   if (listErrorMessage) {

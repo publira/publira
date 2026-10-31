@@ -4,6 +4,7 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { answerAnalyticsConsent } from "#lib/analytics-consent";
+import type { ContentViewKind } from "#lib/view-events";
 
 import { ContentViewBeacon } from "./content-view-beacon";
 
@@ -23,8 +24,15 @@ afterEach(() => {
   document.cookie = `${COOKIE}=; Max-Age=0; Path=/`;
 });
 
-const sentBody = async (call: number): Promise<unknown> => {
+/** The body of a view report, as the component writes it. */
+interface SentView {
+  id: string;
+  kind: ContentViewKind;
+}
+
+const sentBody = async (call: number): Promise<SentView> => {
   const [, blob] = sendBeacon.mock.calls[call];
+
   return JSON.parse(await blob.text());
 };
 
@@ -36,6 +44,7 @@ describe("ContentViewBeacon", () => {
         id="e0000000-0000-4000-8000-000000000001"
       />
     );
+
     rerender(
       <ContentViewBeacon
         kind="episode"
@@ -59,6 +68,7 @@ describe("ContentViewBeacon", () => {
         id="e0000000-0000-4000-8000-000000000001"
       />
     );
+
     rerender(
       <ContentViewBeacon
         kind="episode"

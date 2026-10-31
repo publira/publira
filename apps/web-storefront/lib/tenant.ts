@@ -44,6 +44,7 @@ const requireCurrency = (value: string): string => {
   if (!currencyPattern.test(value)) {
     throw new Error(`tenant currency is not an ISO 4217 code: ${value}`);
   }
+
   return value;
 };
 
@@ -55,6 +56,7 @@ const requireCurrency = (value: string): string => {
  */
 const requireSupportedLocale = (value: string): Locale => {
   const locale = parseLocale(value);
+
   if (locale === undefined) {
     throw new Error(`tenant default locale is not supported: ${value}`);
   }
@@ -83,9 +85,11 @@ const toTenantCommentMode = (
     case CommentMode.IMMEDIATE: {
       return "immediate";
     }
+
     case CommentMode.APPROVAL_REQUIRED: {
       return "approval_required";
     }
+
     default: {
       return "disabled";
     }
@@ -111,9 +115,11 @@ const toTenantAgeVerification = (
     case AgeVerification.R18: {
       return "r18";
     }
+
     case AgeVerification.R15_AND_R18: {
       return "r15_and_r18";
     }
+
     default: {
       return "none";
     }
@@ -252,6 +258,7 @@ export interface TenantSiteInfo {
  * consumers distinguish "unset" from "set to nothing".
  */
 const trimmed = (value?: string): string | undefined => value?.trim();
+
 const nonEmpty = (value?: string): string | undefined =>
   value?.trim() || undefined;
 
@@ -281,6 +288,7 @@ export const toTenantLegalPage = (
   const slug = nonEmpty(page?.slug);
   const title = nonEmpty(page?.title);
   const versionId = nonEmpty(page?.versionId);
+
   if (!slug || !title || !versionId) {
     return undefined;
   }
@@ -301,6 +309,7 @@ const toTenantImageVariants = (
       variantType: variant.variantType ?? "",
       width: variant.width ?? 0,
     };
+
     return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
       ? [mappedVariant]
       : [];
@@ -330,6 +339,7 @@ const toTenantBrandMarks = (
   const entries = (marks ?? []).flatMap((mark) => {
     const kind = brandMarkKinds[mark.kind];
     const variants = toTenantImageVariants(mark.imageVariants);
+
     return kind && variants ? [[kind, variants] as const] : [];
   });
 
@@ -358,6 +368,7 @@ export const getTenantSiteInfo = async (
   cacheLife({ stale: 30 });
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return null;
   }
@@ -371,6 +382,7 @@ export const getTenantSiteInfo = async (
 
     // Display / short code for UI — not used for internal routing.
     const publicId = trimmed(response.tenantPublicId) ?? "";
+
     if (!publicId) {
       return null;
     }
@@ -426,6 +438,7 @@ export const getTenantSiteInfo = async (
       console.warn("[web-storefront] getTenantSiteInfo failed", error);
       dropFailedCacheEntry();
     }
+
     return null;
   }
 };
@@ -465,6 +478,7 @@ export const getTenantSiteCopy = async (
   cacheLife({ stale: 30 });
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return {};
   }
@@ -476,6 +490,7 @@ export const getTenantSiteCopy = async (
       locale,
       tenant: { tenantId: normalizedTenantId },
     });
+
     if (!trimmed(response.tenantPublicId)) {
       return {};
     }
@@ -490,6 +505,7 @@ export const getTenantSiteCopy = async (
       console.warn("[web-storefront] getTenantSiteCopy failed", error);
       dropFailedCacheEntry();
     }
+
     return {};
   }
 };
@@ -517,6 +533,7 @@ export const getTenantTheme = async (
   cacheLife({ stale: 30 });
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return null;
   }
@@ -527,9 +544,11 @@ export const getTenantTheme = async (
     const response = await apiClient.tenant.getTenant({
       tenant: { tenantId: normalizedTenantId },
     });
+
     if (!trimmed(response.tenantPublicId)) {
       return null;
     }
+
     return {
       dark: resolveTenantThemePalette(response.darkTheme),
       light: resolveTenantThemeColors(response.theme),
@@ -541,6 +560,7 @@ export const getTenantTheme = async (
       console.warn("[web-storefront] getTenantTheme failed", error);
       dropFailedCacheEntry();
     }
+
     return null;
   }
 };
@@ -550,6 +570,7 @@ export const hasTenantDarkTheme = async (
   tenantId: string
 ): Promise<boolean> => {
   const theme = await getTenantTheme(tenantId);
+
   return theme?.dark !== undefined;
 };
 
@@ -566,11 +587,13 @@ export const getTenantSiteLabel = async (
 ): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
   const name = tenant?.name.trim();
+
   if (name) {
     return name;
   }
 
   const t = await getMessagesFor(locale);
+
   return t("storefront.common.site_fallback");
 };
 
@@ -590,6 +613,7 @@ export const getTenantDisplayTimeZone = async (
   tenantId: string
 ): Promise<string> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   return tenant?.timeZone ?? DEFAULT_TIME_ZONE;
 };
 
@@ -634,6 +658,7 @@ export const getTenantDefaultLocale = async (
   tenantId: string
 ): Promise<Locale> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   if (!tenant) {
     throw new Error(`tenant default locale is unavailable: ${tenantId}`);
   }
@@ -657,6 +682,7 @@ export const getTenantLinkDefaultLocale = async (
   tenantId: string
 ): Promise<Locale | null> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   return tenant?.defaultLocale ?? null;
 };
 
@@ -677,6 +703,7 @@ export const getTenantSupportedLocales = async (
   tenantId: string
 ): Promise<Locale[]> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   if (!tenant) {
     throw new Error(`tenant supported locales are unavailable: ${tenantId}`);
   }
@@ -694,6 +721,7 @@ export const getTenantLinkSupportedLocales = async (
   tenantId: string
 ): Promise<Locale[] | null> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   return tenant?.supportedLocales ?? null;
 };
 
@@ -713,6 +741,7 @@ export const getTenantCommentMode = async (
   tenantId: string
 ): Promise<TenantCommentMode> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   return tenant?.commentMode ?? "disabled";
 };
 
@@ -726,6 +755,7 @@ export const getTenantAgeVerification = async (
   tenantId: string
 ): Promise<TenantAgeVerification> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   return tenant?.ageVerification ?? "none";
 };
 
@@ -752,6 +782,7 @@ export const getTenantSignUp = async (
   tenantId: string
 ): Promise<TenantSignUp> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   if (!tenant || tenant.signUpOpen) {
     return { open: true };
   }
@@ -769,10 +800,17 @@ export const getTenantSignInClients = async (
   tenantId: string
 ): Promise<Partial<Record<SignInProvider, string>>> => {
   const tenant = await getTenantSiteInfo(tenantId);
-  return {
-    ...(tenant?.appleServicesId ? { apple: tenant.appleServicesId } : {}),
-    ...(tenant?.googleWebClientId ? { google: tenant.googleWebClientId } : {}),
-  };
+  const clients: Partial<Record<SignInProvider, string>> = {};
+
+  if (tenant?.appleServicesId) {
+    clients.apple = tenant.appleServicesId;
+  }
+
+  if (tenant?.googleWebClientId) {
+    clients.google = tenant.googleWebClientId;
+  }
+
+  return clients;
 };
 
 /**
@@ -793,6 +831,7 @@ export const getTenantLegalPages = async (
   cacheLife({ stale: 30 });
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return {};
   }
@@ -814,6 +853,7 @@ export const getTenantLegalPages = async (
       console.warn("[web-storefront] getTenantLegalPages failed", error);
       dropFailedCacheEntry();
     }
+
     return {};
   }
 };
@@ -868,6 +908,7 @@ export const getTenantWebPushPublicKey = async (
   tenantId: string
 ): Promise<string | null> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   return tenant?.webPushVapidPublicKey ?? null;
 };
 
@@ -892,6 +933,7 @@ export const getTenantPublicOrigin = async (
   tenantId: string
 ): Promise<string | null> => {
   const tenant = await getTenantSiteInfo(tenantId);
+
   if (!tenant) {
     return null;
   }

@@ -12,9 +12,12 @@ export const minutesUntil = (
   now: Temporal.Instant
 ): number | null => {
   const until = parseInstant(instant);
+
   if (!until) {
     return null;
   }
+
   const left = now.until(until).total({ unit: "millisecond" });
+
   return left > 0 ? Math.ceil(left / MINUTE_MS) : 0;
 };

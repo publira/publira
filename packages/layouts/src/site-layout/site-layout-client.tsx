@@ -24,11 +24,13 @@ const SiteMobileNavigationContext =
 
 const useSiteMobileNavigation = (): SiteMobileNavigationContextValue => {
   const value = useContext(SiteMobileNavigationContext);
+
   if (!value) {
     throw new Error(
       "Site mobile navigation slots must be rendered inside SiteLayout."
     );
   }
+
   return value;
 };
 

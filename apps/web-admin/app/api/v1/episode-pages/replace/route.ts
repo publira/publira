@@ -53,9 +53,11 @@ export const POST = async (request: NextRequest) => {
     maxBytes: EPISODE_PAGE_REPLACE_MAX_BYTES,
     tooLarge: (t) => t("admin.series.episodes.image_replace.too_large"),
   });
+
   if ("response" in form) {
     return form.response;
   }
+
   const { formData, locale, t, tenantId } = form;
 
   const parsed = replaceFormSchema(t).safeParse(
@@ -65,10 +67,13 @@ export const POST = async (request: NextRequest) => {
       imageId: { kind: "value", name: "image_id" },
     })
   );
+
   if (!parsed.success) {
     return refuse(toFormErrorMessage(parsed.error, { locale }), 400);
   }
+
   const { episodeId, image, imageId } = parsed.data;
+
   // The framing allowance lets a body through with an image a little over
   // what publira server takes, which would be sent for nothing.
   if (image.size > EPISODE_PAGE_IMAGE_MAX_BYTES) {
@@ -76,6 +81,7 @@ export const POST = async (request: NextRequest) => {
   }
 
   let result: Awaited<ReturnType<typeof replaceEpisodeImage>>;
+
   try {
     result = await replaceEpisodeImage(
       { episodeId, image, imageId, tenantId },
@@ -85,8 +91,10 @@ export const POST = async (request: NextRequest) => {
     if (isUnauthenticatedError(error)) {
       return signInAgain(request, t);
     }
+
     throw error;
   }
+
   if (!result.ok) {
     return refuse(result.message, 422);
   }

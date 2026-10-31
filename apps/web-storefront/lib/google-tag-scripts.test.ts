@@ -166,18 +166,33 @@ describe("gtagInitScript", () => {
   });
 });
 
+/** The globals a consent script reads, and the `dataLayer` it writes. */
+interface ScriptGlobals {
+  /** The `arguments` object of each `gtag()` call. */
+  dataLayer?: Iterable<unknown>[];
+  document: { cookie: string };
+  navigator: { globalPrivacyControl: boolean };
+  window?: ScriptGlobals;
+}
+
 /** What `script` leaves in the `dataLayer` of a page holding `cookie`. */
 const runConsentScript = (
   script: string,
   { cookie = "", gpc = false }: { cookie?: string; gpc?: boolean } = {}
 ): unknown[][] => {
-  const page: Record<string, unknown> = {
+  const page: ScriptGlobals = {
     document: { cookie },
     navigator: { globalPrivacyControl: gpc },
   };
+
   page.window = page;
   runInNewContext(script, page);
-  return (page.dataLayer as Iterable<unknown>[]).map((entry) => [...entry]);
+
+  if (!page.dataLayer) {
+    throw new Error("the script left no dataLayer");
+  }
+
+  return page.dataLayer.map((entry) => [...entry]);
 };
 
 describe("gtagConsentDefaultScript", () => {
@@ -189,6 +204,7 @@ describe("gtagConsentDefaultScript", () => {
     ad_user_data: "denied",
     analytics_storage: "denied",
   };
+
   const granted = {
     ad_personalization: "granted",
     ad_storage: "granted",

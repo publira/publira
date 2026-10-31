@@ -41,11 +41,13 @@ const ConsoleDrawerNavigationContext = createContext<{
 
 const useConsoleMobileNavigation = (): ConsoleMobileNavigationContextValue => {
   const value = useContext(ConsoleMobileNavigationContext);
+
   if (!value) {
     throw new Error(
       "Console mobile navigation slots must be rendered inside ConsoleLayout."
     );
   }
+
   return value;
 };
 
@@ -135,6 +137,7 @@ export const ConsoleSidebarNavigation = ({
   hrefs: readonly string[];
 }) => {
   const { target } = useContext(ConsoleDrawerNavigationContext);
+
   const navigation = (
     <nav className="mt-6 flex-1 overflow-y-auto">
       <div className="grid gap-6">{children}</div>
@@ -231,6 +234,7 @@ export const ConsoleSidebarNavigationItem = ({
 
 export const ConsoleLayoutClient = ({ children }: { children: ReactNode }) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   const [drawerNavigationTarget, setDrawerNavigationTarget] =
     useState<HTMLElement | null>(null);
 

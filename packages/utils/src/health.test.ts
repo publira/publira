@@ -40,6 +40,7 @@ describe("createReadyzResponse", () => {
         name: "api",
       },
     ]);
+
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual({
@@ -55,6 +56,7 @@ describe("createReadyzResponse", () => {
         name: "api",
       },
     ]);
+
     expect(response.status).toBe(503);
     const body = await response.json();
     expect(body.status).toBe(HEALTH_STATUS_UNAVAILABLE);
@@ -77,6 +79,7 @@ describe("createReadyzResponse", () => {
       ],
       { timeoutMs: 30 }
     );
+
     expect(response.status).toBe(503);
     const body = await response.json();
     expect(body.status).toBe(HEALTH_STATUS_UNAVAILABLE);

@@ -227,31 +227,31 @@ export type DeleteSeriesTranslationResult =
   | { ok: false; message: string };
 
 const invalidArgumentMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return mentionsImageRejection(error)
+  return mentionsImageRejection(cause)
     ? t("admin.series.image_invalid")
     : t("admin.series.input_invalid");
 };
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
-      "invalid-argument": rpcErrorHasFieldViolation(error, "locale")
+      "invalid-argument": rpcErrorHasFieldViolation(cause, "locale")
         ? t("admin.series.translations.locale_not_offered")
-        : await invalidArgumentMessage(error, locale),
+        : await invalidArgumentMessage(cause, locale),
       "not-found": t("admin.series.not_found"),
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },
@@ -348,6 +348,7 @@ const toSeriesCommentMode = (
   if (commentMode === undefined) {
     return "";
   }
+
   return SERIES_COMMENT_MODES.find(
     (value) => SERIES_COMMENT_MODE_ENUM[value] === commentMode
   );
@@ -367,9 +368,11 @@ const toSeriesReadingLayout = (
   >
 ): ReadingLayout | undefined => {
   const readingDirection = toReadingDirectionValue(response.readingDirection);
+
   if (readingDirection === undefined) {
     return;
   }
+
   return {
     readingDirection: readingDirection || DEFAULT_READING_DIRECTION,
     spreadStartIndex: response.spreadStartIndex ?? DEFAULT_SPREAD_START_INDEX,
@@ -401,6 +404,7 @@ const mapSeries = (
       record.shareBps,
     ])
   );
+
   return {
     ageRating: toSeriesAgeRatingValue(series.ageRating),
     // Unspecified is the column default, which the console's reads never
@@ -414,6 +418,7 @@ const mapSeries = (
       // A credit written before roles existed states none. It is kept, so the
       // person stays credited and the form is where a role is chosen for them.
       const roleId = creator.role?.id?.trim() ?? "";
+
       return creatorId.length > 0
         ? [
             {
@@ -436,6 +441,7 @@ const mapSeries = (
           variantType: variant.variantType ?? "",
           width: variant.width ?? 0,
         };
+
         return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
           ? [mappedVariant]
           : [];
@@ -443,6 +449,7 @@ const mapSeries = (
     ),
     genreIds: (series.genres ?? []).flatMap((genre) => {
       const id = genre.id?.trim() ?? "";
+
       return id.length > 0 ? [id] : [];
     }),
     id: series.id,
@@ -461,6 +468,7 @@ const mapSeries = (
     synopsis: series.synopsis,
     tagNames: (series.tags ?? []).flatMap((tag) => {
       const name = tag.name?.trim() ?? "";
+
       return name.length > 0 ? [name] : [];
     }),
     title: series.title,
@@ -478,17 +486,21 @@ const listSeriesForTenant = async (
   const t = await getMessagesFor(locale);
 
   try {
+    const request: Parameters<typeof apiClient.series.listSeries>[0] = {
+      ...cursorPageRequest(options),
+      tenant: { tenantId },
+    };
+
+    if (options.ageRating) {
+      request.ageRating = SERIES_AGE_RATING_ENUM[options.ageRating];
+    }
+
+    if (options.status) {
+      request.status = SERIES_STATUS_ENUM[options.status];
+    }
+
     const response = await apiClient.series.listSeries(
-      {
-        ...cursorPageRequest(options),
-        ...(options.ageRating
-          ? { ageRating: SERIES_AGE_RATING_ENUM[options.ageRating] }
-          : {}),
-        ...(options.status
-          ? { status: SERIES_STATUS_ENUM[options.status] }
-          : {}),
-        tenant: { tenantId },
-      },
+      request,
       withServiceHeaders()
     );
 
@@ -502,6 +514,7 @@ const listSeriesForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: await mapErrorToMessage(
@@ -526,6 +539,7 @@ export const listSeries = async (
   options: ListSeriesOptions = {}
 ): Promise<ListSeriesResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listSeriesForTenant(tenantId, locale, options);
 };
 
@@ -540,6 +554,7 @@ const listAllSeriesForTenant = async (
 
   try {
     const series: SeriesItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.series.listSeries(
@@ -550,6 +565,7 @@ const listAllSeriesForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.series ?? [],
           nextToken: response.nextToken ?? "",
@@ -566,6 +582,7 @@ const listAllSeriesForTenant = async (
     // option list that operators treat as complete.
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         ...emptyCursorPageTokens,
         message: t("admin.series.list_failed"),
@@ -586,6 +603,7 @@ const listAllSeriesForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: await mapErrorToMessage(
@@ -612,6 +630,7 @@ const listAllSeriesForTenant = async (
  */
 export const listAllSeries = async (): Promise<ListSeriesResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listAllSeriesForTenant(tenantId, locale);
 };
 
@@ -647,6 +666,7 @@ export const getSeriesForTenant = async (
 
     if (!response.series?.publicId?.trim()) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.series.list_failed"),
         ok: false,
@@ -655,9 +675,11 @@ export const getSeriesForTenant = async (
 
     const commentMode = toSeriesCommentMode(response.commentMode);
     const readingLayout = toSeriesReadingLayout(response);
+
     const purchaseAvailability = toSurfaceAvailabilityValue(
       response.purchaseAvailability
     );
+
     // An unknown availability would open the form on both surfaces, or on
     // following the tenant, and the next save would write that over the value
     // the series holds.
@@ -668,6 +690,7 @@ export const getSeriesForTenant = async (
       toSurfaceAvailabilityValue(response.series.availability) === undefined
     ) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.series.list_failed"),
         ok: false,
@@ -686,10 +709,12 @@ export const getSeriesForTenant = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -705,6 +730,7 @@ export const getSeries = async (input: {
   publicId: string;
 }): Promise<GetSeriesResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return getSeriesForTenant({ ...input, tenantId }, locale);
 };
 
@@ -756,6 +782,7 @@ export const createSeries = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -811,6 +838,7 @@ export const createSeries = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -858,6 +886,7 @@ export const updateSeries = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -935,6 +964,7 @@ export const updateSeries = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -962,6 +992,7 @@ export const deleteSeriesTranslation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -983,6 +1014,7 @@ export const deleteSeriesTranslation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -1031,6 +1063,7 @@ export const uploadSeriesEyeCatchAspectImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1062,9 +1095,11 @@ export const uploadSeriesEyeCatchAspectImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     if (mentionsAspectImageRejection(error)) {
       return { imageRejected: true, ok: false };
     }
+
     return {
       message: await mapErrorToMessage(
         error,

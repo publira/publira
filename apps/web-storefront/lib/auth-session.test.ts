@@ -20,6 +20,7 @@ const {
   mockUpdateTag,
 } = vi.hoisted(() => {
   const setCookie = vi.fn();
+
   return {
     mockCookies: vi.fn(() =>
       Promise.resolve({ delete: vi.fn(), set: setCookie })

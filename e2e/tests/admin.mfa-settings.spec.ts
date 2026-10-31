@@ -104,9 +104,11 @@ test.describe("admin passkey account settings", () => {
 
     await page.getByLabel("Name", { exact: true }).fill("E2E authenticator");
     await page.getByRole("button", { exact: true, name: "Save" }).click();
+
     const passkey = page
       .getByRole("listitem")
       .filter({ hasText: "E2E authenticator" });
+
     await expect(passkey).toContainText("Not used yet");
 
     // Signing out leaves the passkey in the authenticator, and the next
@@ -153,9 +155,11 @@ test.describe("admin passkey account settings", () => {
     await expect(
       page.getByRole("button", { exact: true, name: "Regenerate" })
     ).toHaveCount(0);
+
     const regenerate = page.getByRole("button", {
       name: "Regenerate with a passkey",
     });
+
     await regenerate.click();
 
     await expect(

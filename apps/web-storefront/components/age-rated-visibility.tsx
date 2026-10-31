@@ -45,6 +45,7 @@ export const AgeRatedHiddenNotice = ({
 }) => {
   const tenantId = useTenantId();
   const confirmed = useConfirmedAgeRating(tenantId);
+
   const hidden = ratings.some(
     (rating) => !ageRatingSatisfiedBy(rating, confirmed)
   );

@@ -16,6 +16,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
+import { isJsonString } from "./json-value.ts";
+import type { JsonValue } from "./json-value.ts";
+
 /**
  * A prerelease identifier as SemVer allows it: a number has no leading zero,
  * and anything with a letter or a hyphen in it is not a number.
@@ -62,17 +65,21 @@ export const setVersion = (text: string, version: string): string => {
   const lines = text.split("\n");
   let target: number | undefined;
   let indent = Number.POSITIVE_INFINITY;
+
   for (const [index, line] of lines.entries()) {
     const match = VERSION_LINE.exec(line);
     const depth = match?.groups?.head.search(/\S/u) ?? -1;
+
     if (match && depth < indent) {
       target = index;
       indent = depth;
     }
   }
+
   if (target === undefined) {
     throw new Error("it has no version on a line of its own");
   }
+
   const { head, tail } = VERSION_LINE.exec(lines[target])?.groups ?? {};
   lines[target] = `${head}${JSON.stringify(version)}${tail}`;
   const result = lines.join("\n");
@@ -80,6 +87,7 @@ export const setVersion = (text: string, version: string): string => {
   // The line chosen is the top-level one only if the parsed file says so.
   const before = JSON.parse(text);
   const after = JSON.parse(result);
+
   if (!isDeepStrictEqual(after, { ...before, version })) {
     throw new Error("its top-level version is not on a line of its own");
   }
@@ -98,13 +106,14 @@ export const findMismatches = (
   version: string
 ): string[] =>
   manifests.flatMap((manifest) => {
-    const actual: unknown = JSON.parse(manifest.text).version;
+    const actual: JsonValue | undefined = JSON.parse(manifest.text).version;
+
     if (actual === version) {
       return [];
     }
 
     return [
-      typeof actual === "string"
+      isJsonString(actual)
         ? `${manifest.path} carries ${actual}, not ${version}.`
         : `${manifest.path} carries no version, not ${version}.`,
     ];
@@ -122,11 +131,14 @@ const set = (root: string, version: string): void => {
     try {
       return { ...manifest, text: setVersion(manifest.text, version) };
     } catch (error) {
-      throw new Error(`${manifest.path}: ${(error as Error).message}`, {
+      const reason = error instanceof Error ? error.message : String(error);
+
+      throw new Error(`${manifest.path}: ${reason}`, {
         cause: error,
       });
     }
   });
+
   for (const manifest of updates) {
     writeFileSync(path.join(root, manifest.path), manifest.text);
     console.log(`${manifest.path}: ${version}`);
@@ -136,11 +148,13 @@ const set = (root: string, version: string): void => {
 const check = (root: string, version: string): void => {
   const manifests = readManifests(root);
   const mismatches = findMismatches(manifests, version);
+
   if (mismatches.length === 0) {
     console.log(`All ${manifests.length} package.json files carry ${version}.`);
 
     return;
   }
+
   console.error(
     [
       ...mismatches,
@@ -156,6 +170,7 @@ const check = (root: string, version: string): void => {
 if (import.meta.main) {
   const [command, version] = process.argv.slice(2);
   const root = path.join(import.meta.dirname, "..");
+
   if ((command !== "set" && command !== "check") || version === undefined) {
     console.error("usage: node scripts/release-version.ts set|check <version>");
     process.exitCode = 2;

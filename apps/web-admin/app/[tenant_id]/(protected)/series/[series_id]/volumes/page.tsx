@@ -61,9 +61,11 @@ const resolveSeriesPublicId = async (
     seriesVolumesParamsSchema,
     await params
   );
+
   if (!parsedParams) {
     notFound();
   }
+
   return parsedParams.series_id;
 };
 
@@ -79,16 +81,19 @@ const SeriesVolumesData = async ({ params }: SeriesVolumesPageProps) => {
     resolveSeriesPublicId(params),
     getTenantId(),
   ]);
+
   const [locale, seriesResult] = await Promise.all([
     getLocale(tenantId),
     getSeries({ publicId: seriesPublicId }),
   ]);
+
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {
       // Missing, or another tenant's series — never told apart. Renders
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
+
     return (
       <SectionError.Root>
         <SectionError.Heading>
@@ -109,15 +114,18 @@ const SeriesVolumesData = async ({ params }: SeriesVolumesPageProps) => {
   }
 
   const seriesId = seriesResult.series.id;
+
   const [listResult, canEdit, currency, t] = await Promise.all([
     listVolumes({ seriesId, tenantId }, locale),
     isSignedInTenantEditor(tenantId),
     getTenantCurrency(tenantId),
     getMessagesFor(locale),
   ]);
+
   await redirectToLoginIfSessionRejected(listResult);
 
   let createForm = null;
+
   if (canEdit) {
     // A price entered in no currency is a number nobody can read.
     createForm = currency ? (

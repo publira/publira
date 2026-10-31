@@ -61,6 +61,7 @@ export const getJsonLdSite = async (
     getTenantPublicOrigin(tenantId),
     getTenantSiteInfo(tenantId),
   ]);
+
   if (!(origin && tenant)) {
     return null;
   }
@@ -89,6 +90,7 @@ export const jsonLdUrl = (site: JsonLdSite, href: string): string => {
     withLocalePrefix(site.locale, site.defaultLocale, href),
     site.origin
   );
+
   return url.pathname === "/" && url.search === "" ? url.origin : url.href;
 };
 
@@ -133,11 +135,14 @@ const creditAuthors = (
 ): Person[] => {
   const seen = new Set<string>();
   const authors: Person[] = [];
+
   for (const credit of credits) {
     const key = credit.publicId || `name:${credit.name}`;
+
     if (seen.has(key)) {
       continue;
     }
+
     seen.add(key);
     authors.push(
       credit.publicId
@@ -150,6 +155,7 @@ const creditAuthors = (
         : { "@type": "Person", name: credit.name }
     );
   }
+
   return authors;
 };
 
@@ -167,6 +173,7 @@ const workImages = (
 ): string[] =>
   SEARCH_IMAGE_VARIANT_TYPES.flatMap((variantType) => {
     let largest: EyeCatchImageVariant | null = null;
+
     for (const variant of variants ?? []) {
       if (
         variant.variantType === variantType &&
@@ -175,6 +182,7 @@ const workImages = (
         largest = variant;
       }
     }
+
     return largest ? [absoluteUrl(site, largest.url)] : [];
   });
 
@@ -212,6 +220,7 @@ const seriesPublisher = (
  */
 export const websiteJsonLd = (site: JsonLdSite): WithContext<WebSite> => {
   const url = jsonLdUrl(site, "/");
+
   return {
     "@context": "https://schema.org",
     "@id": `${url}#website`,
@@ -232,19 +241,28 @@ export const organizationJsonLd = (
 ): WithContext<Organization> => {
   const { tenant } = site;
   const logo = resolveTenantLogoVariant(tenant);
+
   const sameAs = [tenant.appStoreUrl, tenant.googlePlayUrl].filter(
     (url): url is string => Boolean(url)
   );
 
-  return {
+  const organization: WithContext<Organization> = {
     "@context": "https://schema.org",
     "@id": organizationId(site),
     "@type": "Organization",
     name: site.name,
     url: jsonLdUrl(site, "/"),
-    ...(logo ? { logo: absoluteUrl(site, logo.url) } : {}),
-    ...(sameAs.length > 0 ? { sameAs } : {}),
   };
+
+  if (logo) {
+    organization.logo = absoluteUrl(site, logo.url);
+  }
+
+  if (sameAs.length > 0) {
+    organization.sameAs = sameAs;
+  }
+
+  return organization;
 };
 
 /**
@@ -286,7 +304,7 @@ export const seriesJsonLd = (
   const images = workImages(site, series.eyeCatchImageVariants);
   const served = jsonLdSiteIn(site, series.locale);
 
-  return {
+  const work: WithContext<ComicSeries> = {
     "@context": "https://schema.org",
     "@id": seriesId(served, series.publicId),
     "@type": "ComicSeries",
@@ -294,27 +312,39 @@ export const seriesJsonLd = (
     name: series.title,
     publisher: seriesPublisher(site, series),
     url: jsonLdUrl(served, seriesHref(series.publicId)),
-    ...(description ? { description } : {}),
-    ...(images.length > 0 ? { image: images } : {}),
-    ...(authors.length > 0 ? { author: authors } : {}),
-    ...(series.genres.length > 0
-      ? { genre: series.genres.map((genre) => genre.name) }
-      : {}),
-    ...(series.tags.length > 0
-      ? { keywords: series.tags.map((tag) => tag.name) }
-      : {}),
-    ...(series.ratingCount > 0 && series.ratingAverage > 0
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            bestRating: 5,
-            ratingCount: series.ratingCount,
-            ratingValue: series.ratingAverage,
-            worstRating: 1,
-          },
-        }
-      : {}),
   };
+
+  if (description) {
+    work.description = description;
+  }
+
+  if (images.length > 0) {
+    work.image = images;
+  }
+
+  if (authors.length > 0) {
+    work.author = authors;
+  }
+
+  if (series.genres.length > 0) {
+    work.genre = series.genres.map((genre) => genre.name);
+  }
+
+  if (series.tags.length > 0) {
+    work.keywords = series.tags.map((tag) => tag.name);
+  }
+
+  if (series.ratingCount > 0 && series.ratingAverage > 0) {
+    work.aggregateRating = {
+      "@type": "AggregateRating",
+      bestRating: 5,
+      ratingCount: series.ratingCount,
+      ratingValue: series.ratingAverage,
+      worstRating: 1,
+    };
+  }
+
+  return work;
 };
 
 /**
@@ -330,10 +360,12 @@ const isAccessibleForFree = (
     case "free": {
       return true;
     }
+
     case "entitled":
     case "locked": {
       return false;
     }
+
     default: {
       return undefined;
     }
@@ -365,11 +397,12 @@ export const episodeJsonLd = (
     jsonLdSiteIn(site, episode.locale),
     `${seriesHref(series.publicId)}/episodes/${episode.publicId}`
   );
+
   const servedSeries = jsonLdSiteIn(site, series.locale);
   const authors = creditAuthors(site, episode.credits);
   const free = isAccessibleForFree(access);
 
-  return {
+  const issue: WithContext<ComicIssue> = {
     "@context": "https://schema.org",
     "@id": `${url}#issue`,
     "@type": "ComicIssue",
@@ -384,10 +417,21 @@ export const episodeJsonLd = (
     issueNumber: episode.orderIndex,
     name: episode.title,
     url,
-    ...(episode.publishedAt ? { datePublished: episode.publishedAt } : {}),
-    ...(authors.length > 0 ? { author: authors } : {}),
-    ...(free === undefined ? {} : { isAccessibleForFree: free }),
   };
+
+  if (episode.publishedAt) {
+    issue.datePublished = episode.publishedAt;
+  }
+
+  if (authors.length > 0) {
+    issue.author = authors;
+  }
+
+  if (free !== undefined) {
+    issue.isAccessibleForFree = free;
+  }
+
+  return issue;
 };
 
 /**
@@ -404,20 +448,26 @@ export const creatorJsonLd = (
   const url = jsonLdUrl(site, creatorHref(creator.id));
   const description = creator.profileText.trim();
 
+  const person: Person = {
+    "@id": personId(site, creator.id),
+    "@type": "Person",
+    name: creator.name,
+    url,
+  };
+
+  if (description) {
+    person.description = description;
+  }
+
+  if (creator.iconImageUrl) {
+    person.image = absoluteUrl(site, creator.iconImageUrl);
+  }
+
   return {
     "@context": "https://schema.org",
     "@id": `${url}#profile`,
     "@type": "ProfilePage",
-    mainEntity: {
-      "@id": personId(site, creator.id),
-      "@type": "Person",
-      name: creator.name,
-      url,
-      ...(description ? { description } : {}),
-      ...(creator.iconImageUrl
-        ? { image: absoluteUrl(site, creator.iconImageUrl) }
-        : {}),
-    },
+    mainEntity: person,
     url,
   };
 };

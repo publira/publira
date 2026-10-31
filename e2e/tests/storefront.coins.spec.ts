@@ -61,10 +61,13 @@ const COINS_WORD = /\bcoins?\b/iu;
  */
 const shownText = (page: Page): Promise<string> =>
   page.evaluate(() => {
+    // SAFETY: a deep clone of `document.body` is a `<body>` element too.
     const body = document.body.cloneNode(true) as HTMLElement;
+
     for (const element of body.querySelectorAll("script, style, template")) {
       element.remove();
     }
+
     return body.textContent ?? "";
   });
 
@@ -114,6 +117,7 @@ test.describe("web-storefront coins", () => {
     uploadEpisodePages(STOREFRONT_COINS_OTHER_EPISODE.publicId);
 
     const page = await browser.newPage();
+
     try {
       await setTenantCoinsAllowed(page, true);
       await takePaymentsThroughStripe(
@@ -131,11 +135,13 @@ test.describe("web-storefront coins", () => {
     // suite expects, through the console, which then shows it off as well,
     // and puts both tenants back as they were.
     const page = await browser.newPage();
+
     try {
       await setTenantCoinsAllowed(page, false);
     } finally {
       await page.close();
     }
+
     applyScenarioSql(STOREFRONT_COINS_SCENARIO);
   });
 

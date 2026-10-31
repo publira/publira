@@ -133,13 +133,17 @@ describe("ContactMessageManager", () => {
     );
 
     const [, row] = screen.getAllByRole("row");
+
     if (!row) {
       throw new Error("the message has no row");
     }
+
     const cells = within(row).getAllByRole("cell");
+
     const headers = screen
       .getAllByRole("columnheader")
       .map((header) => header.textContent);
+
     expect(cells[headers.indexOf("Status")]?.textContent).toBe("In progress");
     expect(cells[headers.indexOf("Assignee")]?.textContent).toBe("Staff Two");
     expect(screen.queryByText("Unassigned")).toBeNull();
@@ -193,6 +197,7 @@ describe("ContactMessageManager", () => {
     const answered = screen.getByRole("row", {
       name: /Cannot open an episode/u,
     });
+
     const waiting = screen.getByRole("row", { name: /Do you have an app\?/u });
     expect(within(answered).getByText("Answered")).toBeTruthy();
     expect(within(waiting).queryByText("Answered")).toBeNull();
@@ -272,9 +277,11 @@ describe("ContactMessageManager", () => {
     const pager = screen.getByRole("navigation", {
       name: "Contact messages pagination",
     });
+
     const hrefs = [...pager.querySelectorAll("a")].map((link) =>
       link.getAttribute("href")
     );
+
     expect(hrefs).toEqual(["?token=previous-token", "?token=next-token"]);
   });
 });

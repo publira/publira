@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
 
+import type { JsonValue } from "./json-value.ts";
 import { findWorktree } from "./worktree-deps.ts";
 
 const SCRIPT = path.join(import.meta.dirname, "worktree-deps.ts");
@@ -29,7 +30,7 @@ describe("worktree-deps", () => {
   let nested = "";
   let bin = "";
 
-  const run = (input: unknown, env: Record<string, string> = {}) =>
+  const run = (input: JsonValue, env: Record<string, string> = {}) =>
     spawnSync(process.execPath, [SCRIPT], {
       encoding: "utf-8",
       env: { ...process.env, ...env, PATH: `${bin}:${process.env.PATH}` },

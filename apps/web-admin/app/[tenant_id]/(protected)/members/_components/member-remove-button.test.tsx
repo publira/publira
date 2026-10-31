@@ -109,6 +109,7 @@ describe("MemberRemoveButton", () => {
   it("shows the refusal next to the row", async () => {
     const refusal =
       "This member is the tenant's last tenant admin. Make someone else a tenant admin before removing them.";
+
     remove.mockResolvedValue({ message: refusal, ok: false });
 
     await renderButton();

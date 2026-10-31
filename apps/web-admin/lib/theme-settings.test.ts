@@ -349,6 +349,7 @@ describe("theme-settings", () => {
     const { uploadTenantIcon } = await import("./theme-settings");
 
     const iconData = new Uint8Array([1, 2, 3]);
+
     const result = await uploadTenantIcon(
       {
         iconContentType: "image/png",
@@ -406,6 +407,7 @@ describe("theme-settings", () => {
     );
 
     expect(result.ok).toBe(false);
+
     if (!result.ok) {
       expect(result.message).not.toContain("icon image must be at least");
     }
@@ -447,6 +449,7 @@ describe("theme-settings", () => {
     const { uploadTenantLogo } = await import("./theme-settings");
 
     const logoData = new Uint8Array([1, 2, 3]);
+
     const result = await uploadTenantLogo(
       {
         logoContentType: "image/png",
@@ -539,6 +542,7 @@ describe("theme-settings", () => {
     );
 
     expect(result.ok).toBe(false);
+
     if (!result.ok) {
       expect(result.message).not.toContain("logo image must be at least");
     }
@@ -580,6 +584,7 @@ describe("theme-settings", () => {
     const { uploadTenantSignInImage } = await import("./theme-settings");
 
     const imageData = new Uint8Array([1, 2, 3]);
+
     const result = await uploadTenantSignInImage(
       {
         imageContentType: "image/jpeg",

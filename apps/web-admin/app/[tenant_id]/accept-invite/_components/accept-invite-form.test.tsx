@@ -80,6 +80,7 @@ describe("AcceptInviteForm", () => {
     fireEvent.change(name, { target: { value: "Grace Hopper" } });
     fireEvent.change(password, { target: { value: "correct horse" } });
     fireEvent.change(confirmation, { target: { value: "correct horse" } });
+
     for (const field of fields()) {
       expect(field.matches(":disabled")).toBe(false);
     }

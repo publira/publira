@@ -12,8 +12,11 @@ const schema = z.object({
   title: z.string().min(1, "Title is required.").max(5, "Too long."),
 });
 
-const parseFailure = (input: unknown): z.ZodError<z.input<typeof schema>> => {
+const parseFailure = (
+  input: z.input<typeof schema>
+): z.ZodError<z.input<typeof schema>> => {
   const parsed = schema.safeParse(input);
+
   if (parsed.success) {
     throw new Error("expected the schema to reject this input");
   }
@@ -44,7 +47,9 @@ describe("toFieldErrors", () => {
         .startsWith("#", "Must start with #.")
         .length(7, "Must be 7 characters."),
     });
+
     const parsed = multiRule.safeParse({ code: "abc" });
+
     if (parsed.success) {
       throw new Error("expected the schema to reject this input");
     }
@@ -60,10 +65,12 @@ describe("toFormErrorMessage", () => {
       .refine((value) => value.from <= value.to, {
         message: "The end date must not precede the start date.",
       });
+
     const parsed = rangeSchema.safeParse({
       from: "2024-03-10",
       to: "2024-03-01",
     });
+
     if (parsed.success) {
       throw new Error("expected the schema to reject this input");
     }

@@ -21,12 +21,15 @@ export type CohortCell = { week: number } & (
 export const cohortCells = (cohort: RetentionCohortItem): CohortCell[] =>
   Array.from({ length: RETENTION_WEEKS }, (_, week): CohortCell => {
     const active = cohort.activeCounts[week];
+
     if (active === undefined) {
       return { state: "open", week };
     }
+
     if (cohort.cohortSize === 0) {
       return { state: "no_readers", week };
     }
+
     return { share: active / cohort.cohortSize, state: "counted", week };
   });
 

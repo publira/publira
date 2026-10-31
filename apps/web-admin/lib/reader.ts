@@ -43,8 +43,11 @@ const readerStatuses: ReadonlySet<string> = new Set(READER_STATUSES);
  * account whose state cannot be read is never presented as one in good
  * standing.
  */
+const isReaderStatus = (raw: string): raw is ReaderStatus =>
+  readerStatuses.has(raw);
+
 const toReaderStatus = (raw: string): ReaderStatus =>
-  readerStatuses.has(raw) ? (raw as ReaderStatus) : "inactive";
+  isReaderStatus(raw) ? raw : "inactive";
 
 /** The generated `AdminReader` fields {@link mapReader} reads (see `series.ts`). */
 type RawReader = Pick<
@@ -87,6 +90,7 @@ export const listReaders = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -115,6 +119,7 @@ export const listReaders = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...emptyCursorPageTokens,
       message: rpcErrorMessage(error, t("admin.readers.list_failed"), {
@@ -147,6 +152,7 @@ export const getReader = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -160,6 +166,7 @@ export const getReader = async (
       { publicId, tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     if (!response.reader?.publicId) {
       return {
         message: t("admin.readers.detail_failed"),
@@ -171,9 +178,11 @@ export const getReader = async (
     return { ok: true, reader: mapReaderDetail(response.reader) };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+
     return {
       message: rpcErrorMessage(error, t("admin.readers.detail_failed"), {
         locale,
@@ -204,17 +213,22 @@ const callReaderModeration = async (
     readerId: input.readerId,
     tenant: { tenantId: input.tenantId },
   };
+
   const headers = withSessionHeaders(sessionId);
 
   switch (input.action) {
     case "suspend": {
       await apiClient.users.suspendReader(request, headers);
+
       return;
     }
+
     case "unsuspend": {
       await apiClient.users.unsuspendReader(request, headers);
+
       return;
     }
+
     default: {
       await apiClient.users.deleteReader(request, headers);
     }
@@ -226,13 +240,16 @@ const readerModerationFailedMessage = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   switch (action) {
     case "suspend": {
       return t("admin.readers.suspend_failed");
     }
+
     case "unsuspend": {
       return t("admin.readers.unsuspend_failed");
     }
+
     default: {
       return t("admin.readers.delete_failed");
     }
@@ -248,16 +265,19 @@ const readerModerationFailedMessage = async (
  * Any other failed precondition keeps the operation's own fallback.
  */
 const readerModerationRefusal = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string | undefined> => {
   const t = await getMessagesFor(locale);
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.ownAccount)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.ownAccount)) {
     return t("admin.readers.own_account");
   }
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.lastTenantAdmin)) {
+
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.lastTenantAdmin)) {
     return t("admin.readers.last_tenant_admin");
   }
+
   return undefined;
 };
 
@@ -280,6 +300,7 @@ export const setReaderBirthDate = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -293,10 +314,12 @@ export const setReaderBirthDate = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.readers.birth_date_failed"), {
         locale,
@@ -329,6 +352,7 @@ export const removeReaderIcon = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -338,10 +362,12 @@ export const removeReaderIcon = async (
       { readerId: input.readerId, tenant: { tenantId: input.tenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.readers.icon_remove_failed"), {
         locale,
@@ -363,16 +389,19 @@ export const moderateReader = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
     await callReaderModeration(input, sessionId);
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

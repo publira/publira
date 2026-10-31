@@ -144,6 +144,7 @@ describe("updateSeriesFreeAfterSettings", () => {
 
     const { updateSeriesFreeAfterSettings } =
       await import("./series-free-after");
+
     const result = await updateSeriesFreeAfterSettings(input, "en");
 
     expect(mockUpdateSeriesFreeAfterSettings).toHaveBeenCalledWith(
@@ -182,6 +183,7 @@ describe("updateSeriesFreeAfterSettings", () => {
 
     const { updateSeriesFreeAfterSettings } =
       await import("./series-free-after");
+
     const result = await updateSeriesFreeAfterSettings(input, "en");
 
     expect(result).toEqual({ message, ok: false });
@@ -192,6 +194,7 @@ describe("updateSeriesFreeAfterSettings", () => {
 
     const { updateSeriesFreeAfterSettings } =
       await import("./series-free-after");
+
     const result = await updateSeriesFreeAfterSettings(input, "en");
 
     expect(mockUpdateSeriesFreeAfterSettings).not.toHaveBeenCalled();

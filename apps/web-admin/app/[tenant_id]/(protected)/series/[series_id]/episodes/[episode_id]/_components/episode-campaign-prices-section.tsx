@@ -57,6 +57,7 @@ const CampaignPriceStatus = ({ status }: { status: ScheduledPeriodStatus }) => {
         </StatusChip>
       );
     }
+
     case "scheduled": {
       return (
         <StatusChip status="info">
@@ -66,6 +67,7 @@ const CampaignPriceStatus = ({ status }: { status: ScheduledPeriodStatus }) => {
         </StatusChip>
       );
     }
+
     default: {
       return (
         <StatusChip>

@@ -6,6 +6,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { RouteParams } from "@publira/utils/route-params";
 import { cacheLife } from "next/cache";
 import { z } from "zod";
 
@@ -48,6 +49,7 @@ export const getTenantMobileAppAssociation = async (
     const response = await apiClient.tenant.getTenantMobileAppAssociation({
       tenant: { tenantId: normalizedTenantId },
     });
+
     return {
       ok: true,
       value: {
@@ -65,10 +67,12 @@ export const getTenantMobileAppAssociation = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: {} };
     }
+
     console.warn(
       "[web-storefront] getTenantMobileAppAssociation failed",
       error
     );
+
     return cachedReadFailure("The mobile app association is unavailable.");
   }
 };
@@ -127,6 +131,7 @@ export const toAppleAppSiteAssociation = (
   supportedLocales: readonly Locale[]
 ) => {
   const appID = `${ios.teamId}.${ios.bundleIdentifier}`;
+
   return {
     applinks: {
       details: [
@@ -160,15 +165,17 @@ const associationRouteParamsSchema = z.object({
  * recording that the site claims no app.
  */
 const respondWithDocument = async (
-  params: unknown,
+  params: RouteParams,
   readDocument: (tenantId: string) => Promise<CachedReadResult<unknown>>
 ): Promise<Response> => {
   const parsed = parseRouteParams(associationRouteParamsSchema, params);
+
   if (!parsed) {
     return new Response("Not Found", { status: 404 });
   }
 
   const document = await readDocument(parsed.tenant_id);
+
   if (!document.ok) {
     return new Response("Service Unavailable", {
       headers: { "Cache-Control": "no-store", "Retry-After": "30" },
@@ -193,14 +200,16 @@ const respondWithDocument = async (
  * so it reads the association alone: Android's domain verification does not
  * wait on any other tenant setting.
  */
-export const respondWithAssetLinks = (params: unknown): Promise<Response> =>
+export const respondWithAssetLinks = (params: RouteParams): Promise<Response> =>
   respondWithDocument(params, async (tenantId) => {
     const association = await getTenantMobileAppAssociation(tenantId);
+
     if (!association.ok) {
       return association;
     }
 
     const { android } = association.value;
+
     return { ok: true, value: android ? toAssetLinks(android) : undefined };
   });
 
@@ -209,21 +218,24 @@ export const respondWithAssetLinks = (params: unknown): Promise<Response> =>
  * prefix of each locale the tenant offers, so it also reads those locales.
  */
 export const respondWithAppleAppSiteAssociation = (
-  params: unknown
+  params: RouteParams
 ): Promise<Response> =>
   respondWithDocument(params, async (tenantId) => {
     const [association, tenant] = await Promise.all([
       getTenantMobileAppAssociation(tenantId),
       getTenantSiteInfo(tenantId),
     ]);
+
     if (!association.ok) {
       return association;
     }
 
     const { ios } = association.value;
+
     if (!ios) {
       return { ok: true, value: undefined };
     }
+
     if (!tenant) {
       return { message: "The tenant's locales are unavailable.", ok: false };
     }

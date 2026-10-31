@@ -86,12 +86,15 @@ const toCrawlerPurpose = (purpose: RpcCrawlerPurpose): CrawlerPurpose => {
     case RpcCrawlerPurpose.AI_TRAINING: {
       return "ai_training";
     }
+
     case RpcCrawlerPurpose.AI_ASSISTANT: {
       return "ai_assistant";
     }
+
     case RpcCrawlerPurpose.IMAGE_SEARCH: {
       return "image_search";
     }
+
     default: {
       return "other";
     }
@@ -120,8 +123,10 @@ const getTenantCrawlerSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -136,6 +141,7 @@ const getTenantCrawlerSettingsForSession = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return {
       knownCrawlers: (response.knownCrawlers ?? []).map(toKnownCrawler),
       ok: true,
@@ -143,6 +149,7 @@ const getTenantCrawlerSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -176,13 +183,13 @@ export const getTenantCrawlerSettings = async (
  * the page was open; the server's answer is the one that stands.
  */
 const refusedField = (
-  error: unknown,
+  cause: unknown,
   input: TenantCrawlerSettings,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ):
   | { field: keyof TenantCrawlerSettingsFieldErrors; message: string }
   | undefined => {
-  if (rpcErrorHasFieldViolation(error, "settings.excluded_paths")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.excluded_paths")) {
     return {
       field: "excludedPaths",
       message: t("admin.settings.crawlers.validation.too_many", {
@@ -190,18 +197,22 @@ const refusedField = (
       }),
     };
   }
+
   const path = input.excludedPaths.find((_, index) =>
-    rpcErrorHasFieldViolation(error, `settings.excluded_paths[${index}]`)
+    rpcErrorHasFieldViolation(cause, `settings.excluded_paths[${index}]`)
   );
+
   if (path !== undefined) {
     return {
       field: "excludedPaths",
       message: t("admin.settings.crawlers.validation.path_refused", { path }),
     };
   }
+
   const crawler = input.excludedUserAgents.find((_, index) =>
-    rpcErrorHasFieldViolation(error, `settings.excluded_user_agents[${index}]`)
+    rpcErrorHasFieldViolation(cause, `settings.excluded_user_agents[${index}]`)
   );
+
   if (crawler !== undefined) {
     return {
       field: "excludedUserAgents",
@@ -210,6 +221,7 @@ const refusedField = (
       }),
     };
   }
+
   return undefined;
 };
 
@@ -222,7 +234,9 @@ export const updateTenantCrawlerSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -238,6 +252,7 @@ export const updateTenantCrawlerSettings = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       settings: toTenantCrawlerSettings(response.settings),
@@ -246,6 +261,7 @@ export const updateTenantCrawlerSettings = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const refused = refusedField(error, input, t);
+
     if (refused) {
       return {
         fieldErrors: { [refused.field]: refused.message },
@@ -253,6 +269,7 @@ export const updateTenantCrawlerSettings = async (
         ok: false,
       };
     }
+
     return {
       message: rpcErrorMessage(
         error,

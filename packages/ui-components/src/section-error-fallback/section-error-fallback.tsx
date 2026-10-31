@@ -42,15 +42,13 @@ type SectionErrorInfo = Pick<ErrorInfo, "error" | "retry">;
  * client with its message replaced in production. The digest is the one field
  * worth reading either way.
  */
-const errorDigest = (error: unknown): string | undefined => {
-  if (error instanceof Error && "digest" in error) {
-    const { digest } = error;
-    if (typeof digest === "string") {
-      return digest;
-    }
-  }
-  return undefined;
-};
+const hasDigest = (cause: unknown): cause is Error & { digest: string } =>
+  cause instanceof Error &&
+  "digest" in cause &&
+  typeof cause.digest === "string";
+
+const errorDigest = (cause: unknown): string | undefined =>
+  hasDigest(cause) ? cause.digest : undefined;
 
 const SectionErrorFallbackState = ({
   children,
@@ -101,11 +99,13 @@ export const SectionErrorCatch = catchError(sectionErrorFallback);
 
 const useSectionErrorState = (): SectionErrorState => {
   const state = useContext(SectionErrorStateContext);
+
   if (!state) {
     throw new Error(
       "SectionErrorRetry and SectionErrorDigest must be rendered inside a sectionErrorFallback body."
     );
   }
+
   return state;
 };
 

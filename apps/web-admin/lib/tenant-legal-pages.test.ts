@@ -178,6 +178,7 @@ describe("tenant-legal-pages", () => {
     });
 
     const { updateTenantLegalPages } = await import("./tenant-legal-pages");
+
     const result = await updateTenantLegalPages(
       { privacyPageId: "", tenantId: "TENANT001", termsPageId: "page-1" },
       "en"
@@ -220,6 +221,7 @@ describe("tenant-legal-pages", () => {
       mockUpdateTenantLegalPagesApi.mockRejectedValueOnce(pageError(field));
 
       const { updateTenantLegalPages } = await import("./tenant-legal-pages");
+
       const result = await updateTenantLegalPages(
         {
           privacyPageId: "page-2",

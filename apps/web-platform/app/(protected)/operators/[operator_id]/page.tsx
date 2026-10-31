@@ -105,12 +105,15 @@ const OperatorDetailContent = async ({
     operatorDetailParamsSchema,
     await params
   );
+
   if (!parsedParams) {
     notFound();
   }
+
   const { operator_id: operatorPublicId } = parsedParams;
 
   const locale = await getPlatformLocale();
+
   const [t, operatorResult, currentOperator, timeZone] = await Promise.all([
     getMessagesFor(locale),
     getPlatformOperator(operatorPublicId),
@@ -123,6 +126,7 @@ const OperatorDetailContent = async ({
   }
 
   const { operator } = operatorResult;
+
   if (!operator) {
     notFound();
   }
@@ -132,8 +136,10 @@ const OperatorDetailContent = async ({
   const isDeactivated = operator.status === "inactive";
   const canModify = isSuperAdmin && !isSelf && !isDeactivated;
   const canSuspend = isSuperAdmin && !isSelf && operator.status === "active";
+
   const canUnsuspend =
     isSuperAdmin && !isSelf && operator.status === "suspended";
+
   const cancelText = t("platform.common.cancel");
 
   return (

@@ -41,6 +41,7 @@ const tenantIdSchema = async (locale: Locale) => {
     t("admin.subscription_plans.validation.tenant_missing")
   );
 };
+
 const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -50,6 +51,7 @@ const idSchema = async (locale: Locale) => {
 /** The fields a create and an update both post, held to the API's rules. */
 const planFieldsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const targets = recordIdListFormSchema.pipe(
     z
       .array(z.string())
@@ -100,6 +102,7 @@ const requireScopeTargets =
         path: ["labelIds"],
       });
     }
+
     if (fields.scope === "series" && fields.seriesIds.length === 0) {
       context.addIssue({
         code: "custom",
@@ -127,13 +130,16 @@ export const createSubscriptionPlanAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     planFieldsSchema(locale),
   ]);
+
   const parsed = schema
     .superRefine(requireScopeTargets(t))
     .safeParse(toFormDataInput(formData, planFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -141,6 +147,7 @@ export const createSubscriptionPlanAction = async (
   const result = await withAdminSessionReauth(() =>
     createSubscriptionPlan(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -158,11 +165,13 @@ export const updateSubscriptionPlanAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema, id] = await Promise.all([
     getMessagesFor(locale),
     planFieldsSchema(locale),
     idSchema(locale),
   ]);
+
   const parsed = schema
     .extend({ id })
     .superRefine(requireScopeTargets(t))
@@ -172,6 +181,7 @@ export const updateSubscriptionPlanAction = async (
         id: { kind: "value", name: "subscription_plan_id" },
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -179,6 +189,7 @@ export const updateSubscriptionPlanAction = async (
   const result = await withAdminSessionReauth(() =>
     updateSubscriptionPlan(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -194,17 +205,20 @@ export const deleteSubscriptionPlanAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, id, tenantId] = await Promise.all([
     getMessagesFor(locale),
     idSchema(locale),
     tenantIdSchema(locale),
   ]);
+
   const parsed = z.object({ id, tenantId }).safeParse(
     toFormDataInput(formData, {
       id: { kind: "value", name: "subscription_plan_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -212,6 +226,7 @@ export const deleteSubscriptionPlanAction = async (
   const result = await withAdminSessionReauth(() =>
     deleteSubscriptionPlan(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

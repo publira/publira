@@ -13,7 +13,7 @@ vi.mock("./messages", () => ({
 
 vi.mock("./auth-session", () => ({
   redirectToLoginIfSessionRejected: () => Promise.resolve(),
-  withAdminSessionReauth: (run: () => Promise<unknown>) => run(),
+  withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
 vi.mock("./reader", () => ({
@@ -60,7 +60,9 @@ describe("listReaderOptionsAction", () => {
 
     const result = await listReaderOptionsAction(
       "TENANT001",
-      42 as unknown as string,
+      // SAFETY: deliberately not a string. A Server Action's arguments come
+      // from the client unchecked, and this is what its check has to refuse.
+      42 as never,
       "en"
     );
 

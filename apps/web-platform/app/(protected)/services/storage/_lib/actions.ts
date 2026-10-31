@@ -48,6 +48,7 @@ const toStorageInput = (
 const parseStorageForm = async (formData: FormData) => {
   const locale = await getPlatformLocale();
   const schema = await storageFormSchema(locale);
+
   return {
     locale,
     parsed: schema.safeParse(toFormDataInput(formData, storageFormFields)),
@@ -60,6 +61,7 @@ export const updatePlatformStorageSettingsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const { locale, parsed } = await parseStorageForm(formData);
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -71,6 +73,7 @@ export const updatePlatformStorageSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -79,6 +82,7 @@ export const updatePlatformStorageSettingsAction = async (
   updateTag(platformAuditLogsCacheTag);
 
   const t = await getMessagesFor(locale);
+
   return { message: t("platform.storage.saved"), ok: true };
 };
 
@@ -88,6 +92,7 @@ export const testPlatformStorageConnectionAction = async (
 ): Promise<PlatformStorageTestState> => {
   await assertSameOrigin();
   const { locale, parsed } = await parseStorageForm(formData);
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -104,6 +109,7 @@ export const testPlatformStorageConnectionAction = async (
   }
 
   const t = await getMessagesFor(locale);
+
   return {
     checks: result.checks,
     message: result.succeeded

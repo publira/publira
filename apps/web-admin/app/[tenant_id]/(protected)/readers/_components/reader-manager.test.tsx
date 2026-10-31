@@ -202,9 +202,11 @@ describe("ReaderManager", () => {
     const pager = screen.getByRole("navigation", {
       name: "Readers pagination",
     });
+
     const hrefs = [...pager.querySelectorAll("a")].map((link) =>
       link.getAttribute("href")
     );
+
     expect(hrefs).toEqual(["?token=previous", "?token=next"]);
   });
 });

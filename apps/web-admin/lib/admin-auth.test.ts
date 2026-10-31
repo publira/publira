@@ -353,6 +353,7 @@ describe("getAdminCurrentUser", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {
       // Asserted below.
     });
+
     const error = new Error("Network error");
     mockGetMe.mockRejectedValueOnce(error);
     await expect(getAdminCurrentUser("tenant_001")).rejects.toThrow(

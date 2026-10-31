@@ -69,9 +69,11 @@ const readUpload = (
       uploadMode: { kind: "value", name: "upload_mode" },
     })
   );
+
   if (!parsed.success) {
     return { refusal: toFormErrorMessage(parsed.error, { locale }) };
   }
+
   const { archive, episodeId, pages, seriesId, uploadMode } = parsed.data;
 
   if (uploadMode === "pages") {
@@ -79,9 +81,11 @@ const readUpload = (
       ? { refusal: t("admin.series.episodes.validation.pages_required") }
       : { input: { episodeId, pages, tenantId } };
   }
+
   if (seriesId === "") {
     return { refusal: t("admin.series.episodes.validation.series_missing") };
   }
+
   if (!archive) {
     return {
       refusal:
@@ -90,6 +94,7 @@ const readUpload = (
           : t("admin.series.episodes.validation.epub_required"),
     };
   }
+
   if (!isArchiveOfMode(archive, uploadMode)) {
     return {
       refusal:
@@ -98,6 +103,7 @@ const readUpload = (
           : t("admin.series.episodes.validation.epub_invalid"),
     };
   }
+
   return { input: { archive, episodeId, seriesId, tenantId } };
 };
 
@@ -115,26 +121,33 @@ export const POST = async (request: NextRequest) => {
     maxBytes: EPISODE_PAGES_UPLOAD_MAX_BYTES,
     tooLarge: (t) => t("admin.series.episodes.validation.upload_too_large"),
   });
+
   if ("response" in form) {
     return form.response;
   }
+
   const { formData, locale, t, tenantId } = form;
 
   const upload = readUpload(formData, tenantId, t, locale);
+
   if ("refusal" in upload) {
     return refuse(upload.refusal, 400);
   }
+
   const { input } = upload;
 
   let result: Awaited<ReturnType<typeof uploadEpisodePages>>;
+
   try {
     result = await uploadEpisodePages(input, locale);
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       return signInAgain(request, t);
     }
+
     throw error;
   }
+
   if (!result.ok) {
     return refuse(result.message, 422);
   }

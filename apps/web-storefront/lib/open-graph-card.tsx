@@ -58,7 +58,9 @@ const fetchCardLogo = async (
     LOGO_MAX_WIDTH,
     Math.round((LOGO_HEIGHT * variant.width) / variant.height)
   );
+
   const height = Math.round((width * variant.height) / variant.width);
+
   try {
     const response = await fetch(
       imageServerLoader({ src: new URL(variant.url, origin).href, width }),
@@ -67,15 +69,20 @@ const fetchCardLogo = async (
         signal: AbortSignal.timeout(LOGO_FETCH_TIMEOUT_MS),
       }
     );
+
     const contentType = response.headers.get("Content-Type") ?? "";
+
     if (!(response.ok && contentType.startsWith("image/png"))) {
       throw new Error(`logo answered ${response.status} ${contentType}`);
     }
+
     const data = Buffer.from(await response.arrayBuffer()).toString("base64");
+
     return { height, src: `data:image/png;base64,${data}`, width };
   } catch (error) {
     console.warn("[web-storefront] open graph card logo failed", error);
     dropFailedCacheEntry();
+
     return null;
   }
 };
@@ -93,6 +100,10 @@ interface CardProps {
  * the tenant's primary colour, the subject in its foreground on its
  * background, and its brand underneath.
  */
+/** Whether the brand line is the site's name in text rather than its logo. */
+const isBrandName = (brand: CardProps["brand"]): brand is string =>
+  typeof brand === "string";
+
 const Card = ({ brand, colors, eyebrow, fontFamily, title }: CardProps) => (
   <div
     style={{
@@ -146,7 +157,7 @@ const Card = ({ brand, colors, eyebrow, fontFamily, title }: CardProps) => (
           {title}
         </div>
       </div>
-      {typeof brand === "string" ? (
+      {isBrandName(brand) ? (
         <div
           style={{
             display: "block",
@@ -158,7 +169,7 @@ const Card = ({ brand, colors, eyebrow, fontFamily, title }: CardProps) => (
           {brand}
         </div>
       ) : null}
-      {brand && typeof brand !== "string" ? (
+      {brand && !isBrandName(brand) ? (
         // oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element -- `ImageResponse` draws plain elements, and `next/image` is not one.
         <img alt="" height={brand.height} src={brand.src} width={brand.width} />
       ) : null}
@@ -181,9 +192,11 @@ const drawCard = async (
       />,
       { fonts, height: OPEN_GRAPH_CARD_HEIGHT, width: OPEN_GRAPH_CARD_WIDTH }
     );
+
     return { ok: true, value: new Uint8Array(await response.arrayBuffer()) };
   } catch (error) {
     console.warn("[web-storefront] open graph card failed", error);
+
     return cachedReadFailure("open graph card could not be drawn");
   }
 };
@@ -211,6 +224,7 @@ export const getOpenGraphCard = async (
     getTenantSiteLabel(tenantId, locale),
     getTenantPublicOrigin(tenantId),
   ]);
+
   if (!(text.ok && text.value)) {
     return text.ok ? { ok: true, value: null } : text;
   }
@@ -266,6 +280,7 @@ export const openGraphCardResponse = async (
 ): Promise<Response> => {
   const tenantId = segments.tenant_id;
   const locale = parseLocale(segments.locale);
+
   if (
     isPlaceholderStaticParam(tenantId) ||
     !isTenantIdFormat(tenantId) ||
@@ -276,9 +291,11 @@ export const openGraphCardResponse = async (
   }
 
   const card = await getOpenGraphCard(tenantId.trim(), locale, subject);
+
   if (!card.ok) {
     return statusResponse(503);
   }
+
   if (!card.value) {
     return statusResponse(404);
   }

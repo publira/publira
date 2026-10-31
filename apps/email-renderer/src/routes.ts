@@ -10,6 +10,7 @@ export const emailRendererRoutes = (router: ConnectRouter): void => {
       // The queued job states the recipient's locale. One this build does not
       // serve is a bad request, not an email to send in another language.
       const locale = parseLocale(request.locale);
+
       if (locale === undefined) {
         throw new ConnectError(
           `unsupported locale: ${request.locale}`,
@@ -18,6 +19,7 @@ export const emailRendererRoutes = (router: ConnectRouter): void => {
       }
 
       const messages = await loadEmailMessages(locale);
+
       const rendered = await renderEmail({
         data: request.data ?? {},
         locale,

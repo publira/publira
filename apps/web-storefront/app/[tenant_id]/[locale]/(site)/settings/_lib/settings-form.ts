@@ -20,6 +20,7 @@ export const buildSettingsPath = async (
 ): Promise<string> => {
   const params = new URLSearchParams({ message, status });
   const path = await tenantLocalePath(tenantId, locale, "/settings");
+
   return `${path}?${params.toString()}`;
 };
 

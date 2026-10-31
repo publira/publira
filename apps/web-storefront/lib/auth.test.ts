@@ -1344,11 +1344,13 @@ describe("web-storefront auth", () => {
   it("updateNotificationSettings: sends every cell, so none keeps a value the reader did not see", async () => {
     const { updateNotificationSettings } = await importAuth();
     mockResolveAccessToken.mockResolvedValueOnce("session_abc");
+
     const preferences = {
       ...NOTIFICATION_CELLS_ON,
       announcementsEmailEnabled: false,
       announcementsInboxEnabled: false,
     };
+
     mockUpdateNotificationSettings.mockResolvedValueOnce({
       emailNotificationsEnabled: true,
       preferences,

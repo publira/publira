@@ -48,17 +48,21 @@ const RowContext = createContext<RowContextValue | null>(null);
 
 const useGrid = (): GridContextValue => {
   const grid = use(GridContext);
+
   if (!grid) {
     throw new Error("A grid part must be rendered inside the grid.");
   }
+
   return grid;
 };
 
 const useRow = (): RowContextValue => {
   const row = use(RowContext);
+
   if (!row) {
     throw new Error("A row part must be rendered inside a row.");
   }
+
   return row;
 };
 
@@ -203,6 +207,7 @@ export const NotificationPreferencesGrid = ({
   initialCells: NotificationPreferenceCells;
 }) => {
   const [cells, setCells] = useState(initialCells);
+
   const grid = useMemo<GridContextValue>(
     () => ({
       cells,

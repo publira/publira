@@ -29,6 +29,7 @@ const EpisodeAvailabilitySelect = ({
   const t = useClientMessages();
 
   let followSeries = t("admin.series.episodes.availability.follow_series");
+
   if (seriesAvailability === "all") {
     followSeries = t("admin.series.episodes.availability.follow_series_value", {
       availability: t("admin.series.availability.all"),

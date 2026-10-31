@@ -43,10 +43,12 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(submittedLocale),
     parseDeleteAccountForm(submittedLocale, formData),
   ]);
+
   if (!parsed.success) {
     const errorPath = await buildSettingsPath(
       submittedLocale,
@@ -54,15 +56,18 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
       "error",
       toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+
     redirect(errorPath);
   }
 
   const { locale, password, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SETTINGS_RETURN_TO,
     tenantId
   );
+
   // A wrong `password` is `invalid_argument` with a field violation, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
   const outcome = await withPublicSessionReauth(
@@ -71,6 +76,7 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
     () => deleteMe(tenantId, { password }, accessToken),
     tenantId
   );
+
   if (outcome !== "deleted") {
     const errorPath = await buildSettingsPath(
       locale,
@@ -82,14 +88,17 @@ const deleteAccountAction = async (formData: FormData): Promise<void> => {
           : "storefront.settings.delete_failed"
       )
     );
+
     redirect(errorPath);
   }
 
   await clearPublicSessionCookie();
+
   const params = new URLSearchParams({
     message: t("storefront.settings.deleted"),
     status: "success",
   });
+
   const loginPath = await tenantLocalePath(tenantId, locale, "/login");
   redirect(`${loginPath}?${params.toString()}`);
 };
@@ -160,6 +169,7 @@ const BirthDateRow = async ({
 
 const ProfileSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [me, t, iconChoice] = await Promise.all([
     withPublicSessionReauth(
       locale,
@@ -170,6 +180,7 @@ const ProfileSection = async () => {
     getMessagesFor(locale),
     getTenantReaderIconChoice(tenantId),
   ]);
+
   const displayName = me?.name?.trim() ?? "";
   const icon = me?.icon ?? null;
 
@@ -250,6 +261,7 @@ const ProfileSectionFallback = () => (
  */
 const DeleteAccountControl = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [mine, clients] = await Promise.all([
     withPublicSessionReauth(
       locale,
@@ -259,6 +271,7 @@ const DeleteAccountControl = async () => {
     ),
     getTenantSignInClients(tenantId),
   ]);
+
   const linked = new Set(mine?.identities.map((identity) => identity.provider));
 
   return (

@@ -45,6 +45,7 @@ const EpisodeImageReplaceForm = ({
   onSucceeded: () => void;
 }) => {
   const t = useClientMessages();
+
   const replace = usePageUploadAction({
     failed: t("admin.series.episodes.image_replace.failed"),
     interrupted: t("admin.series.episodes.image_replace.interrupted"),
@@ -114,6 +115,7 @@ export const EpisodeImageReplaceDialog = ({
     <Dialog.Root
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
+
         if (nextOpen) {
           // A file or a message from the last time does not survive into
           // the next.

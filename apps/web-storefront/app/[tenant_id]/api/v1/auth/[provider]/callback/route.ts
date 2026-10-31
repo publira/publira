@@ -66,12 +66,17 @@ const appleUserName = (raw: string | undefined): string => {
   if (!raw) {
     return "";
   }
+
   try {
     const parsed = appleUserSchema.safeParse(JSON.parse(raw));
     const name = parsed.success ? parsed.data.name : undefined;
+
     return [name?.firstName, name?.lastName]
-      .map((part) => part?.trim())
-      .filter(Boolean)
+      .flatMap((part) => {
+        const trimmed = part?.trim();
+
+        return trimmed ? [trimmed] : [];
+      })
       .join(" ");
   } catch {
     return "";
@@ -81,6 +86,7 @@ const appleUserName = (raw: string | undefined): string => {
 const readCallbackForm = async (request: Request) => {
   try {
     const formData = await request.formData();
+
     const parsed = callbackFormSchema.safeParse(
       Object.fromEntries(
         [...formData.entries()].filter(
@@ -88,6 +94,7 @@ const readCallbackForm = async (request: Request) => {
         )
       )
     );
+
     return parsed.success ? parsed.data : null;
   } catch {
     return null;
@@ -110,12 +117,15 @@ const finishLogin = async (
   name: string
 ): Promise<Response> => {
   const outcome = await loginWithIdToken(request.tenantId, signIn);
+
   if (outcome.kind === "signed_in") {
     await sealPublicSessionCookie(outcome.session, request.tenantId);
+
     return seeOther(
       await tenantLocalePath(request.tenantId, request.locale, request.returnTo)
     );
   }
+
   if (outcome.kind === "consent_required") {
     await writePendingSignUp({
       ...signIn,
@@ -124,6 +134,7 @@ const finishLogin = async (
       returnTo: request.returnTo,
       tenantId: request.tenantId,
     });
+
     return seeOther(
       await tenantLocalePath(
         request.tenantId,
@@ -132,11 +143,13 @@ const finishLogin = async (
       )
     );
   }
+
   if (outcome.kind === "sign_up_closed") {
     return seeOther(await signUpClosedPath(request));
   }
 
   const t = await getMessagesFor(request.locale);
+
   return failure(
     request,
     rpcErrorMessage(outcome.error, t("storefront.auth.social.errors.failed"), {
@@ -168,7 +181,9 @@ const withConfirmingSession = async <T>(
     if (!isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     const defaultLocale = await getTenantDefaultLocale(tenantId);
+
     return seeOther(
       buildLoginPath(locale, defaultLocale, screen, { revoked: true })
     );
@@ -180,15 +195,19 @@ const finishDeletion = async (
   { idToken, nonce, provider }: IdTokenSignIn
 ): Promise<Response> => {
   const { accessToken, locale, tenantId } = request;
+
   const outcome = await withConfirmingSession(
     request,
     CONFIRMING_SCREENS.delete,
     () => deleteMe(tenantId, { idToken, nonce, provider }, accessToken)
   );
+
   if (outcome instanceof Response) {
     return outcome;
   }
+
   const t = await getMessagesFor(locale);
+
   if (outcome !== "deleted") {
     return failure(
       request,
@@ -203,10 +222,12 @@ const finishDeletion = async (
   const cookieStore = await cookies();
   cookieStore.delete(PUBLIC_SESSION_COOKIE_NAME);
   const loginPath = await tenantLocalePath(tenantId, locale, "/login");
+
   const params = new URLSearchParams({
     message: t("storefront.settings.deleted"),
     status: "success",
   });
+
   return seeOther(`${loginPath}?${params.toString()}`);
 };
 
@@ -216,9 +237,11 @@ const finishEmailChange = async (
 ): Promise<Response> => {
   const { accessToken, emailChange, locale, tenantId } = request;
   const t = await getMessagesFor(locale);
+
   if (!emailChange) {
     return failure(request, t("storefront.settings.email_change_failed"));
   }
+
   const requested = await withConfirmingSession(
     request,
     CONFIRMING_SCREENS.email_change,
@@ -231,9 +254,11 @@ const finishEmailChange = async (
         accessToken
       )
   );
+
   if (requested instanceof Response) {
     return requested;
   }
+
   if (!requested.ok) {
     return failure(
       request,
@@ -250,10 +275,12 @@ const finishEmailChange = async (
     locale,
     CONFIRMING_SCREENS.email_change
   );
+
   const params = new URLSearchParams({
     message: t("storefront.settings.email_change_requested"),
     status: "success",
   });
+
   return seeOther(`${path}?${params.toString()}`);
 };
 
@@ -266,16 +293,20 @@ const finishLink = async (
   signIn: IdTokenSignIn
 ): Promise<Response> => {
   const { accessToken, locale, tenantId } = request;
+
   const linked = await withConfirmingSession(
     request,
     CONFIRMING_SCREENS.link,
     () => linkMyIdentity(tenantId, signIn, accessToken)
   );
+
   if (linked instanceof Response) {
     return linked;
   }
+
   const t = await getMessagesFor(locale);
   const provider = SIGN_IN_PROVIDER_NAMES[signIn.provider];
+
   switch (linked.kind) {
     case "linked": {
       const path = await tenantLocalePath(
@@ -283,12 +314,15 @@ const finishLink = async (
         locale,
         CONFIRMING_SCREENS.link
       );
+
       const params = new URLSearchParams({
         message: t("storefront.settings.linked_account_linked", { provider }),
         status: "success",
       });
+
       return seeOther(`${path}?${params.toString()}`);
     }
+
     case "linked_to_another_account": {
       return failure(
         request,
@@ -297,6 +331,7 @@ const finishLink = async (
         })
       );
     }
+
     case "provider_already_linked": {
       return failure(
         request,
@@ -305,6 +340,7 @@ const finishLink = async (
         })
       );
     }
+
     default: {
       return failure(
         request,
@@ -339,6 +375,7 @@ export const POST = async (
 ) => {
   const { provider, tenant_id } = await params;
   const path = callbackPathSchema.safeParse({ provider, tenantId: tenant_id });
+
   if (!path.success) {
     return new Response(null, { status: 404 });
   }
@@ -347,6 +384,7 @@ export const POST = async (
     readSignInRequest(),
     readCallbackForm(request),
   ]);
+
   await clearSignInRequest();
 
   if (
@@ -359,6 +397,7 @@ export const POST = async (
     // Nothing on hand says where the reader came from or in which language.
     const locale = await getTenantDefaultLocale(path.data.tenantId);
     const t = await getMessagesFor(locale);
+
     return failure(
       { intent: "login", locale, returnTo: "/", tenantId: path.data.tenantId },
       t("storefront.auth.social.errors.failed")
@@ -376,16 +415,20 @@ export const POST = async (
     provider: signInRequest.provider,
     redirectUri: signInRequest.redirectUri,
   };
+
   switch (signInRequest.intent) {
     case "delete": {
       return finishDeletion(signInRequest, signIn);
     }
+
     case "email_change": {
       return finishEmailChange(signInRequest, signIn);
     }
+
     case "link": {
       return finishLink(signInRequest, signIn);
     }
+
     default: {
       return finishLogin(signInRequest, signIn, appleUserName(form.user));
     }

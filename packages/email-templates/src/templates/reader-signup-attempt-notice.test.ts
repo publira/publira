@@ -62,6 +62,7 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -83,6 +84,7 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -104,6 +106,7 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -132,6 +135,7 @@ describe("ReaderSignupAttemptNoticeEmail", () => {
       });
 
       expect(result.ok).toBe(true);
+
       if (!result.ok) {
         return;
       }

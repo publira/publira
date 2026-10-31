@@ -44,7 +44,9 @@ export const generateMetadata = async ({
     searchParams,
     getLocale(),
   ]);
+
   const { query } = parseSearchPageSearchParams(resolvedSearchParams);
+
   const [t, alternates] = await Promise.all([
     getMessagesFor(locale),
     getPageAlternates("/search"),
@@ -89,6 +91,7 @@ const SearchResults = async ({
   searchParams: SearchPageProps["searchParams"];
 }) => {
   const resolvedSearchParams = await searchParams;
+
   const { kind, query, token } =
     parseSearchPageSearchParams(resolvedSearchParams);
 
@@ -170,6 +173,7 @@ const SearchFormFromParams = async ({
 }) => {
   const resolved = await searchParams;
   const { query } = parseSearchPageSearchParams(resolved);
+
   return <CatalogSearchForm defaultQuery={query} id="catalog-search-page" />;
 };
 

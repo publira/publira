@@ -43,6 +43,7 @@ export const getMyWaitFreeTicketState = async (
   locale: Locale
 ): Promise<CachedReadResult<WaitFreeTicketState | null>> => {
   "use cache: private";
+
   try {
     cacheLife({ stale: 30 });
   } catch {
@@ -53,11 +54,13 @@ export const getMyWaitFreeTicketState = async (
   applyCacheTag(tenantReaderAccessTag(normalizedTenantId));
 
   const sessionId = accessToken.trim();
+
   if (!sessionId) {
     return { ok: true, value: null };
   }
 
   let response;
+
   try {
     response = await apiClient.waitFree.getMyTicketState(
       {
@@ -74,6 +77,7 @@ export const getMyWaitFreeTicketState = async (
     ) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(
       error,
       locale,
@@ -82,6 +86,7 @@ export const getMyWaitFreeTicketState = async (
   }
 
   const nextAvailableAt = response.nextAvailableAt?.trim() ?? "";
+
   return {
     ok: true,
     value: nextAvailableAt

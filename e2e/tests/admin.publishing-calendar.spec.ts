@@ -54,6 +54,7 @@ test.describe("web-admin publishing calendar", () => {
         name: "Feb 19, 2026",
       }),
     });
+
     const february20 = page.getByRole("listitem").filter({
       has: page.getByRole("heading", {
         exact: true,
@@ -61,6 +62,7 @@ test.describe("web-admin publishing calendar", () => {
         name: "Feb 20, 2026",
       }),
     });
+
     const entry = february19.getByRole("link", { name: firstEpisode });
     await expect(entry).toContainText(series);
     await expect(entry).toContainText("Published");

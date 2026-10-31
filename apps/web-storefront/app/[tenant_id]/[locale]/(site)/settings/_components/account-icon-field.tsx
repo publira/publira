@@ -88,6 +88,7 @@ export const AccountIconField = ({
     const body = new FormData();
     body.set("locale", locale);
     body.set("tenantId", tenantId);
+
     return body;
   };
 
@@ -96,6 +97,7 @@ export const AccountIconField = ({
     // Cleared so that picking the same file again, after a refusal, is still a
     // change the input reports.
     event.currentTarget.value = "";
+
     if (!file) {
       return;
     }
@@ -104,12 +106,14 @@ export const AccountIconField = ({
       "upload",
       async () => {
         const problem = await checkAccountIconImage(file);
+
         if (problem) {
           return { message: t(FILE_PROBLEM_MESSAGES[problem]), ok: false };
         }
 
         const body = formFor();
         body.set("icon", file);
+
         return uploadIconAction(body);
       },
       t("storefront.settings.icon_upload_failed")
@@ -122,6 +126,7 @@ export const AccountIconField = ({
       () => {
         const body = formFor();
         body.set("presetId", presetId);
+
         return selectIconAction(body);
       },
       t("storefront.settings.icon_select_failed")
@@ -217,6 +222,7 @@ export const AccountIconField = ({
         >
           {choice.presets.map((preset, index) => {
             const current = preset.id === iconPresetId;
+
             return (
               <li key={preset.id}>
                 <button

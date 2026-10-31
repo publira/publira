@@ -9,9 +9,11 @@ import { registerTracing } from "@publira/tracing";
 export const register = async () => {
   await import("temporal-polyfill/global");
   registerTracing("publira-web-storefront");
+
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { appendPeerAddressOnEveryRequest } =
       await import("@publira/api-client/forwarded-hop");
+
     appendPeerAddressOnEveryRequest();
   }
 };

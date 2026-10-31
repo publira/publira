@@ -12,11 +12,13 @@ const SeriesEyeCatchPreviewContext = createContext<string | null>(null);
 
 const useSeriesEyeCatchPreviewUrl = (): string => {
   const previewUrl = use(SeriesEyeCatchPreviewContext);
+
   if (previewUrl === null) {
     throw new Error(
       "SeriesEyeCatch slots must be rendered inside a SeriesEyeCatchUpload."
     );
   }
+
   return previewUrl;
 };
 
@@ -45,6 +47,7 @@ const SeriesEyeCatchUpload = ({ children }: { children: ReactNode }) => {
         if (currentValue) {
           URL.revokeObjectURL(currentValue);
         }
+
         return file ? URL.createObjectURL(file) : "";
       });
     },

@@ -33,6 +33,7 @@ export const beginPasskeyConfirmationAction = async (
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);
+
   const parsed = passkeyConfirmationFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -40,6 +41,7 @@ export const beginPasskeyConfirmationAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: t("storefront.settings.passkey_confirm_failed"),
@@ -49,12 +51,14 @@ export const beginPasskeyConfirmationAction = async (
 
   const { locale, returnTo, tenantId } = parsed.data;
   const accessToken = await requirePublicSession(locale, returnTo, tenantId);
+
   const started = await withPublicSessionReauth(
     locale,
     returnTo,
     () => beginMyPasskeyConfirmation(tenantId, accessToken),
     tenantId
   );
+
   if (!started.ok) {
     return {
       message: rpcErrorMessage(
@@ -70,5 +74,6 @@ export const beginPasskeyConfirmationAction = async (
       ok: false,
     };
   }
+
   return { message: "", ok: true, optionsJson: started.optionsJson };
 };

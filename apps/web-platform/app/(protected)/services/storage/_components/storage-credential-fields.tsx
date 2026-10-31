@@ -34,7 +34,7 @@ const credentialModeItems = [
   },
 ] as const;
 
-const isCredentialMode = (value: unknown): value is StorageCredentialMode =>
+const isCredentialMode = (value: string): value is StorageCredentialMode =>
   value === "access_key" || value === "ambient";
 
 interface StorageCredentialFieldsProps {
@@ -56,17 +56,20 @@ export const StorageCredentialFields = ({
   const hasStoredKey = Boolean(
     settings.accessKeyId && settings.hasSecretAccessKey
   );
+
   const [mode, setMode] = useState(() => storageCredentialMode(settings));
   const [isReplacing, setIsReplacing] = useState(!hasStoredKey);
 
-  const handleModeChange = useCallback((value: unknown) => {
+  const handleModeChange = useCallback((value: string) => {
     if (isCredentialMode(value)) {
       setMode(value);
     }
   }, []);
+
   const handleStartReplace = useCallback(() => {
     setIsReplacing(true);
   }, []);
+
   const handleKeepStored = useCallback(() => {
     setIsReplacing(false);
   }, []);

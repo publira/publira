@@ -35,6 +35,7 @@ export interface CommentFilters {
 }
 
 const allowedStatusValues: ReadonlySet<string> = new Set(COMMENT_STATUSES);
+
 const allowedReportStatusValues: ReadonlySet<string> = new Set(
   COMMENT_REPORT_STATUSES
 );

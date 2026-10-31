@@ -131,6 +131,7 @@ export const SeriesGenreCombobox = ({
 }) => {
   const t = useClientMessages();
   const [value, setValue] = useState(initialValue);
+
   // The tenant's own order, which is the order a series presents them in; only
   // the option list is built here.
   const items = useMemo<MultiCombobox.Item[]>(
@@ -232,12 +233,15 @@ export const SeriesTagInput = ({
 
   const addDraft = useCallback(() => {
     const name = draft.trim();
+
     if (name.length === 0 || isFull) {
       return;
     }
+
     if (!value.some((tagName) => sameTagName(tagName, name))) {
       setValue([...value, name]);
     }
+
     setDraft("");
   }, [draft, isFull, value]);
 
@@ -248,6 +252,7 @@ export const SeriesTagInput = ({
       if (event.key !== "Enter") {
         return;
       }
+
       // Enter in a text field submits the form it sits in; here it commits the
       // tag being typed instead.
       event.preventDefault();

@@ -10,7 +10,7 @@ export const decodeBase64Url = (value: string): Uint8Array | null => {
     return null;
   }
 
-  if (typeof Uint8Array.fromBase64 === "function") {
+  if (Uint8Array.fromBase64 !== undefined) {
     try {
       return Uint8Array.fromBase64(value, { alphabet: "base64url" });
     } catch {
@@ -22,6 +22,7 @@ export const decodeBase64Url = (value: string): Uint8Array | null => {
     const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
     const binary = atob(padded);
+
     return Uint8Array.from(
       binary,
       (character) => character.codePointAt(0) ?? 0

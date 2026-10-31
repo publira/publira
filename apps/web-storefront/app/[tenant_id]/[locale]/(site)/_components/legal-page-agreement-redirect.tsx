@@ -40,6 +40,7 @@ export const LegalPageAgreementRedirect = ({
   const [renderedPage] = useState(page);
   // The page the server was last asked about, which needs no second read.
   const checkedPage = useRef<string | null>(page);
+
   // What the server answered after the last client-side navigation, for the
   // page it was asked about. It is read during render, where `redirect()` has
   // to be called: Next.js does not take one from an Effect.
@@ -53,12 +54,15 @@ export const LegalPageAgreementRedirect = ({
     if (page === checkedPage.current) {
       return;
     }
+
     checkedPage.current = page;
 
     let current = true;
+
     const ask = async () => {
       try {
         const owed = await check();
+
         if (current) {
           setAnswer({ exemptPaths: owed, page });
         }
@@ -66,7 +70,9 @@ export const LegalPageAgreementRedirect = ({
         // An unreachable server asks nothing; the API still refuses.
       }
     };
+
     ask();
+
     // The answer goes with the Effect that asked for it. Hiding the layout runs
     // this too, so the reader who comes back after agreeing is not sent to
     // agree again on an answer from before, and the layout shown again asks
@@ -80,11 +86,13 @@ export const LegalPageAgreementRedirect = ({
 
   // A page no read is about yet waits for the answer `check` gives for it.
   let owed: readonly string[] | null = null;
+
   if (answer?.page === page) {
     owed = answer.exemptPaths;
   } else if (page === renderedPage) {
     owed = exemptPaths;
   }
+
   const target = owed
     ? legalPageAgreementRedirect({
         agreementPath,
@@ -93,6 +101,7 @@ export const LegalPageAgreementRedirect = ({
         search,
       })
     : null;
+
   if (target) {
     redirect(target);
   }

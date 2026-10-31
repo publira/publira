@@ -21,14 +21,18 @@ const SHARE_PERCENT_RE = /^\d{1,3}(?:\.\d{1,2})?$/u;
  */
 export const sharePercentToBps = (text: string): number | undefined => {
   const trimmed = text.trim();
+
   if (trimmed === "") {
     return 0;
   }
+
   if (!SHARE_PERCENT_RE.test(trimmed)) {
     return;
   }
+
   const [whole = "", fraction = ""] = trimmed.split(".");
   const bps = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+
   return bps <= MAX_CREDIT_SHARE_BPS ? bps : undefined;
 };
 
@@ -36,9 +40,11 @@ export const sharePercentToBps = (text: string): number | undefined => {
 export const shareBpsToPercentText = (bps: number): string => {
   const whole = Math.trunc(bps / 100);
   const fraction = bps % 100;
+
   if (fraction === 0) {
     return String(whole);
   }
+
   return `${whole}.${String(fraction).padStart(2, "0").replace(/0$/u, "")}`;
 };
 
@@ -61,14 +67,17 @@ export const totalCreditShares = (
 ): CreditShareTotal => {
   let totalBps = 0;
   let hasInvalid = false;
+
   for (const text of texts) {
     const bps = sharePercentToBps(text);
+
     if (bps === undefined) {
       hasInvalid = true;
     } else {
       totalBps += bps;
     }
   }
+
   return { hasInvalid, totalBps };
 };
 

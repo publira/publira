@@ -236,6 +236,7 @@ export const CoinPackManager = (props: CoinPackManagerProps) => {
     savedCoinName,
     tenantId,
   } = props;
+
   const atLimit = !listErrorMessage && packs.length >= COIN_PACK_LIMIT;
 
   return (

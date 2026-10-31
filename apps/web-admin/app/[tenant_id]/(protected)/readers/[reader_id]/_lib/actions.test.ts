@@ -25,7 +25,7 @@ vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/auth-session", () => ({
-  withAdminSessionReauth: (run: () => Promise<unknown>) => run(),
+  withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
 vi.mock("#lib/reader", () => ({
@@ -45,6 +45,7 @@ const readerForm = (): FormData => {
   data.set("tenant_id", "TENANT001");
   data.set("public_id", "READER00001");
   data.set("reader_id", READER_ID);
+
   return data;
 };
 

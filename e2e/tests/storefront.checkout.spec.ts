@@ -63,10 +63,12 @@ const takePaymentsThroughStripe = async (page: Page) => {
   await page.getByRole("checkbox", { name: "Enable payments" }).click();
   const secretKey = page.getByLabel(/^Secret key/u);
   await secretKey.fill(`sk_test_${randomUUID().replaceAll("-", "")}`);
+
   const webhookSecret = await registerStripeWebhook(
     await secretKey.inputValue(),
     await page.getByLabel("Webhook URL").inputValue()
   );
+
   await page.getByLabel(/^Webhook signing secret/u).fill(webhookSecret);
   await page.getByRole("button", { exact: true, name: "Save" }).click();
   await expect(
@@ -145,13 +147,16 @@ const episodeRow = (page: Page, title: string) =>
 /** The reader's library card for the episode, which the sale made readable. */
 const libraryCard = async (page: Page) => {
   await page.goto(`${WEB_STOREFRONT_RENTALS_BASE_URL}/my/library`);
+
   const card = page
     .getByRole("article")
     .filter({ hasText: EPISODE_RENTALS_SERIES.title });
+
   await expect(card.getByText("Readable")).toBeVisible();
   await expect(
     card.getByRole("term").filter({ hasText: "Type" })
   ).toBeVisible();
+
   return card;
 };
 
@@ -160,6 +165,7 @@ test.describe.configure({ mode: "serial" });
 test.describe("web-storefront checkout", () => {
   test.beforeAll(async ({ browser }) => {
     applyScenarioSql(EPISODE_RENTALS_SCENARIO);
+
     // The pages are what proves the checkout opened an episode.
     for (const { publicId } of [
       EPISODE_RENTALS_EPISODE,
@@ -169,6 +175,7 @@ test.describe("web-storefront checkout", () => {
     }
 
     const page = await browser.newPage();
+
     try {
       await takePaymentsThroughStripe(page);
     } finally {
@@ -342,6 +349,7 @@ test.describe("web-storefront checkout", () => {
     page,
   }) => {
     const admin = await browser.newPage();
+
     try {
       await signInAsAdmin(
         admin,

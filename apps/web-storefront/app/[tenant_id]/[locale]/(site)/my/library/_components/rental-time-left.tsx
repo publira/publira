@@ -17,6 +17,7 @@ const TICK_MS = 5000;
 
 const subscribeToClock = (onTick: () => void) => {
   const timer = setInterval(onTick, TICK_MS);
+
   return () => clearInterval(timer);
 };
 
@@ -36,6 +37,7 @@ const noMinutesOnServer = () => null;
  */
 export const RentalTimeLeft = ({ expiresAt }: { expiresAt: string }) => {
   const locale = useLocale();
+
   const minutesLeft = useSyncExternalStore(
     subscribeToClock,
     () => minutesUntil(expiresAt, Temporal.Now.instant()),

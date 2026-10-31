@@ -88,12 +88,15 @@ const contactMessageStatus = (
   item: RawContactMessage
 ): ContactMessageStatus => {
   const status = item.status ?? "";
+
   if (isContactMessageStatus(status)) {
     return status;
   }
+
   if (item.handledAt) {
     return "handled";
   }
+
   return item.assigneeUserId ? "in_progress" : "unhandled";
 };
 
@@ -151,6 +154,7 @@ export const listContactMessages = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       ...emptyCursorPageTokens,
@@ -180,6 +184,7 @@ export const listContactMessages = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...emptyCursorPageTokens,
       message: rpcErrorMessage(error, t("admin.contact_messages.list_failed"), {
@@ -202,6 +207,7 @@ export const getContactMessage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -215,6 +221,7 @@ export const getContactMessage = async (
       { publicId, tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
     if (!response.message?.publicId) {
       return {
         message: t("admin.contact_messages.detail_failed"),
@@ -226,9 +233,11 @@ export const getContactMessage = async (
     return { contactMessage: mapContactMessage(response.message), ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+
     return {
       message: rpcErrorMessage(
         error,
@@ -265,6 +274,7 @@ export const markContactMessageHandled = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -278,13 +288,16 @@ export const markContactMessageHandled = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     const failed = input.handled
       ? t("admin.contact_messages.mark_handled_failed")
       : t("admin.contact_messages.reopen_failed");
+
     return {
       message: rpcErrorMessage(error, failed, { locale }),
       ok: false,
@@ -316,6 +329,7 @@ export const assignContactMessage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -329,13 +343,16 @@ export const assignContactMessage = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     const failed = input.assigneeUserId
       ? t("admin.contact_messages.assign_failed")
       : t("admin.contact_messages.unassign_failed");
+
     return {
       message: rpcErrorMessage(error, failed, { locale }),
       ok: false,
@@ -367,6 +384,7 @@ export const updateContactMessageStaffNote = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -380,10 +398,12 @@ export const updateContactMessageStaffNote = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -419,6 +439,7 @@ export const replyToContactMessage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -432,10 +453,12 @@ export const replyToContactMessage = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -476,6 +499,7 @@ export const listContactMessageAssignees = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       assignees: [],
@@ -487,12 +511,14 @@ export const listContactMessageAssignees = async (
 
   try {
     const assignees: ContactMessageAssigneeOption[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.members.listTenantMembers(
           { limit, tenant: { tenantId }, token },
           withSessionHeaders(sessionId)
         );
+
         return {
           items: response.members ?? [],
           nextToken: response.nextToken ?? "",
@@ -510,6 +536,7 @@ export const listContactMessageAssignees = async (
         }
       }
     );
+
     if (walkStop !== "completed") {
       return {
         assignees: [],
@@ -522,6 +549,7 @@ export const listContactMessageAssignees = async (
     return { assignees, ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       assignees: [],
       message: rpcErrorMessage(

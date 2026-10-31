@@ -16,6 +16,7 @@ export const CoinDisclosures = ({
   disclosures: CoinDisclosuresItem;
 }) => {
   const { contact, issuerName, notice, termsUrl } = disclosures;
+
   if (!(contact || issuerName || notice || termsUrl)) {
     return null;
   }

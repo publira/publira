@@ -16,6 +16,7 @@ import {
 
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     engine: "opensearch",
     revision: "3",
@@ -24,16 +25,19 @@ const formData = (fields: Record<string, string>): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 
 const parse = async (fields: Record<string, string>) => {
   const schema = await searchFormSchema("en");
+
   return schema.safeParse(toFormDataInput(formData(fields), searchFormFields));
 };
 
 const issueMessages = async (fields: Record<string, string>) => {
   const result = await parse(fields);
+
   return result.error?.issues.map((issue) => issue.message) ?? [];
 };
 
@@ -179,15 +183,19 @@ describe("searchFormSchema", () => {
 
 const parseAnalysis = async (fields: Record<string, string>) => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({ revision: "3", ...fields })) {
     data.set(name, value);
   }
+
   const schema = await searchAnalysisFormSchema("en");
+
   return schema.safeParse(toFormDataInput(data, searchAnalysisFormFields));
 };
 
 const analysisIssues = async (fields: Record<string, string>) => {
   const result = await parseAnalysis(fields);
+
   return result.error?.issues.map((issue) => issue.message) ?? [];
 };
 
@@ -212,6 +220,7 @@ describe("searchAnalysisFormSchema", () => {
   // server accepted near its limit is measured without that indentation.
   it("measures a definition without the editor's indentation", async () => {
     const filler = "x".repeat(64 * 1024 - 64);
+
     const indented = JSON.stringify(
       { analyzer: { written_form: { filler } } },
       null,

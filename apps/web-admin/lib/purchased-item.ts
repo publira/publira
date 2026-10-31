@@ -12,10 +12,12 @@ export const purchasedItemLabel = (
   t: AdminMessageAccessor
 ): string => {
   const { item } = purchase;
+
   switch (item.kind) {
     case "series_bundle": {
       return t("admin.purchases.series_bundle", { count: item.episodeCount });
     }
+
     case "coin_pack": {
       return t("admin.purchases.coin_pack", {
         bonus: item.bonusCoins,
@@ -23,6 +25,7 @@ export const purchasedItemLabel = (
         count: item.coins + item.bonusCoins,
       });
     }
+
     default: {
       return item.title || item.publicId;
     }
@@ -37,16 +40,20 @@ export const purchasedItemLabel = (
 export const purchasedItemHref = (purchase: PurchaseItem): string | null => {
   const seriesHref = `/series/${purchase.seriesPublicId}`;
   const { item } = purchase;
+
   switch (item.kind) {
     case "episode": {
       return `${seriesHref}/episodes/${item.publicId}`;
     }
+
     case "volume": {
       return `${seriesHref}/volumes/${item.publicId}`;
     }
+
     case "coin_pack": {
       return null;
     }
+
     default: {
       return seriesHref;
     }

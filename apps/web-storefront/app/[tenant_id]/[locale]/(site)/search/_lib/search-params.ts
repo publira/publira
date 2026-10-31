@@ -54,6 +54,7 @@ export const parseSearchPageSearchParams = (
   input: ParseSearchPageSearchParamsInput
 ): SearchPageSearchParams => {
   const parsed = searchPageSearchParamsSchema.parse(input);
+
   return {
     kind: parsed.kind,
     query: parsed.q,
@@ -70,15 +71,20 @@ export const searchPageHref = (
   token = ""
 ): string => {
   const params = new URLSearchParams();
+
   if (query) {
     params.set("q", query);
   }
+
   if (kind !== DEFAULT_SEARCH_KIND) {
     params.set("kind", kind);
+
     if (token) {
       params.set("token", token);
     }
   }
+
   const serialized = params.toString();
+
   return serialized.length > 0 ? `/search?${serialized}` : "/search";
 };

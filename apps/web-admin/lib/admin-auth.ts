@@ -143,12 +143,15 @@ const tenantRoleRank = (role: string | null | undefined): number => {
     case "tenant_admin": {
       return 3;
     }
+
     case "tenant_editor": {
       return 2;
     }
+
     case "tenant_auditor": {
       return 1;
     }
+
     default: {
       return 0;
     }
@@ -173,13 +176,13 @@ export const isTenantEditorRole = (role: string | null | undefined): boolean =>
   tenantRoleRank(role) >= 2;
 
 const toErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(
-    error,
+    cause,
     t("admin.auth.errors.login_processing_failed"),
     {
       // The server answers a wrong email or password with `unauthenticated`;
@@ -211,9 +214,11 @@ const toChallengeKindName = (
   if (kind === MfaChallengeKind.VERIFY) {
     return "verify";
   }
+
   if (kind === MfaChallengeKind.ENROLL) {
     return "enroll";
   }
+
   return null;
 };
 
@@ -227,9 +232,11 @@ const toMethodNames = (methods: readonly MfaMethod[]): MfaMethodName[] =>
     if (method === MfaMethod.TOTP) {
       return ["totp"];
     }
+
     if (method === MfaMethod.PASSKEY) {
       return ["passkey"];
     }
+
     return [];
   });
 
@@ -240,6 +247,7 @@ export const loginAdmin = async (
   locale: Locale
 ): Promise<AdminLoginResult> => {
   const t = await getMessagesFor(locale);
+
   const processingFailed = {
     message: t("admin.auth.errors.login_processing_failed"),
     ok: false,
@@ -256,10 +264,12 @@ export const loginAdmin = async (
     );
 
     const challenge = response.mfaChallenge;
+
     if (challenge) {
       const challengeKind = toChallengeKindName(challenge.kind);
       const challengeToken = challenge.token.trim();
       const challengeExpiresAt = parseInstant(challenge.expiresAt);
+
       if (!(challengeKind && challengeToken && challengeExpiresAt)) {
         return processingFailed;
       }
@@ -289,6 +299,7 @@ export const loginAdmin = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await toErrorMessage(error, locale),
       ok: false,
@@ -329,6 +340,7 @@ const getAdminCurrentUserForSession = async (
 
   if (!token) {
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: true };
   }
 
@@ -341,8 +353,10 @@ const getAdminCurrentUserForSession = async (
     );
 
     const publicId = response.user?.publicId?.trim() ?? "";
+
     if (!publicId) {
       dropFailedCacheEntry();
+
       return { ok: false, requiresSignIn: false };
     }
 
@@ -357,16 +371,20 @@ const getAdminCurrentUserForSession = async (
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       dropFailedCacheEntry();
+
       return { ok: false, requiresSignIn: true };
     }
+
     if (isExpectedNullableRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
+
     // Anything else — an unreachable API included — is the console's error
     // screen, thrown by the caller. Only the verdict crosses the cache
     // boundary, so the cause is logged here, where the error is still whole.
     console.warn("[web-admin] getAdminCurrentUser failed", error);
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
@@ -383,9 +401,11 @@ export const getAdminCurrentUser = async (
     tenantId,
     await getAccessToken()
   );
+
   if (unexpected) {
     throw new Error("The signed-in operator could not be read.");
   }
+
   return result;
 };
 
@@ -393,6 +413,7 @@ export const isAdminSessionValid = async (
   tenantId: string
 ): Promise<boolean> => {
   const result = await getAdminCurrentUser(tenantId);
+
   return result.ok;
 };
 
@@ -456,7 +477,9 @@ const getTenantAdminInvitationStateForToken = async (
     if (isMissingResourceRpcError(error)) {
       return { invitation: null, unexpected: false };
     }
+
     dropFailedCacheEntry();
+
     return { invitation: null, unexpected: true };
   }
 };
@@ -470,15 +493,18 @@ export const getTenantAdminInvitationState = async (
   token: string
 ): Promise<TenantAdminInvitationState | null> => {
   const normalizedToken = token.trim();
+
   if (!tenantId.trim() || !normalizedToken) {
     return null;
   }
 
   const { invitation, unexpected } =
     await getTenantAdminInvitationStateForToken(tenantId, normalizedToken);
+
   if (unexpected) {
     throw new Error("The invitation could not be read.");
   }
+
   return invitation;
 };
 
@@ -491,6 +517,7 @@ export const acceptTenantAdminInvitation = async (
 ): Promise<AcceptTenantAdminInvitationResult> => {
   const t = await getMessagesFor(locale);
   const normalizedToken = token.trim();
+
   if (!tenantId.trim() || !normalizedToken) {
     return {
       message: t("admin.auth.accept_invite.invalid_token"),
@@ -513,6 +540,7 @@ export const acceptTenantAdminInvitation = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -542,6 +570,7 @@ export const requestAdminPasswordReset = async (
 ): Promise<AdminPasswordResetRequestResult> => {
   const t = await getMessagesFor(locale);
   const normalizedEmail = email.trim();
+
   if (!tenantId.trim() || !normalizedEmail) {
     return {
       message: t("admin.auth.fields.email_required"),
@@ -561,6 +590,7 @@ export const requestAdminPasswordReset = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -622,6 +652,7 @@ export const confirmAdminPasswordReset = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     const disposition = rpcErrorDisposition(error);
+
     if (disposition === "precondition") {
       return {
         message: t("admin.auth.errors.reset_link_expired"),
@@ -629,6 +660,7 @@ export const confirmAdminPasswordReset = async (
         reason: "expired",
       };
     }
+
     // An unknown token and a malformed one both mean "start over".
     if (disposition === "not-found" || disposition === "invalid-argument") {
       return {
@@ -658,6 +690,7 @@ export const requestAdminEmailChange = async (
   const normalizedNewEmail = newEmail.trim();
 
   const sessionId = await getAccessToken();
+
   if (
     !tenantId.trim() ||
     !sessionId.trim() ||
@@ -689,6 +722,7 @@ export const requestAdminEmailChange = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -716,6 +750,7 @@ export const confirmAdminEmailChange = async (
   token: string
 ): Promise<AdminEmailChangeConfirmResult | null> => {
   const normalizedToken = token.trim();
+
   if (!tenantId.trim() || !normalizedToken) {
     return null;
   }
@@ -741,6 +776,7 @@ export const confirmAdminEmailChange = async (
     if (isRejectedRequestRpcError(error)) {
       return null;
     }
+
     throw error;
   }
 };

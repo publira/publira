@@ -39,6 +39,9 @@ const request = (url: string, cookie?: string): NextRequest => {
   const nextUrl = Object.assign(new URL(url), {
     clone: () => new URL(url),
   });
+
+  // SAFETY: the proxy reads only the members built here, as the comment on
+  // this helper lists, and none of the rest of `NextRequest`.
   return {
     cookies: {
       get: (name: string) =>
@@ -49,7 +52,7 @@ const request = (url: string, cookie?: string): NextRequest => {
     headers: new Headers({ host: new URL(url).host }),
     nextUrl,
     url,
-  } as unknown as NextRequest;
+  } as NextRequest;
 };
 
 const deletedCookieNames = (response: { headers: Headers }): string[] =>
@@ -71,8 +74,10 @@ describe("web-platform proxy session handling", () => {
   afterAll(() => {
     if (originalAuthSecret === undefined) {
       delete process.env.PUBLIRA_AUTH_SECRET;
+
       return;
     }
+
     process.env.PUBLIRA_AUTH_SECRET = originalAuthSecret;
   });
 
@@ -100,6 +105,7 @@ describe("web-platform proxy session handling", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().subtract({ minutes: 1 }).toString()
     );
+
     const { proxy } = await import("./proxy");
 
     const response = await proxy(

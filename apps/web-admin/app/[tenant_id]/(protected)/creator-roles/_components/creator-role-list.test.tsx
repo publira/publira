@@ -36,9 +36,15 @@ interface DropEvent {
  * stands in and hands the drop back to the test instead. Dragging itself is an
  * e2e concern; what belongs here is what the list does with a drop.
  */
-const dnd = vi.hoisted(() => ({
-  drop: null as ((event: DropEvent) => void) | null,
-}));
+interface DropHandoff {
+  drop: ((event: DropEvent) => void) | null;
+}
+
+const dnd = vi.hoisted(() => {
+  const handoff: DropHandoff = { drop: null };
+
+  return handoff;
+});
 
 vi.mock("@dnd-kit/react", () => ({
   DragDropProvider: ({
@@ -49,6 +55,7 @@ vi.mock("@dnd-kit/react", () => ({
     onDragEnd: (event: DropEvent) => void;
   }) => {
     dnd.drop = onDragEnd;
+
     return children;
   },
 }));
@@ -101,6 +108,7 @@ const renderList = async (ui: ReactNode) => {
 /** Drop the row `sourceId` names over the row `targetId` names. */
 const dropOver = async (sourceId: string, targetId: string) => {
   const { drop } = dnd;
+
   if (!drop) {
     throw new Error("the list was never rendered");
   }
@@ -122,9 +130,12 @@ const namesOnScreen = () =>
 
 const submittedOrder = (field: string): string[] => {
   const formData = reorder.mock.calls.at(0)?.at(0);
+
   if (!formData) {
     throw new Error("the reorder Action was never called");
   }
+
+  // SAFETY: the list writes the field as the JSON of the ids in their order.
   return JSON.parse(String(formData.get(field))) as string[];
 };
 

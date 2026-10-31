@@ -44,14 +44,17 @@ export const BrowserNotificationsCard = ({
   // in the Push API, and only the browser can be asked.
   useEffect(() => {
     let current = true;
+
     const read = async () => {
       if (!isBrowserPushSupported()) {
         setState("unavailable");
+
         return;
       }
 
       try {
         const subscription = await readPushSubscription();
+
         if (current) {
           setState(subscription ? "on" : "off");
         }
@@ -71,15 +74,19 @@ export const BrowserNotificationsCard = ({
 
   const turnOn = async (): Promise<void> => {
     const subscription = await subscribeToPush(vapidPublicKey);
+
     if (subscription === "denied") {
       setErrorMessage(t("storefront.settings.browser_notifications_denied"));
+
       return;
     }
+
     if (subscription === "dismissed") {
       // Pointing at the browser's settings here would name a switch that is not
       // there: closing the prompt stores no decision. "Try again" is what the
       // reader can actually do, and pressing it asks them once more.
       setErrorMessage(t("storefront.settings.browser_notifications_failed"));
+
       return;
     }
 
@@ -87,22 +94,27 @@ export const BrowserNotificationsCard = ({
     // does not end in a registration has to give it back: one the server has no
     // row for reads as a switch that is on while nothing is ever delivered.
     const keys = toWebPushSubscriptionKeys(subscription);
+
     if (!keys) {
       await subscription.unsubscribe();
       setErrorMessage(t("storefront.settings.browser_notifications_failed"));
+
       return;
     }
 
     let result: Awaited<ReturnType<typeof registerBrowserPushAction>>;
+
     try {
       result = await registerBrowserPushAction({ ...keys, locale, tenantId });
     } catch (error) {
       await subscription.unsubscribe();
       throw error;
     }
+
     if (!result.ok) {
       await subscription.unsubscribe();
       setErrorMessage(result.message);
+
       return;
     }
 
@@ -111,8 +123,10 @@ export const BrowserNotificationsCard = ({
 
   const turnOff = async (): Promise<void> => {
     const subscription = await readPushSubscription();
+
     if (!subscription) {
       setState("off");
+
       return;
     }
 
@@ -123,8 +137,10 @@ export const BrowserNotificationsCard = ({
       locale,
       tenantId,
     });
+
     if (!result.ok) {
       setErrorMessage(result.message);
+
       return;
     }
 

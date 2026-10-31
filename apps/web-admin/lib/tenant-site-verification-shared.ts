@@ -43,17 +43,23 @@ const metaAttributes = (element: string): Map<string, string> => {
   const inner = element.slice("<meta".length, element.endsWith("/>") ? -2 : -1);
   const tokens = Array.from(inner.matchAll(TOKEN), ([token]) => token);
   const attributes = new Map<string, string>();
+
   for (let index = 0; index + 2 < tokens.length; index += 1) {
     const [name = "", equals, value = ""] = tokens.slice(index, index + 3);
+
     if (equals !== "=" || name === "=") {
       continue;
     }
+
     const key = name.toLowerCase();
+
     if (!attributes.has(key)) {
       attributes.set(key, unquote(value));
     }
+
     index += 2;
   }
+
   return attributes;
 };
 
@@ -79,9 +85,11 @@ export const parseSiteVerificationCode = (
   value: string
 ): SiteVerificationCodeResult => {
   const trimmed = value.trim();
+
   if (trimmed === "") {
     return { code: "", ok: true };
   }
+
   if (!META_ELEMENT.test(trimmed)) {
     return CODE.test(trimmed)
       ? { code: trimmed, ok: true }
@@ -90,10 +98,13 @@ export const parseSiteVerificationCode = (
 
   const attributes = metaAttributes(trimmed);
   const name = attributes.get("name")?.trim().toLowerCase();
+
   if (name !== undefined && name !== SITE_VERIFICATION_META_NAMES[service]) {
     return { ok: false, reason: "other_service" };
   }
+
   const content = attributes.get("content")?.trim() ?? "";
+
   return CODE.test(content)
     ? { code: content, ok: true }
     : { ok: false, reason: "invalid" };

@@ -16,12 +16,14 @@ const toHsl = (color: string): Hsl => {
   const min = Math.min(red, green, blue);
   const lightness = (max + min) / 2;
   const chroma = max - min;
+
   if (chroma === 0) {
     return [0, 0, lightness];
   }
 
   const saturation = chroma / (1 - Math.abs(2 * lightness - 1));
   let hue = 0;
+
   if (max === red) {
     hue = ((green - blue) / chroma) % 6;
   } else if (max === green) {
@@ -38,6 +40,7 @@ const toHex = ([hue, saturation, lightness]: Hsl): string => {
   const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
   const m = lightness - chroma / 2;
   const sector = Math.floor(hue / 60);
+
   const [red, green, blue] = [
     [chroma, x, 0],
     [x, chroma, 0],
@@ -58,6 +61,7 @@ const toHex = ([hue, saturation, lightness]: Hsl): string => {
 
 const invertLightness = (color: string): string => {
   const [hue, saturation, lightness] = toHsl(color);
+
   return toHex([hue, saturation, 1 - lightness]);
 };
 
@@ -78,6 +82,9 @@ export const deriveDarkPalette = (
   light: TenantThemeColors
 ): TenantThemeColors => {
   const dark = { ...DEFAULT_TENANT_THEME_COLORS };
+
+  // SAFETY: `DEFAULT_TENANT_THEME_COLORS` is a `TenantThemeColors`, so its
+  // keys are that type's keys and no others.
   for (const key of Object.keys(
     DEFAULT_TENANT_THEME_COLORS
   ) as (keyof TenantThemeColors)[]) {

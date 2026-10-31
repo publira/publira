@@ -6,6 +6,7 @@ import {
 } from "@opentelemetry/sdk-trace-base";
 import { ATTR_DEPLOYMENT_ENVIRONMENT_NAME } from "@opentelemetry/semantic-conventions";
 import { registerOTel } from "@vercel/otel";
+import type { Configuration } from "@vercel/otel";
 
 import type { TracingEnv } from "./config.js";
 import {
@@ -33,9 +34,11 @@ export {
  */
 const defaultSampler = (env: TracingEnv): Sampler | undefined => {
   const sampling = rootSampling(env);
+
   if (sampling.kind === "operator") {
     return undefined;
   }
+
   return new ParentBasedSampler({
     root:
       sampling.kind === "always_on"
@@ -65,16 +68,23 @@ const defaultSampler = (env: TracingEnv): Sampler | undefined => {
  */
 export const registerTracing = (serviceName: string): void => {
   const { env } = process;
+
   if (!isTracingEnabled(env)) {
     return;
   }
 
-  const sampler = defaultSampler(env);
-  registerOTel({
+  const configuration: Configuration = {
     attributes: {
       [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment(env),
     },
     serviceName,
-    ...(sampler ? { traceSampler: sampler } : {}),
-  });
+  };
+
+  const sampler = defaultSampler(env);
+
+  if (sampler) {
+    configuration.traceSampler = sampler;
+  }
+
+  registerOTel(configuration);
 };

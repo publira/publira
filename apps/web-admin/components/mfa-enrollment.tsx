@@ -59,6 +59,7 @@ const MfaEnrollmentSecret = () => (
 );
 
 export { MfaEnrollmentSecret as Secret };
+
 export {
   MfaEnrollment as Root,
   MfaEnrollmentQrCode as QrCode,

@@ -43,6 +43,7 @@ import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 test.use({ baseURL: WEB_PLATFORM_BASE_URL });
 
 const ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID?.trim() || "publira";
+
 const SECRET_ACCESS_KEY =
   process.env.AWS_SECRET_ACCESS_KEY?.trim() || "publirapass";
 
@@ -65,6 +66,7 @@ const openScreen = async (
 
 for (const locale of DOCS_LOCALES) {
   const t = (key: string): string => docsText(locale, key);
+
   /** The two kinds of credential on the storage screen, and what each holds. */
   const credentials = (page: Page) =>
     page.getByRole("group", {
@@ -144,6 +146,7 @@ for (const locale of DOCS_LOCALES) {
 
       test("a saved access key", async ({ page }) => {
         const saved = snapshotPlatformSettingsRow("platform_storage_config");
+
         try {
           await openScreen(page, locale, "/services/storage");
           await page
@@ -234,6 +237,7 @@ for (const locale of DOCS_LOCALES) {
 
       test("a saved password", async ({ page }) => {
         const saved = snapshotPlatformSettingsRow("platform_smtp_config");
+
         try {
           await openScreen(page, locale, "/services/email");
           await page
@@ -253,9 +257,11 @@ for (const locale of DOCS_LOCALES) {
           ).toBeVisible();
 
           await page.reload();
+
           const change = page.getByRole("button", {
             name: t("platform.settings.password_change"),
           });
+
           await expect(change).toBeVisible();
 
           await expectDocsScreenshot(page, {
@@ -309,6 +315,7 @@ for (const locale of DOCS_LOCALES) {
         // An install that never left PostgreSQL has no row at all, which is
         // what `task e2e:db` leaves.
         const saved = snapshotPlatformSettingsRow("platform_search_config");
+
         try {
           runSql(`
             INSERT INTO platform_search_config (engine, url, index_alias)
@@ -334,9 +341,11 @@ for (const locale of DOCS_LOCALES) {
           await revalidatePlatformTags([platformSearchSettingsTag]);
 
           await openScreen(page, locale, "/services/search");
+
           const failedAt = page.getByText(
             docsTextPattern(locale, "platform.search.status.failed_at")
           );
+
           // A revalidated tag is served stale once while it refreshes, and the
           // run in the locale before this one left the screen read without
           // the row, so the first load can still show no failure.
@@ -365,6 +374,7 @@ for (const locale of DOCS_LOCALES) {
           } else {
             runSql("DELETE FROM platform_search_config;");
           }
+
           await revalidatePlatformTags([platformSearchSettingsTag]);
         }
       });

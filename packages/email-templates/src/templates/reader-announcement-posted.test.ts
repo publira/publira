@@ -48,6 +48,7 @@ describe("ReaderAnnouncementPostedEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -75,6 +76,7 @@ describe("ReaderAnnouncementPostedEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

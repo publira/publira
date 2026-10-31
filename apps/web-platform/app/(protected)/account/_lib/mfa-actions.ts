@@ -51,9 +51,11 @@ const parseCode = async (
 ): Promise<{ code: string } | { message: string }> => {
   const t = await getMessagesFor(locale);
   const code = mfaCodeFormSchema.safeParse(formData.get("code"));
+
   if (!code.success) {
     return { message: t("platform.auth.mfa.code_required") };
   }
+
   return { code: code.data };
 };
 
@@ -67,6 +69,7 @@ export const startAccountMfaEnrollmentAction = async (
   const result = await withPlatformSessionReauth(() =>
     startPlatformMfaEnrollment("", locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -85,10 +88,12 @@ export const confirmAccountMfaEnrollmentAction = async (
 ): Promise<MfaEnrollmentConfirmState> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseCode(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -96,7 +101,9 @@ export const confirmAccountMfaEnrollmentAction = async (
   const result = await withPlatformSessionReauth(() =>
     confirmPlatformMfaEnrollment("", input.code, locale)
   );
+
   clearMfaReads();
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -117,10 +124,12 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
 ): Promise<MfaRecoveryCodesState> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseCode(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -128,7 +137,9 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
   const result = await withPlatformSessionReauth(() =>
     regeneratePlatformMfaRecoveryCodes(input.code, locale)
   );
+
   clearMfaReads();
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -146,10 +157,12 @@ export const disableAccountMfaAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseCode(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -157,7 +170,9 @@ export const disableAccountMfaAction = async (
   const result = await withPlatformSessionReauth(() =>
     disablePlatformMfa(input.code, locale)
   );
+
   clearMfaReads();
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

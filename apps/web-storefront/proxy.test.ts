@@ -4,6 +4,8 @@ import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as GoogleTagGatewayModule from "./lib/google-tag-gateway";
+
 const {
   mockForwardToGoogleTagGateway,
   mockResolveGoogleTagGateway,
@@ -31,7 +33,7 @@ vi.mock("./lib/published-page-slugs", () => ({
 }));
 
 vi.mock("./lib/google-tag-gateway", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof GoogleTagGatewayModule>()),
   createGoogleTagGatewayResolver: () => mockResolveGoogleTagGateway,
 }));
 
@@ -67,6 +69,9 @@ const request = (
   const nextUrl = Object.assign(new URL(url), {
     clone: () => new URL(url),
   });
+
+  // SAFETY: the proxy reads only `nextUrl`, `url`, `headers`, and
+  // `cookies.get` of its request, and each is given here.
   return {
     cookies: {
       get: (name: string) =>
@@ -77,7 +82,7 @@ const request = (
     headers: new Headers({ host: new URL(url).host }),
     nextUrl,
     url,
-  } as unknown as NextRequest;
+  } as NextRequest;
 };
 
 const RESOLVED_LOCALE_COOKIE = "publira_resolved_locale";
@@ -160,6 +165,7 @@ describe("web-storefront proxy session handling", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().add({ minutes: 1 }).toString()
     );
+
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -181,6 +187,7 @@ describe("web-storefront proxy session handling", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().add({ minutes: 1 }).toString()
     );
+
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -198,6 +205,7 @@ describe("web-storefront proxy session handling", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().add({ minutes: 1 }).toString()
     );
+
     const { proxy } = await import("./proxy");
 
     const response = await proxy(
@@ -526,6 +534,7 @@ describe("web-storefront proxy locale routing", () => {
       "apple-app-site-association",
       "change-password",
     ];
+
     const responses = await Promise.all(
       documents.map((document) =>
         proxy(request(`https://shop.example.com/.well-known/${document}`))
@@ -555,6 +564,7 @@ describe("web-storefront proxy retired paths", () => {
     const { proxy } = await import("./proxy");
 
     const list = await proxy(request("https://shop.example.com/authors"));
+
     const detail = await proxy(
       request("https://shop.example.com/authors/CR01?token=djF8Zg")
     );
@@ -578,6 +588,7 @@ describe("web-storefront proxy retired paths", () => {
     const prefixed = await proxy(
       request("https://shop.example.com/en/authors/CR01")
     );
+
     const defaultPrefixed = await proxy(
       request("https://shop.example.com/ja/authors")
     );
@@ -596,6 +607,7 @@ describe("web-storefront proxy retired paths", () => {
     const { proxy } = await import("./proxy");
 
     const moved = await proxy(request("https://shop.example.com/creators"));
+
     const slug = await proxy(
       request("https://shop.example.com/authors-wanted")
     );
@@ -728,9 +740,11 @@ describe("web-storefront proxy Google tag gateway", () => {
 
   it("Forward the tenant's gateway path with the reader's address", async () => {
     const { proxy } = await import("./proxy");
+
     const gatewayRequest = request(
       `https://shop.example.com/${GATEWAY_PATH}/g/collect?v=2`
     );
+
     gatewayRequest.headers.set("x-forwarded-for", "203.0.113.7, 10.0.0.2");
 
     const response = await proxy(gatewayRequest);
@@ -762,6 +776,7 @@ describe("web-storefront proxy Google tag gateway", () => {
     const series = await proxy(
       request("https://shop.example.com/en/series/?page=2")
     );
+
     const slashes = await proxy(request("https://shop.example.com/labels//"));
 
     expect(series.status).toBe(308);
@@ -884,6 +899,7 @@ describe("web-storefront proxy resolved locale cookie", () => {
     const canonical = await proxy(
       request("https://shop.example.com/en/series")
     );
+
     const login = await proxy(request("https://shop.example.com/settings"));
 
     expect(resolvedLocaleCookie(canonical)).toContain(

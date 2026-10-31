@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 
 import { loadEmailMessages } from "../messages";
 import { renderEmail } from "../render";
@@ -36,7 +37,7 @@ const pack = {
 
 const render = async (
   locale: "en" | "ja",
-  overrides: Partial<Record<keyof typeof data, unknown>> = {}
+  overrides: Partial<z.input<typeof purchaseReceiptDataSchema>> = {}
 ) => {
   const result = await renderEmail({
     data: { ...data, ...overrides },
@@ -45,6 +46,7 @@ const render = async (
     template: "purchase_receipt",
     timeZone: "Asia/Tokyo",
   });
+
   if (!result.ok) {
     throw new Error(result.message);
   }

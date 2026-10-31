@@ -72,6 +72,7 @@ const hiddenValue = (name: string) =>
   )?.value;
 
 const CONSENT_TOOL = "Handled by my own consent tool in Tag Manager";
+
 const PRIVACY_PAGE_MISSING =
   "No published privacy policy page is chosen under Settings › Terms and privacy policy, so the banner has no page to link to.";
 
@@ -135,11 +136,10 @@ describe("GoogleTagForm", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "Server container" }));
 
-    const field = await waitFor(() => {
-      const input = urlField();
-      expect(input).not.toBeNull();
-      return input as HTMLInputElement;
+    const field = await screen.findByRole<HTMLInputElement>("textbox", {
+      name: /Server container URL/u,
     });
+
     expect(hiddenValue("serving_mode")).toBe("server_container");
     fireEvent.change(field, { target: { value: "https://sgtm.example.com" } });
 
@@ -241,6 +241,7 @@ describe("GoogleTagForm", () => {
   it("shows a refused value next to its field and keeps what was typed", async () => {
     const refusal =
       "Enter the measurement ID as G- followed by letters and digits, such as G-ABC123DEF4.";
+
     save.current = vi.fn(() =>
       Promise.resolve<ActionForm.State>({
         fieldErrors: { ga4MeasurementId: refusal },
@@ -255,6 +256,7 @@ describe("GoogleTagForm", () => {
     const measurementId = screen.getByRole<HTMLInputElement>("textbox", {
       name: "GA4 measurement ID",
     });
+
     fireEvent.change(measurementId, { target: { value: "G-" } });
     await act(() => {
       fireEvent.click(submitButton());
@@ -320,6 +322,7 @@ describe("GoogleTagForm", () => {
     await renderForm(
       <GoogleTagForm initialSettings={savedSettings()} tenantId="TENANT001" />
     );
+
     const unavailable =
       "Enter a Tag Manager container ID to choose this. Your consent tool runs inside the container.";
 

@@ -136,9 +136,11 @@ const resolveEditEpisodeContext = async (
 ): Promise<EditEpisodeContext> => {
   const [rawParams, tenantId] = await Promise.all([params, getTenantId()]);
   const parsedParams = parseRouteParams(editEpisodeParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const locale = await getLocale(tenantId);
 
   return {
@@ -154,9 +156,11 @@ const loadEpisode = async ({ episodeId, seriesId }: EditEpisodeContext) => {
     publicId: episodeId,
     seriesPublicId: seriesId,
   });
+
   if (!result.ok && result.notFound) {
     notFound();
   }
+
   return result;
 };
 
@@ -185,6 +189,7 @@ const resolveActiveTab = async (
 
 const EditEpisodeTitle = async ({ searchParams }: EditEpisodeTabProps) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.series.episodes.eye_catch_title" />
   ) : (
@@ -196,6 +201,7 @@ const EditEpisodeDescription = async ({
   searchParams,
 }: EditEpisodeTabProps) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.series.episodes.eye_catch_description" />
   ) : (
@@ -259,6 +265,7 @@ const EpisodeTitleSection = async ({
   searchParams,
 }: Pick<EditEpisodePageProps, "params" | "searchParams">) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, tenantLocales, rawSearchParams] = await Promise.all([
     loadEpisode(context),
     findTenantLocales(context.tenantId),
@@ -275,6 +282,7 @@ const EpisodeTitleSection = async ({
   }
 
   const { translations } = episodeResult;
+
   const { locales, shownLocale, translation, visibleLocales } =
     resolveTranslationToEdit({
       requestedLocale:
@@ -283,6 +291,7 @@ const EpisodeTitleSection = async ({
       tenantLocales,
       translations,
     });
+
   const title = translation?.title ?? "";
   const episodePath = `/series/${context.seriesId}/episodes/${context.episodeId}`;
 
@@ -325,6 +334,7 @@ const EpisodeTitleSection = async ({
 
 const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, currency, seriesResult] = await Promise.all([
     loadEpisode(context),
     getTenantCurrency(context.tenantId),
@@ -343,6 +353,7 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
   // A price shown or entered in no currency is a number nobody can read.
   if (!currency) {
     const t = await getMessagesFor(context.locale);
+
     return (
       <EpisodeSectionError
         message={t("admin.series.episodes.currency_unavailable")}
@@ -353,11 +364,13 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
 
   const { price, readingPeriodHours, rentalPeriodHours, rentalPrice } =
     episodeResult.episode;
+
   // An episode that is not rented offers the series' period, so renting it
   // takes only a price. A series that could not be read offers none.
   const seriesRentalPeriodHours = seriesResult.ok
     ? seriesResult.series.rentalPeriodHours
     : 0;
+
   const initialRentalPeriodHours =
     rentalPrice > 0 ? rentalPeriodHours : seriesRentalPeriodHours;
 
@@ -384,6 +397,7 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
 
 const EpisodeScheduleSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, timeZone] = await Promise.all([
     loadEpisode(context),
     getTenantDisplayTimeZone(context.tenantId),
@@ -415,6 +429,7 @@ const EpisodeAvailabilitySection = async ({
   params,
 }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, seriesResult] = await Promise.all([
     loadEpisode(context),
     // Only to name what the option that follows the series follows, so a read
@@ -451,6 +466,7 @@ const EpisodePurchaseAvailabilitySection = async ({
   params,
 }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, seriesResult, purchaseSettingsResult] =
     await Promise.all([
       loadEpisode(context),
@@ -459,6 +475,7 @@ const EpisodePurchaseAvailabilitySection = async ({
       getSeries({ publicId: context.seriesId }),
       getTenantPurchaseSettings(context.tenantId, context.locale),
     ]);
+
   await redirectToLoginIfSessionRejected(purchaseSettingsResult);
 
   if (!episodeResult.ok) {
@@ -497,6 +514,7 @@ const EpisodeFreeWindowsSectionData = async ({
   params,
 }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, timeZone] = await Promise.all([
     loadEpisode(context),
     getTenantDisplayTimeZone(context.tenantId),
@@ -516,6 +534,7 @@ const EpisodeFreeWindowsSectionData = async ({
   const freeWindowsResult = await listEpisodeFreeWindows({
     episodeId: episodeResult.episode.id,
   });
+
   // A failed read hands back no windows, and "nothing scheduled" next to a
   // form would invite scheduling over a window nobody could see.
   if (!freeWindowsResult.ok) {
@@ -549,6 +568,7 @@ const EpisodeCampaignPricesSectionData = async ({
   params,
 }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, currency, timeZone] = await Promise.all([
     loadEpisode(context),
     getTenantCurrency(context.tenantId),
@@ -570,6 +590,7 @@ const EpisodeCampaignPricesSectionData = async ({
   // read, as the episode's own price is.
   if (!currency) {
     const t = await getMessagesFor(context.locale);
+
     return (
       <EpisodeSectionError
         message={t("admin.series.episodes.currency_unavailable")}
@@ -583,6 +604,7 @@ const EpisodeCampaignPricesSectionData = async ({
   const campaignPricesResult = await listEpisodeCampaignPrices({
     episodeId: episodeResult.episode.id,
   });
+
   // A failed read hands back no campaigns, and "nothing scheduled" next to a
   // form would invite scheduling over a campaign nobody could see.
   if (!campaignPricesResult.ok) {
@@ -621,6 +643,7 @@ const EpisodeCampaignPricesSectionData = async ({
 const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
   const { tenantId } = context;
+
   const [episodeResult, creatorsResult, creatorRolesResult] = await Promise.all(
     [loadEpisode(context), listAllCreators(), listCreatorRoles()]
   );
@@ -663,6 +686,7 @@ const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
 
 const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, seriesResult] = await Promise.all([
     loadEpisode(context),
     getSeries({ publicId: context.seriesId }),
@@ -676,10 +700,12 @@ const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
       />
     );
   }
+
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {
       notFound();
     }
+
     return (
       <EpisodeSectionError
         message={seriesResult.message}
@@ -701,6 +727,7 @@ const EpisodePagesSection = async ({ params }: EditEpisodeSectionProps) => {
 const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
   const episodeResult = await loadEpisode(context);
+
   if (!episodeResult.ok) {
     return (
       <EpisodeSectionError
@@ -717,6 +744,7 @@ const EpisodeImageList = async ({ params }: EditEpisodeSectionProps) => {
     ),
     isSignedInTenantEditor(context.tenantId),
   ]);
+
   await redirectToLoginIfSessionRejected(imagesResult);
 
   // A failed read hands back an empty `images`, so the "nothing uploaded yet"
@@ -758,6 +786,7 @@ const EpisodeReadingLayoutSection = async ({
   params,
 }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, seriesResult] = await Promise.all([
     loadEpisode(context),
     getSeries({ publicId: context.seriesId }),
@@ -776,6 +805,7 @@ const EpisodeReadingLayoutSection = async ({
     { episodeId: episodeResult.episode.id, tenantId: context.tenantId },
     context.locale
   );
+
   await redirectToLoginIfSessionRejected(imagesResult);
 
   return (
@@ -801,6 +831,7 @@ const EpisodeReadingLayoutSection = async ({
  */
 const EpisodePreviewSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
+
   const [episodeResult, seriesResult] = await Promise.all([
     loadEpisode(context),
     getSeries({ publicId: context.seriesId }),
@@ -814,12 +845,14 @@ const EpisodePreviewSection = async ({ params }: EditEpisodeSectionProps) => {
       />
     );
   }
+
   // An episode that follows its series turns the way the series does, so
   // without the series there is no direction to preview in.
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {
       notFound();
     }
+
     return (
       <EpisodeSectionError
         message={seriesResult.message}
@@ -835,6 +868,7 @@ const EpisodePreviewSection = async ({ params }: EditEpisodeSectionProps) => {
     ),
     getMessagesFor(context.locale),
   ]);
+
   await redirectToLoginIfSessionRejected(imagesResult);
 
   // A failed read hands back an empty `images`, which would preview as an
@@ -852,6 +886,7 @@ const EpisodePreviewSection = async ({ params }: EditEpisodeSectionProps) => {
     episodeResult.layout,
     seriesResult.readingLayout
   );
+
   const pages = toViewerPages(
     episodeResult.episode.title,
     imagesResult.images,

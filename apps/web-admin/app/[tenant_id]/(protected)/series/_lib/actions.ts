@@ -24,6 +24,7 @@ import {
   checkboxOnFormSchema,
   creditShareBpsSchema,
   flagOneFormSchema,
+  isFormText,
   nonNegativeIntFormSchema,
   optionalCropRectFormSchema,
   optionalFileFormSchema,
@@ -102,9 +103,10 @@ const creatorCreditListFormSchema = (
 ): z.ZodType<SeriesCreatorCredit[], unknown> =>
   z.preprocess(
     (value) => {
-      if (typeof value !== "string" || value.trim() === "") {
+      if (!isFormText(value) || value.trim() === "") {
         return [];
       }
+
       try {
         return JSON.parse(value);
       } catch {
@@ -205,6 +207,7 @@ const seriesCommonSchema = async (locale: Locale) => {
     title: requiredTrimmedString(t("admin.series.validation.title_required")),
   });
 };
+
 /**
  * The language a form writes the title and synopsis in. Blank writes the
  * tenant's default language, which is what the API takes an absent one for.
@@ -228,6 +231,7 @@ const seriesUpdateSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const seriesEyeCatchSchema = async (locale: Locale) => {
   const base = await seriesUpdateSchema(locale);
 
@@ -254,6 +258,7 @@ const seriesEyeCatchSchema = async (locale: Locale) => {
       currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
     });
 };
+
 const seriesFormFields = {
   ageRating: { kind: "value", name: "age_rating" },
   availability: "value",
@@ -278,10 +283,17 @@ const seriesFormFields = {
   title: "value",
 } as const;
 
+/** A step of an Action that stops it with a form message. */
+interface SeriesMutationFailure {
+  message: string;
+  mode: SeriesMutationMode;
+  ok: false;
+}
+
 const toFailure = (
   message: string,
   mode: SeriesMutationMode
-): { message: string; mode: SeriesMutationMode; ok: false } => ({
+): SeriesMutationFailure => ({
   message,
   mode,
   ok: false,
@@ -317,7 +329,9 @@ const resolvePublishedAt = async (
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const publishedAt = toInstantIsoString(publishedAtRaw, timeZone);
+
   if (publishedAtRaw.length > 0 && publishedAt.length === 0) {
     return toFailure(t("admin.series.validation.published_at_invalid"), mode);
   }
@@ -333,6 +347,7 @@ export const createSeriesAction = async (
   const locale = await getActionLocale(formData);
   const schema = await seriesCommonSchema(locale);
   const parsed = schema.safeParse(toFormDataInput(formData, seriesFormFields));
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
@@ -343,6 +358,7 @@ export const createSeriesAction = async (
     "create",
     locale
   );
+
   if (!schedule.ok) {
     return schedule;
   }
@@ -398,6 +414,7 @@ export const updateSeriesAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await seriesUpdateSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
@@ -405,6 +422,7 @@ export const updateSeriesAction = async (
       translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
@@ -415,6 +433,7 @@ export const updateSeriesAction = async (
     "update",
     locale
   );
+
   if (!schedule.ok) {
     return schedule;
   }
@@ -481,10 +500,12 @@ export const updateSeriesEyeCatchAction = async (
 ): Promise<SeriesActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     seriesEyeCatchSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...seriesFormFields,
@@ -497,6 +518,7 @@ export const updateSeriesEyeCatchAction = async (
       translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
@@ -507,6 +529,7 @@ export const updateSeriesEyeCatchAction = async (
     "update",
     locale
   );
+
   if (!schedule.ok) {
     return schedule;
   }
@@ -604,6 +627,7 @@ export const deleteSeriesTranslationAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteTranslationSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       publicId: { kind: "value", name: "series_public_id" },
@@ -611,6 +635,7 @@ export const deleteSeriesTranslationAction = async (
       translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -618,19 +643,23 @@ export const deleteSeriesTranslationAction = async (
   const { publicId, tenantId, translationLocale } = parsed.data;
   await verifyAdminSession(tenantId);
   const series = await getSeriesForTenant({ publicId, tenantId }, locale);
+
   if (!series.ok) {
     const t = await getMessagesFor(locale);
+
     return {
       message: series.notFound ? t("admin.series.not_found") : series.message,
       ok: false,
     };
   }
+
   const result = await withAdminSessionReauth(() =>
     deleteSeriesTranslation(
       { id: series.series.id, tenantId, translationLocale },
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -662,6 +691,7 @@ const eyeCatchAspectSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const eyeCatchAspectFormFields = {
   crop: { kind: "value", name: CROP_RECT_FIELD },
   id: { kind: "value", name: "series_id" },
@@ -680,10 +710,12 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
 ): Promise<EyeCatchAspectActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     eyeCatchAspectSchema(locale),
   ]);
+
   const parsed = schema
     .extend({ aspectImage: optionalFileFormSchema })
     .safeParse(
@@ -692,16 +724,19 @@ export const uploadSeriesEyeCatchAspectImageAction = async (
         aspectImage: { kind: "file", name: "aspect_image" },
       })
     );
+
   if (!parsed.success) {
     return toAspectFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const { aspectImage, crop, id, tenantId, variantType } = parsed.data;
+
   if (!aspectImage) {
     return toAspectFailure(t("admin.eye_catch.aspect.image_required"));
   }
 
   const imageData = new Uint8Array(await aspectImage.arrayBuffer());
+
   const result = await withAdminSessionReauth(() =>
     uploadSeriesEyeCatchAspectImage(
       {
@@ -778,13 +813,16 @@ export const updateSeriesWaitFreeSettingsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     waitFreeSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, waitFreeSettingsFormFields)
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -794,9 +832,11 @@ export const updateSeriesWaitFreeSettingsAction = async (
   }
 
   const { seriesId, seriesPublicId, tenantId, ...settings } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateSeriesWaitFreeSettings({ ...settings, seriesId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -846,13 +886,16 @@ export const updateSeriesFreeAfterSettingsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     freeAfterSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, freeAfterSettingsFormFields)
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -862,9 +905,11 @@ export const updateSeriesFreeAfterSettingsAction = async (
   }
 
   const { seriesId, seriesPublicId, tenantId, ...settings } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateSeriesFreeAfterSettings({ ...settings, seriesId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

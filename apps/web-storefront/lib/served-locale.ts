@@ -26,10 +26,12 @@ export const publishedLocalesFrom = (
 ): readonly Locale[] => {
   const locales: Locale[] = [];
   const seen = new Set<Locale>();
+
   const add = (code: string) => {
     if (!isLocale(code) || seen.has(code)) {
       return;
     }
+
     seen.add(code);
     locales.push(code);
   };
@@ -37,9 +39,11 @@ export const publishedLocalesFrom = (
   for (const code of codes ?? []) {
     add(code);
   }
+
   // The served translation exists by definition, even when the list of
   // alternates omitted it because the tenant no longer offers its locale.
   add(servedLocale);
+
   return locales;
 };
 

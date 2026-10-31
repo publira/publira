@@ -11,6 +11,7 @@ import { prerender } from "react-dom/static";
 export const renderServerComponent = async (ui: ReactNode) => {
   // An error inside a boundary only reaches `onError`; this fails the render.
   const { promise: failed, reject } = Promise.withResolvers<never>();
+
   const { prelude } = await Promise.race([
     prerender(ui, {
       onError: reject,
@@ -20,6 +21,7 @@ export const renderServerComponent = async (ui: ReactNode) => {
     }),
     failed,
   ]);
+
   const html = await new Response(prelude).text();
 
   return render(

@@ -80,6 +80,7 @@ describe("reader lib", () => {
     });
 
     const { listReaders } = await import("./reader");
+
     const result = await listReaders("TENANT001", "en", {
       limit: 20,
       query: " reader@example.com ",
@@ -292,6 +293,7 @@ describe("reader lib", () => {
     rpc.mockResolvedValue({});
 
     const { moderateReader } = await import("./reader");
+
     const result = await moderateReader(
       { action, readerId: READER_ID, tenantId: "TENANT001" },
       "en"
@@ -310,6 +312,7 @@ describe("reader lib", () => {
     );
 
     const { moderateReader } = await import("./reader");
+
     const result = await moderateReader(
       { action: "suspend", readerId: READER_ID, tenantId: "TENANT001" },
       "en"
@@ -335,6 +338,7 @@ describe("reader lib", () => {
       );
 
       const { moderateReader } = await import("./reader");
+
       const result = await moderateReader(
         { action: "delete", readerId: READER_ID, tenantId: "TENANT001" },
         "en"
@@ -350,6 +354,7 @@ describe("reader lib", () => {
     );
 
     const { moderateReader } = await import("./reader");
+
     const result = await moderateReader(
       { action: "suspend", readerId: READER_ID, tenantId: "TENANT001" },
       "en"
@@ -380,6 +385,7 @@ describe("reader lib", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { moderateReader } = await import("./reader");
+
     const result = await moderateReader(
       { action: "delete", readerId: READER_ID, tenantId: "TENANT001" },
       "en"
@@ -395,6 +401,7 @@ describe("reader lib", () => {
       mockSetReaderBirthDate.mockResolvedValue({});
 
       const { setReaderBirthDate } = await import("./reader");
+
       const result = await setReaderBirthDate(
         { birthDate, readerId: READER_ID, tenantId: "TENANT001" },
         "en"
@@ -418,6 +425,7 @@ describe("reader lib", () => {
     );
 
     const { setReaderBirthDate } = await import("./reader");
+
     const result = await setReaderBirthDate(
       {
         birthDate: "2999-01-01",
@@ -452,6 +460,7 @@ describe("reader lib", () => {
     mockRemoveReaderIcon.mockResolvedValue({});
 
     const { removeReaderIcon } = await import("./reader");
+
     const result = await removeReaderIcon(
       { readerId: READER_ID, tenantId: "TENANT001" },
       "en"
@@ -470,6 +479,7 @@ describe("reader lib", () => {
     );
 
     const { removeReaderIcon } = await import("./reader");
+
     const result = await removeReaderIcon(
       { readerId: READER_ID, tenantId: "TENANT001" },
       "en"
@@ -494,6 +504,7 @@ describe("reader lib", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { removeReaderIcon } = await import("./reader");
+
     const result = await removeReaderIcon(
       { readerId: READER_ID, tenantId: "TENANT001" },
       "en"

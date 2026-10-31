@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { platformAuditLogsCacheTag } from "#lib/audit-logs";
+import type * as LocaleModule from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 const {
@@ -36,7 +37,8 @@ vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
+
   return { ...actual, getPlatformLocale: () => Promise.resolve("en") };
 });
 
@@ -77,6 +79,7 @@ const redirectsTo = (path: string): string => `NEXT_REDIRECT:${path}`;
 const codeForm = (code: string): FormData => {
   const data = new FormData();
   data.set("code", code);
+
   return data;
 };
 

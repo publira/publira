@@ -68,6 +68,7 @@ describe("listMyFollows", () => {
     });
 
     const { listMyFollows } = await import("./follow-list");
+
     const result = await listMyFollows(tenantId, {
       limit: 20,
       locale: "en",

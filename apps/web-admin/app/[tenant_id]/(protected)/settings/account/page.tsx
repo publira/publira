@@ -53,6 +53,7 @@ const EmailChangeSection = async () => {
 
 const MfaSection = async () => {
   const tenantId = await getTenantId();
+
   const [result, locale, timeZone] = await Promise.all([
     getAdminMfaStatus(tenantId),
     getLocale(tenantId),
@@ -61,6 +62,7 @@ const MfaSection = async () => {
 
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
+
     return (
       <SectionError.Root>
         <SectionError.Heading>

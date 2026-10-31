@@ -18,6 +18,7 @@ const subscribeToNothing = () => () => {
  */
 const readBrowserTimeZone = (): string => {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   return zone && isValidTimeZone(zone) ? zone : DEFAULT_TIME_ZONE;
 };
 

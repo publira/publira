@@ -48,6 +48,7 @@ export const EpisodeAgeGate = ({
   // reading this file can account for.
   let closedBecause: ReactNode;
   let ageAction: ReactNode = null;
+
   if (!signedIn) {
     closedBecause = (
       <Message message="storefront.episode.age_gate.guest_description" />

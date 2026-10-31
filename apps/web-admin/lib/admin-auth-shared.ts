@@ -76,9 +76,11 @@ export const buildLoginPath = (
   const params = new URLSearchParams({
     [RETURN_TO_PARAM_NAME]: sanitizeRedirectPath(returnTo),
   });
+
   if (options?.revoked) {
     params.set(SESSION_REVOKED_PARAM_NAME, SESSION_REVOKED_REASON);
   }
+
   return `/login?${params.toString()}`;
 };
 
@@ -88,8 +90,8 @@ export const isSessionRevokedRedirect = (requestUrl: URL): boolean =>
   SESSION_REVOKED_REASON;
 
 /** A rejected Bearer token always follows the re-authentication flow. */
-export const isUnauthenticatedError = (error: unknown): boolean =>
-  isUnauthenticatedRpcError(error);
+export const isUnauthenticatedError = (cause: unknown): boolean =>
+  isUnauthenticatedRpcError(cause);
 
 /**
  * Let a rejected session leave a `lib/` mutation as a throw.
@@ -101,9 +103,9 @@ export const isUnauthenticatedError = (error: unknown): boolean =>
  * the login redirect instead. Every other code stays a message — a wrong
  * password or a rejected field must never log the operator out.
  */
-export const rethrowUnauthenticatedRpcError = (error: unknown): void => {
-  if (isUnauthenticatedRpcError(error)) {
-    throw error;
+export const rethrowUnauthenticatedRpcError = (cause: unknown): void => {
+  if (isUnauthenticatedRpcError(cause)) {
+    throw cause;
   }
 };
 
@@ -119,11 +121,13 @@ export const hasActiveAdminSessionCookie = async (
   value?: string | null
 ): Promise<boolean> => {
   const raw = value?.trim();
+
   if (!raw) {
     return false;
   }
 
   const payload = await decryptSessionPayload(raw, resolveAuthSecret());
+
   return payload !== null && !isSessionExpired(payload.expiresAt);
 };
 
@@ -137,5 +141,6 @@ export const buildLoginUrl = (requestUrl: URL): URL => {
     RETURN_TO_PARAM_NAME,
     buildReturnToPath(requestUrl)
   );
+
   return loginUrl;
 };

@@ -45,6 +45,7 @@ const AnnouncementManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
+
   const [listResult, timeZone, canEdit] = await Promise.all([
     listAnnouncements(tenantId, locale, { token }),
     getTenantDisplayTimeZone(tenantId),

@@ -42,9 +42,11 @@ const PageDraftContext = createContext<PageDraftContextValue | null>(null);
 
 const usePageDraft = () => {
   const context = use(PageDraftContext);
+
   if (!context) {
     throw new Error("PageDraft slots must be rendered inside PageDraft.");
   }
+
   return context;
 };
 
@@ -66,12 +68,15 @@ const PageDraft = ({
     content: versions[0]?.contentMarkdown ?? "",
     loads: 0,
   }));
+
   const [selectedVersionId, setSelectedVersionId] = useState(
     () => versions[0]?.id ?? ""
   );
+
   const [compareVersionId, setCompareVersionId] = useState(() =>
     getDefaultComparisonVersionId(publishedVersionId, versions)
   );
+
   // Only true inside the save's own transition, so it falls back on its own
   // however the save ends, including the redirect a successful one ends in.
   const [saving, setSaving] = useOptimistic(false);
@@ -83,9 +88,11 @@ const PageDraft = ({
       onCompareVersionChange: setCompareVersionId,
       onLoadVersion: (versionId) => {
         const version = versions.find((entry) => entry.id === versionId);
+
         if (!version) {
           return;
         }
+
         setLoadedBody((previous) => ({
           content: version.contentMarkdown,
           loads: previous.loads + 1,
@@ -99,11 +106,13 @@ const PageDraft = ({
       // other side moves that side to another.
       onSelectedVersionChange: (versionId) => {
         setSelectedVersionId(versionId);
+
         if (compareVersionId === versionId) {
           const fallback = versions.find(
             (version) =>
               version.id !== selectedVersionId && version.id !== versionId
           );
+
           setCompareVersionId(fallback?.id ?? "");
         }
       },
@@ -145,6 +154,7 @@ const PageDraftSaveForm = ({
     <ActionForm.Root
       action={(prevState: PageFormState, formData: FormData) => {
         onSaveStart();
+
         return action(prevState, formData);
       }}
       className={className}
@@ -202,6 +212,7 @@ const useVersionItems = () => {
   // The status is interpolated into another message, so it has to be a string.
   return versions.map((version) => {
     let status = t("admin.pages.workspace.draft");
+
     if (publishedVersionId === version.id) {
       status = t("admin.pages.workspace.published");
     } else if (version.status === "published") {
@@ -236,6 +247,7 @@ const PageDraftDiffFromSelect = () => {
 const PageDraftDiffToSelect = () => {
   const { compareVersionId, onCompareVersionChange, selectedVersionId } =
     usePageDraft();
+
   const items = useVersionItems();
 
   return (
@@ -273,11 +285,14 @@ const getDiffLineDisplay = (line: {
 /** What changed between the two versions chosen, line by line. */
 const PageDraftVersionDiff = () => {
   const { compareVersionId, selectedVersionId, versions } = usePageDraft();
+
   const selectedVersion =
     versions.find((version) => version.id === selectedVersionId) ?? versions[0];
+
   const compareVersion = versions.find(
     (version) => version.id === compareVersionId
   );
+
   if (!selectedVersion || !compareVersion) {
     return null;
   }
@@ -286,11 +301,14 @@ const PageDraftVersionDiff = () => {
     selectedVersion.contentMarkdown,
     compareVersion.contentMarkdown
   );
+
   const counts = new Map<string, number>();
+
   const diffLineEntries = diffResult.lines.map((line) => {
     const fingerprint = `${line.type}:${line.value}`;
     const count = counts.get(fingerprint) ?? 0;
     counts.set(fingerprint, count + 1);
+
     return {
       key: `${fingerprint}:${count}`,
       line,

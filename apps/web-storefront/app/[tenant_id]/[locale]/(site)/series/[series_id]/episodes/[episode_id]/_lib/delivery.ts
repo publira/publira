@@ -9,7 +9,7 @@
  */
 export const postReport = async (
   path: string,
-  body: unknown = {}
+  body: Readonly<Record<string, number | string>> = {}
 ): Promise<boolean> => {
   try {
     const response = await fetch(path, {
@@ -18,6 +18,7 @@ export const postReport = async (
       keepalive: true,
       method: "POST",
     });
+
     return response.status < 500;
   } catch {
     return false;
@@ -29,6 +30,7 @@ export type WaitForConnection = (retry: () => void) => () => void;
 
 export const waitForConnection: WaitForConnection = (retry) => {
   window.addEventListener("online", retry, { once: true });
+
   return () => {
     window.removeEventListener("online", retry);
   };
@@ -57,13 +59,17 @@ export const createReport = ({
     if (state !== "idle") {
       return;
     }
+
     stopWaiting?.();
     stopWaiting = null;
     state = "sending";
+
     if (await deliver()) {
       state = "delivered";
+
       return;
     }
+
     state = "idle";
     stopWaiting = onReconnect(() => {
       void send();

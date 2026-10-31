@@ -15,6 +15,7 @@ import { RetentionDefaultsForm } from "./_components/retention-defaults-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   return { title: t("platform.policy.retention.page_title") };
 };
 
@@ -35,6 +36,7 @@ const FormSkeleton = () => (
 
 const Content = async () => {
   const result = await getPlatformRetentionDefaults();
+
   return (
     <RetentionDefaultsForm
       loadErrorMessage={result.ok ? undefined : result.message}

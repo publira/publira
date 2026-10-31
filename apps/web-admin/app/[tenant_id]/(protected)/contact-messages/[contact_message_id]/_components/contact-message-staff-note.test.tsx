@@ -39,14 +39,16 @@ const submitted = () => {
   const form = screen
     .getByRole("button", { name: "Save note" })
     .closest("form");
+
   if (!form) {
     throw new Error('"Save note" submits no form');
   }
+
   return Object.fromEntries(new FormData(form));
 };
 
 const noteField = () =>
-  screen.getByRole("textbox", { name: "Note" }) as HTMLTextAreaElement;
+  screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Note" });
 
 afterEach(() => {
   cleanup();
@@ -108,6 +110,7 @@ describe("ContactMessageStaffNote", () => {
     const { rerender } = render(
       <ContactMessageStaffNote contactMessage={withNote} tenantId="TENANT001" />
     );
+
     fireEvent.change(noteField(), { target: { value: "An unsaved draft." } });
 
     rerender(

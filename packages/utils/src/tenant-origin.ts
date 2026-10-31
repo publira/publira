@@ -2,6 +2,7 @@ export const TENANT_URL_SCHEME_ENV = "PUBLIRA_TENANT_URL_SCHEME";
 
 const normalizeHost = (domain: string): string => {
   let host = domain.trim();
+
   if (host.startsWith("https://")) {
     host = host.slice("https://".length);
   } else if (host.startsWith("http://")) {
@@ -15,13 +16,11 @@ const normalizeHost = (domain: string): string => {
   return host;
 };
 
-const readEnv = (name: string): string => {
-  const value = process.env[name];
-  return typeof value === "string" ? value.trim() : "";
-};
+const readEnv = (name: string): string => process.env[name]?.trim() ?? "";
 
 const deploymentScheme = (): string => {
   const scheme = readEnv(TENANT_URL_SCHEME_ENV).toLowerCase();
+
   if (scheme === "") {
     return "https";
   }
@@ -41,6 +40,7 @@ const deploymentScheme = (): string => {
  */
 export const tenantOrigin = (domain: string): string | null => {
   const host = normalizeHost(domain);
+
   if (host === "") {
     return null;
   }

@@ -158,7 +158,9 @@ const AnnouncementsSection = async ({
 }) => {
   const [resolvedSearchParams, tenantId, locale, cookieStore] =
     await Promise.all([searchParams, getTenantId(), getLocale(), cookies()]);
+
   const { token } = parseAnnouncementsListSearchParams(resolvedSearchParams);
+
   // An announcement is the tenant's word to everyone who opens the site, so
   // this page is read without signing in. What a session adds is read state:
   // the unread marks and the controls that set them.
@@ -176,6 +178,7 @@ const AnnouncementsSection = async ({
   ]);
 
   const { nextToken, previousToken } = result;
+
   // Only this page's rows are loaded, so this is a per-page count. A total
   // would need its own RPC, which the cursor contract deliberately leaves out
   // (`proto/README.md`).

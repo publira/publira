@@ -217,6 +217,7 @@ export const ContactMessageManager = async ({
 }: ContactMessageManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (messages.length > 0 || hasPageLinks);
 

@@ -35,19 +35,23 @@ const drawPlaceholderMark = async (page: Page): Promise<Buffer> => {
     canvas.width = 96;
     canvas.height = 96;
     const context = canvas.getContext("2d");
+
     if (!context) {
       throw new Error("no 2d context");
     }
+
     context.fillStyle = "#f4f4f5";
     context.fillRect(0, 0, 96, 96);
     context.strokeStyle = "#7c3aed";
     context.lineWidth = 8;
+
     for (let offset = -96; offset < 96; offset += 24) {
       context.beginPath();
       context.moveTo(offset, 96);
       context.lineTo(offset + 96, 0);
       context.stroke();
     }
+
     return canvas.toDataURL("image/png");
   });
 

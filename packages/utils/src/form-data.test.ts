@@ -109,6 +109,7 @@ describe("toFormDataInput", () => {
 
   it("makes a missing required field a schema error rather than an empty value", () => {
     const schema = z.object({ title: z.string().trim().min(1) });
+
     const parsed = schema.safeParse(
       toFormDataInput(new FormData(), { title: "value" })
     );

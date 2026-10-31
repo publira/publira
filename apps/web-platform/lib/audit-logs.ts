@@ -77,6 +77,7 @@ const listPlatformAuditLogsForSession = async (
   if (!sid) {
     dropFailedCacheEntry();
     const t = await getMessagesFor(input.locale);
+
     return {
       auditLogs: [],
       message: t("errors.rpc.unauthenticated"),
@@ -88,7 +89,7 @@ const listPlatformAuditLogsForSession = async (
   }
 
   const limit =
-    typeof input.limit === "number" && Number.isFinite(input.limit)
+    input.limit !== undefined && Number.isFinite(input.limit)
       ? Math.max(1, Math.min(200, Math.trunc(input.limit)))
       : 100;
 
@@ -132,6 +133,7 @@ const listPlatformAuditLogsForSession = async (
     // back to /login even once they have signed in again.
     dropFailedCacheEntry();
     const t = await getMessagesFor(input.locale);
+
     return {
       auditLogs: [],
       message: rpcErrorMessage(error, t("platform.audit.list_failed"), {
@@ -178,25 +180,33 @@ const auditLogsQuery = (
   token = ""
 ): string => {
   const search = new URLSearchParams();
+
   if (tenantPublicId) {
     search.set("tenant_id", tenantPublicId);
   }
+
   if (actorUserPublicId) {
     search.set("actor_user_public_id", actorUserPublicId);
   }
+
   if (action) {
     search.set("action", action);
   }
+
   if (createdFrom) {
     search.set("created_from", createdFrom);
   }
+
   if (createdTo) {
     search.set("created_to", createdTo);
   }
+
   if (token) {
     search.set("token", token);
   }
+
   const query = search.toString();
+
   return query ? `?${query}` : "";
 };
 
@@ -236,6 +246,7 @@ export const exportPlatformAuditLogs = async (
   input: ExportPlatformAuditLogsInput
 ): Promise<ExportPlatformAuditLogsResult> => {
   const sid = await resolveAccessToken();
+
   if (!sid) {
     return { ok: false, reason: "signedOut" };
   }
@@ -251,17 +262,20 @@ export const exportPlatformAuditLogs = async (
       },
       buildSessionHeaders(sid)
     );
+
     return { csv: new Uint8Array(response.csv), ok: true };
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       return { ok: false, reason: "signedOut" };
     }
+
     if (
       isMissingResourceRpcError(error) ||
       isRpcError(error, Code.InvalidArgument)
     ) {
       return { ok: false, reason: "missing" };
     }
+
     throw error;
   }
 };

@@ -26,9 +26,11 @@ const SmtpTestContext = createContext<SmtpTestContextValue | null>(null);
 
 const useSmtpTest = () => {
   const context = use(SmtpTestContext);
+
   if (!context) {
     throw new Error("SmtpTest slots must be rendered inside SmtpTest.");
   }
+
   return context;
 };
 
@@ -51,6 +53,7 @@ const SmtpTest = ({
 }) => {
   const [state, dispatch] = useActionState(action, null);
   const [sendToSelf, setSendToSelf] = useState(true);
+
   const context = useMemo(
     () => ({ dispatch, form, sendToSelf, setSendToSelf, state }),
     [dispatch, form, sendToSelf, state]

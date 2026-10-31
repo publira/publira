@@ -38,10 +38,12 @@ export const ReaderIconPresetGallery = async ({
   tenantId,
 }: ReaderIconPresetGalleryProps) => {
   const t = await getMessages();
+
   // A list that could not be read says nothing about the count, so the upload
   // stays open and the API is what refuses one past the limit.
   const atLimit =
     !listErrorMessage && presets.length >= READER_ICON_PRESET_LIMIT;
+
   const uploadDisabled = !canEdit || atLimit;
 
   return (

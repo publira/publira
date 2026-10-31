@@ -35,12 +35,15 @@ const ProviderStatusLabel = ({ status }: { status: StoreStatus }) => {
     case "disabled": {
       return <Message message="admin.settings.sign_in.status.disabled" />;
     }
+
     case "incomplete": {
       return <Message message="admin.settings.sign_in.status.incomplete" />;
     }
+
     case "ready": {
       return <Message message="admin.settings.sign_in.status.ready" />;
     }
+
     default: {
       return <Message message="admin.settings.sign_in.status.unset" />;
     }
@@ -54,16 +57,19 @@ const ProviderStatusDescription = ({ status }: { status: StoreStatus }) => {
         <Message message="admin.settings.sign_in.status.disabled_description" />
       );
     }
+
     case "incomplete": {
       return (
         <Message message="admin.settings.sign_in.status.incomplete_description" />
       );
     }
+
     case "ready": {
       return (
         <Message message="admin.settings.sign_in.status.ready_description" />
       );
     }
+
     default: {
       return (
         <Message message="admin.settings.sign_in.status.unset_description" />
@@ -92,9 +98,11 @@ const SurfaceLabel = ({ surface }: { surface: SignInSurface }) => {
     case "android": {
       return <Message message="admin.settings.sign_in.offers.android" />;
     }
+
     case "ios": {
       return <Message message="admin.settings.sign_in.offers.ios" />;
     }
+
     default: {
       return <Message message="admin.settings.sign_in.offers.site" />;
     }
@@ -109,9 +117,11 @@ const AppleNotOffered = ({ surface }: { surface: SignInSurface }) => {
         <Message message="admin.settings.sign_in.apple.not_offered.android" />
       );
     }
+
     case "ios": {
       return <Message message="admin.settings.sign_in.apple.not_offered.ios" />;
     }
+
     default: {
       return (
         <Message message="admin.settings.sign_in.apple.not_offered.site" />
@@ -128,11 +138,13 @@ const GoogleNotOffered = ({ surface }: { surface: SignInSurface }) => {
         <Message message="admin.settings.sign_in.google.not_offered.android" />
       );
     }
+
     case "ios": {
       return (
         <Message message="admin.settings.sign_in.google.not_offered.ios" />
       );
     }
+
     default: {
       return (
         <Message message="admin.settings.sign_in.google.not_offered.site" />
@@ -239,6 +251,7 @@ const EmailSenderValue = ({
   if (errorMessage) {
     return <FormMessage variant="destructive">{errorMessage}</FormMessage>;
   }
+
   if (!fromAddress) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -248,6 +261,7 @@ const EmailSenderValue = ({
       </p>
     );
   }
+
   return (
     <Identifier.Root>
       <Identifier.Value>{fromAddress}</Identifier.Value>
@@ -334,6 +348,7 @@ export const TenantSignInSettingsForm = ({
   // A failed read leaves nothing to seed the fields with, and a save from that
   // state would write over what is stored.
   const fieldsDisabled = !canEdit || settings === undefined;
+
   const offers =
     settings === undefined
       ? undefined

@@ -66,14 +66,18 @@ const getCachedFormatter = (
 ): Intl.DateTimeFormat => {
   const key = formatterCacheKey(intlLocale, timeZone);
   const cached = cache.get(key);
+
   if (cached) {
     return cached;
   }
+
   const formatter = new Intl.DateTimeFormat(intlLocale, {
     ...options,
     timeZone,
   });
+
   cache.set(key, formatter);
+
   return formatter;
 };
 
@@ -105,6 +109,7 @@ const getDateFormatter = (
  */
 export const parseInstant = (value: string): Temporal.Instant | null => {
   const trimmed = value.trim();
+
   if (!trimmed) {
     return null;
   }
@@ -131,6 +136,7 @@ export const formatDateTime = (
   const intlLocale = toIntlLocale(options.locale);
 
   const instant = parseInstant(value);
+
   if (!instant) {
     return fallback;
   }
@@ -154,6 +160,7 @@ export const formatDate = (
   const intlLocale = toIntlLocale(options.locale);
 
   const instant = parseInstant(value);
+
   if (!instant) {
     return fallback;
   }
@@ -187,6 +194,7 @@ export const formatDateTimeWithWeekday = (
   const intlLocale = toIntlLocale(options.locale);
 
   const instant = parseInstant(value);
+
   if (!instant) {
     return fallback;
   }
@@ -217,11 +225,13 @@ export const toDateTimeLocalValue = (
   const fallback = options?.fallback ?? "";
 
   const instant = parseInstant(value);
+
   if (!instant) {
     return fallback;
   }
 
   const zoned = instant.toZonedDateTimeISO(timeZone);
+
   return `${zoned.year}-${padTwo(zoned.month)}-${padTwo(zoned.day)}T${padTwo(zoned.hour)}:${padTwo(zoned.minute)}`;
 };
 
@@ -239,15 +249,18 @@ export const fromDateTimeLocalValue = (
   timeZone: string
 ): string => {
   const trimmed = value.trim();
+
   if (!trimmed || !DATETIME_LOCAL_RE.test(trimmed)) {
     return "";
   }
 
   try {
     const plain = Temporal.PlainDateTime.from(trimmed);
+
     const zoned = plain.toZonedDateTime(timeZone, {
       disambiguation: "compatible",
     });
+
     return zoned.toInstant().toString();
   } catch {
     return "";
@@ -266,6 +279,7 @@ export const fromDateTimeLocalValue = (
  */
 export const toInstantIsoString = (value: string, timeZone: string): string => {
   const trimmed = value.trim();
+
   if (!trimmed) {
     return "";
   }
@@ -285,6 +299,7 @@ export const toInstantIsoString = (value: string, timeZone: string): string => {
  */
 export const plainDateOrNull = (value: string): Temporal.PlainDate | null => {
   const trimmed = value.trim();
+
   if (!PLAIN_DATE_RE.test(trimmed)) {
     return null;
   }
@@ -306,6 +321,7 @@ export const plainDateOrNull = (value: string): Temporal.PlainDate | null => {
  */
 export const startOfDayIsoString = (date: string, timeZone: string): string => {
   const plainDate = plainDateOrNull(date);
+
   if (!plainDate) {
     return "";
   }
@@ -331,6 +347,7 @@ export const startOfDayIsoString = (date: string, timeZone: string): string => {
  */
 export const endOfDayIsoString = (date: string, timeZone: string): string => {
   const plainDate = plainDateOrNull(date);
+
   if (!plainDate) {
     return "";
   }
@@ -362,6 +379,7 @@ export const formatPlainDate = (
   options: FormatPlainDateOptions
 ): string => {
   const plainDate = plainDateOrNull(value);
+
   if (!plainDate) {
     return options.fallback ?? value;
   }
@@ -391,7 +409,9 @@ export const formatPlainYearMonth = (
   if (!PLAIN_YEAR_MONTH_RE.test(value)) {
     return options.fallback ?? value;
   }
+
   let month: Temporal.PlainDate;
+
   try {
     month = Temporal.PlainDate.from(`${value}-01`);
   } catch {
@@ -400,6 +420,7 @@ export const formatPlainYearMonth = (
 
   const intlLocale = toIntlLocale(options.locale);
   let formatter = yearMonthFormatterCache.get(intlLocale);
+
   if (!formatter) {
     formatter = new Intl.DateTimeFormat(intlLocale, {
       month: "long",
@@ -408,6 +429,7 @@ export const formatPlainYearMonth = (
     });
     yearMonthFormatterCache.set(intlLocale, formatter);
   }
+
   // Pinned to UTC only to reach an instant, as formatPlainDate does.
   return formatter.format(month.toZonedDateTime("UTC").epochMilliseconds);
 };
@@ -434,14 +456,18 @@ const relativeFormatterCache = new Map<string, Intl.RelativeTimeFormat>();
 
 const getRelativeFormatter = (intlLocale: string): Intl.RelativeTimeFormat => {
   const cached = relativeFormatterCache.get(intlLocale);
+
   if (cached) {
     return cached;
   }
+
   // `auto` is what words -1 day as "yesterday" instead of "1 day ago".
   const formatter = new Intl.RelativeTimeFormat(intlLocale, {
     numeric: "auto",
   });
+
   relativeFormatterCache.set(intlLocale, formatter);
+
   return formatter;
 };
 
@@ -449,6 +475,12 @@ const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * 60;
 const DAYS_PER_WEEK = 7;
 const MONTHS_PER_YEAR = 12;
+
+/** A relative distance in the unit `Intl.RelativeTimeFormat` words it in. */
+interface RelativeParts {
+  unit: Intl.RelativeTimeFormatUnit;
+  value: number;
+}
 
 /**
  * The unit and the amount an elapsed time is worded in, given the seconds
@@ -464,19 +496,23 @@ const relativeParts = (
   seconds: number,
   days: number,
   months: number
-): { unit: Intl.RelativeTimeFormatUnit; value: number } => {
+): RelativeParts => {
   if (Math.abs(seconds) < SECONDS_PER_MINUTE) {
     return { unit: "second", value: Math.trunc(seconds) };
   }
+
   if (Math.abs(seconds) < SECONDS_PER_HOUR) {
     return { unit: "minute", value: Math.trunc(seconds / SECONDS_PER_MINUTE) };
   }
+
   if (days === 0) {
     return { unit: "hour", value: Math.trunc(seconds / SECONDS_PER_HOUR) };
   }
+
   if (Math.abs(days) < DAYS_PER_WEEK) {
     return { unit: "day", value: days };
   }
+
   // Weeks carry everything the month count cannot name. A calendar month is
   // 28 to 31 days, so a gap of a month's worth of days can still be no whole
   // months at all — 11 August to 9 September is 29 days and zero months — and
@@ -485,9 +521,11 @@ const relativeParts = (
   if (months === 0) {
     return { unit: "week", value: Math.trunc(days / DAYS_PER_WEEK) };
   }
+
   if (Math.abs(months) < MONTHS_PER_YEAR) {
     return { unit: "month", value: months };
   }
+
   return { unit: "year", value: Math.trunc(months / MONTHS_PER_YEAR) };
 };
 
@@ -534,17 +572,20 @@ export const formatRelativeTime = (
   const timeZone = options.timeZone ?? DEFAULT_TIME_ZONE;
 
   const instant = parseInstant(value);
+
   if (!instant) {
     return fallback;
   }
 
   const now = options.now ?? Temporal.Now.instant();
   const difference = calendarDifference(now, instant, timeZone);
+
   if (!difference) {
     return fallback;
   }
 
   const { seconds } = now.until(instant, { largestUnit: "second" });
+
   const { unit, value: amount } = relativeParts(
     seconds,
     difference.days,
@@ -587,14 +628,18 @@ const getWeekdayFormatter = (
 ): Intl.DateTimeFormat => {
   const key = `${intlLocale}\0${style}`;
   const cached = weekdayFormatterCache.get(key);
+
   if (cached) {
     return cached;
   }
+
   const formatter = new Intl.DateTimeFormat(intlLocale, {
     timeZone: "UTC",
     weekday: style,
   });
+
   weekdayFormatterCache.set(key, formatter);
+
   return formatter;
 };
 
@@ -655,5 +700,6 @@ export const currentWeekday = (
   options: CurrentWeekdayOptions = {}
 ): number => {
   const now = options.now ?? Temporal.Now.instant();
+
   return now.toZonedDateTimeISO(timeZone).dayOfWeek % 7;
 };

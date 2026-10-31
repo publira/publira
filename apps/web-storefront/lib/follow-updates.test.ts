@@ -85,9 +85,11 @@ describe("listMyFollowUpdates", () => {
 
   it("draws each episode's own eye-catch, and its series' where it has none", async () => {
     const seriesCover = eyeCatch("/images/series/SERIES_001/square/160");
+
     const episodeCover = eyeCatch(
       "/images/episode-eye-catches/EPISODE_012/square/160"
     );
+
     mockListMyFollowUpdates.mockResolvedValue({
       updates: [
         {

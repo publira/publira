@@ -115,9 +115,11 @@ describe("NotificationPreferencesGrid", () => {
     );
 
     const creators = row("New episodes by authors you follow");
+
     for (const control of within(creators).getAllByRole("switch")) {
       expect(isOn(control)).toBe(false);
     }
+
     expect(
       isOn(cell("New episodes of series and episodes you follow", "Mobile app"))
     ).toBe(true);

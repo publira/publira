@@ -94,28 +94,32 @@ const mapCampaignPrice = (
  * form was rendered.
  */
 const mapCreateErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   messages: { fallback: string; priceNotCheaper: string },
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (
-    rpcErrorHasFieldViolation(error, "starts_at") ||
-    rpcErrorHasFieldViolation(error, "ends_at")
+    rpcErrorHasFieldViolation(cause, "starts_at") ||
+    rpcErrorHasFieldViolation(cause, "ends_at")
   ) {
     return t("admin.series.episodes.period.invalid");
   }
-  if (rpcErrorHasFieldViolation(error, "price")) {
+
+  if (rpcErrorHasFieldViolation(cause, "price")) {
     return messages.priceNotCheaper;
   }
-  if (rpcErrorHasFieldViolation(error, "currency")) {
+
+  if (rpcErrorHasFieldViolation(cause, "currency")) {
     return t("admin.series.episodes.currency_changed");
   }
-  if (rpcErrorHasFieldViolation(error, "episode_ids")) {
+
+  if (rpcErrorHasFieldViolation(cause, "episode_ids")) {
     return t("admin.series.episodes.campaign_prices.episodes_changed");
   }
 
-  return rpcErrorMessage(error, messages.fallback, {
+  return rpcErrorMessage(cause, messages.fallback, {
     locale,
     overrides: {
       "not-found": t("admin.series.episodes.series_not_found"),
@@ -139,8 +143,10 @@ const listEpisodeCampaignPricesForTenant = async (
   cacheTag(episodesCacheTag(input.tenantId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const campaignPrices: EpisodeCampaignPriceItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.series.listEpisodeCampaignPrices(
@@ -152,6 +158,7 @@ const listEpisodeCampaignPricesForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.campaignPrices ?? [],
           nextToken: response.nextToken ?? "",
@@ -167,6 +174,7 @@ const listEpisodeCampaignPricesForTenant = async (
     // A partial list would hide a campaign the editor came here to remove.
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.series.episodes.campaign_prices.list_failed"),
         ok: false,
@@ -179,6 +187,7 @@ const listEpisodeCampaignPricesForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -201,6 +210,7 @@ export const listEpisodeCampaignPrices = async (input: {
   episodeId: string;
 }): Promise<ListEpisodeCampaignPricesResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listEpisodeCampaignPricesForTenant({ ...input, tenantId }, locale);
 };
 
@@ -220,6 +230,7 @@ export const createEpisodeCampaignPrice = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -236,6 +247,7 @@ export const createEpisodeCampaignPrice = async (
       },
       withSessionHeaders(sessionId)
     );
+
     if (!response.campaignPrice) {
       return {
         message: t("admin.series.episodes.campaign_prices.create_failed"),
@@ -250,6 +262,7 @@ export const createEpisodeCampaignPrice = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapCreateErrorToMessage(
         error,
@@ -288,6 +301,7 @@ export const createSeriesCampaignPrices = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -315,6 +329,7 @@ export const createSeriesCampaignPrices = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapCreateErrorToMessage(
         error,
@@ -339,6 +354,7 @@ export const deleteEpisodeCampaignPrice = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -351,9 +367,11 @@ export const deleteEpisodeCampaignPrice = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { alreadyDeleted: false, ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
+
     // Another operator deleted it first, or an earlier attempt committed and
     // lost its response. Either way the campaign is gone, which is what the
     // delete asked for, so the caller still clears the list that shows it.
@@ -361,7 +379,9 @@ export const deleteEpisodeCampaignPrice = async (
     if (rpcErrorCode(error) === Code.NotFound) {
       return { alreadyDeleted: true, ok: true };
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

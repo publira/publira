@@ -23,6 +23,8 @@ export type PlatformMessageAccessor = MessageAccessor<PlatformMessages>;
 export const loadPlatformMessages = (
   locale: Locale
 ): Promise<PlatformMessages> =>
+  // SAFETY: every `locales/*.json` catalog carries the keys of the one
+  // `PlatformMessages` is typed from, which the i18n package's tests check.
   loadLocaleMessages(locale) as Promise<PlatformMessages>;
 
 /**

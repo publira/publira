@@ -14,11 +14,13 @@ import { AnalyticsConsentPrompt } from "./analytics-consent-prompt";
 export const AnalyticsConsentBanner = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const settings = await getTenantGoogleTag(tenantId);
+
   if (settings?.consentMode !== "opt_in") {
     return null;
   }
 
   const { privacyPage } = await getTenantLegalPages(tenantId, locale);
+
   return (
     <AnalyticsConsentPrompt
       cookieName={ANALYTICS_CONSENT_COOKIE_NAME}

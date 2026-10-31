@@ -41,13 +41,16 @@ test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
 const SERIES = SEED_TENANT.series.publicId;
 const EPISODE = "SeedEPSDAAA1";
+
 /**
  * The one seeded episode with a price, `Seed Episode 001-10`, which a campaign
  * price needs to be offered at all.
  */
 const PAID_EPISODE = "SeedEPSDAA1A";
+
 /** The seed's first genre, named in the default language alone. */
 const GENRE = "SeedGENRAAA1";
+
 /** The draft `450_docs_publishing.sql` adds to the moderation tenant's series. */
 const DOCS_DRAFT_EPISODE = "DocsEPSDAAA2";
 
@@ -517,6 +520,7 @@ for (const locale of DOCS_LOCALES) {
           page,
           t("admin.series.episodes.preview.title")
         );
+
         // The canvas reports the page it has drawn, so the shot waits for
         // pixels rather than for the element that will hold them — every
         // page the rail holds, the spreads either side included.

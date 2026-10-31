@@ -51,11 +51,14 @@ const FlashToastEffect = ({
   useEffect(() => {
     if (!isFlashFlagSet(searchParams.getAll(keyName))) {
       firedRef.current = false;
+
       return;
     }
+
     if (firedRef.current) {
       return;
     }
+
     firedRef.current = true;
     onFlash();
   }, [searchParams, keyName]);

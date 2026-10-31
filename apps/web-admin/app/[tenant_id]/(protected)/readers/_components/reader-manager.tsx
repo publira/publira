@@ -184,7 +184,9 @@ export const ReaderManager = async ({
       }))
     ),
   ]);
+
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (readers.length > 0 || hasPageLinks);
 

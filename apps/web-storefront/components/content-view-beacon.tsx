@@ -58,6 +58,7 @@ export const ContentViewBeacon = ({
     if (!sends) {
       return;
     }
+
     // A JSON body is not a CORS-safelisted content type, so a cross-origin
     // page cannot send this beacon at all — the same-origin check on the
     // endpoint is the guard, and this is the layer above it.

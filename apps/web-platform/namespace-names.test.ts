@@ -28,6 +28,9 @@ const namespaces = {
   TenantMemberRoleDialog,
 };
 
+const isFunction = (part: unknown): part is (...args: never[]) => void =>
+  typeof part === "function";
+
 describe("compound component namespaces", () => {
   // A part is renamed only where its module exports it, so React DevTools,
   // error overlays, and stack traces keep naming the component a part belongs
@@ -36,7 +39,7 @@ describe("compound component namespaces", () => {
     "%s keeps each part's declared name",
     (namespace, parts) => {
       for (const [key, part] of Object.entries(parts)) {
-        if (typeof part === "function") {
+        if (isFunction(part)) {
           expect(part.name, `${namespace}.${key}`).not.toBe(key);
         }
       }

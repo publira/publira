@@ -1,4 +1,5 @@
 "use client";
+
 import { Button } from "@publira/ui-components/button";
 import { createContext, use, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
@@ -59,4 +60,5 @@ const MfaVerifyMethodsSwitch = ({
 };
 
 export { MfaVerifyMethods as Root, MfaVerifyMethodsSwitch as Switch };
+
 export type { MfaVerifyMethod as Method };

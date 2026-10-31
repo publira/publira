@@ -17,6 +17,7 @@ const BrandMarkConsentContext =
 
 const useBrandMarkConsentContext = (caller: string) => {
   const context = use(BrandMarkConsentContext);
+
   if (!context) {
     throw new Error(`${caller} must be rendered inside a BrandMarkConsent.`);
   }

@@ -74,6 +74,7 @@ describe("priceFormSchema", () => {
 
   it("refuses what is not a price", () => {
     const schema = priceFormSchema("USD", message);
+
     for (const value of ["-1", "1e3", "abc", "4,99"]) {
       expect(schema.safeParse(value).success).toBe(false);
     }

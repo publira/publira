@@ -78,12 +78,12 @@ export type ListAuditLogsResult =
     };
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.audit.list_failed"), {
+  return rpcErrorMessage(cause, t("admin.audit.list_failed"), {
     locale,
     // Every argument this call takes is a filter, so bad input is a bad filter.
     overrides: {
@@ -163,8 +163,10 @@ export const listAuditActorCandidates = async (
   } = {}
 ): Promise<ListAuditActorCandidatesResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return {
       actors: [],
       message: t("errors.rpc.unauthenticated"),
@@ -191,6 +193,7 @@ export const listAuditActorCandidates = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       actors: [],
       message: await mapErrorToMessage(error, locale),
@@ -206,8 +209,10 @@ export const listAuditLogs = async (
   filters: AuditLogFilters = {}
 ): Promise<ListAuditLogsResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return {
       auditLogs: [],
       message: t("errors.rpc.unauthenticated"),
@@ -220,6 +225,7 @@ export const listAuditLogs = async (
 
   try {
     const timeZone = await getTenantDisplayTimeZone(tenantId);
+
     const response = await apiClient.audit.listAuditLogs(
       {
         action: filters.action?.trim() ?? "",
@@ -241,6 +247,7 @@ export const listAuditLogs = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       auditLogs: [],
       message: await mapErrorToMessage(error, locale),
@@ -297,6 +304,7 @@ export const exportAuditLogs = async (
   request: AuditLogExport
 ): Promise<ExportAuditLogsResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return { ok: false, reason: "signedOut" };
   }
@@ -312,17 +320,20 @@ export const exportAuditLogs = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { csv: new Uint8Array(response.csv), ok: true };
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       return { ok: false, reason: "signedOut" };
     }
+
     if (
       isMissingResourceRpcError(error) ||
       isRpcError(error, Code.InvalidArgument)
     ) {
       return { ok: false, reason: "missing" };
     }
+
     throw error;
   }
 };

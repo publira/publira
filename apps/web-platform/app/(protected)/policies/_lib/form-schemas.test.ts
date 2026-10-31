@@ -30,13 +30,16 @@ const securityValues = {
 
 const parseSecurity = async (fields: Record<string, string>) => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     ...securityValues,
     ...fields,
   })) {
     data.set(name, value);
   }
+
   const schema = await securityPolicyFormSchema("en");
+
   return schema.safeParse(toFormDataInput(data, securityPolicyFormFields));
 };
 
@@ -204,13 +207,16 @@ const retentionValues = {
 
 const parseRetention = async (fields: Record<string, string>) => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     ...retentionValues,
     ...fields,
   })) {
     data.set(name, value);
   }
+
   const schema = await retentionDefaultsFormSchema("en");
+
   return schema.safeParse(toFormDataInput(data, retentionDefaultsFormFields));
 };
 
@@ -259,13 +265,16 @@ const communityValues = {
 
 const parseCommunity = async (fields: Record<string, string>) => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     ...communityValues,
     ...fields,
   })) {
     data.set(name, value);
   }
+
   const schema = await communityLimitsFormSchema("en");
+
   return schema.safeParse(toFormDataInput(data, communityLimitsFormFields));
 };
 

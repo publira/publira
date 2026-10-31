@@ -11,11 +11,15 @@ import type { ViewerPage } from "@publira/comic-viewer";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import type { EpisodeDetail } from "#lib/catalog";
 
 import { READING_POSITION_SAVE_DELAY_MS } from "../_lib/reading-position";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
+
+/** The body the recorder saves a reading position with. */
+const readingPositionReportSchema = z.object({ pageIndex: z.number() });
 
 const fetchMock = vi.fn<typeof fetch>();
 const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>();
@@ -90,14 +94,16 @@ const settle = async () => {
 
 const savedPageIndex = (call: number): number => {
   const [, init] = fetchMock.mock.calls[call];
-  const payload: unknown = JSON.parse(String(init?.body));
-  return (payload as { pageIndex: number }).pageIndex;
+
+  return readingPositionReportSchema.parse(JSON.parse(String(init?.body)))
+    .pageIndex;
 };
 
 const beaconPageIndex = async (call: number): Promise<number> => {
   const [, body] = sendBeacon.mock.calls[call];
-  const payload: unknown = JSON.parse(await body.text());
-  return (payload as { pageIndex: number }).pageIndex;
+
+  return readingPositionReportSchema.parse(JSON.parse(await body.text()))
+    .pageIndex;
 };
 
 beforeEach(() => {

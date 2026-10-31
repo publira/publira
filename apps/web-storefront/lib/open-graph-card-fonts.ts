@@ -145,11 +145,14 @@ interface FontSubset {
 const parseUnicodeRange = (value: string): CodePointRanges =>
   value.split(",").flatMap((entry) => {
     const [first, last] = entry.trim().replace(/^U\+/iu, "").split("-");
+
     if (!first) {
       return [];
     }
+
     const start = Number.parseInt(first.replaceAll("?", "0"), 16);
     const end = Number.parseInt((last ?? first).replaceAll("?", "f"), 16);
+
     return Number.isNaN(start) || Number.isNaN(end) ? [] : [[start, end]];
   });
 
@@ -164,13 +167,16 @@ const subsetsByFamily = new Map<FontFamily, FontSubset[]>();
  */
 const familySubsets = (family: FontFamily): FontSubset[] => {
   let subsets = subsetsByFamily.get(family);
+
   if (!subsets) {
     subsets = Object.entries(UNICODE_RANGES[family]).flatMap(([key, range]) => {
       const subset = key.replaceAll(/^\[|\]$/gu, "");
+
       const face =
         FACE_IMPORTS[family][
           `./${family}-${subset}-${FONT_WEIGHT}-normal.woff`
         ];
+
       return face
         ? [
             {
@@ -183,6 +189,7 @@ const familySubsets = (family: FontFamily): FontSubset[] => {
     });
     subsetsByFamily.set(family, subsets);
   }
+
   return subsets;
 };
 
@@ -200,16 +207,15 @@ const loadedFaces = new Map<string, Promise<LoadedFace>>();
  */
 const loadFace = ({ face, name }: FontSubset): Promise<LoadedFace> => {
   let loaded = loadedFaces.get(name);
+
   if (!loaded) {
     loaded = face().then(({ default: bytes }) => ({
       codePoints: woffCodePoints(bytes),
-      data: bytes.buffer.slice(
-        bytes.byteOffset,
-        bytes.byteOffset + bytes.byteLength
-      ) as ArrayBuffer,
+      data: new Uint8Array(bytes).buffer,
     }));
     loadedFaces.set(name, loaded);
   }
+
   return loaded;
 };
 
@@ -242,21 +248,26 @@ export const loadOpenGraphCardFonts = async (
   ): Promise<FontSubset | undefined> => {
     for (const subsets of families) {
       const subset = subsets.find(({ ranges }) => inRanges(ranges, codePoint));
+
       if (!subset) {
         continue;
       }
+
       // Sequential on purpose: a later family is read only where every
       // earlier one lacks the glyph.
       // oxlint-disable-next-line no-await-in-loop
       const { codePoints } = await loadFace(subset);
+
       if (codePoints.has(codePoint)) {
         return subset;
       }
     }
+
     return undefined;
   };
 
   const characters = [...new Set(texts.flatMap((text) => [...text]))];
+
   const faces = new Map(
     await Promise.all(
       characters.map(
@@ -273,6 +284,7 @@ export const loadOpenGraphCardFonts = async (
   // Ordered by family, so the `fontFamily` list puts the locale's own face
   // first for a character two of them draw.
   const used = new Set([...faces.values()].map((subset) => subset?.name));
+
   const fonts = await Promise.all(
     families.flat().flatMap((subset) =>
       used.has(subset.name)

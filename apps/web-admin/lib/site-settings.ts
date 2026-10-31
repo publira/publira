@@ -56,10 +56,10 @@ export const tenantSiteSettingsCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:site-settings`;
 
 const mapErrorToMessage = (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallbackMessage, { locale });
+): string => rpcErrorMessage(cause, fallbackMessage, { locale });
 
 const getTenantSiteSettingsForSession = async (
   tenantId: string,
@@ -71,8 +71,10 @@ const getTenantSiteSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -102,6 +104,7 @@ const getTenantSiteSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -187,6 +190,7 @@ export const getTenantSiteSettingsTabs = async ({
 }): Promise<GetTenantSiteSettingsTabsResult> => {
   if (!tenantLocales) {
     const result = await getTenantSiteSettings(tenantId, undefined, locale);
+
     return result.ok
       ? {
           locales: [],
@@ -199,16 +203,21 @@ export const getTenantSiteSettingsTabs = async ({
   }
 
   const { defaultLocale, supportedLocales: locales } = tenantLocales;
+
   const results = await Promise.all(
     locales.map((code) => getTenantSiteSettings(tenantId, code, locale))
   );
+
   const copies = new Map<Locale, TenantSiteSettings>();
+
   for (const [index, result] of results.entries()) {
     if (!result.ok) {
       return result;
     }
+
     copies.set(locales[index], result.settings);
   }
+
   const shownLocale =
     requestedLocale && locales.includes(requestedLocale)
       ? requestedLocale
@@ -221,6 +230,7 @@ export const getTenantSiteSettingsTabs = async ({
     shownLocale,
     translatedLocales: locales.filter((code) => {
       const copy = copies.get(code);
+
       return copy !== undefined && hasCopy(copy);
     }),
   };
@@ -241,7 +251,9 @@ export const updateTenantSiteSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -272,6 +284,7 @@ export const updateTenantSiteSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       // A tab opened before its language was switched off saves into a
       // language the site no longer offers.

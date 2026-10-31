@@ -65,17 +65,21 @@ test.describe("web-storefront robots.txt and sitemap", () => {
   }) => {
     await signInAsSeedAdmin(page);
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Sitemap series ${suffix}`,
       title: `E2E Sitemap Series ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       publishAt: scheduleAtFiveMinutesFromNow(),
       seriesPublicId: seriesId,
       title: `E2E Sitemap Episode ${suffix}`,
     });
+
     const episodeLoc = `<loc>${SEED_ORIGIN}/series/${seriesId}/episodes/${episodeId}</loc>`;
 
     // Fill the cached sitemap while the episode is still scheduled, so what

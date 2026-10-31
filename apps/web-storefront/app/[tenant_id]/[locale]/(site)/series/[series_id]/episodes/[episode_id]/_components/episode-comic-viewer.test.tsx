@@ -5,6 +5,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { act } from "react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import type { EpisodeDetail } from "#lib/catalog";
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
@@ -14,6 +15,9 @@ import { EpisodeComicViewer } from "./episode-comic-viewer";
 import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation";
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
+
+/** The body the viewer saves a reading position with. */
+const readingPositionReportSchema = z.object({ pageIndex: z.number() });
 
 const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }));
 
@@ -105,6 +109,7 @@ const pressViewer = (name = "Comic pages") => {
 describe("EpisodeComicViewer wide viewer", () => {
   it("widens on the control, marks itself, and hands the choice to the server", async () => {
     const saveWideViewer = vi.fn(() => Promise.resolve());
+
     const { container } = await renderWithClientMessages(
       <EpisodeComicViewer
         pages={pages}
@@ -231,6 +236,7 @@ const settle = () =>
 const dragThumb = (...positions: number[]) => {
   const slider = progressSlider();
   fireEvent.pointerDown(slider);
+
   for (const position of positions) {
     fireEvent.change(slider, { target: { value: String(position) } });
   }
@@ -274,6 +280,7 @@ describe("EpisodeComicViewer progress slider", () => {
     // The library's own value text is English whatever the catalog, so a
     // Japanese one proves the slider took the storefront's formatter.
     const slider = screen.getByRole("slider", { name: "読み進み" });
+
     const expectAnnounced = (label: string) => {
       expect(screen.getByText(/ページ$/u).textContent).toBe(label);
       expect(slider.getAttribute("aria-valuetext")).toBe(label);
@@ -318,18 +325,22 @@ describe("EpisodeComicViewer progress slider", () => {
 
   it("saves the page the reader lets go on, once, and nothing the thumb passed over", async () => {
     vi.useFakeTimers();
+
     const fetchMock = vi.fn<typeof fetch>(() =>
       Promise.resolve(new Response(null, { status: 204 }))
     );
+
     vi.stubGlobal("fetch", fetchMock);
+
     // The viewer fetches the page images through the same global.
     const savedPageIndices = () =>
       fetchMock.mock.calls
         .filter(([url]) => String(url).endsWith("/reading-position"))
-        .map(([, init]) => {
-          const payload: unknown = JSON.parse(String(init?.body));
-          return (payload as { pageIndex: number }).pageIndex;
-        });
+        .map(
+          ([, init]) =>
+            readingPositionReportSchema.parse(JSON.parse(String(init?.body)))
+              .pageIndex
+        );
 
     await renderWithClientMessages(
       <EpisodeComicViewer
@@ -364,7 +375,9 @@ describe("EpisodeComicViewer progress slider", () => {
     const fetchMock = vi.fn<typeof fetch>(() =>
       Promise.resolve(new Response(null, { status: 204 }))
     );
+
     vi.stubGlobal("fetch", fetchMock);
+
     const readReports = () =>
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/read"));
 
@@ -485,6 +498,7 @@ describe("EpisodeComicViewer neighbouring episodes", () => {
       hidden: true,
       name: "Previous episode",
     });
+
     expect(previous.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
     expect(
       screen.queryByRole("button", { hidden: true, name: "Previous page" })
@@ -515,6 +529,7 @@ describe("EpisodeComicViewer neighbouring episodes", () => {
       hidden: true,
       name: "Next episode",
     });
+
     expect(next.getAttribute("href")).toBe("/series/SR01/episodes/EP03");
     expect(
       screen.queryByRole("button", { hidden: true, name: "Next page" })
@@ -552,6 +567,7 @@ const stubImageServer = () => {
       })
     )
   );
+
   vi.stubGlobal("fetch", fetchMock);
 
   return fetchMock;
@@ -562,6 +578,7 @@ describe("EpisodeComicViewer expired page URLs", () => {
     ...page,
     src: `${page.src}?t=expired`,
   }));
+
   const freshUrls = Object.fromEntries(
     pages.map((page) => [page.id, `${page.src}?t=fresh`])
   );
@@ -591,6 +608,7 @@ describe("EpisodeComicViewer expired page URLs", () => {
 
   it("recovers a refused page through Reload once a fresh URL can be had", async () => {
     const fetchMock = stubImageServer();
+
     const renewPageUrls = vi
       .fn<() => Promise<Record<string, string>>>()
       .mockResolvedValueOnce({})
@@ -617,7 +635,7 @@ describe("EpisodeComicViewer expired page URLs", () => {
       expect.anything()
     );
 
-    fireEvent.click(reload as HTMLElement);
+    fireEvent.click(reload);
 
     await vi.waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

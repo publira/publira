@@ -45,13 +45,13 @@ const defaultPageSize = 20;
 export const notificationsCacheTag = tenantNotificationsTag;
 
 const mapErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallback, { locale });
+): string => rpcErrorMessage(cause, fallback, { locale });
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 /**
  * Only an expired or missing session sends the reader back through login.
@@ -59,8 +59,8 @@ const isUnexpectedError = (error: unknown): boolean =>
  * the base64url shape check and still be rejected by `ListNotifications`.
  * Treating that as sign-in would bounce the same `?token=` URL after login.
  */
-const isSignInRequiredError = (error: unknown): boolean =>
-  isRpcError(error, Code.Unauthenticated);
+const isSignInRequiredError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.Unauthenticated);
 
 /**
  * A `"use cache"` fill must not throw. Classify inside the cache scope, return
@@ -121,9 +121,12 @@ export interface ListNotificationsInput {
   token?: string;
 }
 
-const emptyListPage = {
+const emptyListPage: Pick<
+  ListNotificationsResult,
+  "nextToken" | "notifications" | "previousToken"
+> = {
   nextToken: "",
-  notifications: [] as NotificationItem[],
+  notifications: [],
   previousToken: "",
 };
 
@@ -137,6 +140,7 @@ const readNotificationList = async (
 
   const { locale } = input;
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     return {
       ...emptyListPage,
@@ -172,6 +176,7 @@ const readNotificationList = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyListPage,
       message: mapErrorMessage(
@@ -195,6 +200,7 @@ const readUnreadNotificationCount = async (
   applyCacheTag(notificationsCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -217,6 +223,7 @@ const readUnreadNotificationCount = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: mapErrorMessage(
         error,
@@ -244,10 +251,12 @@ export const listNotifications = async (
     readNotificationList(tenantId, input, await resolveAccessToken()),
     getMessagesFor(input.locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("storefront.notifications.list_failed") : result.message
   );
+
   return result;
 };
 
@@ -264,10 +273,12 @@ export const countUnreadNotifications = async (
     readUnreadNotificationCount(tenantId, locale, await resolveAccessToken()),
     getMessagesFor(locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("storefront.notifications.count_failed") : result.message
   );
+
   return result;
 };
 
@@ -280,6 +291,7 @@ export const markNotificationAsRead = async (input: {
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -295,12 +307,15 @@ export const markNotificationAsRead = async (input: {
       },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,
@@ -322,6 +337,7 @@ export const markAllNotificationsAsRead = async (
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -334,6 +350,7 @@ export const markAllNotificationsAsRead = async (
       { tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     return {
       markedCount: response.markedCount ?? 0,
       ok: true,
@@ -342,7 +359,9 @@ export const markAllNotificationsAsRead = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,

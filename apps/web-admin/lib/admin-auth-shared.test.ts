@@ -87,6 +87,7 @@ describe("buildReturnToPath / buildLoginUrl", () => {
     const loginUrl = buildLoginUrl(
       new URL("https://admin.example.com//evil.example.com")
     );
+
     expect(loginUrl.pathname).toBe("/login");
     expect(loginUrl.searchParams.get("next")).toBe("/");
   });
@@ -117,6 +118,7 @@ describe("hasActiveAdminSessionCookie", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().add({ minutes: 5 }).toString()
     );
+
     await expect(hasActiveAdminSessionCookie(cookie)).resolves.toBe(true);
   });
 
@@ -130,6 +132,7 @@ describe("hasActiveAdminSessionCookie", () => {
     const expired = await sealedCookie(
       Temporal.Now.instant().subtract({ minutes: 1 }).toString()
     );
+
     await expect(hasActiveAdminSessionCookie(expired)).resolves.toBe(false);
   });
 });

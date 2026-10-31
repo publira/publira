@@ -169,9 +169,11 @@ test.describe("web-storefront catalog filters", () => {
     // assertion: a series that carries it, and not the one that carries the
     // next genre in the seed's round-robin.
     const carried = storefrontPath(`/series/${SEED_GENRE.seriesPublicId}`);
+
     const notCarried = storefrontPath(
       `/series/${OTHER_GENRE_SERIES_PUBLIC_ID}`
     );
+
     await expect(page.locator(`a[href="${carried}"]`)).toBeVisible();
     await expect(page.locator(`a[href="${notCarried}"]`)).toHaveCount(0);
   });
@@ -183,6 +185,7 @@ test.describe("web-storefront catalog filters", () => {
     const response = await page.goto(
       storefrontPath(`/tags/${SEED_TAG.slug}?order=title`)
     );
+
     expect(response?.status(), await page.content()).toBe(200);
 
     // The heading is the tag's name rather than the slug in the URL, which is
@@ -215,6 +218,7 @@ test.describe("web-storefront catalog filters", () => {
     const response = await page.goto(
       storefrontPath(`/series/${SCHEDULED_SERIES.publicId}`)
     );
+
     expect(response?.status(), await page.content()).toBe(200);
 
     await expect(page.getByText(SCHEDULED_SERIES.status)).toBeVisible();

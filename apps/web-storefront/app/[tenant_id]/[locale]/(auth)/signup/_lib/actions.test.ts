@@ -43,9 +43,11 @@ vi.mock("#lib/tenant", () => ({
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -115,11 +117,13 @@ describe("signupAction", () => {
   it("checks the versions against the pages in the locale the form was submitted in", async () => {
     mockReadConsentPageVersionIds.mockResolvedValueOnce(["terms-ja-v1"]);
     mockSignupPublic.mockResolvedValueOnce({ ok: true });
+
     const data = formData({
       ...validSignupFields,
       consent: "on",
       locale: "ja",
     });
+
     data.append("agreedPageVersionIds", "terms-ja-v1");
 
     const { signupAction } = await import("./actions");
@@ -157,6 +161,7 @@ describe("signupAction", () => {
     mockSignupPublic.mockResolvedValueOnce({ ok: false, signUpClosed: true });
 
     const { signupAction } = await import("./actions");
+
     const result = await signupAction(
       { message: "", ok: false },
       formData(validSignupFields)
@@ -196,6 +201,7 @@ describe("signupAction", () => {
     mockReadConsentPageVersionIds.mockResolvedValueOnce(["terms-v1"]);
 
     const { signupAction } = await import("./actions");
+
     const result = await signupAction(
       { message: "", ok: false },
       formData(validSignupFields)
@@ -243,6 +249,7 @@ describe("signupAction", () => {
     );
 
     const { signupAction } = await import("./actions");
+
     const result = await signupAction(
       { message: "", ok: false },
       formData(validSignupFields)
@@ -256,6 +263,7 @@ describe("signupAction", () => {
     mockSignupPublic.mockResolvedValueOnce({ ok: false });
 
     const { signupAction } = await import("./actions");
+
     const result = await signupAction(
       { message: "", ok: false },
       formData(validSignupFields)
@@ -286,6 +294,7 @@ describe("signupAction", () => {
       mockSignupPublic.mockResolvedValueOnce({ emailRefusal, ok: false });
 
       const { signupAction } = await import("./actions");
+
       const result = await signupAction(
         { message: "", ok: false },
         formData(validSignupFields)

@@ -32,6 +32,7 @@ const OPENSEARCH_URL = process.env.PUBLIRA_E2E_OPENSEARCH_URL ?? "";
 const UNREACHABLE_URL = "http://127.0.0.1:9";
 
 const SAVED_MESSAGE = "Search settings saved.";
+
 const SAVED_BUILDING_MESSAGE =
   "Search settings saved. The index is being built now, and the search moves to the new engine once it's ready.";
 
@@ -71,6 +72,11 @@ const save = async (page: Page, message: string): Promise<void> => {
   await expect(page.getByText(message, { exact: true })).toBeVisible();
 };
 
+/** The part of a `SearchPublishedSeries` answer the spec reads. */
+interface SeriesSearchResult {
+  series?: { publicId: string }[];
+}
+
 /** Ask the public API whether the fuzzy query finds the seeded series. */
 const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
   const response = await fetch(
@@ -86,10 +92,13 @@ const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
       method: "POST",
     }
   );
+
   expect(response.ok, await response.clone().text()).toBe(true);
-  const { series = [] } = (await response.json()) as {
-    series?: { publicId: string }[];
-  };
+
+  // SAFETY: the JSON the Connect handler for
+  // CatalogService.SearchPublishedSeries returns.
+  const { series = [] } = (await response.json()) as SeriesSearchResult;
+
   return series.some((item) => item.publicId === SEED_TENANT.series.publicId);
 };
 
@@ -135,6 +144,11 @@ const UNKNOWN_TOKENIZER_DEFINITION = NORI_DEFINITION.replaceAll(
   "no_such_tokenizer"
 );
 
+/** The part of an `_analyze` answer the spec reads. */
+interface AnalyzeResult {
+  tokens?: { token: string }[];
+}
+
 /**
  * The words the index `alias` names makes of a Korean title in the written
  * form. The default definition keeps 「별을」 whole; one built on analysis-nori
@@ -151,10 +165,12 @@ const writtenFormTokens = async (
     headers: { "content-type": "application/json" },
     method: "POST",
   });
+
   expect(response.ok, await response.clone().text()).toBe(true);
-  const { tokens = [] } = (await response.json()) as {
-    tokens?: { token: string }[];
-  };
+
+  // SAFETY: the body OpenSearch documents for `_analyze`.
+  const { tokens = [] } = (await response.json()) as AnalyzeResult;
+
   return tokens.map((item) => item.token);
 };
 
@@ -192,6 +208,7 @@ test.describe("web-platform search settings", () => {
     } else {
       runSql(`DELETE FROM platform_search_config;`);
     }
+
     await revalidatePlatformTags([platformSearchSettingsTag]);
   });
 
@@ -352,9 +369,11 @@ test.describe("web-platform search settings", () => {
       // in English's.
       const english = page.getByRole("tabpanel", { name: "English" });
       const editor = english.getByRole("textbox", { name: /^Definition/u });
+
       const useShared = english.getByRole("button", {
         name: "Use the shared definition",
       });
+
       // A language without a definition of its own starts from the shared
       // one, which every index is built from.
       await expect(
@@ -440,6 +459,7 @@ test.describe("web-platform search settings", () => {
         .toContain("별을");
       await expectOpenSearchAnswering(true);
     });
+
     return;
   }
 

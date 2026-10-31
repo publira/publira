@@ -45,15 +45,18 @@ export const generateMetadata = async ({
 }: TenantMembersPageProps): Promise<Metadata> => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   const parsedParams = parseRouteParams(
     tenantMembersParamsSchema,
     await params
   );
+
   if (!parsedParams) {
     return { title: t("platform.tenants.members_heading") };
   }
 
   const tenantResult = await getPlatformTenant(parsedParams.tenant_id);
+
   const name =
     tenantResult.ok && tenantResult.tenant ? tenantResult.tenant.name : "";
 
@@ -109,9 +112,11 @@ const TenantMembersContent = async ({
     tenantMembersParamsSchema,
     await params
   );
+
   if (!parsedParams) {
     notFound();
   }
+
   const { tenant_id: tenantId } = parsedParams;
   const pageFilters = parseMemberInvitationFilters(await searchParams);
 
@@ -126,6 +131,7 @@ const TenantMembersContent = async ({
   }
 
   const { tenant } = tenantResult;
+
   if (!tenant) {
     notFound();
   }
@@ -148,18 +154,21 @@ const TenantMembersContent = async ({
         token: invitationsResult.previousToken,
       })
     : undefined;
+
   const nextHref = invitationsResult.nextToken
     ? buildMemberInvitationsPath(tenant.publicId, {
         membersToken: pageFilters.membersToken,
         token: invitationsResult.nextToken,
       })
     : undefined;
+
   const membersPreviousHref = membersResult.previousToken
     ? buildMembersPath(tenant.publicId, {
         membersToken: membersResult.previousToken,
         token: pageFilters.token,
       })
     : undefined;
+
   const membersNextHref = membersResult.nextToken
     ? buildMembersPath(tenant.publicId, {
         membersToken: membersResult.nextToken,

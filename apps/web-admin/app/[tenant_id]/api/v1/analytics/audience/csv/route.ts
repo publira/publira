@@ -20,11 +20,13 @@ export const GET = async (
   const { tenant_id } = await params;
   const tenantId = tenantIdSchema.safeParse(tenant_id);
   const query = audienceCsvQuerySchema.safeParse(searchParamsOf(request));
+
   if (!(tenantId.success && query.success)) {
     return notFound();
   }
 
   const { from, group, to } = query.data;
+
   return statsCsvResponse(
     tenantId.data,
     { group, kind: "audience" },

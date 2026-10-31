@@ -148,11 +148,13 @@ export const suspendTenantAction = async (
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const schema = await tenantIdOnlySchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return;
   }
@@ -169,11 +171,13 @@ export const resumeTenantAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const schema = await tenantIdOnlySchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return;
   }
@@ -192,16 +196,19 @@ export const updateTenantNameAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     updateTenantNameFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       name: { kind: "value", name: "tenant_name" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -213,12 +220,15 @@ export const updateTenantNameAction = async (
       locale
     )
   );
+
   updateTag(platformTenantsCacheTag);
   updateTag(platformEndUsersCacheTag);
   updateTag(platformAuditLogsCacheTag);
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
   return { message: t("platform.common.saved"), ok: true };
 };
 
@@ -228,10 +238,12 @@ export const updateTenantDomainAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     updateTenantDomainFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
@@ -240,6 +252,7 @@ export const updateTenantDomainAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -255,11 +268,14 @@ export const updateTenantDomainAction = async (
       locale
     )
   );
+
   updateTag(platformTenantsCacheTag);
   updateTag(platformAuditLogsCacheTag);
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
   return { message: t("platform.common.saved"), ok: true };
 };
 
@@ -269,10 +285,12 @@ export const addTenantMemberAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     addTenantMemberFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: { kind: "value", name: "member_email" },
@@ -280,6 +298,7 @@ export const addTenantMemberAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -308,10 +327,12 @@ export const updateTenantMemberRoleAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     updateTenantMemberRoleFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       role: { kind: "value", name: "member_role" },
@@ -319,6 +340,7 @@ export const updateTenantMemberRoleAction = async (
       userId: { kind: "value", name: "member_user_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -350,16 +372,19 @@ export const removeTenantMemberAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     removeTenantMemberFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
       userId: { kind: "value", name: "member_user_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -388,16 +413,19 @@ export const createTenantAdminInvitationAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     createInvitationFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: { kind: "value", name: "invite_email" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -438,16 +466,19 @@ export const resendTenantAdminInvitationAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     invitationIdFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       invitationId: { kind: "value", name: "invitation_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -479,16 +510,19 @@ export const cancelTenantAdminInvitationAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     invitationIdFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       invitationId: { kind: "value", name: "invitation_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }

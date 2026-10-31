@@ -26,12 +26,15 @@ const CampaignBannerStatusMessage = ({
     case "showing": {
       return <Message message="admin.campaign_banners.status.showing" />;
     }
+
     case "scheduled": {
       return <Message message="admin.campaign_banners.status.scheduled" />;
     }
+
     case "ended": {
       return <Message message="admin.campaign_banners.status.ended" />;
     }
+
     default: {
       return <Message message="admin.campaign_banners.status.unpublished" />;
     }

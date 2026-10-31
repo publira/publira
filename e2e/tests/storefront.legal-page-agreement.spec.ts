@@ -31,6 +31,7 @@ const storefrontUrl = (pathname: string): string =>
   `${WEB_STOREFRONT_LEGAL_PAGE_AGREEMENT_BASE_URL}${storefrontPath(pathname)}`;
 
 const CONSENT_LABEL = "I have read and agree to the following.";
+
 const AGREEMENT_DESCRIPTION =
   "The pages below have been updated. Read them and agree to them to keep using your account.";
 
@@ -83,6 +84,7 @@ test.describe("web-storefront agreement to revised terms", () => {
     await expect(page).toHaveURL(storefrontUrl("/my"));
 
     const adminContext = await browser.newContext();
+
     try {
       const admin = await adminContext.newPage();
       await signInAsAdmin(

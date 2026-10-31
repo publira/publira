@@ -88,9 +88,11 @@ describe("ChangeBirthDateButton", () => {
     const field = await screen.findByLabelText<HTMLInputElement>("Birth date");
     fireEvent.change(field, { target: { value: "2010-05-05" } });
     const { form } = field;
+
     if (!form) {
       throw new Error("the date field belongs to no form");
     }
+
     fireEvent.submit(form);
 
     await waitFor(() => {

@@ -24,6 +24,7 @@ const grpcBaseUrl = process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8000/rpc";
 
 const readForwardedHeaders = async () => {
   const requestHeaders = await headers();
+
   return forwardedHeadersOf(requestHeaders);
 };
 
@@ -40,6 +41,7 @@ export const apiClient = createPlatformApiClient({
  */
 export const buildClientAddressHeaders = async () => {
   const forwarded = await readForwardedHeaders();
+
   return { headers: forwarded };
 };
 
@@ -55,6 +57,7 @@ type CallOptions = NonNullable<Parameters<(typeof apiClient.auth)["getMe"]>[1]>;
  */
 export const buildInitialSetupHeaders = async () => {
   const forwarded = await readForwardedHeaders();
+
   return {
     headers: {
       ...forwarded,
@@ -107,22 +110,28 @@ const getAccessTokenFromCookie = async (): Promise<string> => {
   cacheTag(PLATFORM_SESSION_CACHE_TAG);
 
   const cookieStore = await cookies();
+
   const raw =
     cookieStore.get(PLATFORM_SESSION_COOKIE_NAME)?.value?.trim() ?? "";
+
   if (!raw) {
     return "";
   }
 
   const payload = await decryptSessionPayload(raw, resolveAuthSecret());
+
   if (payload) {
     if (isSessionExpired(payload.expiresAt)) {
       return "";
     }
+
     return payload.accessToken.trim();
   }
+
   if (looksLikeJwt(raw)) {
     return raw;
   }
+
   return "";
 };
 
@@ -139,6 +148,7 @@ export const resolveAccessToken = async (accessToken = ""): Promise<string> => {
   await io();
 
   const token = accessToken.trim();
+
   if (token) {
     return token;
   }

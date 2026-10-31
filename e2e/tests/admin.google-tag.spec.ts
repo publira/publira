@@ -71,10 +71,13 @@ const openGoogleTagSettings = async (page: Page): Promise<void> => {
 
 const measurementId = (page: Page) =>
   page.getByRole("textbox", { name: "GA4 measurement ID" });
+
 const containerId = (page: Page) =>
   page.getByRole("textbox", { name: "Tag Manager container ID" });
+
 const serverContainerUrl = (page: Page) =>
   page.getByRole("textbox", { name: /^Server container URL/u });
+
 /** A serving mode or a reader consent choice, by its label. */
 const choice = (page: Page, name: string) =>
   page.getByRole("radio", { exact: true, name });
@@ -83,6 +86,7 @@ const choice = (page: Page, name: string) =>
 const shownGatewayPath = async (page: Page): Promise<string> => {
   const path = page.getByText(GATEWAY_PATH_RE);
   await expect(path).toBeVisible();
+
   return (await path.textContent()) ?? "";
 };
 

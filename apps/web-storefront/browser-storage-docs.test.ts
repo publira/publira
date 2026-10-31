@@ -14,6 +14,7 @@ const PAGES_DOC = path.join(
   APP_DIR,
   "../../docs/en/4-console/3-setup/3-pages.md"
 );
+
 const SECTION_HEADING = "### What the site stores in a reader's browser";
 
 /**
@@ -37,9 +38,11 @@ const SKIPPED_DIRECTORIES = new Set([".next", "node_modules"]);
 const sourceFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(dir, entry.name);
+
     if (entry.isDirectory()) {
       return SKIPPED_DIRECTORIES.has(entry.name) ? [] : sourceFiles(entryPath);
     }
+
     return /\.tsx?$/u.test(entry.name) && !/\.test\.tsx?$/u.test(entry.name)
       ? [entryPath]
       : [];
@@ -47,6 +50,7 @@ const sourceFiles = (dir: string): string[] =>
 
 const collect = (pattern: RegExp): string[] => {
   const names = new Set<string>();
+
   for (const file of sourceFiles(APP_DIR)) {
     for (const match of readFileSync(file, "utf-8").matchAll(pattern)) {
       if (match.groups?.name) {
@@ -54,6 +58,7 @@ const collect = (pattern: RegExp): string[] => {
       }
     }
   }
+
   return [...names].toSorted();
 };
 
@@ -62,6 +67,7 @@ const documentedSection = (): string => {
   const start = page.indexOf(SECTION_HEADING);
   expect(start).toBeGreaterThanOrEqual(0);
   const end = page.indexOf("\n#", start + SECTION_HEADING.length);
+
   return end === -1 ? page.slice(start) : page.slice(start, end);
 };
 
@@ -71,12 +77,15 @@ describe("the browser storage a tenant's privacy policy is written from", () => 
       ...collect(COOKIE_NAME_PATTERN),
       ...SHARED_COOKIE_NAMES,
     ];
+
     expect(cookieNames).toContain("publira_web_storefront_auth");
 
     const section = documentedSection();
+
     const missing = cookieNames.filter(
       (name) => !section.includes(`\`${name}\``)
     );
+
     expect(missing).toEqual([]);
   });
 

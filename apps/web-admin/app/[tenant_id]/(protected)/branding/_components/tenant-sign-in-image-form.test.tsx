@@ -17,12 +17,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TenantSignInImageActionState } from "../branding-types";
 import { TenantSignInImageForm } from "./tenant-sign-in-image-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
-    calls: [] as FormData[],
-    current: Promise.withResolvers<TenantSignInImageActionState>(),
-  },
-}));
+const { save } = vi.hoisted(() => {
+  const calls: FormData[] = [];
+
+  return {
+    save: {
+      calls,
+      current: Promise.withResolvers<TenantSignInImageActionState>(),
+    },
+  };
+});
 
 vi.mock("../_lib/actions", () => ({
   updateTenantSignInImageAction: (
@@ -30,6 +34,7 @@ vi.mock("../_lib/actions", () => ({
     data: FormData
   ) => {
     save.calls.push(data);
+
     return save.current.promise;
   },
 }));
@@ -99,6 +104,7 @@ describe("TenantSignInImageForm", () => {
     const preview = screen.getByAltText<HTMLImageElement>(
       "Current sign-in image"
     );
+
     // 1920x1280 drawn 160px tall keeps its 3:2.
     expect(preview.getAttribute("width")).toBe("240");
     expect(preview.getAttribute("height")).toBe("160");

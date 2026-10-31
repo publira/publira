@@ -21,6 +21,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { text } from "node:stream/consumers";
 
+import { isJsonObject, isJsonString } from "./json-value.ts";
+import type { JsonValue } from "./json-value.ts";
+
 const WORKTREES = "/.claude/worktrees/";
 
 /** What a path is quoted in. */
@@ -39,16 +42,19 @@ const TRAILING_PUNCTUATION = ".,;:!?)]";
  * holding a space is tried whole.
  */
 const worktreePaths = (value: string): string[] =>
-  [value, ...value.split(QUOTE), ...value.split(SEPARATOR)]
-    .filter((word) => word.includes(WORKTREES))
-    .map((word) => {
-      let end = word.length;
-      while (end > 0 && TRAILING_PUNCTUATION.includes(word.charAt(end - 1))) {
-        end -= 1;
-      }
+  [value, ...value.split(QUOTE), ...value.split(SEPARATOR)].flatMap((word) => {
+    if (!word.includes(WORKTREES)) {
+      return [];
+    }
 
-      return word.slice(word.indexOf("/"), end);
-    });
+    let end = word.length;
+
+    while (end > 0 && TRAILING_PUNCTUATION.includes(word.charAt(end - 1))) {
+      end -= 1;
+    }
+
+    return [word.slice(word.indexOf("/"), end)];
+  });
 
 /**
  * The checkout under `.claude/worktrees/` that `target` lies in. A worktree's
@@ -58,11 +64,13 @@ const worktreePaths = (value: string): string[] =>
 export const worktreeRoot = (target: string): string | undefined => {
   const resolved = path.resolve(target);
   const marker = resolved.lastIndexOf(WORKTREES);
+
   if (marker === -1) {
     return undefined;
   }
 
   const container = resolved.slice(0, marker + WORKTREES.length);
+
   for (
     let directory = resolved;
     directory.startsWith(container);
@@ -76,11 +84,16 @@ export const worktreeRoot = (target: string): string | undefined => {
   return undefined;
 };
 
-const strings = (value: unknown): string[] => {
-  if (typeof value === "string") {
+const strings = (value: JsonValue): string[] => {
+  if (isJsonString(value)) {
     return [value];
   }
-  if (typeof value === "object" && value !== null) {
+
+  if (Array.isArray(value)) {
+    return value.flatMap(strings);
+  }
+
+  if (isJsonObject(value)) {
     return Object.values(value).flatMap(strings);
   }
 
@@ -91,18 +104,17 @@ const strings = (value: unknown): string[] => {
  * The worktree a hook input points at: its `cwd`, then any path to a worktree
  * another field of the input mentions.
  */
-export const findWorktree = (input: unknown): string | undefined => {
-  const cwd =
-    typeof input === "object" && input !== null && "cwd" in input
-      ? input.cwd
-      : undefined;
+export const findWorktree = (input: JsonValue): string | undefined => {
+  const cwd = isJsonObject(input) ? input.cwd : undefined;
+
   const candidates = [
-    ...(typeof cwd === "string" ? [cwd] : []),
+    ...(isJsonString(cwd) ? [cwd] : []),
     ...strings(input).flatMap(worktreePaths),
   ];
 
   for (const candidate of candidates) {
     const root = worktreeRoot(candidate);
+
     if (root !== undefined) {
       return root;
     }
@@ -113,11 +125,13 @@ export const findWorktree = (input: unknown): string | undefined => {
 
 const main = async (): Promise<void> => {
   const root = findWorktree(JSON.parse(await text(process.stdin)));
+
   if (root === undefined || existsSync(path.join(root, "node_modules"))) {
     return;
   }
 
   console.error(`Running task deps in ${root}`);
+
   // `task` is wherever the contributor installed it (Dev Container image,
   // Homebrew, `go install`), and running theirs is the point of the hook.
   // oxlint-disable-next-line sonarjs/no-os-command-from-path
@@ -125,12 +139,14 @@ const main = async (): Promise<void> => {
     cwd: root,
     stdio: ["ignore", 2, 2],
   });
+
   if (result.error !== undefined || result.status !== 0) {
     const reason =
       result.error?.message ??
       (result.signal === null
         ? `exit status ${result.status}`
         : `killed by ${result.signal}`);
+
     console.error(
       `task deps failed in ${root} (${reason}); run it there by hand before committing.`
     );

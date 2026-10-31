@@ -25,6 +25,7 @@ const toSiteVerificationCodes = (
 ): SiteVerificationCodes | null => {
   const google = codes?.googleSiteVerification?.trim() ?? "";
   const bing = codes?.bingSiteVerification?.trim() ?? "";
+
   return google || bing ? { bing, google } : null;
 };
 
@@ -46,6 +47,7 @@ export const getTenantSiteVerification = async (
   cacheLife({ stale: 30 });
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return null;
   }
@@ -56,12 +58,14 @@ export const getTenantSiteVerification = async (
     const response = await apiClient.tenant.getTenantAnalyticsSettings({
       tenant: { tenantId: normalizedTenantId },
     });
+
     return toSiteVerificationCodes(response.siteVerification);
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {
       console.warn("[web-storefront] getTenantSiteVerification failed", error);
       dropFailedCacheEntry();
     }
+
     return null;
   }
 };
@@ -77,8 +81,16 @@ export const siteVerificationMetadata = (
   if (!codes) {
     return undefined;
   }
-  return {
-    ...(codes.google ? { google: codes.google } : {}),
-    ...(codes.bing ? { other: { "msvalidate.01": codes.bing } } : {}),
-  };
+
+  const verification: NonNullable<Metadata["verification"]> = {};
+
+  if (codes.google) {
+    verification.google = codes.google;
+  }
+
+  if (codes.bing) {
+    verification.other = { "msvalidate.01": codes.bing };
+  }
+
+  return verification;
 };

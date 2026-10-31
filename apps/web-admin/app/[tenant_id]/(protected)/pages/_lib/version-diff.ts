@@ -27,6 +27,7 @@ export const getDefaultComparisonVersionId = (
     const publishedIndex = versions.findIndex(
       (version) => version.id === publishedVersionId
     );
+
     if (publishedIndex !== -1) {
       return versions[publishedIndex === 0 ? 1 : publishedIndex].id;
     }
@@ -41,6 +42,7 @@ export const buildVersionDiff = (
 ): VersionDiffResult => {
   const nextLines = toLines(nextValue);
   const previousLines = toLines(previousValue);
+
   const matrix = Array.from({ length: previousLines.length + 1 }, () =>
     Array.from<number>({ length: nextLines.length + 1 }).fill(0)
   );

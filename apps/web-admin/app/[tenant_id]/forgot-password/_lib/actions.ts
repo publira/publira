@@ -17,6 +17,7 @@ const forgotPasswordFormSchema = async (locale: Locale) =>
     email: await emailFormSchema(locale),
     tenantId: await tenantIdFormSchema(locale),
   });
+
 const buildForgotPasswordPath = ({
   email,
   error,
@@ -31,14 +32,17 @@ const buildForgotPasswordPath = ({
   if (email) {
     params.set("email", email);
   }
+
   if (error) {
     params.set("error", error);
   }
+
   if (requested) {
     params.set("requested", "done");
   }
 
   const query = params.toString();
+
   return query ? `/forgot-password?${query}` : "/forgot-password";
 };
 
@@ -48,12 +52,15 @@ export const requestPasswordResetAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const input = toFormDataInput(formData, {
     email: "value",
     tenantId: { kind: "value", name: "tenant_id" },
   });
+
   const schema = await forgotPasswordFormSchema(locale);
   const parsed = schema.safeParse(input);
+
   if (!parsed.success) {
     const tenantIdResultSchema = await tenantIdFormSchema(locale);
     const tenantIdResult = tenantIdResultSchema.safeParse(input.tenantId);
@@ -71,6 +78,7 @@ export const requestPasswordResetAction = async (
 
   const { email, tenantId } = parsed.data;
   const result = await requestAdminPasswordReset(tenantId, email, locale);
+
   if (!result.ok) {
     redirect(
       buildForgotPasswordPath({

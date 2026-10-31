@@ -40,10 +40,12 @@ export const resolveOpenGraphImage = (
   alt: string
 ): OpenGraphImage | undefined => {
   let largest: EyeCatchImageVariant | null = null;
+
   for (const variant of variants ?? []) {
     if (variant.variantType !== OPEN_GRAPH_VARIANT_TYPE) {
       continue;
     }
+
     if (!largest || variant.width > largest.width) {
       largest = variant;
     }

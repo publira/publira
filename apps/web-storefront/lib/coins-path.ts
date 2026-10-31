@@ -34,5 +34,6 @@ export const episodeCoinsPath = (
   outcome?: EpisodeCoinsOutcome
 ): string => {
   const path = `/series/${seriesPublicId}/episodes/${episodePublicId}`;
+
   return outcome ? `${path}?coins=${outcome}` : path;
 };

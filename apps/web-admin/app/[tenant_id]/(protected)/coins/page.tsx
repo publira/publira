@@ -34,10 +34,12 @@ import { CoinStatusSummary } from "./_components/coin-status";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -85,6 +87,7 @@ const CoinsLoadError = ({ message }: { message: string }) => (
 const CoinsContent = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [settingsResult, packsResult, tenantLocales, t] = await Promise.all([
     getCoinSettings(tenantId, locale),
     listCoinPacks(tenantId, locale),
@@ -120,6 +123,7 @@ const CoinsContent = async () => {
   }
 
   const { currency, settings } = settingsResult;
+
   if (!currency) {
     return (
       <CoinsLoadError
@@ -127,6 +131,7 @@ const CoinsContent = async () => {
       />
     );
   }
+
   if (!tenantLocales) {
     return (
       <CoinsLoadError message={t("admin.coins.settings.locales_unavailable")} />
@@ -135,6 +140,7 @@ const CoinsContent = async () => {
 
   const savedCoinName =
     coinNameFor(settings.names, locale, tenantLocales.defaultLocale) ?? "";
+
   const coinName = savedCoinName || t("admin.coins.fallback_name");
 
   return (

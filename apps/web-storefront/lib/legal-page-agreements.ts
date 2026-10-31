@@ -43,6 +43,7 @@ export const getOwedLegalPages = async (
   accessToken?: string
 ): Promise<TenantLegalPage[]> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return [];
   }
@@ -51,6 +52,7 @@ export const getOwedLegalPages = async (
     { locale, tenant: { tenantId } },
     buildSessionHeaders(sid)
   );
+
   return toOwedPages(response);
 };
 
@@ -67,12 +69,14 @@ export const readLegalPageAgreementExemptPaths = async (
 ): Promise<string[] | null> => {
   try {
     const pages = await getOwedLegalPages(tenantId, locale, accessToken);
+
     return legalPageAgreementExemptPaths(pages.map((page) => page.href));
   } catch (error) {
     // A session the API turned away is the pages' to send to sign-in.
     if (!isUnauthenticatedRpcError(error)) {
       console.warn("[web-storefront] getMyLegalPageAgreements failed", error);
     }
+
     return null;
   }
 };
@@ -100,11 +104,13 @@ export const agreeToLegalPages = async (
       { agreedPageVersionIds, locale, tenant: { tenantId } },
       buildSessionHeaders(accessToken)
     );
+
     return toOwedPages(response).length === 0 ? "agreed" : "changed";
   } catch (error) {
     if (rpcErrorDisposition(error) === "invalid-argument") {
       return "changed";
     }
+
     throw error;
   }
 };

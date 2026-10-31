@@ -48,10 +48,11 @@ const ARROW_DIRECTIONS = {
   ArrowUp: { x: 0, y: -1 },
 } as const;
 
+const isArrowKey = (key: string): key is keyof typeof ARROW_DIRECTIONS =>
+  key in ARROW_DIRECTIONS;
+
 const arrowDirection = (key: string): { x: number; y: number } | undefined =>
-  key in ARROW_DIRECTIONS
-    ? ARROW_DIRECTIONS[key as keyof typeof ARROW_DIRECTIONS]
-    : undefined;
+  isArrowKey(key) ? ARROW_DIRECTIONS[key] : undefined;
 
 const percent = (value: number, total: number): string =>
   `${(value / total) * 100}%`;
@@ -74,23 +75,29 @@ export const ImageCropFrame = ({
   source,
 }: ImageCropFrameProps) => {
   const t = useClientMessages();
+
   const cornerLabel = (corner: CropCorner): string => {
     switch (corner) {
       case "ne": {
         return t("admin.image_crop.resize_top_right");
       }
+
       case "nw": {
         return t("admin.image_crop.resize_top_left");
       }
+
       case "se": {
         return t("admin.image_crop.resize_bottom_right");
       }
+
       default: {
         return t("admin.image_crop.resize_bottom_left");
       }
     }
   };
+
   const imageRef = useRef<HTMLImageElement>(null);
+
   /**
    * What the pointer is dragging, and where it grabbed the frame. It is read
    * and written between two events of one gesture and never rendered, so it is
@@ -111,9 +118,11 @@ export const ImageCropFrame = ({
     event: PointerEvent<HTMLElement>
   ): { x: number; y: number } | null => {
     const box = imageRef.current?.getBoundingClientRect();
+
     if (!(frame && box) || box.width === 0 || box.height === 0) {
       return null;
     }
+
     return {
       x: ((event.clientX - box.left) / box.width) * frame.bounds.source.width,
       y: ((event.clientY - box.top) / box.height) * frame.bounds.source.height,
@@ -125,9 +134,11 @@ export const ImageCropFrame = ({
     corner: CropCorner | null
   ) => {
     const pointer = pointerPosition(event);
+
     if (!(frame && pointer)) {
       return;
     }
+
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       corner,
@@ -139,9 +150,11 @@ export const ImageCropFrame = ({
   const continueDrag = (event: PointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     const pointer = pointerPosition(event);
+
     if (!(frame && drag && pointer)) {
       return;
     }
+
     onCropChange(
       drag.corner
         ? resizeCropRectToPointer(
@@ -165,9 +178,11 @@ export const ImageCropFrame = ({
 
   const handleFrameKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const direction = arrowDirection(event.key);
+
     if (!(frame && direction)) {
       return;
     }
+
     event.preventDefault();
     const step = keyboardStep(frame.bounds.source, event.shiftKey);
     onCropChange(
@@ -190,18 +205,22 @@ export const ImageCropFrame = ({
     corner: CropCorner
   ) => {
     const direction = arrowDirection(event.key);
+
     if (!(frame && direction)) {
       return;
     }
+
     event.preventDefault();
     const { largest, source: file } = frame.bounds;
     const step = keyboardStep(file, event.shiftKey);
     const outwardX = corner === "ne" || corner === "se" ? 1 : -1;
     const outwardY = corner === "se" || corner === "sw" ? 1 : -1;
+
     const widthDelta =
       direction.x === 0
         ? (direction.y * outwardY * step * largest.width) / largest.height
         : direction.x * outwardX * step;
+
     onCropChange(
       resizeCropRectBy(frame.crop, frame.bounds, corner, widthDelta)
     );

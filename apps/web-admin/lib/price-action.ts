@@ -1,6 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
+import { isFormText } from "./form-schemas";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageKey } from "./messages";
 import { priceFormSchema } from "./price";
@@ -11,7 +12,7 @@ import { getTenantCurrency } from "./public-api";
  * form schema can take the field before the Action has resolved the tenant.
  */
 export const rawPriceFormSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value : ""),
+  (value) => (isFormText(value) ? value : ""),
   z.string()
 );
 
@@ -48,19 +49,23 @@ export const parseTenantPrice = async (
     getMessagesFor(locale),
     getTenantCurrency(tenantId),
   ]);
+
   if (!currency) {
     return {
       message: t("admin.series.episodes.currency_unavailable"),
       ok: false,
     };
   }
+
   if (formCurrency !== currency) {
     return {
       message: t("admin.series.episodes.currency_changed"),
       ok: false,
     };
   }
+
   const parsed = priceFormSchema(currency, t(invalidMessage)).safeParse(raw);
+
   return parsed.success
     ? { currency, ok: true, value: parsed.data }
     : { message: t(invalidMessage), ok: false };
@@ -79,6 +84,7 @@ export const parseCampaignPrice = async (
 ): Promise<TenantPriceResult> => {
   const invalidMessage =
     "admin.series.episodes.campaign_prices.validation.price_invalid";
+
   const parsed = await parseTenantPrice(
     input.price,
     input.priceCurrency,
@@ -86,12 +92,15 @@ export const parseCampaignPrice = async (
     locale,
     invalidMessage
   );
+
   if (parsed.ok && parsed.value <= 0) {
     const t = await getMessagesFor(locale);
+
     return {
       message: t(invalidMessage),
       ok: false,
     };
   }
+
   return parsed;
 };

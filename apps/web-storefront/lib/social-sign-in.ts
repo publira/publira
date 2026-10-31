@@ -82,6 +82,7 @@ export const buildAuthorizationUrl = ({
     scope: provider === "apple" ? "name email" : "openid email profile",
     state,
   }).toString();
+
   return url.toString();
 };
 
@@ -151,6 +152,7 @@ export const writeSignInRequest = async (
 export const readSignInRequest = async (): Promise<SignInRequest | null> => {
   const cookieStore = await cookies();
   const raw = cookieStore.get(SIGN_IN_REQUEST_COOKIE_NAME)?.value?.trim();
+
   if (!raw) {
     return null;
   }
@@ -158,6 +160,7 @@ export const readSignInRequest = async (): Promise<SignInRequest | null> => {
   const parsed = signInRequestSchema.safeParse(
     await decryptPayload(raw, resolveAuthSecret())
   );
+
   return parsed.success ? parsed.data : null;
 };
 
@@ -174,6 +177,7 @@ export const clearSignInRequest = async (): Promise<void> => {
 export const isExpectedState = (expected: string, echoed: string): boolean => {
   const left = Buffer.from(expected);
   const right = Buffer.from(echoed);
+
   return left.length === right.length && timingSafeEqual(left, right);
 };
 
@@ -235,6 +239,7 @@ export const writePendingSignUp = async (
 export const readPendingSignUp = async (): Promise<PendingSignUp | null> => {
   const cookieStore = await cookies();
   const raw = cookieStore.get(PENDING_SIGN_UP_COOKIE_NAME)?.value?.trim();
+
   if (!raw) {
     return null;
   }
@@ -242,6 +247,7 @@ export const readPendingSignUp = async (): Promise<PendingSignUp | null> => {
   const parsed = pendingSignUpSchema.safeParse(
     await decryptPayload(raw, resolveAuthSecret())
   );
+
   return parsed.success ? parsed.data : null;
 };
 

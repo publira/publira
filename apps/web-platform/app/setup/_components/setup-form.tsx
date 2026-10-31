@@ -27,15 +27,19 @@ export const SetupForm = async () => {
     getInitialLocaleCandidate(),
     getPlatformCurrencyForSetup(),
   ]);
+
   const t = await getMessagesFor(initialDefaultLocale);
+
   // The currency starts on the one `publiractl setup` saved, so confirming
   // the form keeps it; on a platform with no settings, the operator chooses
   // one. A locked currency, or one that could not be read, is not offered for
   // change at all: the field posts nothing, which keeps what is stored.
   const savedCurrency =
     storedCurrency.state === "saved" ? storedCurrency : undefined;
+
   const currencyLocked = savedCurrency?.defaultCurrencyLocked ?? false;
   const currencyUnread = storedCurrency.state === "failed";
+
   const localeItems = getLocales().map((value) => ({
     label: getLocaleLabel(value),
     value,

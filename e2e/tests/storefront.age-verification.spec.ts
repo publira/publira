@@ -113,6 +113,7 @@ test.describe("web-storefront age verification", () => {
     const ratings = page.getByRole("navigation", {
       name: "Ranking age rating",
     });
+
     await expect(ratings.getByRole("link", { name: "R15" })).toBeVisible();
     await expect(ratings.getByRole("link", { name: "R18" })).toHaveCount(0);
 

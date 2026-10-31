@@ -28,6 +28,7 @@ const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
 const AuthFooterContent = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const { copyrightText } = await getTenantSiteCopy(tenantId, locale);
+
   return <AuthFooter copyrightText={copyrightText} />;
 };
 

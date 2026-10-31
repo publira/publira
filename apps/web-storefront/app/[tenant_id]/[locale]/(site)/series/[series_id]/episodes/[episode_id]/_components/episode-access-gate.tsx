@@ -170,26 +170,31 @@ const ClosedBecause = ({
       <Message message="storefront.episode.gate.signed_in_app_only_description" />
     );
   }
+
   if (signedIn && payable) {
     return (
       <Message message="storefront.episode.gate.signed_in_payable_description" />
     );
   }
+
   if (signedIn) {
     return (
       <Message message="storefront.episode.gate.signed_in_unpayable_description" />
     );
   }
+
   if (soldInApp) {
     return (
       <Message message="storefront.episode.gate.guest_app_only_description" />
     );
   }
+
   if (payable) {
     return (
       <Message message="storefront.episode.gate.guest_payable_description" />
     );
   }
+
   return (
     <Message message="storefront.episode.gate.guest_unpayable_description" />
   );
@@ -443,6 +448,7 @@ const CoinSection = ({
   if (!offer) {
     return null;
   }
+
   if (offer.kind === "failed") {
     return (
       <output className="block text-sm text-muted-foreground">
@@ -458,6 +464,7 @@ const CoinSection = ({
     seriesPublicId,
     tenantId,
   };
+
   const { coinName } = offer;
   const payVariant = shuTaken ? "outline" : "secondary";
   const rented = offer.rentalPrice > 0 && rentalPeriodHours > 0;
@@ -628,6 +635,7 @@ const WaitFreeSection = ({
         />
       );
     }
+
     case "recharging": {
       return (
         <WaitFreeCountdown
@@ -646,6 +654,7 @@ const WaitFreeSection = ({
         </WaitFreeCountdown>
       );
     }
+
     case "excluded": {
       return (
         <p className="text-sm text-muted-foreground">
@@ -655,6 +664,7 @@ const WaitFreeSection = ({
         </p>
       );
     }
+
     case "guest": {
       return (
         <p className="text-sm">
@@ -664,6 +674,7 @@ const WaitFreeSection = ({
         </p>
       );
     }
+
     default: {
       return (
         <output className="block text-sm text-muted-foreground">
@@ -781,8 +792,10 @@ export const EpisodeAccessGate = ({
     purchaseSurface,
     toTenantSaleChannels({ acceptsPayments, appPayments })
   );
+
   const soldInApp = destination === "app";
   const payable = destination === "web";
+
   const { sellingAppStoreUrl, sellingGooglePlayUrl } = sellingStoreUrls(
     appPayments,
     { appStoreUrl, googlePlayUrl }
@@ -792,6 +805,7 @@ export const EpisodeAccessGate = ({
   const shuTaken = ticketReady || coinsCarryShu(coinOffer);
 
   let accessAction: ReactNode = null;
+
   if (signedIn && payable) {
     accessAction = (
       <CheckoutActions
