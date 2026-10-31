@@ -28,6 +28,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/readguard"
 	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/redisurl"
 	"github.com/publira/publira/server/internal/signin"
@@ -208,11 +209,16 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	policy := platformpolicy.NewResolver(dbmodels.New(pools.leastPrivileged()), platformpolicy.CacheTTL, logger)
 	login := loginguard.NewShared(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
+	// The read limit of a storefront's API and images, held once so the two
+	// share one client for Redis. A console's hosts are not limited by it, so
+	// a process that serves no storefront dials nothing for it.
+	var reads *readguard.Guard
 
 	var served servedAPIs
 	var drain []func(context.Context) error
 
 	if pools.public != nil {
+		reads = readguard.NewFromEnv(logger)
 		// The search engine is read from the platform's settings on the
 		// public pool, the one the search RPCs are answered on, so the public
 		// API holds no other login to search. The row's password is sealed
@@ -235,7 +241,7 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 		}, platformstorage.NewStorage)}
 		// The revalidate client is shared by the two namespaces whose writes
 		// leave a cache entry stale.
-		publicAPI, err := publicapi.New(pools.public, pools.publicReplica, dbmodels.New(pools.public), storageProvider, encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, cfg.payments, login, mail)
+		publicAPI, err := publicapi.New(pools.public, pools.publicReplica, dbmodels.New(pools.public), storageProvider, encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, cfg.payments, login, mail, reads)
 		if err != nil {
 			return assembledServer{}, failed("failed to initialize public api handler", err)
 		}
@@ -288,7 +294,7 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 		if pools.admin != nil {
 			console = newImageSite(pools.admin, nil, encryptor, logger)
 		}
-		imageHandler, err := imageserver.NewHandler(storefront, console, logger, tokens)
+		imageHandler, err := imageserver.NewHandler(storefront, console, logger, tokens, reads)
 		if err != nil {
 			return assembledServer{}, failed("failed to initialize image handler", err)
 		}

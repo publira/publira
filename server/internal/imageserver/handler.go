@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/readguard"
 	"github.com/publira/publira/server/internal/requestmeta"
 	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/tenantstatus"
@@ -173,6 +175,9 @@ type Handler struct {
 	cache        ImageCache
 	proxy        http.Handler
 	maxConverted int
+	// reads bounds how fast one client may fetch the images of a tenant's
+	// site and image hosts.
+	reads *readguard.Guard
 }
 
 type imageCredential struct {
@@ -188,9 +193,15 @@ type imageCredential struct {
 // The handler carries the image routes and nothing else: the health probes
 // belong to the listener it is mounted on, which names a check per pool that
 // listener serves, and the image routes may be one of several things on it.
-func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenManager) (*Server, error) {
+//
+// reads is the read limit a storefront's images are charged to; a nil one
+// counts in this process alone.
+func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenManager, reads *readguard.Guard) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
+	}
+	if reads == nil {
+		reads = readguard.NewDefault()
 	}
 	h := &Handler{
 		public:       public,
@@ -199,6 +210,7 @@ func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenMan
 		tokens:       tokens,
 		cache:        newImageCacheFromEnv(logger),
 		maxConverted: defaultMaxConvertedBytes,
+		reads:        reads,
 	}
 	origin, proxy, err := startOriginAndProxy(h)
 	if err != nil {
@@ -1199,7 +1211,34 @@ func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmode
 		http.Error(w, "tenant is suspended", http.StatusForbidden)
 		return dbmodels.Tenant{}, false, false
 	}
+	if kind != consoleHost && !h.allowRead(w, r) {
+		return dbmodels.Tenant{}, false, false
+	}
 	return tenant, kind == consoleHost, true
+}
+
+// allowRead charges an image of a tenant's site or image host to the client's
+// read allowance, and answers too many requests once the client has spent it.
+// The charge follows the host lookup, since a console's hosts are not limited
+// by it, and precedes everything the route goes on to read: a refusal costs
+// the lookup and no object, conversion, or grant.
+func (h *Handler) allowRead(w http.ResponseWriter, r *http.Request) bool {
+	ctx := r.Context()
+	decision, err := h.reads.Allow(ctx, readguard.Images)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to apply the read rate limit", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return false
+	}
+	if decision.Allowed {
+		return true
+	}
+	if seconds := int(math.Ceil(decision.RetryAfter.Seconds())); seconds > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(seconds))
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	http.Error(w, "too many requests", http.StatusTooManyRequests)
+	return false
 }
 
 // allowStorefrontOrigin lets the tenant's storefront read a response from its

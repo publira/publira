@@ -185,6 +185,11 @@ jobs:
               - '.github/actions/apt-install/**'
               - '.github/actions/go-setup/**'
               - '.github/actions/main-cache-save/**'
+            # The routing contract whose allowances the server's read limits
+            # are tested against, which test_go leaves out with the rest of
+            # the Markdown.
+            test_go_docs:
+              - 'infra/proxy/README.md'
             test_ts:
               - *docs_excluded
               - 'apps/**'
@@ -518,6 +523,7 @@ jobs:
           FILTER_CHECK_DOCS: ${{ steps.filter.outputs.check_docs }}
           FILTER_LINT_GO: ${{ steps.filter.outputs.lint_go }}
           FILTER_TEST_GO: ${{ steps.filter.outputs.test_go }}
+          FILTER_TEST_GO_DOCS: ${{ steps.filter.outputs.test_go_docs }}
           FILTER_TEST_TS: ${{ steps.filter.outputs.test_ts }}
           FILTER_TEST_BASH: ${{ steps.filter.outputs.test_bash }}
           FILTER_TEST_DB_MIGRATIONS: ${{ steps.filter.outputs.test_db_migrations }}

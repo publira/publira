@@ -1,6 +1,7 @@
 package clientip
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -186,6 +187,51 @@ func TestMiddlewareStoresTheClientAddress(t *testing.T) {
 
 	if got != "203.0.113.10" {
 		t.Fatalf("FromContext() = %q, want the resolved client address", got)
+	}
+}
+
+func TestMiddlewareStoresWhetherTheRequestCameFromInsideTheInstall(t *testing.T) {
+	tests := []struct {
+		name         string
+		remoteAddr   string
+		forwardedFor string
+		forwarded    string
+		wantInternal bool
+	}{
+		{name: "a trusted peer forwarding nobody", remoteAddr: "10.0.0.2:41000", wantInternal: true},
+		{name: "a chain of trusted hops", remoteAddr: "10.0.0.2:41000", forwardedFor: "10.0.0.9, 192.168.1.4", wantInternal: true},
+		{name: "a trusted peer forwarding a reader", remoteAddr: "10.0.0.2:41000", forwardedFor: "203.0.113.10"},
+		{name: "a reader behind a trusted hop in Forwarded", remoteAddr: "10.0.0.2:41000", forwarded: "for=203.0.113.10"},
+		{name: "a peer outside the trusted ranges", remoteAddr: "203.0.113.10:41000"},
+		{name: "an untrusted peer naming a trusted address", remoteAddr: "203.0.113.10:41000", forwardedFor: "10.0.0.9"},
+		{name: "a peer that is not an address", remoteAddr: "pipe"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := !tt.wantInternal
+			handler := New(Config{TrustedProxies: DefaultTrustedProxies}).Middleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				got = InternalFromContext(r.Context())
+			}))
+			req := httptest.NewRequest(http.MethodPost, "/api/x", nil)
+			req.RemoteAddr = tt.remoteAddr
+			if tt.forwardedFor != "" {
+				req.Header.Set("X-Forwarded-For", tt.forwardedFor)
+			}
+			if tt.forwarded != "" {
+				req.Header.Set("Forwarded", tt.forwarded)
+			}
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+
+			if got != tt.wantInternal {
+				t.Fatalf("InternalFromContext() = %t, want %t", got, tt.wantInternal)
+			}
+		})
+	}
+}
+
+func TestInternalFromContextIsFalseOutsideTheMiddleware(t *testing.T) {
+	if InternalFromContext(context.Background()) {
+		t.Fatal("InternalFromContext() = true for a context the middleware never saw")
 	}
 }
 
