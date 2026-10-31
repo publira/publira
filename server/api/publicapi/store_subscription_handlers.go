@@ -41,8 +41,7 @@ func (s *apiServer) StartStoreSubscription(
 		return nil, err
 	}
 
-	queries := s.queriesFor(ctx)
-	plan, err := queries.GetPublishedSubscriptionPlanByIDForTenant(ctx, dbmodels.GetPublishedSubscriptionPlanByIDForTenantParams{
+	plan, err := s.queriesFor(ctx).GetPublishedSubscriptionPlanByIDForTenant(ctx, dbmodels.GetPublishedSubscriptionPlanByIDForTenantParams{
 		TenantID: tenant.ID,
 		ID:       planID,
 	})
@@ -59,6 +58,19 @@ func (s *apiServer) StartStoreSubscription(
 	if !productID.Valid {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "the plan is not sold in this store")
 	}
+
+	// A store start takes the lock a checkout on the site takes, and settles
+	// the checkout the reader started there last, so a reader cannot pay for
+	// that one and for the store's too.
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin the store subscription start transaction", err, "tenant_id", tenant.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	queries := dbmodels.New(tx)
+	if err := queries.LockSubscriptionCheckoutsOfUser(ctx, dbmodels.LockSubscriptionCheckoutsOfUserParams{TenantID: tenant.ID, UserID: user.ID}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock the reader's subscription checkouts", err, "tenant_id", tenant.ID.String())
+	}
 	reader := uuid.NullUUID{UUID: user.ID, Valid: true}
 	holds, err := queries.UserHoldsLiveSubscription(ctx, dbmodels.UserHoldsLiveSubscriptionParams{TenantID: tenant.ID, UserID: reader})
 	if err != nil {
@@ -66,6 +78,15 @@ func (s *apiServer) StartStoreSubscription(
 	}
 	if holds {
 		return nil, readerHoldsSubscriptionError()
+	}
+	previous, err := queries.GetSubscriptionCheckoutForUser(ctx, dbmodels.GetSubscriptionCheckoutForUserParams{TenantID: tenant.ID, UserID: user.ID})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to read the reader's latest subscription checkout", err, "tenant_id", tenant.ID.String())
+	}
+	if err == nil {
+		if err := s.settleSubscriptionCheckoutBeforeStore(ctx, queries, tenant.ID, previous); err != nil {
+			return nil, err
+		}
 	}
 	intent, err := queries.OpenStoreSubscriptionIntent(ctx, dbmodels.OpenStoreSubscriptionIntentParams{
 		ID:        uuid.Must(uuid.NewV7()),
@@ -77,10 +98,35 @@ func (s *apiServer) StartStoreSubscription(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to open a store subscription intent", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", plan.ID.String())
 	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit the store subscription intent", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", plan.ID.String())
+	}
 	return noStorePrivateResponse(ctx, &publirav1.StartStoreSubscriptionResponse{
 		IntentId:  intent.ID.String(),
 		ProductId: intent.ProductID,
 	}), nil
+}
+
+// settleSubscriptionCheckoutBeforeStore settles the reader's latest checkout on
+// the site before a store sells them a subscription: one still open is
+// expired rather than reused, and one paid for refuses the start as a second
+// checkout would be refused. A tenant whose payment provider can no longer be
+// reached has no checkout left that could be paid through it.
+func (s *apiServer) settleSubscriptionCheckoutBeforeStore(
+	ctx context.Context,
+	queries *dbmodels.Queries,
+	tenantID uuid.UUID,
+	previous dbmodels.GetSubscriptionCheckoutForUserRow,
+) error {
+	subscriptions, credentials, err := s.loadSubscriptionProvider(ctx, tenantID)
+	if connect.CodeOf(err) == connect.CodeFailedPrecondition {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.settlePreviousSubscriptionCheckout(ctx, queries, subscriptions, credentials, tenantID, uuid.NullUUID{}, previous)
+	return err
 }
 
 // storeSubscription is a subscription the store has vouched for, as it

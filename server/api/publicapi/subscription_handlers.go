@@ -193,7 +193,7 @@ func (s *apiServer) StartSubscriptionCheckout(
 		return nil, s.internalDBError(ctx, "failed to read the reader's latest subscription checkout", err, "tenant_id", tenant.ID.String())
 	}
 	if err == nil {
-		reused, err := s.settlePreviousSubscriptionCheckout(ctx, queries, subscriptions, credentials, tenant.ID, plan.ID, previous)
+		reused, err := s.settlePreviousSubscriptionCheckout(ctx, queries, subscriptions, credentials, tenant.ID, uuid.NullUUID{UUID: plan.ID, Valid: true}, previous)
 		if err != nil {
 			return nil, err
 		}
@@ -243,9 +243,9 @@ func readerHoldsSubscriptionError() error {
 }
 
 // settlePreviousSubscriptionCheckout deals with the reader's latest checkout
-// before another is started, so at most one checkout of a reader can ever be
-// paid. One still open on the same plan is reused, and its URL answered; one
-// open on another plan is expired. One the reader has paid is a subscription
+// before another subscription is started, so at most one of them can ever be
+// paid. One still open on reuseFor is reused, and its URL answered; any other
+// open one is expired. One the reader has paid is a subscription
 // already_exists refuses a second of, unless that subscription is recorded and
 // has ended: one not recorded yet is on its way, and one recorded since the
 // reader's live subscriptions were checked may have been recorded live, since
@@ -257,7 +257,7 @@ func (s *apiServer) settlePreviousSubscriptionCheckout(
 	subscriptions paymentprovider.Subscriptions,
 	credentials paymentprovider.Credentials,
 	tenantID uuid.UUID,
-	planID uuid.UUID,
+	reuseFor uuid.NullUUID,
 	previous dbmodels.GetSubscriptionCheckoutForUserRow,
 ) (string, error) {
 	checkout, err := subscriptions.GetSubscriptionCheckout(ctx, credentials, previous.StripeCheckoutSessionID)
@@ -266,7 +266,7 @@ func (s *apiServer) settlePreviousSubscriptionCheckout(
 		return "", connect.NewError(connect.CodeUnavailable, "failed to start checkout")
 	}
 	if checkout.Status == paymentprovider.SubscriptionCheckoutOpen {
-		if previous.PlanID == planID && checkout.URL != "" {
+		if reuseFor.Valid && previous.PlanID == reuseFor.UUID && checkout.URL != "" {
 			return checkout.URL, nil
 		}
 		err := subscriptions.ExpireSubscriptionCheckout(ctx, credentials, checkout.ID)

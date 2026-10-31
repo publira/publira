@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,8 +13,14 @@ import (
 
 	"github.com/publira/publira/server/internal/appstore"
 	"github.com/publira/publira/server/internal/appstore/appstoretest"
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/googleplay/googleplaytest"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe"
+	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
+	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -491,6 +498,50 @@ func TestDBStartStoreSubscriptionSpendsTheReadersAllowance(t *testing.T) {
 	env.mustStartSubscription(t, env.token, publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE)
 	if _, err := env.startSubscription(t, env.token, publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("a second start over the limit = %v, want resource_exhausted", err)
+	}
+	if got := env.count(t, "SELECT count(*) FROM store_subscription_intents WHERE tenant_id = $1", env.tenant.ID); got != 1 {
+		t.Fatalf("intents opened = %d, want the first start's alone", got)
+	}
+}
+
+// A reader who started a checkout on the site and then subscribes in the app
+// cannot go on to pay both: the store start expires the open checkout, and a
+// checkout the reader has paid refuses the start until its subscription ends.
+func TestDBStartStoreSubscriptionSettlesTheCheckoutOnTheSite(t *testing.T) {
+	t.Parallel()
+
+	env := newStoreSubscriptionEnv(t)
+	fixture := stripetest.NewFixture(t)
+	credentials := fixture.Credentials()
+	if _, err := paymentsettings.New(dbmodels.New(env.pg.DB), newPublicTestEncryptor(t), providers.Registry(), nil, slog.Default()).Upsert(context.Background(), env.tenant.ID,
+		stripeSettings(credentials[stripe.FieldSecretKey], credentials[stripe.FieldWebhookSecret]), paymentsettings.AuditMeta{},
+	); err != nil {
+		t.Fatalf("upsert payment settings: %v", err)
+	}
+	env.server.paymentProviders = paymentprovider.NewRegistry(fixture.Provider())
+	checkout := func() string {
+		t.Helper()
+		res, err := env.subscriptions.StartSubscriptionCheckout(testutil.WithBearer(context.Background(), env.token), &publirav1.StartSubscriptionCheckoutRequest{
+			Tenant: tenantContext(env.tenant),
+			PlanId: env.plan.ID.String(),
+		})
+		if err != nil {
+			t.Fatalf("StartSubscriptionCheckout: %v", err)
+		}
+		return checkoutIDOf(res.GetCheckoutUrl())
+	}
+	appStore := publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE
+
+	open := checkout()
+	env.mustStartSubscription(t, env.token, appStore)
+	if got := fixture.API.CheckoutSessionStatus(open); got != "expired" {
+		t.Fatalf("the checkout on the site is %s after the store start, want expired", got)
+	}
+
+	paid := checkout()
+	fixture.API.CompleteCheckoutSession(paid, "sub_paid_on_the_site")
+	if _, err := env.startSubscription(t, env.token, appStore); connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("a store start after paying on the site = %v, want already_exists", err)
 	}
 	if got := env.count(t, "SELECT count(*) FROM store_subscription_intents WHERE tenant_id = $1", env.tenant.ID); got != 1 {
 		t.Fatalf("intents opened = %d, want the first start's alone", got)

@@ -109,6 +109,7 @@ func (f *fakeAppStore) GetTransactionInfo(_ context.Context, credentials appstor
 
 type storePurchaseEnv struct {
 	pg       *testutil.PostgresEnv
+	server   *apiServer
 	tenant   testutil.Tenant
 	reader   testutil.TenantUser
 	token    string
@@ -186,6 +187,7 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 
 	return &storePurchaseEnv{
 		pg:       pg,
+		server:   server,
 		tenant:   tenant,
 		reader:   reader,
 		token:    tokenFor(t, tenant, reader),
