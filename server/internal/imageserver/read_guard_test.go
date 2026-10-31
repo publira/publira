@@ -10,6 +10,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/readguard"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -20,7 +21,7 @@ import (
 func newReadGuardedImages(t *testing.T, resolver ResolverQuerier) http.Handler {
 	t.Helper()
 	site := SiteDB{Resolver: resolver, Tenants: stubFactory{q: stubTenantQueries{}}, Objects: &countingStore{}}
-	srv, err := NewHandler(site, site, nil, auth.NewTokenManager([]byte(testMediaJWTSecret)), readguard.New(testutil.Limiter()))
+	srv, err := NewHandler(site, site, nil, auth.NewTokenManager([]byte(testMediaJWTSecret)), readguard.New(testutil.Limiter(), platformpolicy.Fixed(platformpolicy.Defaults())))
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -57,7 +58,7 @@ func TestImagesRefuseAClientPastItsAllowance(t *testing.T) {
 	} {
 		t.Run(host.name, func(t *testing.T) {
 			handler := newReadGuardedImages(t, host.resolver)
-			limit := readguard.Rule(readguard.Images).Limit
+			limit := platformpolicy.Defaults().AnonymousReads.Images
 			for i := range limit {
 				if rec := fetchFrom(handler, "203.0.113.10"); rec.Code == http.StatusTooManyRequests {
 					t.Fatalf("image %d of %d refused for its rate, want the whole allowance served", i+1, limit)
@@ -92,7 +93,7 @@ func TestImagesLeaveConsoleHostsAndTheInstallAlone(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := newReadGuardedImages(t, tt.resolver)
-			for i := range readguard.Rule(readguard.Images).Limit + 1 {
+			for i := range platformpolicy.Defaults().AnonymousReads.Images + 1 {
 				if rec := fetchFrom(handler, tt.client); rec.Code == http.StatusTooManyRequests {
 					t.Fatalf("image %d refused for its rate, want it never charged", i+1)
 				}

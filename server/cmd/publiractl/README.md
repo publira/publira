@@ -197,7 +197,7 @@ Environment variables:
 
 ## policy
 
-Changes the platform policy: the tenant-admin and platform-operator MFA requirements, whether tenants may issue coins, the step-up password limit, the sign-in limits, the in-app purchase confirmation limit, the mail limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
+Changes the platform policy: the tenant-admin and platform-operator MFA requirements, whether tenants may issue coins, the step-up password limit, the sign-in limits, the in-app purchase confirmation limit, the mail limits, the anonymous read limits, the community limits every tenant starts from and may loosen up to, and where the list of disposable email domains is read from. It does what `PlatformPolicyService` does from the Platform Console, through the same implementation, `internal/platformpolicy`. An install that saves no policy runs on the built-in defaults, so this is for an install that wants a value other than one of them.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -232,6 +232,9 @@ go -C server run ./cmd/publiractl policy show
 | `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |
 | `--mail-requests-per-source-per-hour`, `--mail-requests-per-source-per-day` | How much mail those forms may send for one origin, across every address and tenant | 30, 150 |
+| `--anonymous-read-public-api-per-10-seconds` | How many calls of the public API, its catalog search aside, one client may make in 10 seconds. A call a web app makes as itself is not counted. At least 320, what the sample edge configurations admit | 640 |
+| `--anonymous-read-search-per-10-seconds` | How many calls of the catalog search procedures one client may make in 10 seconds. At least 40 | 80 |
+| `--anonymous-read-images-per-10-seconds` | How many images of a tenant's site and image hosts one client may fetch in 10 seconds. At least 1200 | 2400 |
 | `--comment-post-per-minute`, `--comment-post-per-day` | Comments one reader may post. A community limit, like every flag below | 10, 100 |
 | `--comment-report-per-minute`, `--comment-report-per-day` | Comments one reader may report | 10, 50 |
 | `--episode-rating-per-minute`, `--episode-rating-per-day` | Presses of the episode rating one reader may make | 30, 300 |
@@ -242,7 +245,7 @@ go -C server run ./cmd/publiractl policy show
 | `--duplicate-comment-window-minutes` | How long the same comment by one reader on one episode is refused, from 1 to 10080 minutes | 10 |
 | `--disposable-email-domains-url` | The absolute http or https URL the list of disposable email domains is read from. An empty value leaves no list | Empty |
 
-Every limit is a whole number of at least 1, and its daily value is at least its per-minute or per-hour one. Running servers reread the policy within `platformpolicy.CacheTTL`, so a save reaches them without a restart. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
+Every limit is a whole number of at least 1, and its daily value is at least its per-minute or per-hour one. An anonymous read limit is at least what the sample edge configurations in `infra/proxy/README.md` admit from one client in 10 seconds, so the edge refuses a reader before the server does. Running servers reread the policy within `platformpolicy.CacheTTL`, so a save reaches them without a restart. A save made from the Platform Console between the read and the write is not overwritten: the command exits `1`, and running it again applies the flags over that save.
 
 `policy set` files `platform_policy_updated` in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
 

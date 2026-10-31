@@ -51,15 +51,15 @@ A proxy you run limits requests when nothing in front of it does. The Traefik an
 
 ## What publira server limits itself
 
-Behind the edge, `publira server` keeps a limit of its own on the same reads, so that an edge that limits nothing, such as the stock `caddy` image of the [Docker Compose](../../2-deployments/3-docker-compose.md) install, leaves an install less protected rather than unprotected. It counts each reader's address over windows of 10 seconds, sharing the count between every instance through Redis when `PUBLIRA_REDIS_URL` names one, and allows twice the 10-second column of the table above:
+Behind the edge, `publira server` keeps a limit of its own on the same reads, so that an edge that limits nothing, such as the stock `caddy` image of the [Docker Compose](../../2-deployments/3-docker-compose.md) install, leaves an install less protected rather than unprotected. It counts each reader's address over windows of 10 seconds, sharing the count between every instance through Redis when `PUBLIRA_REDIS_URL` names one. Until you change it, it allows twice the 10-second column of the table above:
 
-| Requests | In 10 seconds |
-| --- | --- |
-| The public API, `/rpc/publira.v1.`, except the search | 640 |
-| The search procedures, `/rpc/publira.v1.CatalogService/SearchPublished…` | 80 |
-| The images of a tenant's domain and image host, `/images` | 2,400 |
+| Requests | In 10 seconds, built in | In 10 seconds, at least | `publiractl policy set` flag |
+| --- | --- | --- | --- |
+| The public API, `/rpc/publira.v1.`, except the search | 640 | 320 | `--anonymous-read-public-api-per-10-seconds` |
+| The search procedures, `/rpc/publira.v1.CatalogService/SearchPublished…` | 80 | 40 | `--anonymous-read-search-per-10-seconds` |
+| The images of a tenant's domain and image host, `/images` | 2,400 | 1,200 | `--anonymous-read-images-per-10-seconds` |
 
-A call past it is refused with `resource_exhausted`, and an image with `429`, each with a `Retry-After` header naming the wait. Behind an edge with the limits above, a reader is refused by the edge first. The server's limit cannot be changed, and it applies whatever the edge allows: an edge allowance raised past it, for readers who share one address such as a carrier's NAT, admits requests the server then refuses. Readers behind one address share the server's limit as they share the edge's.
+A call past it is refused with `resource_exhausted`, and an image with `429`, each with a `Retry-After` header naming the wait. Behind an edge with the limits above, a reader is refused by the edge first. The server's limit applies whatever the edge allows, so an edge allowance raised past it, for readers who share one address such as a carrier's NAT, admits requests the server then refuses. Raise the server's limit along with it: it is part of the [platform policy](../9-platform-policies.md#anonymous-reads), and the flags above change it. A saved change reaches every instance within ten seconds, without a restart. A value below the least one, which is what the sample configurations admit in 10 seconds, is refused naming its flag, so that the edge stays the first to refuse a reader. Readers behind one address share the server's limit as they share the edge's.
 
 The server cannot count what reaches it from inside the install. A request whose every hop is one of the [trusted proxies](../../2-deployments/4-edge/index.md#the-proxies-publira-trusts) is a web app calling as itself for all of its readers at once, so it is not counted. That covers the site's search page, which `web-storefront` runs on the server: only the edge limits `/search`. The console hosts, the webhooks, and the health checks are not counted either.
 

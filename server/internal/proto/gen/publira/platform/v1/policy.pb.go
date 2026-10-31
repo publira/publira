@@ -366,8 +366,13 @@ type PlatformPolicy struct {
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.
 	PurchaseCheckout *MinuteDayLimit `protobuf:"bytes,20,opt,name=purchase_checkout,json=purchaseCheckout,proto3" json:"purchase_checkout,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// How many anonymous reads one client may make of a storefront.
+	//
+	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+	// when a request leaves it unset.
+	AnonymousReadLimits *AnonymousReadLimits `protobuf:"bytes,21,opt,name=anonymous_read_limits,json=anonymousReadLimits,proto3" json:"anonymous_read_limits,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *PlatformPolicy) Reset() {
@@ -540,6 +545,85 @@ func (x *PlatformPolicy) GetPurchaseCheckout() *MinuteDayLimit {
 	return nil
 }
 
+func (x *PlatformPolicy) GetAnonymousReadLimits() *AnonymousReadLimits {
+	if x != nil {
+		return x.AnonymousReadLimits
+	}
+	return nil
+}
+
+// The reads one client may make of a storefront in 10 seconds, counted per
+// address behind the edge and shared by every instance of the server. A call
+// past one is refused with RESOURCE_EXHAUSTED, and an image with 429. Calls a
+// web app makes as itself are not counted.
+//
+// Each is at least what the sample edge configurations admit from one client
+// in 10 seconds, so that a reader behind such an edge is refused by the edge
+// first; a value below it is refused with INVALID_ARGUMENT naming its field.
+type AnonymousReadLimits struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Calls of every publira.v1 procedure but the catalog search. At least 320.
+	PublicApi int32 `protobuf:"varint,1,opt,name=public_api,json=publicApi,proto3" json:"public_api,omitempty"`
+	// Calls of CatalogService's SearchPublished… procedures, which have an
+	// allowance of their own. At least 40.
+	Search int32 `protobuf:"varint,2,opt,name=search,proto3" json:"search,omitempty"`
+	// Images of a tenant's site and image hosts. At least 1200.
+	Images        int32 `protobuf:"varint,3,opt,name=images,proto3" json:"images,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnonymousReadLimits) Reset() {
+	*x = AnonymousReadLimits{}
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnonymousReadLimits) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnonymousReadLimits) ProtoMessage() {}
+
+func (x *AnonymousReadLimits) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnonymousReadLimits.ProtoReflect.Descriptor instead.
+func (*AnonymousReadLimits) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AnonymousReadLimits) GetPublicApi() int32 {
+	if x != nil {
+		return x.PublicApi
+	}
+	return 0
+}
+
+func (x *AnonymousReadLimits) GetSearch() int32 {
+	if x != nil {
+		return x.Search
+	}
+	return 0
+}
+
+func (x *AnonymousReadLimits) GetImages() int32 {
+	if x != nil {
+		return x.Images
+	}
+	return 0
+}
+
 type GetPlatformPolicyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -548,7 +632,7 @@ type GetPlatformPolicyRequest struct {
 
 func (x *GetPlatformPolicyRequest) Reset() {
 	*x = GetPlatformPolicyRequest{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -560,7 +644,7 @@ func (x *GetPlatformPolicyRequest) String() string {
 func (*GetPlatformPolicyRequest) ProtoMessage() {}
 
 func (x *GetPlatformPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -573,7 +657,7 @@ func (x *GetPlatformPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPlatformPolicyRequest.ProtoReflect.Descriptor instead.
 func (*GetPlatformPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{4}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{5}
 }
 
 type GetPlatformPolicyResponse struct {
@@ -590,7 +674,7 @@ type GetPlatformPolicyResponse struct {
 
 func (x *GetPlatformPolicyResponse) Reset() {
 	*x = GetPlatformPolicyResponse{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -602,7 +686,7 @@ func (x *GetPlatformPolicyResponse) String() string {
 func (*GetPlatformPolicyResponse) ProtoMessage() {}
 
 func (x *GetPlatformPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -615,7 +699,7 @@ func (x *GetPlatformPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPlatformPolicyResponse.ProtoReflect.Descriptor instead.
 func (*GetPlatformPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{5}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetPlatformPolicyResponse) GetPolicy() *PlatformPolicy {
@@ -648,7 +732,7 @@ type UpdatePlatformPolicyRequest struct {
 
 func (x *UpdatePlatformPolicyRequest) Reset() {
 	*x = UpdatePlatformPolicyRequest{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -660,7 +744,7 @@ func (x *UpdatePlatformPolicyRequest) String() string {
 func (*UpdatePlatformPolicyRequest) ProtoMessage() {}
 
 func (x *UpdatePlatformPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +757,7 @@ func (x *UpdatePlatformPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePlatformPolicyRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePlatformPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{6}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdatePlatformPolicyRequest) GetPolicy() *PlatformPolicy {
@@ -700,7 +784,7 @@ type UpdatePlatformPolicyResponse struct {
 
 func (x *UpdatePlatformPolicyResponse) Reset() {
 	*x = UpdatePlatformPolicyResponse{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -712,7 +796,7 @@ func (x *UpdatePlatformPolicyResponse) String() string {
 func (*UpdatePlatformPolicyResponse) ProtoMessage() {}
 
 func (x *UpdatePlatformPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -725,7 +809,7 @@ func (x *UpdatePlatformPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePlatformPolicyResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePlatformPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{7}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdatePlatformPolicyResponse) GetPolicy() *PlatformPolicy {
@@ -750,7 +834,7 @@ type GetPlatformRetentionDefaultsRequest struct {
 
 func (x *GetPlatformRetentionDefaultsRequest) Reset() {
 	*x = GetPlatformRetentionDefaultsRequest{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -762,7 +846,7 @@ func (x *GetPlatformRetentionDefaultsRequest) String() string {
 func (*GetPlatformRetentionDefaultsRequest) ProtoMessage() {}
 
 func (x *GetPlatformRetentionDefaultsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -775,7 +859,7 @@ func (x *GetPlatformRetentionDefaultsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use GetPlatformRetentionDefaultsRequest.ProtoReflect.Descriptor instead.
 func (*GetPlatformRetentionDefaultsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{8}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{9}
 }
 
 type GetPlatformRetentionDefaultsResponse struct {
@@ -792,7 +876,7 @@ type GetPlatformRetentionDefaultsResponse struct {
 
 func (x *GetPlatformRetentionDefaultsResponse) Reset() {
 	*x = GetPlatformRetentionDefaultsResponse{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[9]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +888,7 @@ func (x *GetPlatformRetentionDefaultsResponse) String() string {
 func (*GetPlatformRetentionDefaultsResponse) ProtoMessage() {}
 
 func (x *GetPlatformRetentionDefaultsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[9]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +901,7 @@ func (x *GetPlatformRetentionDefaultsResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use GetPlatformRetentionDefaultsResponse.ProtoReflect.Descriptor instead.
 func (*GetPlatformRetentionDefaultsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{9}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetPlatformRetentionDefaultsResponse) GetDefaults() *v1.RetentionPeriods {
@@ -850,7 +934,7 @@ type UpdatePlatformRetentionDefaultsRequest struct {
 
 func (x *UpdatePlatformRetentionDefaultsRequest) Reset() {
 	*x = UpdatePlatformRetentionDefaultsRequest{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[10]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -862,7 +946,7 @@ func (x *UpdatePlatformRetentionDefaultsRequest) String() string {
 func (*UpdatePlatformRetentionDefaultsRequest) ProtoMessage() {}
 
 func (x *UpdatePlatformRetentionDefaultsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[10]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -875,7 +959,7 @@ func (x *UpdatePlatformRetentionDefaultsRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use UpdatePlatformRetentionDefaultsRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePlatformRetentionDefaultsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{10}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UpdatePlatformRetentionDefaultsRequest) GetDefaults() *v1.RetentionPeriods {
@@ -902,7 +986,7 @@ type UpdatePlatformRetentionDefaultsResponse struct {
 
 func (x *UpdatePlatformRetentionDefaultsResponse) Reset() {
 	*x = UpdatePlatformRetentionDefaultsResponse{}
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[11]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -914,7 +998,7 @@ func (x *UpdatePlatformRetentionDefaultsResponse) String() string {
 func (*UpdatePlatformRetentionDefaultsResponse) ProtoMessage() {}
 
 func (x *UpdatePlatformRetentionDefaultsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_policy_proto_msgTypes[11]
+	mi := &file_publira_platform_v1_policy_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -927,7 +1011,7 @@ func (x *UpdatePlatformRetentionDefaultsResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use UpdatePlatformRetentionDefaultsResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePlatformRetentionDefaultsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{11}
+	return file_publira_platform_v1_policy_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdatePlatformRetentionDefaultsResponse) GetDefaults() *v1.RetentionPeriods {
@@ -964,7 +1048,7 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x1bcontact_message_per_account\x18\x05 \x01(\v2!.publira.platform.v1.HourDayLimitR\x18contactMessagePerAccount\x12^\n" +
 	"\x1acontact_message_per_client\x18\x06 \x01(\v2!.publira.platform.v1.HourDayLimitR\x17contactMessagePerClient\x12R\n" +
 	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\x12X\n" +
-	"\x15notification_settings\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14notificationSettings\"\xcc\r\n" +
+	"\x15notification_settings\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14notificationSettings\"\xaa\x0e\n" +
 	"\x0ePlatformPolicy\x12@\n" +
 	"\x1dmfa_required_for_tenant_admin\x18\x01 \x01(\bR\x19mfaRequiredForTenantAdmin\x12X\n" +
 	"\x15password_verification\x18\x02 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14passwordVerification\x12\\\n" +
@@ -987,9 +1071,15 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x15subscription_checkout\x18\x11 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14subscriptionCheckout\x125\n" +
 	"\x14tenant_coins_allowed\x18\x12 \x01(\bH\x01R\x12tenantCoinsAllowed\x88\x01\x01\x12F\n" +
 	"\fcoin_payment\x18\x13 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\vcoinPayment\x12P\n" +
-	"\x11purchase_checkout\x18\x14 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x10purchaseCheckoutB%\n" +
+	"\x11purchase_checkout\x18\x14 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x10purchaseCheckout\x12\\\n" +
+	"\x15anonymous_read_limits\x18\x15 \x01(\v2(.publira.platform.v1.AnonymousReadLimitsR\x13anonymousReadLimitsB%\n" +
 	"#_mfa_required_for_platform_operatorB\x17\n" +
-	"\x15_tenant_coins_allowed\"\x1a\n" +
+	"\x15_tenant_coins_allowed\"d\n" +
+	"\x13AnonymousReadLimits\x12\x1d\n" +
+	"\n" +
+	"public_api\x18\x01 \x01(\x05R\tpublicApi\x12\x16\n" +
+	"\x06search\x18\x02 \x01(\x05R\x06search\x12\x16\n" +
+	"\x06images\x18\x03 \x01(\x05R\x06images\"\x1a\n" +
 	"\x18GetPlatformPolicyRequest\"t\n" +
 	"\x19GetPlatformPolicyResponse\x12;\n" +
 	"\x06policy\x18\x01 \x01(\v2#.publira.platform.v1.PlatformPolicyR\x06policy\x12\x1a\n" +
@@ -1028,21 +1118,22 @@ func file_publira_platform_v1_policy_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_policy_proto_rawDescData
 }
 
-var file_publira_platform_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_publira_platform_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_publira_platform_v1_policy_proto_goTypes = []any{
 	(*MinuteDayLimit)(nil),                          // 0: publira.platform.v1.MinuteDayLimit
 	(*HourDayLimit)(nil),                            // 1: publira.platform.v1.HourDayLimit
 	(*CommunityLimitDefaults)(nil),                  // 2: publira.platform.v1.CommunityLimitDefaults
 	(*PlatformPolicy)(nil),                          // 3: publira.platform.v1.PlatformPolicy
-	(*GetPlatformPolicyRequest)(nil),                // 4: publira.platform.v1.GetPlatformPolicyRequest
-	(*GetPlatformPolicyResponse)(nil),               // 5: publira.platform.v1.GetPlatformPolicyResponse
-	(*UpdatePlatformPolicyRequest)(nil),             // 6: publira.platform.v1.UpdatePlatformPolicyRequest
-	(*UpdatePlatformPolicyResponse)(nil),            // 7: publira.platform.v1.UpdatePlatformPolicyResponse
-	(*GetPlatformRetentionDefaultsRequest)(nil),     // 8: publira.platform.v1.GetPlatformRetentionDefaultsRequest
-	(*GetPlatformRetentionDefaultsResponse)(nil),    // 9: publira.platform.v1.GetPlatformRetentionDefaultsResponse
-	(*UpdatePlatformRetentionDefaultsRequest)(nil),  // 10: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
-	(*UpdatePlatformRetentionDefaultsResponse)(nil), // 11: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
-	(*v1.RetentionPeriods)(nil),                     // 12: publira.types.v1.RetentionPeriods
+	(*AnonymousReadLimits)(nil),                     // 4: publira.platform.v1.AnonymousReadLimits
+	(*GetPlatformPolicyRequest)(nil),                // 5: publira.platform.v1.GetPlatformPolicyRequest
+	(*GetPlatformPolicyResponse)(nil),               // 6: publira.platform.v1.GetPlatformPolicyResponse
+	(*UpdatePlatformPolicyRequest)(nil),             // 7: publira.platform.v1.UpdatePlatformPolicyRequest
+	(*UpdatePlatformPolicyResponse)(nil),            // 8: publira.platform.v1.UpdatePlatformPolicyResponse
+	(*GetPlatformRetentionDefaultsRequest)(nil),     // 9: publira.platform.v1.GetPlatformRetentionDefaultsRequest
+	(*GetPlatformRetentionDefaultsResponse)(nil),    // 10: publira.platform.v1.GetPlatformRetentionDefaultsResponse
+	(*UpdatePlatformRetentionDefaultsRequest)(nil),  // 11: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
+	(*UpdatePlatformRetentionDefaultsResponse)(nil), // 12: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
+	(*v1.RetentionPeriods)(nil),                     // 13: publira.types.v1.RetentionPeriods
 }
 var file_publira_platform_v1_policy_proto_depIdxs = []int32{
 	0,  // 0: publira.platform.v1.CommunityLimitDefaults.comment_post:type_name -> publira.platform.v1.MinuteDayLimit
@@ -1068,25 +1159,26 @@ var file_publira_platform_v1_policy_proto_depIdxs = []int32{
 	0,  // 20: publira.platform.v1.PlatformPolicy.subscription_checkout:type_name -> publira.platform.v1.MinuteDayLimit
 	0,  // 21: publira.platform.v1.PlatformPolicy.coin_payment:type_name -> publira.platform.v1.MinuteDayLimit
 	0,  // 22: publira.platform.v1.PlatformPolicy.purchase_checkout:type_name -> publira.platform.v1.MinuteDayLimit
-	3,  // 23: publira.platform.v1.GetPlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
-	3,  // 24: publira.platform.v1.UpdatePlatformPolicyRequest.policy:type_name -> publira.platform.v1.PlatformPolicy
-	3,  // 25: publira.platform.v1.UpdatePlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
-	12, // 26: publira.platform.v1.GetPlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
-	12, // 27: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.defaults:type_name -> publira.types.v1.RetentionPeriods
-	12, // 28: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
-	4,  // 29: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
-	6,  // 30: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
-	8,  // 31: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:input_type -> publira.platform.v1.GetPlatformRetentionDefaultsRequest
-	10, // 32: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:input_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
-	5,  // 33: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
-	7,  // 34: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
-	9,  // 35: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:output_type -> publira.platform.v1.GetPlatformRetentionDefaultsResponse
-	11, // 36: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:output_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
-	33, // [33:37] is the sub-list for method output_type
-	29, // [29:33] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	4,  // 23: publira.platform.v1.PlatformPolicy.anonymous_read_limits:type_name -> publira.platform.v1.AnonymousReadLimits
+	3,  // 24: publira.platform.v1.GetPlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
+	3,  // 25: publira.platform.v1.UpdatePlatformPolicyRequest.policy:type_name -> publira.platform.v1.PlatformPolicy
+	3,  // 26: publira.platform.v1.UpdatePlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
+	13, // 27: publira.platform.v1.GetPlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	13, // 28: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.defaults:type_name -> publira.types.v1.RetentionPeriods
+	13, // 29: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	5,  // 30: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
+	7,  // 31: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
+	9,  // 32: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:input_type -> publira.platform.v1.GetPlatformRetentionDefaultsRequest
+	11, // 33: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:input_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
+	6,  // 34: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
+	8,  // 35: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
+	10, // 36: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:output_type -> publira.platform.v1.GetPlatformRetentionDefaultsResponse
+	12, // 37: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:output_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
+	34, // [34:38] is the sub-list for method output_type
+	30, // [30:34] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_policy_proto_init() }
@@ -1101,7 +1193,7 @@ func file_publira_platform_v1_policy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_policy_proto_rawDesc), len(file_publira_platform_v1_policy_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

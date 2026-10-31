@@ -50,6 +50,23 @@ func hourDayFlags(field, flag, what string, community bool, limit func(*policySe
 	}
 }
 
+// readLimitFlags are the anonymous read limits, each of which has one window.
+func readLimitFlags() []fieldFlag[policySettings] {
+	window := strconv.Itoa(int(platformpolicy.ReadWindow/time.Second)) + " seconds"
+	flag := func(name, flagName, what string, set func(*platformpolicy.ReadLimits, int)) fieldFlag[policySettings] {
+		return fieldFlag[policySettings]{
+			platformpolicy.FieldAnonymousReadLimits + "." + name, "anonymous-read-" + flagName + "-per-10-seconds",
+			limitUsage(what, window, false),
+			func(p *policySettings, v int) { set(&p.AnonymousReads, v) },
+		}
+	}
+	return []fieldFlag[policySettings]{
+		flag("public_api", "public-api", "public API calls but the search from one client", func(l *platformpolicy.ReadLimits, v int) { l.PublicAPI = v }),
+		flag("search", "search", "catalog searches from one client", func(l *platformpolicy.ReadLimits, v int) { l.Search = v }),
+		flag("images", "images", "storefront images from one client", func(l *platformpolicy.ReadLimits, v int) { l.Images = v }),
+	}
+}
+
 // policyFlags are the numeric fields of the PlatformPolicy message. The others
 // are --mfa-required-for-tenant-admin, --mfa-required-for-platform-operator
 // and --tenant-coins-allowed, booleans, and --disposable-email-domains-url, a
@@ -99,6 +116,7 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.Community.ViewerPreferencesUpdate }),
 	minuteDayFlags("community_limit_defaults.notification_settings", "notification-settings", "notification settings updates by one reader", true,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.Community.NotificationSettingsUpdate }),
+	readLimitFlags(),
 	[]fieldFlag[policySettings]{{
 		platformpolicy.FieldDuplicateCommentWindow, "duplicate-comment-window-minutes",
 		"for how many `minutes` the same comment by one reader on one episode is refused, the default a tenant starts from and may loosen up to",
@@ -210,6 +228,9 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "Failed sign-ins per source:\t%s\n", perHour(p.LoginAttemptsPerSource))
 		fmt.Fprintf(&b, "Email requests per address:\t%s\n", perHour(p.MailRequestsPerAddress))
 		fmt.Fprintf(&b, "Email requests per source:\t%s\n", perHour(p.MailRequestsPerSource))
+		fmt.Fprintf(&b, "Anonymous public API calls per client:\t%s\n", perReadWindow(p.AnonymousReads.PublicAPI))
+		fmt.Fprintf(&b, "Anonymous searches per client:\t%s\n", perReadWindow(p.AnonymousReads.Search))
+		fmt.Fprintf(&b, "Anonymous images per client:\t%s\n", perReadWindow(p.AnonymousReads.Images))
 		list := p.DisposableEmailDomainsURL
 		if list == "" {
 			list = "none"
@@ -238,6 +259,10 @@ func perMinute(limit platformpolicy.MinuteDay) string {
 
 func perHour(limit platformpolicy.HourDay) string {
 	return fmt.Sprintf("%d per hour, %d per day", limit.PerHour, limit.PerDay)
+}
+
+func perReadWindow(limit int) string {
+	return fmt.Sprintf("%d per %d seconds", limit, int(platformpolicy.ReadWindow/time.Second))
 }
 
 func yesNo(value bool) string {

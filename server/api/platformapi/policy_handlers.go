@@ -21,6 +21,10 @@ func hourDayToProto(limit platformpolicy.HourDay) *publirasplatformv1.HourDayLim
 	return &publirasplatformv1.HourDayLimit{PerHour: int32(limit.PerHour), PerDay: int32(limit.PerDay)}
 }
 
+func readLimitsToProto(limits platformpolicy.ReadLimits) *publirasplatformv1.AnonymousReadLimits {
+	return &publirasplatformv1.AnonymousReadLimits{PublicApi: int32(limits.PublicAPI), Search: int32(limits.Search), Images: int32(limits.Images)}
+}
+
 func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.PlatformPolicy {
 	community := policy.Community
 	return &publirasplatformv1.PlatformPolicy{
@@ -52,6 +56,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 			ViewerPreferences:             minuteDayToProto(community.ViewerPreferencesUpdate),
 			NotificationSettings:          minuteDayToProto(community.NotificationSettingsUpdate),
 		},
+		AnonymousReadLimits:       readLimitsToProto(policy.AnonymousReads),
 		DisposableEmailDomainsUrl: policy.DisposableEmailDomainsURL,
 	}
 }
@@ -62,6 +67,10 @@ func minuteDayFromProto(limit *publirasplatformv1.MinuteDayLimit) platformpolicy
 
 func hourDayFromProto(limit *publirasplatformv1.HourDayLimit) platformpolicy.HourDay {
 	return platformpolicy.HourDay{PerHour: int(limit.GetPerHour()), PerDay: int(limit.GetPerDay())}
+}
+
+func readLimitsFromProto(limits *publirasplatformv1.AnonymousReadLimits) platformpolicy.ReadLimits {
+	return platformpolicy.ReadLimits{PublicAPI: int(limits.GetPublicApi()), Search: int(limits.GetSearch()), Images: int(limits.GetImages())}
 }
 
 // platformPolicyFromProto reads a request. A missing message reads as zeros,
@@ -97,6 +106,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 			ViewerPreferencesUpdate:    minuteDayFromProto(community.GetViewerPreferences()),
 			NotificationSettingsUpdate: minuteDayFromProto(community.GetNotificationSettings()),
 		},
+		AnonymousReads:            readLimitsFromProto(policy.GetAnonymousReadLimits()),
 		DisposableEmailDomainsURL: policy.GetDisposableEmailDomainsUrl(),
 	}
 }
@@ -141,7 +151,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	}
 	// wait_free_ticket_use, legal_page_agreement, identity_link, icon_change,
 	// passkey, series_remainder_checkout, subscription_checkout, coin_payment, purchase_checkout, the login limits, the notification
-	// settings limit, the operator MFA requirement and the tenant coin allowance reached the policy after the console screens
+	// settings limit, the anonymous read limits, the operator MFA requirement and the tenant coin allowance reached the policy after the console screens
 	// that save it, and those are deployed apart from this server, so a
 	// request that leaves one out keeps what is stored rather than being
 	// refused or switching the requirement off. The stored value is read here and the save is held to
@@ -158,7 +168,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// be saved while it is being switched off.
 	requested := req.GetPolicy()
 	enablesOperatorMfaWithoutSecrets := requested.GetMfaRequiredForPlatformOperator() && s.encryptor == nil
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetCoinPayment() == nil || requested.GetPurchaseCheckout() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetCoinPayment() == nil || requested.GetPurchaseCheckout() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.GetAnonymousReadLimits() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -205,6 +215,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		}
 		if requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil {
 			params.Policy.Community.NotificationSettingsUpdate = stored.Community.NotificationSettingsUpdate
+		}
+		if requested.GetAnonymousReadLimits() == nil {
+			params.Policy.AnonymousReads = stored.AnonymousReads
 		}
 		if requested.MfaRequiredForPlatformOperator == nil {
 			params.Policy.MFARequiredForPlatformOperator = stored.MFARequiredForPlatformOperator

@@ -13,6 +13,7 @@ import (
 
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -40,7 +41,7 @@ func newReadGuardedClients(t *testing.T) readGuardedClients {
 	// through makes is unexpected, and fails the call with something other
 	// than resource_exhausted.
 	server := newAPIServer(db, dbmodels.New(db), nil, testutil.TokenManager(), nil, slog.Default(), readerGuards{}, nil, nil)
-	server.readGuard = readguard.New(testutil.Limiter())
+	server.readGuard = readguard.New(testutil.Limiter(), platformpolicy.Fixed(platformpolicy.Defaults()))
 	resolver := clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies})
 	testServer := httptest.NewServer(resolver.Middleware(handlerFromServer(server)))
 	t.Cleanup(testServer.Close)
@@ -49,6 +50,12 @@ func newReadGuardedClients(t *testing.T) readGuardedClients {
 		catalog: publirav1connect.NewCatalogServiceClient(client),
 		domain:  publirav1connect.NewDomainServiceClient(client),
 	}
+}
+
+// defaultReadLimit is the reads of allowance a platform that saved no policy
+// gives one client in a window.
+func defaultReadLimit(allowance readguard.Allowance) int {
+	return readguard.Limit(platformpolicy.Defaults().AnonymousReads, allowance)
 }
 
 // from is the context of a call the edge forwarded from client, or of one a web
@@ -81,7 +88,7 @@ func TestReadGuardRefusesAClientPastTheSearchAllowance(t *testing.T) {
 	clients := newReadGuardedClients(t)
 	reader := from("203.0.113.10")
 
-	limit := readguard.Rule(readguard.Search).Limit
+	limit := defaultReadLimit(readguard.Search)
 	for i := range limit {
 		if err := clients.search(reader); refusedForRate(err) {
 			t.Fatalf("search %d of %d refused for its rate, want the whole allowance served", i+1, limit)
@@ -107,7 +114,7 @@ func TestReadGuardRefusesAClientPastThePublicAPIAllowance(t *testing.T) {
 	clients := newReadGuardedClients(t)
 	reader := from("203.0.113.10")
 
-	limit := readguard.Rule(readguard.PublicAPI).Limit
+	limit := defaultReadLimit(readguard.PublicAPI)
 	for i := range limit {
 		if err := clients.resolveDomain(reader); refusedForRate(err) {
 			t.Fatalf("call %d of %d refused for its rate, want the whole allowance served", i+1, limit)
@@ -125,7 +132,7 @@ func TestReadGuardLeavesAWebAppCallingAsItselfAlone(t *testing.T) {
 	clients := newReadGuardedClients(t)
 	app := from("")
 
-	for i := range readguard.Rule(readguard.Search).Limit * 2 {
+	for i := range defaultReadLimit(readguard.Search) * 2 {
 		if err := clients.search(app); refusedForRate(err) {
 			t.Fatalf("search %d from inside the install refused for its rate, want it never charged", i+1)
 		}

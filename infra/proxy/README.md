@@ -83,7 +83,7 @@ Each row is an allowance of its own: a client that has spent the public API's st
 
 A client is the address the edge records it by: the peer address, or, behind a [trusted hop](#a-trusted-hop-in-front), the address the hop named. Behind a hop the edge does not trust, every reader shares the hop's allowance, which is one more reason to configure the hop.
 
-`publira server` limits the two public API rows and the images itself, behind the edge, at twice what each row admits in 10 seconds, so that a reader behind a working edge is refused here first. `server/internal/readguard` derives its limits from this table and its test fails when the two part, so a change to a row here is a change to `readguard.EdgeRates` too.
+`publira server` limits the two public API rows and the images itself, behind the edge, by default at twice what each row admits in 10 seconds, so that a reader behind a working edge is refused here first. Those limits are part of the platform policy, which refuses a value below what a row admits in 10 seconds. `server/internal/platformpolicy` holds this table as `EdgeReadRates`, and its test fails when the two part, so a change to a row here is a change there too.
 
 Nothing else is limited. A console host is left to the limits `publira server` keeps itself, on sign-in, mail, and each reader action, since the consoles' traffic is their staff's, and their uploads and editing screens are the heaviest an install serves. The pages of a tenant's site other than the search, and the webhooks under `/api/v1/webhook/`, are not limited either: a provider that is refused retries, and a payment or a reader's reply arrives late or not at all.
 

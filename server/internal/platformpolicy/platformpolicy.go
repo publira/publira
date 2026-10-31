@@ -34,6 +34,67 @@ type HourDay struct {
 	PerDay  int
 }
 
+// ReadWindow is the one window the anonymous read limits count a client's
+// reads in. One rule rather than a burst and a budget is one counter, and so
+// one round trip to Redis, on every read the server answers: a limit that
+// doubled the cost of each image would be paid by every reader to slow down a
+// few.
+const ReadWindow = 10 * time.Second
+
+// ReadLimits are the anonymous reads one client may make of a storefront in a
+// ReadWindow, each from a budget of its own.
+type ReadLimits struct {
+	// PublicAPI is every publira.v1 procedure but the catalog search.
+	PublicAPI int
+	// Search is the catalog search procedures, CatalogService's
+	// SearchPublished…. Each runs the most expensive query a reader can ask
+	// for, so it has a budget a client that has spent the public API's still
+	// has, and the other way round.
+	Search int
+	// Images is the image routes of a tenant's site and image hosts.
+	Images int
+}
+
+// EdgeRate is a read allowance as the edge writes it: a burst a client may
+// send at once, refilled at a rate per second.
+type EdgeRate struct {
+	Burst     int
+	PerSecond int
+}
+
+// Admitted is the most the edge admits from one client in a ReadWindow.
+func (r EdgeRate) Admitted() int {
+	return r.Burst + r.PerSecond*int(ReadWindow/time.Second)
+}
+
+// EdgeReadRates are the allowances `infra/proxy/README.md` (Request rates)
+// gives the edge.
+var EdgeReadRates = struct {
+	PublicAPI, Search, Images EdgeRate
+}{
+	PublicAPI: EdgeRate{Burst: 120, PerSecond: 20},
+	Search:    EdgeRate{Burst: 20, PerSecond: 2},
+	Images:    EdgeRate{Burst: 600, PerSecond: 60},
+}
+
+// EdgeReadLimits are the most the edge admits from one client in a
+// ReadWindow, which is the least a read limit may be: a server tighter than
+// the edge would refuse a reader the edge lets through, and the edge is where
+// an operator raises an allowance for readers who share one address.
+func EdgeReadLimits() ReadLimits {
+	return ReadLimits{
+		PublicAPI: EdgeReadRates.PublicAPI.Admitted(),
+		Search:    EdgeReadRates.Search.Admitted(),
+		Images:    EdgeReadRates.Images.Admitted(),
+	}
+}
+
+// readHeadroom is how far past the edge the default read limits reach. The
+// server counts more than the edge sees: the calls web-storefront makes for a
+// signed-in reader carry the reader's address, and arrive on top of what the
+// reader asked the edge for directly.
+const readHeadroom = 2
+
 // CommunityLimits are the reader-facing limits a tenant starts from. Each one
 // is also the loosest value a tenant may set for itself.
 type CommunityLimits struct {
@@ -118,6 +179,9 @@ type Policy struct {
 	// LoginAttemptsPerSource bounds the sign-ins one client source may fail,
 	// across every address, tenant and console.
 	LoginAttemptsPerSource HourDay
+	// AnonymousReads bounds the reads one client may make of a storefront,
+	// behind the edge's own limits on the same reads.
+	AnonymousReads ReadLimits
 	// DisposableEmailDomainsURL is where the list of disposable email domains
 	// is read from. Empty means there is no list: none ships with the server.
 	DisposableEmailDomainsURL string
@@ -139,6 +203,10 @@ const FieldDisposableEmailDomainsURL = "disposable_email_domains_url"
 // message that requires the second factor of every platform operator.
 const FieldMFARequiredForPlatformOperator = "mfa_required_for_platform_operator"
 
+// FieldAnonymousReadLimits is the field of the PlatformPolicy message that
+// holds the anonymous read limits.
+const FieldAnonymousReadLimits = "anonymous_read_limits"
+
 // MaxDisposableEmailDomainsURLLength bounds the URL of the disposable email
 // domain list, as the column's check constraint does.
 const MaxDisposableEmailDomainsURLLength = 2048
@@ -150,6 +218,7 @@ const MaxDuplicateCommentWindow = 7 * 24 * time.Hour
 // Defaults is the policy of a platform that has saved none: the values a
 // deployment got from the environment before the policy became a setting.
 func Defaults() Policy {
+	edge := EdgeReadLimits()
 	return Policy{
 		MFARequiredForTenantAdmin:      false,
 		MFARequiredForPlatformOperator: false,
@@ -178,7 +247,12 @@ func Defaults() Policy {
 		PurchaseCheckout:          MinuteDay{PerMinute: 10, PerDay: 100},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
-		TenantCoinsAllowed:        false,
+		AnonymousReads: ReadLimits{
+			PublicAPI: readHeadroom * edge.PublicAPI,
+			Search:    readHeadroom * edge.Search,
+			Images:    readHeadroom * edge.Images,
+		},
+		TenantCoinsAllowed: false,
 	}
 }
 
@@ -224,6 +298,9 @@ func (p Policy) Validate() error {
 			return &fielderr.Invalid{Field: day, Err: fmt.Errorf("%s must be at least %s (%d), got %d", day, short, limit.short, limit.day)}
 		}
 	}
+	if err := p.AnonymousReads.validate(); err != nil {
+		return err
+	}
 	window := p.Community.DuplicateCommentWindow
 	if window < time.Minute || window > MaxDuplicateCommentWindow || window%time.Minute != 0 {
 		return &fielderr.Invalid{
@@ -233,6 +310,28 @@ func (p Policy) Validate() error {
 	}
 	if err := validateListURL(p.DisposableEmailDomainsURL); err != nil {
 		return &fielderr.Invalid{Field: FieldDisposableEmailDomainsURL, Err: err}
+	}
+	return nil
+}
+
+// validate refuses a read limit below what the edge admits in a ReadWindow.
+func (l ReadLimits) validate() error {
+	edge := EdgeReadLimits()
+	for _, limit := range []struct {
+		name       string
+		value, min int
+	}{
+		{"public_api", l.PublicAPI, edge.PublicAPI},
+		{"search", l.Search, edge.Search},
+		{"images", l.Images, edge.Images},
+	} {
+		if limit.value < limit.min {
+			field := FieldAnonymousReadLimits + "." + limit.name
+			return &fielderr.Invalid{
+				Field: field,
+				Err:   fmt.Errorf("%s must be at least %d, what the edge admits in %s, got %d", field, limit.min, ReadWindow, limit.value),
+			}
+		}
 	}
 	return nil
 }
@@ -283,6 +382,11 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		PurchaseCheckout:          MinuteDay{PerMinute: int(config.PurchaseCheckoutLimitPerMinute), PerDay: int(config.PurchaseCheckoutLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
+		AnonymousReads: ReadLimits{
+			PublicAPI: int(config.AnonymousReadPublicApiLimitPer10Seconds),
+			Search:    int(config.AnonymousReadSearchLimitPer10Seconds),
+			Images:    int(config.AnonymousReadImagesLimitPer10Seconds),
+		},
 		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
 		TenantCoinsAllowed:        config.TenantCoinsAllowed,
 	}
@@ -294,55 +398,58 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 	policy := p
 	community := policy.Community
 	return dbmodels.UpdatePlatformPolicyConfigParams{
-		MfaRequiredForTenantAdmin:             policy.MFARequiredForTenantAdmin,
-		MfaRequiredForPlatformOperator:        policy.MFARequiredForPlatformOperator,
-		PasswordVerifyLimitPerMinute:          int32(policy.PasswordVerification.PerMinute),
-		PasswordVerifyLimitPerDay:             int32(policy.PasswordVerification.PerDay),
-		MailRequestLimitPerAddressPerHour:     int32(policy.MailRequestsPerAddress.PerHour),
-		MailRequestLimitPerAddressPerDay:      int32(policy.MailRequestsPerAddress.PerDay),
-		MailRequestLimitPerSourcePerHour:      int32(policy.MailRequestsPerSource.PerHour),
-		MailRequestLimitPerSourcePerDay:       int32(policy.MailRequestsPerSource.PerDay),
-		CommentPostLimitPerMinute:             int32(community.CommentPost.PerMinute),
-		CommentPostLimitPerDay:                int32(community.CommentPost.PerDay),
-		CommentReportLimitPerMinute:           int32(community.CommentReport.PerMinute),
-		CommentReportLimitPerDay:              int32(community.CommentReport.PerDay),
-		CommentDuplicateWindowMinutes:         int32(community.DuplicateCommentWindow / time.Minute),
-		EpisodeRatingLimitPerMinute:           int32(community.EpisodeRating.PerMinute),
-		EpisodeRatingLimitPerDay:              int32(community.EpisodeRating.PerDay),
-		ContactMessageLimitPerAccountPerHour:  int32(community.ContactMessagePerAccount.PerHour),
-		ContactMessageLimitPerAccountPerDay:   int32(community.ContactMessagePerAccount.PerDay),
-		ContactMessageLimitPerClientPerHour:   int32(community.ContactMessagePerClient.PerHour),
-		ContactMessageLimitPerClientPerDay:    int32(community.ContactMessagePerClient.PerDay),
-		ViewerPreferencesLimitPerMinute:       int32(community.ViewerPreferencesUpdate.PerMinute),
-		ViewerPreferencesLimitPerDay:          int32(community.ViewerPreferencesUpdate.PerDay),
-		NotificationSettingsLimitPerMinute:    int32(community.NotificationSettingsUpdate.PerMinute),
-		NotificationSettingsLimitPerDay:       int32(community.NotificationSettingsUpdate.PerDay),
-		StorePurchaseConfirmLimitPerMinute:    int32(policy.StorePurchaseConfirmation.PerMinute),
-		StorePurchaseConfirmLimitPerDay:       int32(policy.StorePurchaseConfirmation.PerDay),
-		WaitFreeTicketUseLimitPerMinute:       int32(policy.WaitFreeTicketUse.PerMinute),
-		WaitFreeTicketUseLimitPerDay:          int32(policy.WaitFreeTicketUse.PerDay),
-		LegalPageAgreementLimitPerMinute:      int32(policy.LegalPageAgreement.PerMinute),
-		LegalPageAgreementLimitPerDay:         int32(policy.LegalPageAgreement.PerDay),
-		IdentityLinkLimitPerMinute:            int32(policy.IdentityLink.PerMinute),
-		IdentityLinkLimitPerDay:               int32(policy.IdentityLink.PerDay),
-		IconChangeLimitPerMinute:              int32(policy.IconChange.PerMinute),
-		IconChangeLimitPerDay:                 int32(policy.IconChange.PerDay),
-		PasskeyLimitPerMinute:                 int32(policy.Passkey.PerMinute),
-		PasskeyLimitPerDay:                    int32(policy.Passkey.PerDay),
-		SeriesRemainderCheckoutLimitPerMinute: int32(policy.SeriesRemainderCheckout.PerMinute),
-		SeriesRemainderCheckoutLimitPerDay:    int32(policy.SeriesRemainderCheckout.PerDay),
-		SubscriptionCheckoutLimitPerMinute:    int32(policy.SubscriptionCheckout.PerMinute),
-		SubscriptionCheckoutLimitPerDay:       int32(policy.SubscriptionCheckout.PerDay),
-		CoinPaymentLimitPerMinute:             int32(policy.CoinPayment.PerMinute),
-		CoinPaymentLimitPerDay:                int32(policy.CoinPayment.PerDay),
-		PurchaseCheckoutLimitPerMinute:        int32(policy.PurchaseCheckout.PerMinute),
-		PurchaseCheckoutLimitPerDay:           int32(policy.PurchaseCheckout.PerDay),
-		LoginAccountLimitPerMinute:            int32(policy.LoginAttemptsPerAccount.PerMinute),
-		LoginAccountLimitPerDay:               int32(policy.LoginAttemptsPerAccount.PerDay),
-		LoginSourceLimitPerHour:               int32(policy.LoginAttemptsPerSource.PerHour),
-		LoginSourceLimitPerDay:                int32(policy.LoginAttemptsPerSource.PerDay),
-		DisposableEmailDomainsUrl:             policy.DisposableEmailDomainsURL,
-		TenantCoinsAllowed:                    policy.TenantCoinsAllowed,
+		MfaRequiredForTenantAdmin:               policy.MFARequiredForTenantAdmin,
+		MfaRequiredForPlatformOperator:          policy.MFARequiredForPlatformOperator,
+		PasswordVerifyLimitPerMinute:            int32(policy.PasswordVerification.PerMinute),
+		PasswordVerifyLimitPerDay:               int32(policy.PasswordVerification.PerDay),
+		MailRequestLimitPerAddressPerHour:       int32(policy.MailRequestsPerAddress.PerHour),
+		MailRequestLimitPerAddressPerDay:        int32(policy.MailRequestsPerAddress.PerDay),
+		MailRequestLimitPerSourcePerHour:        int32(policy.MailRequestsPerSource.PerHour),
+		MailRequestLimitPerSourcePerDay:         int32(policy.MailRequestsPerSource.PerDay),
+		CommentPostLimitPerMinute:               int32(community.CommentPost.PerMinute),
+		CommentPostLimitPerDay:                  int32(community.CommentPost.PerDay),
+		CommentReportLimitPerMinute:             int32(community.CommentReport.PerMinute),
+		CommentReportLimitPerDay:                int32(community.CommentReport.PerDay),
+		CommentDuplicateWindowMinutes:           int32(community.DuplicateCommentWindow / time.Minute),
+		EpisodeRatingLimitPerMinute:             int32(community.EpisodeRating.PerMinute),
+		EpisodeRatingLimitPerDay:                int32(community.EpisodeRating.PerDay),
+		ContactMessageLimitPerAccountPerHour:    int32(community.ContactMessagePerAccount.PerHour),
+		ContactMessageLimitPerAccountPerDay:     int32(community.ContactMessagePerAccount.PerDay),
+		ContactMessageLimitPerClientPerHour:     int32(community.ContactMessagePerClient.PerHour),
+		ContactMessageLimitPerClientPerDay:      int32(community.ContactMessagePerClient.PerDay),
+		ViewerPreferencesLimitPerMinute:         int32(community.ViewerPreferencesUpdate.PerMinute),
+		ViewerPreferencesLimitPerDay:            int32(community.ViewerPreferencesUpdate.PerDay),
+		NotificationSettingsLimitPerMinute:      int32(community.NotificationSettingsUpdate.PerMinute),
+		NotificationSettingsLimitPerDay:         int32(community.NotificationSettingsUpdate.PerDay),
+		StorePurchaseConfirmLimitPerMinute:      int32(policy.StorePurchaseConfirmation.PerMinute),
+		StorePurchaseConfirmLimitPerDay:         int32(policy.StorePurchaseConfirmation.PerDay),
+		WaitFreeTicketUseLimitPerMinute:         int32(policy.WaitFreeTicketUse.PerMinute),
+		WaitFreeTicketUseLimitPerDay:            int32(policy.WaitFreeTicketUse.PerDay),
+		LegalPageAgreementLimitPerMinute:        int32(policy.LegalPageAgreement.PerMinute),
+		LegalPageAgreementLimitPerDay:           int32(policy.LegalPageAgreement.PerDay),
+		IdentityLinkLimitPerMinute:              int32(policy.IdentityLink.PerMinute),
+		IdentityLinkLimitPerDay:                 int32(policy.IdentityLink.PerDay),
+		IconChangeLimitPerMinute:                int32(policy.IconChange.PerMinute),
+		IconChangeLimitPerDay:                   int32(policy.IconChange.PerDay),
+		PasskeyLimitPerMinute:                   int32(policy.Passkey.PerMinute),
+		PasskeyLimitPerDay:                      int32(policy.Passkey.PerDay),
+		SeriesRemainderCheckoutLimitPerMinute:   int32(policy.SeriesRemainderCheckout.PerMinute),
+		SeriesRemainderCheckoutLimitPerDay:      int32(policy.SeriesRemainderCheckout.PerDay),
+		SubscriptionCheckoutLimitPerMinute:      int32(policy.SubscriptionCheckout.PerMinute),
+		SubscriptionCheckoutLimitPerDay:         int32(policy.SubscriptionCheckout.PerDay),
+		CoinPaymentLimitPerMinute:               int32(policy.CoinPayment.PerMinute),
+		CoinPaymentLimitPerDay:                  int32(policy.CoinPayment.PerDay),
+		PurchaseCheckoutLimitPerMinute:          int32(policy.PurchaseCheckout.PerMinute),
+		PurchaseCheckoutLimitPerDay:             int32(policy.PurchaseCheckout.PerDay),
+		AnonymousReadPublicApiLimitPer10Seconds: int32(policy.AnonymousReads.PublicAPI),
+		AnonymousReadSearchLimitPer10Seconds:    int32(policy.AnonymousReads.Search),
+		AnonymousReadImagesLimitPer10Seconds:    int32(policy.AnonymousReads.Images),
+		LoginAccountLimitPerMinute:              int32(policy.LoginAttemptsPerAccount.PerMinute),
+		LoginAccountLimitPerDay:                 int32(policy.LoginAttemptsPerAccount.PerDay),
+		LoginSourceLimitPerHour:                 int32(policy.LoginAttemptsPerSource.PerHour),
+		LoginSourceLimitPerDay:                  int32(policy.LoginAttemptsPerSource.PerDay),
+		DisposableEmailDomainsUrl:               policy.DisposableEmailDomainsURL,
+		TenantCoinsAllowed:                      policy.TenantCoinsAllowed,
 	}
 }
 

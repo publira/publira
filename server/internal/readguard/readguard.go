@@ -5,8 +5,9 @@
 // them before they cost anything. This is the limit behind it, so that an edge
 // which limits nothing — the stock caddy image, a WAF rule never written, a
 // router added without its limit — leaves the server looser than it should be
-// rather than open. Its allowances are therefore wider than the edge's, and a
-// reader behind a working edge is refused by the edge first.
+// rather than open. Its allowances are the platform policy's anonymous read
+// limits, which are never tighter than the edge's, so a reader behind a
+// working edge is refused by the edge first.
 //
 // A client is the address internal/clientip resolves, and the counters are the
 // ones internal/ratelimit keeps, in Redis when the deployment names one, so
@@ -15,10 +16,11 @@ package readguard
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/publira/publira/server/internal/clientip"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 )
 
@@ -26,76 +28,50 @@ import (
 type Allowance string
 
 const (
-	// PublicAPI is every publira.v1 procedure but the catalog search.
+	// PublicAPI is platformpolicy.ReadLimits.PublicAPI.
 	PublicAPI Allowance = "public_api"
-	// Search is the catalog search procedures, CatalogService's
-	// SearchPublished…. Each runs the most expensive query a reader can ask
-	// for, so it has a budget of its own, which a client that has spent the
-	// public API's still has, and the other way round.
+	// Search is platformpolicy.ReadLimits.Search.
 	Search Allowance = "search"
-	// Images is the image routes of a tenant's site and image hosts.
+	// Images is platformpolicy.ReadLimits.Images.
 	Images Allowance = "images"
 )
 
-// Rate is an allowance as the edge writes it: a burst a client may send at
-// once, refilled at a rate per second.
-type Rate struct {
-	Burst     int
-	PerSecond int
-}
-
-// EdgeRates are the allowances `infra/proxy/README.md` (Request rates) gives
-// the edge, which the server's allowances are derived from so that they are
-// never the tighter of the two.
-var EdgeRates = map[Allowance]Rate{
-	PublicAPI: {Burst: 120, PerSecond: 20},
-	Search:    {Burst: 20, PerSecond: 2},
-	Images:    {Burst: 600, PerSecond: 60},
-}
-
-// window is the one window the server counts a client's reads in. One rule
-// rather than a burst and a budget is one counter, and so one round trip to
-// Redis, on every read the server answers: a limit that doubled the cost of
-// each image would be paid by every reader to slow down a few.
-const window = 10 * time.Second
-
-// headroom is how far past the edge the server's allowance reaches. The edge
-// admits at most a burst and what its rate refills in a window, and the server
-// counts more than the edge sees: the calls web-storefront makes for a
-// signed-in reader carry the reader's address, and arrive on top of what the
-// reader asked the edge for directly.
-const headroom = 2
-
-// Rule is the window the server counts a client's reads of allowance in.
-func Rule(allowance Allowance) ratelimit.Rule {
-	rate := EdgeRates[allowance]
-	return ratelimit.Rule{
-		Limit:  headroom * (rate.Burst + rate.PerSecond*int(window/time.Second)),
-		Window: window,
+// Limit is how many reads of allowance limits gives one client in a
+// platformpolicy.ReadWindow.
+func Limit(limits platformpolicy.ReadLimits, allowance Allowance) int {
+	switch allowance {
+	case Search:
+		return limits.Search
+	case Images:
+		return limits.Images
+	default:
+		return limits.PublicAPI
 	}
 }
 
 // Guard charges a client's reads against its allowances.
 type Guard struct {
 	limiter *ratelimit.Limiter
+	policy  platformpolicy.Source
 }
 
-// New returns a guard that keeps its counters in limiter.
-func New(limiter *ratelimit.Limiter) *Guard {
-	return &Guard{limiter: limiter}
+// New returns a guard that keeps its counters in limiter and charges them
+// against the anonymous read limits of policy.
+func New(limiter *ratelimit.Limiter, policy platformpolicy.Source) *Guard {
+	return &Guard{limiter: limiter, policy: policy}
 }
 
 // NewFromEnv returns the guard a server process uses, over the counters every
 // instance shares when the deployment names a Redis.
-func NewFromEnv(logger *slog.Logger) *Guard {
-	return New(ratelimit.NewFromEnv(logger))
+func NewFromEnv(policy platformpolicy.Source, logger *slog.Logger) *Guard {
+	return New(ratelimit.NewFromEnv(logger), policy)
 }
 
-// NewDefault returns a guard over counters kept in this process alone, for a
-// caller that was handed none: no guard at all would take the limit off
-// silently.
+// NewDefault returns a guard over the built-in policy and counters kept in
+// this process alone, for a caller that was handed none: no guard at all would
+// take the limit off silently.
 func NewDefault() *Guard {
-	return New(ratelimit.New(ratelimit.NewMemoryStore()))
+	return New(ratelimit.New(ratelimit.NewMemoryStore()), platformpolicy.Fixed(platformpolicy.Defaults()))
 }
 
 // Allow charges one read of allowance by the client ctx was resolved for, and
@@ -111,8 +87,16 @@ func (g *Guard) Allow(ctx context.Context, allowance Allowance) (ratelimit.Decis
 	if clientip.InternalFromContext(ctx) {
 		return ratelimit.Decision{Allowed: true}, nil
 	}
+	policy, err := g.policy.Policy(ctx)
+	if err != nil {
+		return ratelimit.Decision{}, fmt.Errorf("resolve the read limits: %w", err)
+	}
+	rule := ratelimit.Rule{
+		Limit:  Limit(policy.AnonymousReads, allowance),
+		Window: platformpolicy.ReadWindow,
+	}
 	// The tenant is left out of the subject, the way the other per-client
 	// limits leave it out: what this bounds is one client spreading the same
 	// reads over every tenant on the platform.
-	return g.limiter.Allow(ctx, "read."+string(allowance)+"|"+clientip.FromContext(ctx), Rule(allowance))
+	return g.limiter.Allow(ctx, "read."+string(allowance)+"|"+clientip.FromContext(ctx), rule)
 }
