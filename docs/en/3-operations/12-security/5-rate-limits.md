@@ -59,7 +59,7 @@ Behind the edge, `publira server` keeps a limit of its own on the same reads, so
 | The search procedures, `/rpc/publira.v1.CatalogService/SearchPublished…` | 80 |
 | The images of a tenant's domain and image host, `/images` | 2,400 |
 
-A call past it is refused with `resource_exhausted`, and an image with `429`, each with a `Retry-After` header naming the wait. Behind an edge with the limits above, a reader is refused by the edge first. The server's limit cannot be changed, so an install whose readers share one address in large numbers, such as a carrier's NAT, needs an edge in front that allows them more.
+A call past it is refused with `resource_exhausted`, and an image with `429`, each with a `Retry-After` header naming the wait. Behind an edge with the limits above, a reader is refused by the edge first. The server's limit cannot be changed, and it applies whatever the edge allows: an edge allowance raised past it, for readers who share one address such as a carrier's NAT, admits requests the server then refuses. Readers behind one address share the server's limit as they share the edge's.
 
 The server cannot count what reaches it from inside the install. A request whose every hop is one of the [trusted proxies](../../2-deployments/4-edge/index.md#the-proxies-publira-trusts) is a web app calling as itself for all of its readers at once, so it is not counted. That covers the site's search page, which `web-storefront` runs on the server: only the edge limits `/search`. The console hosts, the webhooks, and the health checks are not counted either.
 
