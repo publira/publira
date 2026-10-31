@@ -127,9 +127,14 @@ class _PageError extends StatelessWidget {
               wait: rateLimit?.retryAfter,
               builder: (context, held) => OutlinedButton(
                 key: const ValueKey('episode-page-retry'),
+                // The page is drawn on black whatever the app's theme, so the
+                // held button is dimmed against black too.
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white70),
+                  disabledForegroundColor: Colors.white38,
+                  side: BorderSide(
+                    color: held ? Colors.white24 : Colors.white70,
+                  ),
                 ),
                 onPressed: held ? null : onRetry,
                 child: AutospacedText(messages.viewerReload),
