@@ -180,6 +180,8 @@ A profile records the shape it was written in, and a command that loads one refu
 
 A profile's secrets and run logs are stored under `~/.publira/dev-env` by default. Override the location with `PUBLIRA_DEV_ENV_HOME` only when you need to. The scripts create and drop a profile's database as the `postgres` superuser of `compose.yaml` on the profile's PostgreSQL host; `PUBLIRA_DEV_ENV_POSTGRES_ADMIN_URL` replaces that connection for a server with other credentials. Both variables are read solely by the development environment scripts.
 
+A new worktree has no `node_modules/`, so its first commit fails in the `oxfmt` job of the `pre-commit` [Git hook](#git-hooks) until `task deps` has run there. A worktree Claude Code creates under `.claude/worktrees/` — with `claude --worktree <name>`, or when you ask Claude to work in a worktree — gets `task deps` from a hook in [`.claude/settings.json`](.claude/settings.json) when the session starts in it or Claude enters it. A worktree you add yourself with `git worktree add`, and one a Claude Code subagent runs in, still needs `task deps` by hand.
+
 ## Verifying a change
 
 Run the commands that match the area you changed, from the repository root. They are the same commands CI runs.

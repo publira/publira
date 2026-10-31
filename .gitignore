@@ -63,6 +63,9 @@ Thumbs.db
 *.ipr
 *.iws
 
+# Claude Code
+.claude/worktrees/
+
 # Secrets & Local Data
 .env
 .env.*
