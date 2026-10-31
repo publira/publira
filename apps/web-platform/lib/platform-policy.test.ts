@@ -149,6 +149,23 @@ describe("getPlatformPolicy", () => {
     });
   });
 
+  it("reads the anonymous read limits as part of the security policy", async () => {
+    mockGetPlatformPolicy.mockResolvedValueOnce({
+      policy: {
+        anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
+      },
+      revision: 5n,
+    });
+
+    await expect(getPlatformPolicy()).resolves.toMatchObject({
+      values: {
+        security: {
+          anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
+        },
+      },
+    });
+  });
+
   // A server older than the allowance answers without the field, and a fresh
   // install has never saved it: both read as off.
   it("reads the tenant coin allowance, off when the answer leaves it out", async () => {
@@ -171,6 +188,7 @@ const listUrl = "https://lists.example.com/disposable.conf";
 
 /** What the security screen submits, requiring two-step verification of operators. */
 const securityValues: PlatformSecurityPolicy = {
+  anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
   disposableEmailDomainsUrl: "",
   loginAttemptsPerAccount: { perDay: 50, perMinute: 5 },
   loginAttemptsPerSource: { perDay: 300, perHour: 30 },
@@ -186,6 +204,7 @@ const securityValues: PlatformSecurityPolicy = {
 
 /** A stored policy that names a list, as `GetPlatformPolicy` answers it. */
 const storedPolicy = {
+  anonymousReadLimits: { images: 3000, publicApi: 700, search: 90 },
   communityLimitDefaults: {
     commentPost: { perDay: 100, perMinute: 10 },
     duplicateCommentWindowMinutes: 10,
@@ -222,7 +241,7 @@ describe("savePlatformPolicy", () => {
 
   // `UpdatePlatformPolicy` writes the whole row, so a value this screen does
   // not edit has to be sent back as read, or the save would clear it.
-  it("keeps the stored list URL, sign-in attempt limits, MFA requirements, and coin allowance when the community limits are saved", async () => {
+  it("keeps the stored list URL, sign-in attempt limits, read limits, MFA requirements, and coin allowance when the community limits are saved", async () => {
     await expect(
       updatePlatformCommunityLimits(community, 4n, "en")
     ).resolves.toEqual({ ok: true });
@@ -231,6 +250,7 @@ describe("savePlatformPolicy", () => {
       expect.objectContaining({
         expectedRevision: 4n,
         policy: expect.objectContaining({
+          anonymousReadLimits: { images: 3000, publicApi: 700, search: 90 },
           disposableEmailDomainsUrl: listUrl,
           loginAttemptsPerAccount: { perDay: 60, perMinute: 6 },
           loginAttemptsPerSource: { perDay: 400, perHour: 40 },
@@ -285,6 +305,36 @@ describe("savePlatformPolicy", () => {
     });
   });
 
+  // The screen mirrors the least each limit may be, but a server whose edge
+  // allowances have since grown refuses by the field, and the setting is named.
+  it("names the read limit the server refused below what the edge admits", async () => {
+    mockUpdatePlatformPolicy.mockRejectedValueOnce(
+      new ConnectError(
+        "policy.anonymous_read_limits.search must be at least 40",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: {
+              fieldViolations: [
+                { field: "policy.anonymous_read_limits.search" },
+              ],
+            },
+          },
+        ]
+      )
+    );
+
+    await expect(
+      updatePlatformSecurityPolicy(securityValues, 4n, "en")
+    ).resolves.toEqual({
+      message:
+        "The limit for Catalog searches is below what the edge admits from one client in 10 seconds, so nothing was saved. Enter a larger value.",
+      ok: false,
+    });
+  });
+
   // The server keeps the stored allowance only when the field is left out, so
   // the screen sends `false` rather than omitting it, or it could never turn
   // the allowance off.
@@ -313,6 +363,7 @@ describe("savePlatformPolicy", () => {
   it("sends the list URL and the operator MFA requirement the security screen saves", async () => {
     await updatePlatformSecurityPolicy(
       {
+        anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
         disposableEmailDomainsUrl: "",
         loginAttemptsPerAccount: { perDay: 50, perMinute: 5 },
         loginAttemptsPerSource: { perDay: 300, perHour: 30 },

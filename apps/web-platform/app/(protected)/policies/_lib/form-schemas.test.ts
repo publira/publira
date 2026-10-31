@@ -11,6 +11,9 @@ import {
 } from "./form-schemas";
 
 const securityValues = {
+  anonymous_read_images_per_10_seconds: "2400",
+  anonymous_read_public_api_per_10_seconds: "640",
+  anonymous_read_search_per_10_seconds: "80",
   login_attempts_per_account_per_day: "50",
   login_attempts_per_account_per_minute: "5",
   login_attempts_per_source_per_day: "300",
@@ -153,6 +156,48 @@ describe("securityPolicyFormSchema", () => {
     const result = await parseSecurity({ [name]: "0" });
 
     expect(result.success).toBe(false);
+  });
+
+  it("reads the anonymous read limits", async () => {
+    const result = await parseSecurity({
+      anonymous_read_images_per_10_seconds: "1200",
+      anonymous_read_public_api_per_10_seconds: "320",
+      anonymous_read_search_per_10_seconds: "40",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({
+      anonymousReadImages: 1200,
+      anonymousReadPublicApi: 320,
+      anonymousReadSearch: 40,
+    });
+  });
+
+  // The server refuses a read limit below what the edge admits from one
+  // client in 10 seconds, so the edge stays the first to refuse a reader.
+  it.each([
+    [
+      "anonymous_read_public_api_per_10_seconds",
+      "319",
+      "Enter a whole number of at least 320 for Public API calls, which is what the edge admits from one client in 10 seconds.",
+    ],
+    [
+      "anonymous_read_search_per_10_seconds",
+      "39",
+      "Enter a whole number of at least 40 for Catalog searches, which is what the edge admits from one client in 10 seconds.",
+    ],
+    [
+      "anonymous_read_images_per_10_seconds",
+      "1199",
+      "Enter a whole number of at least 1,200 for Images, which is what the edge admits from one client in 10 seconds.",
+    ],
+  ])("refuses %s below what the edge admits", async (name, value, message) => {
+    const result = await parseSecurity({ [name]: value });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      message
+    );
   });
 
   it("reads an empty list URL as no list", async () => {

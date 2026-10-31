@@ -11,6 +11,7 @@ export type { PlatformNotification } from "../gen/publira/platform/v1/notificati
 export type { PlatformOperator } from "../gen/publira/platform/v1/operator_pb.js";
 
 export type {
+  AnonymousReadLimits,
   CommunityLimitDefaults,
   HourDayLimit,
   MinuteDayLimit,

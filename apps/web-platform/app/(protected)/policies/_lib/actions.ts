@@ -49,6 +49,11 @@ export const updatePlatformSecurityPolicyAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformSecurityPolicy(
       {
+        anonymousReadLimits: {
+          images: data.anonymousReadImages,
+          publicApi: data.anonymousReadPublicApi,
+          search: data.anonymousReadSearch,
+        },
         disposableEmailDomainsUrl: data.disposableEmailDomainsUrl,
         loginAttemptsPerAccount: {
           perDay: data.loginAttemptsPerAccountPerDay,
