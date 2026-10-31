@@ -179,7 +179,7 @@ The **In-app purchase** section decides how the tenant's app sells an episode it
 - **Web checkout** opens the site's checkout in the phone's browser, through the provider above, and brings the reader back to the episode once paid.
 - **In-app purchase** sells with the App Store's and Google Play's own payment sheet. The store charges the reader and keeps its commission, and the payment provider above is not involved.
 
-![The In-app purchase section: How the app sells episodes, then the App Store and Google Play, each with its status, its switch, its key, and the app named under App links, and Save the in-app purchase settings.](./selling-episodes-in-app-purchase.png)
+![The In-app purchase section: How the app sells episodes, then the App Store and Google Play, each with its status, its switch, its key, the app named under App links, and the URL its notifications are sent to, and Save the in-app purchase settings.](./selling-episodes-in-app-purchase.png)
 
 With **In-app purchase**, the app needs no payment provider from [Choosing a payment provider](#choosing-a-payment-provider): it buys through the store and the install verifies the purchase with the store.
 
