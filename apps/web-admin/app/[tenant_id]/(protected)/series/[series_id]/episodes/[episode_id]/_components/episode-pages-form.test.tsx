@@ -114,13 +114,22 @@ const renderBothForms = async () => {
 const fileInput = (): HTMLInputElement =>
   screen.getByLabelText<HTMLInputElement>(/Page images|ZIP file|ePub file/u);
 
+/** The form `input` belongs to, failing the test when it is outside one. */
+const formOf = (input: HTMLInputElement): HTMLFormElement => {
+  if (!input.form) {
+    throw new Error("the file input is not inside a form");
+  }
+
+  return input.form;
+};
+
 describe("EpisodePagesForm", () => {
   it("starts in pages mode with the file input set for images", async () => {
     const { container } = await renderForm();
 
-    const uploadMode = container.querySelector(
+    const uploadMode = container.querySelector<HTMLInputElement>(
       'input[name="upload_mode"]'
-    ) as HTMLInputElement | null;
+    );
 
     const input = fileInput();
 
@@ -208,14 +217,19 @@ describe("EpisodePagesForm", () => {
     });
     expect(screen.getByText("page-1.png")).toBeTruthy();
 
-    fireEvent.submit(input.form as HTMLFormElement);
+    fireEvent.submit(formOf(input));
 
     expect(await screen.findByText("Page images added.")).toBeTruthy();
     expect(fetch).toHaveBeenCalledOnce();
     const [path, init] = fetch.mock.calls[0] ?? [];
     expect(path).toBe(EPISODE_PAGES_UPLOAD_PATH);
     expect(init?.method).toBe("POST");
-    const body = init?.body as FormData;
+    const body = init?.body;
+
+    if (!(body instanceof FormData)) {
+      throw new TypeError("the upload was not sent as a form");
+    }
+
     expect(body.get("episode_id")).toBe("EP001-ID");
     expect(body.get("series_id")).toBe("SERIES001-ID");
     expect(body.get("upload_mode")).toBe("pages");
@@ -228,7 +242,7 @@ describe("EpisodePagesForm", () => {
     stubUpload({ message: "Select a ZIP (.zip) file.", ok: false }, 400);
     await renderForm();
 
-    fireEvent.submit(fileInput().form as HTMLFormElement);
+    fireEvent.submit(formOf(fileInput()));
 
     expect(await screen.findByText("Select a ZIP (.zip) file.")).toBeTruthy();
     expect(mockRefresh).not.toHaveBeenCalled();
@@ -246,7 +260,7 @@ describe("EpisodePagesForm", () => {
     );
     await renderForm();
 
-    fireEvent.submit(fileInput().form as HTMLFormElement);
+    fireEvent.submit(formOf(fileInput()));
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith(
@@ -263,7 +277,7 @@ describe("EpisodePagesForm", () => {
     const fetch = stubUpload({ message: "Page images added.", ok: true });
     await renderForm();
 
-    fireEvent.submit(fileInput().form as HTMLFormElement);
+    fireEvent.submit(formOf(fileInput()));
 
     // Held rather than failed: nothing is sent while the browser is offline.
     await waitFor(() => {
@@ -283,7 +297,7 @@ describe("EpisodePagesForm", () => {
     vi.stubGlobal("fetch", fetch);
     await renderForm();
 
-    fireEvent.submit(fileInput().form as HTMLFormElement);
+    fireEvent.submit(formOf(fileInput()));
 
     expect(
       await screen.findByText(
@@ -306,7 +320,7 @@ describe("EpisodePagesForm", () => {
     );
     await renderForm();
 
-    fireEvent.submit(fileInput().form as HTMLFormElement);
+    fireEvent.submit(formOf(fileInput()));
 
     expect(
       await screen.findByText(
@@ -328,7 +342,7 @@ describe("EpisodePagesForm", () => {
     );
     await renderForm();
 
-    fireEvent.submit(fileInput().form as HTMLFormElement);
+    fireEvent.submit(formOf(fileInput()));
 
     expect(
       await screen.findByText(/Keep each upload to 256MB or less/u)
@@ -353,7 +367,7 @@ describe("EpisodePagesForm", () => {
     });
     await renderForm();
 
-    fireEvent.submit(fileInput().form as HTMLFormElement);
+    fireEvent.submit(formOf(fileInput()));
 
     expect(
       await screen.findByText(/Keep each upload to 256MB or less/u)
@@ -379,7 +393,7 @@ describe("EpisodePagesForm", () => {
 
     // jsdom holds a click back: the files set above never reach the list its
     // `required` check reads.
-    fireEvent.submit(input.form as HTMLFormElement);
+    fireEvent.submit(formOf(input));
 
     await waitFor(() => {
       expect(input.matches(":disabled")).toBe(true);

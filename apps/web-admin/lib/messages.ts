@@ -20,6 +20,9 @@ export type AdminMessageAccessor = MessageAccessor<AdminMessages>;
  * cannot leak into client bundles.
  */
 export const loadAdminMessages = (locale: Locale): Promise<AdminMessages> =>
+  // SAFETY: `AdminMessages` is the type generated from the catalogs, and every
+  // generated locale catalog has the same key set, so the tree any locale
+  // loads is one.
   loadLocaleMessages(locale) as Promise<AdminMessages>;
 
 /**

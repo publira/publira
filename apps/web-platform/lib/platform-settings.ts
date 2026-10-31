@@ -1,4 +1,5 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
   rpcErrorHasFieldViolation,
@@ -76,20 +77,20 @@ export const platformSettingsCacheTag = "platform:settings";
  * passes none.
  */
 const parseErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale,
   conflictMessage?: string
 ): string => {
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+  const overrides: RpcErrorMessageOverrides = {
+    "invalid-argument": rpcErrorRawMessage(cause)?.trim() || fallback,
+  };
 
-  return rpcErrorMessage(error, fallback, {
-    locale,
-    overrides: {
-      "invalid-argument": serverMessage,
-      ...(conflictMessage ? { precondition: conflictMessage } : {}),
-    },
-  });
+  if (conflictMessage) {
+    overrides.precondition = conflictMessage;
+  }
+
+  return rpcErrorMessage(cause, fallback, { locale, overrides });
 };
 
 const getPlatformSettingsForLocale = async (
@@ -457,21 +458,21 @@ export const updatePlatformDefaultCurrency = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
+    const overrides: RpcErrorMessageOverrides = {
+      precondition: t("platform.settings.currency_save_conflict"),
+    };
+
     // The list offers the runtime's codes, which the server's table can lag
     // behind, so a `default_currency` violation is a code it does not know.
+    if (rpcErrorHasFieldViolation(error, "default_currency")) {
+      overrides["invalid-argument"] = t("platform.settings.currency_invalid");
+    }
+
     return {
       message: rpcErrorMessage(
         error,
         t("platform.settings.currency_save_failed"),
-        {
-          locale,
-          overrides: {
-            ...(rpcErrorHasFieldViolation(error, "default_currency")
-              ? { "invalid-argument": t("platform.settings.currency_invalid") }
-              : {}),
-            precondition: t("platform.settings.currency_save_conflict"),
-          },
-        }
+        { locale, overrides }
       ),
       ok: false,
     };

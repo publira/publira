@@ -344,7 +344,7 @@ describe("TenantSignInSettingsForm", () => {
 
     expect(appleCopy?.matches(":disabled")).toBe(false);
     await act(() => {
-      fireEvent.click(googleCopy as HTMLButtonElement);
+      fireEvent.click(googleCopy);
     });
     expect(writeText).toHaveBeenCalledWith(
       "https://comics.example/api/v1/auth/google/callback"
@@ -379,7 +379,7 @@ describe("TenantSignInSettingsForm", () => {
     });
 
     await act(() => {
-      fireEvent.click(androidCopy as HTMLButtonElement);
+      fireEvent.click(androidCopy);
     });
     expect(writeText).toHaveBeenCalledWith(
       "https://comics.example/api/v1/auth/apple/callback/android"

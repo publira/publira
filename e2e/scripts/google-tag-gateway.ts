@@ -48,7 +48,7 @@ const readBody = async (request: IncomingMessage): Promise<string> => {
   const chunks: Buffer[] = [];
 
   for await (const chunk of request) {
-    chunks.push(chunk as Buffer);
+    chunks.push(Buffer.from(chunk));
   }
 
   return Buffer.concat(chunks).toString();

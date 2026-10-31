@@ -10,6 +10,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { RouteParams } from "@publira/utils/route-params";
 import { z } from "zod";
 
 import { apiClient } from "./api-client";
@@ -506,7 +507,7 @@ const tenantAddress = async (
  * crawler retries instead of recording that the site lists nothing.
  */
 export const respondWithSitemap = async (
-  params: unknown
+  params: RouteParams
 ): Promise<Response> => {
   const parsed = parseRouteParams(tenantRouteParamsSchema, params);
 
@@ -548,7 +549,7 @@ const sitemapFileRouteParamsSchema = tenantRouteParamsSchema.extend({
 
 /** `/sitemap/{n}.xml`: one file of a sitemap that `/sitemap.xml` indexes. */
 export const respondWithSitemapFile = async (
-  params: unknown
+  params: RouteParams
 ): Promise<Response> => {
   const parsed = parseRouteParams(sitemapFileRouteParamsSchema, params);
 

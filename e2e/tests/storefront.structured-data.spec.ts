@@ -14,7 +14,19 @@ const SEED_ORIGIN = `http://${tenantHost("localhost")}`;
 
 const JSON_LD = 'script[type="application/ld+json"]';
 
-type JsonLdDocument = Record<string, unknown> & {
+type JsonValue =
+  | boolean
+  | number
+  | string
+  | null
+  | readonly JsonValue[]
+  | JsonObject;
+
+interface JsonObject {
+  readonly [key: string]: JsonValue;
+}
+
+type JsonLdDocument = JsonObject & {
   "@context": string;
   "@type": string;
 };
@@ -33,6 +45,8 @@ const readJsonLd = async (
   await expect(page.locator(JSON_LD)).toHaveCount(count);
   const texts = await page.locator(JSON_LD).allTextContents();
 
+  // SAFETY: web-storefront writes each JSON-LD block as one schema.org
+  // document with `@context` and `@type`, which the expectations check.
   return texts.map((text) => JSON.parse(text) as JsonLdDocument);
 };
 
@@ -43,6 +57,7 @@ const documentOfType = (
   const found = documents.find((document) => document["@type"] === type);
   expect(found, `a ${type} document`).toBeDefined();
 
+  // SAFETY: the expectation above fails the test when no document is a `type`.
   return found as JsonLdDocument;
 };
 
@@ -77,6 +92,8 @@ const expectBreadcrumbEndsAtPage = async (
   documents: readonly JsonLdDocument[]
 ): Promise<void> => {
   const breadcrumb = documentOfType(documents, "BreadcrumbList");
+  // SAFETY: a trail that is not a list of items naming URLs throws in the loop
+  // below, which fails the test as the expectations would.
   const items = breadcrumb.itemListElement as { item: string }[];
 
   for (const { item } of items) {
@@ -95,6 +112,8 @@ const expectSeriesPage = async (page: Page, path: string): Promise<void> => {
   expect(series.name).toBe(SEED_TENANT.series.title);
   expect(series["@id"]).toBe(`${await canonicalOf(page)}#series`);
 
+  // SAFETY: an `image` that is not a list of URLs throws in `new URL`, which
+  // fails the test as the expectation would.
   for (const image of (series.image as string[] | undefined) ?? []) {
     expect(new URL(image).origin).toBe(SEED_ORIGIN);
   }

@@ -115,19 +115,19 @@ export const genresCacheTag = (tenantId: string): string =>
  * alike to do.
  */
 const saveOverrides = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
 
   const invalidArgument = (): string => {
-    if (mentionsImageRejection(error)) {
+    if (mentionsImageRejection(cause)) {
       return t("admin.genres.image_invalid");
     }
 
     // A form opened before a language was switched off saves into a language
     // the site no longer offers.
-    if (rpcErrorHasFieldViolation(error, "locale")) {
+    if (rpcErrorHasFieldViolation(cause, "locale")) {
       return t("admin.genres.locale_not_offered");
     }
 
@@ -139,18 +139,18 @@ const saveOverrides = async (
   return {
     conflict: t("admin.genres.name_taken"),
     "invalid-argument": invalidArgument(),
-    precondition: mentionsStorageNotConfigured(error)
+    precondition: mentionsStorageNotConfigured(cause)
       ? t("admin.errors.storage_not_configured")
       : undefined,
   };
 };
 
 const mapErrorToMessage = (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale,
   overrides?: RpcErrorMessageOverrides
-): string => rpcErrorMessage(error, fallbackMessage, { locale, overrides });
+): string => rpcErrorMessage(cause, fallbackMessage, { locale, overrides });
 
 /** The generated `Genre` fields {@link mapGenre} reads (see `label.ts`). */
 type RawGenre = Pick<

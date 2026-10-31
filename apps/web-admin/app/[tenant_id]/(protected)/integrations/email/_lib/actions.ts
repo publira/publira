@@ -23,6 +23,7 @@ import {
 } from "#lib/email-settings-shared";
 import {
   checkboxOnFormSchema,
+  isFormText,
   optionalBoundedIntFormSchema,
   optionalTrimmedString,
   requiredTrimmedString,
@@ -46,7 +47,7 @@ import type {
  * value can never remove it.
  */
 const secretUpdateModeFormSchema = z.preprocess((value) => {
-  const raw = typeof value === "string" ? value.trim() : "";
+  const raw = isFormText(value) ? value.trim() : "";
 
   if (raw === String(SECRET_UPDATE_MODE_REPLACE)) {
     return SECRET_UPDATE_MODE_REPLACE;
@@ -58,7 +59,7 @@ const secretUpdateModeFormSchema = z.preprocess((value) => {
 }, z.number());
 
 const recipientTypeFormSchema = z.preprocess((value) => {
-  const raw = typeof value === "string" ? value.trim() : "";
+  const raw = isFormText(value) ? value.trim() : "";
 
   return raw === String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
     ? TEST_EMAIL_RECIPIENT_TYPE_CUSTOM
@@ -75,14 +76,14 @@ const tenantSmtpFormSchema = async (locale: Locale) => {
 
   return z.object({
     encryption: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim().toLowerCase() : ""),
+      (value) => (isFormText(value) ? value.trim().toLowerCase() : ""),
       z.string()
     ),
     fromAddress: optionalTrimmedString(),
     fromName: optionalTrimmedString(),
     host: optionalTrimmedString(),
     password: z.preprocess(
-      (value) => (typeof value === "string" ? value : ""),
+      (value) => (isFormText(value) ? value : ""),
       z.string()
     ),
     passwordUpdateMode: secretUpdateModeFormSchema,

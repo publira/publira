@@ -32,7 +32,7 @@ const {
       (options: {
         optionsJSON: unknown;
         useBrowserAutofill?: boolean;
-      }) => Promise<unknown>
+      }) => Promise<typeof ASSERTION>
     >(),
 }));
 

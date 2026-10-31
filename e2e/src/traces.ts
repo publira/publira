@@ -114,6 +114,7 @@ export const tracesOfService = async (
     );
   }
 
+  // SAFETY: the OTLP JSON Jaeger's `/api/v3/traces` answers a search with.
   const { result } = (await response.json()) as OtlpTraces;
 
   return (result?.resourceSpans ?? []).flatMap(({ resource, scopeSpans }) => {

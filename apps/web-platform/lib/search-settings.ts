@@ -424,6 +424,13 @@ const toTestResult = async (
   };
 };
 
+/** A refused write, with the analysis error when the definition was refused. */
+interface SearchSettingsWriteFailure {
+  fieldErrors?: { analysis?: string };
+  message: string;
+  ok: false;
+}
+
 /**
  * The server's validation text names the field it refused and nothing else —
  * never a credential, and never the URL, which may carry one — so it passes
@@ -436,27 +443,19 @@ const toTestResult = async (
  * which `analysisFields` names alongside the shared one.
  */
 const writeFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   fallbackKey: PlatformMessageKey,
   analysisFields: readonly string[] = ["analysis"]
-): Promise<{
-  fieldErrors?: { analysis?: string };
-  message: string;
-  ok: false;
-}> => {
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+): Promise<SearchSettingsWriteFailure> => {
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
   const t = await getMessagesFor(locale);
   const fallback = t(fallbackKey);
-  const detail = rpcErrorRawMessage(error)?.trim();
+  const detail = rpcErrorRawMessage(cause)?.trim();
 
-  return {
-    ...(detail &&
-    analysisFields.some((field) => rpcErrorHasFieldViolation(error, field))
-      ? { fieldErrors: { analysis: detail } }
-      : {}),
-    message: rpcErrorMessage(error, fallback, {
+  const failure: SearchSettingsWriteFailure = {
+    message: rpcErrorMessage(cause, fallback, {
       locale,
       overrides: {
         "invalid-argument": detail || fallback,
@@ -465,6 +464,15 @@ const writeFailure = async (
     }),
     ok: false,
   };
+
+  if (
+    detail &&
+    analysisFields.some((field) => rpcErrorHasFieldViolation(cause, field))
+  ) {
+    failure.fieldErrors = { analysis: detail };
+  }
+
+  return failure;
 };
 
 const getPlatformSearchSettingsForLocale = async (

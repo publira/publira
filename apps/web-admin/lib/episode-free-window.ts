@@ -92,24 +92,24 @@ const mapFreeWindow = (
  * period; the field violations name what the server found wrong in the input.
  */
 const mapCreateErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
   if (
-    rpcErrorHasFieldViolation(error, "starts_at") ||
-    rpcErrorHasFieldViolation(error, "ends_at")
+    rpcErrorHasFieldViolation(cause, "starts_at") ||
+    rpcErrorHasFieldViolation(cause, "ends_at")
   ) {
     return t("admin.series.episodes.period.invalid");
   }
 
-  if (rpcErrorHasFieldViolation(error, "episode_ids")) {
+  if (rpcErrorHasFieldViolation(cause, "episode_ids")) {
     return t("admin.series.episodes.free_windows.episodes_changed");
   }
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "not-found": t("admin.series.episodes.series_not_found"),

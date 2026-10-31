@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser } from "#lib/admin-auth";
+import type * as AdminAuthModule from "#lib/admin-auth";
 
 import {
   TenantAdminFieldset,
@@ -40,7 +41,7 @@ vi.mock("#lib/tenant-id", () => ({
 }));
 
 vi.mock("#lib/admin-auth", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AdminAuthModule>()),
   getAdminCurrentUser: vi.fn(),
 }));
 
@@ -175,8 +176,7 @@ describe("TenantEditorFieldset", () => {
       render(await TenantEditorFieldset({ children: form }));
 
       expect(
-        (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
-          .disabled
+        screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled
       ).toBe(false);
       expect(screen.queryByText(EDITOR_ONLY_NOTICE)).toBeNull();
     }
@@ -188,9 +188,9 @@ describe("TenantEditorFieldset", () => {
     render(await TenantEditorFieldset({ children: form }));
 
     expect(
-      (
-        screen.getByRole("button", { name: "Save" }) as HTMLButtonElement
-      ).matches(":disabled")
+      screen
+        .getByRole<HTMLButtonElement>("button", { name: "Save" })
+        .matches(":disabled")
     ).toBe(true);
     expect(screen.getByRole("status").textContent).toContain(
       EDITOR_ONLY_NOTICE
@@ -223,8 +223,7 @@ describe("TenantAdminFieldset", () => {
     render(await TenantAdminFieldset({ children: form }));
 
     expect(
-      (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
-        .disabled
+      screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled
     ).toBe(false);
     expect(screen.queryByText(ADMIN_ONLY_NOTICE)).toBeNull();
   });
@@ -237,9 +236,9 @@ describe("TenantAdminFieldset", () => {
       render(await TenantAdminFieldset({ children: form }));
 
       expect(
-        (
-          screen.getByRole("button", { name: "Save" }) as HTMLButtonElement
-        ).matches(":disabled")
+        screen
+          .getByRole<HTMLButtonElement>("button", { name: "Save" })
+          .matches(":disabled")
       ).toBe(true);
       expect(screen.getByRole("status").textContent).toContain(
         ADMIN_ONLY_NOTICE

@@ -14,7 +14,7 @@ import { Message } from "#components/message";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantName } from "#lib/public-api";
-import { isTenantIdFormat } from "#lib/tenant-id-format";
+import { isRootParamValue, isTenantIdFormat } from "#lib/tenant-id-format";
 
 import "../globals.css";
 
@@ -24,7 +24,7 @@ export const generateStaticParams = () =>
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await tenant_id();
 
-  if (typeof tenantId !== "string") {
+  if (!isRootParamValue(tenantId)) {
     return {};
   }
 

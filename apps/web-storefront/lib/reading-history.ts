@@ -53,10 +53,13 @@ export interface ListEpisodeReadsInput {
   token?: string;
 }
 
-const emptyEpisodeReadPage = {
+const emptyEpisodeReadPage: Pick<
+  ListEpisodeReadsResult,
+  "nextToken" | "previousToken" | "reads"
+> = {
   nextToken: "",
   previousToken: "",
-  reads: [] as EpisodeReadItem[],
+  reads: [],
 };
 
 /**

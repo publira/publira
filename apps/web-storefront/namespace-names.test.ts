@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { FunctionComponent } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import * as CampaignBannerCarousel from "./app/[tenant_id]/[locale]/(site)/_components/campaign-banner-carousel";
@@ -36,6 +37,11 @@ const namespaces = {
   WeeklySchedule,
 };
 
+/** Whether a part is a function, the kind of export that carries a `name`. */
+const isFunctionComponent = <Part>(
+  part: Part
+): part is Part & FunctionComponent => typeof part === "function";
+
 describe("compound component namespaces", () => {
   // A part is renamed only where its module exports it, so React DevTools,
   // error overlays, and stack traces keep naming the component a part belongs
@@ -44,7 +50,7 @@ describe("compound component namespaces", () => {
     "%s keeps each part's declared name",
     (namespace, parts) => {
       for (const [key, part] of Object.entries(parts)) {
-        if (typeof part === "function") {
+        if (isFunctionComponent(part)) {
           expect(part.name, `${namespace}.${key}`).not.toBe(key);
         }
       }

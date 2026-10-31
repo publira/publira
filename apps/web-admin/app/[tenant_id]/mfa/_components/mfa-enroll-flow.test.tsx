@@ -4,11 +4,16 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
+import type {
+  RegistrationResponseJSON,
+  StartRegistrationOpts,
+} from "@simplewebauthn/browser";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import type * as MfaEnrollmentModule from "#components/mfa-enrollment";
 import type {
   MfaEnrollmentConfirmState,
   MfaEnrollmentStartState,
@@ -44,7 +49,12 @@ const {
         formData: FormData
       ) => Promise<MfaEnrollmentStartState>
     >(),
-  startRegistration: vi.fn<(options: unknown) => Promise<unknown>>(),
+  startRegistration:
+    vi.fn<
+      (
+        options: StartRegistrationOpts
+      ) => Promise<Pick<RegistrationResponseJSON, "id">>
+    >(),
 }));
 
 // The Actions are `"use server"`, so the module they live in cannot be
@@ -94,7 +104,7 @@ vi.mock("#lib/tenant-id", () => ({
 }));
 
 vi.mock("#components/mfa-enrollment", async (importOriginal) => {
-  const MfaEnrollment = await importOriginal<Record<string, unknown>>();
+  const MfaEnrollment = await importOriginal<typeof MfaEnrollmentModule>();
 
   return { ...MfaEnrollment, Secret: MfaEnrollment.SecretText };
 });

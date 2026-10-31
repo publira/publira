@@ -520,7 +520,7 @@ describe("TenantPaymentSettingsForm", () => {
     fireEvent.click(
       screen.getAllByRole("button", {
         name: "Change",
-      })[0] as HTMLButtonElement
+      })[0]
     );
 
     const secretInput = screen.getByLabelText<HTMLInputElement>("Secret key");
@@ -579,7 +579,7 @@ describe("TenantPaymentSettingsForm", () => {
     fireEvent.click(
       screen.getAllByRole("button", {
         name: "Change",
-      })[0] as HTMLButtonElement
+      })[0]
     );
     fireEvent.change(screen.getByLabelText("Secret key"), {
       target: { value: leakedSecret },

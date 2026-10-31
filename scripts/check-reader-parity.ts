@@ -49,6 +49,11 @@ export interface Capability {
   web: Surface;
 }
 
+/** The whole of {@link MATRIX_PATH}. */
+interface ReaderParityMatrix {
+  capabilities: Capability[];
+}
+
 export interface Inventory {
   /** RPC method names the app sends, as `Service/Method` spells the method. */
   mobileRpcs: Set<string>;
@@ -306,7 +311,9 @@ const takeInventory = async (): Promise<Inventory> => {
 
 const main = async (): Promise<void> => {
   const source = await readFile(MATRIX_PATH, "utf-8");
-  const matrix = JSON.parse(source) as { capabilities: Capability[] };
+  // SAFETY: reader_parity.json is this repository's own file, kept in this
+  // form; an entry missing a field throws in findProblems and fails the check.
+  const matrix = JSON.parse(source) as ReaderParityMatrix;
   const inventory = await takeInventory();
   const problems = findProblems(matrix.capabilities, inventory);
 

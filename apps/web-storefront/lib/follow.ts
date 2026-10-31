@@ -62,8 +62,8 @@ type CachedFollowStatusResult = FollowStatusResult & {
   unexpected: boolean;
 };
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 const throwIfUnexpected = (unexpected: boolean, message: string): void => {
   if (unexpected) {

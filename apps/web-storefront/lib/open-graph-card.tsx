@@ -100,6 +100,10 @@ interface CardProps {
  * the tenant's primary colour, the subject in its foreground on its
  * background, and its brand underneath.
  */
+/** Whether the brand line is the site's name in text rather than its logo. */
+const isBrandName = (brand: CardProps["brand"]): brand is string =>
+  typeof brand === "string";
+
 const Card = ({ brand, colors, eyebrow, fontFamily, title }: CardProps) => (
   <div
     style={{
@@ -153,7 +157,7 @@ const Card = ({ brand, colors, eyebrow, fontFamily, title }: CardProps) => (
           {title}
         </div>
       </div>
-      {typeof brand === "string" ? (
+      {isBrandName(brand) ? (
         <div
           style={{
             display: "block",
@@ -165,7 +169,7 @@ const Card = ({ brand, colors, eyebrow, fontFamily, title }: CardProps) => (
           {brand}
         </div>
       ) : null}
-      {brand && typeof brand !== "string" ? (
+      {brand && !isBrandName(brand) ? (
         // oxlint-disable-next-line next/no-img-element, react-doctor/nextjs-no-img-element -- `ImageResponse` draws plain elements, and `next/image` is not one.
         <img alt="" height={brand.height} src={brand.src} width={brand.width} />
       ) : null}

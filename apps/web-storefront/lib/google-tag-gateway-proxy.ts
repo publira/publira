@@ -117,6 +117,12 @@ const cookieName = (pair: string): string => {
   return (separator === -1 ? "" : pair.slice(0, separator)).trim();
 };
 
+/** The headers of an upstream request, which always names its `host`. */
+export interface UpstreamRequestHeaders {
+  [name: string]: string;
+  host: string;
+}
+
 /**
  * The headers the gateway sends upstream for a request that arrived with
  * `incoming`.
@@ -129,7 +135,7 @@ const cookieName = (pair: string): string => {
 export const gatewayRequestHeaders = (
   incoming: Headers,
   { clientAddress, host }: { clientAddress: string | null; host: string }
-): Record<string, string> => {
+): UpstreamRequestHeaders => {
   const headers: Record<string, string> = {};
 
   for (const [name, value] of incoming) {
@@ -165,9 +171,7 @@ export const gatewayRequestHeaders = (
     headers[COUNTRY_REGION_HEADER] = countryRegion.data;
   }
 
-  headers.host = host;
-
-  return headers;
+  return { ...headers, host };
 };
 
 /**
@@ -344,6 +348,7 @@ export const forwardToGoogleTagGateway = async (
     });
     outgoing.end(body ?? undefined);
     // Rejects with the request's `error`.
+    // SAFETY: a `ClientRequest` emits `response` with the one `IncomingMessage`.
     [received] = (await once(outgoing, "response")) as [IncomingMessage];
   } catch (error) {
     // A reader who left the page is not the upstream's failure.
@@ -375,6 +380,8 @@ export const forwardToGoogleTagGateway = async (
     received.destroy(new UpstreamTimeoutError());
   });
 
+  // SAFETY: `received` has no encoding set, so every chunk it yields is a
+  // `Buffer`, which is a `Uint8Array`.
   return new NextResponse(
     bodylessStatus(method, status)
       ? null

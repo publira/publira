@@ -95,6 +95,8 @@ const offeredProviders = async (page: Page): Promise<OfferedProviders> => {
       method: "POST",
     });
 
+    // SAFETY: the JSON the Connect handler for TenantService.GetTenant
+    // returns, which carries the offered providers at the top level.
     return (await response.json()) as OfferedProviders;
   }, tenantId);
 

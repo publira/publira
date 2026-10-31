@@ -36,10 +36,10 @@ vi.mock("#lib/auth", () => ({
 
 vi.mock("#lib/auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 
@@ -67,8 +67,14 @@ const form = (values: Record<string, string>): FormData => {
   return data;
 };
 
+/** A flash message, as a redirect carries it. */
+interface Flash {
+  message: string;
+  status: string;
+}
+
 /** The flash the Action put on the `/settings/security` redirect it took. */
-const lastFlash = (): { message: string; status: string } => {
+const lastFlash = (): Flash => {
   const path = mockRedirect.mock.calls.at(-1)?.[0] ?? "";
   const params = new URLSearchParams(path.slice(path.indexOf("?")));
 

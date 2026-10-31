@@ -22,6 +22,11 @@ const withShareParams = (base: string, text: string, url: string): string => {
   return target.toString();
 };
 
+/** Whether the browser has a share sheet to open; not every one does. */
+const offersShareSheet = (
+  share: Navigator["share"] | undefined
+): share is Navigator["share"] => typeof share === "function";
+
 /** How the copy control reports what happened, or nothing until it is used. */
 type CopyOutcome = "copied" | "failed" | null;
 
@@ -119,7 +124,7 @@ export const ShareMenu = ({
       return;
     }
 
-    if (typeof navigator.share === "function") {
+    if (offersShareSheet(navigator.share)) {
       // Called rather than awaited: the sheet is asked for synchronously, which
       // is what keeps it inside the click's transient user activation.
       void openShareSheet();

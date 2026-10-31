@@ -138,11 +138,11 @@ describe("AnnouncementManager", () => {
       })
     );
 
-    const row = screen.getAllByRole("row")[1] as HTMLElement;
+    const [, row] = screen.getAllByRole("row");
     const cells = within(row).getAllByRole("cell");
     expect(cells[1]?.textContent).toBe("Scheduled maintenance");
     expect(
-      within(cells[2] as HTMLElement)
+      within(cells[2])
         .getAllByRole("listitem")
         .map((item) => [item.getAttribute("lang"), item.textContent])
     ).toEqual([
@@ -216,12 +216,8 @@ describe("AnnouncementManager", () => {
     );
 
     const [, everyone, preferred] = screen.getAllByRole("row");
-    expect(
-      within(everyone as HTMLElement).getByText("Sent to everyone")
-    ).toBeDefined();
-    expect(
-      within(preferred as HTMLElement).getByText("As each reader allows")
-    ).toBeDefined();
+    expect(within(everyone).getByText("Sent to everyone")).toBeDefined();
+    expect(within(preferred).getByText("As each reader allows")).toBeDefined();
   });
 
   it.each([

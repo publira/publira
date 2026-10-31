@@ -1,9 +1,15 @@
 import { defineConfig } from "oxfmt";
-import type { SortTailwindcssUserConfig } from "oxfmt";
+import type { OxfmtConfig, SortTailwindcssUserConfig } from "oxfmt";
 import ultracite from "ultracite/oxfmt";
 
+// `true` or `false` turns the preset's sorting on or off as a whole, with no
+// options to add a stylesheet to.
+const isSortSwitch = (
+  value: OxfmtConfig["sortTailwindcss"]
+): value is boolean => typeof value === "boolean";
+
 const sortTailwindcss = (
-  typeof ultracite.sortTailwindcss === "boolean"
+  isSortSwitch(ultracite.sortTailwindcss)
     ? ultracite.sortTailwindcss
     : {
         ...ultracite.sortTailwindcss,

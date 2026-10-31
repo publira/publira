@@ -28,6 +28,8 @@ const reportBrowserTimeZone = (timeZone?: string) => {
   const resolvedOptions = Intl.DateTimeFormat().resolvedOptions();
   vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({
     ...resolvedOptions,
+    // SAFETY: stands in for a browser whose `resolvedOptions()` reports no
+    // zone, which the lib types rule out but some browsers do.
     timeZone: timeZone as string,
   });
 };

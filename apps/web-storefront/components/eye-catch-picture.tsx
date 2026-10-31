@@ -17,10 +17,10 @@ interface EyeCatchPictureProps {
 }
 
 /** Content-type preference: avif > webp > anything else (jpeg, png, …). */
-const CT_PRIORITY: Record<string, number> = {
-  "image/avif": 0,
-  "image/webp": 1,
-};
+const CT_PRIORITY = new Map([
+  ["image/avif", 0],
+  ["image/webp", 1],
+]);
 
 /**
  * Builds an `<img srcset>` from the variants of several widths.
@@ -50,7 +50,7 @@ export const EyeCatchPicture = ({
 
   // Pick the variants of the highest-priority content type.
   const [bestType] = [...new Set(pool.map((v) => v.contentType))].toSorted(
-    (a, b) => (CT_PRIORITY[a] ?? 99) - (CT_PRIORITY[b] ?? 99)
+    (a, b) => (CT_PRIORITY.get(a) ?? 99) - (CT_PRIORITY.get(b) ?? 99)
   );
 
   const best = pool

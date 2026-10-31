@@ -88,9 +88,7 @@ export const DEFAULT_TENANT_THEME: TenantTheme = {
   serifFontFamily: "",
 };
 
-const themeColorToCssVar: {
-  [K in keyof TenantThemeColors]: `--publira-color-${string}`;
-} = {
+const themeColorToCssVar = {
   accentColor: "--publira-color-accent",
   accentForegroundColor: "--publira-color-accent-foreground",
   backgroundColor: "--publira-color-background",
@@ -118,7 +116,15 @@ const themeColorToCssVar: {
   surfaceForegroundColor: "--publira-color-surface-foreground",
   warningColor: "--publira-color-warning",
   warningForegroundColor: "--publira-color-warning-foreground",
+} satisfies {
+  [K in keyof TenantThemeColors]: `--publira-color-${string}`;
 };
+
+// SAFETY: `themeColorToCssVar` is an object literal that `satisfies` a mapped
+// type over `keyof TenantThemeColors`, so its own keys are exactly those keys.
+const themeColorKeys = Object.keys(
+  themeColorToCssVar
+) as (keyof TenantThemeColors)[];
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/u;
 const MAXIMUM_FONT_FAMILY_LENGTH = 512;
@@ -203,9 +209,7 @@ export const resolveTenantThemeColors = (
   const source = theme ?? {};
   const resolved = { ...DEFAULT_TENANT_THEME_COLORS };
 
-  for (const key of Object.keys(
-    DEFAULT_TENANT_THEME_COLORS
-  ) as (keyof TenantThemeColors)[]) {
+  for (const key of themeColorKeys) {
     const raw = source[key]?.trim() ?? "";
 
     if (isHexColor(raw)) {
@@ -241,9 +245,7 @@ export const resolveTenantThemePalette = (
 
   const resolved = { ...DEFAULT_TENANT_THEME_COLORS };
 
-  for (const key of Object.keys(
-    DEFAULT_TENANT_THEME_COLORS
-  ) as (keyof TenantThemeColors)[]) {
+  for (const key of themeColorKeys) {
     const raw = palette[key]?.trim() ?? "";
 
     if (!isHexColor(raw)) {
@@ -256,14 +258,10 @@ export const resolveTenantThemePalette = (
   return resolved;
 };
 
-const toColorCssVariables = (
-  colors: TenantThemeColors
-): Record<string, string> => {
+const toColorCssVariables = (colors: TenantThemeColors) => {
   const vars: Record<string, string> = {};
 
-  for (const key of Object.keys(
-    themeColorToCssVar
-  ) as (keyof TenantThemeColors)[]) {
+  for (const key of themeColorKeys) {
     vars[themeColorToCssVar[key]] = colors[key];
   }
 

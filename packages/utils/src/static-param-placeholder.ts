@@ -15,6 +15,8 @@ export type PlaceholderParamValue = string | null | undefined;
 export const createPlaceholderStaticParams = <const TParamName extends string>(
   ...paramNames: readonly TParamName[]
 ): Record<TParamName, typeof STATIC_PARAM_PLACEHOLDER>[] => [
+  // SAFETY: the entries pair every name in `paramNames` with the placeholder,
+  // so the object has exactly the keys `TParamName` and no others.
   Object.fromEntries(
     paramNames.map((paramName) => [paramName, STATIC_PARAM_PLACEHOLDER])
   ) as Record<TParamName, typeof STATIC_PARAM_PLACEHOLDER>,

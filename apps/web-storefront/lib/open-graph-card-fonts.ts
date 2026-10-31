@@ -211,10 +211,7 @@ const loadFace = ({ face, name }: FontSubset): Promise<LoadedFace> => {
   if (!loaded) {
     loaded = face().then(({ default: bytes }) => ({
       codePoints: woffCodePoints(bytes),
-      data: bytes.buffer.slice(
-        bytes.byteOffset,
-        bytes.byteOffset + bytes.byteLength
-      ) as ArrayBuffer,
+      data: new Uint8Array(bytes).buffer,
     }));
     loadedFaces.set(name, loaded);
   }

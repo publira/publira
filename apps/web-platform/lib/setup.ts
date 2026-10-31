@@ -1,4 +1,5 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
+import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
 import {
   Code,
   isRpcError,
@@ -21,8 +22,8 @@ import { platformSetupStatusCacheTag } from "./setup-status";
  * initialized yet: the RPC answers `not_found` before the first tenant exists
  * and `failed_precondition` while bootstrap is still running.
  */
-const isSetupStatusUnknownError = (error: unknown): boolean =>
-  isRpcError(error, Code.NotFound, Code.FailedPrecondition);
+const isSetupStatusUnknownError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.NotFound, Code.FailedPrecondition);
 
 /**
  * What `CheckSetupStatus` answers, as the console uses it.
@@ -206,29 +207,33 @@ export const createInitialUser = async ({
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(locale);
 
+    const overrides: RpcErrorMessageOverrides = {
+      conflict: t("platform.auth.errors.setup_already_completed"),
+      // `failed_precondition` is only ever the currency lock: a tenant that
+      // sells in the stored currency had a purchase after the screen offered
+      // it as changeable.
+      precondition: t("platform.auth.errors.setup_currency_locked"),
+    };
+
+    // The list offers the runtime's currencies, which the server's table can
+    // lag behind; every other field it refuses keeps the shared copy.
+    if (rpcErrorHasFieldViolation(error, "default_currency")) {
+      overrides["invalid-argument"] = t("platform.settings.currency_invalid");
+    }
+
+    // The browser's tz database can name a zone the server's cannot load, and
+    // the operator can pick another from the same list.
+    if (rpcErrorHasFieldViolation(error, "default_timezone")) {
+      overrides["invalid-argument"] = t("platform.auth.setup.timezone_invalid");
+    }
+
     return {
       // `already_exists` is only ever raised here for "setup already completed"
       // (`server/api/platformapi/setup_handlers.go`).
       alreadyCompleted: rpcErrorDisposition(error) === "conflict",
       message: rpcErrorMessage(error, t("platform.auth.errors.setup_failed"), {
         locale,
-        overrides: {
-          conflict: t("platform.auth.errors.setup_already_completed"),
-          // The list offers the runtime's currencies, which the server's table
-          // can lag behind; every other field it refuses keeps the shared copy.
-          ...(rpcErrorHasFieldViolation(error, "default_currency")
-            ? { "invalid-argument": t("platform.settings.currency_invalid") }
-            : {}),
-          // The browser's tz database can name a zone the server's cannot
-          // load, and the operator can pick another from the same list.
-          ...(rpcErrorHasFieldViolation(error, "default_timezone")
-            ? { "invalid-argument": t("platform.auth.setup.timezone_invalid") }
-            : {}),
-          // `failed_precondition` is only ever the currency lock: a tenant
-          // that sells in the stored currency had a purchase after the
-          // screen offered it as changeable.
-          precondition: t("platform.auth.errors.setup_currency_locked"),
-        },
+        overrides,
       }),
       ok: false,
     };

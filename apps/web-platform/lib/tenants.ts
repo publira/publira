@@ -492,21 +492,21 @@ export const resumePlatformTenant = async (
  * when its message changes.
  */
 const duplicateDomainMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   kind: "create" | "update"
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasFieldViolation(error, "admin_domain")) {
+  if (rpcErrorHasFieldViolation(cause, "admin_domain")) {
     return t("platform.tenants.admin_domain_taken");
   }
 
-  if (rpcErrorHasFieldViolation(error, "image_domain")) {
+  if (rpcErrorHasFieldViolation(cause, "image_domain")) {
     return t("platform.tenants.image_domain_taken");
   }
 
-  if (rpcErrorHasFieldViolation(error, "domain")) {
+  if (rpcErrorHasFieldViolation(cause, "domain")) {
     return t("platform.tenants.domain_taken");
   }
 

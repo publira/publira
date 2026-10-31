@@ -16,13 +16,13 @@ import type { StorefrontMessageKey } from "./messages";
  * cache key instead of being baked into whichever request filled the entry.
  */
 export const localizedReadFailure = async <TValue = never>(
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   key: StorefrontMessageKey
 ): Promise<CachedReadResult<TValue>> => {
   const t = await getMessagesFor(locale);
 
-  return cachedReadFailure<TValue>(rpcErrorMessage(error, t(key), { locale }));
+  return cachedReadFailure<TValue>(rpcErrorMessage(cause, t(key), { locale }));
 };
 
 /**

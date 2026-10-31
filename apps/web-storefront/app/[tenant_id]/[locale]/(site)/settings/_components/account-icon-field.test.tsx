@@ -3,6 +3,7 @@
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AccountIconModule from "#lib/account-icon";
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { AccountIconField } from "./account-icon-field";
@@ -22,7 +23,7 @@ vi.mock("../_lib/icon-actions", () => ({
 }));
 
 vi.mock("#lib/account-icon", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AccountIconModule>()),
   checkAccountIconImage: mockCheckImage,
 }));
 

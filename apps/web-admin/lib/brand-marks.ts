@@ -135,23 +135,23 @@ const toTenantBrandMark = (
  * never sends.
  */
 const parseBrandMarkErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   let precondition: string | undefined;
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.brandMarkTermsNotAccepted)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.brandMarkTermsNotAccepted)) {
     precondition = t("admin.settings.brand_marks.terms_required");
-  } else if (mentionsStorageNotConfigured(error)) {
+  } else if (mentionsStorageNotConfigured(cause)) {
     precondition = t("admin.errors.storage_not_configured");
   }
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
-      "invalid-argument": rpcErrorHasFieldViolation(error, "image_data")
+      "invalid-argument": rpcErrorHasFieldViolation(cause, "image_data")
         ? t("admin.settings.brand_marks.rejected")
         : undefined,
       precondition,

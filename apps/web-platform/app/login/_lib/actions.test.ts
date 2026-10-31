@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 const {
@@ -36,7 +37,7 @@ vi.mock("#lib/platform-session-cookie", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
 
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });

@@ -59,6 +59,8 @@ const toCssProperty = (key: string): string => {
 const COLOR_KEY_BY_PROPERTY = new Map(
   Object.keys(DEFAULT_TENANT_THEME_COLORS).map((key) => [
     toCssProperty(key),
+    // SAFETY: the keys of the default palette are the keys of
+    // `TenantThemeColors`, which it is declared as.
     key as keyof TenantThemeColors,
   ])
 );

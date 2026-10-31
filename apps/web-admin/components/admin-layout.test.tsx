@@ -10,6 +10,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAdminCurrentUser } from "../lib/admin-auth";
+import type * as AdminAuthModule from "../lib/admin-auth";
 import { verifyAdminSession } from "../lib/auth-session";
 import { getLocale } from "../lib/locale";
 import { logoutAction } from "../lib/logout-action";
@@ -47,7 +48,7 @@ vi.mock("./message", () => ({
 }));
 
 vi.mock("../lib/admin-auth", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AdminAuthModule>()),
   getAdminCurrentUser: vi.fn(),
 }));
 
@@ -273,10 +274,10 @@ describe("AdminUser", () => {
     vi.mocked(getLocale).mockResolvedValue("en");
     vi.mocked(verifyAdminSession).mockResolvedValue(operator);
 
-    const bind = vi.spyOn(
-      logoutAction as unknown as { bind: (...args: unknown[]) => unknown },
-      "bind"
-    );
+    // `keyof` a function type names none of its methods, so `spyOn` reaches
+    // `bind` through the interface every function has.
+    const callable: Pick<CallableFunction, "bind"> = logoutAction;
+    const bind = vi.spyOn(callable, "bind");
 
     render(await AdminUser());
 

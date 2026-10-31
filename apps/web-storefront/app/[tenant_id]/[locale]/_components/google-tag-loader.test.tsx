@@ -39,7 +39,7 @@ afterEach(() => {
   cleanup();
   // oxlint-disable-next-line unicorn/no-document-cookie -- the test plays the browser the banner writes to
   document.cookie = `${COOKIE}=; Max-Age=0; Path=/`;
-  delete (window as Window & { dataLayer?: unknown }).dataLayer;
+  delete window.dataLayer;
 });
 
 const loaded = (container: HTMLElement): string[] =>

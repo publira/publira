@@ -43,8 +43,11 @@ const readerStatuses: ReadonlySet<string> = new Set(READER_STATUSES);
  * account whose state cannot be read is never presented as one in good
  * standing.
  */
+const isReaderStatus = (raw: string): raw is ReaderStatus =>
+  readerStatuses.has(raw);
+
 const toReaderStatus = (raw: string): ReaderStatus =>
-  readerStatuses.has(raw) ? (raw as ReaderStatus) : "inactive";
+  isReaderStatus(raw) ? raw : "inactive";
 
 /** The generated `AdminReader` fields {@link mapReader} reads (see `series.ts`). */
 type RawReader = Pick<
@@ -262,16 +265,16 @@ const readerModerationFailedMessage = async (
  * Any other failed precondition keeps the operation's own fallback.
  */
 const readerModerationRefusal = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string | undefined> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.ownAccount)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.ownAccount)) {
     return t("admin.readers.own_account");
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.lastTenantAdmin)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.lastTenantAdmin)) {
     return t("admin.readers.last_tenant_admin");
   }
 

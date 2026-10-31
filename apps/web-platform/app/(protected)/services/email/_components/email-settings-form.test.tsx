@@ -26,9 +26,12 @@ import type {
 } from "../_lib/actions";
 import { EmailSettingsForm } from "./email-settings-form";
 
-const state = vi.hoisted(() => ({
-  t: undefined as PlatformMessageAccessor | undefined,
-}));
+/** The catalog the mocked `<Message>` renders from, once a test resolves it. */
+interface CatalogState {
+  t?: PlatformMessageAccessor;
+}
+
+const state = vi.hoisted((): CatalogState => ({}));
 
 // `<Message>` is an async Server Component that only the Next.js compiler can
 // render. The catalog is the real one, resolved ahead so the tree renders

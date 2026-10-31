@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Response } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql, runSql } from "../src/db";
@@ -192,7 +192,7 @@ const openWithToken = (
   page: Page,
   pathname: string,
   token: string
-): Promise<unknown> =>
+): Promise<Response | null> =>
   page.goto(storefrontUrl(`${pathname}?token=${encodeURIComponent(token)}`));
 
 /** Set a new password on the `/confirm-password` form and submit it. */

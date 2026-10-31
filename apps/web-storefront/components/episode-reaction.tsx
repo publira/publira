@@ -229,9 +229,9 @@ const EpisodeReactionForm = ({
   ratingCount: number;
   score: number;
 }) => {
-  const [state, formAction] = useActionState(
+  const [state, formAction] = useActionState<RateEpisodeActionState, FormData>(
     rateEpisodeAction,
-    null as RateEpisodeActionState
+    null
   );
 
   const confirmed = state?.ok

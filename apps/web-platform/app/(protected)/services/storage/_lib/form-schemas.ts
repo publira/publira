@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { optionalTrimmedString, revisionFormSchema } from "#lib/form-schemas";
+import {
+  isFormText,
+  optionalTrimmedString,
+  revisionFormSchema,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
   STORAGE_SECRET_CLEAR,
@@ -64,7 +68,7 @@ export const storageFormSchema = async (locale: Locale) => {
     .object({
       accessKeyId: optionalTrimmedString(128),
       bucket: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z
           .string()
           .min(1, t("platform.storage.form.bucket_required"))
@@ -84,7 +88,7 @@ export const storageFormSchema = async (locale: Locale) => {
         t("platform.storage.form.public_base_url_invalid")
       ),
       region: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z
           .string()
           .min(1, t("platform.storage.form.region_required"))
@@ -92,7 +96,7 @@ export const storageFormSchema = async (locale: Locale) => {
       ),
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
       secretAccessKey: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z.string()
       ),
       secretAccessKeyUpdateMode: z.preprocess(

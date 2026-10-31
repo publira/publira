@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { CampaignBannerItem } from "#lib/campaign-banner";
+
 const {
   mockAssertSameOrigin,
   mockCreateCampaignBanner,
@@ -68,7 +70,7 @@ const variant = {
   width: 1600,
 };
 
-const savedBanner = (overrides: Record<string, unknown> = {}) => ({
+const savedBanner = (overrides: Partial<CampaignBannerItem> = {}) => ({
   altText: "Summer sale, up to 50% off",
   endsAt: "2099-07-01T00:00:00Z",
   id: BANNER_ID,

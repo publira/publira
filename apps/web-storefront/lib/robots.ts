@@ -5,6 +5,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import type { RouteParams } from "@publira/utils/route-params";
 import { z } from "zod";
 
 import { apiClient } from "./api-client";
@@ -243,7 +244,7 @@ const robotsRouteParamsSchema = z.object({
  * a page, or lets in what the tenant excluded.
  */
 export const respondWithRobotsTxt = async (
-  params: unknown
+  params: RouteParams
 ): Promise<Response> => {
   const parsed = parseRouteParams(robotsRouteParamsSchema, params);
 

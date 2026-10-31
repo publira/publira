@@ -48,6 +48,8 @@ const startServer = async () => {
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
+  // SAFETY: a server listening on a TCP port reports its address as an
+  // `AddressInfo`; only a pipe or a socket file reports a string.
   const { port } = server.address() as AddressInfo;
 
   const release = () => {

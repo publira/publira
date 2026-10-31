@@ -77,6 +77,13 @@ const PurchasePagination = ({
   </Suspense>
 );
 
+/** Where a purchase's row links to, with the label and the title it shows. */
+interface PurchasedItemLink {
+  href: string;
+  open: string;
+  title: string;
+}
+
 /**
  * Where a card leads, and what it calls the purchase: an episode opens
  * itself, while a volume and the rest of a series open the series page, which
@@ -86,7 +93,7 @@ const PurchasePagination = ({
 const purchasedItemLink = (
   { item, series }: PurchaseItem,
   t: StorefrontMessageAccessor
-): { href: string; open: string; title: string } => {
+): PurchasedItemLink => {
   const seriesHref = `/series/${series.publicId}`;
 
   switch (item.kind) {

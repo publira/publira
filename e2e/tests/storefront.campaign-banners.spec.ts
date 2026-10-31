@@ -75,11 +75,10 @@ test.describe("web-storefront campaign banners", () => {
     // that puts it in the centre. Without one the browser stops a copy short
     // of the centre, and the move onto the banner it copies shows as a jump.
     const reach = await campaigns.getByRole("list").evaluate((strip) => {
-      const centring = [...strip.children].map(
-        (slide) =>
-          (slide as HTMLElement).offsetLeft +
-          (slide as HTMLElement).offsetWidth / 2 -
-          strip.clientWidth / 2
+      const centring = [...strip.children].flatMap((slide) =>
+        slide instanceof HTMLElement
+          ? [slide.offsetLeft + slide.offsetWidth / 2 - strip.clientWidth / 2]
+          : []
       );
 
       return {

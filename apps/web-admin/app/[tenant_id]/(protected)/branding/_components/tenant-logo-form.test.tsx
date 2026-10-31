@@ -17,12 +17,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TenantLogoActionState } from "../branding-types";
 import { TenantLogoForm } from "./tenant-logo-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
-    calls: [] as FormData[],
-    current: Promise.withResolvers<TenantLogoActionState>(),
-  },
-}));
+const { save } = vi.hoisted(() => {
+  const calls: FormData[] = [];
+
+  return {
+    save: { calls, current: Promise.withResolvers<TenantLogoActionState>() },
+  };
+});
 
 vi.mock("../_lib/actions", () => ({
   updateTenantLogoAction: (_state: TenantLogoActionState, data: FormData) => {

@@ -18,6 +18,8 @@ const startServer = async (): Promise<Server> => {
 };
 
 const baseUrlOf = (server: Server): string => {
+  // SAFETY: a server listening on a TCP port reports its address as an
+  // `AddressInfo`; only a pipe or a socket file reports a string.
   const address = server.address() as AddressInfo;
 
   return `http://127.0.0.1:${address.port}`;

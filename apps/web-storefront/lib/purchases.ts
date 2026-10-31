@@ -90,10 +90,13 @@ export interface ListPurchasesInput {
   token?: string;
 }
 
-const emptyPurchasePage = {
+const emptyPurchasePage: Pick<
+  ListPurchasesResult,
+  "nextToken" | "previousToken" | "purchases"
+> = {
   nextToken: "",
   previousToken: "",
-  purchases: [] as PurchaseItem[],
+  purchases: [],
 };
 
 /**

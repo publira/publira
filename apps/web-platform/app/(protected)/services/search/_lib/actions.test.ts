@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
 import {
   SEARCH_PASSWORD_CLEAR,
   SEARCH_PASSWORD_UNCHANGED,
@@ -38,7 +39,7 @@ vi.mock("#lib/api-client", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
 
   return {
     ...actual,

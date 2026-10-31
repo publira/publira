@@ -213,15 +213,15 @@ export const messageVariables = (source: string): MessageVariable[] => {
  * Without a handler, `messageformat` reports every resolution error through
  * `process.emitWarning`, which `next dev` shows as a console error.
  */
-const reportFormatError = (error: unknown) => {
+const reportFormatError = (cause: unknown) => {
   if (
-    error instanceof MessageResolutionError &&
-    error.type === "unresolved-variable"
+    cause instanceof MessageResolutionError &&
+    cause.type === "unresolved-variable"
   ) {
     return;
   }
 
-  console.warn(error);
+  console.warn(cause);
 };
 
 /**

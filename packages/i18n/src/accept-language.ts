@@ -161,7 +161,7 @@ export const matchSupportedLocale = <T extends string>(
 export const negotiateInitialLocale = (
   acceptLanguage: string | null | undefined
 ): Locale => {
-  if (typeof acceptLanguage !== "string") {
+  if (acceptLanguage === null || acceptLanguage === undefined) {
     return FALLBACK_LOCALE;
   }
 

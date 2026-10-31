@@ -476,6 +476,12 @@ const SECONDS_PER_HOUR = 60 * 60;
 const DAYS_PER_WEEK = 7;
 const MONTHS_PER_YEAR = 12;
 
+/** A relative distance in the unit `Intl.RelativeTimeFormat` words it in. */
+interface RelativeParts {
+  unit: Intl.RelativeTimeFormatUnit;
+  value: number;
+}
+
 /**
  * The unit and the amount an elapsed time is worded in, given the seconds
  * between the two moments and the calendar difference between their days.
@@ -490,7 +496,7 @@ const relativeParts = (
   seconds: number,
   days: number,
   months: number
-): { unit: Intl.RelativeTimeFormatUnit; value: number } => {
+): RelativeParts => {
   if (Math.abs(seconds) < SECONDS_PER_MINUTE) {
     return { unit: "second", value: Math.trunc(seconds) };
   }

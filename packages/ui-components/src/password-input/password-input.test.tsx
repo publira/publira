@@ -115,6 +115,7 @@ describe("PasswordInput", () => {
     const { container } = renderPasswordInput();
     fireEvent.click(getToggle());
 
+    // SAFETY: `renderPasswordInput` renders the input inside a `<form>`.
     fireEvent.submit(container.querySelector("form") as HTMLFormElement);
 
     expect(getInput().type).toBe("password");

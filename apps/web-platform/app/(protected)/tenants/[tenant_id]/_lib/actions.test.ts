@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
+
 const {
   mockAddPlatformTenantMember,
   mockAssertSameOrigin,
@@ -27,7 +29,7 @@ const {
   mockSuspendPlatformTenant: vi.fn(),
   mockUpdatePlatformTenant: vi.fn(),
   mockUpdatePlatformTenantMemberRole: vi.fn(),
-  mockUpdateTag: vi.fn(),
+  mockUpdateTag: vi.fn<(tag: string) => void>(),
 }));
 
 vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
@@ -39,7 +41,7 @@ vi.mock("#lib/api-client", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
 
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
@@ -79,7 +81,7 @@ const formData = (fields: Record<string, string>): FormData => {
 };
 
 const clearedTags = (): string[] =>
-  mockUpdateTag.mock.calls.map(([tag]) => tag as string);
+  mockUpdateTag.mock.calls.map(([tag]) => tag);
 
 describe("tenant detail actions", () => {
   beforeEach(() => {

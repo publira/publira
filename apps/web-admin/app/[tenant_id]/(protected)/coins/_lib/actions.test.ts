@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as CoinsModule from "#lib/coins";
+
 const {
   mockAssertSameOrigin,
   mockCreateCoinPack,
@@ -45,7 +47,7 @@ vi.mock("#lib/tenant-locales", () => ({
 }));
 
 vi.mock("#lib/coins", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof CoinsModule>()),
   createCoinPack: mockCreateCoinPack,
   readCoinPacksForWrite: mockReadCoinPacksForWrite,
   reorderCoinPacks: mockReorderCoinPacks,

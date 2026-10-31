@@ -28,7 +28,7 @@ const challenge = () => ({
   nextPath: "/series",
 });
 
-const sealed = (payload: unknown): Promise<string> =>
+const sealed = <TPayload>(payload: TPayload): Promise<string> =>
   encryptPayload(payload, PUBLIRA_AUTH_SECRET);
 
 describe("readMfaChallenge", () => {

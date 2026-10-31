@@ -4,13 +4,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { JsonLdSite } from "#lib/json-ld";
+import type * as JsonLdModule from "#lib/json-ld";
 
 const { mockGetJsonLdSite } = vi.hoisted(() => ({
   mockGetJsonLdSite: vi.fn(),
 }));
 
 vi.mock("#lib/json-ld", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof JsonLdModule>()),
   getJsonLdSite: mockGetJsonLdSite,
 }));
 

@@ -28,8 +28,8 @@ export const ThemePreviewFrame = ({ children }: { children: ReactNode }) => {
     throw new Error("ThemeSettingsScope is required.");
   }
 
-  // `CSSProperties` has no index signature, which is what React's own types
-  // say to assert past when the value is a set of custom properties.
+  // SAFETY: every key is a `--` custom property, which `CSSProperties` has no
+  // index signature for; React's own types say to assert past it for those.
   const themeVariables = toPubliraThemeCssVariables(theme) as CSSProperties;
 
   return (

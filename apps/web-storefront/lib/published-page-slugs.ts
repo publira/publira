@@ -1,4 +1,3 @@
-import type { PublicApiClient } from "@publira/api-client/public/client";
 import { readTagRevalidatedAt } from "@publira/next-cache-handlers/tags";
 import { LRUCache } from "lru-cache";
 
@@ -10,6 +9,15 @@ interface PublishedPageSlugsEntry {
   slugs: ReadonlySet<string>;
 }
 
+/** The one call the resolver makes to the public API, and what it reads back. */
+interface PageSlugsClient {
+  pages: {
+    listPublishedPageSlugs: (request: {
+      tenant: { tenantId: string };
+    }) => Promise<{ slugs: string[] }>;
+  };
+}
+
 /**
  * A tenant's published page slugs (`/privacy`), held per instance for the
  * proxy, where no `"use cache"` runs. A revalidation of `tenantPagesTag`, read
@@ -17,7 +25,7 @@ interface PublishedPageSlugsEntry {
  * again; when Redis cannot be read, `ttl` bounds how stale they get.
  */
 export const createPublishedPageSlugResolver = (
-  publicApiClient: PublicApiClient,
+  publicApiClient: PageSlugsClient,
   options?: {
     max?: number;
     now?: () => number;

@@ -89,13 +89,13 @@ export const tenantPaymentSettingsCacheTag = (tenantId: string): string =>
  * take the shared copy — a raw `[internal]` message is not something to show.
  */
 const parseErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): string => {
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+  const serverMessage = rpcErrorRawMessage(cause)?.trim() || fallback;
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "invalid-argument": serverMessage,

@@ -15,6 +15,7 @@ import { createAnnouncement, unpinAnnouncement } from "#lib/announcement";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
+  isFormText,
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -132,7 +133,7 @@ const announcementFormSchema = async (locale: Locale) => {
       // An unchecked checkbox posts nothing at all, which is the "no banner"
       // answer rather than a missing field.
       pinned: z.preprocess(
-        (value) => typeof value === "string" && value.trim() !== "",
+        (value) => isFormText(value) && value.trim() !== "",
         z.boolean()
       ),
       pinnedUntil: optionalTrimmedString(64),

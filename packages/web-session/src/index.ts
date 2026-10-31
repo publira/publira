@@ -9,6 +9,15 @@ export interface WebSessionPayload {
   tenantId?: string;
 }
 
+/** A value `JSON.parse` can return. */
+export type JsonValue =
+  | boolean
+  | number
+  | string
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -36,8 +45,8 @@ const toAesGcmKeyBytes = (secret: string): Uint8Array => {
  * browser may hold it but neither read nor forge it" property, so the sealing
  * lives here once and each cookie owns the payload shape it needs.
  */
-export const encryptPayload = (
-  payload: unknown,
+export const encryptPayload = <TPayload>(
+  payload: TPayload,
   secret: string
 ): Promise<string> => {
   const key = toAesGcmKeyBytes(secret);
@@ -51,21 +60,22 @@ export const encryptPayload = (
  * Open a payload sealed by {@link encryptPayload}, or `null` when the value is
  * not one this deployment sealed.
  *
- * The result is `unknown` on purpose: a cookie is untrusted input even once it
- * decrypts, so the caller validates the shape it expects.
+ * The result is any JSON value on purpose: a cookie is untrusted input even
+ * once it decrypts, so the caller validates the shape it expects.
  */
 export const decryptPayload = async (
   token: string,
   secret: string
-): Promise<unknown> => {
+): Promise<JsonValue> => {
   // Outside the try: an unusable key is a misconfigured deployment, and
   // reporting it as "no session" would send every visitor to the login screen.
   const key = toAesGcmKeyBytes(secret);
 
   try {
     const { plaintext } = await compactDecrypt(token, key);
+    const payload: JsonValue = JSON.parse(textDecoder.decode(plaintext));
 
-    return JSON.parse(textDecoder.decode(plaintext)) as unknown;
+    return payload;
   } catch {
     return null;
   }
@@ -76,20 +86,24 @@ export const encryptSessionPayload = (
   secret: string
 ): Promise<string> => encryptPayload(payload, secret);
 
+const isWebSessionPayload = (
+  payload: JsonValue
+): payload is WebSessionPayload & { [key: string]: JsonValue } =>
+  payload !== null &&
+  typeof payload === "object" &&
+  !Array.isArray(payload) &&
+  typeof payload.accessToken === "string" &&
+  payload.accessToken !== "" &&
+  typeof payload.expiresAt === "string" &&
+  payload.expiresAt !== "";
+
 export const decryptSessionPayload = async (
   token: string,
   secret: string
 ): Promise<WebSessionPayload | null> => {
-  const parsed = (await decryptPayload(
-    token,
-    secret
-  )) as WebSessionPayload | null;
+  const payload = await decryptPayload(token, secret);
 
-  if (!parsed?.accessToken || !parsed.expiresAt) {
-    return null;
-  }
-
-  return parsed;
+  return isWebSessionPayload(payload) ? payload : null;
 };
 
 export const isSessionExpired = (
@@ -127,10 +141,9 @@ export const resolveAuthSecret = (): string => {
   return secret;
 };
 
-export const buildBearerHeaders = (accessToken: string) =>
-  ({
-    headers: { Authorization: `Bearer ${accessToken}` },
-  }) as never;
+export const buildBearerHeaders = (accessToken: string) => ({
+  headers: { Authorization: `Bearer ${accessToken}` },
+});
 
 export const sessionCookieOptions = (expiresAt: Date) => ({
   expires: expiresAt,

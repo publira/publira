@@ -5,6 +5,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { act } from "react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import type { EpisodeDetail } from "#lib/catalog";
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
@@ -14,6 +15,9 @@ import { EpisodeComicViewer } from "./episode-comic-viewer";
 import { EpisodeNeighborKeyNavigation } from "./episode-neighbor-key-navigation";
 import { EpisodeReadRecorder } from "./episode-read-recorder";
 import { EpisodeReadingPositionRecorder } from "./episode-reading-position-recorder";
+
+/** The body the viewer saves a reading position with. */
+const readingPositionReportSchema = z.object({ pageIndex: z.number() });
 
 const { mockPush } = vi.hoisted(() => ({ mockPush: vi.fn() }));
 
@@ -332,11 +336,11 @@ describe("EpisodeComicViewer progress slider", () => {
     const savedPageIndices = () =>
       fetchMock.mock.calls
         .filter(([url]) => String(url).endsWith("/reading-position"))
-        .map(([, init]) => {
-          const payload: unknown = JSON.parse(String(init?.body));
-
-          return (payload as { pageIndex: number }).pageIndex;
-        });
+        .map(
+          ([, init]) =>
+            readingPositionReportSchema.parse(JSON.parse(String(init?.body)))
+              .pageIndex
+        );
 
     await renderWithClientMessages(
       <EpisodeComicViewer
@@ -631,7 +635,7 @@ describe("EpisodeComicViewer expired page URLs", () => {
       expect.anything()
     );
 
-    fireEvent.click(reload as HTMLElement);
+    fireEvent.click(reload);
 
     await vi.waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

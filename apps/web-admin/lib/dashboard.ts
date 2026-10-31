@@ -38,12 +38,12 @@ export const tenantDashboardCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:dashboard`;
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.dashboard.load_error"), { locale });
+  return rpcErrorMessage(cause, t("admin.dashboard.load_error"), { locale });
 };
 
 const getDashboardForTenant = async (

@@ -22,10 +22,16 @@ const EpisodeSelectionContext = createContext<EpisodeSelectionValue | null>(
 
 const EMPTY_SELECTED_IDS: readonly string[] = [];
 
+/** The state a "select all" checkbox shows. */
+export interface SelectionCheckboxProps {
+  checked: boolean;
+  indeterminate: boolean;
+}
+
 export const selectionCheckboxProps = (
   allSelected: boolean,
   someSelected: boolean
-): { checked: boolean; indeterminate: boolean } => ({
+): SelectionCheckboxProps => ({
   checked: allSelected,
   indeterminate: someSelected,
 });

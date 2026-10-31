@@ -18,15 +18,25 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { TenantSiteVerificationActionState } from "../settings-types";
 import { TenantSiteVerificationForm } from "./tenant-site-verification-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<TenantSiteVerificationActionState>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantSiteVerificationActionState>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantSiteVerificationAction: (_state: unknown, formData: FormData) => {
+  updateTenantSiteVerificationAction: (
+    _state: TenantSiteVerificationActionState,
+    formData: FormData
+  ) => {
     save.formData = formData;
 
     return save.current.promise;

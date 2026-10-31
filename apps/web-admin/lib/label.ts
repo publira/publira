@@ -84,28 +84,28 @@ export type GetLabelResult =
     };
 
 const invalidArgumentMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return mentionsImageRejection(error)
+  return mentionsImageRejection(cause)
     ? t("admin.labels.image_invalid")
     : t("errors.rpc.invalid-argument");
 };
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
-      "invalid-argument": await invalidArgumentMessage(error, locale),
-      precondition: mentionsStorageNotConfigured(error)
+      "invalid-argument": await invalidArgumentMessage(cause, locale),
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },

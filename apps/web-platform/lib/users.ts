@@ -256,7 +256,7 @@ const searchPlatformTenantFilterOptionsForLocale = async (
 
     try {
       return await apiClient.tenants.getTenant(
-        { publicId: normalized } as never,
+        { publicId: normalized },
         headers
       );
     } catch (error) {

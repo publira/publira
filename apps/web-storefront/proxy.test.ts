@@ -4,6 +4,8 @@ import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as GoogleTagGatewayModule from "./lib/google-tag-gateway";
+
 const {
   mockForwardToGoogleTagGateway,
   mockResolveGoogleTagGateway,
@@ -31,7 +33,7 @@ vi.mock("./lib/published-page-slugs", () => ({
 }));
 
 vi.mock("./lib/google-tag-gateway", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof GoogleTagGatewayModule>()),
   createGoogleTagGatewayResolver: () => mockResolveGoogleTagGateway,
 }));
 
@@ -68,6 +70,8 @@ const request = (
     clone: () => new URL(url),
   });
 
+  // SAFETY: the proxy reads only `nextUrl`, `url`, `headers`, and
+  // `cookies.get` of its request, and each is given here.
   return {
     cookies: {
       get: (name: string) =>
@@ -78,7 +82,7 @@ const request = (
     headers: new Headers({ host: new URL(url).host }),
     nextUrl,
     url,
-  } as unknown as NextRequest;
+  } as NextRequest;
 };
 
 const RESOLVED_LOCALE_COOKIE = "publira_resolved_locale";

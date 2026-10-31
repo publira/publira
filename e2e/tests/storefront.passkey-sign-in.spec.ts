@@ -31,6 +31,26 @@ import {
  * scenario of its own, and the button's runs in a browser without autofill.
  */
 
+/** The fields of the `AuthService` requests a registration sends. */
+interface AuthRequest {
+  credentialJson?: string;
+  email?: string;
+  password?: string;
+}
+
+/** The parts of the `AuthService` answers a registration reads. */
+interface LoginAnswer {
+  accessToken: { token: string };
+}
+
+interface BeginPasskeyRegistrationAnswer {
+  creationOptionsJson: string;
+}
+
+interface FinishPasskeyRegistrationAnswer {
+  passkey?: { id: string };
+}
+
 const storefrontUrl = (pathname: string): string =>
   `${WEB_STOREFRONT_BASE_URL}${storefrontPath(pathname)}`;
 
@@ -43,17 +63,20 @@ const registerPasskey = async (page: Page): Promise<void> => {
 
   const registered = await page.evaluate(
     async ({ email, password, tenantId }) => {
-      const call = async (
+      const call = async <Answer>(
         method: string,
-        body: object,
+        body: AuthRequest,
         token?: string
-      ): Promise<Record<string, unknown>> => {
+      ): Promise<Answer> => {
+        const headers = new Headers({ "Content-Type": "application/json" });
+
+        if (token) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+
         const response = await fetch(`/rpc/publira.v1.AuthService/${method}`, {
           body: JSON.stringify({ ...body, tenant: { tenantId } }),
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          headers,
           method: "POST",
         });
 
@@ -61,25 +84,28 @@ const registerPasskey = async (page: Page): Promise<void> => {
           throw new Error(`${method}: ${response.status}`);
         }
 
-        return response.json();
+        // SAFETY: each caller names as `Answer` the JSON the Connect handler
+        // for `AuthService/${method}` returns.
+        return (await response.json()) as Answer;
       };
 
-      const login = await call("Login", { email, password });
-      const { token } = login.accessToken as { token: string };
+      const login = await call<LoginAnswer>("Login", { email, password });
+      const { token } = login.accessToken;
 
-      const { creationOptionsJson } = await call(
-        "BeginPasskeyRegistration",
-        {},
-        token
-      );
+      const { creationOptionsJson } =
+        await call<BeginPasskeyRegistrationAnswer>(
+          "BeginPasskeyRegistration",
+          {},
+          token
+        );
 
       const credential = await navigator.credentials.create({
         publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(
-          JSON.parse(creationOptionsJson as string)
+          JSON.parse(creationOptionsJson)
         ),
       });
 
-      const finished = await call(
+      const finished = await call<FinishPasskeyRegistrationAnswer>(
         "FinishPasskeyRegistration",
         { credentialJson: JSON.stringify(credential) },
         token

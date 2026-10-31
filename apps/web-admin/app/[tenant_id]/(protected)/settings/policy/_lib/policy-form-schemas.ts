@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { optionalBoundedIntFormSchema } from "#lib/form-schemas";
+import { isFormText, optionalBoundedIntFormSchema } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import type { TenantCommunityLimitOverrides } from "#lib/tenant-community-limits";
 import type { HourDayLimit, MinuteDayLimit } from "#lib/tenant-policy-shared";
@@ -22,7 +22,7 @@ type Translate = Awaited<ReturnType<typeof getMessagesFor>>;
  */
 const revisionSchema = (t: Translate) =>
   z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
+    (value) => (isFormText(value) ? value.trim() : ""),
     z
       .string()
       .regex(/^\d{1,19}$/u, t("admin.settings.policy.revision_invalid"))

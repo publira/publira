@@ -84,12 +84,12 @@ const mapEpisodeReadThrough = (
 });
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.analytics.episodes.list_failed"), {
+  return rpcErrorMessage(cause, t("admin.analytics.episodes.list_failed"), {
     locale,
   });
 };
@@ -216,13 +216,13 @@ const readRemainingPages = async <T>(
 };
 
 const statsReadFailure = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): StatsReadFailure => ({
-  message: rpcErrorMessage(error, fallback, { locale }),
+  message: rpcErrorMessage(cause, fallback, { locale }),
   ok: false,
-  requiresSignIn: isUnauthenticatedError(error),
+  requiresSignIn: isUnauthenticatedError(cause),
 });
 
 const signInRequired = async (locale: Locale): Promise<StatsReadFailure> => {
@@ -801,9 +801,13 @@ const audienceExportKind: Record<AudienceGroup, StatsExportKind> = {
   series: StatsExportKind.AUDIENCE_BY_SERIES,
 };
 
-const statsExportFields = (
-  report: StatsExportReport
-): { kind: StatsExportKind; episodePublicId?: string } => {
+/** The fields of an export request that name the report. */
+interface StatsExportFields {
+  episodePublicId?: string;
+  kind: StatsExportKind;
+}
+
+const statsExportFields = (report: StatsExportReport): StatsExportFields => {
   switch (report.kind) {
     case "audience": {
       return { kind: audienceExportKind[report.group] };

@@ -38,6 +38,11 @@ interface OutputAsset {
   type: "asset";
 }
 
+/** rolldown's normalized output options; the plugin reads none of them. */
+interface NormalizedOutputOptions {
+  readonly dir?: string;
+}
+
 interface PluginContext {
   error: (message: string) => never;
 }
@@ -63,7 +68,7 @@ const startsWithUseClient = async (id: string): Promise<boolean> => {
 export const requireClientDirectives = () => ({
   async generateBundle(
     this: PluginContext,
-    _options: unknown,
+    _options: NormalizedOutputOptions,
     bundle: Record<string, OutputAsset | OutputChunk>
   ) {
     const candidates: { fileName: string; id: string }[] = [];

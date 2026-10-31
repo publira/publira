@@ -122,9 +122,14 @@ const reorderEpisodesSchema = async (locale: Locale) => {
   });
 };
 
-const toCreateFailure = (
-  message: string
-): { message: string; mode: "create"; ok: false } => ({
+/** A step of the create Action that stops it with a form message. */
+interface CreateFailure {
+  message: string;
+  mode: "create";
+  ok: false;
+}
+
+const toCreateFailure = (message: string): CreateFailure => ({
   message,
   mode: "create",
   ok: false,

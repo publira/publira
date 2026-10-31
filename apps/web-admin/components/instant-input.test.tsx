@@ -8,6 +8,27 @@ import { InstantInput } from "./instant-input";
 const posted = (form: HTMLFormElement, name: string) =>
   new FormData(form).get(name);
 
+const formIn = (container: HTMLElement): HTMLFormElement => {
+  const form = container.querySelector("form");
+
+  if (!form) {
+    throw new Error("the form is not on screen");
+  }
+
+  return form;
+};
+
+/** The field an editor types the wall clock into. */
+const wallClock = (form: HTMLFormElement): Element => {
+  const input = form.querySelector("input[name='publish_at_local']");
+
+  if (!input) {
+    throw new Error("the wall clock field is not on screen");
+  }
+
+  return input;
+};
+
 afterEach(() => {
   cleanup();
 });
@@ -20,12 +41,11 @@ describe("InstantInput", () => {
       </form>
     );
 
-    const form = container.querySelector("form") as HTMLFormElement;
+    const form = formIn(container);
 
-    fireEvent.change(
-      form.querySelector("input[name='publish_at_local']") as Element,
-      { target: { value: "2099-06-01T10:00" } }
-    );
+    fireEvent.change(wallClock(form), {
+      target: { value: "2099-06-01T10:00" },
+    });
 
     // PDT (UTC-7) in June — 10:00 in Los Angeles is 17:00Z.
     expect(posted(form, "publish_at")).toBe("2099-06-01T17:00:00Z");
@@ -42,7 +62,7 @@ describe("InstantInput", () => {
       </form>
     );
 
-    const form = container.querySelector("form") as HTMLFormElement;
+    const form = formIn(container);
 
     expect(posted(form, "publish_at_local")).toBe("2099-06-01T10:00");
     expect(posted(form, "publish_at")).toBe("2099-06-01T17:00:00Z");
@@ -59,15 +79,14 @@ describe("InstantInput", () => {
       </form>
     );
 
-    const form = container.querySelector("form") as HTMLFormElement;
+    const form = formIn(container);
 
     expect(posted(form, "publish_at_local")).toBe("2099-06-01T17:00");
     expect(posted(form, "publish_at")).toBe("2099-06-01T17:00:30Z");
 
-    fireEvent.change(
-      form.querySelector("input[name='publish_at_local']") as Element,
-      { target: { value: "2099-06-01T18:00" } }
-    );
+    fireEvent.change(wallClock(form), {
+      target: { value: "2099-06-01T18:00" },
+    });
 
     expect(posted(form, "publish_at")).toBe("2099-06-01T18:00:00Z");
   });
@@ -83,12 +102,9 @@ describe("InstantInput", () => {
       </form>
     );
 
-    const form = container.querySelector("form") as HTMLFormElement;
+    const form = formIn(container);
 
-    fireEvent.change(
-      form.querySelector("input[name='publish_at_local']") as Element,
-      { target: { value: "" } }
-    );
+    fireEvent.change(wallClock(form), { target: { value: "" } });
 
     expect(posted(form, "publish_at")).toBe("");
   });

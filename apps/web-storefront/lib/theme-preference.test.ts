@@ -16,7 +16,8 @@ import {
  * answers the `data-theme` it leaves, or `undefined` for none.
  */
 const runScript = (localStorage: Pick<Storage, "getItem">) => {
-  const documentStub = { documentElement: { dataset: {} as DOMStringMap } };
+  const dataset: DOMStringMap = {};
+  const documentStub = { documentElement: { dataset } };
   runInNewContext(THEME_PREFERENCE_SCRIPT, {
     document: documentStub,
     localStorage,

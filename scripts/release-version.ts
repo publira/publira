@@ -16,6 +16,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
+import { isJsonString } from "./json-value.ts";
+import type { JsonValue } from "./json-value.ts";
+
 /**
  * A prerelease identifier as SemVer allows it: a number has no leading zero,
  * and anything with a letter or a hyphen in it is not a number.
@@ -103,14 +106,14 @@ export const findMismatches = (
   version: string
 ): string[] =>
   manifests.flatMap((manifest) => {
-    const actual: unknown = JSON.parse(manifest.text).version;
+    const actual: JsonValue | undefined = JSON.parse(manifest.text).version;
 
     if (actual === version) {
       return [];
     }
 
     return [
-      typeof actual === "string"
+      isJsonString(actual)
         ? `${manifest.path} carries ${actual}, not ${version}.`
         : `${manifest.path} carries no version, not ${version}.`,
     ];
@@ -128,7 +131,9 @@ const set = (root: string, version: string): void => {
     try {
       return { ...manifest, text: setVersion(manifest.text, version) };
     } catch (error) {
-      throw new Error(`${manifest.path}: ${(error as Error).message}`, {
+      const reason = error instanceof Error ? error.message : String(error);
+
+      throw new Error(`${manifest.path}: ${reason}`, {
         cause: error,
       });
     }

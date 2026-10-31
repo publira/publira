@@ -99,18 +99,20 @@ const renderWorkspace = async (
   initialPage: PageListItem = page,
   options?: Parameters<typeof workspace>[2]
 ) => {
-  let rendered: ReturnType<typeof renderBase> | undefined;
-  await act(() => {
-    rendered = renderBase(workspace(saveAction, initialPage, options));
-  });
+  const rendered = await act(() =>
+    renderBase(workspace(saveAction, initialPage, options))
+  );
+
   // The editor is built once the screen has mounted.
   await screen.findByRole("textbox", { name: "Content" });
 
-  return rendered as ReturnType<typeof renderBase>;
+  return rendered;
 };
 
 /** The editor behind the body's textbox, to write into it as a writer would. */
 const bodyEditor = (): Editor => {
+  // SAFETY: Tiptap sets `editor` on the element it mounts the editor in, and
+  // the check below refuses a textbox without one.
   const { editor } = screen.getByRole("textbox", {
     name: "Content",
   }) as HTMLElement & { editor?: Editor };
@@ -123,9 +125,7 @@ const bodyEditor = (): Editor => {
 };
 
 const editForm = (): HTMLFormElement => {
-  const form = screen
-    .getByRole("textbox", { name: /Title/u })
-    .closest("form") as HTMLFormElement | null;
+  const form = screen.getByRole("textbox", { name: /Title/u }).closest("form");
 
   if (!form) {
     throw new Error("The title field is not inside a form.");
@@ -327,7 +327,7 @@ describe("PageWorkspace", () => {
     const [publish] = screen.getAllByRole("button", { name: "Publish" });
     expect(publish).toHaveProperty("type", "button");
     await act(() => {
-      fireEvent.click(publish as HTMLElement);
+      fireEvent.click(publish);
     });
 
     const dialog = await screen.findByRole("alertdialog");

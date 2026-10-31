@@ -78,12 +78,12 @@ export type ListAuditLogsResult =
     };
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.audit.list_failed"), {
+  return rpcErrorMessage(cause, t("admin.audit.list_failed"), {
     locale,
     // Every argument this call takes is a filter, so bad input is a bad filter.
     overrides: {

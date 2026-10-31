@@ -1,5 +1,4 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import type { PublicApiClient } from "@publira/api-client/public/client";
 import { GoogleTagServingMode } from "@publira/api-client/public/types";
 import { describe, expect, it, vi } from "vitest";
 
@@ -122,7 +121,7 @@ const setup = (options?: { revalidatedAt?: () => number | null }) => {
   });
 
   const resolve = createGoogleTagGatewayResolver(
-    { tenant: { getTenantAnalyticsSettings } } as unknown as PublicApiClient,
+    { tenant: { getTenantAnalyticsSettings } },
     { now: () => clock, readRevalidatedAt }
   );
 

@@ -21,10 +21,10 @@ vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 vi.mock("#lib/auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 

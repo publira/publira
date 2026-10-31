@@ -11,6 +11,7 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   checkboxOnFormSchema,
+  isFormText,
   optionalHttpsUrlFormSchema,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -46,7 +47,7 @@ import type {
 } from "../payment-types";
 
 const optionalSecretSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value : ""),
+  (value) => (isFormText(value) ? value : ""),
   z.string()
 );
 
@@ -56,7 +57,7 @@ const tenantPaymentSettingsSchema = async (locale: Locale) => {
   return z.object({
     // Absent while the select is locked, which keeps the stored currency.
     currency: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim() : ""),
+      (value) => (isFormText(value) ? value.trim() : ""),
       z.string()
     ),
     enabled: checkboxOnFormSchema,

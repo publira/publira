@@ -227,31 +227,31 @@ export type DeleteSeriesTranslationResult =
   | { ok: false; message: string };
 
 const invalidArgumentMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return mentionsImageRejection(error)
+  return mentionsImageRejection(cause)
     ? t("admin.series.image_invalid")
     : t("admin.series.input_invalid");
 };
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
-      "invalid-argument": rpcErrorHasFieldViolation(error, "locale")
+      "invalid-argument": rpcErrorHasFieldViolation(cause, "locale")
         ? t("admin.series.translations.locale_not_offered")
-        : await invalidArgumentMessage(error, locale),
+        : await invalidArgumentMessage(cause, locale),
       "not-found": t("admin.series.not_found"),
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },
@@ -486,17 +486,21 @@ const listSeriesForTenant = async (
   const t = await getMessagesFor(locale);
 
   try {
+    const request: Parameters<typeof apiClient.series.listSeries>[0] = {
+      ...cursorPageRequest(options),
+      tenant: { tenantId },
+    };
+
+    if (options.ageRating) {
+      request.ageRating = SERIES_AGE_RATING_ENUM[options.ageRating];
+    }
+
+    if (options.status) {
+      request.status = SERIES_STATUS_ENUM[options.status];
+    }
+
     const response = await apiClient.series.listSeries(
-      {
-        ...cursorPageRequest(options),
-        ...(options.ageRating
-          ? { ageRating: SERIES_AGE_RATING_ENUM[options.ageRating] }
-          : {}),
-        ...(options.status
-          ? { status: SERIES_STATUS_ENUM[options.status] }
-          : {}),
-        tenant: { tenantId },
-      },
+      request,
       withServiceHeaders()
     );
 

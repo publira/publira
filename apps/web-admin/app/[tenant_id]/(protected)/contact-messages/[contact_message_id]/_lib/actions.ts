@@ -17,6 +17,7 @@ import {
 } from "#lib/contact-message";
 import { assertSameOrigin } from "#lib/csrf";
 import {
+  isFormText,
   optionalRecordId,
   requiredRecordId,
   requiredTrimmedString,
@@ -211,7 +212,7 @@ const staffNoteActionSchema = async (locale: Locale) => {
     // Counted in code points rather than by `.max()`, which counts UTF-16 code
     // units and would refuse a note full of emoji the API still accepts.
     staffNote: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim() : ""),
+      (value) => (isFormText(value) ? value.trim() : ""),
       z.string().refine(
         (value) => [...value].length <= CONTACT_MESSAGE_STAFF_NOTE_MAX_LENGTH,
         t("admin.contact_messages.validation.staff_note_too_long", {
@@ -284,7 +285,7 @@ const replyActionSchema = async (locale: Locale) => {
     // The reader's own form bounds the message the same way: required once
     // trimmed, and counted in code points as the API counts characters.
     body: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim() : ""),
+      (value) => (isFormText(value) ? value.trim() : ""),
       z
         .string()
         .min(1, t("admin.contact_messages.reply.validation.body_required"))

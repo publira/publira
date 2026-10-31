@@ -84,7 +84,7 @@ export const getLocale = async (tenantId: string): Promise<Locale> => {
   const cookieStore = await cookies();
   const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
 
-  if (typeof raw === "string") {
+  if (raw !== undefined) {
     const trimmed = raw.trim();
 
     if (isLocale(trimmed)) {

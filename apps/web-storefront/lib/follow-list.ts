@@ -73,14 +73,17 @@ export interface ListMyFollowsInput {
   token?: string;
 }
 
-const emptyFollowPage = {
-  follows: [] as FollowListEntry[],
+const emptyFollowPage: Pick<
+  ListMyFollowsResult,
+  "follows" | "nextToken" | "previousToken"
+> = {
+  follows: [],
   nextToken: "",
   previousToken: "",
 };
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 /**
  * Only an expired or missing session sends the reader back through login.
@@ -88,8 +91,8 @@ const isUnexpectedError = (error: unknown): boolean =>
  * the base64url shape check and still be rejected by `ListMyFollows`.
  * Treating that as sign-in would bounce the same `?token=` URL after login.
  */
-const isSignInRequiredError = (error: unknown): boolean =>
-  isRpcError(error, Code.Unauthenticated);
+const isSignInRequiredError = (cause: unknown): boolean =>
+  isRpcError(cause, Code.Unauthenticated);
 
 const throwIfUnexpected = (unexpected: boolean, message: string): void => {
   if (unexpected) {

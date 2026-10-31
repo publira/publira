@@ -25,20 +25,32 @@ import type {
 } from "../branding-types";
 import { ThemeSettingsForm } from "./theme-settings-form";
 
-const { save, saveDark } = vi.hoisted(() => ({
-  save: {
-    action: (() => Promise.resolve(null)) as (
-      state: ThemeSettingsActionState,
-      data: FormData
-    ) => Promise<ThemeSettingsActionState>,
-  },
-  saveDark: {
-    action: (() => Promise.resolve(null)) as (
-      state: DarkThemeSettingsActionState,
-      data: FormData
-    ) => Promise<DarkThemeSettingsActionState>,
-  },
-}));
+type ThemeSettingsAction = (
+  state: ThemeSettingsActionState,
+  data: FormData
+) => Promise<ThemeSettingsActionState>;
+
+type DarkThemeSettingsAction = (
+  state: DarkThemeSettingsActionState,
+  data: FormData
+) => Promise<DarkThemeSettingsActionState>;
+
+/** The Action a test answers a save with. */
+interface ThemeSave {
+  action: ThemeSettingsAction;
+}
+
+/** The Action a test answers a save of the dark palette with. */
+interface DarkThemeSave {
+  action: DarkThemeSettingsAction;
+}
+
+const { save, saveDark } = vi.hoisted(() => {
+  const theme: ThemeSave = { action: () => Promise.resolve(null) };
+  const darkTheme: DarkThemeSave = { action: () => Promise.resolve(null) };
+
+  return { save: theme, saveDark: darkTheme };
+});
 
 vi.mock("../_lib/actions", () => ({
   deleteTenantDarkThemeAction: () => Promise.resolve(null),

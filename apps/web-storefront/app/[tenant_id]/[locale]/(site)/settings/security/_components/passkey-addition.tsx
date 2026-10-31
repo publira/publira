@@ -77,10 +77,10 @@ const PasskeyAddition = ({
  * registration excluded.
  */
 const ceremonyFailureMessage = (
-  error: unknown,
+  cause: unknown,
   t: StorefrontClientMessageAccessor
 ): string => {
-  const name = error instanceof Error ? error.name : "";
+  const name = cause instanceof Error ? cause.name : "";
 
   if (name === "NotAllowedError" || name === "AbortError") {
     return t("storefront.settings.passkey_add_cancelled");

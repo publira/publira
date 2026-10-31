@@ -1,5 +1,6 @@
 import type { Locale } from "@publira/i18n";
 
+import { isFormText } from "./form-schemas";
 import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageAccessor } from "./messages";
@@ -19,7 +20,7 @@ import type { AdminMessageAccessor } from "./messages";
 export const getActionLocale = (formData: FormData): Promise<Locale> => {
   const tenantId = formData.get("tenant_id");
 
-  if (typeof tenantId !== "string") {
+  if (!isFormText(tenantId)) {
     throw new TypeError("tenant_id is missing from the submitted form");
   }
 

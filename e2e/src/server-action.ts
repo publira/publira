@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Response } from "@playwright/test";
 
 /** The header Next.js puts on the POST that carries a Server Action. */
 const SERVER_ACTION_HEADER = "next-action";
@@ -25,7 +25,7 @@ const SERVER_ACTION_HEADER = "next-action";
  * await reordered;
  * ```
  */
-export const serverActionAnswered = (page: Page): Promise<unknown> =>
+export const serverActionAnswered = (page: Page): Promise<Response> =>
   page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&

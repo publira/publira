@@ -94,32 +94,32 @@ const mapCampaignPrice = (
  * form was rendered.
  */
 const mapCreateErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   messages: { fallback: string; priceNotCheaper: string },
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
   if (
-    rpcErrorHasFieldViolation(error, "starts_at") ||
-    rpcErrorHasFieldViolation(error, "ends_at")
+    rpcErrorHasFieldViolation(cause, "starts_at") ||
+    rpcErrorHasFieldViolation(cause, "ends_at")
   ) {
     return t("admin.series.episodes.period.invalid");
   }
 
-  if (rpcErrorHasFieldViolation(error, "price")) {
+  if (rpcErrorHasFieldViolation(cause, "price")) {
     return messages.priceNotCheaper;
   }
 
-  if (rpcErrorHasFieldViolation(error, "currency")) {
+  if (rpcErrorHasFieldViolation(cause, "currency")) {
     return t("admin.series.episodes.currency_changed");
   }
 
-  if (rpcErrorHasFieldViolation(error, "episode_ids")) {
+  if (rpcErrorHasFieldViolation(cause, "episode_ids")) {
     return t("admin.series.episodes.campaign_prices.episodes_changed");
   }
 
-  return rpcErrorMessage(error, messages.fallback, {
+  return rpcErrorMessage(cause, messages.fallback, {
     locale,
     overrides: {
       "not-found": t("admin.series.episodes.series_not_found"),

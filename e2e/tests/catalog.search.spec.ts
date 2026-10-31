@@ -21,6 +21,11 @@ import { storefrontPath, WEB_ADMIN_BASE_URL } from "../src/urls";
  */
 const onOpenSearch = process.env.PUBLIRA_E2E_SEARCH_BACKEND === "opensearch";
 
+/** The part of a `_delete_by_query` answer the cleanup reads. */
+interface DeleteByQueryResult {
+  version_conflicts: number;
+}
+
 /**
  * Delete the index documents of the series `publicIds` name, before the rows
  * go. {@link deleteSeriesByPublicIds} drops the rows straight out of Postgres,
@@ -62,10 +67,9 @@ const deleteSeriesDocuments = async (
 
     const body = await response.text();
     expect(response.ok, body).toBe(true);
-    expect(
-      (JSON.parse(body) as { version_conflicts: number }).version_conflicts,
-      body
-    ).toBe(0);
+    // SAFETY: the body the search engine documents for `_delete_by_query`.
+    const result = JSON.parse(body) as DeleteByQueryResult;
+    expect(result.version_conflicts, body).toBe(0);
   }).toPass({ timeout: 30_000 });
 };
 

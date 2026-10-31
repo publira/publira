@@ -31,7 +31,7 @@ const challenge = () => ({
   tenantId: TENANT_ID,
 });
 
-const sealed = (payload: unknown): Promise<string> =>
+const sealed = <TPayload>(payload: TPayload): Promise<string> =>
   encryptPayload(payload, PUBLIRA_AUTH_SECRET);
 
 describe("readMfaChallenge", () => {

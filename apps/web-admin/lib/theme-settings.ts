@@ -119,13 +119,13 @@ export const tenantThemeCacheTag = (tenantId: string): string =>
  * than the generic wording. Everything else takes the shared copy.
  */
 const parseErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): string => {
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+  const serverMessage = rpcErrorRawMessage(cause)?.trim() || fallback;
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "invalid-argument": serverMessage,
@@ -142,19 +142,19 @@ const parseErrorMessage = (
  * separates a rejected image from any other `invalid_argument`.
  */
 const parseIconErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
-      "invalid-argument": mentionsIconRejection(error)
+      "invalid-argument": mentionsIconRejection(cause)
         ? t("admin.settings.icon.rejected")
         : undefined,
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },
@@ -163,19 +163,19 @@ const parseIconErrorMessage = async (
 
 /** The logo rejections are worded here for the same reason as the icon's. */
 const parseLogoErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
-      "invalid-argument": mentionsLogoRejection(error)
+      "invalid-argument": mentionsLogoRejection(cause)
         ? t("admin.settings.logo.rejected")
         : undefined,
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },
@@ -184,19 +184,19 @@ const parseLogoErrorMessage = async (
 
 /** The sign-in image rejections are worded here for the same reason. */
 const parseSignInImageErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
-      "invalid-argument": mentionsSignInImageRejection(error)
+      "invalid-argument": mentionsSignInImageRejection(cause)
         ? t("admin.settings.sign_in_image.rejected")
         : undefined,
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },
@@ -216,6 +216,8 @@ const toTenantThemeColors = (
   const theme = resolveTenantThemeColors(palette);
   const colors = { ...DEFAULT_TENANT_THEME_COLORS };
 
+  // SAFETY: `DEFAULT_TENANT_THEME_COLORS` is a `TenantThemeColors`, so its
+  // keys are that type's keys and no others.
   for (const key of Object.keys(
     DEFAULT_TENANT_THEME_COLORS
   ) as (keyof TenantThemeColors)[]) {

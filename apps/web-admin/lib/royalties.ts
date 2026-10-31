@@ -217,17 +217,17 @@ const signedOut = async (locale: Locale): Promise<ReadFailure> => {
 };
 
 const readFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<ReadFailure> => {
   const t = await getMessagesFor(locale);
 
   return {
-    message: rpcErrorMessage(error, t("admin.royalties.load_failed"), {
+    message: rpcErrorMessage(cause, t("admin.royalties.load_failed"), {
       locale,
     }),
     ok: false,
-    requiresSignIn: isUnauthenticatedError(error),
+    requiresSignIn: isUnauthenticatedError(cause),
   };
 };
 

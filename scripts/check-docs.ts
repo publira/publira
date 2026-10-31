@@ -57,6 +57,9 @@ import { gfm } from "micromark-extension-gfm";
 import { Temporal } from "temporal-polyfill";
 import { parse as parseYaml } from "yaml";
 
+import { isJsonObject, isJsonString } from "./json-value.ts";
+import type { JsonObject, JsonValue } from "./json-value.ts";
+
 /** The directory every locale's tree sits in, relative to the repository root. */
 const DOCS = "docs";
 
@@ -98,13 +101,13 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const URL_PATH = /^(?:\/[a-z\d]+(?:-[a-z\d]+)*)+$/u;
 
 /** Every key the frontmatter may carry, and whether a page must. */
-const KEYS: Record<string, boolean> = {
+const KEYS = {
   description: true,
   published: true,
   redirect_from: false,
   title: true,
   updated: false,
-};
+} satisfies Record<string, boolean>;
 
 /**
  * The key a translated page carries besides {@link KEYS}, and must: the
@@ -122,7 +125,7 @@ export interface Finding {
 }
 
 interface Frontmatter {
-  values: unknown;
+  values: JsonValue;
 }
 
 /**
@@ -150,7 +153,7 @@ const splitFrontmatter = (
     };
   } catch (error) {
     return {
-      error: `The frontmatter is not valid YAML: ${(error as Error).message}`,
+      error: `The frontmatter is not valid YAML: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 };
@@ -194,8 +197,8 @@ const parseMarkdown = (source: string): Root => {
  * `remark-mdx-frontmatter` does, so a date written either way arrives here as
  * one.
  */
-const parseDate = (value: unknown): Temporal.PlainDate | null => {
-  if (typeof value !== "string" || !DATE.test(value)) {
+const parseDate = (value: JsonValue | undefined): Temporal.PlainDate | null => {
+  if (!isJsonString(value) || !DATE.test(value)) {
     return null;
   }
 
@@ -216,10 +219,7 @@ const isTranslated = (file: string): boolean => treeOf(file) !== SOURCE;
  * What is wrong with the set of keys: an unknown one, or a required one
  * missing. A translated page carries {@link SOURCE_UPDATED} too.
  */
-const checkKeys = (
-  record: Record<string, unknown>,
-  translated: boolean
-): string[] => {
+const checkKeys = (record: JsonObject, translated: boolean): string[] => {
   const keys: Record<string, boolean> = translated
     ? { ...KEYS, [SOURCE_UPDATED]: true }
     : KEYS;
@@ -242,21 +242,17 @@ const checkKeys = (
   ];
 };
 
-const checkText = (record: Record<string, unknown>): string[] =>
-  ["title", "description"]
-    .filter((key) => {
-      const value = record[key];
+const checkText = (record: JsonObject): string[] =>
+  ["title", "description"].flatMap((key) => {
+    const value = record[key];
 
-      return (
-        key in record &&
-        (typeof value !== "string" ||
-          value.trim() === "" ||
-          value.includes("\n"))
-      );
-    })
-    .map((key) => `\`${key}\` is not a single line of text.`);
+    return key in record &&
+      (!isJsonString(value) || value.trim() === "" || value.includes("\n"))
+      ? [`\`${key}\` is not a single line of text.`]
+      : [];
+  });
 
-const checkDates = (record: Record<string, unknown>): string[] => {
+const checkDates = (record: JsonObject): string[] => {
   const messages: string[] = [];
   const published = parseDate(record.published);
 
@@ -291,16 +287,18 @@ const checkDates = (record: Record<string, unknown>): string[] => {
  * {@link SOURCE_UPDATED} it records for a translation. `null` when that date is
  * missing or malformed, which {@link checkDates} reports already.
  */
-const revisionOf = (
-  record: Record<string, unknown>,
-  translated: boolean
-): string | null => {
+const revisionOf = (record: JsonObject, translated: boolean): string | null => {
   const value = translated
     ? record[SOURCE_UPDATED]
     : (record.updated ?? record.published);
 
-  return parseDate(value) ? (value as string) : null;
+  return isJsonString(value) && parseDate(value) ? value : null;
 };
+
+interface Redirects {
+  messages: string[];
+  redirects: string[];
+}
 
 /**
  * The URLs `redirect_from` names, and what is wrong with how it names them.
@@ -309,9 +307,7 @@ const revisionOf = (
  * which the website redirects to the page. What it collides with is a question
  * for the whole tree, so {@link scan} asks it.
  */
-const checkRedirects = (
-  record: Record<string, unknown>
-): { messages: string[]; redirects: string[] } => {
+const checkRedirects = (record: JsonObject): Redirects => {
   if (!("redirect_from" in record)) {
     return { messages: [], redirects: [] };
   }
@@ -321,7 +317,7 @@ const checkRedirects = (
   if (
     !Array.isArray(value) ||
     value.length === 0 ||
-    !value.every((entry) => typeof entry === "string")
+    !value.every(isJsonString)
   ) {
     return {
       messages: [
@@ -334,7 +330,7 @@ const checkRedirects = (
   const messages: string[] = [];
   const redirects: string[] = [];
 
-  for (const entry of value as string[]) {
+  for (const entry of value) {
     if (!URL_PATH.test(entry)) {
       messages.push(
         `\`${entry}\` in \`redirect_from\` is not a URL below the version, such as \`/deployments/reverse-proxy\`: each slug after a \`/\`, without numbers or a trailing \`/\`.`
@@ -349,11 +345,17 @@ const checkRedirects = (
   return { messages, redirects };
 };
 
+interface CheckedFrontmatter {
+  findings: Finding[];
+  redirects: string[];
+  revision: string | null;
+}
+
 const checkFrontmatter = (
   file: string,
-  values: unknown
-): { findings: Finding[]; redirects: string[]; revision: string | null } => {
-  if (typeof values !== "object" || values === null || Array.isArray(values)) {
+  values: JsonValue
+): CheckedFrontmatter => {
+  if (!isJsonObject(values)) {
     return {
       findings: [
         { file, line: 1, message: "The frontmatter is not a map of keys." },
@@ -363,19 +365,18 @@ const checkFrontmatter = (
     };
   }
 
-  const record = values as Record<string, unknown>;
   const translated = isTranslated(file);
-  const { messages, redirects } = checkRedirects(record);
+  const { messages, redirects } = checkRedirects(values);
 
   return {
     findings: [
-      ...checkKeys(record, translated),
-      ...checkText(record),
-      ...checkDates(record),
+      ...checkKeys(values, translated),
+      ...checkText(values),
+      ...checkDates(values),
       ...messages,
     ].map((message) => ({ file, line: 1, message })),
     redirects,
-    revision: revisionOf(record, translated),
+    revision: revisionOf(values, translated),
   };
 };
 
@@ -647,8 +648,13 @@ interface Destination {
   target: string;
 }
 
+interface UrlParts {
+  fragment: string | null;
+  path: string;
+}
+
 /** A URL's path and its fragment, each decoded, with any query left out. */
-const splitUrl = (url: string): { fragment: string | null; path: string } => {
+const splitUrl = (url: string): UrlParts => {
   const hash = url.indexOf("#");
   const [before = ""] = (hash === -1 ? url : url.slice(0, hash)).split("?");
   const fragment = hash === -1 ? "" : decode(url.slice(hash + 1));
@@ -1421,10 +1427,15 @@ export interface Quote {
  * Every quote in a script, and a finding for a `# quoted by` comment that no
  * `# end of quote` closes before the next one or the end of the file.
  */
+export interface CollectedQuotes {
+  findings: Finding[];
+  quotes: Quote[];
+}
+
 export const collectQuotes = (
   file: string,
   source: string
-): { findings: Finding[]; quotes: Quote[] } => {
+): CollectedQuotes => {
   const findings: Finding[] = [];
   const quotes: Quote[] = [];
 

@@ -62,10 +62,15 @@ const centreChild = (
     return;
   }
 
-  track.scrollTo({
+  const options: ScrollToOptions = {
     left: slide.offsetLeft + slide.offsetWidth / 2 - track.clientWidth / 2,
-    ...(behavior ? { behavior } : {}),
-  });
+  };
+
+  if (behavior) {
+    options.behavior = behavior;
+  }
+
+  track.scrollTo(options);
 };
 
 /**

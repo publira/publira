@@ -63,13 +63,15 @@ const jsonResponse = (body: ReadyzBody, status: number): Response =>
     status,
   });
 
-const errorMessage = (error: unknown): string => {
-  if (error instanceof Error) {
-    return error.message;
+const isString = (value: unknown): value is string => typeof value === "string";
+
+const errorMessage = (cause: unknown): string => {
+  if (cause instanceof Error) {
+    return cause.message;
   }
 
-  if (typeof error === "string") {
-    return error;
+  if (isString(cause)) {
+    return cause;
   }
 
   return "unknown error";
@@ -79,12 +81,12 @@ const errorMessage = (error: unknown): string => {
  * Map internal failures to stable public categories.
  * Never return raw Error.message (may include upstream URLs / hostnames).
  */
-const publicErrorCategory = (error: unknown): string => {
+const publicErrorCategory = (cause: unknown): string => {
   if (
-    error instanceof Error &&
-    (error.name === "AbortError" ||
-      error.name === "TimeoutError" ||
-      /timed out/iu.test(error.message))
+    cause instanceof Error &&
+    (cause.name === "AbortError" ||
+      cause.name === "TimeoutError" ||
+      /timed out/iu.test(cause.message))
   ) {
     return HEALTH_ERROR_TIMEOUT;
   }

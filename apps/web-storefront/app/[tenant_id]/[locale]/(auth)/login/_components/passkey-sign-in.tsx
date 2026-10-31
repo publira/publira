@@ -39,10 +39,10 @@ const supportedOnServer = () => false;
  * nothing the reader can do about it here but try again or use their password.
  */
 const ceremonyFailureMessage = (
-  error: unknown,
+  cause: unknown,
   t: StorefrontClientMessageAccessor
 ): string => {
-  const name = error instanceof Error ? error.name : "";
+  const name = cause instanceof Error ? cause.name : "";
 
   if (name === "NotAllowedError" || name === "AbortError") {
     return t("storefront.auth.errors.passkey_cancelled");

@@ -33,12 +33,15 @@ const overlaps = (one: HeaderControl, other: HeaderControl): boolean =>
  */
 const headerControls = (page: Page): Promise<HeaderControl[]> =>
   page.getByRole("banner").evaluate((header) =>
-    [...header.querySelectorAll("a, button, input")]
-      .filter((element) => element.checkVisibility())
-      .map((element) => {
-        const rect = element.getBoundingClientRect();
+    [...header.querySelectorAll("a, button, input")].flatMap((element) => {
+      if (!element.checkVisibility()) {
+        return [];
+      }
 
-        return {
+      const rect = element.getBoundingClientRect();
+
+      return [
+        {
           height: rect.height,
           label:
             element.getAttribute("aria-label") ??
@@ -47,8 +50,9 @@ const headerControls = (page: Page): Promise<HeaderControl[]> =>
           width: rect.width,
           x: rect.x,
           y: rect.y,
-        };
-      })
+        },
+      ];
+    })
   );
 
 const collisions = (controls: HeaderControl[]): string[] => {

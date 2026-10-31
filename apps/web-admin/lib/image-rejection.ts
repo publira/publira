@@ -14,25 +14,25 @@ import {
  * The message itself stays per-form: the size requirements differ.
  */
 /** Whether an `invalid_argument` rejection is about the eye-catch image. */
-export const mentionsImageRejection = (error: unknown): boolean =>
-  rpcErrorHasFieldViolation(error, "eye_catch_image_data") ||
-  rpcErrorHasFieldViolation(error, "eye_catch_image_content_type");
+export const mentionsImageRejection = (cause: unknown): boolean =>
+  rpcErrorHasFieldViolation(cause, "eye_catch_image_data") ||
+  rpcErrorHasFieldViolation(cause, "eye_catch_image_content_type");
 
 /** Whether an `invalid_argument` rejection is about the uploaded icon. */
-export const mentionsIconRejection = (error: unknown): boolean =>
-  rpcErrorHasFieldViolation(error, "icon_data");
+export const mentionsIconRejection = (cause: unknown): boolean =>
+  rpcErrorHasFieldViolation(cause, "icon_data");
 
 /** Whether an `invalid_argument` rejection is about the uploaded logo. */
-export const mentionsLogoRejection = (error: unknown): boolean =>
-  rpcErrorHasFieldViolation(error, "logo_data");
+export const mentionsLogoRejection = (cause: unknown): boolean =>
+  rpcErrorHasFieldViolation(cause, "logo_data");
 
 /**
  * Whether an `invalid_argument` rejection is about the uploaded sign-in image.
  * Its RPC is the only one the branding screen calls that carries the image in
  * `image_data`, so the field alone tells it apart.
  */
-export const mentionsSignInImageRejection = (error: unknown): boolean =>
-  rpcErrorHasFieldViolation(error, "image_data");
+export const mentionsSignInImageRejection = (cause: unknown): boolean =>
+  rpcErrorHasFieldViolation(cause, "image_data");
 
 /**
  * Whether an `invalid_argument` rejection is about the image sent for a single
@@ -45,15 +45,15 @@ export const mentionsSignInImageRejection = (error: unknown): boolean =>
  * console could not make any larger: the image behind it is the small one, and
  * that is what the slot's wording tells the editor to replace.
  */
-export const mentionsAspectImageRejection = (error: unknown): boolean =>
-  rpcErrorHasFieldViolation(error, "image_data") ||
-  rpcErrorHasFieldViolation(error, "image_content_type") ||
-  rpcErrorHasFieldViolation(error, "crop");
+export const mentionsAspectImageRejection = (cause: unknown): boolean =>
+  rpcErrorHasFieldViolation(cause, "image_data") ||
+  rpcErrorHasFieldViolation(cause, "image_content_type") ||
+  rpcErrorHasFieldViolation(cause, "crop");
 
 /**
  * Whether an upload was refused because the platform has no object store saved
  * yet. Only a platform operator can fix that, so every upload surface words it
  * apart from the "try again later" failure a retry could clear.
  */
-export const mentionsStorageNotConfigured = (error: unknown): boolean =>
-  rpcErrorHasReason(error, RPC_ERROR_REASON.storageNotConfigured);
+export const mentionsStorageNotConfigured = (cause: unknown): boolean =>
+  rpcErrorHasReason(cause, RPC_ERROR_REASON.storageNotConfigured);

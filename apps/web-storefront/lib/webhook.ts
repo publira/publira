@@ -61,9 +61,9 @@ export const parseWebhookPath = (
  * An accepted request is answered 200: a Mailgun Route retries any other
  * status but 406 for 8 hours, and every other provider takes any 2xx.
  */
-export const answerWebhook = async (
+export const answerWebhook = async <TResponse>(
   kind: WebhookKind,
-  forward: () => Promise<unknown>
+  forward: () => Promise<TResponse>
 ): Promise<NextResponse> => {
   try {
     await forward();

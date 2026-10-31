@@ -18,12 +18,17 @@ import {
 } from "../src/scenarios/platform-audit-log-export";
 import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
+interface LocaleIndex {
+  locales: { code: string }[];
+}
+
+// SAFETY: `pnpm locales:check` rejects an index whose locales lack a code.
+const localeIndex = JSON.parse(
+  readFileSync(new URL("../../locales/index.json", import.meta.url), "utf-8")
+) as LocaleIndex;
+
 /** Every locale the console ships, as `locales/index.json` registers them. */
-const LOCALES: readonly string[] = (
-  JSON.parse(
-    readFileSync(new URL("../../locales/index.json", import.meta.url), "utf-8")
-  ) as { locales: { code: string }[] }
-).locales.map(({ code }) => code);
+const LOCALES: readonly string[] = localeIndex.locales.map(({ code }) => code);
 
 /** A phone, the narrowest tablet held upright, and the desktop the suite runs at. */
 const WIDTHS = [390, 744, 1280];

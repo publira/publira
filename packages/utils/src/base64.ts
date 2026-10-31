@@ -10,7 +10,7 @@ export const decodeBase64Url = (value: string): Uint8Array | null => {
     return null;
   }
 
-  if (typeof Uint8Array.fromBase64 === "function") {
+  if (Uint8Array.fromBase64 !== undefined) {
     try {
       return Uint8Array.fromBase64(value, { alphabet: "base64url" });
     } catch {

@@ -125,6 +125,8 @@ const installViewerMetrics = (progressLabel: string) => {
 
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
+      // SAFETY: the observer watches `layout-shift` alone, and every entry of
+      // that type is a `LayoutShift`, which the DOM types do not declare.
       const shift = entry as PerformanceEntry & {
         hadRecentInput: boolean;
         value: number;

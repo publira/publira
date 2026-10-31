@@ -19,10 +19,10 @@ vi.mock("./push", () => ({
 
 vi.mock("./auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 
@@ -91,7 +91,7 @@ describe("registerBrowserPushAction", () => {
     ).rejects.toThrow();
   });
 
-  it.each([
+  it.each<[string, unknown]>([
     ["null", null],
     ["a string", "not an object"],
     ["nothing at all", undefined],
@@ -104,7 +104,9 @@ describe("registerBrowserPushAction", () => {
 
       await expect(
         registerBrowserPushAction(
-          body as unknown as Parameters<typeof registerBrowserPushAction>[0]
+          // SAFETY: deliberately not the declared input — the body under test
+          // is one no call site of this app sends.
+          body as Parameters<typeof registerBrowserPushAction>[0]
         )
       ).rejects.toThrow(/locale/u);
       expect(mockRegisterWebPushDevice).not.toHaveBeenCalled();

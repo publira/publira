@@ -18,15 +18,25 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { TenantEmailRejectionActionState } from "../settings-types";
 import { TenantEmailRejectionForm } from "./tenant-email-rejection-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<TenantEmailRejectionActionState>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantEmailRejectionActionState>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantEmailRejectionAction: (_state: unknown, formData: FormData) => {
+  updateTenantEmailRejectionAction: (
+    _state: TenantEmailRejectionActionState,
+    formData: FormData
+  ) => {
     save.formData = formData;
 
     return save.current.promise;

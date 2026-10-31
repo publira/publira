@@ -14,4 +14,10 @@
 import type { PushWorkerScope } from "./service-worker-handlers";
 import { registerPushHandlers } from "./service-worker-handlers";
 
-registerPushHandlers(self as unknown as PushWorkerScope);
+/**
+ * This module runs as a worker, where `self` is the
+ * `ServiceWorkerGlobalScope`; `lib.dom` would type it as a `Window`.
+ */
+declare const self: PushWorkerScope;
+
+registerPushHandlers(self);

@@ -193,34 +193,34 @@ export const getTenantSignInSettings = async (
 
 /** The fields the API refused, in the words the form uses for them. */
 const refusedFieldErrors = (
-  error: unknown,
+  cause: unknown,
   input: UpdateTenantSignInSettingsInput,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): SignInSettingsFieldErrors | undefined => {
   const fieldErrors: SignInSettingsFieldErrors = {};
 
-  if (rpcErrorHasFieldViolation(error, "apple.services_id")) {
+  if (rpcErrorHasFieldViolation(cause, "apple.services_id")) {
     fieldErrors.servicesId = t(
       "admin.settings.sign_in.validation.services_id_invalid"
     );
   }
 
-  if (rpcErrorHasFieldViolation(error, "apple.team_id")) {
+  if (rpcErrorHasFieldViolation(cause, "apple.team_id")) {
     fieldErrors.teamId = t("admin.settings.sign_in.validation.team_id_invalid");
   }
 
-  if (rpcErrorHasFieldViolation(error, "apple.key_id")) {
+  if (rpcErrorHasFieldViolation(cause, "apple.key_id")) {
     fieldErrors.keyId = t("admin.settings.sign_in.validation.key_id_invalid");
   }
 
-  if (rpcErrorHasFieldViolation(error, "apple.private_key")) {
+  if (rpcErrorHasFieldViolation(cause, "apple.private_key")) {
     fieldErrors.privateKey = t(
       "admin.settings.sign_in.validation.private_key_invalid"
     );
   }
 
   // The API names Google as a whole, so every client ID entered is suspect.
-  if (rpcErrorHasFieldViolation(error, "google")) {
+  if (rpcErrorHasFieldViolation(cause, "google")) {
     const message = t("admin.settings.sign_in.validation.client_id_invalid");
 
     if (input.google.webClientId) {

@@ -247,30 +247,30 @@ export const getTenantStorePaymentSettings = async (
 
 /** The fields the API refused, in the words the form uses for them. */
 const refusedFieldErrors = (
-  error: unknown,
+  cause: unknown,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): StorePaymentSettingsFieldErrors | undefined => {
   const fieldErrors: StorePaymentSettingsFieldErrors = {};
 
-  if (rpcErrorHasFieldViolation(error, "app_store.issuer_id")) {
+  if (rpcErrorHasFieldViolation(cause, "app_store.issuer_id")) {
     fieldErrors.issuerId = t(
       "admin.settings.store_payment.validation.issuer_id_invalid"
     );
   }
 
-  if (rpcErrorHasFieldViolation(error, "app_store.key_id")) {
+  if (rpcErrorHasFieldViolation(cause, "app_store.key_id")) {
     fieldErrors.keyId = t(
       "admin.settings.store_payment.validation.key_id_invalid"
     );
   }
 
-  if (rpcErrorHasFieldViolation(error, "app_store.private_key")) {
+  if (rpcErrorHasFieldViolation(cause, "app_store.private_key")) {
     fieldErrors.privateKey = t(
       "admin.settings.store_payment.validation.private_key_invalid"
     );
   }
 
-  if (rpcErrorHasFieldViolation(error, "google_play.service_account_key")) {
+  if (rpcErrorHasFieldViolation(cause, "google_play.service_account_key")) {
     fieldErrors.serviceAccountKey = t(
       "admin.settings.store_payment.validation.service_account_key_invalid"
     );

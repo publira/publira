@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { platformAuditLogsCacheTag } from "#lib/audit-logs";
+import type * as LocaleModule from "#lib/locale";
 import { platformPolicyCacheTag } from "#lib/platform-policy";
+import type * as PlatformPolicyModule from "#lib/platform-policy";
 
 const {
   mockAssertSameOrigin,
@@ -22,13 +24,13 @@ vi.mock("#lib/auth-session", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
 
   return { ...actual, getPlatformLocale: () => Promise.resolve("en") };
 });
 
 vi.mock("#lib/platform-policy", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof PlatformPolicyModule>();
 
   return {
     ...actual,

@@ -1,7 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { checkboxOnFormSchema, requiredTrimmedString } from "#lib/form-schemas";
+import {
+  checkboxOnFormSchema,
+  isFormText,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import type { UpdateTenantAnalyticsSettingsInput } from "#lib/tenant-analytics-settings";
 import {
@@ -62,8 +66,10 @@ export const googleTagFormFields = {
   tenantId: { kind: "value", name: "tenant_id" },
 } as const;
 
-const trimmed = (value: unknown): string =>
-  typeof value === "string" ? value.trim() : "";
+const trimmed = z.preprocess(
+  (value) => (isFormText(value) ? value.trim() : ""),
+  z.string()
+);
 
 /**
  * The form as the API will take it. The server container URL is posted only
@@ -80,16 +86,10 @@ export const googleTagFormSchema = async (
       consentMode: z.enum(GOOGLE_TAG_CONSENT_MODES, {
         error: t("admin.settings.google_tag.validation.consent_mode_invalid"),
       }),
-      ga4MeasurementId: z.preprocess(
-        (value) => trimmed(value).toUpperCase(),
-        z.string()
-      ),
-      gtmContainerId: z.preprocess(
-        (value) => trimmed(value).toUpperCase(),
-        z.string()
-      ),
+      ga4MeasurementId: trimmed.transform((value) => value.toUpperCase()),
+      gtmContainerId: trimmed.transform((value) => value.toUpperCase()),
       regenerateGatewayPath: checkboxOnFormSchema,
-      serverContainerUrl: z.preprocess(trimmed, z.string()),
+      serverContainerUrl: trimmed,
       servingMode: z.enum(GOOGLE_TAG_SERVING_MODES, {
         error: t("admin.settings.google_tag.validation.serving_mode_invalid"),
       }),

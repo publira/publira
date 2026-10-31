@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import type { CatalogTree } from "./catalog-leaves.ts";
 import {
   dartIdentifier,
   dartParameter,
@@ -13,11 +14,8 @@ const locales = [
   { code: "en", intl: "en-US", label: "English" },
 ];
 
-const catalogs = (
-  ja: Record<string, unknown>,
-  en: Record<string, unknown>
-): Map<string, unknown> =>
-  new Map<string, unknown>([
+const catalogs = (ja: CatalogTree, en: CatalogTree): Map<string, CatalogTree> =>
+  new Map<string, CatalogTree>([
     ["ja", { errors: { validation: "確認してください。" }, mobile: ja }],
     ["en", { errors: { validation: "Check your input." }, mobile: en }],
   ]);
@@ -333,7 +331,7 @@ describe("renderDartMessages", () => {
       () =>
         renderDartMessages(
           locales,
-          new Map<string, unknown>([
+          new Map<string, CatalogTree>([
             ["ja", { errors: {} }],
             ["en", { errors: {} }],
           ])

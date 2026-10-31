@@ -12,6 +12,13 @@ import { z } from "zod";
  */
 const INTEGER_RE = /^[+-]?\d+$/u;
 
+/**
+ * Whether a posted field is text. A field the form did not post reads as
+ * `null` or `undefined`, and a file input posts a `File`; neither is text.
+ */
+export const isFormText = (value: unknown): value is string =>
+  typeof value === "string";
+
 export const requiredTrimmedString = (
   message: string,
   maxLength = 255
@@ -36,7 +43,7 @@ export const optionalTrimmedString = (
 ): z.ZodType<string, unknown> =>
   z.preprocess(
     (value) => {
-      if (typeof value !== "string") {
+      if (!isFormText(value)) {
         return "";
       }
 
@@ -67,7 +74,7 @@ export const intFormSchema = (
   }
 
   return z.preprocess((value) => {
-    const raw = typeof value === "string" ? value.trim() : "";
+    const raw = isFormText(value) ? value.trim() : "";
 
     if (raw === "") {
       return fallback;
@@ -101,7 +108,7 @@ export const boundedIntFormSchema = (
 ): z.ZodType<number, unknown> =>
   z.preprocess(
     (value) => {
-      const raw = typeof value === "string" ? value.trim() : "";
+      const raw = isFormText(value) ? value.trim() : "";
 
       return INTEGER_RE.test(raw) ? Number(raw) : undefined;
     },
@@ -118,7 +125,7 @@ export const boundedIntFormSchema = (
  */
 export const revisionFormSchema = (message: string) =>
   z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
+    (value) => (isFormText(value) ? value.trim() : ""),
     z
       .string()
       .regex(/^\d{1,19}$/u, message)
@@ -130,7 +137,7 @@ export const revisionFormSchema = (message: string) =>
  * entries are dropped; format checks stay on the consumer.
  */
 export const commaOrNewlineStringListFormSchema = z.preprocess((value) => {
-  const raw = typeof value === "string" ? value : "";
+  const raw = isFormText(value) ? value : "";
 
   return raw
     .split(/[\n,]/u)

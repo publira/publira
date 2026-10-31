@@ -63,6 +63,11 @@ const toResolvedTenant = (
   };
 };
 
+/** The one call the resolver makes to the public API. */
+interface TenantLookupClient {
+  domain: Pick<PublicApiClient["domain"], "getTenantByDomain">;
+}
+
 /**
  * The tenant each set of Host candidates resolves to, held per instance for
  * the proxy, where no `"use cache"` runs.
@@ -76,7 +81,7 @@ const toResolvedTenant = (
  * waits out `ttl`.
  */
 export const createTenantResolver = (
-  publicApiClient: PublicApiClient,
+  publicApiClient: TenantLookupClient,
   options?: {
     max?: number;
     now?: () => number;

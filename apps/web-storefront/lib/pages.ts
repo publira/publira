@@ -46,6 +46,10 @@ export interface PublishedPageLink {
   slug: string;
 }
 
+const isSegmentList = (
+  slug: string | readonly string[]
+): slug is readonly string[] => Array.isArray(slug);
+
 /**
  * Normalize a route param or form slug to the storage form used by admin/public APIs.
  * Accepts a string or catch-all segment array.
@@ -55,7 +59,7 @@ export interface PublishedPageLink {
 export const normalizePublishedPageSlug = (
   slug: string | readonly string[]
 ): string => {
-  const joined: string = typeof slug === "string" ? slug : slug.join("/");
+  const joined = isSegmentList(slug) ? slug.join("/") : slug;
 
   let normalized = joined.trim();
 

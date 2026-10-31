@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
+
 const {
   mockAssertSameOrigin,
   mockCreatePlatformOperator,
@@ -29,7 +31,7 @@ vi.mock("#lib/api-client", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
 
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });

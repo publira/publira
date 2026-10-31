@@ -9,7 +9,7 @@
  */
 export const postReport = async (
   path: string,
-  body: unknown = {}
+  body: Readonly<Record<string, number | string>> = {}
 ): Promise<boolean> => {
   try {
     const response = await fetch(path, {

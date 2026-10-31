@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Response } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql, runSql } from "../src/db";
@@ -83,7 +83,10 @@ const confirmationTokenFor = async (recipient: string): Promise<string> => {
 /**
  * Open a confirmation link on the origin the browser reaches web-storefront on.
  */
-const openConfirmation = (page: Page, token: string): Promise<unknown> =>
+const openConfirmation = (
+  page: Page,
+  token: string
+): Promise<Response | null> =>
   page.goto(
     storefrontUrl(`${CONFIRM_EMAIL_PATH}?token=${encodeURIComponent(token)}`)
   );

@@ -61,6 +61,7 @@ const COINS_WORD = /\bcoins?\b/iu;
  */
 const shownText = (page: Page): Promise<string> =>
   page.evaluate(() => {
+    // SAFETY: a deep clone of `document.body` is a `<body>` element too.
     const body = document.body.cloneNode(true) as HTMLElement;
 
     for (const element of body.querySelectorAll("script, style, template")) {

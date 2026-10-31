@@ -316,14 +316,18 @@ describe("forwardInboundEmailWebhook", () => {
         },
       });
 
+      // `duplex` is what Node.js asks of a streamed body; lib.dom's
+      // `RequestInit` does not name it, so it is passed as a wider object.
+      const init = {
+        body,
+        duplex: "half",
+        headers: sendGridPost().headers,
+        method: "POST",
+      };
+
       const request = new Request(
         "https://shop.example.test/api/v1/webhook/email/sendgrid",
-        {
-          body,
-          duplex: "half",
-          headers: sendGridPost().headers,
-          method: "POST",
-        } as RequestInit
+        init
       );
 
       return { read, request };

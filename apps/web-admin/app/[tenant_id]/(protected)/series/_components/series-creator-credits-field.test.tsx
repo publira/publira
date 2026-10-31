@@ -144,6 +144,7 @@ const postedCredits = (): SeriesCreatorCredit[] => {
     throw new Error("the credits field is not on screen");
   }
 
+  // SAFETY: the editor writes the field as the JSON of its credit rows.
   return JSON.parse(field.value) as SeriesCreatorCredit[];
 };
 
@@ -168,9 +169,9 @@ const namesOnScreen = () =>
 
 /** The roles on offer; the mock's blank entry is not one of them. */
 const optionLabels = (control: HTMLSelectElement) =>
-  [...control.options]
-    .filter((option) => option.value !== "")
-    .map((option) => option.textContent);
+  [...control.options].flatMap((option) =>
+    option.value === "" ? [] : [option.textContent]
+  );
 
 afterEach(cleanup);
 

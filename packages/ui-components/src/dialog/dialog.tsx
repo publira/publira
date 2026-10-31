@@ -14,6 +14,14 @@ export const DialogTitle = BaseDialog.Title;
 export const DialogDescription = BaseDialog.Description;
 export const DialogViewport = BaseDialog.Viewport;
 
+type BackdropStyle = BaseDialog.Backdrop.Props["style"];
+
+/** Base UI's state-driven form of `style`, which a plain `<div>` cannot take. */
+const isStyleFunction = (
+  style: BackdropStyle
+): style is Extract<BackdropStyle, (...args: never[]) => void> =>
+  typeof style === "function";
+
 export const DialogBackdrop = ({
   className,
   forceRender: _forceRender,
@@ -29,7 +37,7 @@ export const DialogBackdrop = ({
   <div
     aria-hidden="true"
     {...props}
-    style={typeof style === "function" ? undefined : style}
+    style={isStyleFunction(style) ? undefined : style}
     className={cn(
       "fixed inset-0 z-40 bg-foreground/20 backdrop-blur-xs",
       className

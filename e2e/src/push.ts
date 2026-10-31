@@ -29,6 +29,16 @@ const vapidPublicKey = (): string => {
   return key;
 };
 
+/** The `PushSubscription` the stubbed push service hands back. */
+interface StubSubscription {
+  endpoint: string;
+  toJSON: () => {
+    endpoint: string;
+    keys: { auth: string; p256dh: string };
+  };
+  unsubscribe: () => Promise<boolean>;
+}
+
 /**
  * Stand in for the browser's Push API, so a run can drive the notification
  * switch end to end.
@@ -51,12 +61,10 @@ export const stubPushApi = async (
   permission: "denied" | "granted"
 ): Promise<void> => {
   await page.addInitScript(
-    ([endpoint, expectedKey, granted]) => {
+    ([endpoint, expectedKey, granted]: readonly [string, string, boolean]) => {
       // The key as `pushManager.subscribe` receives it: base64url off the
       // wire, bytes in the call.
-      const base64 = (expectedKey as string)
-        .replaceAll("-", "+")
-        .replaceAll("_", "/");
+      const base64 = expectedKey.replaceAll("-", "+").replaceAll("_", "/");
 
       const padded = base64.padEnd(
         base64.length + ((4 - (base64.length % 4)) % 4),
@@ -69,7 +77,7 @@ export const stubPushApi = async (
         Array.from(binary, (character) => character.codePointAt(0) ?? 0)
       );
 
-      let subscription: unknown = null;
+      let subscription: StubSubscription | null = null;
 
       const registration = {
         pushManager: {

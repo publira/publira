@@ -94,16 +94,16 @@ export type GetCreatorResult =
     };
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },

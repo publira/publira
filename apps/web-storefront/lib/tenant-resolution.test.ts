@@ -31,7 +31,7 @@ const setupRevalidation = (revalidatedAt: () => number | undefined) => {
   );
 
   const resolver = createTenantResolver(
-    { domain: { getTenantByDomain } } as never,
+    { domain: { getTenantByDomain } },
     { max: 10, now: () => clock, readRevalidatedAt, ttl: 300_000 }
   );
 
@@ -51,7 +51,7 @@ describe("createTenantResolver", () => {
     const getTenantByDomain = vi.fn();
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 1000 }
     );
 
@@ -67,7 +67,7 @@ describe("createTenantResolver", () => {
     });
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -86,7 +86,7 @@ describe("createTenantResolver", () => {
     });
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -103,7 +103,7 @@ describe("createTenantResolver", () => {
     });
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -119,7 +119,7 @@ describe("createTenantResolver", () => {
     });
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -135,7 +135,7 @@ describe("createTenantResolver", () => {
     });
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -159,7 +159,7 @@ describe("createTenantResolver", () => {
       .mockRejectedValue(new ConnectError("tenant not found", Code.NotFound));
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -175,7 +175,7 @@ describe("createTenantResolver", () => {
       .mockRejectedValue(new ConnectError("upstream down", Code.Unavailable));
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -210,7 +210,7 @@ describe("createTenantResolver", () => {
       });
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, ttl: 10_000 }
     );
 
@@ -328,7 +328,7 @@ describe("createTenantResolver", () => {
     const readRevalidatedAt = vi.fn(() => Promise.resolve(Number.MAX_VALUE));
 
     const resolver = createTenantResolver(
-      { domain: { getTenantByDomain } } as never,
+      { domain: { getTenantByDomain } },
       { max: 10, readRevalidatedAt, ttl: 10_000 }
     );
 

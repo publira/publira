@@ -93,6 +93,10 @@ const namespaces = {
   TicketTarget,
 };
 
+/** Whether an export is a function: a part, a hook, or a helper. */
+const isFunction = (value: unknown): value is (...args: never[]) => void =>
+  typeof value === "function";
+
 describe("compound component namespaces", () => {
   // A part is renamed only where its module exports it, so React DevTools,
   // error overlays, and stack traces keep naming the component a part belongs
@@ -103,7 +107,7 @@ describe("compound component namespaces", () => {
       for (const [key, part] of Object.entries(parts)) {
         // A hook or a helper beside the parts may keep the name it is
         // declared with (`SubmitGate.useSetSubmittable`).
-        if (typeof part === "function" && /^[A-Z]/u.test(key)) {
+        if (isFunction(part) && /^[A-Z]/u.test(key)) {
           expect(part.name, `${namespace}.${key}`).not.toBe(key);
         }
       }

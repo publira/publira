@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { MessageValues } from "@publira/i18n";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -20,7 +21,7 @@ vi.mock("#components/message", () => ({
     values,
   }: {
     message: string;
-    values?: Record<string, unknown>;
+    values?: MessageValues;
   }) => <span data-values={JSON.stringify(values ?? {})}>{message}</span>,
 }));
 
@@ -66,10 +67,15 @@ const kindOf = (button: HTMLElement) =>
     ?.value;
 
 /** The values the mocked `<Message>` was handed inside `button`. */
-const valuesOf = (button: HTMLElement) =>
-  JSON.parse(
+const valuesOf = (button: HTMLElement | null) => {
+  if (!button) {
+    throw new Error("the button is not on the gate");
+  }
+
+  return JSON.parse(
     button.querySelector<HTMLElement>("[data-values]")?.dataset.values ?? "{}"
   );
+};
 
 const props = {
   appPayments: { appStore: false, googlePlay: false },
@@ -821,7 +827,7 @@ describe("EpisodeAccessGate", () => {
 
       const button = coinPayButton();
       expect(button?.classList.contains("bg-secondary")).toBe(true);
-      expect(valuesOf(button as HTMLElement)).toEqual({
+      expect(valuesOf(button)).toEqual({
         coin_name: "Points",
         count: 300,
       });
@@ -863,7 +869,7 @@ describe("EpisodeAccessGate", () => {
 
       expect(coinPayButton()).toBeNull();
       const button = coinPackButton();
-      expect(valuesOf(button as HTMLElement)).toMatchObject({
+      expect(valuesOf(button)).toMatchObject({
         bonus: 100,
         coin_name: "Points",
         count: 600,

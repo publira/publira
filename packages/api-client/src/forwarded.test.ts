@@ -1,5 +1,9 @@
 import { createContextValues } from "@connectrpc/connect";
-import type { ContextValues } from "@connectrpc/connect";
+import type {
+  ContextValues,
+  Interceptor,
+  UnaryRequest,
+} from "@connectrpc/connect";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ForwardedHeaders } from "./forwarded";
@@ -14,11 +18,13 @@ const run = async (
   header: Headers,
   contextValues: ContextValues = createContextValues()
 ) => {
-  const next = vi.fn(() => Promise.resolve({ ok: true }));
-  await createForwardedInterceptor(resolve)(next as never)({
+  const next = vi.fn<Parameters<Interceptor>[0]>();
+  // SAFETY: the interceptor reads only `contextValues` and `header` from the
+  // request and hands it to `next` as it is, which does not read it.
+  await createForwardedInterceptor(resolve)(next)({
     contextValues,
     header,
-  } as never);
+  } as UnaryRequest);
   expect(next).toHaveBeenCalledOnce();
 };
 

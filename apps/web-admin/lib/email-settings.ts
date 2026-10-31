@@ -93,14 +93,14 @@ export const tenantEmailSettingsCacheTag = (tenantId: string): string =>
  * the shared copy — a raw `[internal]` message is not something to show.
  */
 const parseErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const fallback = t("admin.settings.email.failed");
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+  const serverMessage = rpcErrorRawMessage(cause)?.trim() || fallback;
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "invalid-argument": serverMessage,
@@ -110,15 +110,15 @@ const parseErrorMessage = async (
 };
 
 const parseSmtpTestErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const fallback = t("admin.settings.email.failed");
 
   return (
-    smtpTestFailureErrorMessage(error, locale) ??
-    rpcErrorMessage(error, fallback, {
+    smtpTestFailureErrorMessage(cause, locale) ??
+    rpcErrorMessage(cause, fallback, {
       locale,
       overrides: { precondition: fallback },
     })
@@ -318,7 +318,7 @@ export const updateTenantEmailSettings = async (
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantId: normalizedTenantId },
         username: input.username,
-      } as never,
+      },
       withSessionHeaders(sessionId)
     );
 
@@ -374,7 +374,7 @@ export const sendTenantSmtpTestEmail = async (
         smtpOverrideEnabled: input.smtpOverrideEnabled,
         tenant: { tenantId: normalizedTenantId },
         username: input.username,
-      } as never,
+      },
       withSessionHeaders(sessionId)
     );
 

@@ -32,6 +32,9 @@ const RETURN_TO_MAX_LENGTH = 2048;
 /** 32-byte token encoded as hex (`server/api/publicapi/auth_handlers.go`). */
 const AUTH_TOKEN_PATTERN = /^[0-9a-fA-F]{64}$/u;
 
+/** Whether a submitted field holds text rather than a file or nothing. */
+const isText = (value: unknown): value is string => typeof value === "string";
+
 export const returnToSearchParamSchema = searchParamString({
   fallback: "/",
   maxLength: RETURN_TO_MAX_LENGTH,
@@ -43,7 +46,7 @@ export const returnToSearchParamSchema = searchParamString({
  * `Promise.catch`.
  */
 export const returnToFormSchema = z.preprocess((value) => {
-  if (typeof value !== "string") {
+  if (!isText(value)) {
     return "/";
   }
 
@@ -138,7 +141,7 @@ export const birthDateFormSchema = async (locale: Locale) => {
   const latestToday = Temporal.Now.plainDateISO("UTC").add({ days: 1 });
 
   return z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
+    (value) => (isText(value) ? value.trim() : ""),
     z.string().refine((value) => {
       if (value === "") {
         return true;

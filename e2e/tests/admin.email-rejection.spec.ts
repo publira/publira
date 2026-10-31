@@ -53,8 +53,8 @@ const entryField = (page: Page, position: number) =>
   });
 
 const entryValues = (page: Page) =>
-  entryFields(page).evaluateAll((fields) =>
-    fields.map((field) => (field as HTMLInputElement).value)
+  entryFields(page).evaluateAll((fields: HTMLInputElement[]) =>
+    fields.map((field) => field.value)
   );
 
 /**

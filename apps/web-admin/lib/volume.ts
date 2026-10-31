@@ -137,21 +137,21 @@ const mapVolume = (volume: RawVolume): VolumeItem => ({
  * price entered in a currency the tenant no longer sells in.
  */
 const saveOverrides = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
 
   const invalidArgument = (): string => {
-    if (rpcErrorHasFieldViolation(error, "currency")) {
+    if (rpcErrorHasFieldViolation(cause, "currency")) {
       return t("admin.series.episodes.currency_changed");
     }
 
-    if (rpcErrorHasFieldViolation(error, "title")) {
+    if (rpcErrorHasFieldViolation(cause, "title")) {
       return t("admin.series.volumes.validation.title_invalid");
     }
 
-    if (rpcErrorHasFieldViolation(error, "price")) {
+    if (rpcErrorHasFieldViolation(cause, "price")) {
       return t("admin.series.volumes.validation.price_invalid");
     }
 
@@ -279,7 +279,7 @@ const writeVolume = async (
   write: (sessionId: string) => Promise<{ volume?: RawVolume }>,
   failure: {
     fallback: (t: AdminMessageAccessor) => string;
-    overrides?: (error: unknown) => Promise<RpcErrorMessageOverrides>;
+    overrides?: (cause: unknown) => Promise<RpcErrorMessageOverrides>;
   }
 ): Promise<SaveVolumeResult> => {
   const [t, sessionId] = await Promise.all([
@@ -506,7 +506,7 @@ export const reorderVolumes = async (
 
 /** The wording of a refused cover upload or removal. */
 const coverOverrides = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
@@ -514,7 +514,7 @@ const coverOverrides = async (
   return {
     "invalid-argument": t("admin.series.volumes.cover.image_invalid"),
     "not-found": t("admin.series.volumes.not_found"),
-    precondition: mentionsStorageNotConfigured(error)
+    precondition: mentionsStorageNotConfigured(cause)
       ? t("admin.errors.storage_not_configured")
       : undefined,
   };

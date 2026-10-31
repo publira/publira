@@ -7,6 +7,9 @@ const readUploadResponse = async (
   response: Response
 ): Promise<EpisodePagesUploadResponse | null> => {
   try {
+    // SAFETY: the only endpoint this hook posts to is the episode pages Route
+    // Handler, which answers every request with this body; a body that is not
+    // JSON at all rejects and is read as no answer below.
     return (await response.json()) as EpisodePagesUploadResponse;
   } catch {
     return null;

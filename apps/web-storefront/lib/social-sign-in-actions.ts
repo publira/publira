@@ -56,12 +56,17 @@ export const startSocialSignInAction = async (
       ? await requirePublicSession(locale, CONFIRMING_SCREENS.delete, tenantId)
       : undefined;
 
-  await sendToProvider({
-    ...(accessToken ? { accessToken } : {}),
+  const request: Parameters<typeof sendToProvider>[0] = {
     intent,
     locale,
     provider,
     returnTo,
     tenantId,
-  });
+  };
+
+  if (accessToken) {
+    request.accessToken = accessToken;
+  }
+
+  await sendToProvider(request);
 };

@@ -40,7 +40,7 @@ describe("centreCropRect", () => {
     ["og", "taller than wide", 2400, 3200, 0, 970, 2400, 1260],
   ])(
     "centres a %s frame in a source %s",
-    (variantType, _shape, width, height, x, y, cropWidth, cropHeight) => {
+    (variantType, _source, width, height, x, y, cropWidth, cropHeight) => {
       expect(centreCropRect({ height, width }, aspectOf(variantType))).toEqual({
         height: cropHeight,
         width: cropWidth,

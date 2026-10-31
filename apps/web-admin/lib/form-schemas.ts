@@ -18,6 +18,13 @@ import { MAX_INT32 } from "./int32";
 const NUMBER_RE = /^[+-]?\d+(?:\.\d+)?$/u;
 
 /**
+ * Whether a posted field is text. A field the form did not post reads as
+ * `null` or `undefined`, and a file input posts a `File`; neither is text.
+ */
+export const isFormText = (value: unknown): value is string =>
+  typeof value === "string";
+
+/**
  * `tooLongMessage` defaults to `message`, which is right wherever the length
  * bound is a backstop the UI already keeps a field inside. Pass it where the
  * bound is small enough for an editor to reach on purpose: "… is required." is
@@ -52,7 +59,7 @@ export const optionalTrimmedString = (
 ): z.ZodType<string, unknown> =>
   z.preprocess(
     (value) => {
-      if (typeof value !== "string") {
+      if (!isFormText(value)) {
         return "";
       }
 
@@ -72,7 +79,7 @@ export const nonNegativeIntFormSchema = (
 ): z.ZodType<number, unknown> =>
   z.preprocess(
     (value) => {
-      const raw = typeof value === "string" ? value.trim() : "";
+      const raw = isFormText(value) ? value.trim() : "";
 
       if (raw === "") {
         return 0;
@@ -107,7 +114,7 @@ export const boundedIntFormSchema = (
 ): z.ZodType<number, unknown> =>
   z.preprocess(
     (value) => {
-      const raw = typeof value === "string" ? value.trim() : "";
+      const raw = isFormText(value) ? value.trim() : "";
 
       return INTEGER_RE.test(raw) ? Number(raw) : undefined;
     },
@@ -128,7 +135,7 @@ export const optionalBoundedIntFormSchema = (
 ): z.ZodType<number | undefined, unknown> =>
   z.preprocess(
     (value) => {
-      const raw = typeof value === "string" ? value.trim() : "";
+      const raw = isFormText(value) ? value.trim() : "";
 
       return raw === "" ? undefined : raw;
     },
@@ -151,7 +158,7 @@ export const spreadStartPageFormSchema = (
 ): z.ZodType<number, unknown> =>
   z.preprocess(
     (value) => {
-      const raw = typeof value === "string" ? value.trim() : "";
+      const raw = isFormText(value) ? value.trim() : "";
 
       return PAGE_NUMBER_RE.test(raw) ? Number(raw) : undefined;
     },
@@ -186,7 +193,7 @@ export const optionalCropRectFormSchema = (
   message: string
 ): z.ZodType<CropRect | undefined, unknown> =>
   z.preprocess(
-    (value) => (typeof value === "string" ? value : ""),
+    (value) => (isFormText(value) ? value : ""),
     z.string().refine(isCropRectField, message).transform(parseCropRect)
   );
 
@@ -208,7 +215,7 @@ export const trimmedStringListFormSchema = z
 
 /** Hidden JSON array of strings (reorder payloads). Invalid JSON becomes []. */
 export const jsonStringArrayFormSchema = z.preprocess((value): string[] => {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isFormText(value) || value.trim() === "") {
     return [];
   }
 
@@ -231,7 +238,7 @@ export const optionalRecordId = (
   message?: string
 ): z.ZodType<string, unknown> =>
   z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : ""),
+    (value) => (isFormText(value) ? value.trim() : ""),
     z.union([z.literal(""), z.guid({ error: message })])
   );
 

@@ -36,12 +36,16 @@ export const localeFormSchema = z
  * language cannot word the rejection it was about to return either, so there
  * is nothing for it to answer with.
  */
-export const requireFormLocale = (value: unknown): Locale => {
-  if (!isLocale(value)) {
+export const requireFormLocale = (
+  value: z.input<typeof localeFormSchema>
+): Locale => {
+  const parsed = localeFormSchema.safeParse(value);
+
+  if (!parsed.success) {
     throw new Error(
       `${LOCALE_FIELD_NAME} names no supported locale: ${String(value)}`
     );
   }
 
-  return value;
+  return parsed.data;
 };

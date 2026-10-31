@@ -450,6 +450,9 @@ export const EpisodeComicViewer = ({
               aria-label={t("storefront.episode.viewer.end_page")}
               className="flex h-[min(100cqh,calc(100cqw/var(--end-page-aspect)))] w-[min(100cqw,calc(100cqh*var(--end-page-aspect)))] flex-col overflow-y-auto overscroll-contain bg-background text-foreground"
               style={
+                // SAFETY: React writes a `--` custom property onto the
+                // element's style as it is; `CSSProperties` only has no key
+                // for one.
                 { "--end-page-aspect": endPageAspect(pages) } as CSSProperties
               }
             >

@@ -44,16 +44,19 @@ export const suspendedTenantLocale = (
   parseLocaleCookie(request.cookies.get(RESOLVED_LOCALE_COOKIE_NAME)?.value) ??
   negotiateInitialLocale(request.headers.get("accept-language"));
 
-const HTML_ESCAPES: Readonly<Record<string, string>> = {
-  '"': "&quot;",
-  "&": "&amp;",
-  "'": "&#39;",
-  "<": "&lt;",
-  ">": "&gt;",
-};
+const HTML_ESCAPES = new Map([
+  ['"', "&quot;"],
+  ["&", "&amp;"],
+  ["'", "&#39;"],
+  ["<", "&lt;"],
+  [">", "&gt;"],
+]);
 
 const escapeHtml = (value: string): string =>
-  value.replaceAll(/["&'<>]/gu, (character) => HTML_ESCAPES[character]);
+  value.replaceAll(
+    /["&'<>]/gu,
+    (character) => HTML_ESCAPES.get(character) ?? character
+  );
 
 /**
  * The brand defaults of `@publira/brand/theme.css`, written out because the

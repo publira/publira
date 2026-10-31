@@ -376,7 +376,7 @@ export const listCoinPacks = async (
  * passed can still come back here.
  */
 const refusedSettingsFieldErrors = (
-  error: unknown,
+  cause: unknown,
   names: readonly CoinName[],
   defaultLocale: Locale,
   t: AdminMessageAccessor
@@ -409,15 +409,15 @@ const refusedSettingsFieldErrors = (
   ] as const;
 
   for (const [field, key, message] of fields) {
-    if (rpcErrorHasFieldViolation(error, `settings.${field}`)) {
+    if (rpcErrorHasFieldViolation(cause, `settings.${field}`)) {
       fieldErrors[key] = t(message);
     }
   }
 
   for (const [index, name] of names.entries()) {
     if (
-      rpcErrorHasFieldViolation(error, `settings.names[${index}].name`) ||
-      rpcErrorHasFieldViolation(error, `settings.names[${index}].locale`)
+      rpcErrorHasFieldViolation(cause, `settings.names[${index}].name`) ||
+      rpcErrorHasFieldViolation(cause, `settings.names[${index}].locale`)
     ) {
       fieldErrors[coinNameField(name.locale)] = t(
         "admin.coins.settings.validation.name_invalid",
@@ -427,7 +427,7 @@ const refusedSettingsFieldErrors = (
   }
 
   // A name missing in the default locale while coins are being turned on.
-  if (rpcErrorHasFieldViolation(error, "settings.names")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.names")) {
     fieldErrors[coinNameField(defaultLocale)] = t(
       "admin.coins.settings.validation.default_name_required",
       { language: getLocaleLabel(defaultLocale) }
@@ -594,21 +594,21 @@ export const updateCoinSettings = async (
 
 /** The wording of a refused pack write, for the field or the rule it broke. */
 const packErrorMessage = (
-  error: unknown,
+  cause: unknown,
   coinName: string,
   t: AdminMessageAccessor,
   locale: Locale,
   fallback: string
 ): string => {
-  if (rpcErrorHasFieldViolation(error, "pack.currency")) {
+  if (rpcErrorHasFieldViolation(cause, "pack.currency")) {
     return t("admin.series.episodes.currency_changed");
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinPackSold)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.coinPackSold)) {
     return t("admin.coins.packs.validation.sold", { coin_name: coinName });
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinPackLimit)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.coinPackLimit)) {
     return t("admin.coins.packs.validation.limit", {
       count: COIN_PACK_LIMIT,
     });
@@ -616,19 +616,19 @@ const packErrorMessage = (
 
   let invalidArgument = t("errors.validation");
 
-  if (rpcErrorHasFieldViolation(error, "pack.coins")) {
+  if (rpcErrorHasFieldViolation(cause, "pack.coins")) {
     invalidArgument = t("admin.coins.packs.validation.coins_invalid", {
       coin_name: coinName,
     });
-  } else if (rpcErrorHasFieldViolation(error, "pack.bonus_coins")) {
+  } else if (rpcErrorHasFieldViolation(cause, "pack.bonus_coins")) {
     invalidArgument = t("admin.coins.packs.validation.bonus_coins_invalid", {
       coin_name: coinName,
     });
-  } else if (rpcErrorHasFieldViolation(error, "pack.price")) {
+  } else if (rpcErrorHasFieldViolation(cause, "pack.price")) {
     invalidArgument = t("admin.coins.packs.validation.price_invalid");
   }
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
       "invalid-argument": invalidArgument,

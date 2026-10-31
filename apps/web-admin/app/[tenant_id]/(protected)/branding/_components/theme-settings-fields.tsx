@@ -77,6 +77,8 @@ const useDarkTheme = () => {
 const pickThemeColors = (theme: TenantThemeColors): TenantThemeColors => {
   const colors = { ...DEFAULT_TENANT_THEME_COLORS };
 
+  // SAFETY: `DEFAULT_TENANT_THEME_COLORS` is a `TenantThemeColors`, so its
+  // keys are that type's keys and no others.
   for (const key of Object.keys(
     DEFAULT_TENANT_THEME_COLORS
   ) as (keyof TenantThemeColors)[]) {

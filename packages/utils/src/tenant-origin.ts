@@ -16,11 +16,7 @@ const normalizeHost = (domain: string): string => {
   return host;
 };
 
-const readEnv = (name: string): string => {
-  const value = process.env[name];
-
-  return typeof value === "string" ? value.trim() : "";
-};
+const readEnv = (name: string): string => process.env[name]?.trim() ?? "";
 
 const deploymentScheme = (): string => {
   const scheme = readEnv(TENANT_URL_SCHEME_ENV).toLowerCase();

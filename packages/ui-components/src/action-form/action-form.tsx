@@ -113,7 +113,10 @@ const useActionFormStateContext = (caller: string) => {
  */
 export const useActionFormState = <
   State extends ActionFormResult = ActionFormResult,
->() => useActionFormStateContext("useActionFormState").state as State | null;
+>() =>
+  // SAFETY: the context holds what the form's own Action returned, and the
+  // caller names that Action's state type, which the context cannot carry.
+  useActionFormStateContext("useActionFormState").state as State | null;
 
 /**
  * Calls `onSettled` with what the surrounding `ActionForm`'s own Action returned,
@@ -131,6 +134,8 @@ export const useActionFormSettled = <
   useEffect(
     () =>
       subscribe((state) => {
+        // SAFETY: the listener is called with what the form's own Action
+        // returned, whose state type the caller names as `State`.
         handleSettled(state as State | null);
       }),
     [subscribe]
@@ -341,6 +346,15 @@ export const ActionFormPending = ({ children }: { children: ReactNode }) =>
  * ```
  */
 
+type ActionFormRenderFunction<State extends ActionFormResult> = (
+  props: ActionFormRenderProps<State>
+) => ReactNode;
+
+const isRenderFunction = <State extends ActionFormResult>(
+  children: ReactNode | ActionFormRenderFunction<State>
+): children is ActionFormRenderFunction<State> =>
+  typeof children === "function";
+
 export interface ActionFormProps<
   State extends ActionFormResult = ActionFormResult,
 > {
@@ -348,7 +362,7 @@ export interface ActionFormProps<
     prevState: State | null,
     formData: FormData
   ) => Promise<State | null>;
-  children: ReactNode | ((props: ActionFormRenderProps<State>) => ReactNode);
+  children: ReactNode | ActionFormRenderFunction<State>;
   className?: string;
   /**
    * The `<form>`'s id, for a submit control outside it to name with `form` —
@@ -471,7 +485,7 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
           onSubmit={handleSubmit}
           ref={formRef}
         >
-          {typeof children === "function" ? (
+          {isRenderFunction(children) ? (
             children({ isPending, state })
           ) : (
             <>

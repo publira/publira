@@ -246,15 +246,23 @@ export const organizationJsonLd = (
     (url): url is string => Boolean(url)
   );
 
-  return {
+  const organization: WithContext<Organization> = {
     "@context": "https://schema.org",
     "@id": organizationId(site),
     "@type": "Organization",
     name: site.name,
     url: jsonLdUrl(site, "/"),
-    ...(logo ? { logo: absoluteUrl(site, logo.url) } : {}),
-    ...(sameAs.length > 0 ? { sameAs } : {}),
   };
+
+  if (logo) {
+    organization.logo = absoluteUrl(site, logo.url);
+  }
+
+  if (sameAs.length > 0) {
+    organization.sameAs = sameAs;
+  }
+
+  return organization;
 };
 
 /**
@@ -296,7 +304,7 @@ export const seriesJsonLd = (
   const images = workImages(site, series.eyeCatchImageVariants);
   const served = jsonLdSiteIn(site, series.locale);
 
-  return {
+  const work: WithContext<ComicSeries> = {
     "@context": "https://schema.org",
     "@id": seriesId(served, series.publicId),
     "@type": "ComicSeries",
@@ -304,27 +312,39 @@ export const seriesJsonLd = (
     name: series.title,
     publisher: seriesPublisher(site, series),
     url: jsonLdUrl(served, seriesHref(series.publicId)),
-    ...(description ? { description } : {}),
-    ...(images.length > 0 ? { image: images } : {}),
-    ...(authors.length > 0 ? { author: authors } : {}),
-    ...(series.genres.length > 0
-      ? { genre: series.genres.map((genre) => genre.name) }
-      : {}),
-    ...(series.tags.length > 0
-      ? { keywords: series.tags.map((tag) => tag.name) }
-      : {}),
-    ...(series.ratingCount > 0 && series.ratingAverage > 0
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            bestRating: 5,
-            ratingCount: series.ratingCount,
-            ratingValue: series.ratingAverage,
-            worstRating: 1,
-          },
-        }
-      : {}),
   };
+
+  if (description) {
+    work.description = description;
+  }
+
+  if (images.length > 0) {
+    work.image = images;
+  }
+
+  if (authors.length > 0) {
+    work.author = authors;
+  }
+
+  if (series.genres.length > 0) {
+    work.genre = series.genres.map((genre) => genre.name);
+  }
+
+  if (series.tags.length > 0) {
+    work.keywords = series.tags.map((tag) => tag.name);
+  }
+
+  if (series.ratingCount > 0 && series.ratingAverage > 0) {
+    work.aggregateRating = {
+      "@type": "AggregateRating",
+      bestRating: 5,
+      ratingCount: series.ratingCount,
+      ratingValue: series.ratingAverage,
+      worstRating: 1,
+    };
+  }
+
+  return work;
 };
 
 /**
@@ -382,7 +402,7 @@ export const episodeJsonLd = (
   const authors = creditAuthors(site, episode.credits);
   const free = isAccessibleForFree(access);
 
-  return {
+  const issue: WithContext<ComicIssue> = {
     "@context": "https://schema.org",
     "@id": `${url}#issue`,
     "@type": "ComicIssue",
@@ -397,10 +417,21 @@ export const episodeJsonLd = (
     issueNumber: episode.orderIndex,
     name: episode.title,
     url,
-    ...(episode.publishedAt ? { datePublished: episode.publishedAt } : {}),
-    ...(authors.length > 0 ? { author: authors } : {}),
-    ...(free === undefined ? {} : { isAccessibleForFree: free }),
   };
+
+  if (episode.publishedAt) {
+    issue.datePublished = episode.publishedAt;
+  }
+
+  if (authors.length > 0) {
+    issue.author = authors;
+  }
+
+  if (free !== undefined) {
+    issue.isAccessibleForFree = free;
+  }
+
+  return issue;
 };
 
 /**
@@ -417,20 +448,26 @@ export const creatorJsonLd = (
   const url = jsonLdUrl(site, creatorHref(creator.id));
   const description = creator.profileText.trim();
 
+  const person: Person = {
+    "@id": personId(site, creator.id),
+    "@type": "Person",
+    name: creator.name,
+    url,
+  };
+
+  if (description) {
+    person.description = description;
+  }
+
+  if (creator.iconImageUrl) {
+    person.image = absoluteUrl(site, creator.iconImageUrl);
+  }
+
   return {
     "@context": "https://schema.org",
     "@id": `${url}#profile`,
     "@type": "ProfilePage",
-    mainEntity: {
-      "@id": personId(site, creator.id),
-      "@type": "Person",
-      name: creator.name,
-      url,
-      ...(description ? { description } : {}),
-      ...(creator.iconImageUrl
-        ? { image: absoluteUrl(site, creator.iconImageUrl) }
-        : {}),
-    },
+    mainEntity: person,
     url,
   };
 };

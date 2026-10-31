@@ -119,6 +119,13 @@ export interface SearchParamDateOptions {
   fallback?: string;
 }
 
+const isString = (value: unknown): value is string => typeof value === "string";
+
+const isSearchParamValue = (value: unknown): value is SearchParamValue =>
+  value === undefined ||
+  isString(value) ||
+  (Array.isArray(value) && value.every(isString));
+
 /**
  * Unwrap the single value of a query key. A key repeated with *conflicting*
  * values is not something a link in this app produces, so rather than guessing
@@ -126,23 +133,19 @@ export interface SearchParamDateOptions {
  * first), it is treated as invalid and resolves to the fallback. Repeating the
  * same value is unambiguous and passes through.
  */
-const singleValue = (value: unknown): string | undefined => {
-  if (typeof value === "string") {
+const singleValue = (value: SearchParamValue): string | undefined => {
+  if (!Array.isArray(value)) {
     return value;
   }
 
-  if (Array.isArray(value) && value.length > 0) {
-    const [first, ...rest] = value as unknown[];
+  const [first, ...rest] = value;
 
-    if (typeof first !== "string") {
-      return undefined;
-    }
-
-    // Repeating a key with one and the same value asks nothing ambiguous.
-    return rest.every((entry) => entry === first) ? first : undefined;
+  if (first === undefined) {
+    return undefined;
   }
 
-  return undefined;
+  // Repeating a key with one and the same value asks nothing ambiguous.
+  return rest.every((entry) => entry === first) ? first : undefined;
 };
 
 /**
@@ -178,7 +181,7 @@ const normalizeString = (
 };
 
 const normalizeSingle = (
-  value: unknown,
+  value: SearchParamValue,
   maxLength: number,
   truncate: boolean
 ): string | undefined => {
@@ -225,7 +228,10 @@ export const searchParamString = (
   const maxLength = options?.maxLength ?? DEFAULT_MAX_LENGTH;
 
   const schema = z.preprocess(
-    (value) => normalizeSingle(value, maxLength, options?.truncate ?? false),
+    (value) =>
+      isSearchParamValue(value)
+        ? normalizeSingle(value, maxLength, options?.truncate ?? false)
+        : undefined,
     z.string().max(maxLength)
   );
 
@@ -246,14 +252,14 @@ export const searchParamStringArray = (
 
   const schema = z.preprocess(
     (value): string[] | undefined => {
-      const entries = typeof value === "string" ? [value] : value;
+      const entries = isString(value) ? [value] : value;
 
       if (!Array.isArray(entries)) {
         return undefined;
       }
 
-      const normalized = (entries as unknown[]).flatMap((entry) => {
-        if (typeof entry !== "string") {
+      const normalized = entries.flatMap((entry) => {
+        if (!isString(entry)) {
           return [];
         }
 
@@ -284,7 +290,10 @@ export const searchParamEnum = <T extends string, F extends string = never>(
   const rejection = locale && sharedMessage("errors.disallowed_value", locale);
 
   const schema = z.preprocess(
-    (value) => normalizeSingle(value, maxLength, false),
+    (value) =>
+      isSearchParamValue(value)
+        ? normalizeSingle(value, maxLength, false)
+        : undefined,
     z
       .string()
       .refine(
@@ -314,7 +323,9 @@ export const searchParamNumber = (
   }
 
   const schema = z.preprocess((value): number | undefined => {
-    const single = normalizeSingle(value, DEFAULT_MAX_LENGTH, false);
+    const single = isSearchParamValue(value)
+      ? normalizeSingle(value, DEFAULT_MAX_LENGTH, false)
+      : undefined;
 
     if (single === undefined || !NUMBER_RE.test(single)) {
       return undefined;
@@ -342,7 +353,9 @@ export const searchParamBoolean = (
   options?: SearchParamBooleanOptions
 ): z.ZodType<boolean, unknown> => {
   const schema = z.preprocess((value): boolean | undefined => {
-    const single = normalizeSingle(value, DEFAULT_MAX_LENGTH, false);
+    const single = isSearchParamValue(value)
+      ? normalizeSingle(value, DEFAULT_MAX_LENGTH, false)
+      : undefined;
 
     if (single === undefined) {
       return undefined;
@@ -376,7 +389,9 @@ export const searchParamDate = (
   options?: SearchParamDateOptions
 ): z.ZodType<string, unknown> => {
   const schema = z.preprocess((value): string | undefined => {
-    const single = normalizeSingle(value, DEFAULT_MAX_LENGTH, false);
+    const single = isSearchParamValue(value)
+      ? normalizeSingle(value, DEFAULT_MAX_LENGTH, false)
+      : undefined;
 
     if (single === undefined || !PLAIN_DATE_RE.test(single)) {
       return undefined;

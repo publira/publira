@@ -127,9 +127,12 @@ describe("ReaderTickets", () => {
       ],
     });
 
-    const rows = screen.getAllByRole("table")[0].querySelectorAll("tbody tr");
+    const rows = screen
+      .getAllByRole("table")[0]
+      .querySelectorAll<HTMLTableRowElement>("tbody tr");
+
     expect(rows).toHaveLength(2);
-    const [active, revoked] = [...rows] as HTMLElement[];
+    const [active, revoked] = [...rows];
     expect(
       within(active).getByRole("link", { name: "Episode 1" })
     ).toHaveProperty(

@@ -71,13 +71,16 @@ export const routeParamStringArray = (
     .max(maxItems);
 };
 
+/** A resolved `params` object: one string per segment, an array for a catch-all. */
+export type RouteParams = Readonly<Partial<Record<string, string | string[]>>>;
+
 /**
  * Parse the whole `params` object with a page-owned schema. `null` means the
  * identifier is not a resource — the caller turns that into `notFound()`.
  */
 export const parseRouteParams = <S extends z.ZodType>(
   schema: S,
-  input: unknown
+  input: RouteParams
 ): z.output<S> | null => {
   const parsed = schema.safeParse(input);
 

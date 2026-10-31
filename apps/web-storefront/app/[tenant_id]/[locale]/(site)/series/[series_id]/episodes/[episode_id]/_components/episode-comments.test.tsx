@@ -10,8 +10,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SeriesCommentMode } from "#lib/catalog";
 import type { EpisodeCommentItem, EpisodeCommentPage } from "#lib/comments";
+import type * as CommentsModule from "#lib/comments";
 
 import { EpisodeComments } from "./episode-comments";
+
+/** Where a test switches the locale the mocks below read. */
+interface LocaleRef {
+  current: Locale;
+}
 
 const {
   messageLocale,
@@ -19,13 +25,18 @@ const {
   mockGetMe,
   mockListEpisodeComments,
   mockListMyEpisodeComments,
-} = vi.hoisted(() => ({
-  linkLocale: { current: "en" as Locale },
-  messageLocale: { current: "en" as Locale },
-  mockGetMe: vi.fn(),
-  mockListEpisodeComments: vi.fn(),
-  mockListMyEpisodeComments: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  const linkLocaleRef: LocaleRef = { current: "en" };
+  const messageLocaleRef: LocaleRef = { current: "en" };
+
+  return {
+    linkLocale: linkLocaleRef,
+    messageLocale: messageLocaleRef,
+    mockGetMe: vi.fn(),
+    mockListEpisodeComments: vi.fn(),
+    mockListMyEpisodeComments: vi.fn(),
+  };
+});
 
 // `<Message>` is an async Server Component, which the client renderer cannot
 // mount. It resolves through the real catalog here, so the assertions stay on
@@ -72,7 +83,7 @@ vi.mock("#lib/tenant", () => ({
 // The merge is the real one: where a row lands in the list is exactly what
 // these tests are about.
 vi.mock("#lib/comments", async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
+  const actual = await importOriginal<typeof CommentsModule>();
 
   return {
     ...actual,

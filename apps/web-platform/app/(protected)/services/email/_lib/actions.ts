@@ -24,6 +24,7 @@ import {
 } from "#lib/email-settings-shared";
 import {
   intFormSchema,
+  isFormText,
   optionalTrimmedString,
   revisionFormSchema,
 } from "#lib/form-schemas";
@@ -48,7 +49,7 @@ const loadActionCatalog = async () => {
 };
 
 const secretUpdateModeFormSchema = z.preprocess((value) => {
-  const raw = typeof value === "string" ? value.trim() : "";
+  const raw = isFormText(value) ? value.trim() : "";
 
   if (raw === String(SECRET_UPDATE_MODE_REPLACE)) {
     return SECRET_UPDATE_MODE_REPLACE;
@@ -60,7 +61,7 @@ const secretUpdateModeFormSchema = z.preprocess((value) => {
 }, z.number());
 
 const recipientTypeFormSchema = z.preprocess((value) => {
-  const raw = typeof value === "string" ? value.trim() : "";
+  const raw = isFormText(value) ? value.trim() : "";
 
   return raw === String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
     ? TEST_EMAIL_RECIPIENT_TYPE_CUSTOM
@@ -72,8 +73,7 @@ const smtpFormSchema = async (locale: Locale) => {
 
   return z.object({
     encryption: z.preprocess(
-      (value) =>
-        typeof value === "string" ? value.trim().toLowerCase() : value,
+      (value) => (isFormText(value) ? value.trim().toLowerCase() : value),
       z.enum(["none", "starttls", "tls"], {
         error: t("platform.settings.encryption_required"),
       })
@@ -81,7 +81,7 @@ const smtpFormSchema = async (locale: Locale) => {
     fromAddress: optionalTrimmedString(),
     host: optionalTrimmedString(),
     password: z.preprocess(
-      (value) => (typeof value === "string" ? value : ""),
+      (value) => (isFormText(value) ? value : ""),
       z.string()
     ),
     passwordUpdateMode: secretUpdateModeFormSchema,

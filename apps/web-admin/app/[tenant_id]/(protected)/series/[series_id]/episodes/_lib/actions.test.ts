@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AuthSessionModule from "#lib/auth-session";
+
 const {
   mockAssertSameOrigin,
   mockBulkEditEpisodeCredits,
@@ -62,7 +64,7 @@ vi.mock("#lib/dashboard", () => ({
 }));
 
 vi.mock("#lib/auth-session", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AuthSessionModule>()),
   verifyAdminSession: mockVerifyAdminSession,
 }));
 

@@ -1,4 +1,5 @@
 import { searchParamEnum } from "@publira/utils/search-params";
+import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { cursorPageHref, cursorTokenSchema } from "#lib/cursor-token";
@@ -22,10 +23,16 @@ const coinsSearchParamsSchema = z.object({
   token: cursorTokenSchema,
 });
 
+interface ParseCoinsSearchParamsInput {
+  checkout?: SearchParamValue;
+  token?: SearchParamValue;
+}
+
 export type CoinsSearchParams = z.output<typeof coinsSearchParamsSchema>;
 
-export const parseCoinsSearchParams = (input: unknown): CoinsSearchParams =>
-  coinsSearchParamsSchema.parse(input);
+export const parseCoinsSearchParams = (
+  input: ParseCoinsSearchParamsInput
+): CoinsSearchParams => coinsSearchParamsSchema.parse(input);
 
 /**
  * `/my/coins` at the history page the token names, which is where the pager

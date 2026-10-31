@@ -75,6 +75,10 @@ interface SizedOutput {
  */
 type ImageOutput = string | SizedOutput;
 
+/** Whether an output is a bare path, rendered at the SVG's own size. */
+const isBarePath = (output: ImageOutput): output is string =>
+  typeof output === "string";
+
 /** One entry of `assets/images.json`. */
 interface ImageEntry {
   /**
@@ -124,10 +128,8 @@ const renderOutput = async (
   entry: ImageEntry,
   output: ImageOutput
 ): Promise<string> => {
-  const path = typeof output === "string" ? output : output.path;
-
-  const pipeline =
-    typeof output === "string" ? sharp(svg) : resize(svg, output);
+  const path = isBarePath(output) ? output : output.path;
+  const pipeline = isBarePath(output) ? sharp(svg) : resize(svg, output);
 
   const image = await encode(
     entry.monochrome ? pipeline.toColourspace("b-w") : pipeline,

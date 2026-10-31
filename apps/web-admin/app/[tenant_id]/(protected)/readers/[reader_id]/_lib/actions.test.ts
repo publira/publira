@@ -25,7 +25,7 @@ vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/auth-session", () => ({
-  withAdminSessionReauth: (run: () => Promise<unknown>) => run(),
+  withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
 vi.mock("#lib/reader", () => ({

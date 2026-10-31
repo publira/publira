@@ -95,13 +95,12 @@ const traceChain = (trace: readonly TraceSpan[]): string[] => {
  */
 const searchChain = (spans: readonly TraceSpan[], target: string): string[] => {
   const traceIds = new Set(
-    spans
-      .filter(
-        ({ attributes, service }) =>
-          service === STOREFRONT_SERVICE &&
-          attributes["http.target"]?.includes(target)
-      )
-      .map(({ traceId }) => traceId)
+    spans.flatMap(({ attributes, service, traceId }) =>
+      service === STOREFRONT_SERVICE &&
+      attributes["http.target"]?.includes(target)
+        ? [traceId]
+        : []
+    )
   );
 
   let longest: string[] = [];

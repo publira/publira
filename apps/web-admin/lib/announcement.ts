@@ -33,10 +33,10 @@ import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
 const mapErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallback, { locale });
+): string => rpcErrorMessage(cause, fallback, { locale });
 
 /** The API answers no unspecified delivery, and reads one in a request as preferred. */
 const deliveryValues: Record<AnnouncementDelivery, AnnouncementDeliveryValue> =

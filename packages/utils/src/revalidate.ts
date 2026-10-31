@@ -9,11 +9,7 @@ const revalidateRequestSchema = z.strictObject({
   tags: z.array(z.string().trim().min(1).max(256)).min(1),
 });
 
-const readEnv = (name: string): string => {
-  const value = process.env[name];
-
-  return typeof value === "string" ? value.trim() : "";
-};
+const readEnv = (name: string): string => process.env[name]?.trim() ?? "";
 
 /**
  * Compares the digests rather than the tokens, so neither the time taken nor

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type {
+  JsonValue,
   PushWorkerClient,
   PushWorkerNotificationClickEvent,
   PushWorkerPushEvent,
@@ -17,18 +18,33 @@ interface Listeners {
 
 const createScope = (clients: PushWorkerClient[] = []) => {
   const listeners: Listeners = {};
-  const showNotification = vi.fn().mockResolvedValue(true);
-  const matchAll = vi.fn().mockResolvedValue(clients);
-  const openWindow = vi.fn().mockResolvedValue(null);
 
-  const scope = {
-    addEventListener: (type: "notificationclick" | "push", listener: never) => {
-      listeners[type] = listener;
-    },
+  const showNotification = vi
+    .fn<PushWorkerScope["registration"]["showNotification"]>()
+    .mockResolvedValue();
+
+  const matchAll = vi
+    .fn<PushWorkerScope["clients"]["matchAll"]>()
+    .mockResolvedValue(clients);
+
+  const openWindow = vi
+    .fn<PushWorkerScope["clients"]["openWindow"]>()
+    .mockResolvedValue(null);
+
+  // Takes either overload's listener, and files it under the event it is for.
+  const addEventListener: PushWorkerScope["addEventListener"] = (
+    type: keyof Listeners,
+    listener: (event: never) => void
+  ) => {
+    Object.assign(listeners, { [type]: listener });
+  };
+
+  const scope: PushWorkerScope = {
+    addEventListener,
     clients: { matchAll, openWindow },
     location: { origin: ORIGIN },
     registration: { showNotification },
-  } as unknown as PushWorkerScope;
+  };
 
   registerPushHandlers(scope);
 
@@ -36,7 +52,7 @@ const createScope = (clients: PushWorkerClient[] = []) => {
 };
 
 /** A `PushEvent` whose body is whatever `json()` is made to answer. */
-const pushEvent = (json: () => unknown) => {
+const pushEvent = (json: () => JsonValue) => {
   const waited: Promise<unknown>[] = [];
 
   return {
@@ -49,7 +65,7 @@ const pushEvent = (json: () => unknown) => {
   };
 };
 
-const clickEvent = (data: unknown) => {
+const clickEvent = (data: JsonValue) => {
   const waited: Promise<unknown>[] = [];
   const close = vi.fn();
 
@@ -63,11 +79,15 @@ const clickEvent = (data: unknown) => {
   };
 };
 
-const windowClient = (url: string): PushWorkerClient => ({
-  focus: vi.fn().mockResolvedValue(true),
-  navigate: vi.fn().mockResolvedValue(true),
-  url,
-});
+const windowClient = (url: string): PushWorkerClient => {
+  const client: PushWorkerClient = {
+    focus: vi.fn(() => Promise.resolve(client)),
+    navigate: vi.fn(() => Promise.resolve(client)),
+    url,
+  };
+
+  return client;
+};
 
 describe("registerPushHandlers", () => {
   it("draws the notification the server sent, tagged by the record behind it", async () => {

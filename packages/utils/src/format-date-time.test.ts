@@ -22,6 +22,17 @@ import {
 /** Fixed UTC instant used across multi-zone display tests. */
 const UTC_INSTANT = "2024-03-10T10:00:00.000Z";
 
+/** `parseInstant` for a value the test expects to parse; fails it otherwise. */
+const requireInstant = (value: string): Temporal.Instant => {
+  const instant = parseInstant(value);
+
+  if (instant === null) {
+    throw new Error(`Expected an instant, got ${JSON.stringify(value)}`);
+  }
+
+  return instant;
+};
+
 describe("DEFAULT_TIME_ZONE", () => {
   it("is UTC, the tenant time zone column default", () => {
     expect(DEFAULT_TIME_ZONE).toBe("UTC");
@@ -205,21 +216,15 @@ describe("formatDate", () => {
 
 describe("parseInstant", () => {
   it("parses offset-bearing timestamps to the same instant", () => {
-    const utc = parseInstant(UTC_INSTANT);
-    const jst = parseInstant("2024-03-10T19:00:00+09:00");
-    expect(utc).not.toBeNull();
-    expect(jst).not.toBeNull();
-    expect(
-      Temporal.Instant.compare(utc as Temporal.Instant, jst as Temporal.Instant)
-    ).toBe(0);
+    const utc = requireInstant(UTC_INSTANT);
+    const jst = requireInstant("2024-03-10T19:00:00+09:00");
+    expect(Temporal.Instant.compare(utc, jst)).toBe(0);
   });
 
   it("orders instants regardless of the offset they were written with", () => {
-    const earlier = parseInstant(
-      "2024-03-10T19:00:00+09:00"
-    ) as Temporal.Instant;
+    const earlier = requireInstant("2024-03-10T19:00:00+09:00");
 
-    const later = parseInstant("2024-03-10T12:00:00Z") as Temporal.Instant;
+    const later = requireInstant("2024-03-10T12:00:00Z");
     // Lexicographic string comparison would get this backwards.
     expect(Temporal.Instant.compare(earlier, later)).toBe(-1);
   });
@@ -286,10 +291,7 @@ describe("date-only day boundaries", () => {
     expect(start).toBe("2024-03-10T08:00:00Z");
     expect(end).toBe("2024-03-11T06:59:59.999999999Z");
     expect(
-      Temporal.Instant.compare(
-        parseInstant(start) as Temporal.Instant,
-        parseInstant(end) as Temporal.Instant
-      )
+      Temporal.Instant.compare(requireInstant(start), requireInstant(end))
     ).toBe(-1);
   });
 
@@ -303,13 +305,11 @@ describe("date-only day boundaries", () => {
   });
 
   it("ends the day immediately before the next day starts", () => {
-    const end = parseInstant(
-      endOfDayIsoString("2024-03-10", "Asia/Seoul")
-    ) as Temporal.Instant;
+    const end = requireInstant(endOfDayIsoString("2024-03-10", "Asia/Seoul"));
 
-    const nextStart = parseInstant(
+    const nextStart = requireInstant(
       startOfDayIsoString("2024-03-11", "Asia/Seoul")
-    ) as Temporal.Instant;
+    );
 
     expect(nextStart.since(end).total({ unit: "nanosecond" })).toBe(1);
   });
@@ -317,16 +317,14 @@ describe("date-only day boundaries", () => {
   it("includes sub-microsecond instants at the very end of the day", () => {
     // A coarser end (…:59.999999Z) would drop these; the helper must not assume
     // the consumer stores only microseconds.
-    const end = parseInstant(
-      endOfDayIsoString("2024-03-10", "UTC")
-    ) as Temporal.Instant;
+    const end = requireInstant(endOfDayIsoString("2024-03-10", "UTC"));
 
     for (const value of [
       "2024-03-10T23:59:59.999999Z",
       "2024-03-10T23:59:59.999999001Z",
       "2024-03-10T23:59:59.999999999Z",
     ]) {
-      const at = parseInstant(value) as Temporal.Instant;
+      const at = requireInstant(value);
       expect(Temporal.Instant.compare(at, end)).toBeLessThanOrEqual(0);
     }
   });

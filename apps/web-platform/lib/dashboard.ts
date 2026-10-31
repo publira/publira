@@ -33,7 +33,7 @@ export type GetPlatformDashboardSummaryResult =
   | { ok: false; message: string };
 
 const normalizeRecentEventsLimit = (value?: number): number => {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (value === undefined || !Number.isFinite(value)) {
     return 10;
   }
 
@@ -56,7 +56,7 @@ const getPlatformDashboardSummaryForLocale = async (
 
   try {
     const response = await apiClient.dashboard.getDashboardSummary(
-      { recentEventsLimit } as never,
+      { recentEventsLimit },
       withServiceHeaders()
     );
 

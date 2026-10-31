@@ -145,6 +145,8 @@ describe("brand-marks", () => {
 
     mockListTenantBrandMarksApi.mockResolvedValueOnce({
       brandMarks: [
+        // SAFETY: a kind a newer server can send, which this build's enum
+        // does not name yet; the wire carries any number in the field.
         storedMarkResponse(99 as TenantBrandMarkKind, "future_mark"),
         { ...withoutImage, mark: { ...withoutImage.mark, imageVariants: [] } },
       ],

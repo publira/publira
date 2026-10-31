@@ -94,7 +94,10 @@ it("points each label at its own input when it is mounted twice", async () => {
 it("closes the fields while the save is in flight", async () => {
   // Never resolved: the assertions are about the window the save is open in.
   const save = Promise.withResolvers<LabelActionState>();
-  const pendingAction = vi.fn(() => save.promise);
+
+  const pendingAction = vi.fn<
+    (state: LabelActionState, formData: FormData) => Promise<LabelActionState>
+  >(() => save.promise);
 
   render(
     await LabelForm({
@@ -119,10 +122,7 @@ it("closes the fields while the save is in flight", async () => {
   });
   expect(pendingAction).toHaveBeenCalledOnce();
 
-  const [, formData] = pendingAction.mock.calls[0] as unknown as [
-    LabelActionState,
-    FormData,
-  ];
+  const [[, formData]] = pendingAction.mock.calls;
 
   expect(formData.get("tenant_id")).toBe("TENANT001");
   expect(formData.get("name")).toBe("Monthly Novels");

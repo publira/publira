@@ -29,12 +29,16 @@ export interface CursorSearchParams {
   token: string;
 }
 
+/** Whether a query value arrived once, rather than repeated or absent. */
+const isSingleValue = (value: unknown): value is string =>
+  typeof value === "string";
+
 /**
  * Cursor tokens are opaque, so the only check the UI can make is that the value
  * arrived as a single string. Anything else falls back to the first page.
  */
 export const cursorTokenSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value.trim() : ""),
+  (value) => (isSingleValue(value) ? value.trim() : ""),
   z.string()
 );
 

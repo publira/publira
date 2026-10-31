@@ -21,18 +21,18 @@ export const GRPC_IDLE_CONNECTION_TIMEOUT_MS = 60_000;
  * call's. Node reports both with the same stream error, which connect-node
  * keeps as the cause of an `internal` ConnectError.
  */
-const isRefusedStream = (error: unknown): boolean => {
-  if (!(error instanceof ConnectError)) {
+const isRefusedStream = (cause: unknown): boolean => {
+  if (!(cause instanceof ConnectError)) {
     return false;
   }
 
-  const { cause } = error;
+  const streamError = cause.cause;
 
   return (
-    cause instanceof Error &&
-    "code" in cause &&
-    cause.code === "ERR_HTTP2_STREAM_ERROR" &&
-    cause.message.endsWith(" NGHTTP2_REFUSED_STREAM")
+    streamError instanceof Error &&
+    "code" in streamError &&
+    streamError.code === "ERR_HTTP2_STREAM_ERROR" &&
+    streamError.message.endsWith(" NGHTTP2_REFUSED_STREAM")
   );
 };
 

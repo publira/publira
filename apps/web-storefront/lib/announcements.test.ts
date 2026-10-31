@@ -205,10 +205,10 @@ describe("web-storefront announcements", () => {
     await expect(
       listMyAnnouncements("TENANT001", undefined, { locale: "en" })
     ).rejects.toSatisfy(
-      (thrown: unknown) =>
-        thrown !== error &&
-        thrown instanceof Error &&
-        thrown.message ===
+      (cause: unknown) =>
+        cause !== error &&
+        cause instanceof Error &&
+        cause.message ===
           "Could not load the announcements. Please try again later."
     );
   });
@@ -332,7 +332,7 @@ describe("web-storefront announcements", () => {
     await expect(
       getMyAnnouncement(tenantId, announcementId, "en")
     ).rejects.toSatisfy(
-      (thrown: unknown) => thrown !== error && isUnauthenticatedRpcError(thrown)
+      (cause: unknown) => cause !== error && isUnauthenticatedRpcError(cause)
     );
   });
 
@@ -344,8 +344,8 @@ describe("web-storefront announcements", () => {
     await expect(
       getMyAnnouncement(tenantId, announcementId, "en")
     ).rejects.toSatisfy(
-      (thrown: unknown) =>
-        thrown instanceof Error && !(thrown instanceof ConnectError)
+      (cause: unknown) =>
+        cause instanceof Error && !(cause instanceof ConnectError)
     );
   });
 

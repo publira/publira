@@ -1,4 +1,3 @@
-import type { PublicApiClient } from "@publira/api-client/public/client";
 import { describe, expect, it, vi } from "vitest";
 
 import { createPublishedPageSlugResolver } from "./published-page-slugs";
@@ -24,7 +23,7 @@ const setup = (options?: { revalidatedAt?: () => number | null }) => {
   });
 
   const resolve = createPublishedPageSlugResolver(
-    { pages: { listPublishedPageSlugs } } as unknown as PublicApiClient,
+    { pages: { listPublishedPageSlugs } },
     { now: () => clock, readRevalidatedAt }
   );
 

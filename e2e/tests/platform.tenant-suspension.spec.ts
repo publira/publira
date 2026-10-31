@@ -20,6 +20,12 @@ import {
 const SITE_UNAVAILABLE = "This site is unavailable";
 const CONSOLE_UNAVAILABLE = "This admin console is unavailable";
 
+/** Where a reader and a staff member reach the tenant. */
+interface TenantHosts {
+  console: string;
+  site: string;
+}
+
 /**
  * The tenant's site and console under host names made up for this attempt.
  *
@@ -29,7 +35,7 @@ const CONSOLE_UNAVAILABLE = "This admin console is unavailable";
  * looked up yet. No list of the edge's names them, so they are reached on the
  * apps' own ports.
  */
-const moveTenantToFreshHosts = (): { console: string; site: string } => {
+const moveTenantToFreshHosts = (): TenantHosts => {
   const label = `suspend-${randomUUID()}`;
   const site = withHostname(WEB_STOREFRONT_INTERNAL_URL, `${label}.localhost`);
 

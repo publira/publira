@@ -28,7 +28,7 @@ vi.mock("#lib/announcement", () => ({
 }));
 
 vi.mock("#lib/auth-session", () => ({
-  withAdminSessionReauth: (run: () => Promise<unknown>) => run(),
+  withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: vi.fn() }));

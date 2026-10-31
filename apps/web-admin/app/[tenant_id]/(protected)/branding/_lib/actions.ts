@@ -107,6 +107,12 @@ const tenantThemeSchema = async (locale: Locale) => {
   });
 };
 
+/** The labels the two fields of a contrast pair carry on the form. */
+interface ThemeContrastPairLabels {
+  background: string;
+  foreground: string;
+}
+
 /**
  * The labels the two fields of a contrast pair carry on the form, keyed by the
  * pair's background. Every pair `findThemeTextContrastIssues` reports has a
@@ -115,7 +121,7 @@ const tenantThemeSchema = async (locale: Locale) => {
 const themeContrastPairLabels = (
   pair: ThemeContrastPair,
   t: AdminMessageAccessor
-): { background: string; foreground: string } => {
+): ThemeContrastPairLabels => {
   switch (pair.background) {
     case "primaryColor": {
       return {
@@ -386,6 +392,8 @@ const parseThemeFormData = <TInput>(
   formData: FormData,
   fieldMap: readonly (readonly [string, string])[]
 ): TInput =>
+  // SAFETY: every caller's `fieldMap` names each field of `TInput`, and every
+  // field of a theme schema's input is the string a color or font field posts.
   Object.fromEntries(
     fieldMap.map(([field, formName]) => [
       field,
@@ -399,7 +407,7 @@ const mapThemeFieldErrors = (
 ): ThemeSettingsFieldErrors =>
   Object.fromEntries(
     fieldMap.map(([field]) => [field, fieldErrors[field]?.[0]])
-  ) as ThemeSettingsFieldErrors;
+  );
 
 const mapThemeContrastFieldErrors = async (
   issues: ReturnType<typeof findThemeTextContrastIssues>,
@@ -423,7 +431,7 @@ const mapThemeContrastFieldErrors = async (
         [issue.foreground, message],
       ];
     })
-  ) as ThemeSettingsFieldErrors;
+  );
 };
 
 export const updateTenantThemeSettingsAction = async (

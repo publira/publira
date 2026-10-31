@@ -132,6 +132,11 @@ const namesIn = (lines: readonly string[]): Set<string> =>
  */
 export type BaseLookup = (name: string) => Map<string, number>;
 
+export interface EnvironmentChanges {
+  added: string[];
+  removed: string[];
+}
+
 /**
  * The environment variables the diff starts or stops reading. A name only
  * added is new when the base branch names it nowhere, and a name only removed
@@ -142,7 +147,7 @@ export type BaseLookup = (name: string) => Map<string, number>;
 export const environmentChanges = (
   files: readonly ChangedFile[],
   lookup: BaseLookup
-): { added: string[]; removed: string[] } => {
+): EnvironmentChanges => {
   const shipped = files.filter(
     ({ filename, previous_filename: previous }) =>
       isInstallSource(filename) ||
@@ -308,8 +313,11 @@ export const renderReleaseNotes = (
   }
 
   const entries = pulls
-    .map((pull) => ({ ...pull, notes: readUpgradeNotes(pull.body) ?? "" }))
-    .filter(({ notes }) => notes !== "" && !declaresNone(notes))
+    .flatMap((pull) => {
+      const notes = readUpgradeNotes(pull.body) ?? "";
+
+      return notes !== "" && !declaresNone(notes) ? [{ ...pull, notes }] : [];
+    })
     .toSorted((a, b) => a.number - b.number);
 
   if (entries.length === 0) {

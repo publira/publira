@@ -314,22 +314,22 @@ export const getCoinSettings = async (
  * reader is never told they hold nothing.
  */
 const myCoinsFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   key: "storefront.coins.balance_failed" | "storefront.coins.history_failed"
 ): Promise<MyCoinsResult<never>> => {
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnclassifiedRpcError(cause);
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinsUnavailable)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.coinsUnavailable)) {
     return { ok: true, value: null };
   }
 
   const t = await getMessagesFor(locale);
 
   return {
-    message: rpcErrorMessage(error, t(key), { locale }),
+    message: rpcErrorMessage(cause, t(key), { locale }),
     ok: false,
-    requiresSignIn: isRpcError(error, Code.Unauthenticated),
+    requiresSignIn: isRpcError(cause, Code.Unauthenticated),
   };
 };
 

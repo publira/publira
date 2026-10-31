@@ -1,6 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
+import { isFormText } from "./form-schemas";
 import { getMessagesFor } from "./messages";
 import type { AdminMessageKey } from "./messages";
 import { priceFormSchema } from "./price";
@@ -11,7 +12,7 @@ import { getTenantCurrency } from "./public-api";
  * form schema can take the field before the Action has resolved the tenant.
  */
 export const rawPriceFormSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value : ""),
+  (value) => (isFormText(value) ? value : ""),
   z.string()
 );
 

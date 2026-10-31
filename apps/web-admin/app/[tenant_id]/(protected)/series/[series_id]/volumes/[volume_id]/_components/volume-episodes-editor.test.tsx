@@ -122,6 +122,7 @@ const postedEpisodeIds = (): string[] => {
     throw new Error("the episode list field is not on screen");
   }
 
+  // SAFETY: the editor writes the field as the JSON of the episode ids.
   return JSON.parse(field.value) as string[];
 };
 
@@ -130,9 +131,9 @@ const picker = () =>
 
 /** The episodes on offer; the mock's blank entry is not one of them. */
 const offeredTitles = () =>
-  [...picker().options]
-    .filter((option) => option.value !== "")
-    .map((option) => option.textContent);
+  [...picker().options].flatMap((option) =>
+    option.value === "" ? [] : [option.textContent]
+  );
 
 afterEach(() => {
   cleanup();

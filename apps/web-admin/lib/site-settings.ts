@@ -56,10 +56,10 @@ export const tenantSiteSettingsCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:site-settings`;
 
 const mapErrorToMessage = (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallbackMessage, { locale });
+): string => rpcErrorMessage(cause, fallbackMessage, { locale });
 
 const getTenantSiteSettingsForSession = async (
   tenantId: string,

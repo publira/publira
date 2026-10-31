@@ -353,16 +353,16 @@ export const updateTenantReaderIconPolicy = async (
  * tenant holds as many presets as it may.
  */
 const uploadPreconditionMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string | undefined> => {
   const t = await getMessagesFor(locale);
 
-  if (mentionsStorageNotConfigured(error)) {
+  if (mentionsStorageNotConfigured(cause)) {
     return t("admin.errors.storage_not_configured");
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIconPresetLimit)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.readerIconPresetLimit)) {
     return t("admin.settings.reader_icons.presets.limit_reached", {
       limit: READER_ICON_PRESET_LIMIT,
     });

@@ -88,16 +88,16 @@ export type RevokeAccessTicketResult =
  * identifies the missing request field with `google.rpc.BadRequest` details.
  */
 const missingTargetMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasFieldViolation(error, "user_id")) {
+  if (rpcErrorHasFieldViolation(cause, "user_id")) {
     return t("admin.access_tickets.user_not_found");
   }
 
-  if (rpcErrorHasFieldViolation(error, "episode_id")) {
+  if (rpcErrorHasFieldViolation(cause, "episode_id")) {
     return t("admin.access_tickets.episode_not_found");
   }
 
@@ -105,16 +105,16 @@ const missingTargetMessage = async (
 };
 
 const mapErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: {
-      "not-found": await missingTargetMessage(error, locale),
+      "not-found": await missingTargetMessage(cause, locale),
       precondition: t("admin.access_tickets.user_not_active"),
     },
   });

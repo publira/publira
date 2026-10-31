@@ -31,6 +31,7 @@ import type { CoinName, CoinSettingsFieldErrors } from "#lib/coins";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   checkboxOnFormSchema,
+  isFormText,
   jsonRecordIdArrayFormSchema,
   nonNegativeIntFormSchema,
   optionalTrimmedString,
@@ -71,7 +72,7 @@ const termsUrlSchema = (message: string) =>
 const expiryDaysSchema = (message: string) =>
   z.preprocess(
     (value) => {
-      const raw = typeof value === "string" ? value.trim() : "";
+      const raw = isFormText(value) ? value.trim() : "";
 
       if (raw === "") {
         return 0;
@@ -118,6 +119,12 @@ const coinSettingsSchema = (t: AdminMessageAccessor) =>
 const coinNameOrFallback = (posted: string, t: AdminMessageAccessor) =>
   posted || t("admin.coins.fallback_name");
 
+/** The names a settings form posted, and the fields that refused theirs. */
+interface PostedCoinNames {
+  fieldErrors: CoinSettingsFieldErrors;
+  names: CoinName[];
+}
+
 /**
  * The names a settings form posted, one field per language the site offers.
  * The default language's is required whether or not coins are on, so the word
@@ -128,7 +135,7 @@ const parseCoinNames = (
   formData: FormData,
   locales: { defaultLocale: Locale; supportedLocales: readonly Locale[] },
   t: AdminMessageAccessor
-): { names: CoinName[]; fieldErrors: CoinSettingsFieldErrors } => {
+): PostedCoinNames => {
   const nameSchema = optionalTrimmedString(Number.MAX_SAFE_INTEGER);
   const names: CoinName[] = [];
   const fieldErrors: CoinSettingsFieldErrors = {};
@@ -311,7 +318,7 @@ const packFieldsSchema = (t: AdminMessageAccessor, coinName: string) =>
     ),
     coins: z.preprocess(
       (value) => {
-        const raw = typeof value === "string" ? value.trim() : "";
+        const raw = isFormText(value) ? value.trim() : "";
 
         return /^\d+$/u.test(raw) ? Number(raw) : undefined;
       },

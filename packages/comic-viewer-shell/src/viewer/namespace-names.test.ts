@@ -10,7 +10,7 @@ describe("Viewer namespace", () => {
   // `Root`, which is also what `@publira/comic-viewer` calls its own root.
   it("keeps each part's declared name", () => {
     for (const [key, part] of Object.entries(Viewer)) {
-      expect(typeof part, `Viewer.${key}`).toBe("function");
+      expect(part, `Viewer.${key}`).toBeTypeOf("function");
       expect(part.name, `Viewer.${key}`).not.toBe(key);
     }
   });

@@ -139,13 +139,13 @@ const mapTenantAdminInvitation = (
  * self-removal or self-demotion is refused through the same reason when it
  * would. Any other failed precondition keeps the operation's own fallback.
  */
-const lastAdminOverride = (error: unknown, message: string) =>
-  rpcErrorHasReason(error, RPC_ERROR_REASON.lastTenantAdmin)
+const lastAdminOverride = (cause: unknown, message: string) =>
+  rpcErrorHasReason(cause, RPC_ERROR_REASON.lastTenantAdmin)
     ? message
     : undefined;
 
 const invitationStateOverride = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   fallback: string
 ): Promise<RpcErrorMessageOverrides> => {
@@ -153,7 +153,7 @@ const invitationStateOverride = async (
 
   return {
     "not-found": t("admin.members.invitation_not_found"),
-    precondition: rpcErrorHasReason(error, RPC_ERROR_REASON.invitationCanceled)
+    precondition: rpcErrorHasReason(cause, RPC_ERROR_REASON.invitationCanceled)
       ? t("admin.members.invitation_already_canceled")
       : fallback,
   };

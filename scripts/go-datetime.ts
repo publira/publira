@@ -33,6 +33,16 @@ const KINDS = new Map([
 /** The kinds whose every possible value is written out as a table. */
 const TABLE_KINDS = new Set(["month", "hour", "dayPeriod"]);
 
+const isTableKind = (
+  type: Intl.DateTimeFormatPartTypes
+): type is "dayPeriod" | "hour" | "month" => TABLE_KINDS.has(type);
+
+/** The kinds written as a number padded to one width. */
+const isWidthKind = (
+  type: Intl.DateTimeFormatPartTypes
+): type is "day" | "minute" | "year" =>
+  type === "day" || type === "minute" || type === "year";
+
 interface Instant {
   readonly day: number;
   readonly hour: number;
@@ -91,7 +101,7 @@ const partsOf = (
     .map((part) => ({ ...part, value: part.value.replaceAll("\u202F", " ") }));
 
 /** The part types and the literal text between them, as one comparable line. */
-const shapeOf = (parts: readonly Intl.DateTimeFormatPart[]): string =>
+const layoutOf = (parts: readonly Intl.DateTimeFormatPart[]): string =>
   parts
     .map((part) =>
       part.type === "literal" ? `literal(${part.value})` : part.type
@@ -130,9 +140,9 @@ const patternOf = (
   }
 
   for (const [index, parts] of rest.entries()) {
-    if (shapeOf(parts) !== shapeOf(first)) {
+    if (layoutOf(parts) !== layoutOf(first)) {
       throw new Error(
-        `${intl} formats ${JSON.stringify(moments[index + 1])} as "${shapeOf(parts)}", not as "${shapeOf(first)}"`
+        `${intl} formats ${JSON.stringify(moments[index + 1])} as "${layoutOf(parts)}", not as "${layoutOf(first)}"`
       );
     }
   }
@@ -230,23 +240,19 @@ const fieldLiteral = (
     throw new Error(`${intl} formats a ${part.type}, which Go cannot render`);
   }
 
-  if (TABLE_KINDS.has(part.type)) {
-    const table = tableOf(
-      intl,
-      formatter,
-      part.type as "dayPeriod" | "hour" | "month"
-    );
+  if (isTableKind(part.type)) {
+    const table = tableOf(intl, formatter, part.type);
 
     const values = table.map((value) => goString(value)).join(", ");
 
     return `{Kind: ${kind}, Values: []string{${values}}}`;
   }
 
-  const width = widthOf(
-    intl,
-    formatter,
-    part.type as "day" | "minute" | "year"
-  );
+  if (!isWidthKind(part.type)) {
+    throw new Error(`${intl} formats a ${part.type}, which Go cannot render`);
+  }
+
+  const width = widthOf(intl, formatter, part.type);
 
   return `{Kind: ${kind}, Width: ${width}}`;
 };

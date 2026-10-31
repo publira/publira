@@ -72,8 +72,11 @@ const appleUserName = (raw: string | undefined): string => {
     const name = parsed.success ? parsed.data.name : undefined;
 
     return [name?.firstName, name?.lastName]
-      .map((part) => part?.trim())
-      .filter(Boolean)
+      .flatMap((part) => {
+        const trimmed = part?.trim();
+
+        return trimmed ? [trimmed] : [];
+      })
       .join(" ");
   } catch {
     return "";

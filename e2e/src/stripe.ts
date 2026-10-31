@@ -1,5 +1,15 @@
 import { STRIPE_BASE_URL } from "./urls";
 
+/** The part of a webhook endpoint the stand-in answers that a scenario reads. */
+interface StripeWebhookEndpoint {
+  secret: string;
+}
+
+/** The part of a Price the stand-in answers that a scenario reads. */
+interface StripePrice {
+  id: string;
+}
+
 /**
  * Register `url` with the Stripe stand-in as the webhook endpoint of the
  * account `secretKey` names, for every event, and answer the signing secret
@@ -22,7 +32,9 @@ export const registerStripeWebhook = async (
     );
   }
 
-  const { secret } = (await response.json()) as { secret: string };
+  // SAFETY: the webhook endpoint e2e/scripts/stripe.ts answers
+  // `POST /v1/webhook_endpoints` with.
+  const { secret } = (await response.json()) as StripeWebhookEndpoint;
 
   return secret;
 };
@@ -66,14 +78,19 @@ export const createStripePrice = async (
     name?: string;
   }
 ): Promise<string> => {
+  const body = new URLSearchParams({
+    currency: price.currency,
+    "recurring[interval]": price.interval,
+    "recurring[interval_count]": String(price.intervalCount ?? 1),
+    unit_amount: String(price.amount),
+  });
+
+  if (price.name) {
+    body.set("product_data[name]", price.name);
+  }
+
   const response = await fetch(`${STRIPE_BASE_URL}/v1/prices`, {
-    body: new URLSearchParams({
-      currency: price.currency,
-      "recurring[interval]": price.interval,
-      "recurring[interval_count]": String(price.intervalCount ?? 1),
-      unit_amount: String(price.amount),
-      ...(price.name ? { "product_data[name]": price.name } : {}),
-    }),
+    body,
     headers: { authorization: `Bearer ${secretKey}` },
     method: "POST",
   });
@@ -84,7 +101,8 @@ export const createStripePrice = async (
     );
   }
 
-  const { id } = (await response.json()) as { id: string };
+  // SAFETY: the Price e2e/scripts/stripe.ts answers `POST /v1/prices` with.
+  const { id } = (await response.json()) as StripePrice;
 
   return id;
 };

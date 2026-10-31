@@ -212,12 +212,27 @@ const settle = async (page: Page): Promise<void> => {
   await page.waitForLoadState("networkidle");
 };
 
+/**
+ * An entry of the page's `dataLayer`: a `gtag()` command, which is the
+ * `arguments` object of the call, or an event object of the container's, which
+ * names its event and holds no arguments.
+ */
+interface DataLayerEntry extends ArrayLike<unknown>, Iterable<unknown> {
+  readonly event?: string;
+}
+
+declare global {
+  interface Window {
+    /** What {@link TAG_STAND_IN} keeps of the page views a tag would send. */
+    __e2eGoogleTag?: { pageViews: string[] };
+    /** The tags the stand-in for Google's gateway loaded. */
+    __e2eGatewayTag?: { loaded: string[] };
+    dataLayer?: DataLayerEntry[];
+  }
+}
+
 const pageViews = (page: Page): Promise<string[]> =>
-  page.evaluate(
-    () =>
-      (window as unknown as { __e2eGoogleTag?: { pageViews: string[] } })
-        .__e2eGoogleTag?.pageViews ?? []
-  );
+  page.evaluate(() => window.__e2eGoogleTag?.pageViews ?? []);
 
 const hasDataLayer = (page: Page): Promise<boolean> =>
   page.evaluate(() => "dataLayer" in window);
@@ -229,15 +244,9 @@ const hasDataLayer = (page: Page): Promise<boolean> =>
  */
 const consentCommands = (page: Page): Promise<unknown[][]> =>
   page.evaluate(() =>
-    (
-      (
-        window as unknown as {
-          dataLayer?: (Iterable<unknown> & Record<number, unknown>)[];
-        }
-      ).dataLayer ?? []
+    (window.dataLayer ?? []).flatMap((entry) =>
+      entry[0] === "consent" ? [[...entry]] : []
     )
-      .filter((entry) => entry[0] === "consent")
-      .map((entry) => [...entry])
   );
 
 const CONSENT_COOKIE = "publira_web_storefront_analytics_consent";
@@ -371,16 +380,15 @@ test.describe("the tenant's Google tag on its site", () => {
         new Set(requested.filter((url) => !url.startsWith(origin)))
       ).toEqual(new Set());
 
-      const config = await page.evaluate(
-        () =>
-          [
-            ...(
-              window as unknown as {
-                dataLayer: ArrayLike<unknown>[];
-              }
-            ).dataLayer,
-          ].find((entry) => entry[0] === "config")?.[2] ?? null
-      );
+      const config = await page.evaluate(() => {
+        if (!window.dataLayer) {
+          throw new Error("the page has no dataLayer");
+        }
+
+        return (
+          window.dataLayer.find((entry) => entry[0] === "config")?.[2] ?? null
+        );
+      });
 
       expect(config).toEqual(
         mode === "server_container"
@@ -760,13 +768,15 @@ test.describe("a tenant whose own consent tool asks", () => {
 
     // A command is an `arguments` object and the container's start an event
     // object, so each is named by what it is.
-    const order = await page.evaluate(() =>
-      (
-        window as unknown as { dataLayer: Record<string, unknown>[] }
-      ).dataLayer.map((entry) =>
+    const order = await page.evaluate(() => {
+      if (!window.dataLayer) {
+        throw new Error("the page has no dataLayer");
+      }
+
+      return window.dataLayer.map((entry) =>
         entry[0] === "consent" ? "consent" : entry.event
-      )
-    );
+      );
+    });
 
     expect(order.indexOf("consent")).toBeLessThan(order.indexOf("gtm.js"));
     await expect(consentBanner(page)).toHaveCount(0);
@@ -819,12 +829,7 @@ test.describe("the Google tag gateway on the site's own origin", () => {
     );
     await expect
       .poll(() =>
-        page.evaluate(
-          () =>
-            (
-              window as unknown as { __e2eGatewayTag?: { loaded: string[] } }
-            ).__e2eGatewayTag?.loaded.toSorted() ?? []
-        )
+        page.evaluate(() => window.__e2eGatewayTag?.loaded.toSorted() ?? [])
       )
       .toEqual([CONTAINER_ID, MEASUREMENT_ID].toSorted());
 

@@ -44,6 +44,8 @@ const cookieStore = (stored?: string) => {
 };
 
 const forwardedHeaders = (): Record<string, string> => {
+  // SAFETY: `recordContentView` is called with the request and then the call
+  // options, whose `headers` the module builds as a plain record.
   const [, options] = mockRecordContentView.mock.calls[0] as [
     unknown,
     { headers: Record<string, string> },
@@ -67,6 +69,8 @@ describe("recordContentView", () => {
       tenantId: TENANT_ID,
     });
 
+    // SAFETY: the module sets the actor cookie with one options object that
+    // names it, its value, and how long it lives.
     const [written] = set.mock.calls[0] as [
       { maxAge: number; name: string; value: string },
     ];

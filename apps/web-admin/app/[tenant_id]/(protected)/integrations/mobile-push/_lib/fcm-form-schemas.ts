@@ -40,6 +40,14 @@ export const fcmDeleteFormSchema = async (locale: Locale) => {
   });
 };
 
+/** The fields of a service account key that `fcmsettings.Validate` reads. */
+const serviceAccountKeySchema = z.object({
+  client_email: z.string(),
+  private_key: z.string(),
+  project_id: z.string().trim().min(1),
+  type: z.literal("service_account"),
+});
+
 export type ServiceAccountKeyProblem =
   | { kind: "not-json" }
   | { kind: "not-service-account" }
@@ -62,23 +70,18 @@ export const checkServiceAccountKey = (
     return { kind: "not-json" };
   }
 
-  if (typeof key !== "object" || key === null || Array.isArray(key)) {
+  // An array or a scalar is valid JSON, but not a key file at all.
+  if (!z.object({}).safeParse(key).success) {
     return { kind: "not-json" };
   }
 
-  const record = key as Record<string, unknown>;
+  const parsed = serviceAccountKeySchema.safeParse(key);
 
-  const keyProjectId =
-    typeof record.project_id === "string" ? record.project_id.trim() : "";
-
-  if (
-    record.type !== "service_account" ||
-    keyProjectId === "" ||
-    typeof record.client_email !== "string" ||
-    typeof record.private_key !== "string"
-  ) {
+  if (!parsed.success) {
     return { kind: "not-service-account" };
   }
+
+  const keyProjectId = parsed.data.project_id;
 
   if (keyProjectId !== projectId) {
     return { keyProjectId, kind: "project-mismatch" };

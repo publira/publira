@@ -26,13 +26,13 @@ export type UpdateTenantTimezoneResult =
  * to the operator than the generic wording. Everything else takes the shared copy.
  */
 const parseErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
 ): string => {
-  const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+  const serverMessage = rpcErrorRawMessage(cause)?.trim() || fallback;
 
-  return rpcErrorMessage(error, fallback, {
+  return rpcErrorMessage(cause, fallback, {
     locale,
     overrides: { "invalid-argument": serverMessage },
   });

@@ -153,11 +153,11 @@ export const getTenantSiteVerification = async (
  * answer is the one that stands.
  */
 const refusedField = (
-  error: unknown
+  cause: unknown
 ): keyof TenantSiteVerification | undefined => {
   if (
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       "site_verification.google_site_verification"
     )
   ) {
@@ -165,7 +165,7 @@ const refusedField = (
   }
 
   if (
-    rpcErrorHasFieldViolation(error, "site_verification.bing_site_verification")
+    rpcErrorHasFieldViolation(cause, "site_verification.bing_site_verification")
   ) {
     return "bing";
   }

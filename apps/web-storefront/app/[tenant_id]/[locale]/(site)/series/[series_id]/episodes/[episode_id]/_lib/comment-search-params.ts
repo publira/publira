@@ -1,3 +1,4 @@
+import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { cursorTokenSchema } from "#lib/cursor-token";
@@ -13,10 +14,15 @@ const commentSearchParamsSchema = z.object({
   [COMMENT_TOKEN_PARAM]: cursorTokenSchema,
 });
 
+interface ParseCommentSearchParamsInput {
+  [COMMENT_TOKEN_PARAM]?: SearchParamValue;
+}
+
 export type CommentSearchParams = z.output<typeof commentSearchParamsSchema>;
 
-export const parseCommentSearchParams = (input: unknown): CommentSearchParams =>
-  commentSearchParamsSchema.parse(input);
+export const parseCommentSearchParams = (
+  input: ParseCommentSearchParamsInput
+): CommentSearchParams => commentSearchParamsSchema.parse(input);
 
 /**
  * The episode page again, at one page of its comment list. An empty token

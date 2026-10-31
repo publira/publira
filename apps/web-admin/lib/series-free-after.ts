@@ -59,12 +59,12 @@ const toSeriesFreeAfterSettings = (
  * already checks, reached only when the two disagree.
  */
 const mapUpdateErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasFieldViolation(error, "settings.days_after_publication")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.days_after_publication")) {
     return t(
       "admin.series.free_after.validation.days_after_publication_invalid",
       {
@@ -73,13 +73,13 @@ const mapUpdateErrorToMessage = async (
     );
   }
 
-  if (rpcErrorHasFieldViolation(error, "settings.excluded_latest_count")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.excluded_latest_count")) {
     return t(
       "admin.series.free_after.validation.excluded_latest_count_invalid"
     );
   }
 
-  return rpcErrorMessage(error, t("admin.series.free_after.save_failed"), {
+  return rpcErrorMessage(cause, t("admin.series.free_after.save_failed"), {
     locale,
     overrides: { "not-found": t("admin.series.not_found") },
   });

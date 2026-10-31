@@ -1,5 +1,4 @@
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
-import type { PublicApiClient } from "@publira/api-client/public/client";
 import { GoogleTagServingMode } from "@publira/api-client/public/types";
 import type { TenantGoogleTag } from "@publira/api-client/public/types";
 import { readTagRevalidatedAt } from "@publira/next-cache-handlers/tags";
@@ -93,6 +92,15 @@ interface GatewayEntry {
   readAt: number;
 }
 
+/** The one call the resolver makes to the public API, and what it reads back. */
+interface AnalyticsSettingsClient {
+  tenant: {
+    getTenantAnalyticsSettings: (request: {
+      tenant: { tenantId: string };
+    }) => Promise<{ googleTag?: RawTenantGoogleTag }>;
+  };
+}
+
 /**
  * A tenant's Google tag gateway, held per instance for the proxy, where no
  * `"use cache"` runs. The console's save revalidates
@@ -101,7 +109,7 @@ interface GatewayEntry {
  * Redis cannot be read, `ttl` bounds how stale the answer gets.
  */
 export const createGoogleTagGatewayResolver = (
-  publicApiClient: PublicApiClient,
+  publicApiClient: AnalyticsSettingsClient,
   options?: {
     max?: number;
     now?: () => number;

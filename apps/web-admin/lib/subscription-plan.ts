@@ -150,30 +150,30 @@ const mapSubscriptionPlan = (
  * payments through Stripe, which is the only provider that sells plans.
  */
 const saveOverrides = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
 
   const invalidArgument = (): string => {
-    if (rpcErrorHasFieldViolation(error, "plan.stripe_price_id")) {
+    if (rpcErrorHasFieldViolation(cause, "plan.stripe_price_id")) {
       return t("admin.subscription_plans.validation.price_invalid");
     }
 
     // The form refuses an empty name before it is sent, so a refused name
     // is one the API counts longer than the form did.
-    if (rpcErrorHasFieldViolation(error, "plan.name")) {
+    if (rpcErrorHasFieldViolation(cause, "plan.name")) {
       return t("admin.subscription_plans.validation.name_too_long");
     }
 
-    if (rpcErrorHasFieldViolation(error, "plan.description")) {
+    if (rpcErrorHasFieldViolation(cause, "plan.description")) {
       return t("admin.subscription_plans.validation.description_too_long");
     }
 
     if (
-      rpcErrorHasFieldViolation(error, "plan.scope") ||
-      rpcErrorHasFieldViolation(error, "plan.label_ids") ||
-      rpcErrorHasFieldViolation(error, "plan.series_ids")
+      rpcErrorHasFieldViolation(cause, "plan.scope") ||
+      rpcErrorHasFieldViolation(cause, "plan.label_ids") ||
+      rpcErrorHasFieldViolation(cause, "plan.series_ids")
     ) {
       return t("admin.subscription_plans.validation.targets_invalid");
     }
@@ -185,7 +185,7 @@ const saveOverrides = async (
     conflict: t("admin.subscription_plans.price_in_use"),
     "invalid-argument": invalidArgument(),
     precondition: rpcErrorHasReason(
-      error,
+      cause,
       RPC_ERROR_REASON.subscriptionPlanLimit
     )
       ? t("admin.subscription_plans.limit_reached")

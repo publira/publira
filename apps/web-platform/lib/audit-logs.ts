@@ -89,7 +89,7 @@ const listPlatformAuditLogsForSession = async (
   }
 
   const limit =
-    typeof input.limit === "number" && Number.isFinite(input.limit)
+    input.limit !== undefined && Number.isFinite(input.limit)
       ? Math.max(1, Math.min(200, Math.trunc(input.limit)))
       : 100;
 

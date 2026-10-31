@@ -13,13 +13,22 @@ export interface GoogleAccount {
   subject: string;
 }
 
+/** The claims of an ID token Google issues, as a site's callback reads them. */
+export interface IdTokenClaims {
+  aud: string | null;
+  email: string;
+  email_verified: boolean;
+  iss: string;
+  name: string;
+  nonce: string | null;
+  sub: string;
+}
+
 /**
  * Sign the ID token a provider would have issued, with the key the E2E stack's
  * server trusts in place of the provider's.
  */
-export const signIdToken = async (
-  claims: Record<string, unknown>
-): Promise<string> => {
+export const signIdToken = async (claims: IdTokenClaims): Promise<string> => {
   const response = await fetch(`${SIGN_IN_PROVIDER_BASE_URL}/id-tokens`, {
     body: JSON.stringify(claims),
     method: "POST",

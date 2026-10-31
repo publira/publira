@@ -103,11 +103,16 @@ const emptyUsersListResult = {
   users: [],
 } satisfies ListPlatformEndUsersResult;
 
+interface UsersPageHrefs {
+  nextHref?: string;
+  previousHref?: string;
+}
+
 const buildUsersPageHrefs = (
   filters: UsersFilters,
   result: ListPlatformEndUsersResult,
   skip: boolean
-): { nextHref?: string; previousHref?: string } => {
+): UsersPageHrefs => {
   if (skip) {
     return {};
   }

@@ -273,16 +273,16 @@ export type ReplaceEpisodeCreditsResult =
 const reorderScanPageSize = 100;
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
-      "invalid-argument": rpcErrorHasFieldViolation(error, "locale")
+      "invalid-argument": rpcErrorHasFieldViolation(cause, "locale")
         ? t("admin.series.episodes.translations.locale_not_offered")
         : undefined,
       "not-found": t("admin.series.episodes.series_not_found"),
@@ -296,26 +296,26 @@ const mapErrorToMessage = async (
  * API gives when the tenant's currency changed after the form read it.
  */
 const mapPriceErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
-  if (rpcErrorHasFieldViolation(error, "currency")) {
+  if (rpcErrorHasFieldViolation(cause, "currency")) {
     const t = await getMessagesFor(locale);
 
     return t("admin.series.episodes.currency_changed");
   }
 
-  return mapErrorToMessage(error, fallbackMessage, locale);
+  return mapErrorToMessage(cause, fallbackMessage, locale);
 };
 
 const mapReorderErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.series.episodes.reorder_failed"), {
+  return rpcErrorMessage(cause, t("admin.series.episodes.reorder_failed"), {
     locale,
     overrides: {
       "not-found": t("admin.series.episodes.series_not_found"),
@@ -576,37 +576,37 @@ export const replaceEpisodeCredits = async (
  * those cases as stable `google.rpc.ErrorInfo` reasons.
  */
 const archiveRejectionMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string | undefined> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUB)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.archiveInvalidEPUB)) {
     return t("admin.series.episodes.epub_invalid");
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUBSpine)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.archiveInvalidEPUBSpine)) {
     return t("admin.series.episodes.epub_spine_invalid");
   }
 
-  return rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidPath)
+  return rpcErrorHasReason(cause, RPC_ERROR_REASON.archiveInvalidPath)
     ? t("admin.series.episodes.archive_path_invalid")
     : undefined;
 };
 
 const mapEpisodeUploadErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.series.episodes.upload_failed"), {
+  return rpcErrorMessage(cause, t("admin.series.episodes.upload_failed"), {
     locale,
     overrides: {
       "invalid-argument":
-        (await archiveRejectionMessage(error, locale)) ??
+        (await archiveRejectionMessage(cause, locale)) ??
         t("errors.rpc.invalid-argument"),
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : undefined,
     },
@@ -620,14 +620,14 @@ const uploadArchive = async (input: {
   tenantId: string;
   sessionId: string;
 }) => {
-  const request = {
+  const request: Parameters<typeof apiClient.series.uploadEpisodeImages>[0] = {
     archiveContentType: input.archive.type || "application/octet-stream",
     archiveData: new Uint8Array(await input.archive.arrayBuffer()),
     archiveFilename: input.archive.name,
     episodeId: input.episodeId,
     seriesId: input.seriesId ?? "",
     tenant: { tenantId: input.tenantId },
-  } as Parameters<typeof apiClient.series.uploadEpisodeImages>[0];
+  };
 
   return apiClient.series.uploadEpisodeImages(
     request,
@@ -1731,13 +1731,13 @@ export const reorderEpisodeImages = async (
  * else deleted or replaced it since the screen was drawn.
  */
 const mapEpisodeImageErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
       "not-found": t("admin.series.episodes.page_not_found"),
@@ -2065,21 +2065,21 @@ export const updateEpisodePricing = async (
  * and so is an upload no object store has been set up to take.
  */
 const mapEyeCatchErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   /** What any other failed precondition means for this write. */
   preconditionMessage?: string
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("admin.series.episodes.eye_catch.failed"), {
+  return rpcErrorMessage(cause, t("admin.series.episodes.eye_catch.failed"), {
     locale,
     overrides: {
-      "invalid-argument": mentionsAspectImageRejection(error)
+      "invalid-argument": mentionsAspectImageRejection(cause)
         ? t("admin.series.episodes.eye_catch.image_invalid")
         : undefined,
       "not-found": t("admin.series.episodes.validation.episode_missing"),
-      precondition: mentionsStorageNotConfigured(error)
+      precondition: mentionsStorageNotConfigured(cause)
         ? t("admin.errors.storage_not_configured")
         : preconditionMessage,
     },
@@ -2304,14 +2304,14 @@ const toBulkCreditOperation = (operation: BulkEpisodeCreditOperation) => {
  * other credits on those episodes are not on screen.
  */
 const mapBulkCreditErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   operation: BulkEpisodeCreditOperation,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(
-    error,
+    cause,
     t("admin.series.episodes.credits.apply_failed"),
     {
       locale,

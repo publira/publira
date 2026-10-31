@@ -204,14 +204,19 @@ const loadSeriesDetailRows = async (
       continue;
     }
 
-    rows.push({
-      ...(seriesItem.ageRating ? { ageRating: seriesItem.ageRating } : {}),
+    const row: SeriesDetailRow = {
       credits: seriesItem.credits,
       episodes: detail.value.episodes,
       eyeCatchImageVariants: seriesItem.eyeCatchImageVariants,
       publicId: seriesItem.publicId,
       title: seriesItem.title,
-    });
+    };
+
+    if (seriesItem.ageRating) {
+      row.ageRating = seriesItem.ageRating;
+    }
+
+    rows.push(row);
   }
 
   return { ok: true, value: rows };
@@ -494,24 +499,26 @@ export const getCatalogTopFeaturedWork = async (
     .filter((episode) => episode.publishedAt.trim().length > 0)
     .toSorted(byNewestDateDesc);
 
-  return {
-    ok: true,
-    value: {
-      ...(series.ageRating ? { ageRating: series.ageRating } : {}),
-      credits: series.credits,
-      eyeCatchImageVariants: series.eyeCatchImageVariants,
-      latestEpisode: latestEpisode
-        ? {
-            episodeId: latestEpisode.publicId,
-            orderIndex: latestEpisode.orderIndex,
-            publishedAt: latestEpisode.publishedAt,
-            title: latestEpisode.title,
-          }
-        : undefined,
-      seriesId: series.publicId,
-      seriesTitle: series.title,
-    },
+  const work: CatalogTopFeaturedWork = {
+    credits: series.credits,
+    eyeCatchImageVariants: series.eyeCatchImageVariants,
+    latestEpisode: latestEpisode
+      ? {
+          episodeId: latestEpisode.publicId,
+          orderIndex: latestEpisode.orderIndex,
+          publishedAt: latestEpisode.publishedAt,
+          title: latestEpisode.title,
+        }
+      : undefined,
+    seriesId: series.publicId,
+    seriesTitle: series.title,
   };
+
+  if (series.ageRating) {
+    work.ageRating = series.ageRating;
+  }
+
+  return { ok: true, value: work };
 };
 
 export const getCatalogTopNewEpisodes = async (
@@ -542,24 +549,32 @@ export const getCatalogTopNewEpisodes = async (
 
   const episodes = detailRows.value
     .flatMap((row) =>
-      row.episodes.flatMap((episode) =>
-        episode.publishedAt.trim().length > 0
-          ? [
-              {
-                ...(row.ageRating ? { ageRating: row.ageRating } : {}),
-                episodeId: episode.publicId,
-                episodeOrderIndex: episode.orderIndex,
-                episodeTitle: episode.title,
-                eyeCatchImageVariants:
-                  episode.eyeCatchImageVariants ?? row.eyeCatchImageVariants,
-                ...(episode.freeUntil ? { freeUntil: episode.freeUntil } : {}),
-                publishedAt: episode.publishedAt,
-                seriesId: row.publicId,
-                seriesTitle: row.title,
-              },
-            ]
-          : []
-      )
+      row.episodes.flatMap((episode) => {
+        if (episode.publishedAt.trim().length === 0) {
+          return [];
+        }
+
+        const item: CatalogTopEpisodeItem = {
+          episodeId: episode.publicId,
+          episodeOrderIndex: episode.orderIndex,
+          episodeTitle: episode.title,
+          eyeCatchImageVariants:
+            episode.eyeCatchImageVariants ?? row.eyeCatchImageVariants,
+          publishedAt: episode.publishedAt,
+          seriesId: row.publicId,
+          seriesTitle: row.title,
+        };
+
+        if (row.ageRating) {
+          item.ageRating = row.ageRating;
+        }
+
+        if (episode.freeUntil) {
+          item.freeUntil = episode.freeUntil;
+        }
+
+        return [item];
+      })
     )
     .toSorted(byNewestDateDesc)
     .slice(0, maxNewEpisodes);
@@ -603,19 +618,22 @@ export const getCatalogTopUpdatedSeries = async (
         return [];
       }
 
-      return [
-        {
-          ...(row.ageRating ? { ageRating: row.ageRating } : {}),
-          credits: row.credits,
-          eyeCatchImageVariants: row.eyeCatchImageVariants,
-          latestEpisodeId: latestEpisode.publicId,
-          latestEpisodeOrderIndex: latestEpisode.orderIndex,
-          latestEpisodeTitle: latestEpisode.title,
-          latestPublishedAt: latestEpisode.publishedAt,
-          seriesId: row.publicId,
-          seriesTitle: row.title,
-        },
-      ];
+      const item: CatalogTopUpdatedSeriesItem = {
+        credits: row.credits,
+        eyeCatchImageVariants: row.eyeCatchImageVariants,
+        latestEpisodeId: latestEpisode.publicId,
+        latestEpisodeOrderIndex: latestEpisode.orderIndex,
+        latestEpisodeTitle: latestEpisode.title,
+        latestPublishedAt: latestEpisode.publishedAt,
+        seriesId: row.publicId,
+        seriesTitle: row.title,
+      };
+
+      if (row.ageRating) {
+        item.ageRating = row.ageRating;
+      }
+
+      return [item];
     })
     .toSorted((left, right) =>
       compareNewestFirst(left.latestPublishedAt, right.latestPublishedAt)

@@ -295,11 +295,10 @@ test.describe("web-storefront member settings", () => {
       notificationCell(page, "Announcements", "Inbox")
     ).not.toBeChecked();
     await Promise.all(
-      NOTIFICATION_CELLS.filter(
-        ([category, channel]) =>
-          category !== "Announcements" || channel !== "Inbox"
-      ).map(([category, channel]) =>
-        expect(notificationCell(page, category, channel)).toBeChecked()
+      NOTIFICATION_CELLS.flatMap(([category, channel]) =>
+        category === "Announcements" && channel === "Inbox"
+          ? []
+          : [expect(notificationCell(page, category, channel)).toBeChecked()]
       )
     );
   });
@@ -332,11 +331,11 @@ test.describe("web-storefront member settings", () => {
       notificationCell(page, "Your comments", "Email")
     ).not.toBeChecked();
     await Promise.all(
-      emailCells
-        .filter(([category]) => category !== "Your comments")
-        .map(([category, channel]) =>
-          expect(notificationCell(page, category, channel)).toBeChecked()
-        )
+      emailCells.flatMap(([category, channel]) =>
+        category === "Your comments"
+          ? []
+          : [expect(notificationCell(page, category, channel)).toBeChecked()]
+      )
     );
   });
 

@@ -29,34 +29,44 @@ export const DOCS_LOCALES: readonly string[] = readdirSync(DOCS_ROOT, {
   .flatMap((entry) => (entry.isDirectory() ? [entry.name] : []))
   .toSorted();
 
+type CatalogNode = string | CatalogTree;
+
+/** A parsed `locales/<locale>.json`, nested keys down to the messages. */
+interface CatalogTree {
+  readonly [key: string]: CatalogNode;
+}
+
+const isMessage = (node: CatalogNode | undefined): node is string =>
+  typeof node === "string";
+
 /**
  * The message catalogs the consoles render their copy from, one per locale,
  * read once each.
  */
 const LOCALES_ROOT = path.resolve(import.meta.dirname, "../../locales");
-const catalogs = new Map<string, unknown>();
+const catalogs = new Map<string, CatalogTree>();
 
 /** The message at `key` in `locales/<locale>.json`, as the catalog spells it. */
 const catalogMessage = (locale: string, key: string): string => {
   let catalog = catalogs.get(locale);
 
   if (catalog === undefined) {
+    // SAFETY: `pnpm locales:check` rejects a catalog with a leaf that is not a
+    // string.
     catalog = JSON.parse(
       readFileSync(path.join(LOCALES_ROOT, `${locale}.json`), "utf-8")
-    ) as unknown;
+    ) as CatalogTree;
     catalogs.set(locale, catalog);
   }
 
-  let message: unknown = catalog;
+  let message: CatalogNode | undefined = catalog;
 
   for (const part of key.split(".")) {
     message =
-      typeof message === "object" && message !== null
-        ? (message as Record<string, unknown>)[part]
-        : undefined;
+      message === undefined || isMessage(message) ? undefined : message[part];
   }
 
-  if (typeof message !== "string") {
+  if (!isMessage(message)) {
     throw new TypeError(`locales/${locale}.json has no message at ${key}.`);
   }
 
@@ -294,9 +304,7 @@ interface Region {
  * keeps its margin of the dimmed screen behind it.
  */
 const regionOf = async (element: DocsShot["element"]): Promise<Region> => {
-  const ends: readonly Locator[] = Array.isArray(element)
-    ? element
-    : [element as Locator];
+  const ends: readonly Locator[] = [element].flat();
 
   const boxes = await Promise.all(
     ends.map(async (locator) => {

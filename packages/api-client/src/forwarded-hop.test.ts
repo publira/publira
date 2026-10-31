@@ -89,6 +89,8 @@ describe("appendPeerAddressOnEveryRequest", () => {
     await once(server, "listening");
 
     try {
+      // SAFETY: a server listening on a TCP port reports its address as an
+      // `AddressInfo`; only a pipe or a socket file reports a string.
       const { port } = server.address() as AddressInfo;
 
       const req = request({

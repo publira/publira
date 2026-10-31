@@ -60,28 +60,28 @@ const toSeriesWaitFreeSettings = (
  * already checks, reached only when the two disagree.
  */
 const mapUpdateErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasFieldViolation(error, "settings.recharge_hours")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.recharge_hours")) {
     return t("admin.series.wait_free.validation.recharge_hours_invalid", {
       max: String(MAX_WAIT_FREE_HOURS),
     });
   }
 
-  if (rpcErrorHasFieldViolation(error, "settings.access_hours")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.access_hours")) {
     return t("admin.series.wait_free.validation.access_hours_invalid", {
       max: String(MAX_WAIT_FREE_HOURS),
     });
   }
 
-  if (rpcErrorHasFieldViolation(error, "settings.excluded_latest_count")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.excluded_latest_count")) {
     return t("admin.series.wait_free.validation.excluded_latest_count_invalid");
   }
 
-  return rpcErrorMessage(error, t("admin.series.wait_free.save_failed"), {
+  return rpcErrorMessage(cause, t("admin.series.wait_free.save_failed"), {
     locale,
     overrides: { "not-found": t("admin.series.not_found") },
   });

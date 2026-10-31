@@ -150,6 +150,8 @@ const aspectSources = async (page: Page): Promise<AspectSources> => {
     sources[aspect] = src;
   }
 
+  // SAFETY: the loop above gave every aspect of EYE_CATCH_ASPECTS a src, or
+  // threw.
   return sources as AspectSources;
 };
 
@@ -202,6 +204,7 @@ const displayedEyeCatch = async (page: Page): Promise<AspectDigests> => {
     })
   );
 
+  // SAFETY: `entries` holds one pair for each aspect of EYE_CATCH_ASPECTS.
   return Object.fromEntries(entries) as AspectDigests;
 };
 

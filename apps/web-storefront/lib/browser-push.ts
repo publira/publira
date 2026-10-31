@@ -116,7 +116,7 @@ export const subscribeToPush = async (
  * through, so it is reported rather than registered half-filled.
  */
 export const toWebPushSubscriptionKeys = (
-  subscription: PushSubscription
+  subscription: Pick<PushSubscription, "toJSON">
 ): WebPushSubscriptionKeys | null => {
   const { endpoint, keys } = subscription.toJSON();
   const auth = keys?.auth;

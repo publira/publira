@@ -82,8 +82,15 @@ export const siteVerificationMetadata = (
     return undefined;
   }
 
-  return {
-    ...(codes.google ? { google: codes.google } : {}),
-    ...(codes.bing ? { other: { "msvalidate.01": codes.bing } } : {}),
-  };
+  const verification: NonNullable<Metadata["verification"]> = {};
+
+  if (codes.google) {
+    verification.google = codes.google;
+  }
+
+  if (codes.bing) {
+    verification.other = { "msvalidate.01": codes.bing };
+  }
+
+  return verification;
 };

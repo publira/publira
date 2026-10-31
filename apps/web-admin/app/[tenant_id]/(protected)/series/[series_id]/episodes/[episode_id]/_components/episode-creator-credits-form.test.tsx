@@ -113,6 +113,7 @@ const renderForm = (
   );
 
 const postedCredits = () =>
+  // SAFETY: the form writes the field as the JSON of its credit rows.
   JSON.parse(
     document.querySelector<HTMLInputElement>('input[name="creator_credits"]')
       ?.value ?? "[]"

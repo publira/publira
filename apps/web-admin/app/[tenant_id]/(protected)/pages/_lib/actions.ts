@@ -12,6 +12,7 @@ import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import {
+  isFormText,
   optionalTrimmedString,
   requiredTrimmedString,
 } from "#lib/form-schemas";
@@ -35,7 +36,7 @@ import { normalizePageSlugInput, pageEditPath } from "../page-types";
 import type { PageFormState } from "../page-types";
 
 const formBooleanSchema = z.preprocess((value) => {
-  if (typeof value !== "string") {
+  if (!isFormText(value)) {
     return;
   }
 

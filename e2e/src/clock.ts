@@ -30,13 +30,13 @@ export const freezeClock = async (
   await page.clock.setFixedTime(instant);
 
   await page.addInitScript((iso: string) => {
-    const temporal = (globalThis as { Temporal?: typeof Temporal }).Temporal;
-
     // Absent until the polyfill installs its own, further down the page's
     // startup. That one reads `Date.now()`, which is already frozen above.
-    if (!temporal) {
+    if (!("Temporal" in globalThis) || !globalThis.Temporal) {
       return;
     }
+
+    const temporal = globalThis.Temporal;
 
     const fixed = temporal.Instant.from(iso);
     const systemTimeZoneId = temporal.Now.timeZoneId();

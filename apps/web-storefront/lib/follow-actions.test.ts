@@ -27,10 +27,10 @@ vi.mock("./follow", () => ({
 
 vi.mock("./auth-session", () => ({
   requirePublicSession: mockRequirePublicSession,
-  withPublicSessionReauth: (
+  withPublicSessionReauth: <Result>(
     _locale: string,
     _returnTo: string,
-    run: () => Promise<unknown>
+    run: () => Promise<Result>
   ) => run(),
 }));
 

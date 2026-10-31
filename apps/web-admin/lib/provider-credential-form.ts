@@ -6,7 +6,7 @@ import {
   SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
 } from "./email-settings-shared";
-import { flagOneFormSchema } from "./form-schemas";
+import { flagOneFormSchema, isFormText } from "./form-schemas";
 
 /**
  * What the form did with a stored credential: kept it, replaced it, or
@@ -19,7 +19,7 @@ const credentialSchema = z.object({
   configured: flagOneFormSchema,
   mode: z.enum(CREDENTIAL_MODES),
   value: z
-    .preprocess((value) => (typeof value === "string" ? value : ""), z.string())
+    .preprocess((value) => (isFormText(value) ? value : ""), z.string())
     .transform((value) => value.trim()),
 });
 

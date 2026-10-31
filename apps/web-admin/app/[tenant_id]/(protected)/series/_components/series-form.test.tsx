@@ -19,7 +19,12 @@ import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider"
 import type { SeriesActionState, SeriesListItem } from "../series-types";
 import { SeriesForm } from "./series-form";
 
-const mockLocale = vi.hoisted(() => ({ current: "en" as Locale }));
+/** The language the mocked catalog answers in, which a test switches. */
+interface MessageLocale {
+  current: Locale;
+}
+
+const mockLocale = vi.hoisted((): MessageLocale => ({ current: "en" }));
 
 vi.mock("#components/message", () => ({
   Message: ({

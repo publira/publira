@@ -202,12 +202,17 @@ describe("Viewer.Page", () => {
     );
 
     const [reload] = await screen.findAllByRole("button", { name: "Reload" });
+
+    if (!reload) {
+      throw new Error("Expected a Reload button");
+    }
+
     expect(screen.getAllByRole("alert")[0]?.textContent).toContain(
       "This page could not be loaded."
     );
     const attempts = fetchMock.mock.calls.length;
 
-    fireEvent.click(reload as HTMLElement);
+    fireEvent.click(reload);
 
     expect(screen.getByText("rtl:1:0")).toBeDefined();
     await vi.waitFor(() => {

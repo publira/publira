@@ -9,7 +9,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuditLogActionCell } from "./audit-log-cells";
 
-const messageLocale = vi.hoisted(() => ({ current: "en" as Locale }));
+/** The language the mocked catalog answers in, which a test switches. */
+interface MessageLocale {
+  current: Locale;
+}
+
+const messageLocale = vi.hoisted((): MessageLocale => ({ current: "en" }));
 
 vi.mock("#components/message", () => ({
   Message: ({ message }: { message: MessageKey<SharedMessages> }) =>

@@ -1,6 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AdminAuthModule from "./admin-auth";
+
 const {
   mockGetAccessToken,
   mockGetAdminCurrentUser,
@@ -33,7 +35,7 @@ vi.mock("./session", () => ({
 }));
 
 vi.mock("./admin-auth", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AdminAuthModule>()),
   getAdminCurrentUser: mockGetAdminCurrentUser,
 }));
 

@@ -183,13 +183,13 @@ export const getTenantCrawlerSettings = async (
  * the page was open; the server's answer is the one that stands.
  */
 const refusedField = (
-  error: unknown,
+  cause: unknown,
   input: TenantCrawlerSettings,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ):
   | { field: keyof TenantCrawlerSettingsFieldErrors; message: string }
   | undefined => {
-  if (rpcErrorHasFieldViolation(error, "settings.excluded_paths")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.excluded_paths")) {
     return {
       field: "excludedPaths",
       message: t("admin.settings.crawlers.validation.too_many", {
@@ -199,7 +199,7 @@ const refusedField = (
   }
 
   const path = input.excludedPaths.find((_, index) =>
-    rpcErrorHasFieldViolation(error, `settings.excluded_paths[${index}]`)
+    rpcErrorHasFieldViolation(cause, `settings.excluded_paths[${index}]`)
   );
 
   if (path !== undefined) {
@@ -210,7 +210,7 @@ const refusedField = (
   }
 
   const crawler = input.excludedUserAgents.find((_, index) =>
-    rpcErrorHasFieldViolation(error, `settings.excluded_user_agents[${index}]`)
+    rpcErrorHasFieldViolation(cause, `settings.excluded_user_agents[${index}]`)
   );
 
   if (crawler !== undefined) {

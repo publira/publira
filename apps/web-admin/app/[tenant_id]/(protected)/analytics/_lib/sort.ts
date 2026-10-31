@@ -39,6 +39,7 @@ export const parseSortSearchParams = <C extends string>(
   const parsed = z
     .object({
       order: searchParamEnum<SortOrder, "">(["asc", "desc"], { fallback: "" }),
+      // SAFETY: `columns` is a `SortColumns<C>`, so every key it has is a `C`.
       sort: searchParamEnum<C, C>(Object.keys(columns) as C[], { fallback }),
     })
     .parse(input);
@@ -65,13 +66,23 @@ export const nextSort = <C extends string>(
   return { column, order: current.order === "asc" ? "desc" : "asc" };
 };
 
+/** The query parameters that name a sort. */
+export interface SortSearchParams<C extends string> {
+  order: SortOrder;
+  sort: C;
+}
+
 /** The query parameters that name `state`. */
 export const sortSearchParams = <C extends string>(
   state: SortState<C>
-): { order: SortOrder; sort: C } => ({
+): SortSearchParams<C> => ({
   order: state.order,
   sort: state.column,
 });
+
+/** Whether a cell holds a figure rather than a title. */
+const isFigure = (value: number | string): value is number =>
+  typeof value === "number";
 
 /**
  * `rows` ordered by `state`. Titles are compared the way `locale` orders words
@@ -95,7 +106,7 @@ export const sortRows = <T, C extends string>(
     const b = value(right, state.column);
 
     const compared =
-      typeof a === "number" && typeof b === "number"
+      isFigure(a) && isFigure(b)
         ? a - b
         : collator.compare(String(a), String(b));
 

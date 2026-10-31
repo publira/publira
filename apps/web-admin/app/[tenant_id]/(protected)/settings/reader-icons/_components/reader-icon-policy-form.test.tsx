@@ -17,15 +17,25 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ReaderIconPolicyForm } from "./reader-icon-policy-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<ActionForm.State>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<ActionForm.State>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateReaderIconPolicyAction: (_state: unknown, formData: FormData) => {
+  updateReaderIconPolicyAction: (
+    _state: ActionForm.State,
+    formData: FormData
+  ) => {
     save.formData = formData;
 
     return save.current.promise;

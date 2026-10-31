@@ -25,10 +25,14 @@ const {
 
 const REDIRECT_PREFIX = "NEXT_REDIRECT:";
 
+/** Whether `cookies().delete` was named the cookie rather than its options. */
+const isCookieName = (options: string | { name: string }): options is string =>
+  typeof options === "string";
+
 vi.mock("next/headers", () => ({
   cookies: () => ({
     delete: (options: string | { name: string }) => {
-      cookieJar.delete(typeof options === "string" ? options : options.name);
+      cookieJar.delete(isCookieName(options) ? options : options.name);
     },
     get: (name: string) => {
       const value = cookieJar.get(name);

@@ -289,9 +289,12 @@ export const significantLinesByFile = (diff: string): Map<string, number> => {
   return counts;
 };
 
-export const scoreDiff = (
-  diff: string
-): { files: FileScore[]; score: number } => {
+export interface DiffScore {
+  files: FileScore[];
+  score: number;
+}
+
+export const scoreDiff = (diff: string): DiffScore => {
   const files = [...significantLinesByFile(diff)].map(
     ([file, significantLines]): FileScore => {
       const weight = coefficient(file);

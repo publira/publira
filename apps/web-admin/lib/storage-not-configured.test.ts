@@ -141,7 +141,8 @@ interface UploadSurface {
   rpc: ReturnType<typeof vi.fn>;
   /** The message the surface showed for a failed precondition before. */
   fallback: string;
-  upload: (locale: Locale) => Promise<unknown>;
+  /** Calls the surface's `lib/` function, whose result says whether it saved. */
+  upload: (locale: Locale) => Promise<{ ok: boolean }>;
 }
 
 const surfaces: UploadSurface[] = [

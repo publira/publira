@@ -63,6 +63,8 @@ const startUpstream = async (
     server.close();
     await once(server, "close");
   });
+  // SAFETY: a server listening on a TCP port answers its `AddressInfo`; only
+  // one on a pipe or a socket path answers a string.
   const { port } = server.address() as AddressInfo;
 
   return { origin: `http://127.0.0.1:${port}`, received };
@@ -87,6 +89,8 @@ const startListener = async (): Promise<{
     await once(server, "close");
   });
 
+  // SAFETY: a server listening on a TCP port answers its `AddressInfo`; only
+  // one on a pipe or a socket path answers a string.
   return {
     connections: () => connections,
     port: (server.address() as AddressInfo).port,

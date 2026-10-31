@@ -38,8 +38,8 @@ export type {
  */
 export const episodeRatingsCacheTag = tenantEpisodeRatingsTag;
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 const throwIfUnexpected = (unexpected: boolean, message: string): void => {
   if (unexpected) {
@@ -203,14 +203,14 @@ export const getMyEpisodeRating = async (
  * notice the control shows in its place.
  */
 const refusalMessage = (
-  error: unknown,
+  cause: unknown,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): string | undefined => {
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerCreditedOnEpisode)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.readerCreditedOnEpisode)) {
     return t("storefront.episode.reaction.reader_credited");
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIsTenantStaff)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.readerIsTenantStaff)) {
     return t("storefront.episode.reaction.reader_is_staff");
   }
 

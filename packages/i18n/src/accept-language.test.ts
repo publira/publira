@@ -6,7 +6,7 @@ import {
   negotiateInitialLocale,
 } from "./accept-language";
 
-const missing: unknown = undefined;
+const missing: string | undefined = undefined;
 
 /**
  * A locale set of the shape the script rules exist for: two locales that share
@@ -138,7 +138,7 @@ describe("negotiateInitialLocale", () => {
 
   it("falls back to en when the header is absent or empty", () => {
     expect(negotiateInitialLocale(null)).toBe("en");
-    expect(negotiateInitialLocale(missing as string | undefined)).toBe("en");
+    expect(negotiateInitialLocale(missing)).toBe("en");
     expect(negotiateInitialLocale("")).toBe("en");
     expect(negotiateInitialLocale("   ")).toBe("en");
     expect(negotiateInitialLocale(",,")).toBe("en");

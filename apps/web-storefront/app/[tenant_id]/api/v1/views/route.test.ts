@@ -18,12 +18,17 @@ const SAME_ORIGIN_HEADERS = {
   origin: "https://shop.example.test",
 };
 
-const beacon = (body: unknown, headers = SAME_ORIGIN_HEADERS) =>
+const rawBeacon = (body: string, headers = SAME_ORIGIN_HEADERS) =>
   new Request("https://shop.example.test/api/v1/views", {
-    body: typeof body === "string" ? body : JSON.stringify(body),
+    body,
     headers,
     method: "POST",
   });
+
+const beacon = (
+  view: { id: string; kind: string },
+  headers = SAME_ORIGIN_HEADERS
+) => rawBeacon(JSON.stringify(view), headers);
 
 const params = (tenantId = TENANT_ID) => ({
   params: Promise.resolve({ tenant_id: tenantId }),
@@ -62,7 +67,7 @@ describe("POST /api/v1/views", () => {
   });
 
   it("answers 400 and records nothing for an unparsable body", async () => {
-    const response = await POST(beacon("not json"), params());
+    const response = await POST(rawBeacon("not json"), params());
 
     expect(response.status).toBe(400);
     expect(mockRecordContentView).not.toHaveBeenCalled();

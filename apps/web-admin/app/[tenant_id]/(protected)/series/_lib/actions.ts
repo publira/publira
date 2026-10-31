@@ -24,6 +24,7 @@ import {
   checkboxOnFormSchema,
   creditShareBpsSchema,
   flagOneFormSchema,
+  isFormText,
   nonNegativeIntFormSchema,
   optionalCropRectFormSchema,
   optionalFileFormSchema,
@@ -102,7 +103,7 @@ const creatorCreditListFormSchema = (
 ): z.ZodType<SeriesCreatorCredit[], unknown> =>
   z.preprocess(
     (value) => {
-      if (typeof value !== "string" || value.trim() === "") {
+      if (!isFormText(value) || value.trim() === "") {
         return [];
       }
 
@@ -282,10 +283,17 @@ const seriesFormFields = {
   title: "value",
 } as const;
 
+/** A step of an Action that stops it with a form message. */
+interface SeriesMutationFailure {
+  message: string;
+  mode: SeriesMutationMode;
+  ok: false;
+}
+
 const toFailure = (
   message: string,
   mode: SeriesMutationMode
-): { message: string; mode: SeriesMutationMode; ok: false } => ({
+): SeriesMutationFailure => ({
   message,
   mode,
   ok: false,

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as LocaleModule from "#lib/locale";
+
 const {
   mockAssertSameOrigin,
   mockDeletePlatformEndUser,
@@ -19,7 +21,7 @@ const {
   }),
   mockSuspendPlatformEndUser: vi.fn(),
   mockUnsuspendPlatformEndUser: vi.fn(),
-  mockUpdateTag: vi.fn(),
+  mockUpdateTag: vi.fn<(tag: string) => void>(),
 }));
 
 vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
@@ -38,7 +40,7 @@ vi.mock("#lib/auth-session", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
 
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
@@ -65,7 +67,7 @@ const endUserTags = [
 ];
 
 const clearedTags = (): string[] =>
-  mockUpdateTag.mock.calls.map(([tag]) => tag as string);
+  mockUpdateTag.mock.calls.map(([tag]) => tag);
 
 const endUserId = "0199a3c0-0000-7000-8000-00000000000a";
 

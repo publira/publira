@@ -16,6 +16,7 @@ import { searchParamString } from "@publira/utils/search-params";
 import { z } from "zod";
 
 import { sanitizeRedirectPath } from "./admin-auth-shared";
+import { isFormText } from "./form-schemas";
 import { getMessagesFor } from "./messages";
 import { isTenantIdFormat } from "./tenant-id-format";
 
@@ -39,7 +40,7 @@ export const nextPathSearchParamSchema = searchParamString({
  * `Promise.catch`.
  */
 export const nextPathFormSchema = z.preprocess((value) => {
-  if (typeof value !== "string") {
+  if (!isFormText(value)) {
     return "/";
   }
 

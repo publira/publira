@@ -87,7 +87,23 @@ const keySet = JSON.stringify({
 const base64url = (value: string | Buffer): string =>
   Buffer.from(value).toString("base64url");
 
-const signToken = (claims: Record<string, unknown>): string => {
+/** A value of a claim, as the JSON body of `POST /id-tokens` carries it. */
+type ClaimValue =
+  | boolean
+  | number
+  | string
+  | null
+  | readonly ClaimValue[]
+  | Claims;
+
+interface Claims {
+  readonly [name: string]: ClaimValue;
+}
+
+const isClaims = (value: ClaimValue): value is Claims =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const signToken = (claims: Claims): string => {
   const now = Math.floor(Temporal.Now.instant().epochMilliseconds / 1000);
 
   const header = base64url(
@@ -155,19 +171,15 @@ const handle = async (
   }
 
   if (request.method === "POST" && request.url === "/id-tokens") {
-    const claims: unknown = JSON.parse(await readBody(request));
+    const claims: ClaimValue = JSON.parse(await readBody(request));
 
-    if (
-      typeof claims !== "object" ||
-      claims === null ||
-      Array.isArray(claims)
-    ) {
+    if (!isClaims(claims)) {
       answer(response, 400, "text/plain", "the body must be a JSON object");
 
       return;
     }
 
-    answer(response, 200, "text/plain", signToken({ ...claims }));
+    answer(response, 200, "text/plain", signToken(claims));
 
     return;
   }

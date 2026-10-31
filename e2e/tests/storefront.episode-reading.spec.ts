@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Locator, Page, Response } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { querySql, runSql } from "../src/db";
@@ -215,7 +215,7 @@ const historyEntry = (page: Page) =>
  * behind every screen contains it. Start waiting before the last page turn:
  * the viewer sends the beacon the moment that page appears.
  */
-const episodeReadReported = (page: Page): Promise<unknown> =>
+const episodeReadReported = (page: Page): Promise<Response> =>
   page.waitForResponse(
     (response) =>
       response.request().method() === "POST" && response.url().endsWith("/read")

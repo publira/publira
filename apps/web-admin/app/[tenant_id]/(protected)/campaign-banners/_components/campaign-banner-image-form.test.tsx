@@ -22,7 +22,10 @@ import type { CampaignBannerListItem } from "../campaign-banner-types";
 import { CampaignBannerImageForm } from "./campaign-banner-image-form";
 
 const { mockUpdateCampaignBannerImageAction } = vi.hoisted(() => ({
-  mockUpdateCampaignBannerImageAction: vi.fn(),
+  mockUpdateCampaignBannerImageAction:
+    vi.fn<
+      (state: ActionForm.State, formData: FormData) => Promise<ActionForm.State>
+    >(),
 }));
 
 vi.mock("#components/message", () => ({
@@ -103,8 +106,7 @@ describe("CampaignBannerImageForm", () => {
       expect(mockUpdateCampaignBannerImageAction).toHaveBeenCalledOnce();
     });
 
-    const [, formData] = mockUpdateCampaignBannerImageAction.mock
-      .calls[0] as unknown as [ActionForm.State, FormData];
+    const [[, formData]] = mockUpdateCampaignBannerImageAction.mock.calls;
 
     expect(formData.get("campaign_banner_id")).toBe(banner.id);
     expect(formData.get("link_url")).toBe("/series/SERIES001");

@@ -87,8 +87,11 @@ const commentStatuses: ReadonlySet<string> = new Set(COMMENT_STATUSES);
  * A comment whose state cannot be read is still work waiting to be looked at,
  * so it belongs in the queue rather than silently in the published list.
  */
+const isCommentStatus = (raw: string): raw is CommentStatus =>
+  commentStatuses.has(raw);
+
 const toCommentStatus = (raw: string): CommentStatus =>
-  commentStatuses.has(raw) ? (raw as CommentStatus) : "pending";
+  isCommentStatus(raw) ? raw : "pending";
 
 const toHiddenReason = (raw: string): CommentHiddenReason => {
   if (raw === "staff" || raw === "auto_reports") {
@@ -146,8 +149,11 @@ const commentReportStatuses: ReadonlySet<string> = new Set(
  * A report whose state cannot be read is still work waiting to be looked at,
  * so it belongs in the queue rather than silently among the decided ones.
  */
+const isCommentReportStatus = (raw: string): raw is CommentReportStatus =>
+  commentReportStatuses.has(raw);
+
 const toCommentReportStatus = (raw: string): CommentReportStatus =>
-  commentReportStatuses.has(raw) ? (raw as CommentReportStatus) : "open";
+  isCommentReportStatus(raw) ? raw : "open";
 
 const toCommentReportReason = (raw: string): CommentReportReason => {
   if (

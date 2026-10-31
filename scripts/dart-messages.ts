@@ -21,6 +21,7 @@
 
 import { messageVariables } from "../packages/i18n/src/mf2.ts";
 import { namespaceLeaves } from "./catalog-leaves.ts";
+import type { CatalogTree } from "./catalog-leaves.ts";
 
 export interface DartLocale {
   readonly code: string;
@@ -390,7 +391,7 @@ const parametersOf = (
 
 const collectMessages = (
   locales: readonly DartLocale[],
-  catalogs: ReadonlyMap<string, unknown>
+  catalogs: ReadonlyMap<string, CatalogTree>
 ): Message[] => {
   const { keys, leavesByCode } = namespaceLeaves(
     locales,
@@ -506,7 +507,7 @@ const sourcesName = (code: string): string => `${instanceName(code)}Sources`;
 /** The whole of `mobile/lib/l10n/gen/app_messages.dart`. */
 export const renderDartMessages = (
   locales: readonly DartLocale[],
-  catalogs: ReadonlyMap<string, unknown>
+  catalogs: ReadonlyMap<string, CatalogTree>
 ): string => {
   const messages = collectMessages(locales, catalogs);
 

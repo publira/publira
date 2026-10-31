@@ -176,13 +176,13 @@ export const isTenantEditorRole = (role: string | null | undefined): boolean =>
   tenantRoleRank(role) >= 2;
 
 const toErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
   return rpcErrorMessage(
-    error,
+    cause,
     t("admin.auth.errors.login_processing_failed"),
     {
       // The server answers a wrong email or password with `unauthenticated`;

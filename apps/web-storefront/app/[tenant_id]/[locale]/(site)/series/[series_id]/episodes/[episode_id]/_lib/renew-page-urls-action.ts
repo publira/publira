@@ -17,15 +17,21 @@ const renewPageUrlsInputSchema = z.object({
 });
 
 /**
+ * What a call is typed with. The values are still parsed: anything that can
+ * POST to the Action decides what actually arrives.
+ */
+type RenewPageUrlsInput = z.input<typeof renewPageUrlsInputSchema>;
+
+/**
  * Fresh image URLs for the reader's open viewer, by image id, for pages whose
  * URLs' media tokens expired before the reader reached them. An empty answer
  * leaves those pages failed, with their reload control.
  */
 export const renewEpisodePageUrlsAction = async (
-  tenantId: unknown,
-  locale: unknown,
-  seriesPublicId: unknown,
-  episodePublicId: unknown
+  tenantId: RenewPageUrlsInput["tenantId"],
+  locale: RenewPageUrlsInput["locale"],
+  seriesPublicId: RenewPageUrlsInput["seriesPublicId"],
+  episodePublicId: RenewPageUrlsInput["episodePublicId"]
 ): Promise<Record<string, string>> => {
   // This Server Action only reads; the same-origin check applies to mutations.
   const parsed = renewPageUrlsInputSchema.safeParse({

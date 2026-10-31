@@ -84,7 +84,7 @@ export const LocaleSwitcher = ({
       // already one of the locales the caller offered.
       const chosenLocale = formData.get(fieldName);
 
-      if (typeof chosenLocale === "string") {
+      if (chosenLocale !== null && !(chosenLocale instanceof File)) {
         document.documentElement.lang = chosenLocale;
       }
     },

@@ -74,11 +74,11 @@ const nameOverrides = async (
 };
 
 const mapErrorToMessage = (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale,
   overrides?: RpcErrorMessageOverrides
-): string => rpcErrorMessage(error, fallbackMessage, { locale, overrides });
+): string => rpcErrorMessage(cause, fallbackMessage, { locale, overrides });
 
 /** The generated `CreatorRole` fields {@link mapCreatorRole} reads. */
 type RawCreatorRole = Pick<CreatorRole, "id" | "name" | "publicId">;

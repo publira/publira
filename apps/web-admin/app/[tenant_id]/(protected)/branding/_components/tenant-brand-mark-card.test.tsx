@@ -21,12 +21,16 @@ import { BRAND_MARK_GUIDELINE_URLS } from "../_lib/brand-mark-guidelines";
 import type { TenantBrandMarkActionState } from "../branding-types";
 import { TenantBrandMarkCard } from "./tenant-brand-mark-card";
 
-const { save } = vi.hoisted(() => ({
-  save: {
-    calls: [] as FormData[],
-    current: Promise.withResolvers<TenantBrandMarkActionState>(),
-  },
-}));
+const { save } = vi.hoisted(() => {
+  const calls: FormData[] = [];
+
+  return {
+    save: {
+      calls,
+      current: Promise.withResolvers<TenantBrandMarkActionState>(),
+    },
+  };
+});
 
 vi.mock("../_lib/actions", () => ({
   updateTenantBrandMarkAction: (

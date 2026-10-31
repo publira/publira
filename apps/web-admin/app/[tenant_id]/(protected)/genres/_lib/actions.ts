@@ -17,6 +17,7 @@ import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import {
   flagOneFormSchema,
+  isFormText,
   jsonRecordIdArrayFormSchema,
   optionalCropRectFormSchema,
   optionalFileFormSchema,
@@ -106,7 +107,7 @@ const parseGenreNames = async (
   const read = (name: string): string => {
     const value = formData.get(name);
 
-    return typeof value === "string" ? value : "";
+    return isFormText(value) ? value : "";
   };
 
   const defaultLocale = parseLocale(read(DEFAULT_LOCALE_FIELD));

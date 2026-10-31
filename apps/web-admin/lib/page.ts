@@ -182,12 +182,12 @@ export const pageCacheTag = (tenantId: string, pageId: string): string =>
   `page-${tenantId}-${pageId}`;
 
 const slugInvalidMessage = (
-  error: unknown,
+  cause: unknown,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): string => {
   if (
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       "slug",
       RPC_FIELD_VIOLATION_REASON.pageSlugReserved
     )
@@ -197,7 +197,7 @@ const slugInvalidMessage = (
 
   if (
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       "slug",
       RPC_FIELD_VIOLATION_REASON.pageSlugUnreachable
     )
@@ -205,30 +205,30 @@ const slugInvalidMessage = (
     return t("admin.pages.slug_unreachable");
   }
 
-  return rpcErrorHasFieldViolation(error, "slug")
+  return rpcErrorHasFieldViolation(cause, "slug")
     ? t("admin.pages.slug_invalid")
     : t("errors.validation");
 };
 
 /** Whether a failed save is about the slug: its format, a reserved or unreachable path, or a duplicate. */
-const isSlugError = (error: unknown): boolean =>
-  rpcErrorHasFieldViolation(error, "slug") ||
-  rpcErrorDisposition(error) === "conflict";
+const isSlugError = (cause: unknown): boolean =>
+  rpcErrorHasFieldViolation(cause, "slug") ||
+  rpcErrorDisposition(cause) === "conflict";
 
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
       conflict: t("admin.pages.slug_conflict"),
       // A page form is slug + title + body; only the slug has rules worth
       // spelling out, and the server identifies it in BadRequest details.
-      "invalid-argument": slugInvalidMessage(error, t),
+      "invalid-argument": slugInvalidMessage(cause, t),
       "not-found": t("admin.pages.not_found"),
     },
   });
@@ -682,8 +682,7 @@ export const createPage = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
-    return {
-      ...(isSlugError(error) ? { field: "slug" as const } : {}),
+    const failure: CreatePageResult = {
       message: await mapErrorToMessage(
         error,
         t("admin.pages.save_failed"),
@@ -691,6 +690,12 @@ export const createPage = async (
       ),
       ok: false,
     };
+
+    if (isSlugError(error)) {
+      failure.field = "slug";
+    }
+
+    return failure;
   }
 };
 
@@ -717,19 +722,25 @@ export const updatePage = async (
   }
 
   try {
+    const request: Parameters<typeof apiClient.pages.updatePage>[0] = {
+      locale: input.translationLocale ?? "",
+      pageId: input.pageId,
+      tenant: { tenantId: input.tenantId },
+    };
+
     // Omit each half when unset so the server keeps its stored value: a
     // title-only update keeps displayInFooter, and a footer-only one keeps a
     // title someone else may have changed since this screen loaded.
+    if (input.displayInFooter !== undefined) {
+      request.displayInFooter = input.displayInFooter;
+    }
+
+    if (input.title !== undefined) {
+      request.title = input.title;
+    }
+
     const response = await apiClient.pages.updatePage(
-      {
-        ...(input.displayInFooter === undefined
-          ? {}
-          : { displayInFooter: input.displayInFooter }),
-        locale: input.translationLocale ?? "",
-        pageId: input.pageId,
-        tenant: { tenantId: input.tenantId },
-        ...(input.title === undefined ? {} : { title: input.title }),
-      },
+      request,
       withSessionHeaders(sessionId)
     );
 
@@ -1070,13 +1081,13 @@ export const listPageTranslations = async (
   );
 
 const mapTranslationErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   fallbackMessage: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, fallbackMessage, {
+  return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
       conflict: t("admin.pages.translations.already_exists"),

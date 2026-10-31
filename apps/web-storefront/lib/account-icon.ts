@@ -28,7 +28,7 @@ export const ACCOUNT_ICON_CONTENT_TYPES = [
 export type AccountIconFileProblem = "too-large" | "too-small" | "unsupported";
 
 const isAcceptedContentType = (type: string): boolean =>
-  (ACCOUNT_ICON_CONTENT_TYPES as readonly string[]).includes(type);
+  ACCOUNT_ICON_CONTENT_TYPES.some((accepted) => accepted === type);
 
 /**
  * The checks that need nothing but the file's own metadata, which is all the

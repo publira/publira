@@ -72,6 +72,11 @@ const save = async (page: Page, message: string): Promise<void> => {
   await expect(page.getByText(message, { exact: true })).toBeVisible();
 };
 
+/** The part of a `SearchPublishedSeries` answer the spec reads. */
+interface SeriesSearchResult {
+  series?: { publicId: string }[];
+}
+
 /** Ask the public API whether the fuzzy query finds the seeded series. */
 const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
   const response = await fetch(
@@ -90,9 +95,9 @@ const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
 
   expect(response.ok, await response.clone().text()).toBe(true);
 
-  const { series = [] } = (await response.json()) as {
-    series?: { publicId: string }[];
-  };
+  // SAFETY: the JSON the Connect handler for
+  // CatalogService.SearchPublishedSeries returns.
+  const { series = [] } = (await response.json()) as SeriesSearchResult;
 
   return series.some((item) => item.publicId === SEED_TENANT.series.publicId);
 };
@@ -139,6 +144,11 @@ const UNKNOWN_TOKENIZER_DEFINITION = NORI_DEFINITION.replaceAll(
   "no_such_tokenizer"
 );
 
+/** The part of an `_analyze` answer the spec reads. */
+interface AnalyzeResult {
+  tokens?: { token: string }[];
+}
+
 /**
  * The words the index `alias` names makes of a Korean title in the written
  * form. The default definition keeps 「별을」 whole; one built on analysis-nori
@@ -158,9 +168,8 @@ const writtenFormTokens = async (
 
   expect(response.ok, await response.clone().text()).toBe(true);
 
-  const { tokens = [] } = (await response.json()) as {
-    tokens?: { token: string }[];
-  };
+  // SAFETY: the body OpenSearch documents for `_analyze`.
+  const { tokens = [] } = (await response.json()) as AnalyzeResult;
 
   return tokens.map((item) => item.token);
 };

@@ -95,22 +95,19 @@ const respond = (
     return;
   }
 
-  const payload: Record<string, number | string> = {
+  const payload = {
     backend,
     bytes: bodyBytes,
     host: firstHeader(req, "host"),
     method: req.method ?? "",
     path: req.url ?? "",
     port,
+    ...Object.fromEntries(
+      [...TRACE_CONTEXT_HEADERS, ...FORWARDED_HEADERS, ...WEBHOOK_HEADERS].map(
+        (name) => [name, firstHeader(req, name)]
+      )
+    ),
   };
-
-  for (const name of [
-    ...TRACE_CONTEXT_HEADERS,
-    ...FORWARDED_HEADERS,
-    ...WEBHOOK_HEADERS,
-  ]) {
-    payload[name] = firstHeader(req, name);
-  }
 
   const raw = Buffer.from(JSON.stringify(payload));
 

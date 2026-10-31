@@ -2,6 +2,7 @@ import type { Locale } from "@publira/i18n";
 import { currencyFractionDigits, formatPrice } from "@publira/utils";
 import { z } from "zod";
 
+import { isFormText } from "./form-schemas";
 import { MAX_INT32 } from "./int32";
 
 /**
@@ -77,7 +78,7 @@ export const priceFormSchema = (
 
   return z.preprocess(
     (value) => {
-      const raw = typeof value === "string" ? value.trim() : "";
+      const raw = isFormText(value) ? value.trim() : "";
 
       if (raw === "") {
         return 0;

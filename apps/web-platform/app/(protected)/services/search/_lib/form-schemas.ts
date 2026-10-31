@@ -2,7 +2,11 @@ import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { optionalTrimmedString, revisionFormSchema } from "#lib/form-schemas";
+import {
+  isFormText,
+  optionalTrimmedString,
+  revisionFormSchema,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
   SEARCH_ANALYSIS_MAX_BYTES,
@@ -73,7 +77,7 @@ export const searchFormSchema = async (locale: Locale) => {
       }),
       index: optionalTrimmedString(200),
       password: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z.string()
       ),
       passwordUpdateMode: z.preprocess(
@@ -183,14 +187,13 @@ export const searchAnalysisFormFields = {
   revision: "value",
 } as const;
 
+const isObjectValue = (parsed: unknown): parsed is object =>
+  typeof parsed === "object" && parsed !== null && !Array.isArray(parsed);
+
 /** Whether `value` parses as one JSON object, which is all a definition can be. */
 const isJsonObject = (value: string): boolean => {
   try {
-    const parsed: unknown = JSON.parse(value);
-
-    return (
-      typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
-    );
+    return isObjectValue(JSON.parse(value));
   } catch {
     return false;
   }
@@ -247,7 +250,7 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
   return z
     .object({
       analysis: z.preprocess(
-        (value) => (typeof value === "string" ? value.trim() : ""),
+        (value) => (isFormText(value) ? value.trim() : ""),
         z.string()
       ),
       // Empty is the shared definition.

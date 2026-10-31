@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as AdminAuthModule from "#lib/admin-auth";
 import { EPISODE_PAGES_UPLOAD_MAX_BYTES } from "#lib/episode-pages-upload";
 
 const {
@@ -30,7 +31,7 @@ vi.mock("#lib/tenant", () => ({
 vi.mock("#lib/locale", () => ({ getLocale: () => Promise.resolve("en") }));
 
 vi.mock("#lib/admin-auth", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
+  ...(await importOriginal<typeof AdminAuthModule>()),
   getAdminCurrentUser: mockGetAdminCurrentUser,
 }));
 

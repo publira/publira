@@ -166,6 +166,8 @@ const toNotificationPreferenceCells = (
     return cells;
   }
 
+  // SAFETY: `cells` is a fresh copy of UNSAVED_NOTIFICATION_PREFERENCE_CELLS,
+  // so its own keys are exactly the keys of NotificationPreferenceCells.
   for (const cell of Object.keys(
     cells
   ) as (keyof NotificationPreferenceCells)[]) {
@@ -240,12 +242,12 @@ export type PasskeyLoginResult =
   | { ok: true; session: PublicSession }
   | { ok: false; refusal: PasskeyLoginRefusal };
 
-const passkeyLoginRefusal = (error: unknown): PasskeyLoginRefusal => {
-  if (!isRejectedRequestRpcError(error)) {
-    throw error;
+const passkeyLoginRefusal = (cause: unknown): PasskeyLoginRefusal => {
+  if (!isRejectedRequestRpcError(cause)) {
+    throw cause;
   }
 
-  return rpcErrorDisposition(error) === "rate-limited"
+  return rpcErrorDisposition(cause) === "rate-limited"
     ? "rate-limited"
     : "refused";
 };
@@ -604,15 +606,15 @@ export type PasskeyChangeOutcome<Result extends object = object> =
   | { error: unknown; ok: false };
 
 const passkeyChangeRefusal = (
-  error: unknown
-): { error: unknown; ok: false } => {
-  if (isUnauthenticatedRpcError(error)) {
-    throw error;
+  cause: unknown
+): Extract<PasskeyChangeOutcome, { ok: false }> => {
+  if (isUnauthenticatedRpcError(cause)) {
+    throw cause;
   }
 
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnclassifiedRpcError(cause);
 
-  return { error, ok: false };
+  return { error: cause, ok: false };
 };
 
 /** The signed-in reader's passkeys for the site, oldest first. */
@@ -781,12 +783,12 @@ export type EmailSubmissionOutcome =
 
 /** The refusal of the address in `field`, if that is what the API refused. */
 const emailRefusalOf = (
-  error: unknown,
+  cause: unknown,
   field: string
 ): EmailRefusal | undefined => {
   if (
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       field,
       RPC_FIELD_VIOLATION_REASON.emailDisposableDomain
     )
@@ -796,7 +798,7 @@ const emailRefusalOf = (
 
   if (
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       field,
       RPC_FIELD_VIOLATION_REASON.emailRefused
     )
@@ -1230,8 +1232,8 @@ export const requestPublicEmailChange = async (
  * `unauthenticated` session is a decision, not a race, so it is excluded even
  * though `isExpectedNullableRpcError` accepts it.
  */
-const isStaleSessionReadError = (error: unknown): boolean =>
-  isExpectedNullableRpcError(error) && !isUnauthenticatedRpcError(error);
+const isStaleSessionReadError = (cause: unknown): boolean =>
+  isExpectedNullableRpcError(cause) && !isUnauthenticatedRpcError(cause);
 
 /**
  * `p-retry` defaults to `minTimeout: 1000`, which would put up to a second onto
@@ -1457,26 +1459,26 @@ export type IconChangeOutcome =
     };
 
 const iconChangeRefusal = (
-  error: unknown
+  cause: unknown
 ): Extract<IconChangeOutcome, { ok: false }> => {
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnclassifiedRpcError(cause);
 
   if (
-    rpcErrorHasFieldViolation(error, "icon_data") ||
-    rpcErrorHasFieldViolation(error, "icon_crop")
+    rpcErrorHasFieldViolation(cause, "icon_data") ||
+    rpcErrorHasFieldViolation(cause, "icon_crop")
   ) {
     return { ok: false, refusal: "image" };
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.storageNotConfigured)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.storageNotConfigured)) {
     return { ok: false, refusal: "storage-not-configured" };
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIconNotAllowed)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.readerIconNotAllowed)) {
     return { ok: false, refusal: "not-allowed" };
   }
 
-  return { ok: false, refusal: rpcErrorDisposition(error) };
+  return { ok: false, refusal: rpcErrorDisposition(cause) };
 };
 
 /**

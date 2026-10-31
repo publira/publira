@@ -51,6 +51,7 @@ import { parseEpisodeRental } from "#lib/episode-rental";
 import {
   creditShareBpsSchema,
   flagOneFormSchema,
+  isFormText,
   jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
   optionalCropRectFormSchema,
@@ -166,7 +167,7 @@ const creditsFormSchema = async (locale: Locale) => {
   return base.extend({
     creatorCredits: z.preprocess(
       (value) => {
-        if (typeof value !== "string" || value.trim() === "") {
+        if (!isFormText(value) || value.trim() === "") {
           return [];
         }
 
@@ -253,7 +254,13 @@ const confirmEpisodeTarget = async (
   return t("admin.series.episodes.validation.episode_missing");
 };
 
-const toFailure = (message: string): { message: string; ok: false } => ({
+/** A step of an Action that stops it with a form message. */
+interface ActionFailure {
+  message: string;
+  ok: false;
+}
+
+const toFailure = (message: string): ActionFailure => ({
   message,
   ok: false,
 });

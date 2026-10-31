@@ -41,6 +41,13 @@ const concatBytes = (
   return output;
 };
 
+/** Claims that carry the `sub` a media token names its viewer by. */
+const hasSubject = (claims: unknown): claims is { sub: string } =>
+  typeof claims === "object" &&
+  claims !== null &&
+  "sub" in claims &&
+  typeof claims.sub === "string";
+
 const subjectFromMediaToken = (token: string): string | null => {
   const [, payload] = token.split(".");
 
@@ -57,13 +64,7 @@ const subjectFromMediaToken = (token: string): string | null => {
   try {
     const claims: unknown = JSON.parse(textDecoder.decode(bytes));
 
-    if (
-      typeof claims === "object" &&
-      claims !== null &&
-      "sub" in claims &&
-      typeof claims.sub === "string" &&
-      claims.sub.length > 0
-    ) {
+    if (hasSubject(claims) && claims.sub.length > 0) {
       return claims.sub;
     }
   } catch {

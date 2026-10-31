@@ -66,7 +66,7 @@ export const listSupportedTimeZones = (): readonly string[] => {
   }
 
   const supported =
-    typeof Intl.supportedValuesOf === "function"
+    "supportedValuesOf" in Intl
       ? Intl.supportedValuesOf("timeZone")
       : [...FALLBACK_TIME_ZONES];
 

@@ -242,8 +242,9 @@ describe("ActionForm", () => {
   });
 
   it("sends a submit control's name and value to the form's Action", async () => {
-    const save = vi.fn((_previousState: unknown, _formData: FormData) =>
-      Promise.resolve<ActionForm.State>({ message: "Deleted.", ok: true })
+    const save = vi.fn(
+      (_previousState: ActionForm.State | null, _formData: FormData) =>
+        Promise.resolve<ActionForm.State>({ message: "Deleted.", ok: true })
     );
 
     render(

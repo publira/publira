@@ -143,17 +143,17 @@ export const getTenantMobileAppAssociation = async (
 
 /** Which field the API refused, as the form names it to the operator. */
 const refusedFieldMessage = (
-  error: unknown,
+  cause: unknown,
   association: TenantMobileAppAssociation,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): string | undefined => {
-  if (rpcErrorHasFieldViolation(error, "association.android.application_id")) {
+  if (rpcErrorHasFieldViolation(cause, "association.android.application_id")) {
     return t("admin.settings.app_links.validation.application_id_invalid");
   }
 
   if (
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       "association.android.sha256_cert_fingerprints"
     )
   ) {
@@ -166,7 +166,7 @@ const refusedFieldMessage = (
 
   const refused = fingerprints.find((_, index) =>
     rpcErrorHasFieldViolation(
-      error,
+      cause,
       `association.android.sha256_cert_fingerprints[${index}]`
     )
   );
@@ -177,11 +177,11 @@ const refusedFieldMessage = (
     });
   }
 
-  if (rpcErrorHasFieldViolation(error, "association.ios.team_id")) {
+  if (rpcErrorHasFieldViolation(cause, "association.ios.team_id")) {
     return t("admin.settings.app_links.validation.team_id_invalid");
   }
 
-  if (rpcErrorHasFieldViolation(error, "association.ios.bundle_identifier")) {
+  if (rpcErrorHasFieldViolation(cause, "association.ios.bundle_identifier")) {
     return t("admin.settings.app_links.validation.bundle_identifier_invalid");
   }
 

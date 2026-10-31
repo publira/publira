@@ -30,6 +30,8 @@ const renderEditor = async (defaultValue: string) => {
   });
 
   const textbox = await screen.findByRole("textbox", { name: "Content" });
+  // SAFETY: Tiptap sets `editor` on the element it mounts the editor in, and
+  // the check below refuses a textbox without one.
   const { editor } = textbox as HTMLElement & { editor?: Editor };
 
   if (!editor) {

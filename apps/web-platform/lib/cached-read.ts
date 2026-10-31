@@ -14,6 +14,8 @@ export const settleCachedRead = <
   unexpected,
   ...result
 }: CachedRead<TResult>): TResult => {
+  // SAFETY: `CachedRead` adds `unexpected` and nothing else to `TResult`, so
+  // the rest left once it is taken out is the `TResult` it was built from.
   const settled = result as TResult;
 
   if (unexpected && !settled.ok) {

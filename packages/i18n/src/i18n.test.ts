@@ -75,7 +75,7 @@ const zhHansMatchesEn: ExactCatalog<typeof zhHansCatalog, typeof enCatalog> =
 const zhHantMatchesEn: ExactCatalog<typeof zhHantCatalog, typeof enCatalog> =
   zhHantCatalog;
 
-const missing: unknown = undefined;
+const missing: string | undefined = undefined;
 
 /**
  * What the layout rendered into `<html lang>` before the script ran. Any value
@@ -127,6 +127,8 @@ describe("getLocales", () => {
     expect(getLocales()).toEqual(localeIndex.locales.map(({ code }) => code));
 
     for (const { code, label } of localeIndex.locales) {
+      // SAFETY: the codes of the locale index are exactly `getLocales()`, as
+      // the assertion above checks.
       expect(getLocaleLabel(code as Locale)).toBe(label);
     }
 
@@ -253,6 +255,7 @@ describe("parseLocale", () => {
     expect(parseLocale("")).toBeUndefined();
     expect(parseLocale(null)).toBeUndefined();
     expect(parseLocale(missing)).toBeUndefined();
+    // @ts-expect-error -- a value that is not a string is rejected at runtime too.
     expect(parseLocale({ locale: "en" })).toBeUndefined();
   });
 });
@@ -269,13 +272,14 @@ describe("parseLocaleCookie", () => {
     expect(parseLocaleCookie("   ")).toBeUndefined();
     expect(parseLocaleCookie("de")).toBeUndefined();
     expect(parseLocaleCookie(null)).toBeUndefined();
-    expect(parseLocaleCookie(missing as string | undefined)).toBeUndefined();
+    expect(parseLocaleCookie(missing)).toBeUndefined();
   });
 });
 
 describe("toIntlLocale", () => {
   it("maps each UI locale to its BCP 47 tag", () => {
     for (const { code, intl } of localeIndex.locales) {
+      // SAFETY: the codes of the locale index are exactly `getLocales()`.
       expect(toIntlLocale(code as Locale)).toBe(intl);
     }
   });
@@ -533,6 +537,8 @@ describe("bindMessages", () => {
 
     it("throws outside production", () => {
       vi.stubEnv("NODE_ENV", "development");
+      // SAFETY: widens the key type only, so the test can ask for a key the
+      // catalog lacks; the accessor takes any string at runtime.
       const t = bindMessages(jaFixture, "ja") as (key: string) => string;
 
       expect(() => t("nav.missing")).toThrow(
@@ -542,6 +548,8 @@ describe("bindMessages", () => {
 
     it("returns the key in production", () => {
       vi.stubEnv("NODE_ENV", "production");
+      // SAFETY: widens the key type only, so the test can ask for a key the
+      // catalog lacks; the accessor takes any string at runtime.
       const t = bindMessages(jaFixture, "ja") as (key: string) => string;
 
       expect(t("nav.missing")).toBe("nav.missing");

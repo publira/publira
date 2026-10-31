@@ -23,6 +23,8 @@ export const googleTagGatewayRequests = async (): Promise<
     );
   }
 
+  // SAFETY: the list of recorded requests e2e/scripts/google-tag-gateway.ts
+  // answers `GET /__e2e/requests` with.
   return (await response.json()) as GoogleTagGatewayRequest[];
 };
 

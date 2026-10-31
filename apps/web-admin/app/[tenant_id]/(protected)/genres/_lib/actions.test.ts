@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { GenreItem } from "#lib/genre";
+
 const {
   mockAssertSameOrigin,
   mockCreateGenre,
@@ -52,7 +54,7 @@ const variant = {
   width: 1200,
 };
 
-const savedGenre = (overrides: Record<string, unknown> = {}) => ({
+const savedGenre = (overrides: Partial<GenreItem> = {}) => ({
   eyeCatchImageUpdatedAt: "2026-09-26T00:00:00Z",
   eyeCatchImageVariants: [variant],
   id: "018f0e6a-6000-7000-8000-000000000001",

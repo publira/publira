@@ -26,6 +26,11 @@ const RPC_MESSAGE_KEYS = {
 
 export type SharedRpcDisposition = keyof typeof RPC_MESSAGE_KEYS;
 
+const isSharedRpcDisposition = (
+  disposition: string
+): disposition is SharedRpcDisposition =>
+  Object.hasOwn(RPC_MESSAGE_KEYS, disposition);
+
 /**
  * The catalog for `locale`.
  *
@@ -49,12 +54,9 @@ export const sharedRpcErrorMessage = (
   disposition: SharedRpcDisposition | string,
   locale: Locale
 ): string | undefined => {
-  if (!Object.hasOwn(RPC_MESSAGE_KEYS, disposition)) {
+  if (!isSharedRpcDisposition(disposition)) {
     return undefined;
   }
 
-  return sharedMessage(
-    RPC_MESSAGE_KEYS[disposition as SharedRpcDisposition],
-    locale
-  );
+  return sharedMessage(RPC_MESSAGE_KEYS[disposition], locale);
 };

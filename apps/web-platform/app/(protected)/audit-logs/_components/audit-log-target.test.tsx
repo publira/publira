@@ -13,9 +13,12 @@ import type { PlatformMessageAccessor } from "#lib/messages";
 
 import { AuditLogTarget } from "./audit-log-target";
 
-const state = vi.hoisted(() => ({
-  t: undefined as PlatformMessageAccessor | undefined,
-}));
+/** The catalog the mocked `<Message>` renders from, once a test resolves it. */
+interface CatalogState {
+  t?: PlatformMessageAccessor;
+}
+
+const state = vi.hoisted((): CatalogState => ({}));
 
 // The real catalog, resolved ahead so the tree renders without suspending.
 vi.mock("#components/message", () => ({

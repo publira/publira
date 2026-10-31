@@ -48,10 +48,11 @@ const ARROW_DIRECTIONS = {
   ArrowUp: { x: 0, y: -1 },
 } as const;
 
+const isArrowKey = (key: string): key is keyof typeof ARROW_DIRECTIONS =>
+  key in ARROW_DIRECTIONS;
+
 const arrowDirection = (key: string): { x: number; y: number } | undefined =>
-  key in ARROW_DIRECTIONS
-    ? ARROW_DIRECTIONS[key as keyof typeof ARROW_DIRECTIONS]
-    : undefined;
+  isArrowKey(key) ? ARROW_DIRECTIONS[key] : undefined;
 
 const percent = (value: number, total: number): string =>
   `${(value / total) * 100}%`;

@@ -9,6 +9,7 @@
  */
 
 import { namespaceLeaves } from "./catalog-leaves.ts";
+import type { CatalogTree } from "./catalog-leaves.ts";
 import { GENERATED_HEADER, goLocaleEntries, goString } from "./go-source.ts";
 import type { GoLocale } from "./go-source.ts";
 
@@ -45,7 +46,7 @@ export const renderGoLocales = (locales: readonly GoLocale[]): string =>
 /** The whole of `server/internal/locale/gen/messages.go`. */
 export const renderGoMessages = (
   locales: readonly GoLocale[],
-  catalogs: ReadonlyMap<string, unknown>
+  catalogs: ReadonlyMap<string, CatalogTree>
 ): string => {
   const { keys, leavesByCode } = namespaceLeaves(
     locales,

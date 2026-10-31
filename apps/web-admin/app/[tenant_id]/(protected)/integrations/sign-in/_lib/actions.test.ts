@@ -25,7 +25,7 @@ vi.mock("next/cache", () => ({
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/auth-session", () => ({
-  withAdminSessionReauth: (run: () => Promise<unknown>) => run(),
+  withAdminSessionReauth: <T>(run: () => Promise<T>) => run(),
 }));
 
 vi.mock("#lib/tenant-sign-in-settings", () => ({

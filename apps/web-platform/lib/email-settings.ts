@@ -90,32 +90,32 @@ export type PlatformSmtpTestResult =
  * not something to show.
  */
 const parseErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const genericErrorMessage = t("platform.common.generic_failed");
 
-  return rpcErrorMessage(error, genericErrorMessage, {
+  return rpcErrorMessage(cause, genericErrorMessage, {
     locale,
     overrides: {
       "invalid-argument":
-        rpcErrorRawMessage(error)?.trim() || genericErrorMessage,
+        rpcErrorRawMessage(cause)?.trim() || genericErrorMessage,
       precondition: t("platform.settings.save_conflict"),
     },
   });
 };
 
 const parseSmtpTestErrorMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const fallback = t("platform.common.generic_failed");
 
   return (
-    smtpTestFailureErrorMessage(error, locale) ??
-    rpcErrorMessage(error, fallback, {
+    smtpTestFailureErrorMessage(cause, locale) ??
+    rpcErrorMessage(cause, fallback, {
       locale,
       overrides: { precondition: fallback },
     })
@@ -224,7 +224,7 @@ export const updatePlatformEmailSettings = async (
         port: input.port,
         replyTo: input.replyTo,
         username: input.username,
-      } as never,
+      },
       buildSessionHeaders(sessionId)
     );
 
@@ -280,7 +280,7 @@ export const sendPlatformSmtpTestEmail = async (
         recipientType: input.recipientType,
         replyTo: input.replyTo,
         username: input.username,
-      } as never,
+      },
       buildSessionHeaders(sessionId)
     );
 

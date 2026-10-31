@@ -90,8 +90,8 @@ export const isSessionRevokedRedirect = (requestUrl: URL): boolean =>
   SESSION_REVOKED_REASON;
 
 /** A rejected Bearer token always follows the re-authentication flow. */
-export const isUnauthenticatedError = (error: unknown): boolean =>
-  isUnauthenticatedRpcError(error);
+export const isUnauthenticatedError = (cause: unknown): boolean =>
+  isUnauthenticatedRpcError(cause);
 
 /**
  * Let a rejected session leave a `lib/` mutation as a throw.
@@ -103,9 +103,9 @@ export const isUnauthenticatedError = (error: unknown): boolean =>
  * the login redirect instead. Every other code stays a message — a wrong
  * password or a rejected field must never log the operator out.
  */
-export const rethrowUnauthenticatedRpcError = (error: unknown): void => {
-  if (isUnauthenticatedRpcError(error)) {
-    throw error;
+export const rethrowUnauthenticatedRpcError = (cause: unknown): void => {
+  if (isUnauthenticatedRpcError(cause)) {
+    throw cause;
   }
 };
 

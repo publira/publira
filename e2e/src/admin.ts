@@ -163,6 +163,11 @@ export const selectComboboxOption = async (
   }).toPass();
 };
 
+export interface CreditRowFields {
+  creatorCombobox: Locator;
+  roleCombobox: Locator;
+}
+
 /**
  * The two pickers of one credit row on the series form, by the position the
  * row sits at. Neither carries a visible label — the value in the box is the
@@ -171,7 +176,7 @@ export const selectComboboxOption = async (
 export const creditRowFields = (
   page: Page,
   position: number
-): { creatorCombobox: Locator; roleCombobox: Locator } => ({
+): CreditRowFields => ({
   creatorCombobox: page.getByRole("combobox", {
     exact: true,
     name: `Author ${position}`,

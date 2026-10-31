@@ -189,13 +189,14 @@ export const isLocale = (value: unknown): value is Locale =>
 /**
  * The locale `value` names, or `undefined` when it names none.
  *
- * Unknown, empty, and non-string values are not locales, and nothing here
+ * Unknown, empty, and absent values are not locales, and nothing here
  * invents one for them. What a missing choice means — a stored tenant or
  * platform default, an `Accept-Language` candidate, or a failure the reader has
  * to be told about — differs per call site, so the caller decides it.
  */
-export const parseLocale = (value: unknown): Locale | undefined =>
-  isLocale(value) ? value : undefined;
+export const parseLocale = (
+  value: string | null | undefined
+): Locale | undefined => getLocales().find((locale) => locale === value);
 
 /**
  * Parse the **value** of the locale cookie. Does not call `cookies()`.
@@ -204,13 +205,7 @@ export const parseLocale = (value: unknown): Locale | undefined =>
  */
 export const parseLocaleCookie = (
   value: string | null | undefined
-): Locale | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  return parseLocale(value.trim());
-};
+): Locale | undefined => parseLocale(value?.trim());
 
 /** BCP 47 tag for `Intl.DateTimeFormat`. `<html lang>` stays `ja` / `en`. */
 export const toIntlLocale = (locale: Locale): string => getIntlLocale(locale);
@@ -219,8 +214,8 @@ export const toIntlLocale = (locale: Locale): string => getIntlLocale(locale);
 export const getLocaleLabel = (locale: Locale): string =>
   getLocaleLabelForSupportedLocale(locale);
 
-const isModuleNamespace = (value: object): boolean =>
-  Object.prototype.toString.call(value) === "[object Module]";
+const isModuleNamespace = <TCatalog>(mod: CatalogModule<TCatalog>): boolean =>
+  Object.prototype.toString.call(mod) === "[object Module]";
 
 const hasDefaultExport = <TCatalog>(
   mod: CatalogModule<TCatalog>
@@ -253,7 +248,7 @@ export const loadMessages = async <TCatalog>(
   importers: LocaleCatalogImporters<TCatalog>
 ): Promise<TCatalog> => unwrapCatalog(await importers[locale]());
 
-const isMessageTree = (value: unknown): value is MessageTree =>
+const isMessageTree = (value: MessageTree | string): value is MessageTree =>
   typeof value === "object" && value !== null;
 
 const lookupMessage = (
@@ -263,7 +258,7 @@ const lookupMessage = (
   if (Object.hasOwn(catalog, key)) {
     const exact = catalog[key];
 
-    if (typeof exact === "string") {
+    if (!isMessageTree(exact)) {
       return exact;
     }
   }
@@ -278,7 +273,7 @@ const lookupMessage = (
     current = current[part];
   }
 
-  return typeof current === "string" ? current : undefined;
+  return isMessageTree(current) ? undefined : current;
 };
 
 /**

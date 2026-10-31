@@ -148,16 +148,16 @@ const toMfaSession = (
  * only thing separating "that code is wrong" from "your session is gone".
  */
 const mfaCodeRejectionMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string | null> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaLocked)) {
     return t("admin.auth.mfa.errors.locked");
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaInvalidCode)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaInvalidCode)) {
     return t("admin.auth.mfa.errors.invalid_code");
   }
 
@@ -197,23 +197,23 @@ const mfaFailureCopy = (
  * redirect rather than a dead end next to the code field.
  */
 const sessionMfaFailureMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   requires: MfaRequirement
 ): Promise<string> => {
-  const rejected = await mfaCodeRejectionMessage(error, locale);
+  const rejected = await mfaCodeRejectionMessage(cause, locale);
 
   if (rejected) {
     return rejected;
   }
 
   const t = await getMessagesFor(locale);
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
 
   const copy = mfaFailureCopy(t, requires);
 
-  return rpcErrorMessage(error, copy.fallback, {
+  return rpcErrorMessage(cause, copy.fallback, {
     locale,
     overrides: { precondition: copy.precondition },
   });
@@ -227,11 +227,11 @@ const sessionMfaFailureMessage = async (
  * reports that and sends the operator back to `/login`.
  */
 const challengeMfaFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   requires: MfaRequirement
 ): Promise<{ message: string; challengeExpired: boolean }> => {
-  const rejected = await mfaCodeRejectionMessage(error, locale);
+  const rejected = await mfaCodeRejectionMessage(cause, locale);
 
   if (rejected) {
     return { challengeExpired: false, message: rejected };
@@ -239,19 +239,19 @@ const challengeMfaFailure = async (
 
   const t = await getMessagesFor(locale);
 
-  if (isUnauthenticatedRpcError(error)) {
+  if (isUnauthenticatedRpcError(cause)) {
     return {
       challengeExpired: true,
       message: t("admin.auth.mfa.expired"),
     };
   }
 
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnclassifiedRpcError(cause);
   const copy = mfaFailureCopy(t, requires);
 
   return {
     challengeExpired: false,
-    message: rpcErrorMessage(error, copy.fallback, {
+    message: rpcErrorMessage(cause, copy.fallback, {
       locale,
       overrides: { precondition: copy.precondition },
     }),
@@ -268,20 +268,20 @@ const challengeMfaFailure = async (
  * for a code.
  */
 const challengePasskeyFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   ceremony: "registration" | "verification"
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaLocked)) {
     return {
       challengeExpired: false,
       message: t("admin.auth.mfa.errors.locked"),
     };
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return {
       challengeExpired: false,
       message:
@@ -291,23 +291,23 @@ const challengePasskeyFailure = async (
     };
   }
 
-  if (isUnauthenticatedRpcError(error)) {
+  if (isUnauthenticatedRpcError(cause)) {
     return { challengeExpired: true, message: t("admin.auth.mfa.expired") };
   }
 
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnclassifiedRpcError(cause);
 
   return {
     challengeExpired: false,
     message:
       ceremony === "verification"
-        ? rpcErrorMessage(error, t("admin.auth.mfa.errors.passkey_failed"), {
+        ? rpcErrorMessage(cause, t("admin.auth.mfa.errors.passkey_failed"), {
             locale,
             overrides: {
               precondition: t("admin.auth.mfa.errors.passkey_not_registered"),
             },
           })
-        : rpcErrorMessage(error, t("admin.auth.mfa.errors.enroll_failed"), {
+        : rpcErrorMessage(cause, t("admin.auth.mfa.errors.enroll_failed"), {
             locale,
             overrides: {
               conflict: t("admin.auth.mfa.errors.passkey_already_registered"),
@@ -325,21 +325,21 @@ const challengePasskeyFailure = async (
  * takes the operation's own wording from `overrides` or `fallback`.
  */
 const sessionPasskeyFailureMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   fallback: string,
   overrides: RpcErrorMessageOverrides
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return t("admin.auth.mfa.errors.passkey_registration_refused");
   }
 
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
 
-  return rpcErrorMessage(error, fallback, { locale, overrides });
+  return rpcErrorMessage(cause, fallback, { locale, overrides });
 };
 
 /**
@@ -352,23 +352,23 @@ const sessionPasskeyFailureMessage = async (
  * with is the failed precondition.
  */
 const sessionPasskeyConfirmationFailureMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaLocked)) {
     return t("admin.auth.mfa.errors.locked");
   }
 
-  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+  if (rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return t("admin.auth.mfa.errors.passkey_refused");
   }
 
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
 
-  return rpcErrorMessage(error, t("admin.auth.mfa.errors.passkey_failed"), {
+  return rpcErrorMessage(cause, t("admin.auth.mfa.errors.passkey_failed"), {
     locale,
     overrides: {
       precondition: t("admin.settings.mfa.regenerate_passkey_missing"),
@@ -740,7 +740,7 @@ export const finishAdminPasskeyVerification = async (
  * already holding the credential is the one refusal with copy of its own.
  */
 const sessionPasskeyRegistrationFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const t = await getMessagesFor(locale);
@@ -748,7 +748,7 @@ const sessionPasskeyRegistrationFailure = async (
   return {
     challengeExpired: false,
     message: await sessionPasskeyFailureMessage(
-      error,
+      cause,
       locale,
       t("admin.settings.mfa.passkey_add_failed"),
       { conflict: t("admin.auth.mfa.errors.passkey_already_registered") }

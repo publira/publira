@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { platformAuditLogsCacheTag } from "#lib/audit-logs";
+import type * as LocaleModule from "#lib/locale";
 
 const {
   mockAssertSameOrigin,
@@ -25,7 +26,7 @@ vi.mock("#lib/auth-session", () => ({
 }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
-  const actual = (await importOriginal()) as object;
+  const actual = await importOriginal<typeof LocaleModule>();
 
   return { ...actual, getPlatformLocale: () => Promise.resolve("en") };
 });
@@ -90,6 +91,9 @@ describe("account MFA Actions", () => {
     async (name, succeed, refuse) => {
       const actions = await import("./mfa-actions");
 
+      // SAFETY: each named Action takes the form state and the form data and
+      // answers a result carrying `ok`; their state types differ, which is all
+      // that keeps the union of them from being called directly.
       const action = actions[name] as (
         state: null,
         formData: FormData

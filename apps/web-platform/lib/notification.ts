@@ -38,13 +38,13 @@ const defaultPageSize = 20;
 export const notificationsCacheTag = "platform:notifications";
 
 const mapErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallback, { locale });
+): string => rpcErrorMessage(cause, fallback, { locale });
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 /**
  * A `"use cache"` fill must not throw. Classify inside the cache scope, return

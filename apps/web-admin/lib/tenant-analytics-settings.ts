@@ -246,13 +246,13 @@ export const getTenantAnalyticsSettings = async (
 
 /** The fields the API refused, in the words the form uses for them. */
 const refusedFieldErrors = (
-  error: unknown,
+  cause: unknown,
   input: UpdateTenantAnalyticsSettingsInput,
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): TenantAnalyticsSettingsFieldErrors | undefined => {
   const fieldErrors: TenantAnalyticsSettingsFieldErrors = {};
 
-  if (rpcErrorHasFieldViolation(error, "settings.ga4_measurement_id")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.ga4_measurement_id")) {
     fieldErrors.ga4MeasurementId = /^ua-/iu.test(
       input.settings.ga4MeasurementId
     )
@@ -260,7 +260,7 @@ const refusedFieldErrors = (
       : t("admin.settings.google_tag.validation.measurement_id_invalid");
   }
 
-  if (rpcErrorHasFieldViolation(error, "settings.gtm_container_id")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.gtm_container_id")) {
     fieldErrors.gtmContainerId =
       input.settings.gtmContainerId === "" &&
       input.settings.consentMode === "external"
@@ -268,19 +268,19 @@ const refusedFieldErrors = (
         : t("admin.settings.google_tag.validation.container_id_invalid");
   }
 
-  if (rpcErrorHasFieldViolation(error, "settings.serving_mode")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.serving_mode")) {
     fieldErrors.servingMode = t(
       "admin.settings.google_tag.validation.serving_mode_invalid"
     );
   }
 
-  if (rpcErrorHasFieldViolation(error, "settings.consent_mode")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.consent_mode")) {
     fieldErrors.consentMode = t(
       "admin.settings.google_tag.validation.consent_mode_invalid"
     );
   }
 
-  if (rpcErrorHasFieldViolation(error, "settings.server_container_url")) {
+  if (rpcErrorHasFieldViolation(cause, "settings.server_container_url")) {
     fieldErrors.serverContainerUrl = input.settings.serverContainerUrl
       ? t("admin.settings.google_tag.validation.server_container_url_invalid")
       : t("admin.settings.google_tag.validation.server_container_url_required");

@@ -1,7 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
-import { revisionFormSchema } from "#lib/form-schemas";
+import { isFormText, revisionFormSchema } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 
 /** Mirrors `webpushsettings.maxSubjectLength`. */
@@ -47,7 +47,7 @@ export const webPushFormSchema = async (locale: Locale) => {
   return z.object({
     revision: revisionFormSchema(t("platform.policy.revision_invalid")),
     subject: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim() : ""),
+      (value) => (isFormText(value) ? value.trim() : ""),
       z
         .string()
         .min(1, t("platform.webpush.form.subject_required"))

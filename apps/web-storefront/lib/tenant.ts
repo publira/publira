@@ -800,11 +800,17 @@ export const getTenantSignInClients = async (
   tenantId: string
 ): Promise<Partial<Record<SignInProvider, string>>> => {
   const tenant = await getTenantSiteInfo(tenantId);
+  const clients: Partial<Record<SignInProvider, string>> = {};
 
-  return {
-    ...(tenant?.appleServicesId ? { apple: tenant.appleServicesId } : {}),
-    ...(tenant?.googleWebClientId ? { google: tenant.googleWebClientId } : {}),
-  };
+  if (tenant?.appleServicesId) {
+    clients.apple = tenant.appleServicesId;
+  }
+
+  if (tenant?.googleWebClientId) {
+    clients.google = tenant.googleWebClientId;
+  }
+
+  return clients;
 };
 
 /**

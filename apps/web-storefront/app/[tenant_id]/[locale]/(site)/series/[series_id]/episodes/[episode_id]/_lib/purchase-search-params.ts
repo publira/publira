@@ -2,6 +2,7 @@ import {
   searchParamEnum,
   searchParamString,
 } from "@publira/utils/search-params";
+import type { SearchParamValue } from "@publira/utils/search-params";
 import { z } from "zod";
 
 const checkoutStateSchema = searchParamEnum(
@@ -40,8 +41,16 @@ const purchaseSearchParamsSchema = z.object({
   wait_free: waitFreeStateSchema,
 });
 
+interface ParsePurchaseSearchParamsInput {
+  checkout?: SearchParamValue;
+  coin_pack?: SearchParamValue;
+  coins?: SearchParamValue;
+  session_id?: SearchParamValue;
+  wait_free?: SearchParamValue;
+}
+
 export type PurchaseSearchParams = z.output<typeof purchaseSearchParamsSchema>;
 
 export const parsePurchaseSearchParams = (
-  input: unknown
+  input: ParsePurchaseSearchParamsInput
 ): PurchaseSearchParams => purchaseSearchParamsSchema.parse(input);

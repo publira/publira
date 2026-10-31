@@ -47,6 +47,8 @@ const withItemMoved = <T,>(
 
 /** What a row is announced as: the name its {@link SortableItem} was given. */
 const labelOf = (source: Draggable): string =>
+  // SAFETY: every draggable in a list is a `SortableItem`, which registers
+  // `{ label }` as its data.
   (source.data as { label: string }).label;
 
 /** The 1-based position a row holds now, or held when the drag began. */

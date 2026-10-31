@@ -107,30 +107,30 @@ export const campaignBannersCacheTag = (tenantId: string): string =>
  * either the tenant's banner limit or an object store nobody has saved yet.
  */
 const saveOverrides = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
 
   const invalidArgument = (): string => {
     if (
-      rpcErrorHasFieldViolation(error, "image_data") ||
-      rpcErrorHasFieldViolation(error, "image_content_type")
+      rpcErrorHasFieldViolation(cause, "image_data") ||
+      rpcErrorHasFieldViolation(cause, "image_content_type")
     ) {
       return t("admin.campaign_banners.image_invalid");
     }
 
-    if (rpcErrorHasFieldViolation(error, "link_url")) {
+    if (rpcErrorHasFieldViolation(cause, "link_url")) {
       return t("admin.campaign_banners.validation.link_invalid");
     }
 
-    if (rpcErrorHasFieldViolation(error, "alt_text")) {
+    if (rpcErrorHasFieldViolation(cause, "alt_text")) {
       return t("admin.campaign_banners.validation.alt_text_too_long");
     }
 
     if (
-      rpcErrorHasFieldViolation(error, "starts_at") ||
-      rpcErrorHasFieldViolation(error, "ends_at")
+      rpcErrorHasFieldViolation(cause, "starts_at") ||
+      rpcErrorHasFieldViolation(cause, "ends_at")
     ) {
       return t("admin.campaign_banners.validation.period_invalid");
     }
@@ -139,11 +139,11 @@ const saveOverrides = async (
   };
 
   const precondition = (): string | undefined => {
-    if (rpcErrorHasReason(error, RPC_ERROR_REASON.campaignBannerLimit)) {
+    if (rpcErrorHasReason(cause, RPC_ERROR_REASON.campaignBannerLimit)) {
       return t("admin.campaign_banners.limit_reached");
     }
 
-    if (mentionsStorageNotConfigured(error)) {
+    if (mentionsStorageNotConfigured(cause)) {
       return t("admin.errors.storage_not_configured");
     }
 

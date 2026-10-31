@@ -141,7 +141,10 @@ export const loadsGoogleTagOn = (barePathname: string): boolean =>
     (path) => barePathname === path || barePathname.startsWith(`${path}/`)
   );
 
-const scriptLiteral = (value: unknown): string =>
+/** What a script below writes into a `gtag()` call: an id or a parameter map. */
+type ScriptArgument = string | Readonly<Record<string, number | string>>;
+
+const scriptLiteral = (value: ScriptArgument): string =>
   JSON.stringify(value).replaceAll("<", "\\u003c");
 
 /**

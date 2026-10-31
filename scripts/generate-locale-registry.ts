@@ -12,6 +12,7 @@ import path from "node:path";
 // lives in.
 import { catalogMessageError } from "../packages/i18n/src/mf2.ts";
 import { namespaceLeaves, variableMismatches } from "./catalog-leaves.ts";
+import type { CatalogTree } from "./catalog-leaves.ts";
 import {
   cjkLatinSpaces,
   leavesSpacingToRenderer,
@@ -20,6 +21,8 @@ import { renderDartMessages } from "./dart-messages.ts";
 import { renderGoCurrencyFormats } from "./go-currency.ts";
 import { renderGoDateTimeFormats } from "./go-datetime.ts";
 import { renderGoLocales, renderGoMessages } from "./go-messages.ts";
+import { isJsonObject, isJsonString } from "./json-value.ts";
+import type { JsonValue } from "./json-value.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const indexPath = path.resolve(root, "locales/index.json");
@@ -32,18 +35,17 @@ const fail = (message: string): never => {
   throw new Error(`Invalid locales/index.json: ${message}`);
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const i18nPackage: unknown = JSON.parse(readFileSync(i18nPackagePath, "utf-8"));
+const i18nPackage: JsonValue = JSON.parse(
+  readFileSync(i18nPackagePath, "utf-8")
+);
 
 const packageExports =
-  isRecord(i18nPackage) && isRecord(i18nPackage.exports)
+  isJsonObject(i18nPackage) && isJsonObject(i18nPackage.exports)
     ? i18nPackage.exports
     : undefined;
 
 const catalogExport =
-  packageExports && isRecord(packageExports["./catalog"])
+  packageExports && isJsonObject(packageExports["./catalog"])
     ? packageExports["./catalog"]
     : undefined;
 
@@ -61,93 +63,91 @@ if (!catalogExport || catalogExport.types !== catalogTypePath) {
  * CJK text and a Latin or digit run, which the renderer draws. Returns the
  * parsed catalog for the generators that read it.
  */
-const checkCatalog = (code: string): unknown => {
+const checkCatalog = (code: string): CatalogTree => {
   const catalogPath = `locales/${code}.json`;
 
-  const catalog: unknown = JSON.parse(
+  const catalog: JsonValue = JSON.parse(
     readFileSync(path.resolve(root, catalogPath), "utf-8")
   );
 
   const problems: string[] = [];
   const spacingIsRendered = leavesSpacingToRenderer(code);
 
-  const walk = (node: unknown, key: string) => {
-    if (typeof node === "string") {
-      const problem = catalogMessageError(node);
+  const checkMessage = (message: string, key: string) => {
+    const problem = catalogMessageError(message);
 
-      if (problem) {
-        problems.push(`  ${key}: ${problem}`);
-      }
-
-      if (spacingIsRendered) {
-        for (const excerpt of cjkLatinSpaces(node)) {
-          problems.push(
-            `  ${key}: a space between CJK and Latin text in ${JSON.stringify(excerpt)}`
-          );
-        }
-      }
-
-      return;
+    if (problem) {
+      problems.push(`  ${key}: ${problem}`);
     }
 
-    if (typeof node !== "object" || node === null || Array.isArray(node)) {
-      problems.push(`  ${key}: leaves must be strings`);
-
-      return;
-    }
-
-    for (const [name, child] of Object.entries(node)) {
-      walk(child, key ? `${key}.${name}` : name);
+    if (spacingIsRendered) {
+      for (const excerpt of cjkLatinSpaces(message)) {
+        problems.push(
+          `  ${key}: a space between CJK and Latin text in ${JSON.stringify(excerpt)}`
+        );
+      }
     }
   };
 
-  walk(catalog, "");
+  /** Whether every leaf below `node` is a string, each one checked as a message. */
+  const isCatalogTree = (node: JsonValue, key: string): node is CatalogTree => {
+    if (!isJsonObject(node)) {
+      problems.push(`  ${key}: leaves must be strings`);
 
-  if (problems.length > 0) {
+      return false;
+    }
+
+    let valid = true;
+
+    for (const [name, child] of Object.entries(node)) {
+      const childKey = key ? `${key}.${name}` : name;
+
+      if (isJsonString(child)) {
+        checkMessage(child, childKey);
+      } else if (!isCatalogTree(child, childKey)) {
+        valid = false;
+      }
+    }
+
+    return valid;
+  };
+
+  if (!isCatalogTree(catalog, "") || problems.length > 0) {
     throw new Error(`Invalid ${catalogPath}:\n${problems.join("\n")}`);
   }
 
   return catalog;
 };
 
-const index: unknown = JSON.parse(readFileSync(indexPath, "utf-8"));
+const index: JsonValue = JSON.parse(readFileSync(indexPath, "utf-8"));
 
-if (
-  typeof index !== "object" ||
-  index === null ||
-  !("locales" in index) ||
-  !Array.isArray(index.locales) ||
-  index.locales.length === 0
-) {
-  fail("locales must be a non-empty array");
-}
+const listedLocales =
+  isJsonObject(index) &&
+  Array.isArray(index.locales) &&
+  index.locales.length > 0
+    ? index.locales
+    : fail("locales must be a non-empty array");
 
 const localeCode = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/u;
 
-const locales = index.locales.map(
-  (locale): { code: string; intl: string; label: string } => {
-    if (
-      typeof locale !== "object" ||
-      locale === null ||
-      !("code" in locale) ||
-      !("intl" in locale) ||
-      !("label" in locale) ||
-      typeof locale.code !== "string" ||
-      !localeCode.test(locale.code) ||
-      typeof locale.intl !== "string" ||
-      !locale.intl ||
-      typeof locale.label !== "string" ||
-      !locale.label
-    ) {
-      return fail("each locale needs a valid code, intl value, and label");
-    }
-
-    return locale;
+const locales = listedLocales.map((locale) => {
+  if (
+    !isJsonObject(locale) ||
+    !isJsonString(locale.code) ||
+    !localeCode.test(locale.code) ||
+    !isJsonString(locale.intl) ||
+    !locale.intl ||
+    !isJsonString(locale.label) ||
+    !locale.label
+  ) {
+    return fail("each locale needs a valid code, intl value, and label");
   }
-);
+
+  return { code: locale.code, intl: locale.intl, label: locale.label };
+});
 
 const codes = new Set<string>();
-const catalogs = new Map<string, unknown>();
+const catalogs = new Map<string, CatalogTree>();
 
 for (const locale of locales) {
   if (codes.has(locale.code)) {
@@ -184,7 +184,7 @@ const mismatches = variableMismatches(
   namespaceLeaves(
     locales,
     catalogs,
-    isRecord(firstCatalog) ? Object.keys(firstCatalog) : []
+    firstCatalog ? Object.keys(firstCatalog) : []
   )
 );
 

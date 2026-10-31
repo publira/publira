@@ -35,13 +35,13 @@ export const notificationsCacheTag = (tenantId: string): string =>
   `notifications-${tenantId.trim()}`;
 
 const mapErrorMessage = (
-  error: unknown,
+  cause: unknown,
   fallback: string,
   locale: Locale
-): string => rpcErrorMessage(error, fallback, { locale });
+): string => rpcErrorMessage(cause, fallback, { locale });
 
-const isUnexpectedError = (error: unknown): boolean =>
-  rpcErrorDisposition(error) === "unexpected";
+const isUnexpectedError = (cause: unknown): boolean =>
+  rpcErrorDisposition(cause) === "unexpected";
 
 /**
  * A `"use cache"` fill must not throw. Classify inside the cache scope, return

@@ -15,15 +15,19 @@ const TOKEN = "test-revalidate-token";
 const revalidateRequest = (
   body: string,
   token: string | null = TOKEN
-): Request =>
-  new Request("https://web.internal/api/v1/revalidate", {
+): Request => {
+  const headers = new Headers({ "content-type": "application/json" });
+
+  if (token !== null) {
+    headers.set("x-revalidate-token", token);
+  }
+
+  return new Request("https://web.internal/api/v1/revalidate", {
     body,
-    headers: {
-      "content-type": "application/json",
-      ...(token === null ? {} : { "x-revalidate-token": token }),
-    },
+    headers,
     method: "POST",
   });
+};
 
 describe("handleRevalidateRequest", () => {
   beforeEach(() => {

@@ -13,22 +13,26 @@ export interface CatalogLocale {
   readonly code: string;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+/**
+ * A parsed `locales/*.json`, once `scripts/generate-locale-registry.ts` has
+ * checked that every leaf of it is a message.
+ */
+export interface CatalogTree {
+  readonly [name: string]: CatalogTree | string;
+}
+
+const isMessage = (node: CatalogTree | string): node is string =>
+  typeof node === "string";
 
 const flatten = (
-  node: unknown,
+  node: CatalogTree | string,
   prefix: string,
   into: Map<string, string>
 ): void => {
-  if (typeof node === "string") {
+  if (isMessage(node)) {
     into.set(prefix, node);
 
     return;
-  }
-
-  if (!isRecord(node)) {
-    throw new Error(`${prefix}: leaves must be strings`);
   }
 
   for (const [name, child] of Object.entries(node)) {
@@ -38,13 +42,13 @@ const flatten = (
 
 /** The messages of `namespaces` in one catalog, keyed by full path. */
 const compiledLeaves = (
-  catalog: unknown,
+  catalog: CatalogTree | undefined,
   code: string,
   namespaces: readonly string[]
 ): Map<string, string> => {
   const leaves = new Map<string, string>();
 
-  if (!isRecord(catalog)) {
+  if (catalog === undefined) {
     throw new Error(`locales/${code}.json is not an object`);
   }
 
@@ -72,7 +76,7 @@ export interface CatalogLeaves {
  */
 export const namespaceLeaves = (
   locales: readonly CatalogLocale[],
-  catalogs: ReadonlyMap<string, unknown>,
+  catalogs: ReadonlyMap<string, CatalogTree>,
   namespaces: readonly string[]
 ): CatalogLeaves => {
   const leavesByCode = new Map(

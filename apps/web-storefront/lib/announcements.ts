@@ -56,12 +56,12 @@ export const announcementsCacheTag = tenantAnnouncementsTag;
  * cache key instead of to whichever request filled the entry.
  */
 const mapErrorToMessage = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
 
-  return rpcErrorMessage(error, t("storefront.announcements.list_failed"), {
+  return rpcErrorMessage(cause, t("storefront.announcements.list_failed"), {
     locale,
   });
 };
@@ -141,8 +141,8 @@ export type ListMyAnnouncementsResult =
   | ({ ok: true } & MyAnnouncementsPage)
   | ({ ok: false; message: string } & MyAnnouncementsPage);
 
-const emptyListPage = {
-  announcements: [] as MemberAnnouncementItem[],
+const emptyListPage: MyAnnouncementsPage = {
+  announcements: [],
   nextToken: "",
   previousToken: "",
 };

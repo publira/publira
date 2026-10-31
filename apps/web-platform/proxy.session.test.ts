@@ -40,6 +40,8 @@ const request = (url: string, cookie?: string): NextRequest => {
     clone: () => new URL(url),
   });
 
+  // SAFETY: the proxy reads only the members built here, as the comment on
+  // this helper lists, and none of the rest of `NextRequest`.
   return {
     cookies: {
       get: (name: string) =>
@@ -50,7 +52,7 @@ const request = (url: string, cookie?: string): NextRequest => {
     headers: new Headers({ host: new URL(url).host }),
     nextUrl,
     url,
-  } as unknown as NextRequest;
+  } as NextRequest;
 };
 
 const deletedCookieNames = (response: { headers: Headers }): string[] =>

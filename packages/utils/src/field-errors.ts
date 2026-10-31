@@ -45,17 +45,21 @@ export interface FormErrorMessageOptions {
  * invalid.
  */
 export const toFieldErrors = <T>(error: z.ZodError<T>): FieldErrors<T> => {
-  const { fieldErrors } = z.flattenError(error);
+  const fieldErrors: Partial<Record<string, string[]>> =
+    z.flattenError(error).fieldErrors;
+
   const result: Record<string, string> = {};
 
   for (const [field, messages] of Object.entries(fieldErrors)) {
-    const message = (messages as string[] | undefined)?.[0];
+    const message = messages?.[0];
 
     if (message) {
       result[field] = message;
     }
   }
 
+  // SAFETY: every key of `result` was copied from `fieldErrors`, whose keys
+  // are the top-level fields of `T`, and every value is a message string.
   return result as FieldErrors<T>;
 };
 
@@ -68,15 +72,16 @@ export const toFormErrorMessage = <T>(
   error: z.ZodError<T>,
   options: FormErrorMessageOptions
 ): string => {
-  const { fieldErrors, formErrors } = z.flattenError(error);
-  const [formError] = formErrors;
+  const flattened = z.flattenError(error);
+  const fieldErrors: Partial<Record<string, string[]>> = flattened.fieldErrors;
+  const [formError] = flattened.formErrors;
 
   if (formError) {
     return formError;
   }
 
   for (const messages of Object.values(fieldErrors)) {
-    const message = (messages as string[] | undefined)?.[0];
+    const message = messages?.[0];
 
     if (message) {
       return message;

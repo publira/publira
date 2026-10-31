@@ -148,11 +148,18 @@ const coupons = new Map<string, number>();
 const subscriptions = new Map<string, Subscription>();
 const portals = new Map<string, BillingPortalSession>();
 
+/** An object a create request answered, as Stripe's API names its kind. */
+interface CreatedObject {
+  object: string;
+  /** The payment intent a refund was made from, or a checkout paid. */
+  payment_intent?: string | null;
+}
+
 /**
  * What each secret key's idempotency key was first answered, which Stripe
  * answers again however the session has moved on since.
  */
-const idempotent = new Map<string, unknown>();
+const idempotent = new Map<string, CreatedObject>();
 
 const randomId = (prefix: string): string =>
   `${prefix}${randomBytes(12).toString("hex")}`;
@@ -177,10 +184,10 @@ const answer = (
   response.end(body);
 };
 
-const answerJSON = (
+const answerJSON = <Body>(
   response: ServerResponse,
   status: number,
-  body: unknown
+  body: Body
 ): void => answer(response, status, "application/json", JSON.stringify(body));
 
 /**
@@ -195,7 +202,7 @@ const answerError = (
   type = "invalid_request_error"
 ): void =>
   answerJSON(response, status, {
-    error: { ...(code ? { code } : {}), message, type },
+    error: code ? { code, message, type } : { message, type },
   });
 
 const secretKeyOf = (request: IncomingMessage): string =>
@@ -203,28 +210,21 @@ const secretKeyOf = (request: IncomingMessage): string =>
 
 /** The values of a form-encoded list such as `enabled_events[0]`. */
 const listOf = (form: URLSearchParams, name: string): string[] =>
-  [...form.entries()]
-    .filter(([key]) => key === `${name}[]` || key.startsWith(`${name}[`))
-    .map(([, value]) => value);
+  [...form.entries()].flatMap(([key, value]) =>
+    key === `${name}[]` || key.startsWith(`${name}[`) ? [value] : []
+  );
 
 /** The entries of a form-encoded hash such as `metadata[tenant_id]`. */
-const hashOf = (
-  form: URLSearchParams,
-  name: string
-): Record<string, string> => {
-  const entries: Record<string, string> = {};
+const hashOf = (form: URLSearchParams, name: string): Record<string, string> =>
+  Object.fromEntries(
+    [...form.entries()].flatMap(([key, value]) => {
+      const field = new RegExp(`^${name}\\[(?<field>[^\\]]+)\\]$`, "u").exec(
+        key
+      )?.groups?.field;
 
-  for (const [key, value] of form.entries()) {
-    const field = new RegExp(`^${name}\\[(?<field>[^\\]]+)\\]$`, "u").exec(key)
-      ?.groups?.field;
-
-    if (field) {
-      entries[field] = value;
-    }
-  }
-
-  return entries;
-};
+      return field ? [[field, value]] : [];
+    })
+  );
 
 const sessionObject = (session: CheckoutSession) => ({
   amount_subtotal: session.amount + session.discount,
@@ -295,9 +295,9 @@ const createWebhookEndpoint = async (
 const replayKeyOf = (request: IncomingMessage, secretKey: string): string => {
   const idempotencyKey = request.headers["idempotency-key"];
 
-  return typeof idempotencyKey === "string"
-    ? `${secretKey}\n${idempotencyKey}`
-    : "";
+  return idempotencyKey === undefined || Array.isArray(idempotencyKey)
+    ? ""
+    : `${secretKey}\n${idempotencyKey}`;
 };
 
 /**
@@ -350,10 +350,13 @@ const createCoupon = async (
   answerJSON(response, 200, created);
 };
 
+interface LineItems {
+  currency: string;
+  items: LineItem[];
+}
+
 /** Every `line_items[n]` of the request, in order, as one currency's prices. */
-const lineItemsOf = (
-  form: URLSearchParams
-): { currency: string; items: LineItem[] } => {
+const lineItemsOf = (form: URLSearchParams): LineItems => {
   const items: LineItem[] = [];
   let currency = "";
 
@@ -587,6 +590,27 @@ const paymentIntentObject = (intent: PaymentIntent) => ({
   status: "succeeded",
 });
 
+/** The body of `POST /payment-intents`, as `e2e/src/stripe.ts` sends it. */
+interface PaymentIntentRequest {
+  amount: number;
+  currency: string;
+  id: string;
+}
+
+const isPaymentIntentRequest = (body: unknown): body is PaymentIntentRequest =>
+  typeof body === "object" &&
+  body !== null &&
+  "id" in body &&
+  typeof body.id === "string" &&
+  body.id !== "" &&
+  "amount" in body &&
+  typeof body.amount === "number" &&
+  Number.isInteger(body.amount) &&
+  body.amount > 0 &&
+  "currency" in body &&
+  typeof body.currency === "string" &&
+  body.currency !== "";
+
 /**
  * Make `id` a payment intent the secret key was paid `amount` on, with nothing
  * refunded of it, as the payment a scenario seeds for a purchase stands for.
@@ -596,21 +620,9 @@ const registerPaymentIntent = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
-  const { amount, currency, id } = JSON.parse(await readBody(request)) as {
-    amount?: unknown;
-    currency?: unknown;
-    id?: unknown;
-  };
+  const body: unknown = JSON.parse(await readBody(request));
 
-  if (
-    typeof id !== "string" ||
-    !id ||
-    typeof amount !== "number" ||
-    !Number.isInteger(amount) ||
-    amount <= 0 ||
-    typeof currency !== "string" ||
-    !currency
-  ) {
+  if (!isPaymentIntentRequest(body)) {
     answerError(
       response,
       400,
@@ -619,6 +631,8 @@ const registerPaymentIntent = async (
 
     return;
   }
+
+  const { amount, currency, id } = body;
 
   const intent: PaymentIntent = {
     amount,
@@ -667,9 +681,9 @@ const createRefund = async (
   const id = form.get("payment_intent") ?? "";
   const replayKey = replayKeyOf(request, secretKey);
 
-  if (idempotent.has(replayKey)) {
-    const replayed = idempotent.get(replayKey) as { payment_intent?: string };
+  const replayed = idempotent.get(replayKey);
 
+  if (replayed !== undefined) {
     if (replayed.payment_intent !== id) {
       answerError(
         response,
@@ -926,6 +940,7 @@ const deliver = async (
   });
 
   outgoing.end(payload);
+  // SAFETY: a ClientRequest emits `response` with the one IncomingMessage.
   const [incoming] = (await once(outgoing, "response")) as [IncomingMessage];
 
   return { body: await readBody(incoming), status: incoming.statusCode ?? 0 };

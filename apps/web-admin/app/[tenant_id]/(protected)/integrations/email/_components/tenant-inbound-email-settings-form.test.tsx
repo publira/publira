@@ -496,9 +496,7 @@ describe("TenantInboundEmailSettingsForm", () => {
       />
     );
 
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Change" })[1] as HTMLButtonElement
-    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Change" })[1]);
     fireEvent.change(screen.getByLabelText(/^Webhook signing secret/u), {
       target: { value: "whsec_new" },
     });

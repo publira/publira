@@ -92,8 +92,8 @@ export const isSessionRevokedRedirect = (requestUrl: URL): boolean =>
   SESSION_REVOKED_REASON;
 
 /** A rejected Bearer token always follows the re-authentication flow. */
-export const isUnauthenticatedError = (error: unknown): boolean =>
-  isUnauthenticatedRpcError(error);
+export const isUnauthenticatedError = (cause: unknown): boolean =>
+  isUnauthenticatedRpcError(cause);
 
 /**
  * A session cookie is valid only when it can be decrypted and its local expiry

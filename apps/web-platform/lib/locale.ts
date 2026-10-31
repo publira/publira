@@ -114,7 +114,7 @@ export const getPlatformLocale = async (): Promise<Locale> => {
 
   const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
 
-  if (typeof raw === "string") {
+  if (raw !== undefined) {
     const trimmed = raw.trim();
 
     if (isLocale(trimmed)) {

@@ -10,7 +10,11 @@ import { z } from "zod";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
-import { checkboxOnFormSchema, requiredTrimmedString } from "#lib/form-schemas";
+import {
+  checkboxOnFormSchema,
+  isFormText,
+  requiredTrimmedString,
+} from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
   hasSecretKey,
@@ -30,12 +34,12 @@ const APPLE_ID_RE = /^[A-Z0-9]{10}$/u;
 const GOOGLE_CLIENT_ID_RE = /^\d+-[0-9a-z]+\.apps\.googleusercontent\.com$/u;
 
 const trimmed = z.preprocess(
-  (value) => (typeof value === "string" ? value.trim() : ""),
+  (value) => (isFormText(value) ? value.trim() : ""),
   z.string()
 );
 
 const capitalized = z.preprocess(
-  (value) => (typeof value === "string" ? value.trim().toUpperCase() : ""),
+  (value) => (isFormText(value) ? value.trim().toUpperCase() : ""),
   z.string()
 );
 

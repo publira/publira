@@ -36,9 +36,15 @@ interface DropEvent {
  * stands in and hands the drop back to the test instead. Dragging itself is an
  * e2e concern; what belongs here is what the list does with a drop.
  */
-const dnd = vi.hoisted(() => ({
-  drop: null as ((event: DropEvent) => void) | null,
-}));
+interface DropHandoff {
+  drop: ((event: DropEvent) => void) | null;
+}
+
+const dnd = vi.hoisted(() => {
+  const handoff: DropHandoff = { drop: null };
+
+  return handoff;
+});
 
 vi.mock("@dnd-kit/react", () => ({
   DragDropProvider: ({
@@ -129,6 +135,7 @@ const submittedOrder = (field: string): string[] => {
     throw new Error("the reorder Action was never called");
   }
 
+  // SAFETY: the list writes the field as the JSON of the ids in their order.
   return JSON.parse(String(formData.get(field))) as string[];
 };
 

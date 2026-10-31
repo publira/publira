@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Response } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql, runSql } from "../src/db";
@@ -154,7 +154,10 @@ const confirmationTokenFor = async (recipient: string): Promise<string> => {
  * listens on nor a scheme this stack serves, so the token is carried over
  * rather than the whole link followed.
  */
-const openConfirmation = (page: Page, token: string): Promise<unknown> =>
+const openConfirmation = (
+  page: Page,
+  token: string
+): Promise<Response | null> =>
   page.goto(
     platformUrl(`${CONFIRM_EMAIL_PATH}?token=${encodeURIComponent(token)}`)
   );

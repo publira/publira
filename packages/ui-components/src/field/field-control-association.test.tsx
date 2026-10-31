@@ -69,11 +69,11 @@ const getAssociation = (container: HTMLElement, labelText: string) => {
 
   expect(control).toBeTruthy();
 
-  return {
-    control: control as HTMLElement,
-    htmlFor,
-    label: label as HTMLLabelElement,
-  };
+  if (!label || !(control instanceof HTMLElement)) {
+    throw new Error(`Expected "${labelText}" to label a control`);
+  }
+
+  return { control, htmlFor, label };
 };
 
 const StatefulCombobox = ({ id }: { id?: string }) => {

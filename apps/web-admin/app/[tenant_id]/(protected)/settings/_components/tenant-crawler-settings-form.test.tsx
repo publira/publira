@@ -20,15 +20,25 @@ import type { KnownCrawler } from "#lib/tenant-crawler-settings-shared";
 import type { TenantCrawlerSettingsActionState } from "../settings-types";
 import { TenantCrawlerSettingsForm } from "./tenant-crawler-settings-form";
 
-const { save } = vi.hoisted(() => ({
-  save: {
+/** The answer the mocked Action gives, and the form it was submitted. */
+interface PendingSubmission {
+  current: PromiseWithResolvers<TenantCrawlerSettingsActionState>;
+  formData?: FormData;
+}
+
+const { save } = vi.hoisted(() => {
+  const submission: PendingSubmission = {
     current: Promise.withResolvers<TenantCrawlerSettingsActionState>(),
-    formData: undefined as FormData | undefined,
-  },
-}));
+  };
+
+  return { save: submission };
+});
 
 vi.mock("../_lib/actions", () => ({
-  updateTenantCrawlerSettingsAction: (_state: unknown, formData: FormData) => {
+  updateTenantCrawlerSettingsAction: (
+    _state: TenantCrawlerSettingsActionState,
+    formData: FormData
+  ) => {
     save.formData = formData;
 
     return save.current.promise;

@@ -25,14 +25,17 @@ const tokenPattern = /^[A-Za-z0-9_-]+$/u;
  * length that leaves a remainder of 1 cannot decode — `"a"` is in the alphabet
  * but is not a token any encoder produces.
  */
-const isBase64UrlShaped = (value: string): boolean =>
+const isBase64UrlToken = (value: string): boolean =>
   value.length <= maxTokenLength &&
   value.length % 4 !== 1 &&
   tokenPattern.test(value);
 
+/** Whether a query parameter arrived once, as text, rather than repeated. */
+const isText = (value: unknown): value is string => typeof value === "string";
+
 export const cursorTokenSchema = z.preprocess(
-  (value) => (typeof value === "string" ? value.trim() : ""),
-  z.string().transform((value) => (isBase64UrlShaped(value) ? value : ""))
+  (value) => (isText(value) ? value.trim() : ""),
+  z.string().transform((value) => (isBase64UrlToken(value) ? value : ""))
 );
 
 /**

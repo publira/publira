@@ -193,14 +193,14 @@ export const toPlatformRetentionDefaults = (
  * screen comes back as soon as the API does.
  */
 const readFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<{ message: string; ok: false }> => {
   dropFailedCacheEntry();
   const t = await getMessagesFor(locale);
 
   return {
-    message: rpcErrorMessage(error, t("platform.policy.load_failed"), {
+    message: rpcErrorMessage(cause, t("platform.policy.load_failed"), {
       locale,
     }),
     ok: false,
@@ -289,17 +289,17 @@ const OPERATOR_MFA_REQUIREMENT_FIELD =
  * anything on screen, so the screen's own wording replaces it.
  */
 const saveFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale
 ): Promise<{ message: string; ok: false }> => {
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
   const t = await getMessagesFor(locale);
 
   // The same failed precondition as a stale revision, but about the install:
   // a server that cannot seal an authenticator secret refuses to require one
   // of every operator, since nobody could then finish signing in.
-  if (rpcErrorHasFieldViolation(error, OPERATOR_MFA_REQUIREMENT_FIELD)) {
+  if (rpcErrorHasFieldViolation(cause, OPERATOR_MFA_REQUIREMENT_FIELD)) {
     return {
       message: t(
         "platform.policy.security.mfa_required_for_platform_operator_unavailable"
@@ -309,7 +309,7 @@ const saveFailure = async (
   }
 
   return {
-    message: rpcErrorMessage(error, t("platform.policy.save_failed"), {
+    message: rpcErrorMessage(cause, t("platform.policy.save_failed"), {
       locale,
       overrides: {
         "invalid-argument": t("platform.policy.save_invalid"),

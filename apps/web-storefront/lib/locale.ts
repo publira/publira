@@ -39,7 +39,7 @@ export { tenantLocalePath } from "./tenant-locale-path";
 export const getLocale = async (): Promise<Locale> => {
   const value = await rootLocale();
 
-  if (typeof value !== "string" || !isLocale(value)) {
+  if (!isLocale(value)) {
     notFound();
   }
 

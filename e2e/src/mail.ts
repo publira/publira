@@ -58,9 +58,10 @@ const mailpitRequest = async (
 
 const mailpitJson = async <T>(path: string): Promise<T> => {
   const response = await mailpitRequest(path);
-  const body = await response.json();
 
-  return body as T;
+  // SAFETY: each caller names as `T` the body Mailpit documents for the
+  // endpoint at `path`.
+  return (await response.json()) as T;
 };
 
 /**

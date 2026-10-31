@@ -210,20 +210,20 @@ const toCheckResults = async (
  * categories take the shared copy.
  */
 const writeFailure = async (
-  error: unknown,
+  cause: unknown,
   locale: Locale,
   fallbackKey: PlatformMessageKey
 ): Promise<{ message: string; ok: false }> => {
-  rethrowUnauthenticatedRpcError(error);
-  rethrowUnclassifiedRpcError(error);
+  rethrowUnauthenticatedRpcError(cause);
+  rethrowUnclassifiedRpcError(cause);
   const t = await getMessagesFor(locale);
   const fallback = t(fallbackKey);
 
   return {
-    message: rpcErrorMessage(error, fallback, {
+    message: rpcErrorMessage(cause, fallback, {
       locale,
       overrides: {
-        "invalid-argument": rpcErrorRawMessage(error)?.trim() || fallback,
+        "invalid-argument": rpcErrorRawMessage(cause)?.trim() || fallback,
         precondition: t("platform.storage.save_conflict"),
       },
     }),

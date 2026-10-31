@@ -17,9 +17,12 @@ import type { PlatformMessageAccessor } from "#lib/messages";
 
 import { SearchAnalysisForm } from "./search-analysis-form";
 
-const state = vi.hoisted(() => ({
-  t: undefined as PlatformMessageAccessor | undefined,
-}));
+/** The catalog the mocked `<Message>` renders from, once a test resolves it. */
+interface CatalogState {
+  t?: PlatformMessageAccessor;
+}
+
+const state = vi.hoisted((): CatalogState => ({}));
 
 // `<Message>` is an async Server Component that only the Next.js compiler can
 // render. The catalog is the real one, resolved ahead so the tree renders
@@ -28,12 +31,13 @@ vi.mock("#components/message", () => ({
   Message: ({ message, values }: MessageProps) => state.t?.(message, values),
 }));
 
-const { save } = vi.hoisted(() => ({
-  save: {
-    calls: [] as FormData[],
-    current: Promise.withResolvers<ActionForm.State>(),
-  },
-}));
+const { save } = vi.hoisted(() => {
+  const calls: FormData[] = [];
+
+  return {
+    save: { calls, current: Promise.withResolvers<ActionForm.State>() },
+  };
+});
 
 vi.mock("../_lib/actions", () => ({
   updatePlatformSearchAnalysisAction: (

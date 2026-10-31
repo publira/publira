@@ -136,11 +136,8 @@ describe("GoogleTagForm", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "Server container" }));
 
-    const field = await waitFor(() => {
-      const input = urlField();
-      expect(input).not.toBeNull();
-
-      return input as HTMLInputElement;
+    const field = await screen.findByRole<HTMLInputElement>("textbox", {
+      name: /Server container URL/u,
     });
 
     expect(hiddenValue("serving_mode")).toBe("server_container");

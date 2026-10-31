@@ -1,23 +1,37 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+/** The attributes `cookies().set` was given beside the name and the value. */
+interface CookieAttributes {
+  httpOnly?: boolean;
+  maxAge?: number;
+  path?: string;
+  sameSite?: string;
+  secure?: boolean;
+}
+
 const { cookieJar } = vi.hoisted(() => ({
-  cookieJar: new Map<
-    string,
-    { options: Record<string, unknown>; value: string }
-  >(),
+  cookieJar: new Map<string, { options: CookieAttributes; value: string }>(),
 }));
+
+/** Whether `cookies().delete` was named the cookie rather than its options. */
+const isCookieName = (options: string | { name: string }): options is string =>
+  typeof options === "string";
 
 vi.mock("next/headers", () => ({
   cookies: () => ({
     delete: (options: string | { name: string }) => {
-      cookieJar.delete(typeof options === "string" ? options : options.name);
+      cookieJar.delete(isCookieName(options) ? options : options.name);
     },
     get: (name: string) => {
       const cookie = cookieJar.get(name);
 
       return cookie ? { name, value: cookie.value } : undefined;
     },
-    set: ({ name, value, ...options }: { name: string; value: string }) => {
+    set: ({
+      name,
+      value,
+      ...options
+    }: CookieAttributes & { name: string; value: string }) => {
       cookieJar.set(name, { options, value });
     },
   }),

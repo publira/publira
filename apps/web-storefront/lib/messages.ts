@@ -23,6 +23,9 @@ export type StorefrontMessageAccessor = MessageAccessor<StorefrontMessages>;
 export const loadStorefrontMessages = (
   locale: Locale
 ): Promise<StorefrontMessages> =>
+  // SAFETY: `loadLocaleMessages` imports `locales/<locale>.json`, and
+  // `SharedMessages` is the union of those same files' types; the package
+  // only widens it to `MessageTree` for its own key lookup.
   loadLocaleMessages(locale) as Promise<StorefrontMessages>;
 
 /**

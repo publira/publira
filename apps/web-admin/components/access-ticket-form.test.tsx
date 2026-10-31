@@ -108,6 +108,15 @@ const mockListReaderOptionsAction = vi.mocked(listReaderOptionsAction);
 
 const action = () => Promise.resolve({ message: "", ok: false });
 
+/** An Action that hands `submitted` the form it was submitted with. */
+const recordingActionFor =
+  (submitted: PromiseWithResolvers<FormData>) =>
+  (_state: IssueAccessTicketActionState, formData: FormData) => {
+    submitted.resolve(formData);
+
+    return Promise.resolve<IssueAccessTicketActionState>(null);
+  };
+
 const seriesA = {
   id: "018f0e6a-3000-7000-8000-000000000001",
   publicId: "SERIES001",
@@ -200,14 +209,7 @@ describe("TicketForm", () => {
     });
     const submitted = Promise.withResolvers<FormData>();
 
-    const recordingAction = (
-      _state: IssueAccessTicketActionState,
-      formData: FormData
-    ) => {
-      submitted.resolve(formData);
-
-      return Promise.resolve<IssueAccessTicketActionState>(null);
-    };
+    const recordingAction = recordingActionFor(submitted);
 
     await renderForm({ action: recordingAction, series: [seriesA] });
     await fillTicket();
@@ -234,14 +236,7 @@ describe("TicketForm", () => {
     });
     const submitted = Promise.withResolvers<FormData>();
 
-    const recordingAction = (
-      _state: IssueAccessTicketActionState,
-      formData: FormData
-    ) => {
-      submitted.resolve(formData);
-
-      return Promise.resolve<IssueAccessTicketActionState>(null);
-    };
+    const recordingAction = recordingActionFor(submitted);
 
     await renderForm({
       action: recordingAction,

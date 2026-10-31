@@ -31,10 +31,14 @@ export const currentCalendarMonth = (
 export const shiftCalendarMonth = (month: string, months: number): string =>
   firstDayOf(month).add({ months }).toPlainYearMonth().toString();
 
+/** A period the API reads, from its first day to its last. */
+export interface CalendarMonthPeriod {
+  endDate: string;
+  startDate: string;
+}
+
 /** The first and the last day of `month`, as the period the API reads. */
-export const calendarMonthPeriod = (
-  month: string
-): { endDate: string; startDate: string } => {
+export const calendarMonthPeriod = (month: string): CalendarMonthPeriod => {
   const first = firstDayOf(month);
 
   return {

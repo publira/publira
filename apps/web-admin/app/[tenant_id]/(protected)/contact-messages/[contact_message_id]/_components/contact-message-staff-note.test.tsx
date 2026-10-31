@@ -48,7 +48,7 @@ const submitted = () => {
 };
 
 const noteField = () =>
-  screen.getByRole("textbox", { name: "Note" }) as HTMLTextAreaElement;
+  screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Note" });
 
 afterEach(() => {
   cleanup();

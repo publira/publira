@@ -11,7 +11,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NotificationItem } from "../notification-types";
 import { NotificationManager } from "./notification-manager";
 
-const mockLocale = vi.hoisted(() => ({ current: "en" as Locale }));
+/** The language the mocked catalog answers in, which a test switches. */
+interface MessageLocale {
+  current: Locale;
+}
+
+const mockLocale = vi.hoisted((): MessageLocale => ({ current: "en" }));
 
 vi.mock("#lib/messages", () => ({
   getMessagesFor: () =>
