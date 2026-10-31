@@ -213,7 +213,16 @@ class ConnectClient implements RpcClient {
     }
   }
 
+  /// The code of a refusal whose body names none, read from its status.
+  ///
+  /// A 429 is `resource_exhausted`, the code Connect answers with that status,
+  /// because a rate limit in front of the API — a sample proxy, a WAF, a CDN —
+  /// refuses with a body of its own, and the repositories already tell the
+  /// reader to slow down on that code.
   String _fallbackCode(int statusCode) {
+    if (statusCode == HttpStatus.tooManyRequests) {
+      return 'resource_exhausted';
+    }
     return statusCode >= 500 ? 'unavailable' : 'internal';
   }
 
