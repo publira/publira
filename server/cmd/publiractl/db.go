@@ -42,7 +42,10 @@ var dbGroup = commandGroup{
 func migrationSetup(run func(logger *slog.Logger, stdout io.Writer, m *migrate.Migrate) error) func(*commandFlags) func(context.Context, *commandEnv) error {
 	return func(*commandFlags) func(context.Context, *commandEnv) error {
 		return func(_ context.Context, env *commandEnv) error {
-			logger := logging.New(env.stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+			logger, err := logging.New(env.stdout, slog.LevelInfo)
+			if err != nil {
+				return err
+			}
 
 			// Unlike the job group, this never falls back to the development URL: a
 			// migration aimed at db:5432 because the variable was forgotten is not a

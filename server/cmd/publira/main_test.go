@@ -292,3 +292,25 @@ func assertRouteRegistered(t *testing.T, baseURL, path string, wantRegistered bo
 		t.Fatalf("path %s status = %d, registered = %v, want registered = %v", path, resp.StatusCode, gotRegistered, wantRegistered)
 	}
 }
+
+// A logging variable the process cannot read stops it before it starts
+// anything, on stderr, since there is no log to report it in yet.
+func TestRunRefusesALoggingValueItDoesNotKnow(t *testing.T) {
+	for _, tc := range []struct{ variable, value string }{
+		{"PUBLIRA_LOG_FORMAT", "logfmt"},
+		{"PUBLIRA_LOG_LEVEL", "verbose"},
+	} {
+		t.Run(tc.variable, func(t *testing.T) {
+			t.Setenv(tc.variable, tc.value)
+			for _, command := range []string{"server", "worker"} {
+				var stderr strings.Builder
+				if code := run([]string{command}, &stderr); code != 1 {
+					t.Fatalf("%s: exit code = %d, want 1", command, code)
+				}
+				if !strings.HasPrefix(stderr.String(), "publira: "+tc.variable+" ") {
+					t.Fatalf("%s: stderr = %q, want the variable named", command, stderr.String())
+				}
+			}
+		})
+	}
+}

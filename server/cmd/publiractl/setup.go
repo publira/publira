@@ -138,7 +138,11 @@ func setupSetup(f *commandFlags) func(context.Context, *commandEnv) error {
 		f.Visit(func(fl *flag.Flag) { given[fl.Name] = true })
 		// Every audit entry is still written to the database; the log line
 		// that mirrors it would only interleave with the prompts.
-		env.logger = logging.New(env.console.stderr, &slog.HandlerOptions{Level: slog.LevelWarn})
+		logger, err := logging.New(env.console.stderr, slog.LevelWarn)
+		if err != nil {
+			return err
+		}
+		env.logger = logger
 		r := &setupRun{
 			env:         env,
 			flags:       fl,
