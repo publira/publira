@@ -161,7 +161,7 @@ describe("RefundPurchaseButton", () => {
     ).toBeTruthy();
     expect(
       dialog.getByText(
-        /That is all that is left, so what the reader bought closes to them at once\./u
+        /Refunding all of it closes what the reader bought to them at once\./u
       )
     ).toBeTruthy();
   });

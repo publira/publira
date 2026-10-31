@@ -4419,7 +4419,7 @@
       "refund_amount_waiting_description": "{$amount}的退款正在等待支付服务处理。在支付服务报告之前，只能以相同金额重新申请。",
       "refund_amount_note": {
         "invalid": "请输入大于零且不超过剩余可退金额的金额。",
-        "closes": "这是剩余的全部金额，读者将立即无法阅读所购买的内容。",
+        "closes": "退还全部金额后，读者将立即无法阅读所购买的内容。",
         "stays_open": "读者仍可阅读所购买的内容。"
       },
       "refund_requested_amount": "已申请退款金额",

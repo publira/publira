@@ -4419,7 +4419,7 @@
       "refund_amount_waiting_description": "A refund of {$amount} is waiting for the payment provider. Until the provider reports it, only that amount can be asked again.",
       "refund_amount_note": {
         "invalid": "Enter an amount above zero and no more than what is left to refund.",
-        "closes": "That is all that is left, so what the reader bought closes to them at once.",
+        "closes": "Refunding all of it closes what the reader bought to them at once.",
         "stays_open": "What the reader bought stays open to them."
       },
       "refund_requested_amount": "Refund requested",

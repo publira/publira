@@ -31,7 +31,8 @@
  * back to the session's return URL.
  *
  * The console's refund reaches `POST /v1/refunds`, which refunds whatever is
- * left of a payment intent the secret key paid, or the amount it names, and
+ * left of a payment intent the secret key paid, or the amount it names,
+ * `GET /v1/refunds` lists what has been refunded of one, and
  * `GET /v1/payment_intents/:id` answers one with its latest charge expanded.
  * The payment intents are those the checkout page paid, and those a spec
  * registered with `POST /payment-intents` for the payment ID a scenario seeds,
@@ -156,6 +157,24 @@ const coupons = new Map<string, number>();
 /** The subscriptions each secret key's checkouts started, by secret key and id. */
 const subscriptions = new Map<string, Subscription>();
 const portals = new Map<string, BillingPortalSession>();
+
+/** A refund made from a payment intent, as `POST /v1/refunds` answers it. */
+interface Refund {
+  amount: number;
+  charge: string;
+  currency: string;
+  id: string;
+  metadata: Record<string, string>;
+  object: "refund";
+  payment_intent: string;
+  status: "succeeded";
+}
+
+/**
+ * The refunds made from each secret key's payment intents, newest first, by
+ * secret key and payment intent id, which `GET /v1/refunds` lists.
+ */
+const refunds = new Map<string, Refund[]>();
 
 /** An object a create request answered, as Stripe's API names its kind. */
 interface CreatedObject {
@@ -753,15 +772,29 @@ const createRefund = async (
   intent.refunded += amount;
   intent.apiVersion = String(request.headers["stripe-version"] ?? "");
 
-  const created = {
+  const metadata: Record<string, string> = {};
+
+  for (const [name, value] of form) {
+    const key = /^metadata\[(?<key>[^\]]+)\]$/u.exec(name)?.groups?.key;
+
+    if (key) {
+      metadata[key] = value;
+    }
+  }
+
+  const created: Refund = {
     amount,
     charge: `ch_${intent.id}`,
     currency: intent.currency,
     id: randomId("re_test_"),
+    metadata,
     object: "refund",
     payment_intent: intent.id,
     status: "succeeded",
   };
+
+  const made = `${secretKey}\n${intent.id}`;
+  refunds.set(made, [created, ...(refunds.get(made) ?? [])]);
 
   if (replayKey) {
     idempotent.set(replayKey, created);
@@ -995,6 +1028,26 @@ const deliverEvent = async (
       url: endpoint.url,
     }))
   );
+};
+
+/**
+ * The refunds made from the payment intent `payment_intent` names, newest
+ * first, in one page: publira server looks a refund up by the metadata it
+ * made it with before it asks for an amount again.
+ */
+const listRefunds = (
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const { searchParams } = new URL(request.url ?? "/", origin);
+  const id = searchParams.get("payment_intent") ?? "";
+
+  answerJSON(response, 200, {
+    data: refunds.get(`${secretKeyOf(request)}\n${id}`) ?? [],
+    has_more: false,
+    object: "list",
+    url: "/v1/refunds",
+  });
 };
 
 /** The body of `POST /refund-events`, as `e2e/src/stripe.ts` sends it. */
@@ -1258,7 +1311,7 @@ const handleCheckout = async (
 type Handler = (
   request: IncomingMessage,
   response: ServerResponse
-) => Promise<void>;
+) => Promise<void> | void;
 
 /**
  * The calls that answer one path, by method and path. Each is made under a
@@ -1273,6 +1326,7 @@ const apiRoutes = new Map<string, Handler>([
   ["POST /v1/checkout/sessions", createCheckoutSession],
   ["POST /v1/coupons", createCoupon],
   ["POST /v1/prices", createPrice],
+  ["GET /v1/refunds", listRefunds],
   ["POST /v1/refunds", createRefund],
   ["POST /v1/webhook_endpoints", createWebhookEndpoint],
 ]);

@@ -4419,7 +4419,7 @@
       "refund_amount_waiting_description": "{$amount}的退款正在等待金流服務處理。在金流服務回報之前，只能以相同金額重新申請。",
       "refund_amount_note": {
         "invalid": "請輸入大於零且不超過剩餘可退金額的金額。",
-        "closes": "這是剩餘的全部金額，讀者將立即無法閱讀所購買的內容。",
+        "closes": "退還全部金額後，讀者將立即無法閱讀所購買的內容。",
         "stays_open": "讀者仍可閱讀所購買的內容。"
       },
       "refund_requested_amount": "已申請退款金額",

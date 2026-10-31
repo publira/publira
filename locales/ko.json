@@ -4419,7 +4419,7 @@
       "refund_amount_waiting_description": "{$amount} 환불이 결제 서비스의 처리를 기다리고 있습니다. 결제 서비스가 알려 오기 전까지는 같은 금액으로만 다시 요청할 수 있습니다.",
       "refund_amount_note": {
         "invalid": "0보다 크고 환불할 수 있는 남은 금액 이하로 입력해 주세요.",
-        "closes": "남은 전액이므로 독자는 즉시 구매한 내용을 읽을 수 없게 됩니다.",
+        "closes": "전액을 환불하면 독자는 즉시 구매한 내용을 읽을 수 없게 됩니다.",
         "stays_open": "독자는 계속 구매한 내용을 읽을 수 있습니다."
       },
       "refund_requested_amount": "환불 요청 금액",

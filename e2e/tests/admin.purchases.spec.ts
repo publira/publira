@@ -234,7 +234,7 @@ test.describe("Purchases", () => {
     await expect(amount).toHaveValue("500");
     await expect(confirmation).toContainText("Up to ¥500");
     await expect(confirmation).toContainText(
-      "That is all that is left, so what the reader bought closes to them at once."
+      "Refunding all of it closes what the reader bought to them at once."
     );
     await expect(confirm).toBeDisabled();
 
@@ -304,7 +304,7 @@ test.describe("Purchases", () => {
       .click();
     await expect(amount).toHaveValue("300");
     await expect(confirmation).toContainText(
-      "That is all that is left, so what the reader bought closes to them at once."
+      "Refunding all of it closes what the reader bought to them at once."
     );
     await reason.fill("The reader asked for the rest back.");
     await confirm.click();
