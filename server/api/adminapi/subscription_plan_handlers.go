@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -46,11 +47,25 @@ const (
 	maxSubscriptionPlanTargets = 100
 
 	// subscriptionPlanStripePriceIDKey is the constraint that keeps one Price
-	// on one plan of a tenant.
-	subscriptionPlanStripePriceIDKey = "subscription_plans_tenant_stripe_price_id_key"
+	// on one plan of a tenant, and the two after it one store product.
+	subscriptionPlanStripePriceIDKey       = "subscription_plans_tenant_stripe_price_id_key"
+	subscriptionPlanAppStoreProductIDKey   = "subscription_plans_tenant_app_store_product_id_key"
+	subscriptionPlanGooglePlayProductIDKey = "subscription_plans_tenant_google_play_product_id_key"
+
+	// maxStoreProductIDRunes bounds a plan's store product IDs, as the
+	// plan's other text is bounded.
+	maxStoreProductIDRunes = 100
 )
 
-var errSubscriptionPlanLimit = errors.New("the tenant holds as many subscription plans as it may")
+var (
+	errSubscriptionPlanLimit = errors.New("the tenant holds as many subscription plans as it may")
+
+	// appStoreProductIDPattern and googlePlayProductIDPattern are the
+	// characters each store takes in a product ID: Google Play takes no
+	// capitals, and starts one with a letter or a digit.
+	appStoreProductIDPattern   = regexp.MustCompile(`^[A-Za-z0-9._]+$`)
+	googlePlayProductIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._]*$`)
+)
 
 // subscriptionPlanInput is a plan's fields, read and checked from a request.
 type subscriptionPlanInput struct {
@@ -61,6 +76,27 @@ type subscriptionPlanInput struct {
 	labelIDs      []uuid.UUID
 	seriesIDs     []uuid.UUID
 	published     bool
+	// appStoreProductID and googlePlayProductID are the products the app sells
+	// the plan as.
+	appStoreProductID   storeProductID
+	googlePlayProductID storeProductID
+}
+
+// storeProductID is one of a plan's store product IDs as a request names it:
+// NULL in a store the app does not sell the plan in, and not set at all when
+// the request leaves the field out.
+type storeProductID struct {
+	id  sql.NullString
+	set bool
+}
+
+// or answers the product the request names, or current when it names none,
+// so a console built before the field keeps what the plan is sold as.
+func (p storeProductID) or(current sql.NullString) sql.NullString {
+	if !p.set {
+		return current
+	}
+	return p.id
 }
 
 // readSubscriptionPlanInput checks the fields a plan is saved with. Whether
@@ -88,6 +124,14 @@ func readSubscriptionPlanInput(req *publiraadminv1.SubscriptionPlanInput) (subsc
 	scope, err := protomapper.SubscriptionPlanScopeFromRequest(req.Scope)
 	if err != nil {
 		return subscriptionPlanInput{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("scope must name what the plan opens"), "plan.scope")
+	}
+	appStoreProductID, err := readStoreProductID(req.AppStoreProductId, appStoreProductIDPattern, "plan.app_store_product_id")
+	if err != nil {
+		return subscriptionPlanInput{}, err
+	}
+	googlePlayProductID, err := readStoreProductID(req.GooglePlayProductId, googlePlayProductIDPattern, "plan.google_play_product_id")
+	if err != nil {
+		return subscriptionPlanInput{}, err
 	}
 	labelIDs, err := readSubscriptionPlanTargetIDs(req.LabelIds, "plan.label_ids")
 	if err != nil {
@@ -125,7 +169,29 @@ func readSubscriptionPlanInput(req *publiraadminv1.SubscriptionPlanInput) (subsc
 		labelIDs:      labelIDs,
 		seriesIDs:     seriesIDs,
 		published:     req.Published,
+
+		appStoreProductID:   appStoreProductID,
+		googlePlayProductID: googlePlayProductID,
 	}, nil
+}
+
+// readStoreProductID reads one of a plan's store product IDs, where empty is
+// none and unset leaves the plan's as it is.
+func readStoreProductID(raw *string, pattern *regexp.Regexp, field string) (storeProductID, error) {
+	if raw == nil {
+		return storeProductID{}, nil
+	}
+	productID := strings.TrimSpace(*raw)
+	if productID == "" {
+		return storeProductID{set: true}, nil
+	}
+	if utf8.RuneCountInString(productID) > maxStoreProductIDRunes {
+		return storeProductID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("a store product ID is at most %d characters", maxStoreProductIDRunes), field)
+	}
+	if !pattern.MatchString(productID) {
+		return storeProductID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("the product ID holds a character the store does not take"), field)
+	}
+	return storeProductID{id: sql.NullString{String: productID, Valid: true}, set: true}, nil
 }
 
 // readSubscriptionPlanTargetIDs parses the primary keys of a plan's labels or
@@ -228,11 +294,16 @@ func (s *adminServer) replaceSubscriptionPlanTargets(ctx context.Context, tenant
 	return nil
 }
 
-// subscriptionPlanWriteError reports a Price another plan of the tenant
-// already names as that field, and anything else as a fault.
+// subscriptionPlanWriteError reports a Price or a store product another plan
+// of the tenant already names as that field, and anything else as a fault.
 func (s *adminServer) subscriptionPlanWriteError(ctx context.Context, message string, err error, tenantID uuid.UUID) error {
-	if dberr.UniqueViolationConstraint(err) == subscriptionPlanStripePriceIDKey {
+	switch dberr.UniqueViolationConstraint(err) {
+	case subscriptionPlanStripePriceIDKey:
 		return rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, errors.New("another subscription plan already bills this price"), "plan.stripe_price_id")
+	case subscriptionPlanAppStoreProductIDKey:
+		return rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, errors.New("another subscription plan is already sold as this App Store product"), "plan.app_store_product_id")
+	case subscriptionPlanGooglePlayProductIDKey:
+		return rpcerrors.NewFieldViolationError(connect.CodeAlreadyExists, errors.New("another subscription plan is already sold as this Google Play product"), "plan.google_play_product_id")
 	}
 	return s.internalDBError(ctx, message, err, "tenant_id", tenantID.String())
 }
@@ -358,6 +429,8 @@ func (s *adminServer) CreateSubscriptionPlan(
 			Name:                   input.name,
 			Description:            input.description,
 			StripePriceID:          input.stripePriceID,
+			AppStoreProductID:      input.appStoreProductID.id,
+			GooglePlayProductID:    input.googlePlayProductID.id,
 			PriceAmount:            int32(price.Amount),
 			Currency:               price.Currency,
 			RecurringInterval:      string(price.Interval),
@@ -440,6 +513,8 @@ func (s *adminServer) UpdateSubscriptionPlan(
 		Name:                   input.name,
 		Description:            input.description,
 		StripePriceID:          input.stripePriceID,
+		AppStoreProductID:      input.appStoreProductID.or(current.AppStoreProductID),
+		GooglePlayProductID:    input.googlePlayProductID.or(current.GooglePlayProductID),
 		PriceAmount:            int32(price.Amount),
 		Currency:               price.Currency,
 		RecurringInterval:      string(price.Interval),
@@ -597,6 +672,9 @@ func (s *adminServer) subscriptionPlanMessages(ctx context.Context, tenantID uui
 			SubscriberCount: row.SubscriberCount,
 			CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
 			UpdatedAt:       row.UpdatedAt.UTC().Format(time.RFC3339),
+
+			AppStoreProductId:   row.AppStoreProductID.String,
+			GooglePlayProductId: row.GooglePlayProductID.String,
 		})
 	}
 	return plans, nil

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS subscriptions_tenant_provider_store_subscription_id_key;

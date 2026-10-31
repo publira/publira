@@ -64,8 +64,9 @@ message PlatformPolicy {
   HourDayLimit mail_requests_per_source = 4;
   CommunityLimitDefaults community_limit_defaults = 5;
   // How often one reader may hand a store transaction to
-  // ConfirmStorePurchase, each of which the server verifies with the App Store
-  // or Google Play on the tenant's credentials and quota.
+  // ConfirmStorePurchase or ConfirmStoreSubscription, each of which the server
+  // verifies with the App Store or Google Play on the tenant's credentials and
+  // quota. The two RPCs share the one allowance.
   MinuteDayLimit store_purchase_confirmation = 6;
   // Where the list of disposable email domains is read from: an absolute http
   // or https URL of a list with one domain per line, blank lines and lines
@@ -138,7 +139,8 @@ message PlatformPolicy {
   // when a request leaves it unset.
   MinuteDayLimit series_remainder_checkout = 16;
   // How often one reader may ask SubscriptionService.StartSubscriptionCheckout
-  // to start a subscription checkout.
+  // to start a subscription checkout, or StartStoreSubscription to start one
+  // through the app's store, counted together.
   //
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.

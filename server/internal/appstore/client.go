@@ -97,39 +97,9 @@ func endpointOr(value, fallback string) string {
 // transactionID in environment, which the caller verifies like one the app
 // sent.
 func (c *Client) GetTransactionInfo(ctx context.Context, credentials Credentials, environment, transactionID string) (string, error) {
-	endpoint, ok := c.endpoints[environment]
-	if !ok {
-		return "", fmt.Errorf("appstore: unknown environment %q", environment)
-	}
-	token, err := c.requestToken(credentials)
+	body, err := c.get(ctx, credentials, environment, "/inApps/v1/transactions/"+url.PathEscape(transactionID), "get transaction info")
 	if err != nil {
 		return "", err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"/inApps/v1/transactions/"+url.PathEscape(transactionID), nil)
-	if err != nil {
-		return "", fmt.Errorf("appstore: build request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	res, err := c.http.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("appstore: get transaction info: %w", err)
-	}
-	defer res.Body.Close() //nolint:errcheck
-	// Bounded so a misrouted response cannot pull an unbounded body in; a
-	// transaction's JWS is a few kilobytes.
-	body, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
-	if err != nil {
-		return "", fmt.Errorf("appstore: read response: %w", err)
-	}
-	switch res.StatusCode {
-	case http.StatusOK:
-	case http.StatusNotFound:
-		return "", ErrTransactionNotFound
-	case http.StatusUnauthorized:
-		return "", ErrUnauthorized
-	default:
-		return "", fmt.Errorf("appstore: get transaction info answered %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
 	}
 	var decoded struct {
 		SignedTransactionInfo string `json:"signedTransactionInfo"`
@@ -138,6 +108,91 @@ func (c *Client) GetTransactionInfo(ctx context.Context, credentials Credentials
 		return "", fmt.Errorf("appstore: transaction info response carries no signed transaction")
 	}
 	return decoded.SignedTransactionInfo, nil
+}
+
+// Statuses of an auto-renewable subscription in Get All Subscription
+// Statuses.
+const (
+	SubscriptionStatusActive             = 1
+	SubscriptionStatusExpired            = 2
+	SubscriptionStatusBillingRetry       = 3
+	SubscriptionStatusBillingGracePeriod = 4
+	SubscriptionStatusRevoked            = 5
+)
+
+// SubscriptionStatus is one subscription of the reader's in Get All
+// Subscription Statuses: its status, and its latest transaction and renewal
+// info, each signed on its own and checked with [Verifier.VerifyTransaction]
+// and [Verifier.VerifyRenewalInfo].
+type SubscriptionStatus struct {
+	OriginalTransactionID string `json:"originalTransactionId"`
+	Status                int    `json:"status"`
+	SignedTransactionInfo string `json:"signedTransactionInfo"`
+	SignedRenewalInfo     string `json:"signedRenewalInfo"`
+}
+
+// GetAllSubscriptionStatuses answers every subscription in the app of the
+// customer transactionID belongs to, in environment, across all of the app's
+// subscription groups.
+func (c *Client) GetAllSubscriptionStatuses(ctx context.Context, credentials Credentials, environment, transactionID string) ([]SubscriptionStatus, error) {
+	body, err := c.get(ctx, credentials, environment, "/inApps/v1/subscriptions/"+url.PathEscape(transactionID), "get all subscription statuses")
+	if err != nil {
+		return nil, err
+	}
+	var decoded struct {
+		Data []struct {
+			LastTransactions []SubscriptionStatus `json:"lastTransactions"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return nil, fmt.Errorf("appstore: decode subscription statuses: %w", err)
+	}
+	var statuses []SubscriptionStatus
+	for _, group := range decoded.Data {
+		statuses = append(statuses, group.LastTransactions...)
+	}
+	return statuses, nil
+}
+
+// get sends a signed GET of path to the App Store Server API of environment
+// and answers the body of a 200.
+func (c *Client) get(ctx context.Context, credentials Credentials, environment, path, call string) ([]byte, error) {
+	endpoint, ok := c.endpoints[environment]
+	if !ok {
+		return nil, fmt.Errorf("appstore: unknown environment %q", environment)
+	}
+	token, err := c.requestToken(credentials)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("appstore: build request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("appstore: %s: %w", call, err)
+	}
+	defer res.Body.Close() //nolint:errcheck
+	// Bounded so a misrouted response cannot pull an unbounded body in; a
+	// transaction's JWS is a few kilobytes, and a customer's subscription
+	// statuses a few of them.
+	body, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("appstore: read response: %w", err)
+	}
+	switch res.StatusCode {
+	case http.StatusOK:
+		return body, nil
+	case http.StatusNotFound:
+		return nil, ErrTransactionNotFound
+	case http.StatusUnauthorized:
+		return nil, ErrUnauthorized
+	default:
+		return nil, fmt.Errorf("appstore: %s answered %d: %s", call, res.StatusCode, strings.TrimSpace(string(body)))
+	}
 }
 
 // requestToken signs the bearer token the App Store Server API authenticates

@@ -459,6 +459,7 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))
 	googlePlayHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeGooglePlayPurchaseConsume, outbox.NewGooglePlayPurchaseConsumeHandler(googlePlayHandlers))
+	handlers.Register(outbox.EventTypeGooglePlaySubscriptionAcknowledge, outbox.NewGooglePlaySubscriptionAcknowledgeHandler(googlePlayHandlers))
 	appleSignInHandlers.Logger = logger
 	handlers.Register(outbox.EventTypeAppleSignInCodeExchange, outbox.NewAppleSignInCodeExchangeHandler(appleSignInHandlers))
 	handlers.Register(outbox.EventTypeAppleSignInTokenRevoke, outbox.NewAppleSignInTokenRevokeHandler(appleSignInHandlers))

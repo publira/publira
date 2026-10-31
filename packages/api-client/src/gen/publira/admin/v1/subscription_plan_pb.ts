@@ -12,12 +12,14 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/subscription_plan.proto.
  */
 export const file_publira_admin_v1_subscription_plan: GenFile = /*@__PURE__*/
-  fileDesc("CihwdWJsaXJhL2FkbWluL3YxL3N1YnNjcmlwdGlvbl9wbGFuLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIqADChVBZG1pblN1YnNjcmlwdGlvblBsYW4SCgoCaWQYASABKAkSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSFwoPc3RyaXBlX3ByaWNlX2lkGAUgASgJEhQKDHByaWNlX2Ftb3VudBgGIAEoBRIQCghjdXJyZW5jeRgHIAEoCRI4CghpbnRlcnZhbBgIIAEoDjImLnB1YmxpcmEudHlwZXMudjEuU3Vic2NyaXB0aW9uSW50ZXJ2YWwSFgoOaW50ZXJ2YWxfY291bnQYCSABKAUSNgoFc2NvcGUYCiABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblBsYW5TY29wZRIRCglsYWJlbF9pZHMYCyADKAkSEgoKc2VyaWVzX2lkcxgMIAMoCRIRCglwdWJsaXNoZWQYDSABKAgSGAoQc3Vic2NyaWJlcl9jb3VudBgOIAEoBRISCgpjcmVhdGVkX2F0GA8gASgJEhIKCnVwZGF0ZWRfYXQYECABKAkiTwocTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiVwodTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVzcG9uc2USNgoFcGxhbnMYASADKAsyJy5wdWJsaXJhLmFkbWluLnYxLkFkbWluU3Vic2NyaXB0aW9uUGxhbiJrChpHZXRTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSHAoUc3Vic2NyaXB0aW9uX3BsYW5faWQYAiABKAkiVAobR2V0U3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlEjUKBHBsYW4YASABKAsyJy5wdWJsaXJhLmFkbWluLnYxLkFkbWluU3Vic2NyaXB0aW9uUGxhbiLFAQoVU3Vic2NyaXB0aW9uUGxhbklucHV0EgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSFwoPc3RyaXBlX3ByaWNlX2lkGAMgASgJEjYKBXNjb3BlGAQgASgOMicucHVibGlyYS50eXBlcy52MS5TdWJzY3JpcHRpb25QbGFuU2NvcGUSEQoJbGFiZWxfaWRzGAUgAygJEhIKCnNlcmllc19pZHMYBiADKAkSEQoJcHVibGlzaGVkGAcgASgIIocBCh1DcmVhdGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSNQoEcGxhbhgCIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuU3Vic2NyaXB0aW9uUGxhbklucHV0IlcKHkNyZWF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZRI1CgRwbGFuGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5BZG1pblN1YnNjcmlwdGlvblBsYW4ipQEKHVVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIcChRzdWJzY3JpcHRpb25fcGxhbl9pZBgCIAEoCRI1CgRwbGFuGAMgASgLMicucHVibGlyYS5hZG1pbi52MS5TdWJzY3JpcHRpb25QbGFuSW5wdXQiVwoeVXBkYXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlEjUKBHBsYW4YASABKAsyJy5wdWJsaXJhLmFkbWluLnYxLkFkbWluU3Vic2NyaXB0aW9uUGxhbiJuCh1EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSHAoUc3Vic2NyaXB0aW9uX3BsYW5faWQYAiABKAkiIAoeRGVsZXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlMo0FChxBZG1pblN1YnNjcmlwdGlvblBsYW5TZXJ2aWNlEnoKFUxpc3RTdWJzY3JpcHRpb25QbGFucxIuLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVzcG9uc2UiABJ0ChNHZXRTdWJzY3JpcHRpb25QbGFuEiwucHVibGlyYS5hZG1pbi52MS5HZXRTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuR2V0U3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlIgASfQoWQ3JlYXRlU3Vic2NyaXB0aW9uUGxhbhIvLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlU3Vic2NyaXB0aW9uUGxhblJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZSIAEn0KFlVwZGF0ZVN1YnNjcmlwdGlvblBsYW4SLy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5VcGRhdGVTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2UiABJ9ChZEZWxldGVTdWJzY3JpcHRpb25QbGFuEi8ucHVibGlyYS5hZG1pbi52MS5EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("CihwdWJsaXJhL2FkbWluL3YxL3N1YnNjcmlwdGlvbl9wbGFuLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxIt4DChVBZG1pblN1YnNjcmlwdGlvblBsYW4SCgoCaWQYASABKAkSEQoJcHVibGljX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSFwoPc3RyaXBlX3ByaWNlX2lkGAUgASgJEhQKDHByaWNlX2Ftb3VudBgGIAEoBRIQCghjdXJyZW5jeRgHIAEoCRI4CghpbnRlcnZhbBgIIAEoDjImLnB1YmxpcmEudHlwZXMudjEuU3Vic2NyaXB0aW9uSW50ZXJ2YWwSFgoOaW50ZXJ2YWxfY291bnQYCSABKAUSNgoFc2NvcGUYCiABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblBsYW5TY29wZRIRCglsYWJlbF9pZHMYCyADKAkSEgoKc2VyaWVzX2lkcxgMIAMoCRIRCglwdWJsaXNoZWQYDSABKAgSGAoQc3Vic2NyaWJlcl9jb3VudBgOIAEoBRISCgpjcmVhdGVkX2F0GA8gASgJEhIKCnVwZGF0ZWRfYXQYECABKAkSHAoUYXBwX3N0b3JlX3Byb2R1Y3RfaWQYESABKAkSHgoWZ29vZ2xlX3BsYXlfcHJvZHVjdF9pZBgSIAEoCSJPChxMaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJXCh1MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXNwb25zZRI2CgVwbGFucxgBIAMoCzInLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5TdWJzY3JpcHRpb25QbGFuImsKGkdldFN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIcChRzdWJzY3JpcHRpb25fcGxhbl9pZBgCIAEoCSJUChtHZXRTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2USNQoEcGxhbhgBIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5TdWJzY3JpcHRpb25QbGFuIsECChVTdWJzY3JpcHRpb25QbGFuSW5wdXQSDAoEbmFtZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIXCg9zdHJpcGVfcHJpY2VfaWQYAyABKAkSNgoFc2NvcGUYBCABKA4yJy5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblBsYW5TY29wZRIRCglsYWJlbF9pZHMYBSADKAkSEgoKc2VyaWVzX2lkcxgGIAMoCRIRCglwdWJsaXNoZWQYByABKAgSIQoUYXBwX3N0b3JlX3Byb2R1Y3RfaWQYCCABKAlIAIgBARIjChZnb29nbGVfcGxheV9wcm9kdWN0X2lkGAkgASgJSAGIAQFCFwoVX2FwcF9zdG9yZV9wcm9kdWN0X2lkQhkKF19nb29nbGVfcGxheV9wcm9kdWN0X2lkIocBCh1DcmVhdGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSNQoEcGxhbhgCIAEoCzInLnB1YmxpcmEuYWRtaW4udjEuU3Vic2NyaXB0aW9uUGxhbklucHV0IlcKHkNyZWF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZRI1CgRwbGFuGAEgASgLMicucHVibGlyYS5hZG1pbi52MS5BZG1pblN1YnNjcmlwdGlvblBsYW4ipQEKHVVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIcChRzdWJzY3JpcHRpb25fcGxhbl9pZBgCIAEoCRI1CgRwbGFuGAMgASgLMicucHVibGlyYS5hZG1pbi52MS5TdWJzY3JpcHRpb25QbGFuSW5wdXQiVwoeVXBkYXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlEjUKBHBsYW4YASABKAsyJy5wdWJsaXJhLmFkbWluLnYxLkFkbWluU3Vic2NyaXB0aW9uUGxhbiJuCh1EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSHAoUc3Vic2NyaXB0aW9uX3BsYW5faWQYAiABKAkiIAoeRGVsZXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlMo0FChxBZG1pblN1YnNjcmlwdGlvblBsYW5TZXJ2aWNlEnoKFUxpc3RTdWJzY3JpcHRpb25QbGFucxIuLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVxdWVzdBovLnB1YmxpcmEuYWRtaW4udjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVzcG9uc2UiABJ0ChNHZXRTdWJzY3JpcHRpb25QbGFuEiwucHVibGlyYS5hZG1pbi52MS5HZXRTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBotLnB1YmxpcmEuYWRtaW4udjEuR2V0U3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlIgASfQoWQ3JlYXRlU3Vic2NyaXB0aW9uUGxhbhIvLnB1YmxpcmEuYWRtaW4udjEuQ3JlYXRlU3Vic2NyaXB0aW9uUGxhblJlcXVlc3QaMC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZVN1YnNjcmlwdGlvblBsYW5SZXNwb25zZSIAEn0KFlVwZGF0ZVN1YnNjcmlwdGlvblBsYW4SLy5wdWJsaXJhLmFkbWluLnYxLlVwZGF0ZVN1YnNjcmlwdGlvblBsYW5SZXF1ZXN0GjAucHVibGlyYS5hZG1pbi52MS5VcGRhdGVTdWJzY3JpcHRpb25QbGFuUmVzcG9uc2UiABJ9ChZEZWxldGVTdWJzY3JpcHRpb25QbGFuEi8ucHVibGlyYS5hZG1pbi52MS5EZWxldGVTdWJzY3JpcHRpb25QbGFuUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlU3Vic2NyaXB0aW9uUGxhblJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * A subscription plan is a recurring Price on the tenant's Stripe account and
  * what a reader who pays it may read. The storefront lists the published ones
- * through publira.v1.SubscriptionService.ListSubscriptionPlans.
+ * through publira.v1.SubscriptionService.ListSubscriptionPlans. The tenant's
+ * app may sell the same plan as an auto-renewable subscription of its own in
+ * the App Store and in Google Play, which the store bills instead of Stripe.
  *
  * @generated from message publira.admin.v1.AdminSubscriptionPlan
  */
@@ -120,6 +122,20 @@ export type AdminSubscriptionPlan = Message<"publira.admin.v1.AdminSubscriptionP
    * @generated from field: string updated_at = 16;
    */
   updatedAt: string;
+
+  /**
+   * The subscription the plan is sold as in the tenant's iOS app, as App Store
+   * Connect names it, and in its Android app, as the Play Console names it.
+   * Empty where the app does not sell the plan.
+   *
+   * @generated from field: string app_store_product_id = 17;
+   */
+  appStoreProductId: string;
+
+  /**
+   * @generated from field: string google_play_product_id = 18;
+   */
+  googlePlayProductId: string;
 };
 
 /**
@@ -223,6 +239,19 @@ export const GetSubscriptionPlanResponseSchema: GenMessage<GetSubscriptionPlanRe
  * labels of the tenant and no series, and a SUBSCRIPTION_PLAN_SCOPE_SERIES
  * plan one to 100 series and no labels. Anything else is invalid_argument.
  *
+ * `app_store_product_id` and `google_play_product_id` name the products the
+ * plan is sold as in each app, and empty sells it in neither. An update that
+ * leaves one unset keeps the product the plan is already sold as, so a console
+ * built before these fields clears neither; a create that leaves one unset
+ * sells the plan in no such app. Each is at most 100 characters: an App Store
+ * product ID of letters, digits, underscores, and periods, and a Google Play
+ * one of lowercase letters, digits, underscores, and periods, starting with a
+ * letter or a digit. Anything else is invalid_argument on that field, and one
+ * another plan of the tenant already names is already_exists on it. Neither is
+ * checked with the store: the tenant creates the product there, at the price
+ * and the billing period the store will bill, which this plan's Stripe Price
+ * does not set.
+ *
  * @generated from message publira.admin.v1.SubscriptionPlanInput
  */
 export type SubscriptionPlanInput = Message<"publira.admin.v1.SubscriptionPlanInput"> & {
@@ -260,6 +289,16 @@ export type SubscriptionPlanInput = Message<"publira.admin.v1.SubscriptionPlanIn
    * @generated from field: bool published = 7;
    */
   published: boolean;
+
+  /**
+   * @generated from field: optional string app_store_product_id = 8;
+   */
+  appStoreProductId?: string | undefined;
+
+  /**
+   * @generated from field: optional string google_play_product_id = 9;
+   */
+  googlePlayProductId?: string | undefined;
 };
 
 /**
@@ -312,10 +351,11 @@ export const CreateSubscriptionPlanResponseSchema: GenMessage<CreateSubscription
   messageDesc(file_publira_admin_v1_subscription_plan, 7);
 
 /**
- * Replaces every field of the plan with `plan`. A subscription already started
- * keeps going whatever changes: a new Price does not move it, since Stripe
- * bills it at the Price it was started at, and a narrower scope applies to it
- * from then on.
+ * Replaces every field of the plan with `plan`, but a store product ID the
+ * request leaves unset, which keeps its value. A subscription already started
+ * keeps going whatever changes: a new Price or a new store product does not
+ * move it, since Stripe or the store bills it at what it was started at, and a
+ * narrower scope applies to it from then on.
  *
  * @generated from message publira.admin.v1.UpdateSubscriptionPlanRequest
  */
@@ -364,8 +404,9 @@ export const UpdateSubscriptionPlanResponseSchema: GenMessage<UpdateSubscription
  * Removes a plan nobody has ever subscribed to. One a subscription names, in
  * whatever state, is failed_precondition with the ErrorInfo reason
  * SUBSCRIPTION_PLAN_IN_USE: the subscription is a record of what the reader
- * paid for. So is one a reader's latest checkout was of, which the reader may
- * still be paying. Unpublish such a plan instead.
+ * paid for. So is one a reader's latest checkout was of, or one a reader asked
+ * to subscribe to in the app, which the reader may still be paying. Unpublish
+ * such a plan instead.
  *
  * @generated from message publira.admin.v1.DeleteSubscriptionPlanRequest
  */

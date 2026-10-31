@@ -6,6 +6,7 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/admin/v1/coin.proto";
 import "publira/admin/v1/email.proto";
+import "publira/admin/v1/subscription_plan.proto";
 import "publira/types/v1/types.proto";
 
 // One credential a payment provider declares.
@@ -236,6 +237,12 @@ message ListTenantStoreProductsResponse {
   // episodes the app may show and sell are counted. The packs are listed
   // whether or not coins are turned on.
   repeated TenantStoreProduct products = 1;
+  // Every subscription plan of the tenant, in the order it was created,
+  // published or not and whether or not it names a store product yet, so the
+  // console can show which plans the app sells and which it does not. Each
+  // names the auto-renewable subscription it is sold as in each store, which
+  // the tenant creates there with the plan's billing period.
+  repeated AdminSubscriptionPlan subscription_plans = 2;
 }
 
 service AdminPaymentSettingsService {

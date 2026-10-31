@@ -6,7 +6,7 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { ClientSurface, Series, SubscriptionInterval, SubscriptionPlanScope, SubscriptionStatus, TenantContext } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
-import type { PublishedLabel } from "./catalog_pb";
+import type { InAppPurchaseStore, PublishedLabel } from "./catalog_pb";
 import { file_publira_v1_catalog } from "./catalog_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,11 +14,13 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/subscription.proto.
  */
 export const file_publira_v1_subscription: GenFile = /*@__PURE__*/
-  fileDesc("Ch1wdWJsaXJhL3YxL3N1YnNjcmlwdGlvbi5wcm90bxIKcHVibGlyYS52MSKDAwoQU3Vic2NyaXB0aW9uUGxhbhIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIUCgxwcmljZV9hbW91bnQYBSABKAUSEAoIY3VycmVuY3kYBiABKAkSOAoIaW50ZXJ2YWwYByABKA4yJi5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvbkludGVydmFsEhYKDmludGVydmFsX2NvdW50GAggASgFEjYKBXNjb3BlGAkgASgOMicucHVibGlyYS50eXBlcy52MS5TdWJzY3JpcHRpb25QbGFuU2NvcGUSEQoJbGFiZWxfaWRzGAogAygJEhIKCnNlcmllc19pZHMYCyADKAkSKgoGbGFiZWxzGAwgAygLMhoucHVibGlyYS52MS5QdWJsaXNoZWRMYWJlbBIoCgZzZXJpZXMYDSADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcyLKAQoMU3Vic2NyaXB0aW9uEgoKAmlkGAEgASgJEioKBHBsYW4YAiABKAsyHC5wdWJsaXJhLnYxLlN1YnNjcmlwdGlvblBsYW4SNAoGc3RhdHVzGAMgASgOMiQucHVibGlyYS50eXBlcy52MS5TdWJzY3JpcHRpb25TdGF0dXMSGgoSY3VycmVudF9wZXJpb2RfZW5kGAQgASgJEhwKFGNhbmNlbF9hdF9wZXJpb2RfZW5kGAUgASgIEhIKCmNyZWF0ZWRfYXQYBiABKAkikQEKHExpc3RTdWJzY3JpcHRpb25QbGFuc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EjAKB3N1cmZhY2UYAiABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2USDgoGbG9jYWxlGAMgASgJIkwKHUxpc3RTdWJzY3JpcHRpb25QbGFuc1Jlc3BvbnNlEisKBXBsYW5zGAEgAygLMhwucHVibGlyYS52MS5TdWJzY3JpcHRpb25QbGFuImQKIFN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIPCgdwbGFuX2lkGAIgASgJIjkKIVN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXNwb25zZRIUCgxjaGVja291dF91cmwYASABKAkiSwoYR2V0TXlTdWJzY3JpcHRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJLChlHZXRNeVN1YnNjcmlwdGlvblJlc3BvbnNlEi4KDHN1YnNjcmlwdGlvbhgBIAEoCzIYLnB1YmxpcmEudjEuU3Vic2NyaXB0aW9uIlQKIUNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiMQoiQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb25SZXNwb25zZRILCgN1cmwYASABKAky5AMKE1N1YnNjcmlwdGlvblNlcnZpY2USbgoVTGlzdFN1YnNjcmlwdGlvblBsYW5zEigucHVibGlyYS52MS5MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0GikucHVibGlyYS52MS5MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXNwb25zZSIAEnoKGVN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXQSLC5wdWJsaXJhLnYxLlN0YXJ0U3Vic2NyaXB0aW9uQ2hlY2tvdXRSZXF1ZXN0Gi0ucHVibGlyYS52MS5TdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0UmVzcG9uc2UiABJiChFHZXRNeVN1YnNjcmlwdGlvbhIkLnB1YmxpcmEudjEuR2V0TXlTdWJzY3JpcHRpb25SZXF1ZXN0GiUucHVibGlyYS52MS5HZXRNeVN1YnNjcmlwdGlvblJlc3BvbnNlIgASfQoaQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb24SLS5wdWJsaXJhLnYxLkNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVxdWVzdBouLnB1YmxpcmEudjEuQ3JlYXRlQmlsbGluZ1BvcnRhbFNlc3Npb25SZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types, file_publira_v1_catalog]);
+  fileDesc("Ch1wdWJsaXJhL3YxL3N1YnNjcmlwdGlvbi5wcm90bxIKcHVibGlyYS52MSLBAwoQU3Vic2NyaXB0aW9uUGxhbhIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIUCgxwcmljZV9hbW91bnQYBSABKAUSEAoIY3VycmVuY3kYBiABKAkSOAoIaW50ZXJ2YWwYByABKA4yJi5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvbkludGVydmFsEhYKDmludGVydmFsX2NvdW50GAggASgFEjYKBXNjb3BlGAkgASgOMicucHVibGlyYS50eXBlcy52MS5TdWJzY3JpcHRpb25QbGFuU2NvcGUSEQoJbGFiZWxfaWRzGAogAygJEhIKCnNlcmllc19pZHMYCyADKAkSKgoGbGFiZWxzGAwgAygLMhoucHVibGlyYS52MS5QdWJsaXNoZWRMYWJlbBIoCgZzZXJpZXMYDSADKAsyGC5wdWJsaXJhLnR5cGVzLnYxLlNlcmllcxIcChRhcHBfc3RvcmVfcHJvZHVjdF9pZBgOIAEoCRIeChZnb29nbGVfcGxheV9wcm9kdWN0X2lkGA8gASgJIvkBCgxTdWJzY3JpcHRpb24SCgoCaWQYASABKAkSKgoEcGxhbhgCIAEoCzIcLnB1YmxpcmEudjEuU3Vic2NyaXB0aW9uUGxhbhI0CgZzdGF0dXMYAyABKA4yJC5wdWJsaXJhLnR5cGVzLnYxLlN1YnNjcmlwdGlvblN0YXR1cxIaChJjdXJyZW50X3BlcmlvZF9lbmQYBCABKAkSHAoUY2FuY2VsX2F0X3BlcmlvZF9lbmQYBSABKAgSEgoKY3JlYXRlZF9hdBgGIAEoCRItCgVzdG9yZRgHIAEoDjIeLnB1YmxpcmEudjEuSW5BcHBQdXJjaGFzZVN0b3JlIpEBChxMaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIwCgdzdXJmYWNlGAIgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbGllbnRTdXJmYWNlEg4KBmxvY2FsZRgDIAEoCSJMCh1MaXN0U3Vic2NyaXB0aW9uUGxhbnNSZXNwb25zZRIrCgVwbGFucxgBIAMoCzIcLnB1YmxpcmEudjEuU3Vic2NyaXB0aW9uUGxhbiJkCiBTdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDwoHcGxhbl9pZBgCIAEoCSI5CiFTdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0UmVzcG9uc2USFAoMY2hlY2tvdXRfdXJsGAEgASgJIksKGEdldE15U3Vic2NyaXB0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQiSwoZR2V0TXlTdWJzY3JpcHRpb25SZXNwb25zZRIuCgxzdWJzY3JpcHRpb24YASABKAsyGC5wdWJsaXJhLnYxLlN1YnNjcmlwdGlvbiJUCiFDcmVhdGVCaWxsaW5nUG9ydGFsU2Vzc2lvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IjEKIkNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVzcG9uc2USCwoDdXJsGAEgASgJIpABCh1TdGFydFN0b3JlU3Vic2NyaXB0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSLQoFc3RvcmUYAiABKA4yHi5wdWJsaXJhLnYxLkluQXBwUHVyY2hhc2VTdG9yZRIPCgdwbGFuX2lkGAMgASgJIkcKHlN0YXJ0U3RvcmVTdWJzY3JpcHRpb25SZXNwb25zZRIRCglpbnRlbnRfaWQYASABKAkSEgoKcHJvZHVjdF9pZBgCIAEoCSKqAQofQ29uZmlybVN0b3JlU3Vic2NyaXB0aW9uUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSLQoFc3RvcmUYAiABKA4yHi5wdWJsaXJhLnYxLkluQXBwUHVyY2hhc2VTdG9yZRITCgt0cmFuc2FjdGlvbhgDIAEoCRISCgpwcm9kdWN0X2lkGAQgASgJIlIKIENvbmZpcm1TdG9yZVN1YnNjcmlwdGlvblJlc3BvbnNlEi4KDHN1YnNjcmlwdGlvbhgBIAEoCzIYLnB1YmxpcmEudjEuU3Vic2NyaXB0aW9uMtAFChNTdWJzY3JpcHRpb25TZXJ2aWNlEm4KFUxpc3RTdWJzY3JpcHRpb25QbGFucxIoLnB1YmxpcmEudjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVxdWVzdBopLnB1YmxpcmEudjEuTGlzdFN1YnNjcmlwdGlvblBsYW5zUmVzcG9uc2UiABJ6ChlTdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0EiwucHVibGlyYS52MS5TdGFydFN1YnNjcmlwdGlvbkNoZWNrb3V0UmVxdWVzdBotLnB1YmxpcmEudjEuU3RhcnRTdWJzY3JpcHRpb25DaGVja291dFJlc3BvbnNlIgASYgoRR2V0TXlTdWJzY3JpcHRpb24SJC5wdWJsaXJhLnYxLkdldE15U3Vic2NyaXB0aW9uUmVxdWVzdBolLnB1YmxpcmEudjEuR2V0TXlTdWJzY3JpcHRpb25SZXNwb25zZSIAEn0KGkNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uEi0ucHVibGlyYS52MS5DcmVhdGVCaWxsaW5nUG9ydGFsU2Vzc2lvblJlcXVlc3QaLi5wdWJsaXJhLnYxLkNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVzcG9uc2UiABJxChZTdGFydFN0b3JlU3Vic2NyaXB0aW9uEikucHVibGlyYS52MS5TdGFydFN0b3JlU3Vic2NyaXB0aW9uUmVxdWVzdBoqLnB1YmxpcmEudjEuU3RhcnRTdG9yZVN1YnNjcmlwdGlvblJlc3BvbnNlIgASdwoYQ29uZmlybVN0b3JlU3Vic2NyaXB0aW9uEisucHVibGlyYS52MS5Db25maXJtU3RvcmVTdWJzY3JpcHRpb25SZXF1ZXN0GiwucHVibGlyYS52MS5Db25maXJtU3RvcmVTdWJzY3JpcHRpb25SZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types, file_publira_v1_catalog]);
 
 /**
  * A subscription plan the tenant has published: a recurring price on its
- * Stripe account, and what a reader who pays it may read.
+ * Stripe account, and what a reader who pays it may read. The tenant's app may
+ * sell it through the App Store or Google Play instead, as the product named
+ * below.
  *
  * @generated from message publira.v1.SubscriptionPlan
  */
@@ -111,6 +113,22 @@ export type SubscriptionPlan = Message<"publira.v1.SubscriptionPlan"> & {
    * @generated from field: repeated publira.types.v1.Series series = 13;
    */
   series: Series[];
+
+  /**
+   * The auto-renewable subscription the plan is sold as in the tenant's iOS
+   * app and in its Android app. Empty where the app does not sell the plan,
+   * which StartStoreSubscription refuses for that store. The price and the
+   * period the store bills are the store's, which the app reads from it
+   * rather than from price_amount and interval.
+   *
+   * @generated from field: string app_store_product_id = 14;
+   */
+  appStoreProductId: string;
+
+  /**
+   * @generated from field: string google_play_product_id = 15;
+   */
+  googlePlayProductId: string;
 };
 
 /**
@@ -121,7 +139,8 @@ export const SubscriptionPlanSchema: GenMessage<SubscriptionPlan> = /*@__PURE__*
   messageDesc(file_publira_v1_subscription, 0);
 
 /**
- * A reader's subscription to one plan, as Stripe last reported it.
+ * A reader's subscription to one plan, as Stripe or the store that bills it
+ * last reported it.
  *
  * @generated from message publira.v1.Subscription
  */
@@ -147,7 +166,8 @@ export type Subscription = Message<"publira.v1.Subscription"> & {
   status: SubscriptionStatus;
 
   /**
-   * RFC 3339; the end of the period paid for. Empty when Stripe reported none.
+   * RFC 3339; the end of the period paid for, or of the grace period a store
+   * gives a past due subscription. Empty when Stripe reported none.
    *
    * @generated from field: string current_period_end = 4;
    */
@@ -167,6 +187,15 @@ export type Subscription = Message<"publira.v1.Subscription"> & {
    * @generated from field: string created_at = 6;
    */
   createdAt: string;
+
+  /**
+   * The store the reader subscribed through in the app, which is where they
+   * change or cancel it. IN_APP_PURCHASE_STORE_UNSPECIFIED for a subscription
+   * Stripe bills, which CreateBillingPortalSession manages.
+   *
+   * @generated from field: publira.v1.InAppPurchaseStore store = 7;
+   */
+  store: InAppPurchaseStore;
 };
 
 /**
@@ -242,8 +271,8 @@ export const ListSubscriptionPlansResponseSchema: GenMessage<ListSubscriptionPla
  * Signed-in readers only. A plan that is not published is not_found, and a
  * tenant that takes no payments, or takes them through a provider that sells
  * no subscriptions, is failed_precondition. A reader who already holds a
- * subscription that is trialing, active, past due, unpaid, or paused is
- * already_exists, and so is one who has paid a checkout whose subscription
+ * subscription that is trialing, active, past due, unpaid, or paused, whether
+ * Stripe or a store bills it, is already_exists, and so is one who has paid a checkout whose subscription
  * Stripe has not reported as ended: one reader holds one subscription, and
  * changing it is what CreateBillingPortalSession is for. Each call spends the
  * reader's allowance for subscription checkouts, and a reader past it is
@@ -335,8 +364,9 @@ export const GetMySubscriptionResponseSchema: GenMessage<GetMySubscriptionRespon
  * site. What the reader changes there reaches the server through Stripe's
  * webhook.
  *
- * A reader who has never subscribed is failed_precondition, and so is a
- * tenant that takes no payments through Stripe.
+ * A reader who has never subscribed through Stripe is failed_precondition, and
+ * so is a tenant that takes no payments through Stripe: a subscription a store
+ * bills is changed and canceled in that store.
  *
  * @generated from message publira.v1.CreateBillingPortalSessionRequest
  */
@@ -370,6 +400,158 @@ export type CreateBillingPortalSessionResponse = Message<"publira.v1.CreateBilli
  */
 export const CreateBillingPortalSessionResponseSchema: GenMessage<CreateBillingPortalSessionResponse> = /*@__PURE__*/
   messageDesc(file_publira_v1_subscription, 9);
+
+/**
+ * Opens a subscription through the App Store's or Google Play's in-app
+ * purchase, for a tenant whose app sells through the store. The app subscribes
+ * to `product_id` with `intent_id` as the transaction's account token
+ * (`appAccountToken` on iOS, `obfuscatedAccountId` on Android), which is how
+ * ConfirmStoreSubscription learns whose subscription the transaction is.
+ *
+ * Signed-in readers only. A plan that is not published is not_found. A tenant
+ * whose app does not sell through the store, a `store` that is not ready, and
+ * a plan that names no product in that store are failed_precondition. A reader
+ * who already holds a subscription that is trialing, active, past due, unpaid,
+ * or paused, whether Stripe or a store bills it, is already_exists. Asking
+ * again for the same plan answers the same intent. Each call spends the
+ * reader's allowance for subscription checkouts, the one
+ * StartSubscriptionCheckout spends, and a reader past it is
+ * resource_exhausted.
+ *
+ * @generated from message publira.v1.StartStoreSubscriptionRequest
+ */
+export type StartStoreSubscriptionRequest = Message<"publira.v1.StartStoreSubscriptionRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The store the app is about to subscribe through. Required.
+   *
+   * @generated from field: publira.v1.InAppPurchaseStore store = 2;
+   */
+  store: InAppPurchaseStore;
+
+  /**
+   * The plan to subscribe to (SubscriptionPlan.id).
+   *
+   * @generated from field: string plan_id = 3;
+   */
+  planId: string;
+};
+
+/**
+ * Describes the message publira.v1.StartStoreSubscriptionRequest.
+ * Use `create(StartStoreSubscriptionRequestSchema)` to create a new message.
+ */
+export const StartStoreSubscriptionRequestSchema: GenMessage<StartStoreSubscriptionRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_subscription, 10);
+
+/**
+ * @generated from message publira.v1.StartStoreSubscriptionResponse
+ */
+export type StartStoreSubscriptionResponse = Message<"publira.v1.StartStoreSubscriptionResponse"> & {
+  /**
+   * @generated from field: string intent_id = 1;
+   */
+  intentId: string;
+
+  /**
+   * The plan's product in `store`: SubscriptionPlan.app_store_product_id or
+   * google_play_product_id.
+   *
+   * @generated from field: string product_id = 2;
+   */
+  productId: string;
+};
+
+/**
+ * Describes the message publira.v1.StartStoreSubscriptionResponse.
+ * Use `create(StartStoreSubscriptionResponseSchema)` to create a new message.
+ */
+export const StartStoreSubscriptionResponseSchema: GenMessage<StartStoreSubscriptionResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_subscription, 11);
+
+/**
+ * Hands a subscription the store charged to the server, which verifies it with
+ * the store and records it as the reader's subscription to the plan its
+ * product is sold as. It opens that plan's episodes as a Stripe subscription
+ * does, for as long as the store reports it active, in its grace period, or
+ * canceled before the end of the period paid for.
+ *
+ * A subscription recorded already answers that subscription, as the store
+ * reports it now: confirming it again, as an app restoring its purchases
+ * does, records whatever the store has changed since. One recorded for
+ * another reader is permission_denied, and so is a transaction whose account
+ * token names another reader's intent: a restore moves nothing between
+ * accounts. Otherwise the account token has to name an open intent the caller
+ * opened, for the product the store bills, in the tenant's own app, and the
+ * product has to be one a plan of the tenant is sold as: anything else is
+ * invalid_argument and creates nothing, and an intent another subscription
+ * has already consumed is failed_precondition.
+ *
+ * The store has charged by the time the app asks, so a subscription is
+ * recorded even for a reader who already holds another one. A store the
+ * server cannot reach is unavailable, and the app confirms again later. Each
+ * call spends the reader's allowance for store confirmations, the one
+ * PurchaseService.ConfirmStorePurchase spends, and a reader past it is
+ * resource_exhausted before the store is asked.
+ *
+ * @generated from message publira.v1.ConfirmStoreSubscriptionRequest
+ */
+export type ConfirmStoreSubscriptionRequest = Message<"publira.v1.ConfirmStoreSubscriptionRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: publira.v1.InAppPurchaseStore store = 2;
+   */
+  store: InAppPurchaseStore;
+
+  /**
+   * IN_APP_PURCHASE_STORE_APP_STORE: the JWS signed transaction StoreKit 2
+   * reports for any transaction of the subscription.
+   * IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the purchase token.
+   *
+   * @generated from field: string transaction = 3;
+   */
+  transaction: string;
+
+  /**
+   * IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the subscription the token was bought
+   * as. Unused for the App Store, whose signed transaction names its product.
+   *
+   * @generated from field: string product_id = 4;
+   */
+  productId: string;
+};
+
+/**
+ * Describes the message publira.v1.ConfirmStoreSubscriptionRequest.
+ * Use `create(ConfirmStoreSubscriptionRequestSchema)` to create a new message.
+ */
+export const ConfirmStoreSubscriptionRequestSchema: GenMessage<ConfirmStoreSubscriptionRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_subscription, 12);
+
+/**
+ * @generated from message publira.v1.ConfirmStoreSubscriptionResponse
+ */
+export type ConfirmStoreSubscriptionResponse = Message<"publira.v1.ConfirmStoreSubscriptionResponse"> & {
+  /**
+   * @generated from field: publira.v1.Subscription subscription = 1;
+   */
+  subscription?: Subscription | undefined;
+};
+
+/**
+ * Describes the message publira.v1.ConfirmStoreSubscriptionResponse.
+ * Use `create(ConfirmStoreSubscriptionResponseSchema)` to create a new message.
+ */
+export const ConfirmStoreSubscriptionResponseSchema: GenMessage<ConfirmStoreSubscriptionResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_subscription, 13);
 
 /**
  * @generated from service publira.v1.SubscriptionService
@@ -406,6 +588,22 @@ export const SubscriptionService: GenService<{
     methodKind: "unary";
     input: typeof CreateBillingPortalSessionRequestSchema;
     output: typeof CreateBillingPortalSessionResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.SubscriptionService.StartStoreSubscription
+   */
+  startStoreSubscription: {
+    methodKind: "unary";
+    input: typeof StartStoreSubscriptionRequestSchema;
+    output: typeof StartStoreSubscriptionResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.SubscriptionService.ConfirmStoreSubscription
+   */
+  confirmStoreSubscription: {
+    methodKind: "unary";
+    input: typeof ConfirmStoreSubscriptionRequestSchema;
+    output: typeof ConfirmStoreSubscriptionResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_subscription, 0);

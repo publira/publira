@@ -20,8 +20,13 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/storesubscription"
 	"github.com/publira/publira/server/internal/tenantorigin"
 )
+
+// subscriptionProviderStripe is the subscriptions.provider of a subscription
+// Stripe bills.
+const subscriptionProviderStripe = "stripe"
 
 // subscriptionPlanFields are the columns of a plan the public answer carries,
 // read by more than one query.
@@ -35,6 +40,8 @@ type subscriptionPlanFields struct {
 	recurringInterval      string
 	recurringIntervalCount int32
 	scope                  string
+	appStoreProductID      string
+	googlePlayProductID    string
 }
 
 // subscriptionPlanTargets are the labels or the series one plan opens.
@@ -101,6 +108,8 @@ func (s *apiServer) ListSubscriptionPlans(
 			recurringInterval:      row.RecurringInterval,
 			recurringIntervalCount: row.RecurringIntervalCount,
 			scope:                  row.Scope,
+			appStoreProductID:      row.AppStoreProductID.String,
+			googlePlayProductID:    row.GooglePlayProductID.String,
 		}, targets[row.ID])
 		if err != nil {
 			return nil, s.internalError(ctx, "subscription plan holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", row.ID.String())
@@ -184,7 +193,7 @@ func (s *apiServer) StartSubscriptionCheckout(
 		return nil, s.internalDBError(ctx, "failed to read the reader's latest subscription checkout", err, "tenant_id", tenant.ID.String())
 	}
 	if err == nil {
-		reused, err := s.settlePreviousSubscriptionCheckout(ctx, queries, subscriptions, credentials, tenant.ID, plan.ID, previous)
+		reused, err := s.settlePreviousSubscriptionCheckout(ctx, queries, subscriptions, credentials, tenant.ID, uuid.NullUUID{UUID: plan.ID, Valid: true}, previous)
 		if err != nil {
 			return nil, err
 		}
@@ -234,9 +243,9 @@ func readerHoldsSubscriptionError() error {
 }
 
 // settlePreviousSubscriptionCheckout deals with the reader's latest checkout
-// before another is started, so at most one checkout of a reader can ever be
-// paid. One still open on the same plan is reused, and its URL answered; one
-// open on another plan is expired. One the reader has paid is a subscription
+// before another subscription is started, so at most one of them can ever be
+// paid. One still open on reuseFor is reused, and its URL answered; any other
+// open one is expired. One the reader has paid is a subscription
 // already_exists refuses a second of, unless that subscription is recorded and
 // has ended: one not recorded yet is on its way, and one recorded since the
 // reader's live subscriptions were checked may have been recorded live, since
@@ -248,7 +257,7 @@ func (s *apiServer) settlePreviousSubscriptionCheckout(
 	subscriptions paymentprovider.Subscriptions,
 	credentials paymentprovider.Credentials,
 	tenantID uuid.UUID,
-	planID uuid.UUID,
+	reuseFor uuid.NullUUID,
 	previous dbmodels.GetSubscriptionCheckoutForUserRow,
 ) (string, error) {
 	checkout, err := subscriptions.GetSubscriptionCheckout(ctx, credentials, previous.StripeCheckoutSessionID)
@@ -257,7 +266,7 @@ func (s *apiServer) settlePreviousSubscriptionCheckout(
 		return "", connect.NewError(connect.CodeUnavailable, "failed to start checkout")
 	}
 	if checkout.Status == paymentprovider.SubscriptionCheckoutOpen {
-		if previous.PlanID == planID && checkout.URL != "" {
+		if reuseFor.Valid && previous.PlanID == reuseFor.UUID && checkout.URL != "" {
 			return checkout.URL, nil
 		}
 		err := subscriptions.ExpireSubscriptionCheckout(ctx, credentials, checkout.ID)
@@ -336,11 +345,21 @@ func (s *apiServer) GetMySubscription(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to get the reader's subscription", err, "tenant_id", tenant.ID.String())
 	}
-	planRow, err := queries.GetSubscriptionPlanByIDForTenant(ctx, dbmodels.GetSubscriptionPlanByIDForTenantParams{TenantID: tenant.ID, ID: row.PlanID})
+	subscription, err := s.mySubscription(ctx, queries, tenant.ID, row)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get the plan of the reader's subscription", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", row.PlanID.String())
+		return nil, err
 	}
-	targets, err := s.subscriptionPlanTargets(ctx, tenant.ID, []uuid.UUID{planRow.ID})
+	return &publirav1.GetMySubscriptionResponse{Subscription: subscription}, nil
+}
+
+// mySubscription answers one of the reader's subscriptions with the plan it
+// is recorded on.
+func (s *apiServer) mySubscription(ctx context.Context, queries Querier, tenantID uuid.UUID, row dbmodels.GetMySubscriptionRow) (*publirav1.Subscription, error) {
+	planRow, err := queries.GetSubscriptionPlanByIDForTenant(ctx, dbmodels.GetSubscriptionPlanByIDForTenantParams{TenantID: tenantID, ID: row.PlanID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get the plan of the reader's subscription", err, "tenant_id", tenantID.String(), "subscription_plan_id", row.PlanID.String())
+	}
+	targets, err := s.subscriptionPlanTargets(ctx, tenantID, []uuid.UUID{planRow.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -354,13 +373,19 @@ func (s *apiServer) GetMySubscription(
 		recurringInterval:      planRow.RecurringInterval,
 		recurringIntervalCount: planRow.RecurringIntervalCount,
 		scope:                  planRow.Scope,
+		appStoreProductID:      planRow.AppStoreProductID.String,
+		googlePlayProductID:    planRow.GooglePlayProductID.String,
 	}, targets[planRow.ID])
 	if err != nil {
-		return nil, s.internalError(ctx, "subscription plan holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "subscription_plan_id", planRow.ID.String())
+		return nil, s.internalError(ctx, "subscription plan holds a value this build does not know", err, "tenant_id", tenantID.String(), "subscription_plan_id", planRow.ID.String())
 	}
 	status, err := protomapper.SubscriptionStatusFromStored(row.Status)
 	if err != nil {
-		return nil, s.internalError(ctx, "subscription holds a status this build does not know", err, "tenant_id", tenant.ID.String(), "subscription_id", row.ID.String())
+		return nil, s.internalError(ctx, "subscription holds a status this build does not know", err, "tenant_id", tenantID.String(), "subscription_id", row.ID.String())
+	}
+	store, err := subscriptionStoreFromProvider(row.Provider)
+	if err != nil {
+		return nil, s.internalError(ctx, "subscription holds a provider this build does not know", err, "tenant_id", tenantID.String(), "subscription_id", row.ID.String())
 	}
 	subscription := &publirav1.Subscription{
 		Id:                row.ID.String(),
@@ -368,11 +393,27 @@ func (s *apiServer) GetMySubscription(
 		Status:            status,
 		CancelAtPeriodEnd: row.CancelAtPeriodEnd,
 		CreatedAt:         row.CreatedAt.UTC().Format(time.RFC3339),
+		Store:             store,
 	}
 	if row.CurrentPeriodEnd.Valid {
 		subscription.CurrentPeriodEnd = row.CurrentPeriodEnd.Time.UTC().Format(time.RFC3339)
 	}
-	return &publirav1.GetMySubscriptionResponse{Subscription: subscription}, nil
+	return subscription, nil
+}
+
+// subscriptionStoreFromProvider answers the store subscriptions.provider
+// names, and none for Stripe.
+func subscriptionStoreFromProvider(provider string) (publirav1.InAppPurchaseStore, error) {
+	switch provider {
+	case subscriptionProviderStripe:
+		return publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_UNSPECIFIED, nil
+	case storesubscription.ProviderAppStore:
+		return publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE, nil
+	case storesubscription.ProviderGooglePlay:
+		return publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_GOOGLE_PLAY, nil
+	default:
+		return publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_UNSPECIFIED, fmt.Errorf("subscription provider %q", provider)
+	}
 }
 
 func (s *apiServer) CreateBillingPortalSession(
@@ -523,17 +564,19 @@ func subscriptionPlanMessage(plan subscriptionPlanFields, targets subscriptionPl
 		return nil, err
 	}
 	return &publirav1.SubscriptionPlan{
-		Id:            plan.id.String(),
-		PublicId:      plan.publicID,
-		Name:          plan.name,
-		Description:   plan.description,
-		PriceAmount:   plan.priceAmount,
-		Currency:      plan.currency,
-		Interval:      interval,
-		IntervalCount: plan.recurringIntervalCount,
-		Scope:         scope,
-		LabelIds:      recordIDStrings(targets.labelIDs),
-		SeriesIds:     recordIDStrings(targets.seriesIDs),
+		Id:                  plan.id.String(),
+		PublicId:            plan.publicID,
+		Name:                plan.name,
+		Description:         plan.description,
+		PriceAmount:         plan.priceAmount,
+		Currency:            plan.currency,
+		Interval:            interval,
+		IntervalCount:       plan.recurringIntervalCount,
+		Scope:               scope,
+		LabelIds:            recordIDStrings(targets.labelIDs),
+		SeriesIds:           recordIDStrings(targets.seriesIDs),
+		AppStoreProductId:   plan.appStoreProductID,
+		GooglePlayProductId: plan.googlePlayProductID,
 	}, nil
 }
 
