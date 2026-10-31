@@ -20,8 +20,10 @@ Publiraは、次の4つの方法で稼働状況を知らせます。
 
 どのプロセスも、プレーンなHTTPで次の2つのリクエストに応答します。
 
-- 「**`GET /livez`**」は、プロセスが応答できる状態であれば常に`200`とテキスト`ok`を返します。ほかには何も確認しないので、失敗するのはプロセスが固まったか停止したときだけです。
-- 「**`GET /readyz`**」は、プロセスが依存するものを確認し、すべてのチェックに通れば`200`を、1つでも失敗すれば`503`を返します。レスポンスの本文には各チェックの名前が入ります。
+| リクエスト | 応答 |
+| --- | --- |
+| `GET /livez` | プロセスが応答できる状態なら、常に`200`とテキスト`ok`を返します。ほかには何も確認しないので、失敗するのはプロセスが固まったか止まったときだけです |
+| `GET /readyz` | プロセスが依存するものを確認し、すべてのチェックに通れば`200`を、1つでも失敗すれば`503`を返します。レスポンスの本文には各チェックの名前が入ります |
 
 | プロセス | ポート | `/readyz`で確認するもの |
 | --- | --- | --- |
@@ -30,7 +32,7 @@ Publiraは、次の4つの方法で稼働状況を知らせます。
 | `web-storefront`、`web-admin`、`web-platform` | `PORT`(リポジトリでビルドしたイメージでは`3000`、`4000`、`4100`) | `api`は、`PUBLIRA_GRPC_URL`のホストにある`publira server`の`/readyz`を確認します。`web-admin`で`PUBLIRA_PUBLIC_GRPC_URL`を設定している場合は、`public-api`がそのホストで同じ確認をします。`redis`は`PNCH_REDIS_URL`の共有キャッシュにpingを送ります。共有キャッシュを無効にしている間は常に成功します |
 | `email-renderer` | `8080`(`PORT`) | なし。ほかのサービスに依存しないので、起動していれば常に準備ができています |
 
-`publira server --with-worker`で動かすプロセスは、表の最初の2行にある両方のポートで、それぞれの行のチェックに応答します。2つのプロセスがあるものとして監視してください。
+`publira server --with-worker`で動かすプロセスは、表の最初の2行の両方のポートで、それぞれの行のチェックに応答します。2つのプロセスを監視するときと同じように監視してください。
 
 どのプロセスも、オブジェクトストレージ、SMTPサーバー、検索エンジンは確認しません。これらの障害は`/readyz`には現れず、ログと読者に見える画面に現れます。
 
@@ -57,7 +59,7 @@ Publiraは、次の4つの方法で稼働状況を知らせます。
 
 Webアプリの`/readyz`は、`publira server`の`/readyz`が失敗すると必ず失敗します。そのため、データベースログインが1つ応答しなくなるだけで、`publira server`とともにすべてのWebアプリが準備できていない状態になります。これは意図した動作です。正常なAPIに到達できないWebアプリは、キャッシュされていないページを表示できないからです。ただしその結果、準備状態に従って振り分けるロードバランサーは、すべてのWebアプリへの送信を一斉に止めます。ロードバランサーを`/readyz`に向ける前に、その動作で問題ないかを判断してください。
 
-`publira server`と`publira worker`の`/readyz`へのプローブには、6秒より長いタイムアウトを設定してください。そうすれば、遅いチェックはプローブのタイムアウトとしてではなく、チェック名の付いた失敗として報告されます。Kubernetesでのワーカーのプローブは次のようになります。すべてのプロセスのプローブは[Kubernetes](../2-deployments/5-kubernetes/index.md#4-プロセスを起動する)に載っています。
+`publira server`と`publira worker`の`/readyz`へのプローブには、6秒より長いタイムアウトを設定してください。遅いチェックが、プローブのタイムアウトではなく、チェック名の付いた失敗として報告されるようになります。Kubernetesでのワーカーのプローブは次のようになります。すべてのプロセスのプローブは[Kubernetes](../2-deployments/5-kubernetes/index.md#4-プロセスを起動する)に載っています。
 
 ```yaml
 livenessProbe:
@@ -73,13 +75,13 @@ readinessProbe:
 
 ECSでは、サービスのタスクのヘルスチェックはすべてliveness probeとして働きます。ヘルスチェックに失敗したタスクは、サービスによって置き換えられるからです。そのため[ECSのヘルスチェックの設定](../2-deployments/6-ecs-fargate/index.md#ヘルスチェック)では、すべてを`/livez`に向けています。
 
-[Docker Compose](../2-deployments/3-docker-compose.md)の構成では、Publiraのすべてのプロセスに`/readyz`を使うヘルスチェックを設定しています。チェックはコンテナの中から行います。起動後の最初の1分間は2秒ごとに確認し、この間の失敗は数えません。その後は10秒ごとに確認し、3回続けて失敗するとそのプロセスは`unhealthy`になります。`server`は両方のポートで確認します。結果は`docker compose ps`で各サービスの横に表示されます。Webアプリは`server`とValkeyが正常になってから起動し、プロキシは`server`、`web-storefront`、`web-admin`が正常になってから起動します。イメージ自体にはDockerの`HEALTHCHECK`を定義していません。どのイメージにも`curl`が入っていないので、Composeファイルでは、サーバーのイメージでは`bash`、それ以外のイメージでは`node`でチェックしています。
+[Docker Compose](../2-deployments/3-docker-compose.md)の構成では、Publiraのすべてのプロセスに、コンテナの中から`/readyz`を確認するヘルスチェックを設定しています。起動後の最初の1分間は2秒ごとに確認し、この間の失敗は数えません。その後は10秒ごとに確認し、3回続けて失敗するとそのプロセスは`unhealthy`になります。`server`は両方のポートで確認します。結果は`docker compose ps`で各サービスの横に表示されます。Webアプリは`server`とValkeyが正常になってから起動し、プロキシは`server`、`web-storefront`、`web-admin`が正常になってから起動します。イメージ自体にはDockerの`HEALTHCHECK`を定義していません。どのイメージにも`curl`が入っていないので、Composeファイルは、サーバーのイメージでは`bash`、それ以外のイメージでは`node`を使ってチェックしています。
 
-これらの結果をもとにプロセスを再起動する仕組みはありません。Composeが再起動するのは終了したプロセスで、固まったプロセスや`unhealthy`になったプロセスは再起動しません。結果は、そのプロセスを待つサービスの起動を待たせるためだけに使います。こうした状態に気づくには、コンテナのネットワークに到達できる外部の監視ツールからPubliraを監視するか、`docker compose ps`を確認してください。テナントのサイトの`/livez`と`/readyz`には、`https://comics.example.com/readyz`のように各テナントのドメインでリバースプロキシを通して到達できるので、インターネット上の死活監視サービスから利用できます。APIとワーカーのものには外から到達できません。リバースプロキシが`publira server`に転送するのは`/rpc`と`/images`だけだからです。
+これらの結果をもとにプロセスを再起動する仕組みはありません。Composeが再起動するのは終了したプロセスだけで、固まったプロセスや`unhealthy`になったプロセスは再起動しません。結果は、そのプロセスを待つサービスの起動を遅らせることにしか使いません。こうした状態に気づくには、コンテナのネットワークに到達できる外部の監視ツールからPubliraを監視するか、`docker compose ps`を確認してください。テナントのサイトの`/livez`と`/readyz`には、`https://comics.example.com/readyz`のように各テナントのドメインでリバースプロキシを通して到達できるので、インターネット上の死活監視サービスから利用できます。APIとワーカーのものには外から到達できません。リバースプロキシが`publira server`に転送するのは`/rpc`と`/images`だけだからです。
 
 ## ログ
 
-`publira server`、`publira worker`、`publiractl`は、ログを標準出力に1行1レコードで、`key=value`の形式で出力します。
+`publira server`、`publira worker`、`publiractl`は、ログを`key=value`の形式で、1行に1レコードずつ標準出力に書き出します。
 
 ```text
 time=2026-10-07T09:41:03.402Z level=ERROR msg="outbox event dead" event_id=0199b5f0-1c2e-7c41-9a8e-3f5d2a6b7c80 event_type=contact_message_reply_email idempotency_key=… attempts=10 trace_id=4bf92f3577b34da6a3ce929d0e0e4736 span_id=00f067aa0ba902b7 error="dial tcp: connection refused"
@@ -91,7 +93,7 @@ Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーン�
 
 ### アラートを設定するログ
 
-まずは`publira server`と`publira worker`の`level=ERROR`のレコードすべてにアラートを設定するとよいでしょう。APIが応答できなかったリクエストは、その原因のエラーとともにこのレベルで出力されます。次のレコードは、どれも何かが失われたか止まっていることを意味するので、個別にアラートを設定する価値があります。
+まずは`publira server`と`publira worker`の`level=ERROR`のレコードすべてにアラートを設定するとよいでしょう。APIが応答できなかったリクエストは、原因のエラーとともにこのレベルで出力されます。次のレコードは、どれも何かが失われたか止まっていることを表すので、個別にアラートを設定する価値があります。
 
 | レコード | プロセス | 意味 |
 | --- | --- | --- |
@@ -111,8 +113,8 @@ Webアプリと`email-renderer`は、Next.jsやNode.jsの標準のプレーン�
 
 エクスポートの方法は`OTEL_METRICS_EXPORTER`で選びます。
 
-- **`otlp`**(既定値)は、60秒ごとに`OTEL_EXPORTER_OTLP_ENDPOINT`へメトリクスを送ります。トレースと同じコレクターのアドレスです。
-- 「**`prometheus`**」は、ポート`9464`の`/metrics`でメトリクスを公開し、Prometheusが収集できるようにします。あわせて`OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`も設定してください。既定値の`localhost`では、コンテナの外から到達できません。Kubernetesの同じPodで動かすなど、`publira server`と`publira worker`がネットワーク名前空間を共有する場合は、それぞれに別の`OTEL_EXPORTER_PROMETHEUS_PORT`を設定してください。
+- `otlp`(既定値)では、60秒ごとに`OTEL_EXPORTER_OTLP_ENDPOINT`へメトリクスを送ります。トレースと同じコレクターのアドレスです。
+- `prometheus`では、Prometheusが収集できるよう、ポート`9464`の`/metrics`でメトリクスを公開します。あわせて`OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`も設定してください。既定値の`localhost`では、コンテナの外から到達できません。Kubernetesの同じPodで動かすなど、`publira server`と`publira worker`がネットワーク名前空間を共有する場合は、それぞれに別の`OTEL_EXPORTER_PROMETHEUS_PORT`を設定してください。
 
 [Docker Compose](../2-deployments/3-docker-compose.md)の構成では、`.env`に`PUBLIRA_METRICS_ENABLED`、`OTEL_METRICS_EXPORTER`、`OTEL_EXPORTER_PROMETHEUS_HOST`を設定し、`docker compose up -d`をもう一度実行します。`.env`の値は`server`に渡されます。その他の変数と記録される項目の一覧は、[メトリクスのリファレンス](https://github.com/publira/publira/blob/main/server/README.md#metrics-opentelemetry)にあります。各プロセスは1つの`service.name`で報告します。`publira server`は`publira-api-server`、`publira worker`は`publira-worker`です。`publira server --with-worker`で動かすプロセスは、すべてを`publira-api-server`で報告します。Composeファイルの`server`はこの形で動いています。
 
@@ -143,11 +145,11 @@ GROUP BY status;
 
 ### 監査ログ
 
-`publira server`は、テナント管理画面とプラットフォーム管理画面の監査ログをキューを通じて書き込むので、リクエストはエントリーの書き込みを待ちません。`publira.auditlog.queue.depth`は書き込みを待っているエントリーの数、`publira.auditlog.entries.dropped`は失われたエントリーの数で、`auditlog.drop_reason`ごとに数えます。エントリーが1件でも失われたとき、そしてキューの長さが増え続けるときにアラートを設定してください。キューが増え続けるのは、データベースへの書き込みが追いついていないということです。監査ログのその他のメトリクスは[リファレンス](https://github.com/publira/publira/blob/main/server/README.md#operational-monitoring-for-the-asynchronous-audit-log)にあります。
+`publira server`は、テナント管理画面とプラットフォーム管理画面の監査ログをキューを通じて書き込むので、リクエストはエントリーの書き込みを待ちません。`publira.auditlog.queue.depth`は書き込みを待っているエントリーの数、`publira.auditlog.entries.dropped`は失われたエントリーの数で、`auditlog.drop_reason`ごとに数えます。エントリーが1件でも失われたときと、キューの長さが増え続けるときにアラートを設定してください。キューが増え続けるのは、データベースへの書き込みが追いついていないからです。監査ログのその他のメトリクスは[リファレンス](https://github.com/publira/publira/blob/main/server/README.md#operational-monitoring-for-the-asynchronous-audit-log)にあります。
 
 ## トレース
 
-`email-renderer`以外のすべてのプロセスは、`PUBLIRA_TRACING_ENABLED=true`を設定するとOpenTelemetryのトレースをエクスポートします。`publira server`、`publira worker`、Webアプリで一緒に有効にしてください。そうすると、1つのページのリクエストが、WebアプリからAPIを経て、APIが実行したデータベースのクエリーまで1つのトレースになります。
+`email-renderer`以外のすべてのプロセスは、`PUBLIRA_TRACING_ENABLED=true`を設定するとOpenTelemetryのトレースをエクスポートします。`publira server`、`publira worker`、Webアプリでそろえて有効にしてください。ページへの1つのリクエストが、WebアプリからAPIを経て、APIが実行したデータベースのクエリーまで、1つのトレースとしてつながります。
 
 コレクターの指定には、OpenTelemetry SDKが直接読む変数を使います。
 
@@ -169,6 +171,6 @@ GROUP BY status;
 
 ### リバースプロキシがトレースヘッダーを削除する理由
 
-どのプロセスも、リクエストに付いてきたトレースコンテキストを信頼します。`traceparent`ヘッダーがあれば、プロセスのスパンは呼び出し元のトレースの一部になり、呼び出し元のサンプリングの判断も引き継がれます。WebアプリのスパンとAPIのスパンがつながるのは、この仕組みのおかげです。しかし、ブラウザーやモバイルアプリも同じヘッダーを送れます。そうすると、自分のスパンを他人のトレースに紛れ込ませたり、すべてのリクエストをサンプリング対象にして、10件に1件という割合を超えてリクエストごとにトレースをエクスポートさせたりできてしまいます。
+どのプロセスも、リクエストに付いてきたトレースコンテキストを信頼します。`traceparent`ヘッダーがあれば、プロセスのスパンは呼び出し元のトレースの一部になり、呼び出し元のサンプリングの判断も引き継がれます。WebアプリのスパンとAPIのスパンがつながるのは、この仕組みのおかげです。しかし、同じヘッダーはブラウザーやモバイルアプリからも送れます。それを使えば、自分のスパンを他人のトレースに紛れ込ませたり、すべてのリクエストをサンプリング対象にして、10件に1件という割合を無視してリクエストごとにトレースをエクスポートさせたりできてしまいます。
 
 そのため、Publiraの前に置くリバースプロキシは、転送するすべてのリクエストから`traceparent`、`tracestate`、`baggage`を削除します。これは[リバースプロキシの設定のトレースコンテキストの項](../2-deployments/4-edge/index.md#トレースコンテキスト)で、すべてのリバースプロキシに求めている設定です。外部からのリクエストは、すべて新しいトレースとして始まります。一方、WebアプリからAPIへの呼び出しと、APIやワーカーからWebアプリへの呼び出しは、リバースプロキシを通さずプライベートネットワーク上で直接行うので、トレースコンテキストが保たれます。
