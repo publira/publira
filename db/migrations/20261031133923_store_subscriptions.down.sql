@@ -1,11 +1,5 @@
 DROP TABLE store_subscription_intents;
 
-DROP VIEW live_subscriptions;
-
--- CREATE OR REPLACE cannot take the new columns back off the view, so it is
--- recreated as the migration that added it left it.
-DROP VIEW billed_subscriptions;
-
 -- A store subscription names none of Stripe's ids, which are NOT NULL again
 -- below, so it cannot outlive the columns that tell it apart.
 DELETE FROM subscriptions
@@ -25,11 +19,6 @@ ALTER TABLE subscriptions
     DROP COLUMN store_product_id,
     DROP COLUMN store_subscription_id,
     DROP COLUMN provider;
-
-CREATE VIEW billed_subscriptions WITH (security_invoker = true) AS
-SELECT s.*
-FROM subscriptions s
-WHERE s.status IN ('trialing', 'active', 'past_due', 'unpaid', 'paused');
 
 ALTER TABLE ONLY subscription_plans
     DROP CONSTRAINT subscription_plans_tenant_google_play_product_id_key,

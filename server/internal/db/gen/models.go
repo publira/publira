@@ -73,22 +73,18 @@ type AuditLog struct {
 }
 
 type BilledSubscription struct {
-	ID                   uuid.UUID      `json:"id"`
-	TenantID             uuid.UUID      `json:"tenant_id"`
-	UserID               uuid.NullUUID  `json:"user_id"`
-	PlanID               uuid.UUID      `json:"plan_id"`
-	StripeCustomerID     sql.NullString `json:"stripe_customer_id"`
-	StripeSubscriptionID sql.NullString `json:"stripe_subscription_id"`
-	StripePriceID        sql.NullString `json:"stripe_price_id"`
-	Status               string         `json:"status"`
-	CurrentPeriodEnd     sql.NullTime   `json:"current_period_end"`
-	CancelAtPeriodEnd    bool           `json:"cancel_at_period_end"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	Provider             string         `json:"provider"`
-	StoreSubscriptionID  sql.NullString `json:"store_subscription_id"`
-	StoreProductID       sql.NullString `json:"store_product_id"`
-	IsTest               bool           `json:"is_test"`
+	ID                   uuid.UUID     `json:"id"`
+	TenantID             uuid.UUID     `json:"tenant_id"`
+	UserID               uuid.NullUUID `json:"user_id"`
+	PlanID               uuid.UUID     `json:"plan_id"`
+	StripeCustomerID     string        `json:"stripe_customer_id"`
+	StripeSubscriptionID string        `json:"stripe_subscription_id"`
+	StripePriceID        string        `json:"stripe_price_id"`
+	Status               string        `json:"status"`
+	CurrentPeriodEnd     sql.NullTime  `json:"current_period_end"`
+	CancelAtPeriodEnd    bool          `json:"cancel_at_period_end"`
+	CreatedAt            time.Time     `json:"created_at"`
+	UpdatedAt            time.Time     `json:"updated_at"`
 }
 
 type CampaignBanner struct {
@@ -659,25 +655,6 @@ type LabelSurface struct {
 	LabelID  uuid.UUID `json:"label_id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	Surface  string    `json:"surface"`
-}
-
-type LiveSubscription struct {
-	ID                   uuid.UUID      `json:"id"`
-	TenantID             uuid.UUID      `json:"tenant_id"`
-	UserID               uuid.NullUUID  `json:"user_id"`
-	PlanID               uuid.UUID      `json:"plan_id"`
-	StripeCustomerID     sql.NullString `json:"stripe_customer_id"`
-	StripeSubscriptionID sql.NullString `json:"stripe_subscription_id"`
-	StripePriceID        sql.NullString `json:"stripe_price_id"`
-	Status               string         `json:"status"`
-	CurrentPeriodEnd     sql.NullTime   `json:"current_period_end"`
-	CancelAtPeriodEnd    bool           `json:"cancel_at_period_end"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	Provider             string         `json:"provider"`
-	StoreSubscriptionID  sql.NullString `json:"store_subscription_id"`
-	StoreProductID       sql.NullString `json:"store_product_id"`
-	IsTest               bool           `json:"is_test"`
 }
 
 type Notification struct {

@@ -92,26 +92,12 @@ ALTER TABLE ONLY subscriptions
     ADD CONSTRAINT subscriptions_store_subscription_id_check CHECK (((char_length(store_subscription_id) >= 1) AND (char_length(store_product_id) >= 1))) NOT VALID;
 
 -- VIEW: billed_subscriptions
--- The Stripe subscriptions Stripe goes on billing, which closing the account
--- cancels: a store bills a subscription of its own, and only the reader can
--- cancel it there. The previous release reads this view as the subscriptions a
--- reader may not start a second checkout beside, too, and goes on answering
--- that from the Stripe ones alone; this release asks live_subscriptions.
-CREATE OR REPLACE VIEW billed_subscriptions WITH (security_invoker = true) AS
-SELECT s.*
-FROM subscriptions s
-WHERE s.provider = 'stripe'
-    AND s.status IN ('trialing', 'active', 'past_due', 'unpaid', 'paused');
-
--- VIEW: live_subscriptions
--- The subscriptions someone goes on billing, whoever bills them: the ones a
--- reader may not start a second subscription beside, through Stripe or a
--- store. An incomplete one is not among them, since it bills nothing unless
--- its first payment goes through.
-CREATE VIEW live_subscriptions WITH (security_invoker = true) AS
-SELECT s.*
-FROM subscriptions s
-WHERE s.status IN ('trialing', 'active', 'past_due', 'unpaid', 'paused');
+-- Left as it is, so it holds the store subscriptions someone goes on billing
+-- as well as the Stripe ones: the subscriptions a reader may not start a
+-- second one beside, whoever bills them, in this release and the one before
+-- alike. Both read Stripe's subscription id from it only where a row names
+-- one, which is how closing an account cancels the Stripe subscriptions among
+-- them alone.
 
 -- TABLE: store_subscription_intents
 -- What the reader asked to subscribe to before the store's payment sheet

@@ -142,7 +142,6 @@ var publicDataTables = []struct {
 	{name: "subscription_plan_targets", count: "SELECT count(*) FROM subscription_plan_targets"},
 	{name: "subscriptions", count: "SELECT count(*) FROM subscriptions"},
 	{name: "billed_subscriptions", count: "SELECT count(*) FROM billed_subscriptions"},
-	{name: "live_subscriptions", count: "SELECT count(*) FROM live_subscriptions"},
 	{name: "subscription_checkouts", count: "SELECT count(*) FROM subscription_checkouts"},
 	{name: "store_subscription_intents", count: "SELECT count(*) FROM store_subscription_intents"},
 	// The tenant's coins: whether they are on, what they are called, and the

@@ -426,7 +426,7 @@ func (q *Queries) SubscriptionHasEnded(ctx context.Context, arg SubscriptionHasE
 const UserHoldsLiveSubscription = `-- name: UserHoldsLiveSubscription :one
 SELECT EXISTS (
         SELECT 1
-        FROM live_subscriptions
+        FROM billed_subscriptions
         WHERE tenant_id = $1
             AND user_id = $2
     ) AS holds
