@@ -2,7 +2,8 @@
 title: Kubernetesでのリバースプロキシの設定
 description: KubernetesクラスターでPubliraの前段にGatewayかIngressを置き、cert-managerで証明書を発行して、クラスターの外から動作を確認する方法を説明します。
 published: 2026-10-29
-source_updated: 2026-10-22
+updated: 2026-10-31
+source_updated: 2026-10-31
 ---
 
 このページは[Kubernetes](./index.md)の手順6です。[プロセスを起動する](./index.md#4-プロセスを起動する)で作成したServiceの前段に、リバースプロキシを置きます。[Publiraをセットアップする](./index.md#5-publiraをセットアップする)を済ませてから始めてください。
@@ -201,7 +202,7 @@ spec:
             statusCode: 301
 ```
 
-- **公開APIと`404`。** Envoy Gatewayは正規表現を先に試すので、`/rpc/publira\.v1\..*`に一致するパスは`publira-server`に届きます。それ以外の`/rpc`と`/api`は`not-found`フィルターを付けた`PathPrefix`のルールに一致し、より長いプレフィックスである`/api/v1`はWebアプリに届きます。フィルターを付けたルールには`backendRefs`がありません。一致したリクエストにはすべてフィルターが応答し、どこにも転送しないからです。
+- **公開APIと`404`。** Envoy Gatewayは正規表現を先に試すので、`/rpc/publira\.v1\..*`に一致するパスは`publira-server`に届きます。それ以外の`/rpc`は`not-found`フィルターを付けた`PathPrefix`のルールに一致します。`/api`はほかのパスと同じくWebアプリに届きます。フィルターを付けたルールには`backendRefs`がありません。一致したリクエストにはすべてフィルターが応答し、どこにも転送しないからです。
 - **削除するヘッダー。** `traceparent`、`tracestate`、`baggage`は、[トレースコンテキスト](../4-edge/index.md#トレースコンテキスト)の要件に従って削除します。Gatewayは、指定しない限り、呼び出し元が送った`Forwarded`と`X-Forwarded-Host`をそのまま渡します。[クライアントのアドレス](../4-edge/index.md#クライアントのアドレス)と[リクエストの送信先のホスト](../4-edge/index.md#リクエストの送信先のホスト)で説明しているとおり、Publiraはその両方を読みます。ここで削除しておけば、すべてのプロセスで`PUBLIRA_FORWARDED_HEADER_ENABLED`を既定値のままにできます。`X-Forwarded-CountryRegion`は、[読者の地域](../4-edge/index.md#読者の地域)の要件に従って削除します。Envoy Gatewayは自分では地域を調べないので、テナントのGoogleタグゲートウェイはGoogleに地域を送りません。[CloudFrontを使った公開](../6-ecs-fargate/1-cloudfront.md#ヘッダー)の例のように、Gatewayの前段のCDNがこのヘッダーに読者の地域を設定する場合は、`web-storefront`のルールの`remove`からこのヘッダーを外すと、地域が`web-storefront`に届きます。ただし、これが安全なのは、Gatewayに接続できるのがそのCDNだけの場合に限ります。
 - **アップロードのタイムアウト。** `timeouts.request: 0s`は、Webアプリへのリクエストにかかる時間の上限をなくします。Gateway APIでは、時間0をこの意味に定義しています。指定しないとルールには実装の既定値が適用され、その値ははるかに短い場合があります。Envoy Gatewayの既定値は、リクエストが届いてから応答までの15秒です。[テナント管理画面でのアップロード](../4-edge/index.md#テナント管理画面でのアップロード)で説明しているとおり、テナント管理画面でのエピソードのアップロードは、届くまでに最大300秒かかります。Gateway APIでは、`web-admin`がページを保存して応答するより前のこの到着時間も、実装がタイムアウトの計測に含めてよいことになっています。Webアプリ自身がリクエストの到着に300秒の上限を設けているので、リバースプロキシで別に上限を設ける必要はありません。Gateway APIには、ボディのサイズを指定するフィールドがありません。Envoy Gatewayは、独自のポリシーで追加しない限りボディのサイズを制限しません。使う実装がボディのサイズを制限する場合は、管理画面のホストの`/api/v1/episode-pages`で256MiB、テナントのドメインの`/api/v1/webhook/email/`の下で33MiBまで許可してください。
 - **リダイレクト。** `https-redirect`は`http`リスナーだけに接続し、そこに届いたすべてのリクエストをHTTPSにリダイレクトします。証明書の発行中は、cert-managerがチャレンジ用のルートを同じリスナーに追加します。このルートは証明書の対象のホストを指定しているので、そのホストへの平文のHTTPリクエストは、リダイレクトではなくこのルートが受け取ります。証明書が発行されてルートが削除されると、再びリダイレクトが応答します。

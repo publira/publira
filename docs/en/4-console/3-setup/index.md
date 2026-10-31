@@ -2,7 +2,7 @@
 title: Setting up the tenant
 description: Take a new tenant to a site that carries the publisher's name, look, legal pages, and staff, in the order the console needs them.
 published: 2026-10-07
-updated: 2026-10-25
+updated: 2026-10-31
 ---
 
 A new tenant starts as a bare site. It has the operator's choice of language and time zone, Publira's default colors, no logo, no pages, no comments, and only the administrators the operator invited. These pages take a Tenant admin through making it the publisher's own. Most of the screens involved are in the sidebar's **Administration** group. The site's pages, announcements, and campaign banners are under **Site**, and the tenant's own mail server is under **Integrations** › **Email**.
@@ -25,7 +25,7 @@ The catalog, payments, sign-in with Apple and Google, the Google tag, and the ap
 
 ## Who can change what
 
-Only a Tenant admin changes the settings these pages describe. Editors and Auditors see some of the screens without being able to save them, and do not see the others at all:
+A Tenant admin changes every setting these pages describe, and an Editor changes the site's pages, announcements, and campaign banners. Otherwise Editors and Auditors see some of the screens without being able to save them, and do not see the others at all:
 
 | Screen | Tenant admin | Editor | Auditor |
 | --- | --- | --- | --- |

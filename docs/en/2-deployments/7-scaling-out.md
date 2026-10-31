@@ -2,7 +2,7 @@
 title: Scaling out
 description: What to run more of when an install outgrows what it started on, what every copy has to share, and the parts that do not scale out.
 published: 2026-10-22
-updated: 2026-10-25
+updated: 2026-10-31
 ---
 
 An install that has become slow, or is about to grow, gets more of the processes it already runs: more copies of the busy ones, `publira server` split by the traffic it answers, and `publira worker` split by the work it does. This page says which processes can run more than once and what has to be in place before they do, where the load of an install goes, how far `publira server` can be split, how `publira worker` is split, what the database has to accept as the copies multiply, how the readers' catalog reads and the worker's daily rebuilds move to a replica of the database, and which parts no number of copies relieves. It applies on any platform: [Kubernetes](./5-kubernetes/index.md) and [Amazon ECS on Fargate](./6-ecs-fargate/index.md) have the manifests and commands.
@@ -176,7 +176,7 @@ Copies of the processes spread their own work. The services they depend on are e
 
 ### Restarting the copies
 
-A change that keeps the release, such as a new value of a variable, can be rolled out one copy at a time, and the install keeps serving while it is. A saved setting needs no restart at all. The release right after the one you run can be rolled out one copy at a time too, since the copies of two adjacent releases work side by side, except that every copy of the old worker stops before a new one starts: [Upgrading](./8-upgrading.md#decide-whether-to-stop-the-processes-first) says why, and what changes when you skip a release.
+A change that keeps the release, such as a new value of a variable, can be rolled out one copy at a time, and the install keeps serving while it is. A saved setting needs no restart at all. The release right after the one you run can be rolled out one copy at a time too, the worker included, since the copies of two adjacent releases work side by side and the workers of both share the outbox: [Upgrading](./8-upgrading.md#decide-whether-to-stop-the-processes-first) says how, and what changes when you skip a release.
 
 ### Backups
 

@@ -2,7 +2,7 @@
 title: Amazon ECS on Fargate
 description: Run an install as Amazon ECS services on AWS Fargate behind CloudFront and an Application Load Balancer, from its parameters and task definitions to the first sign-in to the tenant console.
 published: 2026-10-15
-updated: 2026-10-23
+updated: 2026-10-31
 ---
 
 This page takes an install from a VPC with the managed services provisioned to the first sign-in to the tenant console, with every process an Amazon ECS service on AWS Fargate and CloudFront in front of an Application Load Balancer as the edge. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge/index.md#what-the-edge-has-to-do) requires. This page covers what is particular to ECS and Fargate: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -98,7 +98,7 @@ Write your ElastiCache primary endpoint and your RDS endpoint in place of the on
 | `db-url/public`, `db-url/admin`, `db-url/platform` | `publira-server`, and `publiractl setup` for `db-url/platform` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`, `db-url/ticker`, `db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | The `db` tasks alone: the `db` commands are the only ones that read the [administrative login](../2-installing.md#provision-the-services)'s connection, so nothing kept running is given it | `PUBLIRA_DB_URL` |
-| `db-password/*` | The `db roles` task | Files, as [Create the database roles](#create-the-database-roles) describes |
+| `db-password/*` | The `db roles` task | One variable per role, such as `PUBLIRA_PUBLIC_DB_PASSWORD`, which `db roles` reads with its `--<role>-password-env` flag, as [Create the database roles](#create-the-database-roles) describes |
 
 The parameters are not a backup. Keep the encryption keys in your own secret store as well: lose them and every credential the install stored has to be entered again, as [Generate the secrets](../2-installing.md#generate-the-secrets) says. ECS reads a value when a container starts, so a changed parameter reaches a service only with its next deployment. If you keep the values in AWS Secrets Manager instead, name each secret, or a JSON key of one, in `valueFrom` in place of the parameter name, and grant the task execution role `secretsmanager:GetSecretValue` on those secrets in place of the `ssm:GetParameters` statement below.
 

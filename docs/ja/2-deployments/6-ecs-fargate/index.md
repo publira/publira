@@ -2,7 +2,8 @@
 title: Amazon ECS(Fargate)
 description: CloudFrontとApplication Load Balancerを前段に置いてPubliraをAWS Fargate上のAmazon ECSサービスとして動かす手順を、パラメーターとタスク定義の用意からテナント管理画面への最初のログインまで説明します。
 published: 2026-10-29
-source_updated: 2026-10-23
+updated: 2026-10-31
+source_updated: 2026-10-31
 ---
 
 このページでは、マネージドサービスを用意したVPCから始めて、テナント管理画面に初めてログインするまでの手順を説明します。プロセスはすべてAWS Fargate上のAmazon ECSサービスとして動かし、読者からのリクエストはCloudFrontで受けてApplication Load Balancerに転送します。手順そのものは[インストール](../2-installing.md)と同じです。各手順が必要な理由や、シークレットごとに何を守っているか、データベースロールごとにどこへアクセスできるかはそちらで説明しています。CloudFrontとロードバランサーは[リバースプロキシの設定](../4-edge/index.md#リバースプロキシで必要な設定)の要件どおりに構成します。このページで扱うのはECSとFargateに固有の部分です。Publiraの各部分をどのAWSリソースにするのか、2つのページの要件をそれらのリソースでどう満たすのかを説明します。
@@ -98,7 +99,7 @@ done
 | `db-url/public`、`db-url/admin`、`db-url/platform` | `publira-server`(`db-url/platform`は`publiractl setup`も読みます) | `PUBLIRA_PUBLIC_DB_URL`、`PUBLIRA_ADMIN_DB_URL`、`PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`、`db-url/ticker`、`db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`、`PUBLIRA_TICKER_DB_URL`、`PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | `db`タスクだけです。[管理用ログイン](../2-installing.md#サービスを用意する)の接続を読むのは`db`コマンドだけなので、常駐するプロセスには渡しません | `PUBLIRA_DB_URL` |
-| `db-password/*` | `db roles`タスク | ファイル。[データベースロールを作成する](#データベースロールを作成する)で説明します |
+| `db-password/*` | `db roles`タスク | `PUBLIRA_PUBLIC_DB_PASSWORD`のようにロールごとに1つの環境変数。`db roles`は`--<role>-password-env`フラグで読みます。[データベースロールを作成する](#データベースロールを作成する)で説明します |
 
 パラメーターはバックアップの代わりにはなりません。暗号化キーは自分のシークレットストアにも保管してください。[シークレットを生成する](../2-installing.md#シークレットを生成する)で説明しているとおり、キーを失うとPubliraに保存した認証情報をすべて入力し直すことになります。ECSはコンテナの起動時に値を読むので、パラメーターを変更しても、サービスに反映されるのは次のデプロイからです。値をAWS Secrets Managerに保管する場合は、`valueFrom`にパラメーター名ではなくシークレットかシークレット内のJSONキーを指定します。タスク実行ロールには、後述の`ssm:GetParameters`のステートメントの代わりに、それらのシークレットに対する`secretsmanager:GetSecretValue`を許可してください。
 
