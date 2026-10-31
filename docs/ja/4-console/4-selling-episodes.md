@@ -210,7 +210,7 @@ PAY.JPの通知には署名がありません。Publiraは、Webhookトークン
 | --- | --- |
 | StripeとPAY.JP | 上で設定したWebhookで通知が届きます。Stripeのエンドポイントに`charge.refunded`が必要なのはこのためです。決済プロバイダが受け付けた返金が、読者のカードが解約されていたなどの理由であとから失敗することもあります。その場合も通知が届き(Stripeでは`refund.updated`)、成立している返金の合計が読者の支払った金額に届かなければ、読者は再びエピソードを読めるようになります。 |
 | App Store | 管理画面の**App Store**の節に表示される**App Store Server NotificationsのURL**に通知が届きます。このURLは、App Store Connectで本番用とサンドボックス用の両方のサーバーURLとして登録します。 |
-| Google Play | 通知は届きません。Publiraが1時間ごとに、過去30日分のGoogle Playの無効化された購入を取得するので、返金された購入でも最大1時間はエピソードを読めることがあります。この取得は`publira worker`が行います。`publira worker`はオペレーターが常に動かしておくプロセスで([構成の概要](../2-deployments/1-overview.md)を参照)、動いていないとGoogle Playの返金は反映されません。 |
+| Google Play | 管理画面の**Google Play**の節に表示される**Google Playリアルタイムデベロッパー通知のURL**に、Pub/Subのpushサブスクリプションを通じて通知が届きます。設定は[アプリ内課金とログイン](../5-mobile-app/5-purchases-and-sign-in.md#アプリ内課金のために各ストアで必要な設定)で説明します。Publiraはこれとは別に1時間ごとに過去30日分のGoogle Playの無効化された購入を取得し、通知が届かなかった返金も反映します。通知を設定していないと、返金された購入でも最大1時間はエピソードを読めることがあります。この取得は`publira worker`が行います。`publira worker`はオペレーターが常に動かしておくプロセスです([構成の概要](../2-deployments/1-overview.md)を参照)。 |
 
 取り消す対象の購入より先に返金が届いた場合は、返金を保持しておき、購入が記録された時点で適用します。
 

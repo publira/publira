@@ -3463,7 +3463,7 @@
           "bundle_identifier": "Bundle ID",
           "bundle_identifier_description": "在「應用程式連結」中設定的iOS應用程式。請在該處變更。",
           "notification_url": "App Store伺服器通知URL",
-          "notification_url_description": "請在App Store Connect的「App資訊」中，將此URL同時填入App Store伺服器通知（第2版）的正式環境伺服器URL與沙盒伺服器URL。Apple通知的退款會透過它撤銷相應的購買。"
+          "notification_url_description": "請在App Store Connect的「App資訊」中，將此URL同時填入App Store伺服器通知（第2版）的正式環境伺服器URL與沙盒伺服器URL。Apple通知的續訂、取消與退款會透過它同步到訂閱與購買。"
         },
         "google_play": {
           "title": "Google Play",
@@ -3473,7 +3473,9 @@
           "service_account_email": "服務帳戶",
           "service_account_email_description": "請在Play Console的「使用者和權限」中邀請此帳戶存取你的應用程式。",
           "package_name": "套件名稱",
-          "package_name_description": "在「應用程式連結」中設定的Android應用程式ID。請在該處變更。"
+          "package_name_description": "在「應用程式連結」中設定的Android應用程式ID。請在該處變更。",
+          "notification_url": "Google Play即時開發人員通知URL",
+          "notification_url_description": "請在Google Cloud中，為Play Console「營利設定」中指定的Pub/Sub主題新增推送訂閱：啟用驗證，以上方的服務帳戶推送到此URL。Google Play通知的續訂、取消與退款會透過它同步到訂閱與購買。"
         },
         "app_identity_unset": "未設定",
         "key_file": "金鑰檔案",

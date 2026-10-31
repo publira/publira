@@ -3,7 +3,7 @@ title: アプリ内課金とログイン
 description: テナントのアプリでApp StoreとGoogle Playを通じてエピソードを販売し、Apple、Google、パスキーで読者がログインできるようにするための設定を説明します。
 published: 2026-10-29
 updated: 2026-10-31
-source_updated: 2026-10-26
+source_updated: 2026-10-31
 ---
 
 エピソードの販売と、AppleやGoogleでのログインは、テナント管理画面でテナント全体に対して一度だけ設定し、サイトとアプリで同じ設定を使います。このページでは、そのうちアプリに固有の部分、つまり各ストアや各プロバイダーの管理画面でアプリにだけ必要な設定と、アプリが何を表示するかの決まり方を説明します。どちらについても、アプリのビルドに必要なのは[アプリマニフェスト](./1-app-manifest.md)と[アプリリンク](./4-app-links.md)だけです。例外は、iOSでGoogleログインを提供するためにマニフェストに書くGoogleのクライアントです。
@@ -54,6 +54,7 @@ Play Consoleでは、次の設定をします。
 - 商品を作成する前に、テスト用のトラックにApp Bundleをアップロードします。Google Playの課金を使うビルドをまだアップロードしていないアプリでは、Play Consoleで商品を作成できないことがあります。PubliraのビルドはすべてGoogle Playの課金を使います。
 - 表示された商品を、1回限りのアイテムとして作成します。
 - Google CloudでGoogle Play Android Developer APIを有効にしたサービスアカウントを作成し、その「**サービスアカウントキー(JSON)**」を**アプリ内課金**の**Google Play**セクションに入力します。次に、管理画面に表示される**サービスアカウント**をPlay Consoleの**Users and permissions**で招待し、アプリに対する2つの権限を付与します。Publiraが各購入の検証と返金の確認に使う**View financial data, orders, and cancellation survey responses**と、各購入の消費に使う**Manage orders and subscriptions**です。Publiraが検証できない購入では、読者が代金を払ったエピソードが開きません。消費できない購入は、3日後にGoogleが返金します。
+- Google Playのリアルタイムデベロッパー通知がPubliraに届くようにします。返金は、Googleが通知した時点で反映されるようになります(通知がなければ最大1時間かかります)。Google CloudでPub/Subトピックを作成し、`google-play-developer-notifications@system.gserviceaccount.com`にそのトピックの**Pub/Sub Publisher**ロールを付与します。次に、トピックにpushサブスクリプションを追加します。エンドポイントには管理画面に表示される**Google Playリアルタイムデベロッパー通知のURL**を指定し、認証を有効にして、送信に使うアカウントとして管理画面に表示される**サービスアカウント**を指定します。この追加には、そのアカウントに対する**Service Account User**ロールが必要です。最後にPlay Consoleの**Monetization setup**でトピックを指定し、そこからテスト通知を送ります。ほかのアカウントとして認証されたプッシュと、ほかのURLに宛てたプッシュは、Publiraが拒否します。
 
 **App Storeを使う**と**Google Playを使う**をオンにし、アプリでの販売方法として**アプリ内課金**を選んで、**アプリ内課金の設定を保存**を選びます。アプリ内課金を選べるのは、いずれかのストアの準備ができてからです。ストアがオンで、キーが保存され、**アプリリンク**でアプリが指定されていれば、準備ができています。
 

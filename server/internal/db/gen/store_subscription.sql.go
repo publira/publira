@@ -61,6 +61,28 @@ func (q *Queries) GetStoreSubscription(ctx context.Context, arg GetStoreSubscrip
 	return i, err
 }
 
+const GetStoreSubscriptionIntentOwner = `-- name: GetStoreSubscriptionIntentOwner :one
+SELECT user_id
+FROM store_subscription_intents
+WHERE tenant_id = $1
+    AND id = $2
+`
+
+type GetStoreSubscriptionIntentOwnerParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// The reader an intent was opened by, read without its lock: a store's
+// notification learns from it whose subscriptions to lock before it takes the
+// intent's, the order an account deletion takes them in.
+func (q *Queries) GetStoreSubscriptionIntentOwner(ctx context.Context, arg GetStoreSubscriptionIntentOwnerParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, GetStoreSubscriptionIntentOwner, arg.TenantID, arg.ID)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const GetSubscriptionPlanForStoreProductForTenant = `-- name: GetSubscriptionPlanForStoreProductForTenant :one
 SELECT id
 FROM subscription_plans
@@ -147,6 +169,28 @@ func (q *Queries) LockStoreSubscriptionIntent(ctx context.Context, arg LockStore
 		&i.ConsumedAt,
 	)
 	return i, err
+}
+
+const MoveStoreSubscriptionToToken = `-- name: MoveStoreSubscriptionToToken :exec
+UPDATE subscriptions
+SET store_subscription_id = $1::text,
+    updated_at = NOW()
+WHERE tenant_id = $2
+    AND id = $3
+`
+
+type MoveStoreSubscriptionToTokenParams struct {
+	StoreSubscriptionID string    `json:"store_subscription_id"`
+	TenantID            uuid.UUID `json:"tenant_id"`
+	ID                  uuid.UUID `json:"id"`
+}
+
+// Moves a recorded subscription to the store ID of the subscription that
+// replaced it, as Google Play gives a change of plan a purchase token of its
+// own, so the reader keeps one subscription rather than gaining a second.
+func (q *Queries) MoveStoreSubscriptionToToken(ctx context.Context, arg MoveStoreSubscriptionToTokenParams) error {
+	_, err := q.db.ExecContext(ctx, MoveStoreSubscriptionToToken, arg.StoreSubscriptionID, arg.TenantID, arg.ID)
+	return err
 }
 
 const OpenStoreSubscriptionIntent = `-- name: OpenStoreSubscriptionIntent :one

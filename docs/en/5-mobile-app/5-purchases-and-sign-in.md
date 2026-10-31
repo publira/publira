@@ -2,7 +2,7 @@
 title: In-app purchase and sign-in
 description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple, Google, and passkeys.
 published: 2026-10-06
-updated: 2026-10-26
+updated: 2026-10-31
 ---
 
 Selling episodes and signing in with Apple or Google are set up once for the whole tenant, in the tenant console, and the site and the app share that setup. This page covers what is particular to the app: the parts of each store's and each provider's console that only the app needs, and how the app decides what to offer. The app's build needs nothing for either beyond the [manifest](./1-app-manifest.md) and [App links](./4-app-links.md), except the Google client named in the manifest for Google sign-in on iOS.
@@ -53,6 +53,7 @@ In **Play Console**:
 - Upload an App Bundle to a testing track before creating products. Play Console can refuse products for an app that has not yet uploaded a build that uses Google Play's billing, which every Publira build does.
 - Create the listed products as one-time products.
 - Create a service account in Google Cloud with the Google Play Android Developer API enabled, and enter its **Service account key (JSON)** under the **Google Play** section of **In-app purchase**. Then invite the **Service account** the console shows under **Users and permissions** in Play Console, with two of the app's permissions: **View financial data, orders, and cancellation survey responses**, which the install verifies each purchase and reads refunds with, and **Manage orders and subscriptions**, which it consumes each purchase with. A purchase the install cannot verify does not open the episode the reader paid for, and one it cannot consume is refunded by Google after three days.
+- Have Google Play send its real-time developer notifications to the install, so a refund takes the episode back as soon as Google reports it rather than within the hour. In Google Cloud, create a Pub/Sub topic and give `google-play-developer-notifications@system.gserviceaccount.com` the **Pub/Sub Publisher** role on it. Add a push subscription to the topic whose endpoint is the **Google Play real-time developer notifications URL** the console shows, with authentication turned on and the **Service account** the console shows as the account it pushes as; creating it takes the **Service Account User** role on that account. Then name the topic under **Monetization setup** in Play Console, and send a test notification from there. The install refuses a push authenticated as another account or to another URL.
 
 Turn on **Use the App Store** and **Use Google Play**, choose **In-app purchase** as how the app sells episodes, and choose **Save the in-app purchase settings**. The console allows that choice only once a store is ready: turned on, with its key, and with its app named under **App links**.
 

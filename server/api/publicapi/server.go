@@ -301,8 +301,8 @@ func handlerFromServer(server *apiServer) http.Handler {
 const maxInboundEmailWebhookRequestBytes = maxInboundEmailWebhookPayload + 1<<20
 
 // readLimits are the procedures of this namespace that read more of one
-// request than rpcmiddleware.DefaultReadMaxBytes. The payment and App Store
-// webhooks are not among them: their payloads are capped at
+// request than rpcmiddleware.DefaultReadMaxBytes. The payment and the two
+// stores' webhooks are not among them: their payloads are capped at
 // maxPaymentWebhookPayload, which the default holds with room to spare.
 var readLimits = map[string]int{
 	publirav1connect.ContactServiceProcessInboundEmailWebhookProcedure: maxInboundEmailWebhookRequestBytes,

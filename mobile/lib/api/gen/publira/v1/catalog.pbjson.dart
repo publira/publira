@@ -3476,6 +3476,60 @@ final $typed_data.Uint8List processAppStoreNotificationResponseDescriptor =
     $convert
         .base64Decode('CiNQcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRpb25SZXNwb25zZQ==');
 
+@$core.Deprecated('Use processGooglePlayNotificationRequestDescriptor instead')
+const ProcessGooglePlayNotificationRequest$json = {
+  '1': 'ProcessGooglePlayNotificationRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'payload', '3': 2, '4': 1, '5': 12, '10': 'payload'},
+    {
+      '1': 'headers',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.ProcessGooglePlayNotificationRequest.HeadersEntry',
+      '10': 'headers'
+    },
+  ],
+  '3': [ProcessGooglePlayNotificationRequest_HeadersEntry$json],
+};
+
+@$core.Deprecated('Use processGooglePlayNotificationRequestDescriptor instead')
+const ProcessGooglePlayNotificationRequest_HeadersEntry$json = {
+  '1': 'HeadersEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `ProcessGooglePlayNotificationRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List processGooglePlayNotificationRequestDescriptor =
+    $convert.base64Decode(
+        'CiRQcm9jZXNzR29vZ2xlUGxheU5vdGlmaWNhdGlvblJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh'
+        '8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSGAoHcGF5bG9hZBgCIAEo'
+        'DFIHcGF5bG9hZBJXCgdoZWFkZXJzGAMgAygLMj0ucHVibGlyYS52MS5Qcm9jZXNzR29vZ2xlUG'
+        'xheU5vdGlmaWNhdGlvblJlcXVlc3QuSGVhZGVyc0VudHJ5UgdoZWFkZXJzGjoKDEhlYWRlcnNF'
+        'bnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+
+@$core.Deprecated('Use processGooglePlayNotificationResponseDescriptor instead')
+const ProcessGooglePlayNotificationResponse$json = {
+  '1': 'ProcessGooglePlayNotificationResponse',
+};
+
+/// Descriptor for `ProcessGooglePlayNotificationResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List processGooglePlayNotificationResponseDescriptor =
+    $convert
+        .base64Decode('CiVQcm9jZXNzR29vZ2xlUGxheU5vdGlmaWNhdGlvblJlc3BvbnNl');
+
 @$core.Deprecated('Use getMyTicketStateRequestDescriptor instead')
 const GetMyTicketStateRequest$json = {
   '1': 'GetMyTicketStateRequest',
@@ -4080,6 +4134,11 @@ const $core.Map<$core.String, $core.dynamic> PurchaseServiceBase$json = {
       '2': '.publira.v1.ProcessAppStoreNotificationRequest',
       '3': '.publira.v1.ProcessAppStoreNotificationResponse'
     },
+    {
+      '1': 'ProcessGooglePlayNotification',
+      '2': '.publira.v1.ProcessGooglePlayNotificationRequest',
+      '3': '.publira.v1.ProcessGooglePlayNotificationResponse'
+    },
   ],
 };
 
@@ -4123,6 +4182,12 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       ProcessAppStoreNotificationRequest$json,
   '.publira.v1.ProcessAppStoreNotificationResponse':
       ProcessAppStoreNotificationResponse$json,
+  '.publira.v1.ProcessGooglePlayNotificationRequest':
+      ProcessGooglePlayNotificationRequest$json,
+  '.publira.v1.ProcessGooglePlayNotificationRequest.HeadersEntry':
+      ProcessGooglePlayNotificationRequest_HeadersEntry$json,
+  '.publira.v1.ProcessGooglePlayNotificationResponse':
+      ProcessGooglePlayNotificationResponse$json,
 };
 
 /// Descriptor for `PurchaseService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -4143,7 +4208,9 @@ final $typed_data.Uint8List purchaseServiceDescriptor = $convert.base64Decode(
     'JlcXVlc3QaKC5wdWJsaXJhLnYxLkNvbmZpcm1TdG9yZVB1cmNoYXNlUmVzcG9uc2USfgobUHJv'
     'Y2Vzc0FwcFN0b3JlTm90aWZpY2F0aW9uEi4ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3'
     'RpZmljYXRpb25SZXF1ZXN0Gi8ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRp'
-    'b25SZXNwb25zZQ==');
+    'b25SZXNwb25zZRKEAQodUHJvY2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb24SMC5wdWJsaXJhLn'
+    'YxLlByb2Nlc3NHb29nbGVQbGF5Tm90aWZpY2F0aW9uUmVxdWVzdBoxLnB1YmxpcmEudjEuUHJv'
+    'Y2Vzc0dvb2dsZVBsYXlOb3RpZmljYXRpb25SZXNwb25zZQ==');
 
 const $core.Map<$core.String, $core.dynamic> WaitFreeServiceBase$json = {
   '1': 'WaitFreeService',

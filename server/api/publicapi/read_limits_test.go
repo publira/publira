@@ -71,6 +71,13 @@ func TestReadLimitsAdmitTheLargestDocumentedWebhook(t *testing.T) {
 		publirav1connect.PurchaseServiceProcessAppStoreNotificationProcedure: &publirav1.ProcessAppStoreNotificationRequest{
 			Tenant: tenant, Payload: make([]byte, maxPaymentWebhookPayload),
 		},
+		publirav1connect.PurchaseServiceProcessGooglePlayNotificationProcedure: &publirav1.ProcessGooglePlayNotificationRequest{
+			Tenant: tenant, Payload: make([]byte, maxPaymentWebhookPayload), Headers: map[string]string{
+				"Authorization": "Bearer " + strings.Repeat("A", 1200),
+				"Content-Type":  "application/json",
+				"User-Agent":    "APIs-Google; (+https://developers.google.com/webmasters/APIs-Google.html)",
+			},
+		},
 		publirav1connect.ContactServiceProcessInboundEmailWebhookProcedure: &publirav1.ProcessInboundEmailWebhookRequest{
 			Tenant: tenant, Provider: "sendgrid", Payload: make([]byte, maxInboundEmailWebhookPayload), Headers: headers,
 		},

@@ -3463,7 +3463,7 @@
           "bundle_identifier": "Bundle ID",
           "bundle_identifier_description": "'앱 링크'에서 설정한 iOS 앱입니다. 변경은 그곳에서 합니다.",
           "notification_url": "App Store Server Notifications URL",
-          "notification_url_description": "App Store Connect의 앱 정보에서 App Store Server Notifications(버전 2)의 프로덕션 서버 URL과 샌드박스 서버 URL 모두에 이 URL을 입력하세요. Apple이 알린 환불은 이를 통해 구매 취소로 반영됩니다."
+          "notification_url_description": "App Store Connect의 앱 정보에서 App Store Server Notifications(버전 2)의 프로덕션 서버 URL과 샌드박스 서버 URL 모두에 이 URL을 입력하세요. Apple이 알린 갱신, 해지, 환불이 이를 통해 구독과 구매에 반영됩니다."
         },
         "google_play": {
           "title": "Google Play",
@@ -3473,7 +3473,9 @@
           "service_account_email": "서비스 계정",
           "service_account_email_description": "Play Console의 '사용자 및 권한'에서 이 계정을 앱에 초대하세요.",
           "package_name": "패키지 이름",
-          "package_name_description": "'앱 링크'에서 설정한 Android 애플리케이션 ID입니다. 변경은 그곳에서 합니다."
+          "package_name_description": "'앱 링크'에서 설정한 Android 애플리케이션 ID입니다. 변경은 그곳에서 합니다.",
+          "notification_url": "Google Play 실시간 개발자 알림 URL",
+          "notification_url_description": "Google Cloud에서 Play Console의 '수익 창출 설정'에 지정한 Pub/Sub 주제에 푸시 구독을 추가하고, 인증을 사용 설정하여 위의 서비스 계정으로 이 URL에 푸시하도록 설정하세요. Google Play가 알린 갱신, 해지, 환불이 이를 통해 구독과 구매에 반영됩니다."
         },
         "app_identity_unset": "미설정",
         "key_file": "키 파일",

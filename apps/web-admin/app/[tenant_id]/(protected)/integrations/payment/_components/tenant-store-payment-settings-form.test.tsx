@@ -160,7 +160,27 @@ describe("TenantStorePaymentSettingsForm", () => {
     expect(url.readOnly).toBe(true);
   });
 
-  it("leaves the notification URL out while the tenant has no domain", async () => {
+  it("shows the URL Google Play real-time developer notifications are pushed to", async () => {
+    await renderForm(
+      <TenantStorePaymentSettingsForm
+        canEdit
+        googlePlayNotificationUrl="https://shop.example.com/api/v1/webhook/payment/google-play"
+        tenantId="TENANT001"
+        initialSettings={readySettings}
+      />
+    );
+
+    const url = screen.getByLabelText<HTMLInputElement>(
+      "Google Play real-time developer notifications URL"
+    );
+
+    expect(url.value).toBe(
+      "https://shop.example.com/api/v1/webhook/payment/google-play"
+    );
+    expect(url.readOnly).toBe(true);
+  });
+
+  it("leaves the notification URLs out while the tenant has no domain", async () => {
     await renderForm(
       <TenantStorePaymentSettingsForm
         canEdit
@@ -170,6 +190,9 @@ describe("TenantStorePaymentSettingsForm", () => {
     );
 
     expect(screen.queryByText("App Store Server Notifications URL")).toBeNull();
+    expect(
+      screen.queryByText("Google Play real-time developer notifications URL")
+    ).toBeNull();
   });
 
   it("asks for a key as a file or pasted text where none is stored", async () => {

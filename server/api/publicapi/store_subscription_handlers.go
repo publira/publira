@@ -144,6 +144,9 @@ type storeSubscription struct {
 	// acknowledge is a Google Play subscription that has been paid for and
 	// that nobody has acknowledged yet.
 	acknowledge bool
+	// replaces is the store ID of the subscription this one replaced, as a
+	// Google Play change of plan names it; empty otherwise.
+	replaces string
 }
 
 func (s *apiServer) ConfirmStoreSubscription(
@@ -198,7 +201,16 @@ func (s *apiServer) ConfirmStoreSubscription(
 		return nil, err
 	}
 
-	recorded, err := s.recordStoreSubscription(ctx, tenant.ID, user.ID, provider, subscriptionID, verify)
+	row, err := s.recordStoreSubscription(ctx, tenant.ID, uuid.NullUUID{UUID: user.ID, Valid: true}, provider, subscriptionID, verify)
+	if err != nil {
+		return nil, err
+	}
+	queries := s.queriesFor(ctx)
+	mine, err := queries.GetMySubscriptionByID(ctx, dbmodels.GetMySubscriptionByIDParams{TenantID: tenant.ID, UserID: user.ID, ID: row.ID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read a store subscription", err, "tenant_id", tenant.ID.String(), "subscription_id", row.ID.String())
+	}
+	recorded, err := s.mySubscription(ctx, queries, tenant.ID, dbmodels.GetMySubscriptionRow(mine))
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +318,8 @@ func (s *apiServer) verifyAppStoreSubscription(ctx context.Context, tenantID uui
 
 // verifyGooglePlaySubscription asks Google Play for the subscription a token
 // names. The token is looked up in the tenant's own app, so a subscription
-// bought in another app is one Google Play does not find.
+// bought in another app is one Google Play does not find. An empty productID,
+// which is all a notification knows, reads the product the subscription bills.
 func (s *apiServer) verifyGooglePlaySubscription(ctx context.Context, tenantID uuid.UUID, productID, token string) (storeSubscription, error) {
 	provider := storesubscription.ProviderGooglePlay
 	credentials, err := s.appStores(ctx).LoadGooglePlayCredentials(ctx, tenantID)
@@ -321,6 +334,9 @@ func (s *apiServer) verifyGooglePlaySubscription(ctx context.Context, tenantID u
 		return storeSubscription{}, s.storeRefusedCredentialsError(ctx, tenantID, provider, err)
 	case err != nil:
 		return storeSubscription{}, s.storeUnavailableError(ctx, tenantID, provider, err)
+	}
+	if productID == "" && len(purchase.LineItems) > 0 {
+		productID = purchase.LineItems[0].ProductID
 	}
 	item, ok := purchase.LineItem(productID)
 	if !ok {
@@ -341,31 +357,46 @@ func (s *apiServer) verifyGooglePlaySubscription(ctx context.Context, tenantID u
 		isTest:         purchase.IsTest(),
 		state:          state,
 		acknowledge:    paid && purchase.AcknowledgementState != googleplay.AcknowledgementStateAcknowledged,
+		replaces:       purchase.LinkedPurchaseToken,
 	}, nil
 }
 
+// errStoreSubscriptionUnclaimed reports a subscription a store notified about
+// that no reader can be found for: it is not recorded, the app has not
+// confirmed it, and it carries no open intent of a plan the tenant sells.
+// Nothing a retry of the notification brings changes that, so it is logged
+// and acknowledged.
+var errStoreSubscriptionUnclaimed = errors.New("the store subscription is not claimed by any reader")
+
 // recordStoreSubscription asks the store for the subscription provider knows
 // as subscriptionID through verify, writes it as the store reports it now, on
-// the plan its product is sold as, and answers it. The first confirmation of a
-// subscription consumes the intent its account token names; a later one, as
-// an app restoring its purchases sends, updates the subscription already
-// recorded for the caller.
+// the plan its product is sold as, and answers the row it wrote.
+//
+// caller is the reader confirming the subscription from the app, and is NULL
+// for a store's notification. The first record of a subscription consumes the
+// intent its account token names, which has to be the caller's when there is
+// one; a later one, as an app restoring its purchases or a notification of a
+// renewal sends, updates the subscription already recorded, which has to be
+// the caller's too, and keeps the reader it was recorded for. A Google Play
+// subscription that replaced one already recorded, as a change of plan does,
+// takes that one's place rather than looking for an intent.
 //
 // The read from the store, the read of the recorded row, and the write all
 // happen under the subscription's lock, as recordSubscription does for a
-// Stripe one: of two confirmations that overlap, the one that writes last is
-// also the one that asked the store last, so a state the store has moved past
-// is never written over the newer one, and the subscription is never recorded
-// twice.
+// Stripe one: of two confirmations or notifications that overlap, the one that
+// writes last is also the one that asked the store last, so a state the store
+// has moved past is never written over the newer one, and the subscription is
+// never recorded twice.
 func (s *apiServer) recordStoreSubscription(
 	ctx context.Context,
-	tenantID, userID uuid.UUID,
+	tenantID uuid.UUID,
+	caller uuid.NullUUID,
 	provider, subscriptionID string,
 	verify func() (storeSubscription, error),
-) (*publirav1.Subscription, error) {
+) (dbmodels.RecordStoreSubscriptionRow, error) {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to begin store subscription transaction", err, "tenant_id", tenantID.String())
+		return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to begin store subscription transaction", err, "tenant_id", tenantID.String())
 	}
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
@@ -375,23 +406,34 @@ func (s *apiServer) recordStoreSubscription(
 		Provider:            provider,
 		StoreSubscriptionID: subscriptionID,
 	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
+		return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
 	}
 	subscription, err := verify()
 	if err != nil {
-		return nil, err
+		return dbmodels.RecordStoreSubscriptionRow{}, err
 	}
-	existing, err := txq.GetStoreSubscription(ctx, dbmodels.GetStoreSubscriptionParams{
-		TenantID:            tenantID,
-		Provider:            subscription.provider,
-		StoreSubscriptionID: subscription.subscriptionID,
-	})
-	recorded := err == nil
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, s.internalDBError(ctx, "failed to look up a store subscription", err, "tenant_id", tenantID.String(), "store", subscription.provider)
+	existing, recorded, err := s.lookUpStoreSubscription(ctx, txq, tenantID, subscription.provider, subscription.subscriptionID)
+	if err != nil {
+		return dbmodels.RecordStoreSubscriptionRow{}, err
 	}
-	if recorded && (!existing.UserID.Valid || existing.UserID.UUID != userID) {
-		return nil, connect.NewError(connect.CodePermissionDenied, "subscription belongs to another reader")
+	// The subscription a change of plan replaced is taken under its own lock,
+	// after this one's; nothing takes the two in the other order.
+	replaced := false
+	if !recorded && subscription.replaces != "" {
+		if err := txq.LockStoreSubscription(ctx, dbmodels.LockStoreSubscriptionParams{
+			TenantID:            tenantID,
+			Provider:            subscription.provider,
+			StoreSubscriptionID: subscription.replaces,
+		}); err != nil {
+			return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to lock a store subscription", err, "tenant_id", tenantID.String())
+		}
+		if existing, replaced, err = s.lookUpStoreSubscription(ctx, txq, tenantID, subscription.provider, subscription.replaces); err != nil {
+			return dbmodels.RecordStoreSubscriptionRow{}, err
+		}
+		recorded = replaced
+	}
+	if recorded && caller.Valid && existing.UserID != caller {
+		return dbmodels.RecordStoreSubscriptionRow{}, connect.NewError(connect.CodePermissionDenied, "subscription belongs to another reader")
 	}
 
 	// A subscription already recorded stays on its plan when staff have since
@@ -405,22 +447,53 @@ func (s *apiServer) recordStoreSubscription(
 	switch {
 	case errors.Is(err, sql.ErrNoRows) && recorded:
 		planID = existing.PlanID
+		s.logger.WarnContext(ctx, "a store subscription bills a product no plan names; it stays on its plan",
+			"tenant_id", tenantID, "subscription_id", existing.ID, "store", subscription.provider, "product_id", subscription.productID)
+	case errors.Is(err, sql.ErrNoRows) && !caller.Valid:
+		return dbmodels.RecordStoreSubscriptionRow{}, errStoreSubscriptionUnclaimed
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, connect.NewError(connect.CodeInvalidArgument, "the store product is not sold as any plan of the tenant")
+		return dbmodels.RecordStoreSubscriptionRow{}, connect.NewError(connect.CodeInvalidArgument, "the store product is not sold as any plan of the tenant")
 	case err != nil:
-		return nil, s.internalDBError(ctx, "failed to find the plan of a store product", err, "tenant_id", tenantID.String(), "store", subscription.provider)
+		return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to find the plan of a store product", err, "tenant_id", tenantID.String(), "store", subscription.provider)
 	}
 
+	owner := caller
+	if recorded {
+		owner = existing.UserID
+	}
+	var intentID uuid.UUID
+	if !recorded {
+		if intentID, owner, err = s.storeSubscriptionIntentOwner(ctx, txq, tenantID, caller, subscription); err != nil {
+			return dbmodels.RecordStoreSubscriptionRow{}, err
+		}
+	}
 	// Taken before the intent is: a deletion of the account holds this lock
 	// when the deletion of the reader reaches the intent, so the other order
-	// deadlocks the two.
-	if err := txq.LockSubscriptionsOfUser(ctx, dbmodels.LockSubscriptionsOfUserParams{TenantID: tenantID, UserID: userID}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to lock the reader's subscriptions", err, "tenant_id", tenantID.String())
+	// deadlocks the two. A subscription whose reader deleted their account
+	// has nobody's to take.
+	if owner.Valid {
+		if err := txq.LockSubscriptionsOfUser(ctx, dbmodels.LockSubscriptionsOfUserParams{TenantID: tenantID, UserID: owner.UUID}); err != nil {
+			return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to lock the reader's subscriptions", err, "tenant_id", tenantID.String())
+		}
 	}
-	var intent dbmodels.StoreSubscriptionIntent
 	if !recorded {
-		if intent, err = s.lockStoreSubscriptionIntent(ctx, txq, tenantID, userID, subscription); err != nil {
-			return nil, err
+		if err := s.lockStoreSubscriptionIntent(ctx, txq, tenantID, intentID, owner.UUID, subscription); err != nil {
+			switch connect.CodeOf(err) {
+			case connect.CodeInvalidArgument, connect.CodePermissionDenied, connect.CodeFailedPrecondition:
+				if !caller.Valid {
+					return dbmodels.RecordStoreSubscriptionRow{}, errStoreSubscriptionUnclaimed
+				}
+			}
+			return dbmodels.RecordStoreSubscriptionRow{}, err
+		}
+	}
+	if replaced {
+		if err := txq.MoveStoreSubscriptionToToken(ctx, dbmodels.MoveStoreSubscriptionToTokenParams{
+			TenantID:            tenantID,
+			ID:                  existing.ID,
+			StoreSubscriptionID: subscription.subscriptionID,
+		}); err != nil {
+			return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to move a store subscription to the one that replaced it", err, "tenant_id", tenantID.String(), "subscription_id", existing.ID.String())
 		}
 	}
 	var currentPeriodEnd sql.NullTime
@@ -430,7 +503,7 @@ func (s *apiServer) recordStoreSubscription(
 	row, err := txq.RecordStoreSubscription(ctx, dbmodels.RecordStoreSubscriptionParams{
 		ID:                  uuid.Must(uuid.NewV7()),
 		TenantID:            tenantID,
-		UserID:              userID,
+		UserID:              owner.UUID,
 		PlanID:              planID,
 		Provider:            subscription.provider,
 		StoreSubscriptionID: subscription.subscriptionID,
@@ -441,20 +514,20 @@ func (s *apiServer) recordStoreSubscription(
 		CancelAtPeriodEnd:   subscription.state.CancelAtPeriodEnd,
 	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to record a store subscription", err, "tenant_id", tenantID.String(), "store", subscription.provider)
+		return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to record a store subscription", err, "tenant_id", tenantID.String(), "store", subscription.provider)
 	}
 	if !recorded {
-		if err := txq.ConsumeStoreSubscriptionIntent(ctx, dbmodels.ConsumeStoreSubscriptionIntentParams{TenantID: tenantID, ID: intent.ID}); err != nil {
-			return nil, s.internalDBError(ctx, "failed to consume a store subscription intent", err, "tenant_id", tenantID.String())
+		if err := txq.ConsumeStoreSubscriptionIntent(ctx, dbmodels.ConsumeStoreSubscriptionIntentParams{TenantID: tenantID, ID: intentID}); err != nil {
+			return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to consume a store subscription intent", err, "tenant_id", tenantID.String())
 		}
 	}
 	if subscription.acknowledge {
 		if err := outbox.QueueGooglePlaySubscriptionAcknowledgement(ctx, txq, tenantID, row.ID, subscription.productID, subscription.subscriptionID); err != nil {
-			return nil, s.internalError(ctx, "failed to queue a google play subscription acknowledgement", err, "tenant_id", tenantID.String())
+			return dbmodels.RecordStoreSubscriptionRow{}, s.internalError(ctx, "failed to queue a google play subscription acknowledgement", err, "tenant_id", tenantID.String())
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError(ctx, "failed to commit a store subscription", err, "tenant_id", tenantID.String())
+		return dbmodels.RecordStoreSubscriptionRow{}, s.internalDBError(ctx, "failed to commit a store subscription", err, "tenant_id", tenantID.String())
 	}
 	s.logger.InfoContext(ctx, "recorded a store subscription",
 		"tenant_id", tenantID,
@@ -463,39 +536,70 @@ func (s *apiServer) recordStoreSubscription(
 		"store", subscription.provider,
 		"status", row.Status,
 		"is_test", subscription.isTest,
+		"replaced", replaced,
 	)
+	return row, nil
+}
 
-	queries := s.queriesFor(ctx)
-	mine, err := queries.GetMySubscriptionByID(ctx, dbmodels.GetMySubscriptionByIDParams{TenantID: tenantID, UserID: userID, ID: row.ID})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to read a store subscription", err, "tenant_id", tenantID.String(), "subscription_id", row.ID.String())
+func (s *apiServer) lookUpStoreSubscription(ctx context.Context, txq *dbmodels.Queries, tenantID uuid.UUID, provider, subscriptionID string) (dbmodels.GetStoreSubscriptionRow, bool, error) {
+	existing, err := txq.GetStoreSubscription(ctx, dbmodels.GetStoreSubscriptionParams{
+		TenantID:            tenantID,
+		Provider:            provider,
+		StoreSubscriptionID: subscriptionID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return dbmodels.GetStoreSubscriptionRow{}, false, nil
 	}
-	return s.mySubscription(ctx, queries, tenantID, dbmodels.GetMySubscriptionRow(mine))
+	if err != nil {
+		return dbmodels.GetStoreSubscriptionRow{}, false, s.internalDBError(ctx, "failed to look up a store subscription", err, "tenant_id", tenantID.String(), "store", provider)
+	}
+	return existing, true, nil
+}
+
+// storeSubscriptionIntentOwner answers the intent a subscription not recorded
+// yet names and whom it was opened by: the caller, when there is one, and
+// otherwise the reader the intent names. A notification of a subscription
+// that names no intent is errStoreSubscriptionUnclaimed.
+func (s *apiServer) storeSubscriptionIntentOwner(ctx context.Context, txq *dbmodels.Queries, tenantID uuid.UUID, caller uuid.NullUUID, subscription storeSubscription) (uuid.UUID, uuid.NullUUID, error) {
+	intentID, err := uuid.Parse(subscription.accountToken)
+	if err != nil && !caller.Valid {
+		return uuid.Nil, uuid.NullUUID{}, errStoreSubscriptionUnclaimed
+	}
+	if err != nil {
+		return uuid.Nil, uuid.NullUUID{}, connect.NewError(connect.CodeInvalidArgument, "transaction names no subscription intent")
+	}
+	if caller.Valid {
+		return intentID, caller, nil
+	}
+	owner, err := txq.GetStoreSubscriptionIntentOwner(ctx, dbmodels.GetStoreSubscriptionIntentOwnerParams{TenantID: tenantID, ID: intentID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, uuid.NullUUID{}, errStoreSubscriptionUnclaimed
+	}
+	if err != nil {
+		return uuid.Nil, uuid.NullUUID{}, s.internalDBError(ctx, "failed to read a store subscription intent", err, "tenant_id", tenantID.String())
+	}
+	return intentID, uuid.NullUUID{UUID: owner, Valid: true}, nil
 }
 
 // lockStoreSubscriptionIntent takes the intent a subscription not recorded yet
-// names, which has to be the caller's, still open, and for the product the
+// names, which has to be the reader's, still open, and for the product the
 // store bills.
-func (s *apiServer) lockStoreSubscriptionIntent(ctx context.Context, txq *dbmodels.Queries, tenantID, userID uuid.UUID, subscription storeSubscription) (dbmodels.StoreSubscriptionIntent, error) {
-	intentID, err := uuid.Parse(subscription.accountToken)
-	if err != nil {
-		return dbmodels.StoreSubscriptionIntent{}, connect.NewError(connect.CodeInvalidArgument, "transaction names no subscription intent")
-	}
+func (s *apiServer) lockStoreSubscriptionIntent(ctx context.Context, txq *dbmodels.Queries, tenantID, intentID, userID uuid.UUID, subscription storeSubscription) error {
 	intent, err := txq.LockStoreSubscriptionIntent(ctx, dbmodels.LockStoreSubscriptionIntentParams{TenantID: tenantID, ID: intentID})
 	if errors.Is(err, sql.ErrNoRows) {
-		return dbmodels.StoreSubscriptionIntent{}, connect.NewError(connect.CodeInvalidArgument, "transaction names no subscription intent")
+		return connect.NewError(connect.CodeInvalidArgument, "transaction names no subscription intent")
 	}
 	if err != nil {
-		return dbmodels.StoreSubscriptionIntent{}, s.internalDBError(ctx, "failed to lock a store subscription intent", err, "tenant_id", tenantID.String())
+		return s.internalDBError(ctx, "failed to lock a store subscription intent", err, "tenant_id", tenantID.String())
 	}
 	if intent.UserID != userID {
-		return dbmodels.StoreSubscriptionIntent{}, connect.NewError(connect.CodePermissionDenied, "subscription intent belongs to another reader")
+		return connect.NewError(connect.CodePermissionDenied, "subscription intent belongs to another reader")
 	}
 	if intent.ConsumedAt.Valid {
-		return dbmodels.StoreSubscriptionIntent{}, connect.NewError(connect.CodeFailedPrecondition, "subscription intent has already been used")
+		return connect.NewError(connect.CodeFailedPrecondition, "subscription intent has already been used")
 	}
 	if intent.ProductID != subscription.productID {
-		return dbmodels.StoreSubscriptionIntent{}, connect.NewError(connect.CodeInvalidArgument, "the store bills another product than the intent")
+		return connect.NewError(connect.CodeInvalidArgument, "the store bills another product than the intent")
 	}
-	return intent, nil
+	return nil
 }

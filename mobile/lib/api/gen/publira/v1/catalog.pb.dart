@@ -10823,11 +10823,19 @@ class ConfirmStorePurchaseResponse extends $pb.GeneratedMessage {
 /// V2 request to this RPC. The signed payload is verified against Apple's root
 /// certificate here, and it has to name the tenant's own iOS app.
 ///
-/// REFUND and REVOKE take back the purchase of the transaction they carry,
-/// holding the refund until the purchase is recorded when the app has not
-/// confirmed it yet; every other type is acknowledged and changes nothing. A
-/// payload that does not verify, or names another app, is invalid_argument, and
-/// a tenant with no iOS app is failed_precondition.
+/// A notification about an auto-renewable subscription, of whatever type, is
+/// read as word that the subscription changed: the server asks the App Store
+/// for the subscription as it stands now and records that, so a delivery
+/// repeated or out of order writes nothing older than what is recorded. One the
+/// app has not confirmed yet is recorded for the reader whose intent it
+/// carries, and is acknowledged and left unrecorded when it carries none.
+///
+/// For any other product, REFUND and REVOKE take back the purchase of the
+/// transaction they carry, holding the refund until the purchase is recorded
+/// when the app has not confirmed it yet; every other type is acknowledged and
+/// changes nothing. A payload that does not verify, or names another app, is
+/// invalid_argument, and a tenant with no iOS app, or whose App Store is not
+/// ready to be asked, is failed_precondition.
 class ProcessAppStoreNotificationRequest extends $pb.GeneratedMessage {
   factory ProcessAppStoreNotificationRequest({
     $0.TenantContext? tenant,
@@ -10956,6 +10964,168 @@ class ProcessAppStoreNotificationResponse extends $pb.GeneratedMessage {
               ProcessAppStoreNotificationResponse>(
           ProcessAppStoreNotificationResponse.$_createMessage);
   static ProcessAppStoreNotificationResponse? _defaultInstance;
+}
+
+/// `web-storefront` forwards the raw body and the headers of a Google Play
+/// real-time developer notification, which Cloud Pub/Sub pushes to the tenant's
+/// site, to this RPC. The push has to carry, in its Authorization header, an
+/// OIDC token Google signed for the service account saved under Google Play,
+/// whose audience is the URL it was pushed to; the notification has to name the
+/// tenant's own Android app.
+///
+/// A subscription notification, of whatever type, is read as word that the
+/// subscription changed: the server asks Google Play for it as it stands now
+/// and records that, as ProcessAppStoreNotification does for the App Store. A
+/// voided purchase of a one-time product takes the purchase back, holding the
+/// refund until the purchase is recorded; one of a subscription is read again
+/// as the subscription. A test notification, and anything else, is
+/// acknowledged and changes nothing.
+///
+/// A token that does not verify, or names another audience or another service
+/// account, and a notification that names another app, are invalid_argument; a
+/// tenant with no Android app or no service account, or whose Google Play is
+/// not ready to be asked, is failed_precondition.
+class ProcessGooglePlayNotificationRequest extends $pb.GeneratedMessage {
+  factory ProcessGooglePlayNotificationRequest({
+    $0.TenantContext? tenant,
+    $core.List<$core.int>? payload,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? headers,
+  }) {
+    final result = ProcessGooglePlayNotificationRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (payload != null) result.payload = payload;
+    if (headers != null) result.headers.addEntries(headers);
+    return result;
+  }
+
+  ProcessGooglePlayNotificationRequest._();
+
+  factory ProcessGooglePlayNotificationRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProcessGooglePlayNotificationRequest()..mergeFromBuffer(data, registry);
+  factory ProcessGooglePlayNotificationRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProcessGooglePlayNotificationRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProcessGooglePlayNotificationRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ProcessGooglePlayNotificationRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'payload', $pb.PbFieldType.OY)
+    ..m<$core.String, $core.String>(3, _omitFieldNames ? '' : 'headers',
+        entryClassName: 'ProcessGooglePlayNotificationRequest.HeadersEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('publira.v1'))
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProcessGooglePlayNotificationRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProcessGooglePlayNotificationRequest copyWith(
+          void Function(ProcessGooglePlayNotificationRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProcessGooglePlayNotificationRequest))
+          as ProcessGooglePlayNotificationRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProcessGooglePlayNotificationRequest() / ProcessGooglePlayNotificationRequest.new instead')
+  static ProcessGooglePlayNotificationRequest create() =>
+      ProcessGooglePlayNotificationRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProcessGooglePlayNotificationRequest._();
+  @$core.override
+  ProcessGooglePlayNotificationRequest createEmptyInstance() =>
+      ProcessGooglePlayNotificationRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ProcessGooglePlayNotificationRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProcessGooglePlayNotificationRequest>(
+          ProcessGooglePlayNotificationRequest.$_createMessage);
+  static ProcessGooglePlayNotificationRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get payload => $_getN(1);
+  @$pb.TagNumber(2)
+  set payload($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPayload() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPayload() => $_clearField(2);
+
+  /// The request headers, keyed by name. Names are matched case-insensitively.
+  @$pb.TagNumber(3)
+  $pb.PbMap<$core.String, $core.String> get headers => $_getMap(2);
+}
+
+class ProcessGooglePlayNotificationResponse extends $pb.GeneratedMessage {
+  factory ProcessGooglePlayNotificationResponse() =>
+      ProcessGooglePlayNotificationResponse._();
+
+  ProcessGooglePlayNotificationResponse._();
+
+  factory ProcessGooglePlayNotificationResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProcessGooglePlayNotificationResponse()..mergeFromBuffer(data, registry);
+  factory ProcessGooglePlayNotificationResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProcessGooglePlayNotificationResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProcessGooglePlayNotificationResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance:
+          ProcessGooglePlayNotificationResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProcessGooglePlayNotificationResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProcessGooglePlayNotificationResponse copyWith(
+          void Function(ProcessGooglePlayNotificationResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as ProcessGooglePlayNotificationResponse))
+          as ProcessGooglePlayNotificationResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ProcessGooglePlayNotificationResponse() / ProcessGooglePlayNotificationResponse.new instead')
+  static ProcessGooglePlayNotificationResponse create() =>
+      ProcessGooglePlayNotificationResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ProcessGooglePlayNotificationResponse._();
+  @$core.override
+  ProcessGooglePlayNotificationResponse createEmptyInstance() =>
+      ProcessGooglePlayNotificationResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ProcessGooglePlayNotificationResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              ProcessGooglePlayNotificationResponse>(
+          ProcessGooglePlayNotificationResponse.$_createMessage);
+  static ProcessGooglePlayNotificationResponse? _defaultInstance;
 }
 
 class GetMyTicketStateRequest extends $pb.GeneratedMessage {
@@ -11802,6 +11972,15 @@ class PurchaseServiceApi {
               'ProcessAppStoreNotification',
               request,
               ProcessAppStoreNotificationResponse());
+  $async.Future<ProcessGooglePlayNotificationResponse>
+      processGooglePlayNotification($pb.ClientContext? ctx,
+              ProcessGooglePlayNotificationRequest request) =>
+          _client.invoke<ProcessGooglePlayNotificationResponse>(
+              ctx,
+              'PurchaseService',
+              'ProcessGooglePlayNotification',
+              request,
+              ProcessGooglePlayNotificationResponse());
 }
 
 /// Wait-for-free: the reader's own tickets on a series that offers the rule
