@@ -11,7 +11,7 @@ import * as SmtpPassword from "./app/[tenant_id]/(protected)/integrations/email/
 import * as SmtpTest from "./app/[tenant_id]/(protected)/integrations/email/_components/smtp-test";
 import * as GoogleTagMode from "./app/[tenant_id]/(protected)/integrations/google-tag/_components/google-tag-controls";
 import * as PageDraft from "./app/[tenant_id]/(protected)/pages/_components/page-draft-controls";
-import * as RefundReason from "./app/[tenant_id]/(protected)/purchases/_components/refund-reason";
+import * as RefundDraft from "./app/[tenant_id]/(protected)/purchases/_components/refund-draft";
 import * as RoyaltyCloseMode from "./app/[tenant_id]/(protected)/royalties/settings/_components/royalty-close-mode-fields";
 import * as EpisodePages from "./app/[tenant_id]/(protected)/series/[series_id]/episodes/[episode_id]/_components/episode-pages-upload-controls";
 import * as SpreadStart from "./app/[tenant_id]/(protected)/series/[series_id]/episodes/[episode_id]/_components/episode-reading-layout-controls";
@@ -76,7 +76,7 @@ const namespaces = {
   ProviderCredential,
   ProviderEnabled,
   ReaderIconPolicySelection,
-  RefundReason,
+  RefundDraft,
   RoyaltyCloseMode,
   SecretKey,
   SeriesCreatorCredits,

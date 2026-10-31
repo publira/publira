@@ -4413,6 +4413,19 @@
       "refund_confirm_title": "この購入を返金しますか？",
       "refund_confirm_description": "読者が支払った金額の返金を決済サービスに依頼し、読者はすぐに購入した内容を読めなくなります。返金は取り消せません。",
       "refund_confirm_action": "返金する",
+      "refund_confirm_description_amount": "入力した金額の返金を決済サービスに依頼します。返金は取り消せません。",
+      "refund_amount": "返金する金額",
+      "refund_amount_description": "返金できるのは残りの{$amount}までです。",
+      "refund_amount_waiting_description": "{$amount}の返金が決済サービスの処理待ちです。決済サービスから通知が届くまでは、同じ金額でしか依頼し直せません。",
+      "refund_amount_note": {
+        "invalid": "0より大きく、返金できる残りの金額以下で入力してください。",
+        "closes": "残りの全額なので、読者はすぐに購入した内容を読めなくなります。",
+        "stays_open": "読者は引き続き購入した内容を読めます。"
+      },
+      "refund_requested_amount": "返金依頼額",
+      "refund_in_part_pending": "代金の一部の返金を依頼しました。読者は引き続き購入した内容を読めます。決済サービスから通知が届くと返金額に加わります。依頼が決済サービスに届かなかった場合は、同じ金額でもう一度返金してください。",
+      "refund_requested_toast": "{$amount}の返金を依頼しました。",
+      "refund_in_part_unavailable": "APIサーバーがまだ一部返金に対応したリリースに更新されていないため、何も返金していません。残りの全額を返金するか、更新が終わってからやり直してください。",
       "reason": "理由",
       "reason_description": "返金とあわせて監査ログに記録されます。",
       "reason_placeholder": "読者が誤って同じエピソードを2回購入した",
@@ -4422,7 +4435,9 @@
       "validation": {
         "refund_target": "返金対象が不正です。",
         "reason_required": "返金の理由を入力してください。",
-        "reason_too_long": "理由は1,000文字以内で入力してください。"
+        "reason_too_long": "理由は1,000文字以内で入力してください。",
+        "amount_invalid": "返金する金額は、0より大きく返金できる残りの金額以下で入力してください。",
+        "amount_over_left": "返金できる残りの金額を超えています。購入を開き直して、残りの金額を確認してください。"
       }
     },
     "coins": {

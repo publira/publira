@@ -4413,6 +4413,19 @@
       "refund_confirm_title": "要为这次购买退款吗？",
       "refund_confirm_description": "将请求支付服务向读者退还其支付的金额，读者将立即无法阅读所购买的内容。退款无法撤销。",
       "refund_confirm_action": "退款",
+      "refund_confirm_description_amount": "将请求支付服务向读者退还您输入的金额。退款无法撤销。",
+      "refund_amount": "退款金额",
+      "refund_amount_description": "最多可退还剩余的{$amount}。",
+      "refund_amount_waiting_description": "{$amount}的退款正在等待支付服务处理。在支付服务报告之前，只能以相同金额重新申请。",
+      "refund_amount_note": {
+        "invalid": "请输入大于零且不超过剩余可退金额的金额。",
+        "closes": "这是剩余的全部金额，读者将立即无法阅读所购买的内容。",
+        "stays_open": "读者仍可阅读所购买的内容。"
+      },
+      "refund_requested_amount": "已申请退款金额",
+      "refund_in_part_pending": "已申请退还部分价款，读者仍可阅读所购买的内容。支付服务报告后，该金额会计入已退金额。如果申请未送达支付服务，请以相同金额再次退款。",
+      "refund_requested_toast": "已申请退款{$amount}。",
+      "refund_in_part_unavailable": "API服务器尚未升级到支持部分退款的版本，因此未进行任何退款。请退还剩余的全部金额，或在升级完成后重试。",
       "reason": "理由",
       "reason_description": "将与退款一同记录在审计日志中。",
       "reason_placeholder": "例如：读者误将同一章节购买了两次",
@@ -4422,7 +4435,9 @@
       "validation": {
         "refund_target": "要退款的购买记录无效。",
         "reason_required": "请输入退款理由。",
-        "reason_too_long": "理由请控制在1,000个字符以内。"
+        "reason_too_long": "理由请控制在1,000个字符以内。",
+        "amount_invalid": "退款金额须大于零且不超过剩余可退金额。",
+        "amount_over_left": "金额超过了当前剩余可退金额。请重新打开这次购买，查看剩余金额。"
       }
     },
     "coins": {

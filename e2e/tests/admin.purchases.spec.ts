@@ -13,13 +13,18 @@ import {
   PURCHASES_SCENARIO,
   PURCHASES_SERIES,
 } from "../src/scenarios/purchases";
-import { registerStripePaymentIntent } from "../src/stripe";
+import {
+  registerStripePaymentIntent,
+  registerStripeWebhook,
+  reportStripeRefunds,
+} from "../src/stripe";
 import { WEB_ADMIN_PURCHASES_BASE_URL } from "../src/urls";
 
 /**
  * A tenant administrator finding a reader's purchase at `/purchases`, reading
  * it in the detail drawer, and refunding it through the stack's stand-in for
- * Stripe once they have given a reason.
+ * Stripe once they have given a reason: part of the price first, and the rest
+ * once Stripe has reported that part.
  */
 
 const PURCHASES_PATH = "/purchases";
@@ -33,14 +38,17 @@ const drawer = (page: Page) => page.getByRole("dialog", { name: "Purchase" });
 
 /**
  * Takes the tenant's payments through Stripe, which makes a Stripe purchase
- * refundable, and has the stand-in hold the payment the Stripe purchase was
- * seeded with.
+ * refundable, has the stand-in hold the payment the Stripe purchase was seeded
+ * with, and registers the webhook URL the console shows with the stand-in, as
+ * an operator registers it in Stripe's dashboard, so that the refunds it
+ * reports reach the install. Answers the secret key the stand-in knows the
+ * account by.
  *
  * The key is a new one each run, a test account of its own: the stand-in
  * keeps what it refunded, and a run that starts over has seeded the purchase
  * again unrefunded under the same refund idempotency key.
  */
-const takePaymentsThroughStripe = async (page: Page) => {
+const takePaymentsThroughStripe = async (page: Page): Promise<string> => {
   const secretKey = `sk_test_${randomUUID().replaceAll("-", "")}`;
   await registerStripePaymentIntent(secretKey, PURCHASES.stripe.payment);
 
@@ -54,12 +62,29 @@ const takePaymentsThroughStripe = async (page: Page) => {
 
   await page.getByRole("checkbox", { name: "Enable payments" }).click();
   await page.getByLabel(/^Secret key/u).fill(secretKey);
-  await page.getByLabel(/^Webhook signing secret/u).fill("whsec_placeholder");
+
+  const webhookSecret = await registerStripeWebhook(
+    secretKey,
+    await page.getByLabel("Webhook URL").inputValue()
+  );
+
+  await page.getByLabel(/^Webhook signing secret/u).fill(webhookSecret);
   await page.getByRole("button", { exact: true, name: "Save" }).click();
   await expect(
     page.getByText("The payment settings were saved.")
   ).toBeVisible();
+
+  return secretKey;
 };
+
+/** Opens the purchase paid through Stripe in the drawer. */
+const openStripePurchase = (page: Page) =>
+  page.goto(
+    new URL(
+      `${PURCHASES_PATH}?purchase=${PURCHASES.stripe.id}`,
+      WEB_ADMIN_PURCHASES_BASE_URL
+    ).toString()
+  );
 
 test.describe.configure({ mode: "serial" });
 
@@ -172,30 +197,20 @@ test.describe("Purchases", () => {
     );
   });
 
-  test("refunds a purchase through Stripe once given a reason", async ({
+  test("refunds part of a purchase through Stripe, then the rest once Stripe reports it", async ({
     page,
   }) => {
     await signIn(page, "/integrations/payment");
 
     // While the tenant takes no payments through Stripe, a Stripe purchase
     // cannot be refunded from the console.
-    await page.goto(
-      new URL(
-        `${PURCHASES_PATH}?purchase=${PURCHASES.stripe.id}`,
-        WEB_ADMIN_PURCHASES_BASE_URL
-      ).toString()
-    );
+    await openStripePurchase(page);
     await expect(drawer(page)).toContainText(
       "The tenant does not take payments through this provider now"
     );
 
-    await takePaymentsThroughStripe(page);
-    await page.goto(
-      new URL(
-        `${PURCHASES_PATH}?purchase=${PURCHASES.stripe.id}`,
-        WEB_ADMIN_PURCHASES_BASE_URL
-      ).toString()
-    );
+    const secretKey = await takePaymentsThroughStripe(page);
+    await openStripePurchase(page);
     await drawer(page)
       .getByRole("button", { exact: true, name: "Refund" })
       .click();
@@ -209,13 +224,30 @@ test.describe("Purchases", () => {
       name: "Refund",
     });
 
-    await expect(confirm).toBeDisabled();
+    const amount = confirmation.getByRole("spinbutton", {
+      name: /Amount to refund/u,
+    });
 
     const reason = confirmation.getByRole("textbox", { name: /Reason/u });
+
+    // The amount starts at all that is left, which closes the episode.
+    await expect(amount).toHaveValue("500");
+    await expect(confirmation).toContainText("Up to ¥500");
+    await expect(confirmation).toContainText(
+      "That is all that is left, so what the reader bought closes to them at once."
+    );
+    await expect(confirm).toBeDisabled();
+
     await reason.fill("   ");
     await expect(confirm).toBeDisabled();
-    await reason.fill("The reader bought the episode twice by mistake.");
+    await reason.fill("Half of the pages would not load.");
     await expect(confirm).toBeEnabled();
+
+    await amount.fill("501");
+    await expect(confirm).toBeDisabled();
+    await expect(confirmation).toContainText(
+      "Enter an amount above zero and no more than what is left to refund."
+    );
 
     // Cancelling leaves the purchase as it was.
     await confirmation.getByRole("button", { name: "Cancel" }).click();
@@ -225,12 +257,61 @@ test.describe("Purchases", () => {
     await drawer(page)
       .getByRole("button", { exact: true, name: "Refund" })
       .click();
-    await reason.fill("The reader bought the episode twice by mistake.");
+    await amount.fill("200");
+    await expect(confirmation).toContainText(
+      "What the reader bought stays open to them."
+    );
+    await reason.fill("Half of the pages would not load.");
     await confirm.click();
 
-    // Stripe accepted the refund, so the episode closes to the reader at once;
-    // the refunded amount waits for Stripe's notification of it.
-    await expect(page.getByText("The refund was requested.")).toBeVisible();
+    // Stripe accepted the refund in part, which leaves the episode open to
+    // the reader and waits for Stripe's notification of it.
+    await expect(
+      page.getByText("A refund of ¥200 was requested.")
+    ).toBeVisible();
+    await expect(drawer(page)).toContainText("Refund requested");
+    await expect(drawer(page).getByText("¥200", { exact: true })).toHaveCount(
+      1
+    );
+    await expect(drawer(page)).toContainText(
+      "A refund of part of the price was requested, and what the reader bought stays open to them."
+    );
+    await expect(drawer(page)).not.toContainText("Closed to the reader");
+
+    // While it waits, the refund can only be asked again for that amount.
+    await drawer(page)
+      .getByRole("button", { exact: true, name: "Refund" })
+      .click();
+    await expect(amount).toHaveValue("200");
+    await expect(amount).toHaveAttribute("readonly", "");
+    await expect(confirmation).toContainText(
+      "A refund of ¥200 is waiting for the payment provider."
+    );
+    await confirmation.getByRole("button", { name: "Cancel" }).click();
+
+    await reportStripeRefunds(secretKey, PURCHASES.stripe.payment.id);
+    await page.reload();
+    await expect(drawer(page)).toContainText("Partly refunded");
+    await expect(drawer(page)).not.toContainText("Refund requested");
+    await expect(drawer(page).getByText("¥200", { exact: true })).toHaveCount(
+      1
+    );
+
+    // The rest is what the dialog starts at now, and refunding it closes the
+    // episode at once.
+    await drawer(page)
+      .getByRole("button", { exact: true, name: "Refund" })
+      .click();
+    await expect(amount).toHaveValue("300");
+    await expect(confirmation).toContainText(
+      "That is all that is left, so what the reader bought closes to them at once."
+    );
+    await reason.fill("The reader asked for the rest back.");
+    await confirm.click();
+
+    await expect(
+      page.getByText("A refund of ¥300 was requested.")
+    ).toBeVisible();
     await expect(drawer(page)).toContainText("Refund requested");
     await expect(drawer(page)).toContainText("Refunded by staff");
     await expect(drawer(page)).toContainText(
@@ -240,8 +321,16 @@ test.describe("Purchases", () => {
       drawer(page).getByRole("button", { exact: true, name: "Refund" })
     ).toHaveCount(0);
 
+    await reportStripeRefunds(secretKey, PURCHASES.stripe.payment.id);
+    await page.reload();
+    await expect(drawer(page)).not.toContainText("Refund requested");
+    // What was paid, and as much refunded.
+    await expect(drawer(page).getByText("¥500", { exact: true })).toHaveCount(
+      2
+    );
+
     await drawer(page).getByRole("button", { name: "Close" }).click();
     await expect(rows(page).nth(1)).toContainText(PURCHASES_READERS.one.name);
-    await expect(rows(page).nth(1)).toContainText("Refund requested");
+    await expect(rows(page).nth(1)).toContainText("Refunded");
   });
 });

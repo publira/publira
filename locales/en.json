@@ -4413,6 +4413,19 @@
       "refund_confirm_title": "Refund this purchase?",
       "refund_confirm_description": "The payment provider is asked to give the reader back what they paid, and what they bought closes to them at once. A refund cannot be taken back.",
       "refund_confirm_action": "Refund",
+      "refund_confirm_description_amount": "The payment provider is asked to give the reader back the amount you enter. A refund cannot be taken back.",
+      "refund_amount": "Amount to refund",
+      "refund_amount_description": "Up to {$amount}, all that is left to refund.",
+      "refund_amount_waiting_description": "A refund of {$amount} is waiting for the payment provider. Until the provider reports it, only that amount can be asked again.",
+      "refund_amount_note": {
+        "invalid": "Enter an amount above zero and no more than what is left to refund.",
+        "closes": "That is all that is left, so what the reader bought closes to them at once.",
+        "stays_open": "What the reader bought stays open to them."
+      },
+      "refund_requested_amount": "Refund requested",
+      "refund_in_part_pending": "A refund of part of the price was requested, and what the reader bought stays open to them. It is added to the refunded amount once the payment provider reports it. If the request did not reach the provider, refund the same amount again.",
+      "refund_requested_toast": "A refund of {$amount} was requested.",
+      "refund_in_part_unavailable": "The API server has not been upgraded to refund part of a purchase yet, so nothing was refunded. Refund all that is left, or try again once the upgrade is finished.",
       "reason": "Reason",
       "reason_description": "Recorded in the audit log with the refund.",
       "reason_placeholder": "e.g. The reader bought the episode twice by mistake.",
@@ -4422,7 +4435,9 @@
       "validation": {
         "refund_target": "The purchase to refund is not valid.",
         "reason_required": "Enter the reason for the refund.",
-        "reason_too_long": "Keep the reason to 1,000 characters or fewer."
+        "reason_too_long": "Keep the reason to 1,000 characters or fewer.",
+        "amount_invalid": "Enter an amount above zero and no more than what is left to refund.",
+        "amount_over_left": "The amount is more than is left to refund now. Open the purchase again to see what is left."
       }
     },
     "coins": {

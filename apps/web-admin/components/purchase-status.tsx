@@ -8,10 +8,11 @@ import type { PurchaseItem } from "#lib/purchase";
 
 /**
  * Where a purchase stands at `now`, from what the API reports of it. A staff
- * refund revokes the purchase at once and is recorded refunded only when the
- * provider's notification of it arrives, so the two are told apart. A reading
- * period that ran out is reported after the money, which is what a refund
- * decision turns on.
+ * refund is recorded refunded only when the provider's notification of it
+ * arrives, so a refund asked for and one made are told apart, whether it
+ * revoked the purchase at once or, being a refund in part, left it open. A
+ * reading period that ran out is reported after the money, which is what a
+ * refund decision turns on.
  */
 export type PurchaseStatus =
   | "active"
@@ -24,7 +25,11 @@ export type PurchaseStatus =
 export const purchaseStatus = (
   purchase: Pick<
     PurchaseItem,
-    "expiresAt" | "refundedAmount" | "refundedAt" | "revocationReason"
+    | "expiresAt"
+    | "refundRequestedAmount"
+    | "refundedAmount"
+    | "refundedAt"
+    | "revocationReason"
   >,
   now: Temporal.Instant
 ): PurchaseStatus => {
@@ -36,7 +41,10 @@ export const purchaseStatus = (
     return "refunded";
   }
 
-  if (purchase.revocationReason === "staff") {
+  if (
+    purchase.revocationReason === "staff" ||
+    purchase.refundRequestedAmount > 0
+  ) {
     return "refunding";
   }
 
@@ -107,7 +115,12 @@ export const PurchaseStatusChip = ({
   now: Temporal.Instant;
   purchase: Pick<
     PurchaseItem,
-    "expiresAt" | "refundedAmount" | "refundedAt" | "revocationReason" | "test"
+    | "expiresAt"
+    | "refundRequestedAmount"
+    | "refundedAmount"
+    | "refundedAt"
+    | "revocationReason"
+    | "test"
   >;
 }) => {
   const status = purchaseStatus(purchase, now);

@@ -62,6 +62,30 @@ export const registerStripePaymentIntent = async (
 };
 
 /**
+ * Have the stand-in report what has been refunded so far of the payment intent
+ * `paymentIntentId` on the account `secretKey` names, as Stripe reports a
+ * refund it accepted once it has settled it: `charge.refunded`, delivered to
+ * every webhook endpoint the account registered. It fails when an endpoint
+ * refuses the event.
+ */
+export const reportStripeRefunds = async (
+  secretKey: string,
+  paymentIntentId: string
+): Promise<void> => {
+  const response = await fetch(`${STRIPE_BASE_URL}/refund-events`, {
+    body: JSON.stringify({ id: paymentIntentId }),
+    headers: { authorization: `Bearer ${secretKey}` },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `the Stripe stand-in could not report the refunds: ${response.status} ${await response.text()}`
+    );
+  }
+};
+
+/**
  * Make a recurring Price on the account `secretKey` names, billed `amount` in
  * `currency` every `intervalCount` `interval`s, and answer its id, which a
  * subscription plan is saved with as an operator copies it from Stripe's
