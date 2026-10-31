@@ -97,6 +97,17 @@ const ROLES = "server/internal/dbroles/dbroles.go";
 const COMPOSE = "infra/deploy/compose.yaml";
 
 /**
+ * Where what the edge has to do is stated: the routing contract and the page
+ * operators configure their edge from. The sample proxy configurations beside
+ * the contract are not among them, since an operator rewrites a sample for
+ * their own edge rather than running it as it stands.
+ */
+const EDGE_CONTRACT = new Set([
+  "infra/proxy/README.md",
+  "docs/en/2-deployments/4-edge/index.md",
+]);
+
+/**
  * A line added or removed at the second level of the Compose file: a service,
  * a secret, or a volume, each of which an install has to run or provide.
  */
@@ -108,12 +119,15 @@ const TEST = /(?:_test\.go|\.(?:test|spec)\.tsx?)$|(?:^|\/)testdata\//u;
 
 /**
  * Whether `path` ships in an install: the server, the web apps and the
- * packages they are built from, and the deployment, image, and edge files.
- * Tests and documentation name variables too, and the development tooling
- * reads variables of its own, but no operator sets those.
+ * packages they are built from, and the deployment and image files. Tests and
+ * documentation name variables too, and the development tooling and the
+ * sample proxy configurations read variables of their own, but no operator
+ * sets those: the Compose install's edge gets each of its variables from
+ * `infra/deploy/compose.yaml`.
  */
 export const isInstallSource = (path: string): boolean =>
   /^(?:server|apps|packages|infra)\//u.test(path) &&
+  !path.startsWith("infra/proxy/") &&
   !path.endsWith(".md") &&
   !TEST.test(path);
 
@@ -214,14 +228,14 @@ export const watchedChanges = (
     }
   }
 
-  const routing = files.filter(({ filename, previous_filename: previous }) =>
+  const edge = files.filter(({ filename, previous_filename: previous }) =>
     [filename, previous].some(
-      (path) => path?.startsWith("infra/proxy/") && !path.endsWith(".md")
+      (path) => path !== undefined && EDGE_CONTRACT.has(path)
     )
   );
 
-  for (const file of routing) {
-    changes.push(`changes the routing in ${file.filename}`);
+  for (const file of edge) {
+    changes.push(`changes what the edge has to do in ${file.filename}`);
   }
 
   if (files.some(({ filename }) => filename === ROLES)) {
