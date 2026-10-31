@@ -411,16 +411,17 @@ func (s *apiServer) recordStoreSubscription(
 		return nil, s.internalDBError(ctx, "failed to find the plan of a store product", err, "tenant_id", tenantID.String(), "store", subscription.provider)
 	}
 
+	// Taken before the intent is: a deletion of the account holds this lock
+	// when the deletion of the reader reaches the intent, so the other order
+	// deadlocks the two.
+	if err := txq.LockSubscriptionsOfUser(ctx, dbmodels.LockSubscriptionsOfUserParams{TenantID: tenantID, UserID: userID}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock the reader's subscriptions", err, "tenant_id", tenantID.String())
+	}
 	var intent dbmodels.StoreSubscriptionIntent
 	if !recorded {
 		if intent, err = s.lockStoreSubscriptionIntent(ctx, txq, tenantID, userID, subscription); err != nil {
 			return nil, err
 		}
-	}
-	// Taken only now, after everything that can refuse the confirmation, so a
-	// deletion of the account waits on the write alone.
-	if err := txq.LockSubscriptionsOfUser(ctx, dbmodels.LockSubscriptionsOfUserParams{TenantID: tenantID, UserID: userID}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to lock the reader's subscriptions", err, "tenant_id", tenantID.String())
 	}
 	var currentPeriodEnd sql.NullTime
 	if !subscription.state.CurrentPeriodEnd.IsZero() {

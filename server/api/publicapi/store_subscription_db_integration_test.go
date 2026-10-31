@@ -344,6 +344,51 @@ func TestDBConfirmStoreSubscriptionNeverWritesAnOlderAnswerOverANewerOne(t *test
 	}
 }
 
+// A first confirmation takes the reader's lock before the intent, the order a
+// deletion of the account takes them in, so a deletion that holds the lock
+// when the confirmation arrives deletes the intent with the reader rather than
+// deadlocking with it.
+func TestDBConfirmStoreSubscriptionLocksInTheOrderAnAccountDeletionDoes(t *testing.T) {
+	t.Parallel()
+
+	env := newStoreSubscriptionEnv(t)
+	intent := env.mustStartSubscription(t, env.token, publirav1.InAppPurchaseStore_IN_APP_PURCHASE_STORE_APP_STORE)
+	transaction := env.putAppStoreSubscription("2000000500000009", intent, appstore.SubscriptionStatusActive, time.Now().Add(30*24*time.Hour))
+
+	ctx := context.Background()
+	deletion, err := env.pg.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin the deletion: %v", err)
+	}
+	defer deletion.Rollback() //nolint:errcheck
+	if err := dbmodels.New(deletion).LockSubscriptionsOfUser(ctx, dbmodels.LockSubscriptionsOfUserParams{TenantID: env.tenant.ID, UserID: env.reader.ID}); err != nil {
+		t.Fatalf("lock the reader's subscriptions: %v", err)
+	}
+
+	confirmed := make(chan error, 1)
+	go func() {
+		_, err := env.confirmAppStoreSubscription(t, env.token, transaction)
+		confirmed <- err
+	}()
+	deadline := time.Now().Add(10 * time.Second)
+	for env.count(t, "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted AND database = (SELECT oid FROM pg_database WHERE datname = current_database())") == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the confirmation never waited for the reader's lock")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	if _, err := deletion.ExecContext(ctx, "DELETE FROM users WHERE tenant_id = $1 AND id = $2", env.tenant.ID, env.reader.ID); err != nil {
+		t.Fatalf("delete the reader while the confirmation waits: %v", err)
+	}
+	if err := deletion.Commit(); err != nil {
+		t.Fatalf("commit the deletion: %v", err)
+	}
+	if err := <-confirmed; connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("the confirmation after the deletion = %v, want invalid_argument for the intent gone with the reader", err)
+	}
+}
+
 // A transaction whose account token names another reader's intent is refused
 // and records nothing, as is one for a product its intent was not opened for,
 // one for a consumable, and one naming no intent.
