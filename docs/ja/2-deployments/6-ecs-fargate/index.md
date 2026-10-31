@@ -1,50 +1,77 @@
 ---
 title: Amazon ECS(Fargate)
-description: CloudFrontとApplication Load Balancerを前段に置いてPubliraをAWS Fargate上のAmazon ECSサービスとして動かす手順を、パラメーターとタスク定義の用意からテナント管理画面への最初のログインまで説明します。
+description: CloudFrontとApplication Load Balancerの背後で、PubliraをAWS Fargate上のAmazon ECSサービスとして動かす手順を、パラメーターとタスク定義の用意からテナント管理画面への最初のログインまで説明します。
 published: 2026-10-29
 updated: 2026-10-31
 source_updated: 2026-10-31
 ---
 
-このページでは、マネージドサービスを用意したVPCから始めて、テナント管理画面に初めてログインするまでの手順を説明します。プロセスはすべてAWS Fargate上のAmazon ECSサービスとして動かし、読者からのリクエストはCloudFrontで受けてApplication Load Balancerに転送します。手順そのものは[インストール](../2-installing.md)と同じです。各手順が必要な理由や、シークレットごとに何を守っているか、データベースロールごとにどこへアクセスできるかはそちらで説明しています。CloudFrontとロードバランサーは[リバースプロキシの設定](../4-edge/index.md#リバースプロキシで必要な設定)の要件どおりに構成します。このページで扱うのはECSとFargateに固有の部分です。Publiraの各部分をどのAWSリソースにするのか、2つのページの要件をそれらのリソースでどう満たすのかを説明します。
+このページでは、マネージドサービスを用意したVPCから始めて、テナント管理画面に初めてログインするまでを説明します。プロセスはすべてAWS Fargate上のAmazon ECSサービスとして動かし、CloudFrontとApplication Load Balancerをリバースプロキシにします。手順は[インストール](../2-installing.md)と同じです。各手順がなぜ必要か、シークレットがそれぞれ何を守るか、データベースロールがそれぞれどこまで触れられるかは、そちらで説明しています。リバースプロキシは[リバースプロキシで必要な設定](../4-edge/index.md#リバースプロキシで必要な設定)の要件どおりに置きます。このページで扱うのはECSとFargateに固有のことで、Publiraの各部分をどのAWSリソースにするか、2つのページの要件をそのリソースでどう満たすかです。
 
-以下のコマンドとJSONは、環境に合わせて書き換えて使う例です。保守された一式ではなく、CloudFormationテンプレートやCDKアプリ、Terraformモジュールもリポジトリには含まれていません。コマンドはAWS CLIバージョン2向けで、イメージには公開イメージの`ghcr.io/publira/<name>:<tag>`を指定しています。`<tag>`は[始める前に](../2-installing.md#始める前に)の説明どおりインストールするリリースのバージョンに、`<account>`と`<region>`は自分のアカウントIDとリージョンに置き換えてください。
+以下のコマンドとJSONは、環境に合わせて書き換えて使う例であり、保守している一式ではありません。リポジトリにはCloudFormationのテンプレートもCDKのアプリもTerraformのモジュールもありません。コマンドはAWS CLIバージョン2向けで、イメージには公開イメージの`ghcr.io/publira/<name>:<tag>`を指定しています。`<tag>`は[始める前に](../2-installing.md#始める前に)で説明しているとおりインストールするリリースのバージョンに、`<account>`と`<region>`は自分のアカウントIDとリージョンに置き換えてください。
 
 ## ECSで動かすもの
 
-常時動かすプロセスは、それぞれ独立したECSサービスとしてFargate起動タイプで動かします。ほかから呼び出されるサービスは、サービスと同じ名前でAWS Cloud Mapにも登録します。
+常駐するプロセスは、それぞれを独立したECSサービスとしてFargate起動タイプで動かします。ほかから呼び出されるサービスは、同じ名前でAWS Cloud Mapにも登録します。
 
 | ECSサービス | イメージとコマンド | ポート | 呼び出し元 | タスク数 |
 | --- | --- | --- | --- | --- |
-| `publira-server` | `ghcr.io/publira/publira:<tag>` | `8000` | ロードバランサーと、Cloud Map経由で呼び出すWebアプリ | 任意 |
-| `publira-worker` | `ghcr.io/publira/publira:<tag>`(コマンドは`worker`) | `8003`(ヘルスチェック専用) | なし | 任意 |
+| `publira-server` | `ghcr.io/publira/publira:<tag>` | `8000` | ロードバランサーと、Cloud Map経由のWebアプリ | 任意 |
+| `publira-worker` | `ghcr.io/publira/publira:<tag>`。コマンドは`worker` | `8003`。ヘルスチェック専用 | なし | 任意 |
 | `web-storefront` | `ghcr.io/publira/web-storefront:<tag>` | `3000` | ロードバランサーと、Cloud Map経由でキャッシュの再検証を送るサーバーとワーカー | 任意 |
 | `web-admin` | `ghcr.io/publira/web-admin:<tag>` | `4000` | `web-storefront`と同じ | 任意 |
 | `web-platform`(動かす場合) | `ghcr.io/publira/web-platform:<tag>` | `4100` | `web-storefront`と同じ | 任意 |
-| `email-renderer`(動かす場合) | `ghcr.io/publira/email-renderer:<tag>` | `8080` | Cloud Map経由で呼び出すワーカー | 任意 |
+| `email-renderer`(動かす場合) | `ghcr.io/publira/email-renderer:<tag>` | `8080` | Cloud Map経由のワーカー | 任意 |
 
-ワーカーは複数のタスクで動かしてかまいません。定期ジョブは実行中に同じジョブが重複しない仕組みになっているので、2つのタスクが同じジョブを同時に実行することはありません。繰り返し実行するジョブのスケジュールもワーカー自身が管理するため、EventBridgeのスケジュールやスケジュールされたタスクは必要ありません。サーバーとワーカーのタスクは、データベースのログインごとに接続プールを開きます。タスクを増やすほど多くの接続を受け付けるデータベースが必要になります。必要な接続数の計算は[接続プール](https://github.com/publira/publira/blob/main/server/README.md#connection-pools)にあります。
+ワーカーは複数のタスクで動かせます。定期ジョブは実行中のものと同じジョブを重ねて実行しない仕組みなので、2つのタスクが同じジョブを同時に実行することはありません。繰り返し実行するジョブのスケジュールもワーカーが自分で管理するので、EventBridgeのスケジュールやスケジュールされたタスクは要りません。サーバーとワーカーのタスクはデータベースのログインごとに接続プールを開くので、タスクを増やすと、データベースもそれだけ多くの接続を受け付ける必要があります。必要な接続数の計算は[接続プール](https://github.com/publira/publira/blob/main/server/README.md#connection-pools)にあります。
 
-`publira server`と`publira worker`は、1つの`publira server --with-worker`にまとめず、上の表のとおり2つのサービスとして動かしてください。このフラグは1台のホストで動かす構成のためのものです。ECSで使うと、サーバーとワーカーを別々にスケールできなくなります。さらに、ロードバランサーが転送する先のプロセスがワーカー用のデータベースログインを持つことになります。この点は[構成の概要](../1-overview.md#publiraで動かすプロセス)で説明しています。ECSでこのフラグを使う利点はありません。
+`publira server`と`publira worker`は、1つの`publira server --with-worker`にまとめず、上の表のとおり2つのサービスとして動かしてください。このフラグは1台のホストで動かす構成のためのものです。[構成の概要](../1-overview.md#publiraで動かすプロセス)で説明しているとおり、ECSで使うとサーバーとワーカーを別々にスケールできなくなり、ロードバランサーの転送先のプロセスがワーカーのデータベースログインを持つことになります。それでいてECSで得られるものは何もありません。
 
-プロセス同士は、Cloud Mapのサービス検出が付ける`publira-server.publira.internal`のような名前で互いを呼び出します。この名前は動いている各タスクのアドレスに解決されるので、呼び出しは呼び出し元のアドレスのまま直接タスクに届きます。ECS Service Connectを使うと、呼び出しは受け側のタスク内のプロキシを経由し、`127.0.0.1`から渡されます。その場合、Webアプリが読者に代わって送るリクエストはすべて、そのアドレスからのものとして`publira server`に記録されてしまいます。
+プロセス同士は、`publira-server.publira.internal`のように、Cloud Mapのサービス検出が付ける名前で呼び合います。この名前は動いている各タスクのアドレスに解決されるので、呼び出しは呼び出し元のアドレスのまま直接タスクに届きます。ECS Service Connectを使うと、呼び出しは受け側のタスクにあるプロキシを通り、`127.0.0.1`から渡されます。すると`publira server`は、Webアプリが読者に代わって送るリクエストをすべてこのアドレスで記録してしまいます。
 
-`publiractl`は常駐させません。インストールするリリースのイメージから`aws ecs run-task`で起動するタスクとして実行し、コマンドが終わるとタスクも停止します。
+`publiractl`は常駐させません。インストールするリリースのイメージから`aws ecs run-task`でタスクとして起動し、コマンドが終わるとタスクも止まります。
 
 ## 始める前に
 
-次のものが必要です。
+次のものを用意してください。
 
-- **AWS CLIバージョン2**。ECS、Cloud Map、Elastic Load Balancing、CloudFront、ACM、IAMロール、Systems Managerのパラメーター、EC2のセキュリティグループ、CloudWatch Logsを管理する権限のあるアカウントにログインしておきます。
-- **VPC**。タスクとロードバランサー用に、2つ以上のアベイラビリティーゾーンにプライベートサブネットを用意します。CloudFrontが各サブネットにネットワークインターフェースを作るので、それぞれに空きアドレスが1つ以上必要です。インターネットゲートウェイもアタッチしておきます。通信がそこを通ることはありませんが、CloudFrontがVPCオリジンとしてロードバランサーに接続する場合、そのVPCにはインターネットゲートウェイが必要です。タスクは、イメージを取得するためにGitHub Container Registryに接続できる必要があり、Systems ManagerとCloudWatch LogsのAPI、Amazon S3、SMTPサーバーにも接続します。プライベートサブネットにNATゲートウェイを用意するか、AWSのサービス用のVPCエンドポイントとイメージ用のプルスルーキャッシュを用意してください。
-- **Publiraが依存するサービス**。[サービスを用意する](../2-installing.md#サービスを用意する)の一覧どおりに用意します。
-  - **Amazon RDS for PostgreSQLまたはAurora PostgreSQL**。Publiraのデータベースは初期データベースとして作成しておきます。管理用ログインにはマスターユーザーを使います。マスターユーザーはスーパーユーザーではありませんが、そのデータベースを所有し、ロールを作成できます。`publiractl db`に必要な権限はそれだけです。
-  - **Amazon ElastiCache for ValkeyまたはRedis OSS**。クラスターモードを無効にしたノードベースのクラスターとして作成し、転送中の暗号化を有効にしてAUTHトークンを設定します。Publiraはプライマリエンドポイントに単一のサーバーとして接続します。ElastiCache Serverlessはクラスターモードに対応したクライアントしか受け付けないので使えません。
-  - **Amazon S3のバケット**。空のバケットを用意します。プロセスは後述のタスクロールでバケットにアクセスするので、アクセスキーを作成したり保存したりする必要はありません。
-  - **Amazon SESまたはほかのSMTPサーバー**。SMTPの認証情報と、送信元として検証済みのアドレスを用意します。
-- **DNS**。テナントのドメインと、管理画面のホスト名のDNSです。管理画面のホスト名は`admin.<domain>`か、`--admin-domain`で指定するホスト名です。どちらもディストリビューションを作成した後でCloudFrontに向けます。また、ACMが証明書の検証のために求めるCNAMEレコードを追加できる必要があります。
+### AWS CLI
 
-以下のコマンドでは次のシェル変数を使います。値は自分の環境に合わせてください。
+AWS CLIバージョン2を用意し、ECS、Cloud Map、Elastic Load Balancing、CloudFront、ACM、IAMロール、Systems Managerのパラメーター、EC2のセキュリティグループ、CloudWatch Logsを管理できる権限でアカウントにログインしておきます。
+
+### VPC
+
+タスクとロードバランサーを置くプライベートサブネットを、2つ以上のアベイラビリティーゾーンに用意します。CloudFrontが各サブネットにネットワークインターフェースを作るので、どのサブネットにも空きアドレスが1つ以上必要です。インターネットゲートウェイもアタッチしておきます。通信がそこを通ることはありませんが、CloudFrontがVPCオリジンとしてロードバランサーに接続するには、そのVPCにインターネットゲートウェイが必要です。
+
+タスクは、イメージを取得するためのGitHub Container Registry、Systems ManagerとCloudWatch LogsのAPI、Amazon S3、SMTPサーバーに接続できなければなりません。プライベートサブネットにNATゲートウェイを用意するか、AWSのサービスにはVPCエンドポイントを、イメージにはプルスルーキャッシュを用意してください。
+
+### Publiraが依存するサービス
+
+[サービスを用意する](../2-installing.md#サービスを用意する)の一覧に従って、次のサービスを用意します。
+
+#### Amazon RDS for PostgreSQLかAurora PostgreSQL
+
+Publiraのデータベースは初期データベースとして作っておきます。管理用ログインにはマスターユーザーを使います。マスターユーザーはスーパーユーザーではありませんが、そのデータベースを所有していて、ロールも作れます。`publiractl db`に必要なのはそれだけです。
+
+#### Amazon ElastiCache for ValkeyかRedis OSS
+
+クラスターモードを無効にしたノードベースのクラスターとして作り、転送中の暗号化を有効にしてAUTHトークンを設定します。Publiraはプライマリエンドポイントに単一のサーバーとして接続します。ElastiCache Serverlessはクラスターモードで通信するクライアントしか受け付けないので使えません。
+
+#### Amazon S3のバケット
+
+空のバケットを用意します。プロセスは後述のタスクロールでバケットにアクセスするので、アクセスキーを作ったり保存したりする必要はありません。
+
+#### Amazon SESかほかのSMTPサーバー
+
+SMTPの認証情報と、送信元として検証済みのアドレスを用意します。
+
+### DNS
+
+テナントのドメインと管理画面のホストのDNSを用意します。管理画面のホストは`admin.<domain>`か、`--admin-domain`で指定するホストです。どちらもCloudFrontのディストリビューションを作ってからそこに向けます。ACMが証明書の検証のために求めるCNAMEレコードも追加できるようにしておいてください。
+
+### シェル変数
+
+以下のコマンドは次のシェル変数を使います。値は自分の環境に合わせてください。
 
 ```bash
 REGION=ap-northeast-1
@@ -60,11 +87,11 @@ aws ecs create-cluster --cluster-name publira
 aws logs create-log-group --log-group-name /publira
 ```
 
-以降の手順はすべてこの1つのシェルで実行してください。各手順は、それより前の手順で定義した変数と関数を使います。このページのタスク定義はどれも、コンテナの出力を`/publira`ロググループに送り、コンテナごとに1つのストリームを作ります。
+以降の手順は、すべてこの1つのシェルで実行してください。各手順は、それより前の手順で定義した変数と関数を使います。このページのタスク定義はどれもコンテナの出力を`/publira`ロググループに送り、コンテナごとに1つのストリームを作ります。
 
 ## 1. シークレットを保存する
 
-Publiraに必要なシークレットと、それぞれが守るものは[シークレットを生成する](../2-installing.md#シークレットを生成する)に一覧があります。どのシークレットも、Systems Manager Parameter Storeの`/publira/`の下に`SecureString`パラメーターとして保存します。タスク定義の`secrets`にパラメーターを指定すると、コンテナの起動時にECSがその値を環境変数に設定します。そのため、再検証トークンのように複数のプロセスが使う値も保存は1回で済み、各プロセスのタスク定義から同じパラメーターを指定できます。接続URLにはロールのパスワードが入るので、これもパラメーターにします。AUTHトークンが入るValkeyのURLも同じです。
+Publiraに必要なシークレットと、それぞれが守るものは[シークレットを生成する](../2-installing.md#シークレットを生成する)に一覧があります。どのシークレットも、Systems Manager Parameter Storeの`/publira/`の下に`SecureString`パラメーターとして保存します。タスク定義の`secrets`にパラメーターを書くと、コンテナの起動時にECSがその値を環境変数に設定します。そのため、再検証トークンのように複数のプロセスが使う値も一度保存すれば済み、各プロセスのタスク定義から同じパラメーターを指定できます。接続URLにはロールのパスワードが入るので、これもパラメーターにします。AUTHトークンが入るValkeyのURLも同じです。
 
 ```bash
 put() { aws ssm put-parameter --type SecureString --name "/publira/$1" --value "$2" > /dev/null; }
@@ -86,26 +113,26 @@ for role in public admin platform outbox ticker content-stats; do
 done
 ```
 
-上のエンドポイントは、自分のElastiCacheのプライマリエンドポイントとRDSのエンドポイントに置き換えてください。`rediss://`は省略できません。ElastiCacheのクラスターは転送中の暗号化を有効にしたときしかAUTHトークンを受け付けず、`publira server`はパスワードを含む`redis://`のURLでは起動しないためです。接続URLにはパスワードがエスケープされずにそのまま入ります。AUTHトークンとマスターパスワードには、上の16進数の出力のようにURLでそのまま使える文字だけを使うか、それ以外の文字をパーセントエンコードしてください。`sslmode=require`は接続を暗号化しますが、証明書は検証しません。RDSの証明書はRDSの認証局が署名したもので、イメージが信頼する認証局のものではないためです。
+上のエンドポイントは、自分のElastiCacheのプライマリエンドポイントとRDSのエンドポイントに置き換えてください。`rediss://`は省略できません。ElastiCacheのクラスターは転送中の暗号化を有効にしたときしかAUTHトークンを受け付けず、`publira server`はパスワードを含む`redis://`のURLでは起動しないからです。接続URLにはパスワードがエスケープされずにそのまま入ります。AUTHトークンとマスターパスワードには、上の16進数の出力のようにURLでそのまま使える文字だけを使うか、それ以外の文字をパーセントエンコードしてください。`sslmode=require`は接続を暗号化しますが、証明書は検証しません。RDSの証明書に署名しているのはRDSの認証局で、イメージが信頼する認証局ではないからです。
 
-| パラメーター | 読み取るプロセス | 設定される環境変数 |
+| パラメーター | 読むもの | 環境変数 |
 | --- | --- | --- |
 | `secret-encryption-keys` | `publira-server`、`publira-worker`、`publiractl setup` | `PUBLIRA_SECRET_ENCRYPTION_KEYS` |
 | `auth-jwt-secret` | `publira-server` | `PUBLIRA_AUTH_JWT_SECRET` |
-| `storefront-auth-secret`、`admin-auth-secret` | `web-storefront`と`web-admin`がそれぞれ1つずつ | `PUBLIRA_AUTH_SECRET` |
+| `storefront-auth-secret`、`admin-auth-secret` | `web-storefront`と`web-admin`が1つずつ | `PUBLIRA_AUTH_SECRET` |
 | `revalidate-token` | `publira-server`、`publira-worker`、`web-storefront`、`web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server`と`web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
-| `redis-url` | `publira-server`と、`web-storefront`および`web-admin` | `publira-server`は`PUBLIRA_REDIS_URL`、Webアプリは`PNCH_REDIS_URL` |
-| `db-url/public`、`db-url/admin`、`db-url/platform` | `publira-server`(`db-url/platform`は`publiractl setup`も読みます) | `PUBLIRA_PUBLIC_DB_URL`、`PUBLIRA_ADMIN_DB_URL`、`PUBLIRA_PLATFORM_DB_URL` |
+| `redis-url` | `publira-server`と、`web-storefront`と`web-admin` | `publira-server`は`PUBLIRA_REDIS_URL`、Webアプリは`PNCH_REDIS_URL` |
+| `db-url/public`、`db-url/admin`、`db-url/platform` | `publira-server`。`db-url/platform`は`publiractl setup`も読みます | `PUBLIRA_PUBLIC_DB_URL`、`PUBLIRA_ADMIN_DB_URL`、`PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`、`db-url/ticker`、`db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`、`PUBLIRA_TICKER_DB_URL`、`PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | `db`タスクだけです。[管理用ログイン](../2-installing.md#サービスを用意する)の接続を読むのは`db`コマンドだけなので、常駐するプロセスには渡しません | `PUBLIRA_DB_URL` |
-| `db-password/*` | `db roles`タスク | `PUBLIRA_PUBLIC_DB_PASSWORD`のようにロールごとに1つの環境変数。`db roles`は`--<role>-password-env`フラグで読みます。[データベースロールを作成する](#データベースロールを作成する)で説明します |
+| `db-password/*` | `db roles`タスク | `PUBLIRA_PUBLIC_DB_PASSWORD`のように、ロールごとに1つの環境変数です。`db roles`はこれを`--<role>-password-env`フラグで読みます。[データベースロールを作成する](#データベースロールを作成する)で説明します |
 
-パラメーターはバックアップの代わりにはなりません。暗号化キーは自分のシークレットストアにも保管してください。[シークレットを生成する](../2-installing.md#シークレットを生成する)で説明しているとおり、キーを失うとPubliraに保存した認証情報をすべて入力し直すことになります。ECSはコンテナの起動時に値を読むので、パラメーターを変更しても、サービスに反映されるのは次のデプロイからです。値をAWS Secrets Managerに保管する場合は、`valueFrom`にパラメーター名ではなくシークレットかシークレット内のJSONキーを指定します。タスク実行ロールには、後述の`ssm:GetParameters`のステートメントの代わりに、それらのシークレットに対する`secretsmanager:GetSecretValue`を許可してください。
+パラメーターはバックアップの代わりにはなりません。暗号化キーは自分のシークレットストアにも保管してください。[シークレットを生成する](../2-installing.md#シークレットを生成する)で説明しているとおり、キーを失うと、Publiraに保存した認証情報をすべて入力し直すことになります。ECSが値を読むのはコンテナの起動時なので、パラメーターを変えてもサービスに反映されるのは次のデプロイからです。値をAWS Secrets Managerに保管する場合は、`valueFrom`にパラメーター名ではなく、シークレットかシークレット内のJSONキーを指定します。タスク実行ロールには、後述の`ssm:GetParameters`のステートメントの代わりに、それらのシークレットに対する`secretsmanager:GetSecretValue`を許可してください。
 
 ## 2. IAMロールを作成する
 
-すべてのタスクで2つのロールを使います。タスク実行ロールは、ECSがイメージの取得、ログの書き込み、パラメーターの読み取りに使うロールです。コンテナにこのロールが渡ることはありません。タスクロールは、プロセスがS3へのリクエストに署名するためのロールです。
+すべてのタスクで2つのロールを使います。タスク実行ロールは、ECSがイメージの取得、ログの書き込み、パラメーターの読み取りに使うロールで、コンテナに渡ることはありません。タスクロールは、プロセスがS3へのリクエストに署名するためのロールです。
 
 ```bash
 cat > ecs-tasks-trust.json <<'EOF'
@@ -155,13 +182,13 @@ aws iam put-role-policy --role-name publira-storage --policy-name publira-images
   }'
 ```
 
-`publira-images`は自分のバケット名に置き換えてください。パラメーターはSystems ManagerのAWSマネージドキーで暗号化されるので、キーへの権限付与は不要です。自分で作成したキーで暗号化したパラメーターには、そのキーに対する`kms:Decrypt`も必要です。
+`publira-images`は自分のバケットの名前に置き換えてください。パラメーターはSystems ManagerのAWSマネージドキーで暗号化されるので、キーの権限を付与する必要はありません。自分で作ったキーで暗号化したパラメーターには、そのキーに対する`kms:Decrypt`も必要です。
 
-`publira-storage`は、`publira-server`、`publira-worker`、`publiractl setup`タスクのタスクロールです。サーバーは画像のアップロードと読み取りに、ワーカーは使われなくなった画像の削除に、`setup`は接続テストの署名にこのロールを使います。タスクロールを持つタスクにはECSが環境変数を設定し、各プロセスのAWS SDKはその変数からロールの認証情報を自動で取得します。そのため[初期設定](#7-初期設定)では、[オブジェクトストレージ](../../3-operations/5-object-storage.md)で説明しているとおり、アクセスキーなしでバケットを保存します。Webアプリと`db`タスクにはタスクロールは要りません。
+`publira-storage`は、`publira-server`、`publira-worker`、`publiractl setup`タスクのタスクロールです。サーバーは画像のアップロードと読み取りに、ワーカーは使われなくなった画像の削除に、`setup`は接続テストの署名にこのロールを使います。タスクロールを持つタスクにはECSが環境変数を設定し、各プロセスのAWS SDKはそこからロールの認証情報を自分で見つけます。そのため、[初期設定](#7-初期設定)では、[オブジェクトストレージ](../../3-operations/5-object-storage.md)で説明しているとおりアクセスキーなしでバケットを保存します。Webアプリと`db`タスクにはタスクロールは要りません。
 
 ## 3. ネットワークの経路を開く
 
-Publiraの部分ごとにセキュリティグループを作り、それを呼び出す相手からの通信だけを許可します。ECSがタスクを置き換えるたびにタスクのアドレスも変わるので、ルールにはアドレスではなく呼び出し元のセキュリティグループを指定します。
+Publiraの部分ごとにセキュリティグループを作り、その部分を呼び出す相手からの通信だけを許可します。ECSはタスクを置き換えるたびにタスクのアドレスも変えるので、ルールにはアドレスではなく呼び出し元のセキュリティグループを指定します。
 
 ```bash
 sg() { aws ec2 create-security-group --vpc-id "$VPC" --group-name "$1" --description "$1" --query GroupId --output text; }
@@ -188,18 +215,18 @@ for caller in "$SERVER_SG" "$WEB_SG"; do
 done
 ```
 
-| セキュリティグループ | 許可するポート | 許可する送信元 |
+| セキュリティグループ | 許可するポート | 許可する接続元 |
 | --- | --- | --- |
-| `publira-alb` | `443` | CloudFrontのみ。[VPCオリジン](./1-cloudfront.md#vpcオリジン)の手順で追加します |
+| `publira-alb` | `443` | CloudFrontだけ。[VPCオリジン](./1-cloudfront.md#vpcオリジン)の手順で追加します |
 | `publira-server` | `8000` | ロードバランサーと、APIを呼び出すWebアプリ |
 | `publira-web` | `3000`、`4000` | ロードバランサーと、キャッシュの再検証を送るサーバーとワーカー |
-| `publira-worker`、`publiractl` | なし | 呼び出し元はありません |
+| `publira-worker`、`publiractl` | なし | 呼び出すものはありません |
 | データベースのセキュリティグループ | `5432` | サーバー、ワーカー、`publiractl` |
 | Valkeyクラスターのセキュリティグループ | `6379` | サーバーとWebアプリ |
 
-ワーカーと`publiractl`はValkeyを使わず、Webアプリはデータベースを使わないので、それぞれの経路は開きません。どのセキュリティグループにも、外向きの接続を許可する既定のルールは残しておきます。タスクはこのルールで、イメージの取得、AWSのAPI、S3、SMTPに接続します。
+ワーカーと`publiractl`はValkeyを、Webアプリはデータベースを使わないので、それらの経路は開きません。どのセキュリティグループでも、外向きの接続を許可する既定のルールは残しておきます。タスクがイメージの取得、AWSのAPI、S3、SMTPに接続するのに必要です。
 
-ほかから呼び出されるサービスには、Cloud MapでVPCのプライベートDNS名前空間の名前を付けます。
+ほかから呼び出されるサービスには、Cloud Mapで、VPCのプライベートDNS名前空間の名前を付けます。
 
 ```bash
 aws servicediscovery create-private-dns-namespace --name publira.internal --vpc "$VPC"
@@ -215,11 +242,11 @@ registry() { aws servicediscovery list-services \
   --query "Services[?Name=='$1'].Arn" --output text; }
 ```
 
-名前空間の作成には少し時間がかかります。IDが返ってくるまで`list-namespaces`を実行し直してください。ECSは、タスクの起動時にそのタスクのアドレスをサービス名で登録し、タスクの停止時に削除します。
+名前空間ができるまで少し時間がかかります。IDが返ってくるまで`list-namespaces`を実行し直してください。ECSは、タスクの起動時にそのアドレスをサービスの名前で登録し、タスクの停止時に削除します。
 
 ## 4. マイグレーションを適用してデータベースロールを作成する
 
-`db`コマンドは、リリースの`publiractl`イメージから1回限りのタスクとして、管理用ログインの接続で実行します。どのコマンドも起動と完了待ちの方法は同じなので、1つの関数にまとめておきます。
+`db`コマンドは、リリースの`publiractl`イメージから単発のタスクとして、管理用ログインの接続で実行します。どのコマンドも起動と完了待ちのやり方は同じなので、関数にまとめておきます。
 
 ```bash
 run_publiractl() {
@@ -237,11 +264,11 @@ run_publiractl() {
 }
 ```
 
-この関数は、タスクのARN、コマンドのログ、終了コードを表示し、終了コードが`0`以外なら失敗します。そのため、この関数を使うスクリプトはそこで止められます。`aws ecs wait tasks-stopped`は、タスクが停止したかどうかに関係なく10分で待つのをやめ、そのときは関数も失敗します。その場合は、表示されたARNでもう一度待ってからログを読んでください。イメージを取得できなかった場合など、起動しなかったタスクには終了コードがなく、関数は`None`と表示します。起動しなかった理由は`aws ecs describe-tasks --cluster publira --tasks <its ARN> --query 'tasks[0].stoppedReason'`で確認できます。
+この関数は、タスクのARN、コマンドのログ、終了コードを表示し、終了コードが`0`でなければ失敗します。そのため、この関数を使うスクリプトはそこで止められます。`aws ecs wait tasks-stopped`はタスクが止まったかどうかにかかわらず10分で待つのをやめ、そのときは関数も失敗します。表示されたARNでもう一度待ってから、ログを読んでください。イメージを取得できなかったタスクのように、起動しなかったタスクには終了コードがなく、関数は`None`と表示します。起動しなかった理由は`aws ecs describe-tasks --cluster publira --tasks <its ARN> --query 'tasks[0].stoppedReason'`でわかります。
 
 ### マイグレーションを適用する
 
-`publiractl-db-migrate.json`を次の内容で作成します。
+次の内容で`publiractl-db-migrate.json`を作ります。
 
 ```json
 {
@@ -277,13 +304,13 @@ aws ecs register-task-definition --cli-input-json file://publiractl-db-migrate.j
 run_publiractl publiractl-db-migrate
 ```
 
-`run-task`で起動したタスクは1回だけ実行され、失敗してもECSが再実行することはありません。失敗したマイグレーションにはこの動作が必要です。マイグレーションが失敗するとデータベースにはdirtyの印が残り、[マイグレーションが失敗したとき](../8-upgrading.md#マイグレーションが失敗したとき)の手順で手作業で解消しなければならないためです。その手順の最後に行う再実行も、同じ`run_publiractl`で行います。
+`run-task`で起動したタスクは1回だけ実行され、失敗してもECSが再実行することはありません。失敗したマイグレーションにはこの振る舞いが必要です。マイグレーションが失敗するとデータベースにdirtyの印が残り、[マイグレーションが失敗したとき](../8-upgrading.md#マイグレーションが失敗したとき)の手順で手作業で解消する必要があるからです。その手順の最後に行う再実行も、同じ`run_publiractl`で行います。
 
 ### データベースロールを作成する
 
-Fargateのタスクには、`db roles`がパスワードを読み取るための標準入力も端末もありません。また、ECSはシークレットをファイルではなく環境変数としてコンテナに渡します。そこで、タスクの`secrets`でロールのパスワードごとに環境変数を1つ設定し、`db roles`には`--<role>-password-env`フラグでそれぞれを読み取らせます。コマンドに書くのは変数名だけなので、パスワードがタスク定義やプロセス一覧に現れることはありません。
+Fargateのタスクには、`db roles`がパスワードを読み取るための標準入力も端末もありません。また、ECSはシークレットをファイルではなく環境変数としてコンテナに渡します。そこで、タスクの`secrets`でロールのパスワードを1つずつ環境変数に設定し、`db roles`には`--<role>-password-env`フラグでそれぞれを読ませます。コマンドに書くのは変数の名前だけなので、パスワードがタスク定義やプロセスの一覧に現れることはありません。
 
-`publiractl-db-roles.json`を次の内容で作成します。
+次の内容で`publiractl-db-roles.json`を作ります。
 
 ```json
 {
@@ -358,7 +385,7 @@ aws ecs register-task-definition --cli-input-json file://publiractl-db-roles.jso
 run_publiractl publiractl-db-roles
 ```
 
-ログにはロールごとに1行が出力されます。後でロールのパスワードをローテーションするときも、このタスクを使います。新しいパスワードを、`db-password/`のパラメーターと、そのパスワードを含む`db-url/`のパラメーターに`aws ssm put-parameter --overwrite`で書き込みます。上の`put`に`--overwrite`を付けていないのは、誤って値を上書きしないようにするためです。次にこのタスクをもう一度実行し、そのロールで接続するサービスを再デプロイして、新しいURLでタスクを起動させます。`publira-server`が接続URLを持つ`publira_admin`の場合は次のとおりです。
+ログにはロールごとに1行が出ます。あとでロールのパスワードをローテーションするときも、このタスクを使います。新しいパスワードを`db-password/`のパラメーターと、それを含む`db-url/`のパラメーターに`aws ssm put-parameter --overwrite`で書き込みます。上の`put`が`--overwrite`を付けていないのは、誤って値を上書きしないためです。続けてこのタスクをもう一度実行し、そのロールで接続するサービスをデプロイし直して、新しいURLでタスクを起動させます。`publira-server`が接続URLを持つ`publira_admin`なら次のようにします。
 
 ```bash
 run_publiractl publiractl-db-roles
@@ -367,9 +394,9 @@ aws ecs update-service --cluster publira --service publira-server --force-new-de
 
 ## 5. ロードバランサーを作成する
 
-ロードバランサーは、ホストとパスに応じてリクエストを適切なサービスに振り分けます。ロードバランサーは内部向けとして作成し、インターネット上のアドレスは持たせません。CloudFrontは、[VPCオリジン](./1-cloudfront.md#vpcオリジン)の手順で設定するVPCオリジンとしてロードバランサーに接続します。それでもロードバランサーでは、受け付けるすべてのホストの証明書でTLSを終端します。理由は2つあります。1つは、CloudFrontがブラウザーの送った`Host`をそのまま転送し、ロードバランサーからはその名前の証明書しか受け付けないことです。もう1つは、ロードバランサーがWebアプリにリクエストがHTTPSで届いたと伝えるのが、HTTPSリスナーで受けたときだけであることです。
+ロードバランサーは、ホストとパスに応じてリクエストを適切なサービスに振り分けます。ロードバランサーは内部向けで、インターネット上のアドレスを持ちません。CloudFrontは、[VPCオリジン](./1-cloudfront.md#vpcオリジン)で設定するVPCオリジンとしてロードバランサーに接続します。それでもロードバランサーでは、受け付けるすべてのホストの証明書でTLSを終端します。CloudFrontはブラウザーが送った`Host`をそのまま転送し、ロードバランサーからはその名前の証明書しか受け付けないからです。また、ロードバランサーがWebアプリに、リクエストがHTTPSで届いたと伝えるのは、HTTPSリスナーで受けたときだけだからです。
 
-ACMでテナントごとに証明書を1つリクエストします。証明書にはテナントのドメインと管理画面のホスト名を含め、ACMが示すCNAMEレコードで検証します。CloudFrontが使えるのは`us-east-1`の証明書だけなので、ロードバランサーが`us-east-1`にない場合は`us-east-1`でもリクエストします。ロードバランサーが`us-east-1`にあれば、1つの証明書を両方で使えます。
+ACMで、テナントごとに証明書を1つリクエストします。証明書にはテナントのドメインと管理画面のホストを含め、ACMが示すCNAMEレコードで検証します。CloudFrontが使えるのは`us-east-1`の証明書だけなので、ロードバランサーが`us-east-1`以外にあれば`us-east-1`でもリクエストします。ロードバランサーが`us-east-1`にあれば、1つの証明書を両方で使えます。
 
 ```bash
 for region in "$REGION" us-east-1; do
@@ -385,7 +412,7 @@ aws acm describe-certificate --region "$REGION" --certificate-arn <the certifica
 aws acm wait certificate-validated --region "$REGION" --certificate-arn <the certificate ARN>
 ```
 
-1つ目のコマンドが表示するレコードを、それぞれの名前のゾーンに追加します。`us-east-1`の証明書でも同じことを行います。次に、ロードバランサーと、転送先のサービスごとのターゲットグループ、HTTPSリスナーを作成します。リスナーは、どのルールにも一致しないリクエストに`404`を返します。
+1つ目のコマンドが表示するレコードを、それぞれの名前のゾーンに追加します。`us-east-1`の証明書でも同じことをします。次に、ロードバランサー、転送先のサービスごとのターゲットグループ、HTTPSリスナーを作ります。リスナーは、どのルールにも一致しないリクエストに`404`を返します。
 
 ```bash
 ALB=$(aws elbv2 create-load-balancer --name publira --type application --scheme internal \
@@ -408,14 +435,14 @@ aws elbv2 modify-load-balancer-attributes --load-balancer-arn "$ALB" \
   --attributes Key=idle_timeout.timeout_seconds,Value=120 > /dev/null
 ```
 
-リスナーのルールは[ルーティング](../4-edge/index.md#ルーティング)の要件に従って作ります。1つのルールに指定できる値は、条件ごとに3つまで、条件全体で5つまでです。ロードバランサーはルールを優先度の小さい順に評価します。
+リスナーのルールは[ルーティング](../4-edge/index.md#ルーティング)の要件どおりに作ります。1つのルールに書ける値は、条件ごとに3つ、条件全体で5つまでです。ロードバランサーは優先度の小さいルールから順に評価します。
 
 | 優先度 | ホスト | パス | 転送先 |
 | --- | --- | --- | --- |
 | `1000` | すべて | `/images*`、`/rpc/publira.v1.*` | `publira-server` |
-| `1100` | すべて | `/rpc`、`/rpc/*` | なし(固定の`404`を返す) |
+| `1100` | すべて | `/rpc`、`/rpc/*` | なし。固定の`404`を返します |
 | `2000`から`2999` | テナントのドメイン | すべて | `web-storefront` |
-| `2000`から`2999` | テナントの管理画面のホスト名 | すべて | `web-admin` |
+| `2000`から`2999` | テナントの管理画面のホスト | すべて | `web-admin` |
 
 ```bash
 rule() { aws elbv2 create-rule --listener-arn "$LISTENER" --priority "$1" \
@@ -432,17 +459,17 @@ rule 2001 "[$(host_is comics.example.com)]" "$STOREFRONT_TG"
 rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 ```
 
-`/rpc`の下で転送するのは公開API(`publira.v1`)だけです。管理画面はそれぞれのAPIをVPC内で呼び出すので、それ以外のパスにはロードバランサー自身が`404`を返します。その理由は[公開APIだけを外部に通す](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しています。パスパターンは文字列として照合され、`*`は任意の文字列を表します。`/rpc/publira.v1.*`は公開APIのプレフィックスを`v1`の後のドットまで指定しているので、`publira.v1beta`のような名前空間は一致しません。`/rpc`と`/rpc/*`を2つの値に分けているのは、`/rpcabc`をWebアプリに転送するためです。優先度`1000`と`1100`のルールはホストを指定していないので、ロードバランサーが受け付けるすべてのホストに適用されます。すべてのテナントのホストにこのルールを適用することは、ルーティングの要件です。ほかのどのルールにもないホストには、それ以外のすべてのパスで`404`が返ります。ロードバランサーはパスと`Host`ヘッダーをブラウザーが送ったとおりに転送します。どちらも書き換えないでください。
+`/rpc`の下で転送するのは公開APIの`publira.v1`だけです。管理画面はそれぞれのAPIをVPC内で呼び出すので、ほかのパスにはロードバランサーが自分で`404`を返します。理由は[リバースプロキシを通すのは公開APIだけ](../4-edge/index.md#リバースプロキシを通すのは公開apiだけ)で説明しています。パスパターンは文字列として照合し、`*`は任意の文字の並びを表します。`/rpc/publira.v1.*`は公開APIのプレフィックスを`v1`のあとのドットまで指定しているので、`publira.v1beta`のような名前空間は一致しません。`/rpc`と`/rpc/*`を2つの値に分けているのは、`/rpcabc`をWebアプリに渡すためです。優先度`1000`と`1100`のルールはホストを指定していないので、ロードバランサーが受け付けるすべてのホストに当てはまります。これはルーティングの要件が、すべてのテナントのホストに求めていることです。ほかのどのルールにもないホストには、それ以外のすべてのパスで`404`が返ります。ロードバランサーはパスと`Host`ヘッダーをブラウザーが送ったとおりに転送します。どちらも書き換えないでください。
 
-ロードバランサーはリクエストボディのサイズを制限せず、送信が続いている限りリクエストにどれだけ時間がかかってもかまいません。そのため、[リバースプロキシの設定](../4-edge/index.md#ページからの画像のアップロード)で説明しているアップロードやWebhookはそのまま通ります。アイドルタイムアウトは、送受信のどちらでも次の1バイトを待つ時間で、リクエストが届いた後にWebアプリの応答を待つ時間も含みます。既定値は60秒です。上のコマンドでは、これをCloudFrontが待つ120秒まで引き上げています。CloudFrontの待ち時間は[ディストリビューション](./1-cloudfront.md#ディストリビューション)で設定します。
+ロードバランサーはボディのサイズを制限せず、送信が続いている限り、リクエストにどれだけ時間がかかっても待ちます。そのため、[ページからの画像のアップロード](../4-edge/index.md#ページからの画像のアップロード)など、リバースプロキシの設定で説明しているアップロードやWebhookはそのまま通ります。アイドルタイムアウトは、送受信のどちらでも次の1バイトを待つ時間で、リクエストが届いたあとWebアプリの応答を待つ時間もこれに含まれます。既定値は60秒ですが、上のコマンドでは、CloudFrontが待つ時間と同じ120秒に引き上げています。CloudFrontが待つ時間は[ディストリビューション](./1-cloudfront.md#ディストリビューション)で設定します。
 
 ## 6. サービスを起動する
 
-各サービスは、シークレットをパラメーターから受け取ります。それ以外の変数は、[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables)にあるものをタスク定義に書きます。以下のサイズは調整の出発点です。`ARM64`は`X86_64`にしてもかまいません。イメージはすべて両方のアーキテクチャ向けに公開されています。
+各サービスは、シークレットをパラメーターから受け取ります。そのほかの環境変数は、[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables)にあるものをタスク定義に書きます。以下のサイズは調整のための出発点です。イメージはどれも両方のアーキテクチャ向けに公開しているので、`ARM64`は`X86_64`に変えても構いません。
 
-`publira server`と`publira worker`は、停止を指示されてから30秒以内に停止します。そこでコンテナ定義では、ECSが強制終了するまでの`stopTimeout`を、既定の30秒ではなく45秒にしています。詳しくは[コピーを停止する](../7-scaling-out.md#インスタンスを停止する)で説明しています。
+`publira server`と`publira worker`は、停止を指示されてから30秒以内に止まります。そのため、コンテナ定義ではECSが強制終了するまでの`stopTimeout`を、既定の30秒ではなく45秒にしています。詳しくは[インスタンスを停止する](../7-scaling-out.md#インスタンスを停止する)で説明しています。
 
-`publira-server.json`を次の内容で作成します。
+次の内容で`publira-server.json`を作ります。
 
 ```json
 {
@@ -531,9 +558,9 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 }
 ```
 
-`PUBLIRA_TRUSTED_PROXIES`に設定する値は[クライアントのアドレス](./1-cloudfront.md#クライアントのアドレス)で説明します。
+`PUBLIRA_TRUSTED_PROXIES`の値は[クライアントのアドレス](./1-cloudfront.md#クライアントのアドレス)で求めます。
 
-`publira-worker.json`では、同じイメージを`worker`コマンドで動かし、ヘルスチェックではポート`8003`を確認します。
+`publira-worker.json`は同じイメージを`worker`コマンドで動かし、ヘルスチェックではポート`8003`を確かめます。
 
 ```json
 {
@@ -671,15 +698,15 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 }
 ```
 
-`web-storefront`は`publira server`と同じ`PUBLIRA_TRUSTED_PROXIES`を受け取ります。テナントのGoogleタグゲートウェイに渡す読者のアドレスを、この値をもとに判断します。`web-admin.json`は、次の点を除いて`web-storefront.json`と同じです。
+`web-storefront`も`publira server`と同じ`PUBLIRA_TRUSTED_PROXIES`を受け取り、テナントのGoogleタグゲートウェイに渡す読者のアドレスを、この値を使って求めます。`web-admin.json`は、次の点を除いて`web-storefront.json`と同じです。
 
-- `web-storefront`と書かれている箇所はすべて`web-admin`にします。
-- ポートは`3000`ではなく`4000`です。ヘルスチェックのポートも同じく変えます。
+- `web-storefront`と書かれている箇所は、すべて`web-admin`にします。
+- ポートは`3000`ではなく`4000`です。ヘルスチェックのポートも変えます。
 - `PUBLIRA_AUTH_SECRET`には`/publira/admin-auth-secret`を指定します。
 - `web-admin`は`PUBLIRA_TRUSTED_PROXIES`を読まないので、指定しません。
 - シークレットを1つ追加し、`PUBLIRA_WEB_SERVICE_TOKEN`に`/publira/web-service-token`を指定します。
 
-4つのタスク定義を登録し、それぞれのセキュリティグループ、ターゲットグループ、Cloud Mapの名前を指定してサービスを作成します。
+4つのタスク定義を登録し、それぞれのセキュリティグループ、ターゲットグループ、Cloud Mapの名前を指定してサービスを作ります。
 
 ```bash
 for family in publira-server publira-worker web-storefront web-admin; do
@@ -706,29 +733,34 @@ aws ecs wait services-stable --cluster publira \
   --services publira-server publira-worker web-storefront web-admin
 ```
 
-`publira-worker`はジョブキューのテーブルを起動時に作成するので、そのための専用のタスクは要りません。安定しないサービスはタスクの停止を繰り返します。その理由は`aws ecs describe-services --cluster publira --services <name> --query 'services[0].events[:5]'`で確認できます。ヘルスチェックに失敗したタスクか、停止したタスクが表示されます。停止したタスクの場合は、`/publira`のログに原因が出ています。たとえば、ロールのパスワードが接続URLのものと一致していない場合です。
+`publira-worker`はジョブキューのテーブルを起動時に作るので、そのためのタスクは要りません。安定しないサービスはタスクの停止を繰り返します。理由は`aws ecs describe-services --cluster publira --services <name> --query 'services[0].events[:5]'`でわかり、ヘルスチェックに失敗したタスクか、止まったタスクが表示されます。止まったタスクなら、`/publira`のログに原因が出ています。ロールのパスワードが接続URLのものと一致していない、といった原因です。
 
 ### ヘルスチェック
 
-ECSのサービスは、ヘルスチェックの種類にかかわらず、ヘルスチェックに失敗したタスクを置き換えます。そのため、このページのヘルスチェックはすべて`/livez`を確認します。`/livez`が失敗するのは、プロセス自体が応答しなくなったときだけです。`/readyz`を確認させると、データベースが応答しなくなった途端に、ECSがサービスのタスクをすべて一斉に置き換えてしまいます。[オーケストレーターからの監視](../../3-operations/11-monitoring.md#オーケストレーターからのプローブ)で避けるよう注意しているのはこの状況です。
+ECSのサービスは、種類にかかわらずヘルスチェックに失敗したタスクを置き換えます。そのため、このページのヘルスチェックはどれも`/livez`を確かめます。`/livez`が失敗するのは、プロセス自体が応答しなくなったときだけです。`/readyz`を確かめさせると、データベースが応答しなくなった途端に、ECSがサービスのタスクをすべて一斉に置き換えてしまいます。[オーケストレーターからのプローブ](../../3-operations/11-monitoring.md#オーケストレーターからのプローブ)で避けるよう注意しているのが、まさにこの状況です。
 
-- **すべてのサービス**で、タスク定義にヘルスチェックを書きます。このチェックはECSがタスクの中で実行します。イメージにはHTTPクライアントが入っていないので、それぞれのイメージに入っているものを使います。`publira`イメージでは`bash`の`/dev/tcp`で接続を開き、シェルのないWebアプリのイメージでは`node`の`fetch`でリクエストを送ります。どのチェックもコンテナ自身のポートの`/livez`にリクエストし、`200`が返れば成功です。チェックはECSのヘルスチェックの既定値どおり、30秒ごとに実行され、5秒で打ち切られ、3回続けて失敗するとタスクが異常と判定されます。`startPeriod`を指定しているので、起動から30秒間は失敗として数えません。Cloud Mapは、このチェックに成功したタスクのアドレスを正常として扱い、チェックに失敗すると削除します。そのため、サービス同士が呼び出しに使う名前も同じチェックの結果に従います。
-- **`publira-server`とWebアプリ**は、ターゲットグループからも確認されます。`--health-check-path /livez`で同じパスを指定しています。ECSは、タスクの起動から`--health-check-grace-period-seconds`が過ぎるまで、このチェックの結果に応じた処理をしません。チェックに成功すると、ロードバランサーは新しいタスクにリクエストを送り始めます。
+レディネスも確かめる価値はありますが、ヘルスチェックとしてではなく、サービスの外から確かめます。リバースプロキシを設定したあとは、`https://<domain>/readyz`が`web-storefront`のレディネスを返し、そこには`publira server`とValkeyのレディネスも含まれます。ワーカーの`/readyz`にアクセスするものはありません。ワーカー専用のログインで接続できなくなると、そのログインを使うジョブが失敗し、その失敗がワーカーのログに出ます。
 
-レディネスも見ておく価値はあります。ただし、ヘルスチェックとしてではなく、サービスの外から確認します。CloudFrontを設定した後は、`https://<domain>/readyz`が`web-storefront`のレディネスを返します。これには`publira server`とValkeyのレディネスも含まれます。ワーカーの`/readyz`にはどこからもアクセスしません。ワーカー専用のログインで接続できなくなると、そのログインを使うジョブが失敗し、ワーカーのログにその失敗が出ます。
+#### タスク定義のヘルスチェック
+
+どのサービスも、タスク定義にヘルスチェックを書きます。このチェックはECSがタスクの中で実行します。イメージにはHTTPクライアントが入っていないので、それぞれのイメージに入っているものを使います。`publira`イメージでは`bash`の`/dev/tcp`で接続を開き、シェルのないWebアプリのイメージでは`node`の`fetch`でリクエストを送ります。どのチェックもコンテナ自身のポートの`/livez`にリクエストし、`200`が返れば成功です。ECSのヘルスチェックの既定値どおり、チェックは30秒ごとに実行して5秒で打ち切り、3回続けて失敗するとタスクを異常とみなします。`startPeriod`を指定しているので、起動から30秒間の失敗は数えません。Cloud Mapは、このチェックに成功したタスクのアドレスを正常として扱い、失敗すると削除します。そのため、サービス同士が呼び合う名前も同じチェックの結果に従います。
+
+#### ターゲットグループのヘルスチェック
+
+`publira-server`とWebアプリは、ターゲットグループからも確かめます。`--health-check-path /livez`で同じパスを指定しています。ECSはタスクの起動から`--health-check-grace-period-seconds`が過ぎるまで、このチェックの結果に応じた処理をしません。チェックに成功すると、ロードバランサーは新しいタスクにリクエストを送り始めます。
 
 ## 7. 初期設定
 
-`publiractl setup`は、すべての値をフラグで指定したタスクとして1回だけ実行します。`run-task`で起動したタスクには、値を尋ねるための端末がないためです。`setup`は`publira_platform`として接続し、保存する値を暗号化キーで暗号化します。そのため、接続URLと暗号化キーはどちらもサーバーと同じパラメーターから読みます。バケットの接続テストには`publira-storage`タスクロールを使います。`setup`は管理用ログインで接続しないので、`db-url/master`は渡しません。
+`publiractl setup`は、すべての値をフラグで指定したタスクとして1回だけ実行します。`run-task`で起動したタスクには、値を尋ねるための端末がないからです。`setup`は`publira_platform`として接続し、保存する値を暗号化キーで暗号化するので、どちらもサーバーと同じパラメーターから読みます。バケットの接続テストには`publira-storage`タスクロールを使います。`setup`は管理用ログインで接続することはないので、`db-url/master`は渡しません。
 
-`setup`の出力はCloudWatch Logsに送られます。管理者のパスワードは生成させずに指定してください。生成されたパスワードは最後の概要に表示されますが、変数で渡したパスワードは表示されません。管理者のパスワードとSMTPのパスワードは、それぞれ専用のパラメーターに保存します。
+`setup`の出力はCloudWatch Logsに送られます。そのため、管理者のパスワードは生成させずに指定してください。生成されたパスワードは最後の概要に表示されますが、変数で渡したパスワードは表示されません。管理者のパスワードとSMTPのパスワードは、それぞれ専用のパラメーターに保存します。
 
 ```bash
 put setup/smtp-password '<the SMTP password>'
 put setup/admin-password "$(openssl rand -base64 18)"
 ```
 
-どちらの値も、ロールのパスワードと同じく環境変数として`publiractl`に渡し、変数名を`--smtp-password-env`フラグと`--admin-password-env`フラグで指定します。`publiractl-setup.json`を次の内容で作成します。
+どちらも、ロールのパスワードと同じように環境変数として`publiractl`に渡し、その変数名を`--smtp-password-env`フラグと`--admin-password-env`フラグで指定します。次の内容で`publiractl-setup.json`を作ります。
 
 ```json
 {
@@ -814,25 +846,25 @@ aws ecs register-task-definition --cli-input-json file://publiractl-setup.json
 run_publiractl publiractl-setup
 ```
 
-`--access-key-id`もシークレットキーも指定しません。バケットには専用のキーを保存せず、各プロセスがタスクロールで署名します。上のSMTPの値はAmazon SESのものです。SESのSMTP認証情報は、IAMユーザーのアクセスキーそのものではなく、アクセスキーから作るユーザー名とパスワードです。ほかのSMTPサーバーを使う場合は、そのサーバーのホスト、ポート、暗号化方式を指定してください。すべてのフラグと省略できる手順は[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup)にあります。
+`--access-key-id`もシークレットキーも指定しません。バケットには専用のキーを保存せず、各プロセスがタスクロールで署名します。上のSMTPの値はAmazon SESのものです。SESのSMTP認証情報は、IAMユーザーのアクセスキーそのものではなく、アクセスキーから作るユーザー名とパスワードです。ほかのSMTPサーバーを使う場合は、そのサーバーのホスト、ポート、暗号化方式を指定してください。すべてのフラグと、省略できる手順は[`publiractl`のリファレンス](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#setup)にあります。
 
-接続テストの失敗などで途中で止まっても、それまでに保存した内容は残ります。原因を解決してからもう一度実行すれば完了します。
+接続テストの失敗などで途中で止まっても、それまでに保存した内容は残ります。原因を取り除いてからもう一度実行すれば完了します。
 
-管理者のパスワードは`/publira/setup/admin-password`パラメーターに入っており、`aws ssm get-parameter --with-decryption --name /publira/setup/admin-password --query Parameter.Value --output text`で表示できます。管理者がログインしてパスワードを変更したら、このパラメーターは削除してください。それ以降に読み取るものはありません。
+管理者のパスワードは`/publira/setup/admin-password`パラメーターに入っていて、`aws ssm get-parameter --with-decryption --name /publira/setup/admin-password --query Parameter.Value --output text`で表示できます。管理者がログインしてパスワードを変えたら、このパラメーターは削除してください。それ以降に読むものはありません。
 
 ## 8. CloudFrontを前段に置く
 
-読者が接続する先はCloudFrontです。CloudFrontは、すべてのテナントのホストでTLSを終端し、HTTPをHTTPSにリダイレクトし、呼び出し元に指定させてはならないヘッダーを取り除いたうえで、それ以外をすべてロードバランサーに転送します。設定手順は[CloudFrontを使った公開](./1-cloudfront.md)にあり、VPCの外からの確認もそのページで行います。上の手順で定義した変数と関数を使うので、同じシェルで続けてください。確認がすべて通ったら、ログインのためにこのページに戻ってきてください。
+読者が接続する先はCloudFrontです。CloudFrontはすべてのテナントのホストのTLSを終端し、HTTPのリクエストをHTTPSにリダイレクトします。さらに、呼び出し元に値を決めさせてはいけないヘッダーを取り除き、残りはすべてロードバランサーに転送します。設定の手順と、VPCの外からの確認は[CloudFrontを使った公開](./1-cloudfront.md)で説明しています。上の手順で定義した変数と関数を使うので、同じシェルで続けてください。確認がすべて通ったら、このページに戻ってログインします。
 
 ## 9. ログインする
 
-`https://admin.comics.example.com`でテナント管理画面を開きます。`--admin-domain`で管理画面のホスト名を指定した場合は、そのホスト名で開きます。管理者のメールアドレスとパスワードでログインしてください。ここから先は、[インストールのログインの手順](../2-installing.md#6-ログインする)で説明している状態と同じです。
+`https://admin.comics.example.com`か、`--admin-domain`で指定した管理画面のホストでテナント管理画面を開き、管理者のメールアドレスとパスワードでログインします。ここから先は、インストールの[ログインする](../2-installing.md#6-ログインする)で説明している状態と同じです。
 
 ## このセクションのページ
 
-- [CloudFrontを使った公開](./1-cloudfront.md)では、VPCオリジン、ヘッダー、キャッシュポリシー、ディストリビューション、クライアントのアドレスの設定と、VPCの外からの確認を説明します。
-- [Amazon ECSでの運用](./2-operating.md)では、テナントの追加、管理画面の認証情報をテナントのドメインに渡さないための設定、アップグレードを説明します。
+- [CloudFrontを使った公開](./1-cloudfront.md)は、VPCオリジン、ヘッダー、キャッシュポリシー、ディストリビューション、クライアントのアドレスの設定と、VPCの外からの確認を説明します。
+- [Amazon ECSでの運用](./2-operating.md)は、テナントの追加、管理画面の認証情報をテナントのドメインから切り離す設定、アップグレードを説明します。
 
 ## 次のステップ
 
-CloudFrontとロードバランサーが合わせて満たすべき要件は、[リバースプロキシの設定](../4-edge/index.md)にすべて書かれています。Publiraが稼働し始めた後に監視する項目は[監視](../../3-operations/11-monitoring.md)にあります。各プロセスが読む変数は[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md)にあります。オプションのプロセスは[オプションのプロセスを有効にする](../2-installing.md#追加のプロセスを有効にする)の説明どおりに有効にし、それぞれ上と同じようにサービスとして動かします。`web-platform`には、ターゲットグループ、そのホストのルール、Cloud Mapの名前を用意し、`publira-web`でポート`4100`を開きます。`email-renderer`にはCloud Mapの名前だけを用意し、`publira-worker`からのポート`8080`を許可するセキュリティグループを付けます。
+CloudFrontとロードバランサーが合わせて満たすべき要件は、[リバースプロキシの設定](../4-edge/index.md)にすべて書いてあります。稼働を始めたあとに見ておくものは[監視](../../3-operations/11-monitoring.md)で説明しています。各プロセスが読む環境変数は[デプロイのリファレンス](https://github.com/publira/publira/blob/main/infra/deploy/README.md)にあります。追加のプロセスは[追加のプロセスを有効にする](../2-installing.md#追加のプロセスを有効にする)の説明どおりに有効にし、それぞれ上と同じようにサービスとして動かします。`web-platform`にはターゲットグループ、そのホストのルール、Cloud Mapの名前を用意し、`publira-web`でポート`4100`を開きます。`email-renderer`にはCloud Mapの名前だけを用意し、`publira-worker`からのポート`8080`を許可するセキュリティグループを付けます。
