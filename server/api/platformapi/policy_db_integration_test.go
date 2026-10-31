@@ -69,6 +69,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.PurchaseCheckout = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 30}
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
+	policy.AnonymousReads = platformpolicy.ReadLimits{PublicAPI: 400, Search: 50, Images: 1500}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
 	policy.TenantCoinsAllowed = true
 	return policy
@@ -482,6 +483,47 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedCoinPaymentLimit(t *testing.T) {
 	}
 }
 
+// anonymous_read_limits reached the policy after the console screens that
+// save it, in the same way wait_free_ticket_use did, so an omitted one keeps
+// what is stored too.
+func TestDBUpdatePlatformPolicyKeepsOmittedAnonymousReadLimits(t *testing.T) {
+	t.Parallel()
+
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.AnonymousReadLimits = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without anonymous_read_limits: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.AnonymousReads = platformpolicy.Defaults().AnonymousReads
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default read limits", got, want)
+	}
+
+	want.AnonymousReads = platformpolicy.ReadLimits{PublicAPI: 2000, Search: 200, Images: 6000}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with anonymous_read_limits: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limits = %+v, want %+v keeping the stored read limits", got, want)
+	}
+}
+
 // purchase_checkout reached the policy after the console screens that save
 // it, in the same way wait_free_ticket_use did, so an omitted one keeps what
 // is stored too.
@@ -791,6 +833,28 @@ func TestDBPlatformPolicyRowWrittenWithoutThePurchaseCheckoutLimitReadsTheDefaul
 	}
 }
 
+// Nor does it name the anonymous read limits.
+func TestDBPlatformPolicyRowWrittenWithoutTheAnonymousReadLimitsReadsTheDefault(t *testing.T) {
+	t.Parallel()
+
+	client, pg, operator := newPolicyClient(t)
+	if _, err := updatePolicy(t, client, operator, tightenedPolicy(), 0); err != nil {
+		t.Fatalf("UpdatePlatformPolicy: %v", err)
+	}
+
+	rewritePolicyRowWithout(t, pg,
+		"anonymous_read_public_api_limit_per_10_seconds",
+		"anonymous_read_search_limit_per_10_seconds",
+		"anonymous_read_images_limit_per_10_seconds",
+	)
+
+	want := tightenedPolicy()
+	want.AnonymousReads = platformpolicy.Defaults().AnonymousReads
+	if got, _ := getPolicy(t, client, operator); got != want {
+		t.Fatalf("policy = %+v, want %+v with the default read limits", got, want)
+	}
+}
+
 // Without a secret manager no operator could enroll, so requiring the factor
 // would leave nobody able to sign in to the Platform Console and switch it back
 // off. A requirement stored already, from publiractl, is kept rather than
@@ -913,6 +977,12 @@ func TestDBUpdatePlatformPolicyRejectsInvalidValues(t *testing.T) {
 				p.CommunityLimitDefaults.DuplicateCommentWindowMinutes = 7*24*60 + 1
 			},
 			"policy.community_limit_defaults.duplicate_comment_window_minutes",
+		},
+		"a read limit below the edge's": {
+			func(p *publirasplatformv1.PlatformPolicy) {
+				p.AnonymousReadLimits.Images = int32(platformpolicy.EdgeReadLimits().Images - 1)
+			},
+			"policy.anonymous_read_limits.images",
 		},
 		"a list URL that is not http": {
 			func(p *publirasplatformv1.PlatformPolicy) {

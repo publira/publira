@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -186,6 +187,35 @@ func TestPolicySetSavesTheDisposableEmailDomainListURL(t *testing.T) {
 	mustPolicyCommand(t, "set", "--disposable-email-domains-url", "")
 	if got, err := server.Policy(ctx); err != nil || got.DisposableEmailDomainsURL != "" {
 		t.Fatalf("the server's list after clearing it = %q, %v; want none", got.DisposableEmailDomainsURL, err)
+	}
+}
+
+// An install whose readers share one address raises a read limit along with
+// the edge's, and a value the edge would still admit past is refused under its
+// flag.
+func TestPolicySetRaisesAnAnonymousReadLimit(t *testing.T) {
+	pg := startPlatformDB(t)
+	ctx := context.Background()
+	server := platformpolicy.NewResolver(dbmodels.New(pg.OpenPublicDB(t)), 0, slog.Default())
+
+	if got, want := showLine(t, mustPolicyCommand(t, "show"), "Anonymous searches per client"), perReadWindow(platformpolicy.Defaults().AnonymousReads.Search); got != want {
+		t.Fatalf("show's searches with nothing saved = %q, want the built-in %q", got, want)
+	}
+
+	below := strconv.Itoa(platformpolicy.EdgeReadLimits().Search - 1)
+	code, _, stderr := policyCommand(t, "set", "--anonymous-read-search-per-10-seconds", below)
+	if want := "publiractl: --anonymous-read-search-per-10-seconds: anonymous_read_limits.search must be at least"; code != 1 || !strings.HasPrefix(stderr, want) {
+		t.Fatalf("set below the edge = exit %d, %q; want exit 1 beginning %q", code, stderr, want)
+	}
+
+	mustPolicyCommand(t, "set", "--anonymous-read-search-per-10-seconds", "500", "--anonymous-read-images-per-10-seconds", "9000")
+	want := platformpolicy.Defaults().AnonymousReads
+	want.Search, want.Images = 500, 9000
+	if got, err := server.Policy(ctx); err != nil || got.AnonymousReads != want {
+		t.Fatalf("the server's read limits after set = %+v, %v; want %+v", got.AnonymousReads, err, want)
+	}
+	if got := showLine(t, mustPolicyCommand(t, "show"), "Anonymous searches per client"); got != "500 per 10 seconds" {
+		t.Fatalf("show's searches = %q, want the 500 per 10 seconds saved", got)
 	}
 }
 

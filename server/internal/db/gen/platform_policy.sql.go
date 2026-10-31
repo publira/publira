@@ -10,7 +10,7 @@ import (
 )
 
 const GetPlatformPolicyConfig = `-- name: GetPlatformPolicyConfig :one
-SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day
+SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day, anonymous_read_public_api_limit_per_10_seconds, anonymous_read_search_limit_per_10_seconds, anonymous_read_images_limit_per_10_seconds
 FROM platform_policy_config
 WHERE singleton = TRUE
 `
@@ -74,6 +74,9 @@ func (q *Queries) GetPlatformPolicyConfig(ctx context.Context) (PlatformPolicyCo
 		&i.CoinPaymentLimitPerDay,
 		&i.PurchaseCheckoutLimitPerMinute,
 		&i.PurchaseCheckoutLimitPerDay,
+		&i.AnonymousReadPublicApiLimitPer10Seconds,
+		&i.AnonymousReadSearchLimitPer10Seconds,
+		&i.AnonymousReadImagesLimitPer10Seconds,
 	)
 	return i, err
 }
@@ -125,6 +128,9 @@ INSERT INTO platform_policy_config (
         coin_payment_limit_per_day,
         purchase_checkout_limit_per_minute,
         purchase_checkout_limit_per_day,
+        anonymous_read_public_api_limit_per_10_seconds,
+        anonymous_read_search_limit_per_10_seconds,
+        anonymous_read_images_limit_per_10_seconds,
         login_account_limit_per_minute,
         login_account_limit_per_day,
         login_source_limit_per_hour,
@@ -183,61 +189,67 @@ VALUES (
         $47,
         $48,
         $49,
+        $50,
+        $51,
+        $52,
         NOW()
     )
-RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day
+RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day, anonymous_read_public_api_limit_per_10_seconds, anonymous_read_search_limit_per_10_seconds, anonymous_read_images_limit_per_10_seconds
 `
 
 type InsertPlatformPolicyConfigParams struct {
-	MfaRequiredForTenantAdmin             bool   `json:"mfa_required_for_tenant_admin"`
-	MfaRequiredForPlatformOperator        bool   `json:"mfa_required_for_platform_operator"`
-	TenantCoinsAllowed                    bool   `json:"tenant_coins_allowed"`
-	PasswordVerifyLimitPerMinute          int32  `json:"password_verify_limit_per_minute"`
-	PasswordVerifyLimitPerDay             int32  `json:"password_verify_limit_per_day"`
-	MailRequestLimitPerAddressPerHour     int32  `json:"mail_request_limit_per_address_per_hour"`
-	MailRequestLimitPerAddressPerDay      int32  `json:"mail_request_limit_per_address_per_day"`
-	MailRequestLimitPerSourcePerHour      int32  `json:"mail_request_limit_per_source_per_hour"`
-	MailRequestLimitPerSourcePerDay       int32  `json:"mail_request_limit_per_source_per_day"`
-	CommentPostLimitPerMinute             int32  `json:"comment_post_limit_per_minute"`
-	CommentPostLimitPerDay                int32  `json:"comment_post_limit_per_day"`
-	CommentReportLimitPerMinute           int32  `json:"comment_report_limit_per_minute"`
-	CommentReportLimitPerDay              int32  `json:"comment_report_limit_per_day"`
-	CommentDuplicateWindowMinutes         int32  `json:"comment_duplicate_window_minutes"`
-	EpisodeRatingLimitPerMinute           int32  `json:"episode_rating_limit_per_minute"`
-	EpisodeRatingLimitPerDay              int32  `json:"episode_rating_limit_per_day"`
-	ContactMessageLimitPerAccountPerHour  int32  `json:"contact_message_limit_per_account_per_hour"`
-	ContactMessageLimitPerAccountPerDay   int32  `json:"contact_message_limit_per_account_per_day"`
-	ContactMessageLimitPerClientPerHour   int32  `json:"contact_message_limit_per_client_per_hour"`
-	ContactMessageLimitPerClientPerDay    int32  `json:"contact_message_limit_per_client_per_day"`
-	ViewerPreferencesLimitPerMinute       int32  `json:"viewer_preferences_limit_per_minute"`
-	ViewerPreferencesLimitPerDay          int32  `json:"viewer_preferences_limit_per_day"`
-	NotificationSettingsLimitPerMinute    int32  `json:"notification_settings_limit_per_minute"`
-	NotificationSettingsLimitPerDay       int32  `json:"notification_settings_limit_per_day"`
-	StorePurchaseConfirmLimitPerMinute    int32  `json:"store_purchase_confirm_limit_per_minute"`
-	StorePurchaseConfirmLimitPerDay       int32  `json:"store_purchase_confirm_limit_per_day"`
-	WaitFreeTicketUseLimitPerMinute       int32  `json:"wait_free_ticket_use_limit_per_minute"`
-	WaitFreeTicketUseLimitPerDay          int32  `json:"wait_free_ticket_use_limit_per_day"`
-	LegalPageAgreementLimitPerMinute      int32  `json:"legal_page_agreement_limit_per_minute"`
-	LegalPageAgreementLimitPerDay         int32  `json:"legal_page_agreement_limit_per_day"`
-	IdentityLinkLimitPerMinute            int32  `json:"identity_link_limit_per_minute"`
-	IdentityLinkLimitPerDay               int32  `json:"identity_link_limit_per_day"`
-	IconChangeLimitPerMinute              int32  `json:"icon_change_limit_per_minute"`
-	IconChangeLimitPerDay                 int32  `json:"icon_change_limit_per_day"`
-	PasskeyLimitPerMinute                 int32  `json:"passkey_limit_per_minute"`
-	PasskeyLimitPerDay                    int32  `json:"passkey_limit_per_day"`
-	SeriesRemainderCheckoutLimitPerMinute int32  `json:"series_remainder_checkout_limit_per_minute"`
-	SeriesRemainderCheckoutLimitPerDay    int32  `json:"series_remainder_checkout_limit_per_day"`
-	SubscriptionCheckoutLimitPerMinute    int32  `json:"subscription_checkout_limit_per_minute"`
-	SubscriptionCheckoutLimitPerDay       int32  `json:"subscription_checkout_limit_per_day"`
-	CoinPaymentLimitPerMinute             int32  `json:"coin_payment_limit_per_minute"`
-	CoinPaymentLimitPerDay                int32  `json:"coin_payment_limit_per_day"`
-	PurchaseCheckoutLimitPerMinute        int32  `json:"purchase_checkout_limit_per_minute"`
-	PurchaseCheckoutLimitPerDay           int32  `json:"purchase_checkout_limit_per_day"`
-	LoginAccountLimitPerMinute            int32  `json:"login_account_limit_per_minute"`
-	LoginAccountLimitPerDay               int32  `json:"login_account_limit_per_day"`
-	LoginSourceLimitPerHour               int32  `json:"login_source_limit_per_hour"`
-	LoginSourceLimitPerDay                int32  `json:"login_source_limit_per_day"`
-	DisposableEmailDomainsUrl             string `json:"disposable_email_domains_url"`
+	MfaRequiredForTenantAdmin               bool   `json:"mfa_required_for_tenant_admin"`
+	MfaRequiredForPlatformOperator          bool   `json:"mfa_required_for_platform_operator"`
+	TenantCoinsAllowed                      bool   `json:"tenant_coins_allowed"`
+	PasswordVerifyLimitPerMinute            int32  `json:"password_verify_limit_per_minute"`
+	PasswordVerifyLimitPerDay               int32  `json:"password_verify_limit_per_day"`
+	MailRequestLimitPerAddressPerHour       int32  `json:"mail_request_limit_per_address_per_hour"`
+	MailRequestLimitPerAddressPerDay        int32  `json:"mail_request_limit_per_address_per_day"`
+	MailRequestLimitPerSourcePerHour        int32  `json:"mail_request_limit_per_source_per_hour"`
+	MailRequestLimitPerSourcePerDay         int32  `json:"mail_request_limit_per_source_per_day"`
+	CommentPostLimitPerMinute               int32  `json:"comment_post_limit_per_minute"`
+	CommentPostLimitPerDay                  int32  `json:"comment_post_limit_per_day"`
+	CommentReportLimitPerMinute             int32  `json:"comment_report_limit_per_minute"`
+	CommentReportLimitPerDay                int32  `json:"comment_report_limit_per_day"`
+	CommentDuplicateWindowMinutes           int32  `json:"comment_duplicate_window_minutes"`
+	EpisodeRatingLimitPerMinute             int32  `json:"episode_rating_limit_per_minute"`
+	EpisodeRatingLimitPerDay                int32  `json:"episode_rating_limit_per_day"`
+	ContactMessageLimitPerAccountPerHour    int32  `json:"contact_message_limit_per_account_per_hour"`
+	ContactMessageLimitPerAccountPerDay     int32  `json:"contact_message_limit_per_account_per_day"`
+	ContactMessageLimitPerClientPerHour     int32  `json:"contact_message_limit_per_client_per_hour"`
+	ContactMessageLimitPerClientPerDay      int32  `json:"contact_message_limit_per_client_per_day"`
+	ViewerPreferencesLimitPerMinute         int32  `json:"viewer_preferences_limit_per_minute"`
+	ViewerPreferencesLimitPerDay            int32  `json:"viewer_preferences_limit_per_day"`
+	NotificationSettingsLimitPerMinute      int32  `json:"notification_settings_limit_per_minute"`
+	NotificationSettingsLimitPerDay         int32  `json:"notification_settings_limit_per_day"`
+	StorePurchaseConfirmLimitPerMinute      int32  `json:"store_purchase_confirm_limit_per_minute"`
+	StorePurchaseConfirmLimitPerDay         int32  `json:"store_purchase_confirm_limit_per_day"`
+	WaitFreeTicketUseLimitPerMinute         int32  `json:"wait_free_ticket_use_limit_per_minute"`
+	WaitFreeTicketUseLimitPerDay            int32  `json:"wait_free_ticket_use_limit_per_day"`
+	LegalPageAgreementLimitPerMinute        int32  `json:"legal_page_agreement_limit_per_minute"`
+	LegalPageAgreementLimitPerDay           int32  `json:"legal_page_agreement_limit_per_day"`
+	IdentityLinkLimitPerMinute              int32  `json:"identity_link_limit_per_minute"`
+	IdentityLinkLimitPerDay                 int32  `json:"identity_link_limit_per_day"`
+	IconChangeLimitPerMinute                int32  `json:"icon_change_limit_per_minute"`
+	IconChangeLimitPerDay                   int32  `json:"icon_change_limit_per_day"`
+	PasskeyLimitPerMinute                   int32  `json:"passkey_limit_per_minute"`
+	PasskeyLimitPerDay                      int32  `json:"passkey_limit_per_day"`
+	SeriesRemainderCheckoutLimitPerMinute   int32  `json:"series_remainder_checkout_limit_per_minute"`
+	SeriesRemainderCheckoutLimitPerDay      int32  `json:"series_remainder_checkout_limit_per_day"`
+	SubscriptionCheckoutLimitPerMinute      int32  `json:"subscription_checkout_limit_per_minute"`
+	SubscriptionCheckoutLimitPerDay         int32  `json:"subscription_checkout_limit_per_day"`
+	CoinPaymentLimitPerMinute               int32  `json:"coin_payment_limit_per_minute"`
+	CoinPaymentLimitPerDay                  int32  `json:"coin_payment_limit_per_day"`
+	PurchaseCheckoutLimitPerMinute          int32  `json:"purchase_checkout_limit_per_minute"`
+	PurchaseCheckoutLimitPerDay             int32  `json:"purchase_checkout_limit_per_day"`
+	AnonymousReadPublicApiLimitPer10Seconds int32  `json:"anonymous_read_public_api_limit_per_10_seconds"`
+	AnonymousReadSearchLimitPer10Seconds    int32  `json:"anonymous_read_search_limit_per_10_seconds"`
+	AnonymousReadImagesLimitPer10Seconds    int32  `json:"anonymous_read_images_limit_per_10_seconds"`
+	LoginAccountLimitPerMinute              int32  `json:"login_account_limit_per_minute"`
+	LoginAccountLimitPerDay                 int32  `json:"login_account_limit_per_day"`
+	LoginSourceLimitPerHour                 int32  `json:"login_source_limit_per_hour"`
+	LoginSourceLimitPerDay                  int32  `json:"login_source_limit_per_day"`
+	DisposableEmailDomainsUrl               string `json:"disposable_email_domains_url"`
 }
 
 // No ON CONFLICT clause: an absent row leaves LockPlatformPolicyConfig nothing
@@ -289,6 +301,9 @@ func (q *Queries) InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlat
 		arg.CoinPaymentLimitPerDay,
 		arg.PurchaseCheckoutLimitPerMinute,
 		arg.PurchaseCheckoutLimitPerDay,
+		arg.AnonymousReadPublicApiLimitPer10Seconds,
+		arg.AnonymousReadSearchLimitPer10Seconds,
+		arg.AnonymousReadImagesLimitPer10Seconds,
 		arg.LoginAccountLimitPerMinute,
 		arg.LoginAccountLimitPerDay,
 		arg.LoginSourceLimitPerHour,
@@ -350,12 +365,15 @@ func (q *Queries) InsertPlatformPolicyConfig(ctx context.Context, arg InsertPlat
 		&i.CoinPaymentLimitPerDay,
 		&i.PurchaseCheckoutLimitPerMinute,
 		&i.PurchaseCheckoutLimitPerDay,
+		&i.AnonymousReadPublicApiLimitPer10Seconds,
+		&i.AnonymousReadSearchLimitPer10Seconds,
+		&i.AnonymousReadImagesLimitPer10Seconds,
 	)
 	return i, err
 }
 
 const LockPlatformPolicyConfig = `-- name: LockPlatformPolicyConfig :one
-SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day
+SELECT singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day, anonymous_read_public_api_limit_per_10_seconds, anonymous_read_search_limit_per_10_seconds, anonymous_read_images_limit_per_10_seconds
 FROM platform_policy_config
 WHERE singleton = TRUE
 FOR UPDATE
@@ -420,6 +438,9 @@ func (q *Queries) LockPlatformPolicyConfig(ctx context.Context) (PlatformPolicyC
 		&i.CoinPaymentLimitPerDay,
 		&i.PurchaseCheckoutLimitPerMinute,
 		&i.PurchaseCheckoutLimitPerDay,
+		&i.AnonymousReadPublicApiLimitPer10Seconds,
+		&i.AnonymousReadSearchLimitPer10Seconds,
+		&i.AnonymousReadImagesLimitPer10Seconds,
 	)
 	return i, err
 }
@@ -470,67 +491,73 @@ SET mfa_required_for_tenant_admin = $1,
     coin_payment_limit_per_day = $42,
     purchase_checkout_limit_per_minute = $43,
     purchase_checkout_limit_per_day = $44,
-    login_account_limit_per_minute = $45,
-    login_account_limit_per_day = $46,
-    login_source_limit_per_hour = $47,
-    login_source_limit_per_day = $48,
-    disposable_email_domains_url = $49,
+    anonymous_read_public_api_limit_per_10_seconds = $45,
+    anonymous_read_search_limit_per_10_seconds = $46,
+    anonymous_read_images_limit_per_10_seconds = $47,
+    login_account_limit_per_minute = $48,
+    login_account_limit_per_day = $49,
+    login_source_limit_per_hour = $50,
+    login_source_limit_per_day = $51,
+    disposable_email_domains_url = $52,
     revision = revision + 1,
     updated_at = NOW()
 WHERE singleton = TRUE
-RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day
+RETURNING singleton, mfa_required_for_tenant_admin, password_verify_limit_per_minute, password_verify_limit_per_day, mail_request_limit_per_address_per_hour, mail_request_limit_per_address_per_day, mail_request_limit_per_source_per_hour, mail_request_limit_per_source_per_day, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, store_purchase_confirm_limit_per_minute, store_purchase_confirm_limit_per_day, disposable_email_domains_url, wait_free_ticket_use_limit_per_minute, wait_free_ticket_use_limit_per_day, login_account_limit_per_minute, login_account_limit_per_day, login_source_limit_per_hour, login_source_limit_per_day, mfa_required_for_platform_operator, legal_page_agreement_limit_per_minute, legal_page_agreement_limit_per_day, identity_link_limit_per_minute, identity_link_limit_per_day, icon_change_limit_per_minute, icon_change_limit_per_day, passkey_limit_per_minute, passkey_limit_per_day, series_remainder_checkout_limit_per_minute, series_remainder_checkout_limit_per_day, notification_settings_limit_per_minute, notification_settings_limit_per_day, subscription_checkout_limit_per_minute, subscription_checkout_limit_per_day, tenant_coins_allowed, coin_payment_limit_per_minute, coin_payment_limit_per_day, purchase_checkout_limit_per_minute, purchase_checkout_limit_per_day, anonymous_read_public_api_limit_per_10_seconds, anonymous_read_search_limit_per_10_seconds, anonymous_read_images_limit_per_10_seconds
 `
 
 type UpdatePlatformPolicyConfigParams struct {
-	MfaRequiredForTenantAdmin             bool   `json:"mfa_required_for_tenant_admin"`
-	MfaRequiredForPlatformOperator        bool   `json:"mfa_required_for_platform_operator"`
-	TenantCoinsAllowed                    bool   `json:"tenant_coins_allowed"`
-	PasswordVerifyLimitPerMinute          int32  `json:"password_verify_limit_per_minute"`
-	PasswordVerifyLimitPerDay             int32  `json:"password_verify_limit_per_day"`
-	MailRequestLimitPerAddressPerHour     int32  `json:"mail_request_limit_per_address_per_hour"`
-	MailRequestLimitPerAddressPerDay      int32  `json:"mail_request_limit_per_address_per_day"`
-	MailRequestLimitPerSourcePerHour      int32  `json:"mail_request_limit_per_source_per_hour"`
-	MailRequestLimitPerSourcePerDay       int32  `json:"mail_request_limit_per_source_per_day"`
-	CommentPostLimitPerMinute             int32  `json:"comment_post_limit_per_minute"`
-	CommentPostLimitPerDay                int32  `json:"comment_post_limit_per_day"`
-	CommentReportLimitPerMinute           int32  `json:"comment_report_limit_per_minute"`
-	CommentReportLimitPerDay              int32  `json:"comment_report_limit_per_day"`
-	CommentDuplicateWindowMinutes         int32  `json:"comment_duplicate_window_minutes"`
-	EpisodeRatingLimitPerMinute           int32  `json:"episode_rating_limit_per_minute"`
-	EpisodeRatingLimitPerDay              int32  `json:"episode_rating_limit_per_day"`
-	ContactMessageLimitPerAccountPerHour  int32  `json:"contact_message_limit_per_account_per_hour"`
-	ContactMessageLimitPerAccountPerDay   int32  `json:"contact_message_limit_per_account_per_day"`
-	ContactMessageLimitPerClientPerHour   int32  `json:"contact_message_limit_per_client_per_hour"`
-	ContactMessageLimitPerClientPerDay    int32  `json:"contact_message_limit_per_client_per_day"`
-	ViewerPreferencesLimitPerMinute       int32  `json:"viewer_preferences_limit_per_minute"`
-	ViewerPreferencesLimitPerDay          int32  `json:"viewer_preferences_limit_per_day"`
-	NotificationSettingsLimitPerMinute    int32  `json:"notification_settings_limit_per_minute"`
-	NotificationSettingsLimitPerDay       int32  `json:"notification_settings_limit_per_day"`
-	StorePurchaseConfirmLimitPerMinute    int32  `json:"store_purchase_confirm_limit_per_minute"`
-	StorePurchaseConfirmLimitPerDay       int32  `json:"store_purchase_confirm_limit_per_day"`
-	WaitFreeTicketUseLimitPerMinute       int32  `json:"wait_free_ticket_use_limit_per_minute"`
-	WaitFreeTicketUseLimitPerDay          int32  `json:"wait_free_ticket_use_limit_per_day"`
-	LegalPageAgreementLimitPerMinute      int32  `json:"legal_page_agreement_limit_per_minute"`
-	LegalPageAgreementLimitPerDay         int32  `json:"legal_page_agreement_limit_per_day"`
-	IdentityLinkLimitPerMinute            int32  `json:"identity_link_limit_per_minute"`
-	IdentityLinkLimitPerDay               int32  `json:"identity_link_limit_per_day"`
-	IconChangeLimitPerMinute              int32  `json:"icon_change_limit_per_minute"`
-	IconChangeLimitPerDay                 int32  `json:"icon_change_limit_per_day"`
-	PasskeyLimitPerMinute                 int32  `json:"passkey_limit_per_minute"`
-	PasskeyLimitPerDay                    int32  `json:"passkey_limit_per_day"`
-	SeriesRemainderCheckoutLimitPerMinute int32  `json:"series_remainder_checkout_limit_per_minute"`
-	SeriesRemainderCheckoutLimitPerDay    int32  `json:"series_remainder_checkout_limit_per_day"`
-	SubscriptionCheckoutLimitPerMinute    int32  `json:"subscription_checkout_limit_per_minute"`
-	SubscriptionCheckoutLimitPerDay       int32  `json:"subscription_checkout_limit_per_day"`
-	CoinPaymentLimitPerMinute             int32  `json:"coin_payment_limit_per_minute"`
-	CoinPaymentLimitPerDay                int32  `json:"coin_payment_limit_per_day"`
-	PurchaseCheckoutLimitPerMinute        int32  `json:"purchase_checkout_limit_per_minute"`
-	PurchaseCheckoutLimitPerDay           int32  `json:"purchase_checkout_limit_per_day"`
-	LoginAccountLimitPerMinute            int32  `json:"login_account_limit_per_minute"`
-	LoginAccountLimitPerDay               int32  `json:"login_account_limit_per_day"`
-	LoginSourceLimitPerHour               int32  `json:"login_source_limit_per_hour"`
-	LoginSourceLimitPerDay                int32  `json:"login_source_limit_per_day"`
-	DisposableEmailDomainsUrl             string `json:"disposable_email_domains_url"`
+	MfaRequiredForTenantAdmin               bool   `json:"mfa_required_for_tenant_admin"`
+	MfaRequiredForPlatformOperator          bool   `json:"mfa_required_for_platform_operator"`
+	TenantCoinsAllowed                      bool   `json:"tenant_coins_allowed"`
+	PasswordVerifyLimitPerMinute            int32  `json:"password_verify_limit_per_minute"`
+	PasswordVerifyLimitPerDay               int32  `json:"password_verify_limit_per_day"`
+	MailRequestLimitPerAddressPerHour       int32  `json:"mail_request_limit_per_address_per_hour"`
+	MailRequestLimitPerAddressPerDay        int32  `json:"mail_request_limit_per_address_per_day"`
+	MailRequestLimitPerSourcePerHour        int32  `json:"mail_request_limit_per_source_per_hour"`
+	MailRequestLimitPerSourcePerDay         int32  `json:"mail_request_limit_per_source_per_day"`
+	CommentPostLimitPerMinute               int32  `json:"comment_post_limit_per_minute"`
+	CommentPostLimitPerDay                  int32  `json:"comment_post_limit_per_day"`
+	CommentReportLimitPerMinute             int32  `json:"comment_report_limit_per_minute"`
+	CommentReportLimitPerDay                int32  `json:"comment_report_limit_per_day"`
+	CommentDuplicateWindowMinutes           int32  `json:"comment_duplicate_window_minutes"`
+	EpisodeRatingLimitPerMinute             int32  `json:"episode_rating_limit_per_minute"`
+	EpisodeRatingLimitPerDay                int32  `json:"episode_rating_limit_per_day"`
+	ContactMessageLimitPerAccountPerHour    int32  `json:"contact_message_limit_per_account_per_hour"`
+	ContactMessageLimitPerAccountPerDay     int32  `json:"contact_message_limit_per_account_per_day"`
+	ContactMessageLimitPerClientPerHour     int32  `json:"contact_message_limit_per_client_per_hour"`
+	ContactMessageLimitPerClientPerDay      int32  `json:"contact_message_limit_per_client_per_day"`
+	ViewerPreferencesLimitPerMinute         int32  `json:"viewer_preferences_limit_per_minute"`
+	ViewerPreferencesLimitPerDay            int32  `json:"viewer_preferences_limit_per_day"`
+	NotificationSettingsLimitPerMinute      int32  `json:"notification_settings_limit_per_minute"`
+	NotificationSettingsLimitPerDay         int32  `json:"notification_settings_limit_per_day"`
+	StorePurchaseConfirmLimitPerMinute      int32  `json:"store_purchase_confirm_limit_per_minute"`
+	StorePurchaseConfirmLimitPerDay         int32  `json:"store_purchase_confirm_limit_per_day"`
+	WaitFreeTicketUseLimitPerMinute         int32  `json:"wait_free_ticket_use_limit_per_minute"`
+	WaitFreeTicketUseLimitPerDay            int32  `json:"wait_free_ticket_use_limit_per_day"`
+	LegalPageAgreementLimitPerMinute        int32  `json:"legal_page_agreement_limit_per_minute"`
+	LegalPageAgreementLimitPerDay           int32  `json:"legal_page_agreement_limit_per_day"`
+	IdentityLinkLimitPerMinute              int32  `json:"identity_link_limit_per_minute"`
+	IdentityLinkLimitPerDay                 int32  `json:"identity_link_limit_per_day"`
+	IconChangeLimitPerMinute                int32  `json:"icon_change_limit_per_minute"`
+	IconChangeLimitPerDay                   int32  `json:"icon_change_limit_per_day"`
+	PasskeyLimitPerMinute                   int32  `json:"passkey_limit_per_minute"`
+	PasskeyLimitPerDay                      int32  `json:"passkey_limit_per_day"`
+	SeriesRemainderCheckoutLimitPerMinute   int32  `json:"series_remainder_checkout_limit_per_minute"`
+	SeriesRemainderCheckoutLimitPerDay      int32  `json:"series_remainder_checkout_limit_per_day"`
+	SubscriptionCheckoutLimitPerMinute      int32  `json:"subscription_checkout_limit_per_minute"`
+	SubscriptionCheckoutLimitPerDay         int32  `json:"subscription_checkout_limit_per_day"`
+	CoinPaymentLimitPerMinute               int32  `json:"coin_payment_limit_per_minute"`
+	CoinPaymentLimitPerDay                  int32  `json:"coin_payment_limit_per_day"`
+	PurchaseCheckoutLimitPerMinute          int32  `json:"purchase_checkout_limit_per_minute"`
+	PurchaseCheckoutLimitPerDay             int32  `json:"purchase_checkout_limit_per_day"`
+	AnonymousReadPublicApiLimitPer10Seconds int32  `json:"anonymous_read_public_api_limit_per_10_seconds"`
+	AnonymousReadSearchLimitPer10Seconds    int32  `json:"anonymous_read_search_limit_per_10_seconds"`
+	AnonymousReadImagesLimitPer10Seconds    int32  `json:"anonymous_read_images_limit_per_10_seconds"`
+	LoginAccountLimitPerMinute              int32  `json:"login_account_limit_per_minute"`
+	LoginAccountLimitPerDay                 int32  `json:"login_account_limit_per_day"`
+	LoginSourceLimitPerHour                 int32  `json:"login_source_limit_per_hour"`
+	LoginSourceLimitPerDay                  int32  `json:"login_source_limit_per_day"`
+	DisposableEmailDomainsUrl               string `json:"disposable_email_domains_url"`
 }
 
 // Writes every value over the existing row. The revision moves with every
@@ -581,6 +608,9 @@ func (q *Queries) UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlat
 		arg.CoinPaymentLimitPerDay,
 		arg.PurchaseCheckoutLimitPerMinute,
 		arg.PurchaseCheckoutLimitPerDay,
+		arg.AnonymousReadPublicApiLimitPer10Seconds,
+		arg.AnonymousReadSearchLimitPer10Seconds,
+		arg.AnonymousReadImagesLimitPer10Seconds,
 		arg.LoginAccountLimitPerMinute,
 		arg.LoginAccountLimitPerDay,
 		arg.LoginSourceLimitPerHour,
@@ -642,6 +672,9 @@ func (q *Queries) UpdatePlatformPolicyConfig(ctx context.Context, arg UpdatePlat
 		&i.CoinPaymentLimitPerDay,
 		&i.PurchaseCheckoutLimitPerMinute,
 		&i.PurchaseCheckoutLimitPerDay,
+		&i.AnonymousReadPublicApiLimitPer10Seconds,
+		&i.AnonymousReadSearchLimitPer10Seconds,
+		&i.AnonymousReadImagesLimitPer10Seconds,
 	)
 	return i, err
 }

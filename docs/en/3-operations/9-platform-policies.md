@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -112,6 +112,12 @@ Two more limits guard signing in itself, with a password, to a tenant's site, it
 An attempt over either limit is refused before the password is checked, and refused the same way whether or not the address has an account, so the refusal tells a guesser nothing about which addresses are registered. The sign-in screen then says "Too many requests in a short time. Please wait a moment and try again." rather than that the email address or password is incorrect, since the password may well have been right. Two-step verification is a separate check after the password, and these limits do not count its codes.
 
 The per-account limit also lets anyone who knows an address keep its owner from signing in with a password until the window passes, by spending its count with wrong passwords. Sign-in with Apple or Google and a password reset are not affected by it. Keep the per-day value high enough that a day without a password sign-in is not the price of someone else's script.
+
+### Anonymous reads
+
+Three more limits bound how fast one client address may read a tenant's site without being signed in: calls of the public API that the mobile app makes, calls of its catalog search, and the images of a tenant's domain and image host. Each is a count over a window of 10 seconds, with no daily count, and is kept behind the limits the edge in front of the install keeps on the same requests, for an edge that limits nothing. A call a web app makes as itself, on behalf of all of its readers at once, is not counted.
+
+They have no field on the Security page yet. Set them with `publiractl policy set --anonymous-read-public-api-per-10-seconds`, `--anonymous-read-search-per-10-seconds`, and `--anonymous-read-images-per-10-seconds`; saving the Security page keeps whatever they are set to. Each is refused below what the sample edge configurations admit from one client in 10 seconds, so that the edge stays the first to refuse a reader. When readers share one address, such as a mobile carrier's gateway, raise them along with the edge's allowances, since an edge allowance raised past the server's admits requests the server then refuses. [What publira server limits itself](./12-security/5-rate-limits.md#what-publira-server-limits-itself) gives the built-in values, the least each may be, and what the edge admits.
 
 ### Where the counts are kept
 

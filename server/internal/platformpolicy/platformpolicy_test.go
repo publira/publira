@@ -1,9 +1,12 @@
 package platformpolicy
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"errors"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +53,8 @@ func TestDefaultsKeepThePreviousDeploymentDefaults(t *testing.T) {
 		PurchaseCheckout:          MinuteDay{PerMinute: 10, PerDay: 100},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
+		// What publira server allowed before the read limits became a setting.
+		AnonymousReads: ReadLimits{PublicAPI: 640, Search: 80, Images: 2400},
 	}
 	if got := Defaults(); got != want {
 		t.Fatalf("Defaults() = %+v, want %+v", got, want)
@@ -79,6 +84,9 @@ func TestValidateRefusesALimitNobodyCanLiveWithin(t *testing.T) {
 		"zero login account minute":               func(p *Policy) { p.LoginAttemptsPerAccount.PerMinute = 0 },
 		"login source day below hour":             func(p *Policy) { p.LoginAttemptsPerSource = HourDay{PerHour: 5, PerDay: 4} },
 		"no duplicate window":                     func(p *Policy) { p.Community.DuplicateCommentWindow = 0 },
+		"public API reads below the edge":         func(p *Policy) { p.AnonymousReads.PublicAPI = EdgeReadLimits().PublicAPI - 1 },
+		"search reads below the edge":             func(p *Policy) { p.AnonymousReads.Search = EdgeReadLimits().Search - 1 },
+		"image reads below the edge":              func(p *Policy) { p.AnonymousReads.Images = EdgeReadLimits().Images - 1 },
 		"duplicate window over a week": func(p *Policy) {
 			p.Community.DuplicateCommentWindow = MaxDuplicateCommentWindow + time.Minute
 		},
@@ -103,10 +111,73 @@ func TestValidateRefusesALimitNobodyCanLiveWithin(t *testing.T) {
 	}
 }
 
+func TestValidateNamesTheReadLimitBelowTheEdge(t *testing.T) {
+	policy := Defaults()
+	policy.AnonymousReads.Search = EdgeReadLimits().Search - 1
+	var invalid *fielderr.Invalid
+	if err := policy.Validate(); !errors.As(err, &invalid) || invalid.Field != "anonymous_read_limits.search" {
+		t.Fatalf("Validate() = %v, want an error naming anonymous_read_limits.search", err)
+	}
+}
+
+// TestEdgeReadRatesAreTheRoutingContracts reads the allowances the routing
+// contract gives the edge, and fails when they and EdgeReadRates part: the
+// floor a read limit is held to is what the edge admits.
+func TestEdgeReadRatesAreTheRoutingContracts(t *testing.T) {
+	file, err := os.Open("../../../infra/proxy/README.md")
+	if err != nil {
+		t.Fatalf("open the routing contract: %v", err)
+	}
+	defer file.Close() //nolint:errcheck
+
+	rows := map[string]string{
+		"`/rpc/publira.v1.…`, except the search below":      "public API",
+		"`/rpc/publira.v1.CatalogService/SearchPublished…`": "search",
+		"`/images…`": "images",
+	}
+	found := map[string]EdgeRate{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		cells := strings.Split(strings.Trim(scanner.Text(), "| "), " | ")
+		if len(cells) != 4 {
+			continue
+		}
+		name, ok := rows[cells[0]]
+		if !ok {
+			continue
+		}
+		burst, burstErr := strconv.Atoi(cells[2])
+		perSecond, rateErr := strconv.Atoi(cells[3])
+		if burstErr != nil || rateErr != nil {
+			t.Fatalf("row %q does not name a burst and a rate", scanner.Text())
+		}
+		found[name] = EdgeRate{Burst: burst, PerSecond: perSecond}
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("read the routing contract: %v", err)
+	}
+
+	for name, want := range map[string]EdgeRate{
+		"public API": EdgeReadRates.PublicAPI,
+		"search":     EdgeReadRates.Search,
+		"images":     EdgeReadRates.Images,
+	} {
+		got, ok := found[name]
+		if !ok {
+			t.Errorf("the routing contract has no row for the %s", name)
+			continue
+		}
+		if got != want {
+			t.Errorf("the routing contract gives the %s %+v, EdgeReadRates %+v", name, got, want)
+		}
+	}
+}
+
 func TestValidateAcceptsTheBounds(t *testing.T) {
 	policy := Defaults()
 	policy.PasswordVerification = MinuteDay{PerMinute: 1, PerDay: 1}
 	policy.Community.DuplicateCommentWindow = MaxDuplicateCommentWindow
+	policy.AnonymousReads = EdgeReadLimits()
 	if err := policy.Validate(); err != nil {
 		t.Fatalf("Validate() = %v, want nil", err)
 	}
@@ -133,6 +204,7 @@ func TestConfigParamsRoundTripThroughTheRow(t *testing.T) {
 	policy.Community.DuplicateCommentWindow = 45 * time.Minute
 	policy.Community.ContactMessagePerClient = HourDay{PerHour: 7, PerDay: 70}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
+	policy.AnonymousReads = ReadLimits{PublicAPI: 1000, Search: 90, Images: 5000}
 
 	row := rowFromParams(policy.ConfigParams())
 	if got := FromConfig(row); got != policy {
@@ -155,55 +227,58 @@ func (q *fakeQuerier) GetPlatformPolicyConfig(context.Context) (dbmodels.Platfor
 // rowFromParams is the row an insert with params stores.
 func rowFromParams(params dbmodels.UpdatePlatformPolicyConfigParams) dbmodels.PlatformPolicyConfig {
 	return dbmodels.PlatformPolicyConfig{
-		MfaRequiredForTenantAdmin:             params.MfaRequiredForTenantAdmin,
-		MfaRequiredForPlatformOperator:        params.MfaRequiredForPlatformOperator,
-		PasswordVerifyLimitPerMinute:          params.PasswordVerifyLimitPerMinute,
-		PasswordVerifyLimitPerDay:             params.PasswordVerifyLimitPerDay,
-		MailRequestLimitPerAddressPerHour:     params.MailRequestLimitPerAddressPerHour,
-		MailRequestLimitPerAddressPerDay:      params.MailRequestLimitPerAddressPerDay,
-		MailRequestLimitPerSourcePerHour:      params.MailRequestLimitPerSourcePerHour,
-		MailRequestLimitPerSourcePerDay:       params.MailRequestLimitPerSourcePerDay,
-		CommentPostLimitPerMinute:             params.CommentPostLimitPerMinute,
-		CommentPostLimitPerDay:                params.CommentPostLimitPerDay,
-		CommentReportLimitPerMinute:           params.CommentReportLimitPerMinute,
-		CommentReportLimitPerDay:              params.CommentReportLimitPerDay,
-		CommentDuplicateWindowMinutes:         params.CommentDuplicateWindowMinutes,
-		EpisodeRatingLimitPerMinute:           params.EpisodeRatingLimitPerMinute,
-		EpisodeRatingLimitPerDay:              params.EpisodeRatingLimitPerDay,
-		ContactMessageLimitPerAccountPerHour:  params.ContactMessageLimitPerAccountPerHour,
-		ContactMessageLimitPerAccountPerDay:   params.ContactMessageLimitPerAccountPerDay,
-		ContactMessageLimitPerClientPerHour:   params.ContactMessageLimitPerClientPerHour,
-		ContactMessageLimitPerClientPerDay:    params.ContactMessageLimitPerClientPerDay,
-		ViewerPreferencesLimitPerMinute:       params.ViewerPreferencesLimitPerMinute,
-		ViewerPreferencesLimitPerDay:          params.ViewerPreferencesLimitPerDay,
-		NotificationSettingsLimitPerMinute:    params.NotificationSettingsLimitPerMinute,
-		NotificationSettingsLimitPerDay:       params.NotificationSettingsLimitPerDay,
-		StorePurchaseConfirmLimitPerMinute:    params.StorePurchaseConfirmLimitPerMinute,
-		StorePurchaseConfirmLimitPerDay:       params.StorePurchaseConfirmLimitPerDay,
-		WaitFreeTicketUseLimitPerMinute:       params.WaitFreeTicketUseLimitPerMinute,
-		WaitFreeTicketUseLimitPerDay:          params.WaitFreeTicketUseLimitPerDay,
-		LegalPageAgreementLimitPerMinute:      params.LegalPageAgreementLimitPerMinute,
-		LegalPageAgreementLimitPerDay:         params.LegalPageAgreementLimitPerDay,
-		IdentityLinkLimitPerMinute:            params.IdentityLinkLimitPerMinute,
-		IdentityLinkLimitPerDay:               params.IdentityLinkLimitPerDay,
-		IconChangeLimitPerMinute:              params.IconChangeLimitPerMinute,
-		IconChangeLimitPerDay:                 params.IconChangeLimitPerDay,
-		PasskeyLimitPerMinute:                 params.PasskeyLimitPerMinute,
-		PasskeyLimitPerDay:                    params.PasskeyLimitPerDay,
-		SeriesRemainderCheckoutLimitPerMinute: params.SeriesRemainderCheckoutLimitPerMinute,
-		SeriesRemainderCheckoutLimitPerDay:    params.SeriesRemainderCheckoutLimitPerDay,
-		SubscriptionCheckoutLimitPerMinute:    params.SubscriptionCheckoutLimitPerMinute,
-		SubscriptionCheckoutLimitPerDay:       params.SubscriptionCheckoutLimitPerDay,
-		CoinPaymentLimitPerMinute:             params.CoinPaymentLimitPerMinute,
-		CoinPaymentLimitPerDay:                params.CoinPaymentLimitPerDay,
-		PurchaseCheckoutLimitPerMinute:        params.PurchaseCheckoutLimitPerMinute,
-		PurchaseCheckoutLimitPerDay:           params.PurchaseCheckoutLimitPerDay,
-		LoginAccountLimitPerMinute:            params.LoginAccountLimitPerMinute,
-		LoginAccountLimitPerDay:               params.LoginAccountLimitPerDay,
-		LoginSourceLimitPerHour:               params.LoginSourceLimitPerHour,
-		LoginSourceLimitPerDay:                params.LoginSourceLimitPerDay,
-		DisposableEmailDomainsUrl:             params.DisposableEmailDomainsUrl,
-		TenantCoinsAllowed:                    params.TenantCoinsAllowed,
+		MfaRequiredForTenantAdmin:               params.MfaRequiredForTenantAdmin,
+		MfaRequiredForPlatformOperator:          params.MfaRequiredForPlatformOperator,
+		PasswordVerifyLimitPerMinute:            params.PasswordVerifyLimitPerMinute,
+		PasswordVerifyLimitPerDay:               params.PasswordVerifyLimitPerDay,
+		MailRequestLimitPerAddressPerHour:       params.MailRequestLimitPerAddressPerHour,
+		MailRequestLimitPerAddressPerDay:        params.MailRequestLimitPerAddressPerDay,
+		MailRequestLimitPerSourcePerHour:        params.MailRequestLimitPerSourcePerHour,
+		MailRequestLimitPerSourcePerDay:         params.MailRequestLimitPerSourcePerDay,
+		CommentPostLimitPerMinute:               params.CommentPostLimitPerMinute,
+		CommentPostLimitPerDay:                  params.CommentPostLimitPerDay,
+		CommentReportLimitPerMinute:             params.CommentReportLimitPerMinute,
+		CommentReportLimitPerDay:                params.CommentReportLimitPerDay,
+		CommentDuplicateWindowMinutes:           params.CommentDuplicateWindowMinutes,
+		EpisodeRatingLimitPerMinute:             params.EpisodeRatingLimitPerMinute,
+		EpisodeRatingLimitPerDay:                params.EpisodeRatingLimitPerDay,
+		ContactMessageLimitPerAccountPerHour:    params.ContactMessageLimitPerAccountPerHour,
+		ContactMessageLimitPerAccountPerDay:     params.ContactMessageLimitPerAccountPerDay,
+		ContactMessageLimitPerClientPerHour:     params.ContactMessageLimitPerClientPerHour,
+		ContactMessageLimitPerClientPerDay:      params.ContactMessageLimitPerClientPerDay,
+		ViewerPreferencesLimitPerMinute:         params.ViewerPreferencesLimitPerMinute,
+		ViewerPreferencesLimitPerDay:            params.ViewerPreferencesLimitPerDay,
+		NotificationSettingsLimitPerMinute:      params.NotificationSettingsLimitPerMinute,
+		NotificationSettingsLimitPerDay:         params.NotificationSettingsLimitPerDay,
+		StorePurchaseConfirmLimitPerMinute:      params.StorePurchaseConfirmLimitPerMinute,
+		StorePurchaseConfirmLimitPerDay:         params.StorePurchaseConfirmLimitPerDay,
+		WaitFreeTicketUseLimitPerMinute:         params.WaitFreeTicketUseLimitPerMinute,
+		WaitFreeTicketUseLimitPerDay:            params.WaitFreeTicketUseLimitPerDay,
+		LegalPageAgreementLimitPerMinute:        params.LegalPageAgreementLimitPerMinute,
+		LegalPageAgreementLimitPerDay:           params.LegalPageAgreementLimitPerDay,
+		IdentityLinkLimitPerMinute:              params.IdentityLinkLimitPerMinute,
+		IdentityLinkLimitPerDay:                 params.IdentityLinkLimitPerDay,
+		IconChangeLimitPerMinute:                params.IconChangeLimitPerMinute,
+		IconChangeLimitPerDay:                   params.IconChangeLimitPerDay,
+		PasskeyLimitPerMinute:                   params.PasskeyLimitPerMinute,
+		PasskeyLimitPerDay:                      params.PasskeyLimitPerDay,
+		SeriesRemainderCheckoutLimitPerMinute:   params.SeriesRemainderCheckoutLimitPerMinute,
+		SeriesRemainderCheckoutLimitPerDay:      params.SeriesRemainderCheckoutLimitPerDay,
+		SubscriptionCheckoutLimitPerMinute:      params.SubscriptionCheckoutLimitPerMinute,
+		SubscriptionCheckoutLimitPerDay:         params.SubscriptionCheckoutLimitPerDay,
+		CoinPaymentLimitPerMinute:               params.CoinPaymentLimitPerMinute,
+		CoinPaymentLimitPerDay:                  params.CoinPaymentLimitPerDay,
+		PurchaseCheckoutLimitPerMinute:          params.PurchaseCheckoutLimitPerMinute,
+		PurchaseCheckoutLimitPerDay:             params.PurchaseCheckoutLimitPerDay,
+		AnonymousReadPublicApiLimitPer10Seconds: params.AnonymousReadPublicApiLimitPer10Seconds,
+		AnonymousReadSearchLimitPer10Seconds:    params.AnonymousReadSearchLimitPer10Seconds,
+		AnonymousReadImagesLimitPer10Seconds:    params.AnonymousReadImagesLimitPer10Seconds,
+		LoginAccountLimitPerMinute:              params.LoginAccountLimitPerMinute,
+		LoginAccountLimitPerDay:                 params.LoginAccountLimitPerDay,
+		LoginSourceLimitPerHour:                 params.LoginSourceLimitPerHour,
+		LoginSourceLimitPerDay:                  params.LoginSourceLimitPerDay,
+		DisposableEmailDomainsUrl:               params.DisposableEmailDomainsUrl,
+		TenantCoinsAllowed:                      params.TenantCoinsAllowed,
 	}
 }
 

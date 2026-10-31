@@ -220,7 +220,7 @@ func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider,
 	}
 	server.login = login
 	if reads == nil {
-		reads = readguard.NewFromEnv(logger)
+		reads = readguard.NewFromEnv(policy, logger)
 	}
 	server.readGuard = reads
 	server.idTokens = signin.NewVerifier(idTokens)

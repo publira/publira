@@ -166,6 +166,29 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit purchase_checkout = 20;
+  // How many anonymous reads one client may make of a storefront.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  AnonymousReadLimits anonymous_read_limits = 21;
+}
+
+// The reads one client may make of a storefront in 10 seconds, counted per
+// address behind the edge and shared by every instance of the server. A call
+// past one is refused with RESOURCE_EXHAUSTED, and an image with 429. Calls a
+// web app makes as itself are not counted.
+//
+// Each is at least what the sample edge configurations admit from one client
+// in 10 seconds, so that a reader behind such an edge is refused by the edge
+// first; a value below it is refused with INVALID_ARGUMENT naming its field.
+message AnonymousReadLimits {
+  // Calls of every publira.v1 procedure but the catalog search. At least 320.
+  int32 public_api = 1;
+  // Calls of CatalogService's SearchPublished… procedures, which have an
+  // allowance of their own. At least 40.
+  int32 search = 2;
+  // Images of a tenant's site and image hosts. At least 1200.
+  int32 images = 3;
 }
 
 message GetPlatformPolicyRequest {}

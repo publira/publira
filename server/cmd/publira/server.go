@@ -210,15 +210,16 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	login := loginguard.NewShared(policy, logger)
 	mail := mailguard.NewShared(policy, logger)
 	// The read limit of a storefront's API and images, held once so the two
-	// share one client for Redis. A console's hosts are not limited by it, so
-	// a process that serves no storefront dials nothing for it.
+	// share one client for Redis and one read of the policy. A console's hosts
+	// are not limited by it, so a process that serves no storefront dials
+	// nothing for it.
 	var reads *readguard.Guard
 
 	var served servedAPIs
 	var drain []func(context.Context) error
 
 	if pools.public != nil {
-		reads = readguard.NewFromEnv(logger)
+		reads = readguard.NewFromEnv(policy, logger)
 		// The search engine is read from the platform's settings on the
 		// public pool, the one the search RPCs are answered on, so the public
 		// API holds no other login to search. The row's password is sealed
