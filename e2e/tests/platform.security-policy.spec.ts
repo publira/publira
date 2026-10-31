@@ -8,11 +8,19 @@ import {
   PLATFORM_TENANT_COINS_OPERATOR,
   PLATFORM_TENANT_COINS_SCENARIO,
 } from "../src/scenarios/platform-tenant-coins";
+import { SEED_PLATFORM_SUPER_ADMIN } from "../src/scenarios/platform-tenants";
 
 /**
- * The platform's allowance for tenant-issued coins, on the Platform Console's
- * **Security** page: an Operator turns it on and off, and an Auditor sees the
- * same checkbox and has the save refused.
+ * Saves of the Platform Console's **Security** page. The page saves the whole
+ * policy row against the revision it was rendered at, so its suites run one
+ * after another here rather than beside one another, where each would refuse
+ * the other's save as stale.
+ *
+ * The platform's allowance for tenant-issued coins: an Operator turns it on
+ * and off, and an Auditor sees the same checkbox and has the save refused.
+ *
+ * The anonymous read limits: an operator raises one and the server stores
+ * it, and a value below what the edge admits is not submitted.
  */
 
 const SECURITY_POLICY_PATH = "/policies/security";
@@ -44,6 +52,17 @@ const policySavesByOperator = (): number =>
     `)
   );
 
+const PUBLIC_API_READS = "Public API calls per client per 10 seconds";
+
+const publicApiReadsField = (page: Page) =>
+  page.getByRole("spinbutton", { name: PUBLIC_API_READS });
+
+/** The limit `publira server` charges a client's public API calls against. */
+const storedPublicApiReads = (): string =>
+  querySql(
+    "SELECT anonymous_read_public_api_limit_per_10_seconds::text FROM platform_policy_config WHERE singleton;"
+  );
+
 const saveSecurityPolicy = async (page: Page): Promise<void> => {
   await page.getByRole("button", { name: "Save security policy" }).click();
 };
@@ -56,6 +75,15 @@ test.beforeAll(() => {
 
 test.afterAll(() => {
   applyScenarioSql(PLATFORM_TENANT_COINS_SCENARIO);
+  // Back to the built-in value, which every other suite reads behind.
+  querySql(`
+    UPDATE platform_policy_config
+    SET anonymous_read_public_api_limit_per_10_seconds = 640,
+        revision = revision + 1,
+        updated_at = NOW()
+    WHERE singleton
+      AND anonymous_read_public_api_limit_per_10_seconds <> 640;
+  `);
 });
 
 test.describe("tenant coin allowance on Security", () => {
@@ -106,5 +134,49 @@ test.describe("tenant coin allowance on Security", () => {
     );
 
     expect(storedAllowance()).toBe("false");
+  });
+});
+
+test.describe("anonymous read limits on Security", () => {
+  test("an operator raises a read limit, and the server stores what was saved", async ({
+    page,
+  }) => {
+    await signInAsPlatformOperator(
+      page,
+      SEED_PLATFORM_SUPER_ADMIN,
+      SECURITY_POLICY_PATH
+    );
+    await expect(publicApiReadsField(page)).toHaveValue(storedPublicApiReads());
+
+    await publicApiReadsField(page).fill("700");
+    await saveSecurityPolicy(page);
+    await expect(formMessage(page)).toContainText("Security policy saved.");
+
+    await page.reload();
+    await expect(publicApiReadsField(page)).toHaveValue("700");
+    expect(storedPublicApiReads()).toBe("700");
+  });
+
+  // 320 is what the sample edge configurations admit from one client in 10
+  // seconds, the least the server accepts.
+  test("a value below what the edge admits is not submitted", async ({
+    page,
+  }) => {
+    await signInAsPlatformOperator(
+      page,
+      SEED_PLATFORM_SUPER_ADMIN,
+      SECURITY_POLICY_PATH
+    );
+    const stored = storedPublicApiReads();
+
+    await publicApiReadsField(page).fill("319");
+    await saveSecurityPolicy(page);
+
+    expect(
+      await publicApiReadsField(page).evaluate(
+        (input: HTMLInputElement) => input.validity.rangeUnderflow
+      )
+    ).toBe(true);
+    expect(storedPublicApiReads()).toBe(stored);
   });
 });

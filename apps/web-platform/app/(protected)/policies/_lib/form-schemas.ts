@@ -45,6 +45,17 @@ const isListUrl = (value: string): boolean =>
 const fitsListUrlBytes = (value: string): boolean =>
   new TextEncoder().encode(value).length <= MAX_LIST_URL_BYTES;
 
+/**
+ * Mirrors `platformpolicy.EdgeReadLimits()`: what the sample edge
+ * configurations admit from one client in 10 seconds, which is the least an
+ * anonymous read limit may be.
+ */
+export const MIN_ANONYMOUS_READS = {
+  images: 1200,
+  publicApi: 320,
+  search: 40,
+} as const;
+
 /** Mirrors `retention.MaxDays`. */
 const MAX_RETENTION_DAYS = 36_500;
 
@@ -59,6 +70,16 @@ const limitSchema = (t: Translate, setting: string) =>
     maxMessage: t("platform.policy.limit_too_large", { setting }),
     min: 1,
   });
+
+const anonymousReadSchema = (t: Translate, setting: string, min: number) =>
+  boundedIntFormSchema(
+    t("platform.policy.security.anonymous_read_invalid", { min, setting }),
+    {
+      max: MAX_LIMIT,
+      maxMessage: t("platform.policy.limit_too_large", { setting }),
+      min,
+    }
+  );
 
 interface WindowPair<K extends string> {
   day: K;
@@ -82,6 +103,18 @@ const refineWindowPairs =
   };
 
 export const securityPolicyFormFields = {
+  anonymousReadImages: {
+    kind: "value",
+    name: "anonymous_read_images_per_10_seconds",
+  },
+  anonymousReadPublicApi: {
+    kind: "value",
+    name: "anonymous_read_public_api_per_10_seconds",
+  },
+  anonymousReadSearch: {
+    kind: "value",
+    name: "anonymous_read_search_per_10_seconds",
+  },
   disposableEmailDomainsUrl: {
     kind: "value",
     name: "disposable_email_domains_url",
@@ -182,6 +215,21 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
 
   return z
     .object({
+      anonymousReadImages: anonymousReadSchema(
+        t,
+        t("platform.policy.security.anonymous_read_images_title"),
+        MIN_ANONYMOUS_READS.images
+      ),
+      anonymousReadPublicApi: anonymousReadSchema(
+        t,
+        t("platform.policy.security.anonymous_read_public_api_title"),
+        MIN_ANONYMOUS_READS.publicApi
+      ),
+      anonymousReadSearch: anonymousReadSchema(
+        t,
+        t("platform.policy.security.anonymous_read_search_title"),
+        MIN_ANONYMOUS_READS.search
+      ),
       disposableEmailDomainsUrl: optionalTrimmedString(
         MAX_LIST_URL_BYTES,
         listUrlInvalid

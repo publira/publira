@@ -1,6 +1,6 @@
 -- Scenario: platform operators for the tenant coin allowance E2E
 --
--- `platform.tenant-coins-policy.spec.ts` turns the platform's allowance for
+-- `platform.security-policy.spec.ts` turns the platform's allowance for
 -- tenant-issued coins on and off from the Platform Console's Security page as
 -- an Operator, and has an Auditor's save of the same page refused. Both are
 -- accounts of their own, so the suite counts the audit entries of the one it

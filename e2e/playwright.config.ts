@@ -97,7 +97,7 @@ const ageVerificationSpecs = /admin\.age-verification\./u;
 /**
  * The spec that lets tenants issue coins, which `platform_policy_config` holds
  * once for the whole deployment, and has readers spend them on its own
- * tenant's site. `platform.tenant-coins-policy.spec.ts` turns the same
+ * tenant's site. `platform.security-policy.spec.ts` turns the same
  * allowance on and off and expects it off when it starts, so this one runs
  * after the parallel projects rather than beside it.
  */

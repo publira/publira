@@ -12,6 +12,7 @@ import type { PlatformSecurityPolicy } from "#lib/platform-policy";
 
 import { PolicyLimitField } from "../../_components/policy-limit-field";
 import { updatePlatformSecurityPolicyAction } from "../../_lib/actions";
+import { MIN_ANONYMOUS_READS } from "../../_lib/form-schemas";
 
 export const SecurityPolicyForm = ({
   values,
@@ -175,6 +176,50 @@ export const SecurityPolicyForm = ({
             </Suspense>
           </PolicyLimitField>
         </div>
+        <fieldset className="grid gap-4">
+          <legend className="mb-2 text-sm font-medium text-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="platform.policy.security.anonymous_read_legend" />
+            </Suspense>
+          </legend>
+          <p className="text-xs text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-3 w-80" />}>
+              <Message message="platform.policy.security.anonymous_read_help" />
+            </Suspense>
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <PolicyLimitField
+              defaultValue={values.anonymousReadLimits.publicApi}
+              disabled={Boolean(loadErrorMessage)}
+              min={MIN_ANONYMOUS_READS.publicApi}
+              name="anonymous_read_public_api_per_10_seconds"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="platform.policy.security.anonymous_read_public_api" />
+              </Suspense>
+            </PolicyLimitField>
+            <PolicyLimitField
+              defaultValue={values.anonymousReadLimits.search}
+              disabled={Boolean(loadErrorMessage)}
+              min={MIN_ANONYMOUS_READS.search}
+              name="anonymous_read_search_per_10_seconds"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="platform.policy.security.anonymous_read_search" />
+              </Suspense>
+            </PolicyLimitField>
+            <PolicyLimitField
+              defaultValue={values.anonymousReadLimits.images}
+              disabled={Boolean(loadErrorMessage)}
+              min={MIN_ANONYMOUS_READS.images}
+              name="anonymous_read_images_per_10_seconds"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="platform.policy.security.anonymous_read_images" />
+              </Suspense>
+            </PolicyLimitField>
+          </div>
+        </fieldset>
         <Field.Root>
           <div className="flex items-center gap-2">
             <Checkbox

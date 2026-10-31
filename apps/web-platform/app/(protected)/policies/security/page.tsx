@@ -10,6 +10,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getPlatformPolicy } from "#lib/platform-policy";
 import type { PlatformSecurityPolicy } from "#lib/platform-policy";
 
+import { MIN_ANONYMOUS_READS } from "../_lib/form-schemas";
 import { SecurityPolicyForm } from "./_components/security-policy-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -20,6 +21,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 const emptyValues: PlatformSecurityPolicy = {
+  anonymousReadLimits: MIN_ANONYMOUS_READS,
   disposableEmailDomainsUrl: "",
   loginAttemptsPerAccount: { perDay: 1, perMinute: 1 },
   loginAttemptsPerSource: { perDay: 1, perHour: 1 },

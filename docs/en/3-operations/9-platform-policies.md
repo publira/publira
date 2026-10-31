@@ -16,7 +16,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | Group | Platform Console | `publiractl` |
 | --- | --- | --- |
 | The default language, time zone, and currency | **General**, under **Platform** | `platform set`, `platform show` |
-| Two-step verification, whether tenants may issue coins, the sign-in, password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
+| Two-step verification, whether tenants may issue coins, the sign-in, password, purchase, ticket, mail, and anonymous read limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
 | The comment, report, rating, contact, viewer, and notification settings limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
@@ -117,7 +117,17 @@ The per-account limit also lets anyone who knows an address keep its owner from 
 
 Three more limits bound how fast one client address may read a tenant's site without being signed in: calls of the public API that the mobile app makes, calls of its catalog search, and the images of a tenant's domain and image host. Each is a count over a window of 10 seconds, with no daily count, and is kept behind the limits the edge in front of the install keeps on the same requests, for an edge that limits nothing. A call a web app makes as itself, on behalf of all of its readers at once, is not counted.
 
-They have no field on the Security page yet. Set them with `publiractl policy set --anonymous-read-public-api-per-10-seconds`, `--anonymous-read-search-per-10-seconds`, and `--anonymous-read-images-per-10-seconds`; saving the Security page keeps whatever they are set to. Each is refused below what the sample edge configurations admit from one client in 10 seconds, so that the edge stays the first to refuse a reader. When readers share one address, such as a mobile carrier's gateway, raise them along with the edge's allowances, since an edge allowance raised past the server's admits requests the server then refuses. [What publira server limits itself](./12-security/5-rate-limits.md#what-publira-server-limits-itself) gives the built-in values, the least each may be, and what the edge admits.
+They follow the sign-in attempt limits on the **Security** page, under **Anonymous reads**:
+
+| On the Security page | Flag |
+| --- | --- |
+| **Public API calls per client per 10 seconds** | `--anonymous-read-public-api-per-10-seconds` |
+| **Catalog searches per client per 10 seconds** | `--anonymous-read-search-per-10-seconds` |
+| **Images per client per 10 seconds** | `--anonymous-read-images-per-10-seconds` |
+
+![Anonymous reads on Security: public API calls, catalog searches, and images per client per 10 seconds, under the line that explains them.](./platform-policies-anonymous-reads.png)
+
+Each is refused below what the sample edge configurations admit from one client in 10 seconds, so that the edge stays the first to refuse a reader: the page names the least value in its message and saves nothing. When readers share one address, such as a mobile carrier's gateway, raise them along with the edge's allowances, since an edge allowance raised past the server's admits requests the server then refuses. [What publira server limits itself](./12-security/5-rate-limits.md#what-publira-server-limits-itself) gives the built-in values, the least each may be, and what the edge admits.
 
 ### Where the counts are kept
 

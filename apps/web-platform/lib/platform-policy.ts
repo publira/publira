@@ -4,6 +4,7 @@ import {
   rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type {
+  AnonymousReadLimits,
   CommunityLimitDefaults,
   HourDayLimit,
   MinuteDayLimit,
@@ -36,7 +37,15 @@ export interface HourDay {
   perHour: number;
 }
 
+/** Reads one client may make of a storefront in 10 seconds without signing in. */
+export interface ReadLimits {
+  images: number;
+  publicApi: number;
+  search: number;
+}
+
 export interface PlatformSecurityPolicy {
+  anonymousReadLimits: ReadLimits;
   /** Where the disposable email domain list is read from; empty for none. */
   disposableEmailDomainsUrl: string;
   loginAttemptsPerAccount: MinuteDay;
@@ -99,6 +108,11 @@ type RawMinuteDay = Pick<MinuteDayLimit, "perDay" | "perMinute">;
 
 type RawHourDay = Pick<HourDayLimit, "perDay" | "perHour">;
 
+type RawReadLimits = Pick<
+  AnonymousReadLimits,
+  "images" | "publicApi" | "search"
+>;
+
 type RawCommunityLimitDefaults = Pick<
   CommunityLimitDefaults,
   | "commentPost"
@@ -113,6 +127,7 @@ type RawCommunityLimitDefaults = Pick<
 
 type RawPlatformPolicy = Pick<
   RawPlatformPolicyMessage,
+  | "anonymousReadLimits"
   | "communityLimitDefaults"
   | "disposableEmailDomainsUrl"
   | "loginAttemptsPerAccount"
@@ -145,6 +160,12 @@ const toHourDay = (limit: RawHourDay | undefined): HourDay => ({
   perHour: limit?.perHour ?? 0,
 });
 
+const toReadLimits = (limits: RawReadLimits | undefined): ReadLimits => ({
+  images: limits?.images ?? 0,
+  publicApi: limits?.publicApi ?? 0,
+  search: limits?.search ?? 0,
+});
+
 const toCommunityLimits = (
   community: RawCommunityLimitDefaults | undefined
 ): PlatformCommunityLimits => ({
@@ -163,6 +184,7 @@ export const toPlatformPolicy = (
 ): PlatformPolicy => ({
   community: toCommunityLimits(policy?.communityLimitDefaults),
   security: {
+    anonymousReadLimits: toReadLimits(policy?.anonymousReadLimits),
     disposableEmailDomainsUrl: policy?.disposableEmailDomainsUrl ?? "",
     loginAttemptsPerAccount: toMinuteDay(policy?.loginAttemptsPerAccount),
     loginAttemptsPerSource: toHourDay(policy?.loginAttemptsPerSource),
@@ -306,6 +328,34 @@ const saveFailure = async (
       ),
       ok: false,
     };
+  }
+
+  // The screen mirrors the least each read limit may be, but the server is
+  // what knows the edge's allowances, and it names the field it refused.
+  const anonymousReadLimits = [
+    [
+      "policy.anonymous_read_limits.public_api",
+      t("platform.policy.security.anonymous_read_public_api_title"),
+    ],
+    [
+      "policy.anonymous_read_limits.search",
+      t("platform.policy.security.anonymous_read_search_title"),
+    ],
+    [
+      "policy.anonymous_read_limits.images",
+      t("platform.policy.security.anonymous_read_images_title"),
+    ],
+  ] as const;
+
+  for (const [field, setting] of anonymousReadLimits) {
+    if (rpcErrorHasFieldViolation(cause, field)) {
+      return {
+        message: t("platform.policy.security.anonymous_read_below_edge", {
+          setting,
+        }),
+        ok: false,
+      };
+    }
   }
 
   return {

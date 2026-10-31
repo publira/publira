@@ -302,6 +302,21 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      test("the anonymous read limits on Security", async ({ page }) => {
+        await openScreen(page, locale, "/policies/security");
+
+        await expectDocsScreenshot(page, {
+          element: docsField(
+            page.getByRole("group", {
+              name: t("platform.policy.security.anonymous_read_legend"),
+            })
+          ),
+          locale,
+          page: "operations/platform-policies",
+          subject: "anonymous-reads",
+        });
+      });
+
       test("the disposable email domain list", async ({ page }) => {
         await openScreen(page, locale, "/policies/security");
 

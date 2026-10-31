@@ -46,6 +46,9 @@ const securityForm = (extra: Record<string, string> = {}): FormData => {
   const data = new FormData();
 
   for (const [name, value] of Object.entries({
+    anonymous_read_images_per_10_seconds: "2400",
+    anonymous_read_public_api_per_10_seconds: "640",
+    anonymous_read_search_per_10_seconds: "80",
     disposable_email_domains_url: "",
     login_attempts_per_account_per_day: "50",
     login_attempts_per_account_per_minute: "5",
@@ -80,7 +83,7 @@ describe("updatePlatformSecurityPolicyAction", () => {
   // The account screen's status read answers whether the platform requires
   // two-step verification, so a save that may have switched it clears that
   // read along with the policy and the audit log.
-  it("saves the operator requirement and clears every read it changes", async () => {
+  it("saves the operator requirement and the read limits, and clears every read it changes", async () => {
     mockUpdatePlatformSecurityPolicy.mockResolvedValueOnce({ ok: true });
 
     const { updatePlatformSecurityPolicyAction } = await import("./actions");
@@ -90,6 +93,7 @@ describe("updatePlatformSecurityPolicyAction", () => {
 
     expect(mockUpdatePlatformSecurityPolicy).toHaveBeenCalledWith(
       expect.objectContaining({
+        anonymousReadLimits: { images: 2400, publicApi: 640, search: 80 },
         mfaRequiredForPlatformOperator: true,
         mfaRequiredForTenantAdmin: false,
       }),
