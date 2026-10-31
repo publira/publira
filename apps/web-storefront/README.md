@@ -55,6 +55,12 @@ Required environment variables:
 
 - `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the `publira_web_storefront_auth` cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see [`@publira/web-session`](../../packages/web-session/README.md#environment-variables)
 
+### Search page rate limit
+
+`proxy.ts` limits the search page per client (`lib/search-page-rate-limit.ts`), with counters every instance shares.
+
+- `PUBLIRA_REDIS_URL` — the Valkey or Redis the counters are kept in, the same value as the server's. Unset, empty, `disabled`, `off`, or `false` keeps them in each process alone, and so does a `redis://` URL carrying a password, which is refused; use `rediss://`.
+
 ### Server cache (Redis)
 
 `next.config.ts` wires `@publira/next-cache-handlers`.

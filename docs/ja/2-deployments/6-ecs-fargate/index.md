@@ -122,7 +122,7 @@ done
 | `storefront-auth-secret`、`admin-auth-secret` | `web-storefront`と`web-admin`が1つずつ | `PUBLIRA_AUTH_SECRET` |
 | `revalidate-token` | `publira-server`、`publira-worker`、`web-storefront`、`web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server`と`web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
-| `redis-url` | `publira-server`と、`web-storefront`と`web-admin` | `publira-server`は`PUBLIRA_REDIS_URL`、Webアプリは`PNCH_REDIS_URL` |
+| `redis-url` | `publira-server`と、`web-storefront`と`web-admin` | `publira-server`と`web-storefront`は`PUBLIRA_REDIS_URL`、Webアプリは`PNCH_REDIS_URL` |
 | `db-url/public`、`db-url/admin`、`db-url/platform` | `publira-server`。`db-url/platform`は`publiractl setup`も読みます | `PUBLIRA_PUBLIC_DB_URL`、`PUBLIRA_ADMIN_DB_URL`、`PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`、`db-url/ticker`、`db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`、`PUBLIRA_TICKER_DB_URL`、`PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | `db`タスクだけです。[管理用ログイン](../2-installing.md#サービスを用意する)の接続を読むのは`db`コマンドだけなので、常駐するプロセスには渡しません | `PUBLIRA_DB_URL` |
@@ -674,7 +674,8 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
           "name": "PUBLIRA_REVALIDATE_TOKEN",
           "valueFrom": "/publira/revalidate-token"
         },
-        { "name": "PNCH_REDIS_URL", "valueFrom": "/publira/redis-url" }
+        { "name": "PNCH_REDIS_URL", "valueFrom": "/publira/redis-url" },
+        { "name": "PUBLIRA_REDIS_URL", "valueFrom": "/publira/redis-url" }
       ],
       "healthCheck": {
         "command": [

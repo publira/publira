@@ -94,7 +94,7 @@ Write your ElastiCache primary endpoint and your RDS endpoint in place of the on
 | `storefront-auth-secret`, `admin-auth-secret` | `web-storefront` and `web-admin`, one each | `PUBLIRA_AUTH_SECRET` |
 | `revalidate-token` | `publira-server`, `publira-worker`, `web-storefront`, and `web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server` and `web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
-| `redis-url` | `publira-server`; `web-storefront` and `web-admin` | `PUBLIRA_REDIS_URL`; `PNCH_REDIS_URL` |
+| `redis-url` | `publira-server` and `web-storefront`; `web-storefront` and `web-admin` | `PUBLIRA_REDIS_URL`; `PNCH_REDIS_URL` |
 | `db-url/public`, `db-url/admin`, `db-url/platform` | `publira-server`, and `publiractl setup` for `db-url/platform` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PLATFORM_DB_URL` |
 | `db-url/outbox`, `db-url/ticker`, `db-url/content-stats` | `publira-worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` |
 | `db-url/master` | The `db` tasks alone: the `db` commands are the only ones that read the [administrative login](../2-installing.md#provision-the-services)'s connection, so nothing kept running is given it | `PUBLIRA_DB_URL` |
@@ -646,7 +646,8 @@ Each service gets its secrets from the parameters and the rest of the variables 
           "name": "PUBLIRA_REVALIDATE_TOKEN",
           "valueFrom": "/publira/revalidate-token"
         },
-        { "name": "PNCH_REDIS_URL", "valueFrom": "/publira/redis-url" }
+        { "name": "PNCH_REDIS_URL", "valueFrom": "/publira/redis-url" },
+        { "name": "PUBLIRA_REDIS_URL", "valueFrom": "/publira/redis-url" }
       ],
       "healthCheck": {
         "command": [

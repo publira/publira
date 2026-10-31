@@ -34,6 +34,7 @@ import {
 } from "./lib/published-page-path";
 import { createPublishedPageSlugResolver } from "./lib/published-page-slugs";
 import { GUEST_ONLY_PATHS, MEMBER_PATH_PREFIXES } from "./lib/reader-paths";
+import { createSearchPageLimiter } from "./lib/search-page-rate-limit";
 import {
   createTenantResolver,
   SUSPENDED_TENANT,
@@ -43,6 +44,10 @@ import type { ResolvedTenant } from "./lib/tenant-resolution";
 const resolveTenantByDomain = createTenantResolver(apiClient);
 const resolvePublishedPageSlugs = createPublishedPageSlugResolver(apiClient);
 const resolveGoogleTagGateway = createGoogleTagGatewayResolver(apiClient);
+const chargeSearchPage = createSearchPageLimiter();
+
+/** The search page's path once the locale prefix is gone. */
+const SEARCH_PAGE_PATH = "/search";
 
 const GUEST_ONLY_PATH_SET: ReadonlySet<string> = new Set(GUEST_ONLY_PATHS);
 
@@ -278,13 +283,52 @@ const forwardGoogleTagGatewayPath = async (
 };
 
 /**
+ * The `429` for a client past the search page's allowance, or `null` for one
+ * within it. The page runs the catalog search from this process, where
+ * `publira server` cannot tell one reader from another, so it is limited here.
+ * Every request for the path is counted, the way the edge counts them,
+ * whatever its query and whether or not a published page has taken it. A client is the reader's address as the forwarded
+ * headers name it; a request naming none, which the peer address the app
+ * appends to every request rules out, is counted as one client with every
+ * other such request. A setting the address cannot be read with, such as a
+ * malformed `PUBLIRA_TRUSTED_PROXIES`, answers `500` rather than throwing out
+ * of the proxy.
+ */
+const refuseSearchPageOverLimit = async (
+  request: NextRequest
+): Promise<NextResponse | null> => {
+  let client: string;
+
+  try {
+    client = getClientAddress(request.headers) ?? "";
+  } catch (error) {
+    console.error("[web-storefront] cannot resolve the client address", error);
+
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+
+  const decision = await chargeSearchPage(client);
+
+  if (decision.allowed) {
+    return null;
+  }
+
+  return new NextResponse("Too Many Requests", {
+    headers: { "Retry-After": String(decision.retryAfterSeconds) },
+    status: 429,
+  });
+};
+
+/**
  * {@link resolveTenant}, with the Google tag gateway's answer in place of the
- * tenant on its path: the gateway answers before anything that reads or clears
- * the reader's session.
+ * tenant on its path, and the refusal of a client past the search page's
+ * allowance on that one: both answer before anything that reads or clears the
+ * reader's session.
  */
 const resolveSiteTenant = async (
   request: NextRequest,
-  pathLocale: Locale | null
+  pathLocale: Locale | null,
+  publicPath: string
 ): Promise<ResolvedTenant | { response: NextResponse }> => {
   const tenant = await resolveTenant(request, pathLocale);
 
@@ -292,12 +336,12 @@ const resolveSiteTenant = async (
     return tenant;
   }
 
-  const gatewayResponse = await forwardGoogleTagGatewayPath(
-    request,
-    tenant.tenantId
-  );
+  const response =
+    publicPath === SEARCH_PAGE_PATH
+      ? await refuseSearchPageOverLimit(request)
+      : await forwardGoogleTagGatewayPath(request, tenant.tenantId);
 
-  return gatewayResponse ? { response: gatewayResponse } : tenant;
+  return response ? { response } : tenant;
 };
 
 const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
@@ -332,7 +376,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { locale: requestedLocale, pathname: publicPath } =
     splitLocalePathname(pathname);
 
-  const tenant = await resolveSiteTenant(request, requestedLocale);
+  const tenant = await resolveSiteTenant(request, requestedLocale, publicPath);
 
   if ("response" in tenant) {
     return tenant.response;

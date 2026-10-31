@@ -44,11 +44,12 @@ Publiraの動作が遅くなってきたときや、これから利用が増え�
 
 ## 先に共有しておくもの
 
-どのプロセスでも2つ目のインスタンスを動かす前に、Valkey(またはRedisプロトコルに対応したサーバー)を使うすべてのプロセスに、同じValkeyを指定してください。`publira server`には`PUBLIRA_REDIS_URL`で、`web-storefront`と`web-admin`と`web-platform`には`PNCH_REDIS_URL`で指定します。このValkeyは[インストール](./2-installing.md#サービスを用意する)の手順で用意済みで、次の3つを保持します。
+どのプロセスでも2つ目のインスタンスを動かす前に、Valkey(またはRedisプロトコルに対応したサーバー)を使うすべてのプロセスに、同じValkeyを指定してください。`publira server`と`web-storefront`には`PUBLIRA_REDIS_URL`で、`web-storefront`と`web-admin`と`web-platform`には`PNCH_REDIS_URL`で指定します。このValkeyは[インストール](./2-installing.md#サービスを用意する)の手順で用意済みで、次の4つを保持します。
 
 | 内容 | 保持するプロセス | Valkeyを共有しない場合 |
 | --- | --- | --- |
 | レート制限のカウンター(読者の書き込みの制限、本人確認のためのパスワード入力の制限、メールの制限) | `publira server` | インスタンスごとに別々に数えます。読者のリクエストが3つのインスタンスに分散すると、その読者は上限の3倍まで通ります。詳しくは[回数の保存場所](../3-operations/9-platform-policies.md#回数を数える場所)で説明しています |
+| 検索ページのレート制限のカウンター | `web-storefront` | インスタンスごとに別々に数えます。読者の検索ページへのリクエストが3つのインスタンスに分散すると、その読者は上限の3倍まで通ります |
 | 変換済みの画像 | `publira server` | 各インスタンスが変換した画像を自分のメモリーに持つので、同じ画像をインスタンスごとに変換し直します |
 | Webアプリがキャッシュするページとデータ | `web-storefront`、`web-admin`、`web-platform` | Webアプリが描画したものは何もキャッシュされません。リクエストのたびにページを描画し直し、そこに載るデータをすべて`publira server`から取得します |
 
