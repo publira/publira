@@ -2,7 +2,7 @@
 title: Email
 description: Send the tenant's mail through the publisher's own SMTP server, and receive readers' replies to contact messages back in the console.
 published: 2026-10-07
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 The tenant sends mail to its readers and its staff: address confirmations, password resets, purchase receipts, invitations, replies to contact messages. Until a Tenant admin sets up a server of the tenant's own, all of it goes out through the platform's mail server, from the platform's address, which the operator chooses. **Integrations** › **Email** sends it through the publisher's own SMTP server instead, from an address on the publisher's domain.
@@ -15,10 +15,9 @@ With the tenant's own server turned on, it sends every mail the tenant sends:
 
 - To readers: the sign-up confirmation, password resets and the notice that a password changed, email address change confirmations and the notice that an address changed, and the notice that someone tried to sign up with an address that already has an account.
 - To readers who buy an episode on the site: a receipt naming the series and the episode, the price paid, when it was bought and, for an episode with a reading period, until when it can be read, with a link to the reader's purchases.
+- To readers whose notification settings take them by email: a new episode of what they follow, the notice that their comment is now public, and announcements, as [What readers see](./4-announcements.md#what-readers-see) describes for an announcement.
 - Replies to readers' contact messages.
 - To staff: invitations to new Tenant admins, the console's password resets and email address changes, and the notice of a new contact message, which goes to the Tenant admins.
-
-Announcements and other notices reach readers on the site and in the app, not by mail.
 
 ## Before you start
 
