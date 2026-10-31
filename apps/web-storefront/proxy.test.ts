@@ -5,13 +5,17 @@ import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as GoogleTagGatewayModule from "./lib/google-tag-gateway";
+import type { SearchPageDecision } from "./lib/search-page-rate-limit";
 
 const {
+  mockChargeSearchPage,
   mockForwardToGoogleTagGateway,
   mockResolveGoogleTagGateway,
   mockResolvePublishedPageSlugs,
   mockResolveTenant,
 } = vi.hoisted(() => ({
+  mockChargeSearchPage:
+    vi.fn<(client: string) => Promise<SearchPageDecision>>(),
   mockForwardToGoogleTagGateway: vi.fn(),
   mockResolveGoogleTagGateway: vi.fn(),
   mockResolvePublishedPageSlugs:
@@ -41,7 +45,12 @@ vi.mock("./lib/google-tag-gateway-proxy", () => ({
   forwardToGoogleTagGateway: mockForwardToGoogleTagGateway,
 }));
 
+vi.mock("./lib/search-page-rate-limit", () => ({
+  createSearchPageLimiter: () => mockChargeSearchPage,
+}));
+
 beforeEach(() => {
+  mockChargeSearchPage.mockResolvedValue({ allowed: true });
   mockResolveGoogleTagGateway.mockResolvedValue(null);
   mockResolvePublishedPageSlugs.mockResolvedValue(
     new Set(["/authors-wanted", "/privacy"])
@@ -712,6 +721,124 @@ describe("web-storefront proxy published pages", () => {
     expect(response.headers.get("x-middleware-rewrite")).toContain(
       `/${TENANT_ID}/ja/privacy`
     );
+  });
+});
+
+/** {@link request}, from the reader `forwardedFor` names. */
+const searchRequest = (url: string, forwardedFor: string): NextRequest => {
+  const searchPageRequest = request(url);
+  searchPageRequest.headers.set("x-forwarded-for", forwardedFor);
+
+  return searchPageRequest;
+};
+
+describe("web-storefront proxy search page limit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockChargeSearchPage.mockResolvedValue({ allowed: true });
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      supportedLocales: getLocales(),
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("Charge the search page to the reader's address", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      searchRequest(
+        "https://shop.example.com/search?q=a",
+        "203.0.113.7, 10.0.0.2"
+      )
+    );
+
+    expect(mockChargeSearchPage).toHaveBeenCalledWith("203.0.113.7");
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/search`
+    );
+  });
+
+  it("Charge the search page under a locale prefix", async () => {
+    const { proxy } = await import("./proxy");
+
+    await proxy(
+      searchRequest("https://shop.example.com/en/search", "203.0.113.7")
+    );
+
+    expect(mockChargeSearchPage).toHaveBeenCalledWith("203.0.113.7");
+  });
+
+  it("Answer 429 with Retry-After past the limit", async () => {
+    mockChargeSearchPage.mockResolvedValue({
+      allowed: false,
+      retryAfterSeconds: 4,
+    });
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      searchRequest("https://shop.example.com/search?q=b", "203.0.113.7")
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("4");
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("Charge no other page", async () => {
+    const { proxy } = await import("./proxy");
+
+    await proxy(
+      searchRequest("https://shop.example.com/series", "203.0.113.7")
+    );
+    await proxy(
+      searchRequest("https://shop.example.com/search-help", "203.0.113.7")
+    );
+
+    expect(mockChargeSearchPage).not.toHaveBeenCalled();
+  });
+
+  it("Charge a published page at the search page's path the same way", async () => {
+    mockResolvePublishedPageSlugs.mockResolvedValue(new Set(["/search"]));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      searchRequest("https://shop.example.com/search", "203.0.113.7")
+    );
+
+    expect(mockChargeSearchPage).toHaveBeenCalledWith("203.0.113.7");
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/page/search`
+    );
+  });
+
+  it("Charge no request of a host no tenant has", async () => {
+    mockResolveTenant.mockResolvedValue(null);
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      searchRequest("https://unknown.example.com/search", "203.0.113.7")
+    );
+
+    expect(response.status).toBe(404);
+    expect(mockChargeSearchPage).not.toHaveBeenCalled();
+  });
+
+  it("Answer 500 when the client address cannot be read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubEnv("PUBLIRA_TRUSTED_PROXIES", "0.0.0.0/0");
+    const { proxy } = await import("./proxy");
+
+    try {
+      const response = await proxy(
+        searchRequest("https://shop.example.com/search", "203.0.113.7")
+      );
+
+      expect(response.status).toBe(500);
+      expect(mockChargeSearchPage).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 

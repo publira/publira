@@ -20,11 +20,12 @@ Every process can therefore also be the target of the platform's autoscaling, su
 
 ## What has to be shared first
 
-Before any process runs a second copy, every process that uses Valkey, or any Redis-protocol server, has to be given the same one: `PUBLIRA_REDIS_URL` on `publira server`, and `PNCH_REDIS_URL` on `web-storefront`, `web-admin`, and `web-platform`. [Installing](./2-installing.md#provision-the-services) already provisions it, and it holds three things:
+Before any process runs a second copy, every process that uses Valkey, or any Redis-protocol server, has to be given the same one: `PUBLIRA_REDIS_URL` on `publira server` and `web-storefront`, and `PNCH_REDIS_URL` on `web-storefront`, `web-admin`, and `web-platform`. [Installing](./2-installing.md#provision-the-services) already provisions it, and it holds four things:
 
 | What | Kept by | Without a shared Valkey |
 | --- | --- | --- |
 | The rate limit counters: the reader write limits, the step-up password limit, and the mail limits | `publira server` | Each copy counts on its own, so a reader whose requests are spread across three copies gets three times the limit. [Where the counts are kept](../3-operations/9-platform-policies.md#where-the-counts-are-kept) has the details |
+| The search page's rate limit counters | `web-storefront` | Each copy counts on its own, so a reader whose search page requests are spread across three copies gets three times the limit |
 | The converted images | `publira server` | Each copy keeps the images it converted in its own memory, so every copy converts the same image again |
 | The pages and data the web apps cache | `web-storefront`, `web-admin`, `web-platform` | Nothing a web app renders is cached: every request renders its page again and calls `publira server` for everything on it |
 

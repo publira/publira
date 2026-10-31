@@ -221,6 +221,8 @@ services:
     environment:
       <<: [*web-app, *tenant-url, *tracing]
       PUBLIRA_AUTH_SECRET: ${PUBLIRA_WEB_STOREFRONT_AUTH_SECRET:?}
+      # The search page's rate limit counters, shared with every instance.
+      PUBLIRA_REDIS_URL: redis://valkey:6379
     networks: [default, edge]
     healthcheck:
       <<: *healthcheck

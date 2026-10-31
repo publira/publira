@@ -81,8 +81,7 @@ func NewDefault() *Guard {
 // itself, is not charged: it is every reader of that app at once, and counting
 // it as one client would refuse all of them when the busiest page filled the
 // allowance. What such a call reads on a reader's behalf is the app's to
-// bound, in front of the call; web-storefront's search page is not bounded
-// there yet (#5182).
+// bound, in front of the call, as web-storefront bounds its search page.
 func (g *Guard) Allow(ctx context.Context, allowance Allowance) (ratelimit.Decision, error) {
 	if clientip.InternalFromContext(ctx) {
 		return ratelimit.Decision{Allowed: true}, nil

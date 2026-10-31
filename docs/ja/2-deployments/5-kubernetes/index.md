@@ -3,7 +3,7 @@ title: Kubernetes
 description: KubernetesクラスターでPubliraを動かす手順を、SecretとDeploymentの作成から、その前に置くGatewayかIngress、テナント管理画面への最初のログインまで説明します。
 published: 2026-10-29
 updated: 2026-10-31
-source_updated: 2026-10-23
+source_updated: 2026-10-31
 ---
 
 このページでは、Kubernetesクラスターの空のnamespaceから始めて、テナント管理画面に初めてログインするところまでPubliraを構築します。手順は[インストール](../2-installing.md)と同じで、各手順が必要な理由や、各シークレットが守るもの、各データベースロールがアクセスできる範囲はそちらで説明しています。リバースプロキシは、[リバースプロキシの設定](../4-edge/index.md#リバースプロキシで必要な設定)の要件どおりに前に置きます。このページで扱うのはクラスターに固有の部分、つまりPubliraの各部分をどのリソースで動かし、2つのページの要件をそのリソースでどう満たすかです。
@@ -107,7 +107,8 @@ kubectl create secret generic publira-worker \
 kubectl create secret generic web-storefront \
   --from-literal=PUBLIRA_AUTH_SECRET="$STOREFRONT_AUTH_SECRET" \
   --from-literal=PUBLIRA_REVALIDATE_TOKEN="$REVALIDATE_TOKEN" \
-  --from-literal=PNCH_REDIS_URL="$REDIS_URL"
+  --from-literal=PNCH_REDIS_URL="$REDIS_URL" \
+  --from-literal=PUBLIRA_REDIS_URL="$REDIS_URL"
 
 kubectl create secret generic web-admin \
   --from-literal=PUBLIRA_AUTH_SECRET="$ADMIN_AUTH_SECRET" \
