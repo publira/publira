@@ -23,7 +23,10 @@ import { text } from "node:stream/consumers";
 
 const WORKTREES = "/.claude/worktrees/";
 
-/** What separates a path from the prose around it. */
+/** What a path is quoted in. */
+const QUOTE = /["'`“”‘’<>]/u;
+
+/** What separates an unquoted path from the prose around it. */
 const SEPARATOR = /[\s"'`“”‘’<>]/u;
 
 /** Punctuation that closes the sentence a path was quoted in. */
@@ -31,11 +34,12 @@ const TRAILING_PUNCTUATION = ".,;:!?)]";
 
 /**
  * The absolute paths through a `.claude/worktrees/` directory that `value`
- * mentions: `EnterWorktree` reports the path it created inside a sentence.
+ * may mention: `EnterWorktree` reports the path it created inside a sentence.
+ * The whole value and each quoted part come before the words, so that a path
+ * holding a space is tried whole.
  */
 const worktreePaths = (value: string): string[] =>
-  value
-    .split(SEPARATOR)
+  [value, ...value.split(QUOTE), ...value.split(SEPARATOR)]
     .filter((word) => word.includes(WORKTREES))
     .map((word) => {
       let end = word.length;

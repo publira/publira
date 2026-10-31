@@ -16,7 +16,7 @@ const SCRIPT = path.join(import.meta.dirname, "worktree-deps.ts");
  */
 const FAKE_TASK = `#!/bin/sh
 echo "fake task $*"
-if [ -n "$FAKE_TASK_FAIL" ]; then
+if [ -n "$PUBLIRA_FAKE_TASK_FAIL" ]; then
   exit 3
 fi
 mkdir node_modules
@@ -38,7 +38,8 @@ describe("worktree-deps", () => {
 
   before(async () => {
     base = await mkdtemp(path.join(tmpdir(), "worktree-deps-"));
-    checkout = path.join(base, "publira");
+    // The space checks that a path quoted in prose is read whole.
+    checkout = path.join(base, "publira review");
     worktree = path.join(checkout, ".claude", "worktrees", "fix-login");
     nested = path.join(checkout, ".claude", "worktrees", "team", "fix-cart");
     bin = path.join(base, "bin");
@@ -131,7 +132,7 @@ describe("worktree-deps", () => {
   });
 
   it("reports a failed install on stderr with a non-zero exit", () => {
-    const result = run({ cwd: worktree }, { FAKE_TASK_FAIL: "1" });
+    const result = run({ cwd: worktree }, { PUBLIRA_FAKE_TASK_FAIL: "1" });
 
     assert.equal(result.status, 1);
     assert.equal(result.stdout, "");
