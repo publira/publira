@@ -129,6 +129,18 @@ type Transaction struct {
 	PurchaseDate          int64  `json:"purchaseDate"`
 	SignedDate            int64  `json:"signedDate"`
 	RevocationDate        int64  `json:"revocationDate,omitempty"`
+	ExpiresDate           int64  `json:"expiresDate,omitempty"`
+}
+
+// RenewalInfo is a JWSRenewalInfoDecodedPayload with the fields a test sets.
+type RenewalInfo struct {
+	OriginalTransactionID  string `json:"originalTransactionId"`
+	ProductID              string `json:"productId"`
+	AutoRenewProductID     string `json:"autoRenewProductId"`
+	AutoRenewStatus        int    `json:"autoRenewStatus"`
+	Environment            string `json:"environment"`
+	GracePeriodExpiresDate int64  `json:"gracePeriodExpiresDate,omitempty"`
+	SignedDate             int64  `json:"signedDate"`
 }
 
 // PrivateKeyPEM answers a fresh App Store Connect API key in the .p8 form a

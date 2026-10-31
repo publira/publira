@@ -30,6 +30,10 @@ abstract class SubscriptionServiceBase extends $pb.GeneratedService {
   $async.Future<$2.CreateBillingPortalSessionResponse>
       createBillingPortalSession(
           $pb.ServerContext ctx, $2.CreateBillingPortalSessionRequest request);
+  $async.Future<$2.StartStoreSubscriptionResponse> startStoreSubscription(
+      $pb.ServerContext ctx, $2.StartStoreSubscriptionRequest request);
+  $async.Future<$2.ConfirmStoreSubscriptionResponse> confirmStoreSubscription(
+      $pb.ServerContext ctx, $2.ConfirmStoreSubscriptionRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -41,6 +45,10 @@ abstract class SubscriptionServiceBase extends $pb.GeneratedService {
         return $2.GetMySubscriptionRequest();
       case 'CreateBillingPortalSession':
         return $2.CreateBillingPortalSessionRequest();
+      case 'StartStoreSubscription':
+        return $2.StartStoreSubscriptionRequest();
+      case 'ConfirmStoreSubscription':
+        return $2.ConfirmStoreSubscriptionRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -60,6 +68,12 @@ abstract class SubscriptionServiceBase extends $pb.GeneratedService {
       case 'CreateBillingPortalSession':
         return createBillingPortalSession(
             ctx, request as $2.CreateBillingPortalSessionRequest);
+      case 'StartStoreSubscription':
+        return startStoreSubscription(
+            ctx, request as $2.StartStoreSubscriptionRequest);
+      case 'ConfirmStoreSubscription':
+        return confirmStoreSubscription(
+            ctx, request as $2.ConfirmStoreSubscriptionRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -39,7 +40,59 @@ type fakeAppStore struct {
 	t            *testing.T
 	signer       *appstoretest.Signer
 	transactions map[string]appstoretest.Transaction
-	calls        int
+	// subscriptions are the customer's subscriptions Get All Subscription
+	// Statuses answers, keyed by their original transaction ID. mu guards them
+	// and calls for a test that confirms from two goroutines, and
+	// answeringStatuses, when set, runs after the answer is read and before it
+	// is returned, which is how such a test holds a confirmation inside the
+	// store's call.
+	mu                sync.Mutex
+	subscriptions     map[string]fakeAppStoreSubscription
+	answeringStatuses func()
+	calls             int
+}
+
+// fakeAppStoreSubscription is one subscription as the App Store holds it now:
+// its status, its latest transaction, and its renewal info.
+type fakeAppStoreSubscription struct {
+	status  int
+	latest  appstoretest.Transaction
+	renewal appstoretest.RenewalInfo
+}
+
+// GetAllSubscriptionStatuses answers the subscription a transaction belongs
+// to, which the fake finds by its original transaction ID or by its latest
+// transaction's.
+func (f *fakeAppStore) GetAllSubscriptionStatuses(_ context.Context, credentials appstore.Credentials, environment, transactionID string) ([]appstore.SubscriptionStatus, error) {
+	if credentials.BundleIdentifier != storeTestBundleIdentifier || credentials.PrivateKey == "" {
+		f.t.Errorf("GetAllSubscriptionStatuses called with credentials for %q", credentials.BundleIdentifier)
+	}
+	statuses, hook := f.subscriptionStatuses(environment, transactionID)
+	if hook != nil {
+		hook()
+	}
+	if statuses == nil {
+		return nil, appstore.ErrTransactionNotFound
+	}
+	return statuses, nil
+}
+
+func (f *fakeAppStore) subscriptionStatuses(environment, transactionID string) ([]appstore.SubscriptionStatus, func()) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	for originalID, subscription := range f.subscriptions {
+		if subscription.latest.Environment != environment || (originalID != transactionID && subscription.latest.TransactionID != transactionID) {
+			continue
+		}
+		return []appstore.SubscriptionStatus{{
+			OriginalTransactionID: originalID,
+			Status:                subscription.status,
+			SignedTransactionInfo: f.signer.Sign(f.t, subscription.latest),
+			SignedRenewalInfo:     f.signer.Sign(f.t, subscription.renewal),
+		}}, f.answeringStatuses
+	}
+	return nil, f.answeringStatuses
 }
 
 func (f *fakeAppStore) GetTransactionInfo(_ context.Context, credentials appstore.Credentials, environment, transactionID string) (string, error) {
@@ -66,6 +119,11 @@ type storePurchaseEnv struct {
 	client   publirav1connect.PurchaseServiceClient
 	tenants  publirav1connect.TenantServiceClient
 	coins    publirav1connect.CoinServiceClient
+	// subscriptions and catalog are the services a store subscription is
+	// bought through and read through.
+	subscriptions publirav1connect.SubscriptionServiceClient
+	catalog       publirav1connect.CatalogServiceClient
+	auth          publirav1connect.AuthServiceClient
 }
 
 // newStorePurchaseEnv seeds a tenant whose app sells through both stores and
@@ -117,7 +175,7 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 	reader := pg.SeedEndUser(t, tenant.ID, "STOREREADER1", "reader@example.com", "Reader")
 
 	signer := appstoretest.NewSigner(t)
-	fake := &fakeAppStore{t: t, signer: signer, transactions: map[string]appstoretest.Transaction{}}
+	fake := &fakeAppStore{t: t, signer: signer, transactions: map[string]appstoretest.Transaction{}, subscriptions: map[string]fakeAppStoreSubscription{}}
 	play := googleplaytest.NewServer(t)
 
 	db := pg.OpenPublicDB(t)
@@ -138,6 +196,10 @@ func newStorePurchaseEnvWithGuards(t *testing.T, guards readerGuards) *storePurc
 		client:   publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 		tenants:  publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 		coins:    publirav1connect.NewCoinServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+
+		subscriptions: publirav1connect.NewSubscriptionServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		catalog:       publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
+		auth:          publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 	}
 }
 

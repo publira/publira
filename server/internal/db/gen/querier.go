@@ -142,6 +142,7 @@ type Querier interface {
 	// Takes back what a grant has left and records it closed.
 	CloseCoinGrant(ctx context.Context, arg CloseCoinGrantParams) error
 	ConsumeStorePurchaseIntent(ctx context.Context, arg ConsumeStorePurchaseIntentParams) error
+	ConsumeStoreSubscriptionIntent(ctx context.Context, arg ConsumeStoreSubscriptionIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
 	CountCampaignBannersForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
@@ -197,8 +198,9 @@ type Querier interface {
 	CountSeriesForSubscriptionPlan(ctx context.Context, arg CountSeriesForSubscriptionPlanParams) (int32, error)
 	CountSeriesTranslations(ctx context.Context, arg CountSeriesTranslationsParams) (int32, error)
 	CountSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
-	// Every subscription the plan bills or billed, whatever its state, and every
-	// reader whose latest checkout was of it.
+	// Every subscription the plan bills or billed, whatever its state, every
+	// reader whose latest checkout was of it, and every intent a reader opened to
+	// subscribe to it through a store.
 	CountSubscriptionsAndCheckoutsForPlan(ctx context.Context, arg CountSubscriptionsAndCheckoutsForPlanParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
@@ -958,8 +960,10 @@ type Querier interface {
 	// position they cannot act on.
 	GetMySeriesReadingProgress(ctx context.Context, arg GetMySeriesReadingProgressParams) (GetMySeriesReadingProgressRow, error)
 	// The reader's latest subscription that is not over, or failing that the
-	// latest one that is.
+	// latest one that is, whoever bills it.
 	GetMySubscription(ctx context.Context, arg GetMySubscriptionParams) (GetMySubscriptionRow, error)
+	// One subscription of the reader's, shaped as GetMySubscription answers it.
+	GetMySubscriptionByID(ctx context.Context, arg GetMySubscriptionByIDParams) (GetMySubscriptionByIDRow, error)
 	// The first published episode after one episode in its own series whose body
 	// is public at the moment of the read: priced at 0, or inside an open free
 	// window, which is what published_free_episodes answers. It is where a reader
@@ -1205,8 +1209,15 @@ type Querier interface {
 	// are elapsed time, 24 hours a day, from the moment the account was created.
 	GetSignUpFunnel(ctx context.Context, arg GetSignUpFunnelParams) (GetSignUpFunnelRow, error)
 	GetStorePurchaseByTransaction(ctx context.Context, arg GetStorePurchaseByTransactionParams) (Purchase, error)
+	// The subscription a store's own ID is recorded as, whose it is, and the plan
+	// it is recorded on.
+	GetStoreSubscription(ctx context.Context, arg GetStoreSubscriptionParams) (GetStoreSubscriptionRow, error)
 	GetSubscriptionCheckoutForUser(ctx context.Context, arg GetSubscriptionCheckoutForUserParams) (GetSubscriptionCheckoutForUserRow, error)
 	GetSubscriptionPlanByIDForTenant(ctx context.Context, arg GetSubscriptionPlanByIDForTenantParams) (GetSubscriptionPlanByIDForTenantRow, error)
+	// The plan a store product is sold as, published or not: a subscription the
+	// store has charged for is recorded on its plan even after staff unpublished
+	// it, as a Stripe one goes on after its plan is unpublished.
+	GetSubscriptionPlanForStoreProductForTenant(ctx context.Context, arg GetSubscriptionPlanForStoreProductForTenantParams) (uuid.UUID, error)
 	// The plan a subscription is recorded on. Its anchor is the plan and Price it
 	// is already recorded on, or, for one not recorded yet, the plan its checkout
 	// named and the Price that checkout was started at. While it is billed at the
@@ -3157,6 +3168,15 @@ type Querier interface {
 	// cannot both consume it.
 	LockStorePurchaseIntent(ctx context.Context, arg LockStorePurchaseIntentParams) (StorePurchaseIntent, error)
 	// Serializes, for the rest of the caller's transaction, everything that writes
+	// about one store subscription, so a read of it from the store and the write of
+	// what was read are never split by another confirmation that read it later and
+	// wrote first.
+	LockStoreSubscription(ctx context.Context, arg LockStoreSubscriptionParams) error
+	// Takes the intent a verified subscription names, holding it until the
+	// subscription is written, so two confirmations of different subscriptions
+	// cannot both consume it.
+	LockStoreSubscriptionIntent(ctx context.Context, arg LockStoreSubscriptionIntentParams) (StoreSubscriptionIntent, error)
+	// Serializes, for the rest of the caller's transaction, everything that writes
 	// about one store transaction: its confirmation and its refund. Without it a
 	// refund could find no purchase and be held just after the confirmation that
 	// records the purchase looked for a held refund, and the purchase would keep
@@ -3444,6 +3464,10 @@ type Querier interface {
 	// no row. The no-op update is what makes the existing row come back, with the
 	// terms it was first opened on.
 	OpenStorePurchaseIntent(ctx context.Context, arg OpenStorePurchaseIntentParams) (StorePurchaseIntent, error)
+	// Opens the reader's intent to subscribe to a plan as a store product, or
+	// answers the one already open for the same plan and product, so asking again
+	// adds no row. The no-op update is what makes the existing row come back.
+	OpenStoreSubscriptionIntent(ctx context.Context, arg OpenStoreSubscriptionIntentParams) (StoreSubscriptionIntent, error)
 	// Run in the transaction that publishes the episode, by the scheduled
 	// publication job and by the console alike: an episode published while its
 	// series is not public owes its followers the announcement the fan-out cannot
@@ -3658,6 +3682,11 @@ type Querier interface {
 	// repeated notification or poll leaves the instants already stored.
 	// Nothing matches when the transaction has no purchase here yet.
 	RecordStoreRefundOnPurchase(ctx context.Context, arg RecordStoreRefundOnPurchaseParams) (Purchase, error)
+	// Writes a store subscription as the store reports it now. A subscription
+	// already here takes the new state and keeps the reader it was recorded for,
+	// as RecordSubscriptionFromStripe does; a reader whose account no longer
+	// exists is recorded as NULL.
+	RecordStoreSubscription(ctx context.Context, arg RecordStoreSubscriptionParams) (RecordStoreSubscriptionRow, error)
 	// Makes checkout the reader's latest, in place of the one before.
 	RecordSubscriptionCheckout(ctx context.Context, arg RecordSubscriptionCheckoutParams) error
 	// Writes a subscription as Stripe reports it now. A subscription already here
@@ -4208,9 +4237,9 @@ type Querier interface {
 	// Whether the body is free to everyone — price = 0, or an open free window —
 	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)
-	// Whether the reader holds a subscription Stripe will go on billing, which a
-	// second checkout would run beside. A reader whose first payment failed starts
-	// again.
+	// Whether the reader holds a subscription Stripe or a store will go on
+	// billing, which a second one would run beside. A reader whose first payment
+	// failed starts again.
 	UserHoldsLiveSubscription(ctx context.Context, arg UserHoldsLiveSubscriptionParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns

@@ -9,6 +9,7 @@ INSERT INTO subscriptions (
         tenant_id,
         user_id,
         plan_id,
+        provider,
         stripe_customer_id,
         stripe_subscription_id,
         stripe_price_id,
@@ -26,9 +27,10 @@ VALUES (
                 AND u.id = sqlc.arg('user_id')
         ),
         sqlc.arg('plan_id'),
-        sqlc.arg('stripe_customer_id'),
-        sqlc.arg('stripe_subscription_id'),
-        sqlc.arg('stripe_price_id'),
+        'stripe',
+        sqlc.arg('stripe_customer_id')::text,
+        sqlc.arg('stripe_subscription_id')::text,
+        sqlc.arg('stripe_price_id')::text,
         sqlc.arg('status'),
         sqlc.narg('current_period_end'),
         sqlc.arg('cancel_at_period_end')
@@ -48,9 +50,10 @@ RETURNING id,
 
 -- name: GetMySubscription :one
 -- The reader's latest subscription that is not over, or failing that the
--- latest one that is.
+-- latest one that is, whoever bills it.
 SELECT s.id,
     s.plan_id,
+    s.provider,
     s.status,
     s.current_period_end,
     s.cancel_at_period_end,
@@ -63,10 +66,24 @@ ORDER BY (s.status IN ('canceled', 'incomplete_expired')) ASC,
     s.id DESC
 LIMIT 1;
 
+-- name: GetMySubscriptionByID :one
+-- One subscription of the reader's, shaped as GetMySubscription answers it.
+SELECT s.id,
+    s.plan_id,
+    s.provider,
+    s.status,
+    s.current_period_end,
+    s.cancel_at_period_end,
+    s.created_at
+FROM subscriptions s
+WHERE s.tenant_id = sqlc.arg('tenant_id')
+    AND s.user_id = sqlc.arg('user_id')::uuid
+    AND s.id = sqlc.arg('id');
+
 -- name: UserHoldsLiveSubscription :one
--- Whether the reader holds a subscription Stripe will go on billing, which a
--- second checkout would run beside. A reader whose first payment failed starts
--- again.
+-- Whether the reader holds a subscription Stripe or a store will go on
+-- billing, which a second one would run beside. A reader whose first payment
+-- failed starts again.
 SELECT EXISTS (
         SELECT 1
         FROM billed_subscriptions
@@ -79,7 +96,7 @@ SELECT EXISTS (
 -- and the billing portal name, so the reader's invoices stay on one customer.
 -- A subscription billed by another provider names no Stripe customer, so it is
 -- passed over rather than answered as the latest.
-SELECT stripe_customer_id
+SELECT stripe_customer_id::text
 FROM subscriptions
 WHERE tenant_id = $1
     AND user_id = $2
@@ -154,8 +171,8 @@ SET plan_id = EXCLUDED.plan_id,
 SELECT EXISTS (
         SELECT 1
         FROM subscriptions
-        WHERE tenant_id = $1
-            AND stripe_subscription_id = $2
+        WHERE tenant_id = sqlc.arg('tenant_id')
+            AND stripe_subscription_id = sqlc.arg('stripe_subscription_id')::text
             AND status IN ('canceled', 'incomplete_expired')
     ) AS ended;
 
@@ -163,7 +180,7 @@ SELECT EXISTS (
 -- The subscriptions of the reader Stripe will go on billing, which closing the
 -- account cancels. A subscription billed by another provider is not Stripe's
 -- to cancel and names no Stripe subscription.
-SELECT stripe_subscription_id
+SELECT stripe_subscription_id::text
 FROM billed_subscriptions
 WHERE tenant_id = $1
     AND user_id = $2

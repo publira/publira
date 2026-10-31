@@ -29,6 +29,15 @@ const (
 	Consumed     = "consumed"
 )
 
+// Responses of purchases.subscriptionsv2.get, shaped as the API reference
+// documents them.
+const (
+	SubscriptionActive       = "subscription_active"
+	SubscriptionTestPurchase = "subscription_test_purchase"
+	SubscriptionPending      = "subscription_pending"
+	SubscriptionCanceled     = "subscription_canceled"
+)
+
 // Server is a Google Play Developer API holding the purchases a test put.
 type Server struct {
 	*httptest.Server
@@ -36,7 +45,11 @@ type Server struct {
 	mu        sync.Mutex
 	purchases map[string]map[string]any
 	consumes  map[string]int
-	voided    map[string][]map[string]any
+	// subscriptions and acknowledgements are keyed by package and token, which
+	// is all subscriptionsv2 looks a subscription up by.
+	subscriptions   map[string]map[string]any
+	acknowledgments map[string]int
+	voided          map[string][]map[string]any
 	// VoidedRequests records the query of every Voided Purchases request.
 	VoidedRequests []url.Values
 }
@@ -45,7 +58,13 @@ type Server struct {
 // product purchase endpoints. It is closed when t ends.
 func NewServer(t testing.TB) *Server {
 	t.Helper()
-	s := &Server{purchases: map[string]map[string]any{}, consumes: map[string]int{}, voided: map[string][]map[string]any{}}
+	s := &Server{
+		purchases:       map[string]map[string]any{},
+		consumes:        map[string]int{},
+		subscriptions:   map[string]map[string]any{},
+		acknowledgments: map[string]int{},
+		voided:          map[string][]map[string]any{},
+	}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)
 	return s
@@ -65,6 +84,30 @@ func (s *Server) Put(t testing.TB, packageName, productID, token, fixture, accou
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.purchases[key(packageName, productID, token)] = purchase
+}
+
+// PutSubscription stores the response named fixture as the subscription token
+// was bought as in packageName: productID, paid for until expiry, carrying
+// accountID as the account the app set.
+func (s *Server) PutSubscription(t testing.TB, packageName, token, fixture, productID, accountID string, expiry time.Time) {
+	t.Helper()
+	subscription := load(t, fixture)
+	subscription["externalAccountIdentifiers"] = map[string]any{"obfuscatedExternalAccountId": accountID}
+	items := subscription["lineItems"].([]any)
+	item := items[0].(map[string]any)
+	item["productId"] = productID
+	item["expiryTime"] = expiry.UTC().Format(time.RFC3339Nano)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subscriptions[packageName+"/"+token] = subscription
+}
+
+// Acknowledgments counts the acknowledge requests the subscription token
+// received.
+func (s *Server) Acknowledgments(packageName, token string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.acknowledgments[packageName+"/"+token]
 }
 
 // Void records that Google Play voided the purchase token in packageName at
@@ -118,8 +161,21 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		s.serveVoided(w, r, packageName)
 		return
 	}
-	// /androidpublisher/v3/applications/{package}/purchases/products/{product}/tokens/{token}[:consume]
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/androidpublisher/v3/applications/"), "/")
+	// /androidpublisher/v3/applications/{package}/purchases/subscriptionsv2/tokens/{token}
+	if len(parts) == 5 && parts[1] == "purchases" && parts[2] == "subscriptionsv2" && parts[3] == "tokens" {
+		s.serveSubscription(w, parts[0], parts[4], "", false)
+		return
+	}
+	// /androidpublisher/v3/applications/{package}/purchases/subscriptions/{product}/tokens/{token}:acknowledge
+	if len(parts) == 6 && parts[1] == "purchases" && parts[2] == "subscriptions" && parts[4] == "tokens" && r.Method == http.MethodPost {
+		token, acknowledge := strings.CutSuffix(parts[5], ":acknowledge")
+		if acknowledge {
+			s.serveSubscription(w, parts[0], token, parts[3], true)
+			return
+		}
+	}
+	// /androidpublisher/v3/applications/{package}/purchases/products/{product}/tokens/{token}[:consume]
 	if len(parts) != 6 || parts[1] != "purchases" || parts[2] != "products" || parts[4] != "tokens" {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -143,6 +199,31 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(purchase)
+}
+
+// serveSubscription answers the subscription a token names, or acknowledges
+// it as productID, which has to be the product it subscribes to.
+func (s *Server) serveSubscription(w http.ResponseWriter, packageName, token, productID string, acknowledge bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	k := packageName + "/" + token
+	subscription, ok := s.subscriptions[k]
+	if ok && acknowledge {
+		item := subscription["lineItems"].([]any)[0].(map[string]any)
+		ok = item["productId"] == productID
+	}
+	if !ok {
+		body, _ := recorded.ReadFile("testdata/not_found.json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write(body)
+		return
+	}
+	if acknowledge {
+		s.acknowledgments[k]++
+		subscription["acknowledgementState"] = googleplay.AcknowledgementStateAcknowledged
+		return
+	}
+	_ = json.NewEncoder(w).Encode(subscription)
 }
 
 // serveVoided answers one voided purchase per page, so a client that reads

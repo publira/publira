@@ -63,6 +63,20 @@ const SubscriptionPlan$json = {
       '6': '.publira.types.v1.Series',
       '10': 'series'
     },
+    {
+      '1': 'app_store_product_id',
+      '3': 14,
+      '4': 1,
+      '5': 9,
+      '10': 'appStoreProductId'
+    },
+    {
+      '1': 'google_play_product_id',
+      '3': 15,
+      '4': 1,
+      '5': 9,
+      '10': 'googlePlayProductId'
+    },
   ],
 };
 
@@ -77,7 +91,9 @@ final $typed_data.Uint8List subscriptionPlanDescriptor = $convert.base64Decode(
     'blBsYW5TY29wZVIFc2NvcGUSGwoJbGFiZWxfaWRzGAogAygJUghsYWJlbElkcxIdCgpzZXJpZX'
     'NfaWRzGAsgAygJUglzZXJpZXNJZHMSMgoGbGFiZWxzGAwgAygLMhoucHVibGlyYS52MS5QdWJs'
     'aXNoZWRMYWJlbFIGbGFiZWxzEjAKBnNlcmllcxgNIAMoCzIYLnB1YmxpcmEudHlwZXMudjEuU2'
-    'VyaWVzUgZzZXJpZXM=');
+    'VyaWVzUgZzZXJpZXMSLwoUYXBwX3N0b3JlX3Byb2R1Y3RfaWQYDiABKAlSEWFwcFN0b3JlUHJv'
+    'ZHVjdElkEjMKFmdvb2dsZV9wbGF5X3Byb2R1Y3RfaWQYDyABKAlSE2dvb2dsZVBsYXlQcm9kdW'
+    'N0SWQ=');
 
 @$core.Deprecated('Use subscriptionDescriptor instead')
 const Subscription$json = {
@@ -115,6 +131,14 @@ const Subscription$json = {
       '10': 'cancelAtPeriodEnd'
     },
     {'1': 'created_at', '3': 6, '4': 1, '5': 9, '10': 'createdAt'},
+    {
+      '1': 'store',
+      '3': 7,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.InAppPurchaseStore',
+      '10': 'store'
+    },
   ],
 };
 
@@ -124,7 +148,8 @@ final $typed_data.Uint8List subscriptionDescriptor = $convert.base64Decode(
     'YxLlN1YnNjcmlwdGlvblBsYW5SBHBsYW4SPAoGc3RhdHVzGAMgASgOMiQucHVibGlyYS50eXBl'
     'cy52MS5TdWJzY3JpcHRpb25TdGF0dXNSBnN0YXR1cxIsChJjdXJyZW50X3BlcmlvZF9lbmQYBC'
     'ABKAlSEGN1cnJlbnRQZXJpb2RFbmQSLwoUY2FuY2VsX2F0X3BlcmlvZF9lbmQYBSABKAhSEWNh'
-    'bmNlbEF0UGVyaW9kRW5kEh0KCmNyZWF0ZWRfYXQYBiABKAlSCWNyZWF0ZWRBdA==');
+    'bmNlbEF0UGVyaW9kRW5kEh0KCmNyZWF0ZWRfYXQYBiABKAlSCWNyZWF0ZWRBdBI0CgVzdG9yZR'
+    'gHIAEoDjIeLnB1YmxpcmEudjEuSW5BcHBQdXJjaGFzZVN0b3JlUgVzdG9yZQ==');
 
 @$core.Deprecated('Use listSubscriptionPlansRequestDescriptor instead')
 const ListSubscriptionPlansRequest$json = {
@@ -291,6 +316,106 @@ final $typed_data.Uint8List createBillingPortalSessionResponseDescriptor =
     $convert.base64Decode(
         'CiJDcmVhdGVCaWxsaW5nUG9ydGFsU2Vzc2lvblJlc3BvbnNlEhAKA3VybBgBIAEoCVIDdXJs');
 
+@$core.Deprecated('Use startStoreSubscriptionRequestDescriptor instead')
+const StartStoreSubscriptionRequest$json = {
+  '1': 'StartStoreSubscriptionRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {
+      '1': 'store',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.InAppPurchaseStore',
+      '10': 'store'
+    },
+    {'1': 'plan_id', '3': 3, '4': 1, '5': 9, '10': 'planId'},
+  ],
+};
+
+/// Descriptor for `StartStoreSubscriptionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startStoreSubscriptionRequestDescriptor = $convert.base64Decode(
+    'Ch1TdGFydFN0b3JlU3Vic2NyaXB0aW9uUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaX'
+    'JhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBI0CgVzdG9yZRgCIAEoDjIeLnB1Ymxp'
+    'cmEudjEuSW5BcHBQdXJjaGFzZVN0b3JlUgVzdG9yZRIXCgdwbGFuX2lkGAMgASgJUgZwbGFuSW'
+    'Q=');
+
+@$core.Deprecated('Use startStoreSubscriptionResponseDescriptor instead')
+const StartStoreSubscriptionResponse$json = {
+  '1': 'StartStoreSubscriptionResponse',
+  '2': [
+    {'1': 'intent_id', '3': 1, '4': 1, '5': 9, '10': 'intentId'},
+    {'1': 'product_id', '3': 2, '4': 1, '5': 9, '10': 'productId'},
+  ],
+};
+
+/// Descriptor for `StartStoreSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startStoreSubscriptionResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5TdGFydFN0b3JlU3Vic2NyaXB0aW9uUmVzcG9uc2USGwoJaW50ZW50X2lkGAEgASgJUghpbn'
+        'RlbnRJZBIdCgpwcm9kdWN0X2lkGAIgASgJUglwcm9kdWN0SWQ=');
+
+@$core.Deprecated('Use confirmStoreSubscriptionRequestDescriptor instead')
+const ConfirmStoreSubscriptionRequest$json = {
+  '1': 'ConfirmStoreSubscriptionRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {
+      '1': 'store',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.InAppPurchaseStore',
+      '10': 'store'
+    },
+    {'1': 'transaction', '3': 3, '4': 1, '5': 9, '10': 'transaction'},
+    {'1': 'product_id', '3': 4, '4': 1, '5': 9, '10': 'productId'},
+  ],
+};
+
+/// Descriptor for `ConfirmStoreSubscriptionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List confirmStoreSubscriptionRequestDescriptor =
+    $convert.base64Decode(
+        'Ch9Db25maXJtU3RvcmVTdWJzY3JpcHRpb25SZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ym'
+        'xpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EjQKBXN0b3JlGAIgASgOMh4ucHVi'
+        'bGlyYS52MS5JbkFwcFB1cmNoYXNlU3RvcmVSBXN0b3JlEiAKC3RyYW5zYWN0aW9uGAMgASgJUg'
+        't0cmFuc2FjdGlvbhIdCgpwcm9kdWN0X2lkGAQgASgJUglwcm9kdWN0SWQ=');
+
+@$core.Deprecated('Use confirmStoreSubscriptionResponseDescriptor instead')
+const ConfirmStoreSubscriptionResponse$json = {
+  '1': 'ConfirmStoreSubscriptionResponse',
+  '2': [
+    {
+      '1': 'subscription',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.Subscription',
+      '10': 'subscription'
+    },
+  ],
+};
+
+/// Descriptor for `ConfirmStoreSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List confirmStoreSubscriptionResponseDescriptor =
+    $convert.base64Decode(
+        'CiBDb25maXJtU3RvcmVTdWJzY3JpcHRpb25SZXNwb25zZRI8CgxzdWJzY3JpcHRpb24YASABKA'
+        'syGC5wdWJsaXJhLnYxLlN1YnNjcmlwdGlvblIMc3Vic2NyaXB0aW9u');
+
 const $core.Map<$core.String, $core.dynamic> SubscriptionServiceBase$json = {
   '1': 'SubscriptionService',
   '2': [
@@ -313,6 +438,16 @@ const $core.Map<$core.String, $core.dynamic> SubscriptionServiceBase$json = {
       '1': 'CreateBillingPortalSession',
       '2': '.publira.v1.CreateBillingPortalSessionRequest',
       '3': '.publira.v1.CreateBillingPortalSessionResponse'
+    },
+    {
+      '1': 'StartStoreSubscription',
+      '2': '.publira.v1.StartStoreSubscriptionRequest',
+      '3': '.publira.v1.StartStoreSubscriptionResponse'
+    },
+    {
+      '1': 'ConfirmStoreSubscription',
+      '2': '.publira.v1.ConfirmStoreSubscriptionRequest',
+      '3': '.publira.v1.ConfirmStoreSubscriptionResponse'
     },
   ],
 };
@@ -345,6 +480,14 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       CreateBillingPortalSessionRequest$json,
   '.publira.v1.CreateBillingPortalSessionResponse':
       CreateBillingPortalSessionResponse$json,
+  '.publira.v1.StartStoreSubscriptionRequest':
+      StartStoreSubscriptionRequest$json,
+  '.publira.v1.StartStoreSubscriptionResponse':
+      StartStoreSubscriptionResponse$json,
+  '.publira.v1.ConfirmStoreSubscriptionRequest':
+      ConfirmStoreSubscriptionRequest$json,
+  '.publira.v1.ConfirmStoreSubscriptionResponse':
+      ConfirmStoreSubscriptionResponse$json,
 };
 
 /// Descriptor for `SubscriptionService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -357,4 +500,8 @@ final $typed_data.Uint8List subscriptionServiceDescriptor = $convert.base64Decod
     'B1YmxpcmEudjEuR2V0TXlTdWJzY3JpcHRpb25SZXF1ZXN0GiUucHVibGlyYS52MS5HZXRNeVN1'
     'YnNjcmlwdGlvblJlc3BvbnNlEnsKGkNyZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uEi0ucHVibG'
     'lyYS52MS5DcmVhdGVCaWxsaW5nUG9ydGFsU2Vzc2lvblJlcXVlc3QaLi5wdWJsaXJhLnYxLkNy'
-    'ZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVzcG9uc2U=');
+    'ZWF0ZUJpbGxpbmdQb3J0YWxTZXNzaW9uUmVzcG9uc2USbwoWU3RhcnRTdG9yZVN1YnNjcmlwdG'
+    'lvbhIpLnB1YmxpcmEudjEuU3RhcnRTdG9yZVN1YnNjcmlwdGlvblJlcXVlc3QaKi5wdWJsaXJh'
+    'LnYxLlN0YXJ0U3RvcmVTdWJzY3JpcHRpb25SZXNwb25zZRJ1ChhDb25maXJtU3RvcmVTdWJzY3'
+    'JpcHRpb24SKy5wdWJsaXJhLnYxLkNvbmZpcm1TdG9yZVN1YnNjcmlwdGlvblJlcXVlc3QaLC5w'
+    'dWJsaXJhLnYxLkNvbmZpcm1TdG9yZVN1YnNjcmlwdGlvblJlc3BvbnNl');

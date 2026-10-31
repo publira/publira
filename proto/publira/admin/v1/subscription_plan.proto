@@ -8,7 +8,9 @@ import "publira/types/v1/types.proto";
 
 // A subscription plan is a recurring Price on the tenant's Stripe account and
 // what a reader who pays it may read. The storefront lists the published ones
-// through publira.v1.SubscriptionService.ListSubscriptionPlans.
+// through publira.v1.SubscriptionService.ListSubscriptionPlans. The tenant's
+// app may sell the same plan as an auto-renewable subscription of its own in
+// the App Store and in Google Play, which the store bills instead of Stripe.
 message AdminSubscriptionPlan {
   // The plan's primary key, which every RPC below addresses it by.
   string id = 1;
@@ -38,6 +40,11 @@ message AdminSubscriptionPlan {
   int32 subscriber_count = 14;
   string created_at = 15;
   string updated_at = 16;
+  // The subscription the plan is sold as in the tenant's iOS app, as App Store
+  // Connect names it, and in its Android app, as the Play Console names it.
+  // Empty where the app does not sell the plan.
+  string app_store_product_id = 17;
+  string google_play_product_id = 18;
 }
 
 message ListSubscriptionPlansRequest {
@@ -75,6 +82,19 @@ message GetSubscriptionPlanResponse {
 // labels nor series; a SUBSCRIPTION_PLAN_SCOPE_LABEL plan names one to 100
 // labels of the tenant and no series, and a SUBSCRIPTION_PLAN_SCOPE_SERIES
 // plan one to 100 series and no labels. Anything else is invalid_argument.
+//
+// `app_store_product_id` and `google_play_product_id` name the products the
+// plan is sold as in each app, and empty sells it in neither. An update that
+// leaves one unset keeps the product the plan is already sold as, so a console
+// built before these fields clears neither; a create that leaves one unset
+// sells the plan in no such app. Each is at most 100 characters: an App Store
+// product ID of letters, digits, underscores, and periods, and a Google Play
+// one of lowercase letters, digits, underscores, and periods, starting with a
+// letter or a digit. Anything else is invalid_argument on that field, and one
+// another plan of the tenant already names is already_exists on it. Neither is
+// checked with the store: the tenant creates the product there, at the price
+// and the billing period the store will bill, which this plan's Stripe Price
+// does not set.
 message SubscriptionPlanInput {
   string name = 1;
   string description = 2;
@@ -83,6 +103,8 @@ message SubscriptionPlanInput {
   repeated string label_ids = 5;
   repeated string series_ids = 6;
   bool published = 7;
+  optional string app_store_product_id = 8;
+  optional string google_play_product_id = 9;
 }
 
 // A tenant that already holds 20 plans is failed_precondition with the
@@ -96,10 +118,11 @@ message CreateSubscriptionPlanResponse {
   AdminSubscriptionPlan plan = 1;
 }
 
-// Replaces every field of the plan with `plan`. A subscription already started
-// keeps going whatever changes: a new Price does not move it, since Stripe
-// bills it at the Price it was started at, and a narrower scope applies to it
-// from then on.
+// Replaces every field of the plan with `plan`, but a store product ID the
+// request leaves unset, which keeps its value. A subscription already started
+// keeps going whatever changes: a new Price or a new store product does not
+// move it, since Stripe or the store bills it at what it was started at, and a
+// narrower scope applies to it from then on.
 message UpdateSubscriptionPlanRequest {
   publira.types.v1.TenantContext tenant = 1;
   string subscription_plan_id = 2;
@@ -113,8 +136,9 @@ message UpdateSubscriptionPlanResponse {
 // Removes a plan nobody has ever subscribed to. One a subscription names, in
 // whatever state, is failed_precondition with the ErrorInfo reason
 // SUBSCRIPTION_PLAN_IN_USE: the subscription is a record of what the reader
-// paid for. So is one a reader's latest checkout was of, which the reader may
-// still be paying. Unpublish such a plan instead.
+// paid for. So is one a reader's latest checkout was of, or one a reader asked
+// to subscribe to in the app, which the reader may still be paying. Unpublish
+// such a plan instead.
 message DeleteSubscriptionPlanRequest {
   publira.types.v1.TenantContext tenant = 1;
   string subscription_plan_id = 2;

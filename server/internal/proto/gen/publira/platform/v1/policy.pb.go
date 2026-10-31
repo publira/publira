@@ -264,8 +264,9 @@ type PlatformPolicy struct {
 	MailRequestsPerSource  *HourDayLimit           `protobuf:"bytes,4,opt,name=mail_requests_per_source,json=mailRequestsPerSource,proto3" json:"mail_requests_per_source,omitempty"`
 	CommunityLimitDefaults *CommunityLimitDefaults `protobuf:"bytes,5,opt,name=community_limit_defaults,json=communityLimitDefaults,proto3" json:"community_limit_defaults,omitempty"`
 	// How often one reader may hand a store transaction to
-	// ConfirmStorePurchase, each of which the server verifies with the App Store
-	// or Google Play on the tenant's credentials and quota.
+	// ConfirmStorePurchase or ConfirmStoreSubscription, each of which the server
+	// verifies with the App Store or Google Play on the tenant's credentials and
+	// quota. The two RPCs share the one allowance.
 	StorePurchaseConfirmation *MinuteDayLimit `protobuf:"bytes,6,opt,name=store_purchase_confirmation,json=storePurchaseConfirmation,proto3" json:"store_purchase_confirmation,omitempty"`
 	// Where the list of disposable email domains is read from: an absolute http
 	// or https URL of a list with one domain per line, blank lines and lines
@@ -338,7 +339,8 @@ type PlatformPolicy struct {
 	// when a request leaves it unset.
 	SeriesRemainderCheckout *MinuteDayLimit `protobuf:"bytes,16,opt,name=series_remainder_checkout,json=seriesRemainderCheckout,proto3" json:"series_remainder_checkout,omitempty"`
 	// How often one reader may ask SubscriptionService.StartSubscriptionCheckout
-	// to start a subscription checkout.
+	// to start a subscription checkout, or StartStoreSubscription to start one
+	// through the app's store, counted together.
 	//
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.

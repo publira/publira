@@ -137,12 +137,13 @@ var publicDataTables = []struct {
 	// The tenant's own settings, which every storefront page reads to decide
 	// how it looks and what it allows.
 	// The plans the storefront lists, and the subscriptions a reader's own
-	// reads and Stripe's webhook write.
+	// reads, Stripe's webhook, and the app's store confirmations write.
 	{name: "subscription_plans", count: "SELECT count(*) FROM subscription_plans"},
 	{name: "subscription_plan_targets", count: "SELECT count(*) FROM subscription_plan_targets"},
 	{name: "subscriptions", count: "SELECT count(*) FROM subscriptions"},
 	{name: "billed_subscriptions", count: "SELECT count(*) FROM billed_subscriptions"},
 	{name: "subscription_checkouts", count: "SELECT count(*) FROM subscription_checkouts"},
+	{name: "store_subscription_intents", count: "SELECT count(*) FROM store_subscription_intents"},
 	// The tenant's coins: whether they are on, what they are called, and the
 	// packs they are sold in.
 	{name: "tenant_coin_config", count: "SELECT count(*) FROM tenant_coin_config"},
@@ -473,6 +474,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	plan := env.PG.SeedSubscriptionPlan(t, first.ID, testutil.SubscriptionPlanSeed{Scope: "label", LabelIDs: []uuid.UUID{label.ID}, Published: true})
 	env.PG.SeedSubscription(t, first.ID, member.ID, plan.ID, testutil.SubscriptionSeed{})
 	seed("subscription checkout", "INSERT INTO subscription_checkouts (tenant_id, user_id, plan_id, stripe_checkout_session_id) VALUES ($1, $2, $3, 'cs_rls_open')", first.ID, member.ID, plan.ID)
+	seed("store subscription intent", "INSERT INTO store_subscription_intents (id, tenant_id, user_id, plan_id, product_id) VALUES ($1, $2, $3, $4, 'plan_monthly')", uuid.Must(uuid.NewV7()), first.ID, member.ID, plan.ID)
 	seed("coin settings", "INSERT INTO tenant_coin_config (tenant_id, selling) VALUES ($1, true)", first.ID)
 	seed("coin name", "INSERT INTO tenant_coin_name_translations (id, tenant_id, locale, name) VALUES ($1, $2, 'en', 'Points')", uuid.Must(uuid.NewV7()), first.ID)
 	seed("coin pack", "INSERT INTO tenant_coin_packs (id, tenant_id, public_id, coins, price, on_sale) VALUES ($1, $2, 'COINPACKA001', 100, 100, true)", uuid.Must(uuid.NewV7()), first.ID)
