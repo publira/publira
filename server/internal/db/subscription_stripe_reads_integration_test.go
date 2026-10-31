@@ -12,11 +12,10 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// A later release records a subscription a store bills with no Stripe
-// customer, subscription, or price. The reads of the reader's Stripe customer
-// and of the Stripe subscriptions an account deletion cancels pass such a row
-// over, so this release keeps answering them on the schema that release
-// leaves, during an upgrade or after a rollback.
+// A subscription a store bills names no Stripe customer, subscription, or
+// price. The reads of the reader's Stripe customer and of the Stripe
+// subscriptions an account deletion cancels pass such a row over, even when it
+// is the reader's latest.
 func TestStripeSubscriptionReadsPassOverAnotherProvidersSubscription(t *testing.T) {
 	t.Parallel()
 	pg := testutil.StartIsolatedPostgres(t)
@@ -33,16 +32,8 @@ func TestStripeSubscriptionReadsPassOverAnotherProvidersSubscription(t *testing.
 		StripeSubscriptionID: "sub_web",
 	})
 
-	mustExec(t, ctx, db, `
-		ALTER TABLE subscriptions
-			ALTER COLUMN stripe_customer_id DROP NOT NULL,
-			ALTER COLUMN stripe_subscription_id DROP NOT NULL,
-			ALTER COLUMN stripe_price_id DROP NOT NULL
-	`)
-	mustExec(t, ctx, db, `
-		INSERT INTO subscriptions (id, tenant_id, user_id, plan_id, status, current_period_end, created_at)
-		VALUES ($1, $2, $3, $4, 'active', now() + interval '1 month', now() + interval '1 minute')
-	`, uuid.Must(uuid.NewV7()), tenant.ID, reader.ID, plan.ID)
+	storeID := pg.SeedSubscription(t, tenant.ID, reader.ID, plan.ID, testutil.SubscriptionSeed{Provider: "app_store"})
+	mustExec(t, ctx, db, "UPDATE subscriptions SET created_at = now() + interval '1 minute' WHERE id = $1", storeID)
 
 	queries := dbmodels.New(db)
 	user := uuid.NullUUID{UUID: reader.ID, Valid: true}
