@@ -67,6 +67,7 @@ export const createPublicApiClient = (
   const tenantHeaderInterceptor = createTenantHeaderInterceptor({
     tenantId,
   });
+
   const interceptors = [
     createTracingInterceptor(transport),
     ...(tenantHeaderInterceptor ? [tenantHeaderInterceptor] : []),

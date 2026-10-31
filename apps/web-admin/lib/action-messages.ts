@@ -18,6 +18,7 @@ import type { AdminMessageAccessor } from "./messages";
  */
 export const getActionLocale = (formData: FormData): Promise<Locale> => {
   const tenantId = formData.get("tenant_id");
+
   if (typeof tenantId !== "string") {
     throw new TypeError("tenant_id is missing from the submitted form");
   }

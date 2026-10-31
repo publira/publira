@@ -59,13 +59,16 @@ export const updateRoyaltyCloseSettingsAction = async (
 ): Promise<RoyaltyCloseSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     royaltyCloseSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, royaltyCloseSettingsFormFields)
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -75,9 +78,11 @@ export const updateRoyaltyCloseSettingsAction = async (
   }
 
   const { autoCloseDay, closeMode, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateRoyaltyClosePolicy({ autoCloseDay, closeMode, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

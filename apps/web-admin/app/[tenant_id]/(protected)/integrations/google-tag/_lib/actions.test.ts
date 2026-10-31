@@ -32,6 +32,7 @@ vi.mock("#lib/tenant-analytics-settings", () => ({
 
 const googleTagFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries({
     consent_mode: "not_required",
     serving_mode: "google",
@@ -40,12 +41,15 @@ const googleTagFormData = (values: Record<string, string>): FormData => {
   })) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
 const VALIDATION = "Please check the information you entered.";
+
 const MEASUREMENT_ID_INVALID =
   "Enter the measurement ID as G- followed by letters and digits, such as G-ABC123DEF4.";
+
 const URL_INVALID =
   "Enter an https address on a domain name, with no path, such as https://sgtm.example.com.";
 
@@ -67,6 +71,7 @@ describe("updateGoogleTagAction", () => {
 
   it("saves the IDs trimmed and capitalized, then clears the cache tag", async () => {
     const { updateGoogleTagAction } = await import("./actions");
+
     const result = await updateGoogleTagAction(
       null,
       googleTagFormData({
@@ -147,6 +152,7 @@ describe("updateGoogleTagAction", () => {
 
   it("asks for a new gateway path and says one was generated", async () => {
     const { updateGoogleTagAction } = await import("./actions");
+
     const result = await updateGoogleTagAction(
       null,
       googleTagFormData({
@@ -225,6 +231,7 @@ describe("updateGoogleTagAction", () => {
     "refuses %o next to its field without saving",
     async (values, fieldErrors) => {
       const { updateGoogleTagAction } = await import("./actions");
+
       const result = await updateGoogleTagAction(
         null,
         googleTagFormData(values)
@@ -244,6 +251,7 @@ describe("updateGoogleTagAction", () => {
     });
 
     const { updateGoogleTagAction } = await import("./actions");
+
     const result = await updateGoogleTagAction(
       null,
       googleTagFormData({

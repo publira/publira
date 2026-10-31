@@ -69,12 +69,15 @@ const createFormData = (
   formData.append("label_ids", LABEL_ID);
   formData.append("series_ids", SERIES_ID);
   formData.set("published", "on");
+
   for (const [name, value] of Object.entries(fields)) {
     formData.delete(name);
+
     for (const entry of value === null ? [] : [value].flat()) {
       formData.append(name, entry);
     }
   }
+
   return formData;
 };
 
@@ -87,6 +90,7 @@ const deleteFormData = () => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("subscription_plan_id", PLAN_ID);
+
   return formData;
 };
 

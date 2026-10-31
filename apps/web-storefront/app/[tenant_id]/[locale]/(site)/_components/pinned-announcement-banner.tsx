@@ -44,6 +44,7 @@ export const PinnedAnnouncementBanner = async () => {
     tenantDefaultLocale(),
     readDismissedAnnouncementId(),
   ]);
+
   const announcement = await getPinnedAnnouncement(tenantId, locale);
 
   if (!announcement || announcement.id === dismissedId) {

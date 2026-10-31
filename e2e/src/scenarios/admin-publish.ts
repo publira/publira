@@ -38,6 +38,7 @@ export const toSeedTenantDateTimeLocal = (
   instant: Temporal.Instant
 ): string => {
   const zoned = instant.toZonedDateTimeISO(SEED_TENANT_TIME_ZONE);
+
   return `${zoned.year}-${padTwo(zoned.month)}-${padTwo(zoned.day)}T${padTwo(zoned.hour)}:${padTwo(zoned.minute)}`;
 };
 

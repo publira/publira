@@ -47,6 +47,7 @@ describe("RadioGroup", () => {
     const radio = screen.getByRole("radio", {
       name: /Publish after approval/u,
     });
+
     const describedBy = radio.getAttribute("aria-describedby") ?? "";
 
     expect(

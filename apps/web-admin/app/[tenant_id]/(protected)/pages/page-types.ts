@@ -31,7 +31,9 @@ export const normalizePageSlugInput = (value: string): string => {
   while (normalized.includes("//")) {
     normalized = normalized.replaceAll("//", "/");
   }
+
   normalized = normalized.replaceAll(/^\/|\/$/gu, "");
+
   if (!normalized) {
     return "";
   }
@@ -41,6 +43,7 @@ export const normalizePageSlugInput = (value: string): string => {
 
 export const formatPagePath = (slug: string): string => {
   const normalized = normalizePageSlugInput(slug);
+
   return normalized || "/";
 };
 
@@ -63,4 +66,5 @@ export type PageFormState = {
 } | null;
 
 export type PageListItem = PageItem;
+
 export type PageVersionListItem = PageVersionItem;

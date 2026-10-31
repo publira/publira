@@ -228,7 +228,9 @@ const formOf = async (buttonName: string) => {
     { name: buttonName },
     onScreen
   );
+
   const form = button.closest("form");
+
   if (!form) {
     throw new Error(`${buttonName} is not inside a form`);
   }
@@ -593,6 +595,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       ok: true,
     });
     const phonePasskey = { ...laptopPasskey, id: "PASSKEY00002", name: "" };
+
     const twoPasskeys: AdminMfaStatus = {
       ...passkeyOnly,
       passkeys: [laptopPasskey, phonePasskey],
@@ -621,11 +624,13 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
 
     const rows = await screen.findAllByRole("listitem", {}, onScreen);
+
     const phoneRow = within(
       rows.find((row) =>
         row.textContent?.includes("Unnamed passkey")
       ) as HTMLElement
     );
+
     fireEvent.click(phoneRow.getByRole("button", { name: "Remove" }));
     fireEvent.click(
       await within(await screen.findByRole("alertdialog")).findByRole(
@@ -654,6 +659,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
   it("asks before removing a passkey and shows a refusal next to it", async () => {
     const refusal =
       "This is the last second factor on your account, and this tenant requires two-step verification for administrators. Add another passkey or set up an authenticator app before removing it.";
+
     deletePasskey.mockResolvedValue({ message: refusal, ok: false });
 
     renderCard(passkeyOnly);

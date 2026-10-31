@@ -16,8 +16,10 @@ export const checkLegalPageAgreementAction = async (
   locale: Locale
 ): Promise<string[] | null> => {
   const accessToken = await resolveAccessToken();
+
   if (!accessToken) {
     return null;
   }
+
   return readLegalPageAgreementExemptPaths(tenantId, locale, accessToken);
 };

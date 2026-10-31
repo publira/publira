@@ -5,5 +5,6 @@ export const episodeLoginHref = (
   episodePublicId: string
 ): string => {
   const returnTo = episodePath(seriesPublicId, episodePublicId);
+
   return `/login?returnTo=${encodeURIComponent(returnTo)}`;
 };

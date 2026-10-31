@@ -243,6 +243,7 @@ describe("signed-in role checks", () => {
     ["tenant_auditor", false, false],
   ])("answers a %s as admin %s and editor %s", async (role, admin, editor) => {
     signedInAs(role);
+
     const { isSignedInTenantAdmin, isSignedInTenantEditor } =
       await importAuthSession();
 
@@ -256,6 +257,7 @@ describe("signed-in role checks", () => {
       ok: false,
       requiresSignIn: false,
     });
+
     const { isSignedInTenantAdmin, isSignedInTenantEditor } =
       await importAuthSession();
 

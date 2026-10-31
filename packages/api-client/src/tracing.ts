@@ -53,19 +53,23 @@ export const rpcSpanName = (
   methodName: string
 ): string => {
   const unqualified = serviceName.split(".").pop() || serviceName;
+
   return `${unqualified}/${methodName}`;
 };
 
 const serverAttributes = (url: string): Attributes => {
   let parsed: URL;
+
   try {
     parsed = new URL(url);
   } catch {
     return {};
   }
+
   if (!parsed.port) {
     return { [ATTR_SERVER_ADDRESS]: parsed.hostname };
   }
+
   return {
     [ATTR_SERVER_ADDRESS]: parsed.hostname,
     [ATTR_SERVER_PORT]: Number(parsed.port),
@@ -98,6 +102,7 @@ export const createTracingInterceptor =
         },
         kind: SpanKind.CLIENT,
       });
+
     const spanContext = trace.setSpan(context.active(), span);
     propagation.inject(spanContext, req.header, headerSetter);
 
@@ -105,9 +110,11 @@ export const createTracingInterceptor =
       return await context.with(spanContext, () => next(req));
     } catch (error) {
       const connectError = ConnectError.from(error);
+
       if (transport === "grpc") {
         span.setAttribute(ATTR_RPC_GRPC_STATUS_CODE, connectError.code);
       }
+
       span.recordException(connectError);
       span.setStatus({
         code: SpanStatusCode.ERROR,

@@ -18,5 +18,6 @@ export const episodesSelectedInReadingOrder = <T extends { id: string }>(
   selectedIds: readonly string[]
 ): T[] => {
   const selected = new Set(selectedIds);
+
   return episodes.filter((episode) => selected.has(episode.id));
 };

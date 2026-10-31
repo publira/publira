@@ -45,6 +45,7 @@ describe("TranslationTabs", () => {
     await renderTabs();
 
     const languages = screen.getByRole("navigation", { name: "Languages" });
+
     const links = [...languages.querySelectorAll("a")].map((link) =>
       link.getAttribute("href")
     );
@@ -62,6 +63,7 @@ describe("TranslationTabs", () => {
     await renderTabs(["en", "ko"]);
 
     const languages = screen.getByRole("navigation", { name: "Languages" });
+
     const links = [...languages.querySelectorAll("a")].map((link) =>
       link.getAttribute("href")
     );

@@ -44,6 +44,7 @@ describe("MemberInviteForm", () => {
   // made while it is in flight would sit under the success message unsaved.
   it("closes the address while the invitation is in flight", async () => {
     render(<MemberInviteForm tenantId="TENANT001" />);
+
     const field = screen.getByRole("textbox", {
       name: /Email address to invite/u,
     });

@@ -53,6 +53,7 @@ describe("sortRows", () => {
     { net: -2, title: "Episode 2" },
     { net: 5, title: "episode 1" },
   ];
+
   const value = (row: (typeof rows)[number], column: Column) => row[column];
 
   it("orders figures as numbers, keeping the API's order on a tie", () => {

@@ -44,6 +44,7 @@ const CreatorRoleManagerSkeleton = () => (
 
 const CreatorRoleManagerData = async () => {
   const tenantId = await getTenantId();
+
   const [listResult, canEdit] = await Promise.all([
     listCreatorRoles(),
     isSignedInTenantEditor(tenantId),

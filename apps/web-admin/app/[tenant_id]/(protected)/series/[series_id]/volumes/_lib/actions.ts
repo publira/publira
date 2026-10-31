@@ -49,6 +49,7 @@ const seriesFieldsSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const seriesFormFields = {
   seriesId: { kind: "value", name: "series_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -65,6 +66,7 @@ const volumeFieldsSchema = async (locale: Locale) => {
     id: requiredRecordId(t("admin.series.volumes.validation.id_missing")),
   });
 };
+
 const volumeFormFields = {
   ...seriesFormFields,
   id: { kind: "value", name: "volume_id" },
@@ -84,6 +86,7 @@ const detailsFieldsSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const detailsFormFields = {
   price: "value",
   priceCurrency: { kind: "value", name: "price_currency" },
@@ -107,16 +110,20 @@ const parseVolumePrice = async (
     input.tenantId,
     locale
   );
+
   if (!parsed.ok) {
     return parsed;
   }
+
   if (parsed.value <= 0) {
     const t = await getMessagesFor(locale);
+
     return {
       message: t("admin.series.volumes.validation.price_invalid"),
       ok: false,
     };
   }
+
   return parsed;
 };
 
@@ -130,11 +137,13 @@ export const createVolumeAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base, details] = await Promise.all([
     getMessagesFor(locale),
     seriesFieldsSchema(locale),
     detailsFieldsSchema(locale),
   ]);
+
   const parsed = base
     .extend({
       ...details.shape,
@@ -149,12 +158,14 @@ export const createVolumeAction = async (
         seriesPublicId: { kind: "value", name: "series_public_id" },
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { seriesId, seriesPublicId, tenantId, title } = parsed.data;
   const price = await parseVolumePrice(parsed.data, locale);
+
   if (!price.ok) {
     return { message: price.message, ok: false };
   }
@@ -171,6 +182,7 @@ export const createVolumeAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -188,23 +200,27 @@ export const updateVolumeAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base, details] = await Promise.all([
     getMessagesFor(locale),
     volumeFieldsSchema(locale),
     detailsFieldsSchema(locale),
   ]);
+
   const parsed = base.extend(details.shape).safeParse(
     toFormDataInput(formData, {
       ...volumeFormFields,
       ...detailsFormFields,
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { id, seriesId, tenantId, title } = parsed.data;
   const price = await parseVolumePrice(parsed.data, locale);
+
   if (!price.ok) {
     return { message: price.message, ok: false };
   }
@@ -215,6 +231,7 @@ export const updateVolumeAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -231,24 +248,29 @@ export const publishVolumeAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
     volumeFieldsSchema(locale),
   ]);
+
   const parsed = base.extend({ published: flagOneFormSchema }).safeParse(
     toFormDataInput(formData, {
       ...volumeFormFields,
       published: "value",
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { id, published, seriesId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     publishVolume({ id, published, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -275,10 +297,12 @@ export const setVolumeEpisodesAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
     volumeFieldsSchema(locale),
   ]);
+
   const parsed = base
     .extend({ episodeIds: jsonRecordIdArrayFormSchema })
     .safeParse(
@@ -287,6 +311,7 @@ export const setVolumeEpisodesAction = async (
         episodeIds: { kind: "value", name: "episode_ids" },
       })
     );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -298,6 +323,7 @@ export const setVolumeEpisodesAction = async (
   }
 
   const { episodeIds, id, seriesId, tenantId } = parsed.data;
+
   if (new Set(episodeIds).size !== episodeIds.length) {
     return { message: t("admin.series.volumes.episodes.invalid"), ok: false };
   }
@@ -305,6 +331,7 @@ export const setVolumeEpisodesAction = async (
   const result = await withAdminSessionReauth(() =>
     setVolumeEpisodes({ episodeIds, id, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -319,10 +346,12 @@ export const reorderVolumesAction = async (
 ): Promise<VolumeReorderResult> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
     seriesFieldsSchema(locale),
   ]);
+
   const parsed = base
     .extend({
       expectedIds: jsonRecordIdArrayFormSchema,
@@ -335,6 +364,7 @@ export const reorderVolumesAction = async (
         ids: { kind: "value", name: "volume_ids" },
       })
     );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -346,6 +376,7 @@ export const reorderVolumesAction = async (
   }
 
   const { expectedIds, ids } = parsed.data;
+
   if (ids.length === 0 || ids.length !== expectedIds.length) {
     return { message: t("admin.series.volumes.reorder_failed"), ok: false };
   }
@@ -353,6 +384,7 @@ export const reorderVolumesAction = async (
   const result = await withAdminSessionReauth(() =>
     reorderVolumes(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -376,12 +408,14 @@ const unconfirmedCoverMessage = (
   if (volume.coverImageVariants.length === 0) {
     return t("admin.series.volumes.cover.variants_missing");
   }
+
   if (
     previousCoverImageUpdatedAt.length > 0 &&
     volume.coverImageUpdatedAt === previousCoverImageUpdatedAt
   ) {
     return t("admin.series.volumes.cover.upload_not_reflected");
   }
+
   return undefined;
 };
 
@@ -395,10 +429,12 @@ export const updateVolumeCoverAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
     volumeFieldsSchema(locale),
   ]);
+
   const parsed = base
     .extend({
       clearCoverImage: flagOneFormSchema,
@@ -416,6 +452,7 @@ export const updateVolumeCoverAction = async (
         },
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -433,6 +470,7 @@ export const updateVolumeCoverAction = async (
     const result = await withAdminSessionReauth(() =>
       deleteVolumeCoverImage({ id, tenantId }, locale)
     );
+
     if (!result.ok) {
       return { message: result.message, ok: false };
     }
@@ -450,6 +488,7 @@ export const updateVolumeCoverAction = async (
   }
 
   const imageData = new Uint8Array(await coverImage.arrayBuffer());
+
   const result = await withAdminSessionReauth(() =>
     uploadVolumeCoverImage(
       {
@@ -461,6 +500,7 @@ export const updateVolumeCoverAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -472,6 +512,7 @@ export const updateVolumeCoverAction = async (
     result.volume,
     currentCoverImageUpdatedAt
   );
+
   if (unconfirmed) {
     return { message: unconfirmed, ok: false };
   }

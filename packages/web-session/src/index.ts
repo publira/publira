@@ -17,11 +17,13 @@ const AES_GCM_KEY_BYTES = 32;
 
 const toAesGcmKeyBytes = (secret: string): Uint8Array => {
   const raw = textEncoder.encode(secret);
+
   if (raw.length < AES_GCM_KEY_BYTES) {
     throw new Error(
       `PUBLIRA_AUTH_SECRET must be at least ${AES_GCM_KEY_BYTES} bytes`
     );
   }
+
   return raw.slice(0, AES_GCM_KEY_BYTES);
 };
 
@@ -39,6 +41,7 @@ export const encryptPayload = (
   secret: string
 ): Promise<string> => {
   const key = toAesGcmKeyBytes(secret);
+
   return new CompactEncrypt(textEncoder.encode(JSON.stringify(payload)))
     .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
     .encrypt(key);
@@ -58,8 +61,10 @@ export const decryptPayload = async (
   // Outside the try: an unusable key is a misconfigured deployment, and
   // reporting it as "no session" would send every visitor to the login screen.
   const key = toAesGcmKeyBytes(secret);
+
   try {
     const { plaintext } = await compactDecrypt(token, key);
+
     return JSON.parse(textDecoder.decode(plaintext)) as unknown;
   } catch {
     return null;
@@ -79,9 +84,11 @@ export const decryptSessionPayload = async (
     token,
     secret
   )) as WebSessionPayload | null;
+
   if (!parsed?.accessToken || !parsed.expiresAt) {
     return null;
   }
+
   return parsed;
 };
 
@@ -90,9 +97,11 @@ export const isSessionExpired = (
   now = Date.now()
 ): boolean => {
   const exp = Date.parse(expiresAt);
+
   if (Number.isNaN(exp)) {
     return true;
   }
+
   return exp <= now;
 };
 
@@ -108,11 +117,13 @@ export const isSessionExpired = (
  */
 export const resolveAuthSecret = (): string => {
   const secret = process.env.PUBLIRA_AUTH_SECRET?.trim() ?? "";
+
   if (textEncoder.encode(secret).length < AES_GCM_KEY_BYTES) {
     throw new Error(
       `PUBLIRA_AUTH_SECRET is required and must be at least ${AES_GCM_KEY_BYTES} bytes`
     );
   }
+
   return secret;
 };
 

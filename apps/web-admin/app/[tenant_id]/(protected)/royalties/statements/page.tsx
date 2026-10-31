@@ -35,10 +35,12 @@ type RoyaltyStatementsPageProps =
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -57,6 +59,7 @@ const StatementListContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
+
   const [result, timeZone] = await Promise.all([
     listRoyaltyStatements(tenantId, locale, {
       limit: DEFAULT_PAGE_SIZE,

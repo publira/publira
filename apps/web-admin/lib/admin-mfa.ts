@@ -132,9 +132,11 @@ const toMfaSession = (
 ): AdminMfaSession | null => {
   const accessToken = token?.trim() ?? "";
   const expiresAt = parseInstant(expiresAtRaw ?? "");
+
   if (!(accessToken && expiresAt)) {
     return null;
   }
+
   return { accessToken, expiresAt };
 };
 
@@ -150,12 +152,15 @@ const mfaCodeRejectionMessage = async (
   locale: Locale
 ): Promise<string | null> => {
   const t = await getMessagesFor(locale);
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
     return t("admin.auth.mfa.errors.locked");
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaInvalidCode)) {
     return t("admin.auth.mfa.errors.invalid_code");
   }
+
   return null;
 };
 
@@ -197,6 +202,7 @@ const sessionMfaFailureMessage = async (
   requires: MfaRequirement
 ): Promise<string> => {
   const rejected = await mfaCodeRejectionMessage(error, locale);
+
   if (rejected) {
     return rejected;
   }
@@ -226,11 +232,13 @@ const challengeMfaFailure = async (
   requires: MfaRequirement
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const rejected = await mfaCodeRejectionMessage(error, locale);
+
   if (rejected) {
     return { challengeExpired: false, message: rejected };
   }
 
   const t = await getMessagesFor(locale);
+
   if (isUnauthenticatedRpcError(error)) {
     return {
       challengeExpired: true,
@@ -265,12 +273,14 @@ const challengePasskeyFailure = async (
   ceremony: "registration" | "verification"
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const t = await getMessagesFor(locale);
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
     return {
       challengeExpired: false,
       message: t("admin.auth.mfa.errors.locked"),
     };
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return {
       challengeExpired: false,
@@ -280,6 +290,7 @@ const challengePasskeyFailure = async (
           : t("admin.auth.mfa.errors.passkey_registration_refused"),
     };
   }
+
   if (isUnauthenticatedRpcError(error)) {
     return { challengeExpired: true, message: t("admin.auth.mfa.expired") };
   }
@@ -320,6 +331,7 @@ const sessionPasskeyFailureMessage = async (
   overrides: RpcErrorMessageOverrides
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return t("admin.auth.mfa.errors.passkey_registration_refused");
   }
@@ -344,9 +356,11 @@ const sessionPasskeyConfirmationFailureMessage = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
     return t("admin.auth.mfa.errors.locked");
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
     return t("admin.auth.mfa.errors.passkey_refused");
   }
@@ -380,6 +394,7 @@ const getAdminMfaStatusForSession = async (
 
   if (!token) {
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: true };
   }
 
@@ -412,13 +427,16 @@ const getAdminMfaStatusForSession = async (
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       dropFailedCacheEntry();
+
       return { ok: false, requiresSignIn: true };
     }
+
     // Any other failure is the error screen, thrown by the caller. Only the
     // verdict crosses the cache boundary, so the cause is logged here, where
     // the error is still whole.
     console.warn("[web-admin] getAdminMfaStatus failed", error);
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
@@ -436,9 +454,11 @@ export const getAdminMfaStatus = async (
     tenantId,
     await getAccessToken()
   );
+
   if (unexpected) {
     throw new Error("The second factor's status could not be read.");
   }
+
   return result;
 };
 
@@ -460,6 +480,7 @@ export const verifyAdminMfa = async (
       response.accessToken?.token,
       response.accessToken?.expiresAt
     );
+
     if (!session) {
       return {
         challengeExpired: false,
@@ -510,6 +531,7 @@ export const startAdminMfaEnrollment = async (
 
     const secret = response.secret.trim();
     const otpauthUri = response.otpauthUri.trim();
+
     if (!(secret && otpauthUri)) {
       return {
         challengeExpired: false,
@@ -590,6 +612,7 @@ export const disableAdminMfa = async (
       { code, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true };
   } catch (error) {
     return {
@@ -616,6 +639,7 @@ export const regenerateAdminMfaRecoveryCodes = async (
       { ...proof, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true, recoveryCodes: response.recoveryCodes };
   } catch (error) {
     return {
@@ -643,6 +667,7 @@ export const beginAdminPasskeyConfirmation = async (
       { tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true, optionsJson: response.requestOptionsJson };
   } catch (error) {
     return {
@@ -663,6 +688,7 @@ export const beginAdminPasskeyVerification = async (
       { challengeToken, tenant: { tenantId } },
       await withClientAddressHeaders()
     );
+
     return { ok: true, optionsJson: response.requestOptionsJson };
   } catch (error) {
     return {
@@ -691,6 +717,7 @@ export const finishAdminPasskeyVerification = async (
       response.accessToken?.token,
       response.accessToken?.expiresAt
     );
+
     if (!session) {
       return {
         challengeExpired: false,
@@ -754,6 +781,7 @@ export const beginAdminPasskeyRegistration = async (
           { challengeToken: "", tenant: { tenantId } },
           withSessionHeaders(sessionToken)
         );
+
     return { ok: true, optionsJson: response.creationOptionsJson };
   } catch (error) {
     return {
@@ -829,6 +857,7 @@ export const renameAdminPasskey = async (
       { id, name, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true };
   } catch (error) {
     return {
@@ -866,6 +895,7 @@ export const deleteAdminPasskey = async (
       { id, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
+
     return { ok: true };
   } catch (error) {
     return {

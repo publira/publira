@@ -115,6 +115,7 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
     async () => {
       await page.goto(episodeUrl);
       await openComments(page);
+
       return await read();
     },
     {
@@ -133,6 +134,7 @@ const pollEpisodePage = <T>(page: Page, read: () => Promise<T>) =>
  */
 const commentsSectionCountAfterStream = async (page: Page): Promise<number> => {
   await page.goto(episodeUrl);
+
   return (await turnTowardComments(page)) ? 1 : 0;
 };
 
@@ -194,6 +196,7 @@ test.describe("web-admin comment moderation", () => {
     const body = uniqueCommentBody(
       "A comment the moderators will let through."
     );
+
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,
@@ -209,6 +212,7 @@ test.describe("web-admin comment moderation", () => {
 
     const consoleContext = await browser.newContext();
     const consolePage = await consoleContext.newPage();
+
     try {
       await signInAsAdmin(
         consolePage,
@@ -245,6 +249,7 @@ test.describe("web-admin comment moderation", () => {
     // storefront's cached list for the episode as it lands.
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
+
     try {
       await pollEpisodePage(readerPage, () =>
         readerPage.getByText(body).count()
@@ -261,6 +266,7 @@ test.describe("web-admin comment moderation", () => {
     const body = uniqueCommentBody(
       "A comment the moderators will take down and put back."
     );
+
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,
@@ -273,6 +279,7 @@ test.describe("web-admin comment moderation", () => {
     const consolePage = await consoleContext.newPage();
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
+
     try {
       await signInAsAdmin(
         consolePage,
@@ -347,6 +354,7 @@ test.describe("web-admin comment moderation", () => {
 
     const consoleContext = await browser.newContext();
     const consolePage = await consoleContext.newPage();
+
     try {
       await signInAsAdmin(
         consolePage,
@@ -362,6 +370,7 @@ test.describe("web-admin comment moderation", () => {
         consolePage,
         "Purge this comment for good?"
       );
+
       await expect(purgeDialog).toBeVisible();
       await expect(
         purgeDialog.getByText(/this cannot be undone/u)
@@ -390,6 +399,7 @@ test.describe("web-admin comment moderation", () => {
     const body = uniqueCommentBody(
       "A comment another reader will report to the moderators."
     );
+
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,
@@ -402,6 +412,7 @@ test.describe("web-admin comment moderation", () => {
     const consolePage = await consoleContext.newPage();
     const reporterContext = await browser.newContext();
     const reporterPage = await reporterContext.newPage();
+
     try {
       await signInAsAdmin(
         consolePage,
@@ -475,6 +486,7 @@ test.describe("web-admin comment moderation", () => {
     const body = uniqueCommentBody(
       "A comment the moderators will read beside its author's account."
     );
+
     await signInAsMember(
       page,
       COMMENT_MODERATION_MEMBER,
@@ -485,6 +497,7 @@ test.describe("web-admin comment moderation", () => {
 
     const consoleContext = await browser.newContext();
     const consolePage = await consoleContext.newPage();
+
     try {
       await signInAsAdmin(
         consolePage,
@@ -541,6 +554,7 @@ test.describe("web-admin comment moderation", () => {
 
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
+
     try {
       await readerPage.goto(episodeUrl);
       await openComments(readerPage);

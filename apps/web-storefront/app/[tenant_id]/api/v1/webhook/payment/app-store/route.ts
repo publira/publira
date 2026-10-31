@@ -10,5 +10,6 @@ export const POST = async (
   { params }: RouteContext<"/[tenant_id]/api/v1/webhook/payment/app-store">
 ) => {
   const { tenant_id } = await params;
+
   return forwardAppStoreNotification(request, { tenantId: tenant_id });
 };

@@ -9,6 +9,7 @@ export const POST = async (
   { params }: RouteContext<"/[tenant_id]/api/v1/webhook/email/mailgun/json">
 ) => {
   const { tenant_id } = await params;
+
   return forwardInboundEmailWebhook(request, {
     provider: "mailgun",
     tenantId: tenant_id,

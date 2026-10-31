@@ -27,6 +27,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateReaderIconPolicyAction: (_state: unknown, formData: FormData) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -167,6 +168,7 @@ describe("ReaderIconPolicyForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(
@@ -187,6 +189,7 @@ describe("ReaderIconPolicyForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(/Saving now would overwrite the stored policy/u)

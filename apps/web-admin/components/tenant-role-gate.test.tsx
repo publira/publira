@@ -53,6 +53,7 @@ const signedInAs = (role: string) => {
 
 const EDITOR_ONLY_NOTICE =
   "Only an editor or a tenant admin can change this. You have read-only access.";
+
 const ADMIN_ONLY_NOTICE =
   "Only a tenant administrator can change this setting. You have read-only access.";
 

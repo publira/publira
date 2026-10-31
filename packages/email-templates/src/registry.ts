@@ -200,6 +200,7 @@ const defineTemplate =
   <TData>(definition: TemplateDefinition<TData>): TemplateResolver =>
   (context) => {
     const parsed = definition.schema.safeParse(context.data);
+
     if (!parsed.success) {
       return {
         message: firstIssueMessage(parsed.error),
@@ -444,6 +445,7 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
   }
 
   const locale = parseLocale(input.locale);
+
   if (locale === undefined) {
     return {
       message: `unsupported locale: ${input.locale}`,
@@ -453,12 +455,14 @@ export const resolveEmail = (input: ResolveEmailInput): ResolveEmailResult => {
   }
 
   const { messages, template, timeZone } = input;
+
   const resolved = TEMPLATES[template]({
     data: input.data,
     locale,
     messages,
     timeZone,
   });
+
   if (!resolved.ok) {
     return resolved;
   }

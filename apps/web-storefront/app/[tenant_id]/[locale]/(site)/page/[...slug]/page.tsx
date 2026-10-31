@@ -44,10 +44,13 @@ export const generateMetadata = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(publishedPageParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { slug } = parsedParams;
 
   const [result, t, siteLabel] = await Promise.all([
@@ -108,10 +111,13 @@ const PublishedPageBody = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(publishedPageParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { slug } = parsedParams;
 
   // Missing / unpublished / other-tenant pages all resolve to `null`. A genuine

@@ -64,6 +64,7 @@ const refineLimitPairs =
     } of pairs) {
       const perDay = value[day];
       const perShort = value[short];
+
       if ((perDay === undefined) !== (perShort === undefined)) {
         ctx.addIssue({
           code: "custom",
@@ -156,30 +157,39 @@ export const communityLimitsFormSchema = async (
 ): Promise<z.ZodType<CommunityLimitsFormValues, unknown>> => {
   const t = await getMessagesFor(locale);
   const commentPost = t("admin.settings.policy.community.comment_post_legend");
+
   const commentReport = t(
     "admin.settings.policy.community.comment_report_legend"
   );
+
   const episodeRating = t(
     "admin.settings.policy.community.episode_rating_legend"
   );
+
   const perAccount = t(
     "admin.settings.policy.community.contact_per_account_legend"
   );
+
   const perClient = t(
     "admin.settings.policy.community.contact_per_client_legend"
   );
+
   const viewerPreferences = t(
     "admin.settings.policy.community.viewer_preferences_legend"
   );
+
   const notificationSettings = t(
     "admin.settings.policy.community.notification_settings_legend"
   );
+
   const dayBelowMinute = (setting: string) =>
     t("admin.settings.policy.community.validation.day_below_minute", {
       setting,
     });
+
   const dayBelowHour = (setting: string) =>
     t("admin.settings.policy.community.validation.day_below_hour", { setting });
+
   const incomplete = (setting: string) =>
     t("admin.settings.policy.community.validation.incomplete", { setting });
 
@@ -313,6 +323,7 @@ export const retentionSettingsFormSchema = async (
   locale: Locale
 ): Promise<z.ZodType<RetentionSettingsFormValues, unknown>> => {
   const t = await getMessagesFor(locale);
+
   const days = (setting: string) =>
     optionalBoundedIntFormSchema(
       t("admin.settings.policy.retention.validation.days_invalid", { setting }),

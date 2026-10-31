@@ -32,6 +32,7 @@ const dropBrowserPushSubscription = async (
 
   try {
     const subscription = await readPushSubscription();
+
     if (!subscription) {
       return;
     }

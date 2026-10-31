@@ -46,17 +46,20 @@ const mailpitRequest = async (
   init?: RequestInit
 ): Promise<Response> => {
   const response = await fetch(`${MAILPIT_BASE_URL}${path}`, init);
+
   if (!response.ok) {
     throw new Error(
       `mailpit ${init?.method ?? "GET"} ${path} failed with ${response.status}`
     );
   }
+
   return response;
 };
 
 const mailpitJson = async <T>(path: string): Promise<T> => {
   const response = await mailpitRequest(path);
   const body = await response.json();
+
   return body as T;
 };
 
@@ -70,13 +73,16 @@ const mailpitJson = async <T>(path: string): Promise<T> => {
  */
 const summariesTo = async (recipient: string): Promise<MailpitSummary[]> => {
   const wanted = recipient.trim().toLowerCase();
+
   const query = new URLSearchParams({
     limit: String(MESSAGE_PAGE_LIMIT),
     query: `to:"${wanted}"`,
   });
+
   const { messages } = await mailpitJson<{ messages: MailpitSummary[] }>(
     `/api/v1/search?${query.toString()}`
   );
+
   return messages.filter((message) =>
     (message.To ?? []).some(
       (address) => address.Address.toLowerCase() === wanted
@@ -92,9 +98,11 @@ const summariesTo = async (recipient: string): Promise<MailpitSummary[]> => {
  */
 export const clearMessagesTo = async (recipient: string): Promise<void> => {
   const summaries = await summariesTo(recipient);
+
   if (summaries.length === 0) {
     return;
   }
+
   await mailpitRequest("/api/v1/messages", {
     body: JSON.stringify({ IDs: summaries.map((summary) => summary.ID) }),
     headers: { "content-type": "application/json" },
@@ -111,6 +119,7 @@ export const clearMessagesTo = async (recipient: string): Promise<void> => {
  */
 export const countMessagesTo = async (recipient: string): Promise<number> => {
   const summaries = await summariesTo(recipient);
+
   return summaries.length;
 };
 
@@ -125,6 +134,7 @@ export const waitForMessageTo = async (
     .poll(
       async () => {
         const summaries = await summariesTo(recipient);
+
         return summaries.length;
       },
       { message: `no message arrived for ${recipient}`, timeout: timeoutMs }
@@ -132,14 +142,17 @@ export const waitForMessageTo = async (
     .toBeGreaterThan(0);
 
   const [newest] = await summariesTo(recipient);
+
   if (!newest) {
     throw new Error(
       `the message for ${recipient} was deleted while it was read`
     );
   }
+
   const message = await mailpitJson<MailpitMessage>(
     `/api/v1/message/${newest.ID}`
   );
+
   return { id: message.ID, subject: message.Subject, text: message.Text };
 };
 
@@ -157,6 +170,7 @@ export const linkFrom = (message: Message, pathname: string): string => {
       return link;
     }
   }
+
   throw new Error(`no ${pathname} link in "${message.subject}"`);
 };
 
@@ -170,13 +184,17 @@ export const linkFrom = (message: Message, pathname: string): string => {
 export const tokenFromLink = (message: Message, pathname: string): string => {
   for (const [link] of message.text.matchAll(LINK_PATTERN)) {
     const url = new URL(link);
+
     if (url.pathname !== pathname) {
       continue;
     }
+
     const token = url.searchParams.get("token");
+
     if (token) {
       return token;
     }
   }
+
   throw new Error(`no ${pathname} link with a token in "${message.subject}"`);
 };

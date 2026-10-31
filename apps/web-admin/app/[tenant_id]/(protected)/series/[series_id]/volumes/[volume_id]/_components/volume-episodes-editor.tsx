@@ -123,9 +123,12 @@ export const VolumeEpisodesEditor = ({
     () => new Map(episodes.map((episode) => [episode.id, episode])),
     [episodes]
   );
+
   const locked = useMemo(() => new Set(lockedEpisodeIds), [lockedEpisodeIds]);
+
   const candidateItems = useMemo<Combobox.Item[]>(() => {
     const unavailable = new Set([...takenEpisodeIds, ...episodeIds]);
+
     return episodes.flatMap((episode) =>
       unavailable.has(episode.id)
         ? []
@@ -143,6 +146,7 @@ export const VolumeEpisodesEditor = ({
     if (!pickedEpisodeId) {
       return;
     }
+
     setEpisodeIds((current) =>
       current.includes(pickedEpisodeId)
         ? current

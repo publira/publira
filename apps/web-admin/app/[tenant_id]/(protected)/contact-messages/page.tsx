@@ -33,10 +33,12 @@ type ContactMessagesPageProps = PageProps<"/[tenant_id]/contact-messages">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {

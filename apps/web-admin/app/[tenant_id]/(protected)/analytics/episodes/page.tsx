@@ -125,6 +125,7 @@ const EpisodesContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
+
   const [result, t] = await Promise.all([
     listEpisodeReadThrough(tenantId, locale, {
       limit: DEFAULT_PAGE_SIZE,
@@ -152,6 +153,7 @@ const EpisodesContent = async ({
 
   const pageHrefs = cursorPageHrefs(result);
   const hasPageLinks = hasCursorPageLinks(pageHrefs);
+
   const totalRate = readThroughRate(
     result.totalCompleteCount,
     result.totalMemberViewCount

@@ -315,6 +315,7 @@ describe("updateSubscriptionPlan", () => {
     });
 
     const { updateSubscriptionPlan } = await import("./subscription-plan");
+
     const result = await updateSubscriptionPlan(
       {
         ...saveInput,
@@ -353,6 +354,7 @@ describe("deleteSubscriptionPlan", () => {
     mockDeleteSubscriptionPlan.mockResolvedValueOnce({});
 
     const { deleteSubscriptionPlan } = await import("./subscription-plan");
+
     const result = await deleteSubscriptionPlan(
       { id: rawPlan.id, tenantId: "TENANT001" },
       "en"
@@ -371,6 +373,7 @@ describe("deleteSubscriptionPlan", () => {
     );
 
     const { deleteSubscriptionPlan } = await import("./subscription-plan");
+
     const result = await deleteSubscriptionPlan(
       { id: rawPlan.id, tenantId: "TENANT001" },
       "en"

@@ -20,6 +20,7 @@ import { WEB_ADMIN_CRAWLER_SETTINGS_BASE_URL } from "../src/urls";
 
 const SAVE = "Save the crawler exclusions";
 const SAVED = "The crawler exclusions were saved.";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
 

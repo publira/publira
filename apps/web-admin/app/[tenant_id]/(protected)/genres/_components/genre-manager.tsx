@@ -38,6 +38,7 @@ const GenreListBody = async ({
   tenantId: string;
 }) => {
   const t = await getMessagesFor(locale);
+
   // A failed read still hands an empty array; the empty state next to the
   // error would read as "this tenant has no genres".
   if (listErrorMessage) {

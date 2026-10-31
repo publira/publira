@@ -193,8 +193,10 @@ const getTenantStorePaymentSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -210,12 +212,14 @@ const getTenantStorePaymentSettingsForSession = async (
         { tenant: { tenantId: normalizedTenantId } },
         withSessionHeaders(sessionId)
       );
+
     return {
       ok: true,
       settings: toTenantStorePaymentSettings(response.settings),
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -247,26 +251,31 @@ const refusedFieldErrors = (
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): StorePaymentSettingsFieldErrors | undefined => {
   const fieldErrors: StorePaymentSettingsFieldErrors = {};
+
   if (rpcErrorHasFieldViolation(error, "app_store.issuer_id")) {
     fieldErrors.issuerId = t(
       "admin.settings.store_payment.validation.issuer_id_invalid"
     );
   }
+
   if (rpcErrorHasFieldViolation(error, "app_store.key_id")) {
     fieldErrors.keyId = t(
       "admin.settings.store_payment.validation.key_id_invalid"
     );
   }
+
   if (rpcErrorHasFieldViolation(error, "app_store.private_key")) {
     fieldErrors.privateKey = t(
       "admin.settings.store_payment.validation.private_key_invalid"
     );
   }
+
   if (rpcErrorHasFieldViolation(error, "google_play.service_account_key")) {
     fieldErrors.serviceAccountKey = t(
       "admin.settings.store_payment.validation.service_account_key_invalid"
     );
   }
+
   return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
 };
 
@@ -278,7 +287,9 @@ export const updateTenantStorePaymentSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -305,6 +316,7 @@ export const updateTenantStorePaymentSettings = async (
         },
         withSessionHeaders(sessionId)
       );
+
     return {
       ok: true,
       settings: toTenantStorePaymentSettings(response.settings),
@@ -313,9 +325,11 @@ export const updateTenantStorePaymentSettings = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const fieldErrors = refusedFieldErrors(error, t);
+
     if (fieldErrors) {
       return { fieldErrors, message: t("errors.validation"), ok: false };
     }
+
     // The one precondition this RPC has: the store route with no ready store.
     if (rpcErrorDisposition(error) === "precondition") {
       return {
@@ -328,6 +342,7 @@ export const updateTenantStorePaymentSettings = async (
         ok: false,
       };
     }
+
     return {
       message: rpcErrorMessage(
         error,
@@ -351,7 +366,9 @@ export const listTenantStoreProducts = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -365,9 +382,11 @@ export const listTenantStoreProducts = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, products: response.products.map(toTenantStoreProduct) };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

@@ -63,6 +63,7 @@ describe("audit lib", () => {
     });
 
     const { listAuditLogs } = await import("./audit");
+
     const result = await listAuditLogs("TENANT001", "en", {
       action: " series_created ",
       actorUserPublicId: " USER001 ",

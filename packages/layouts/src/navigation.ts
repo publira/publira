@@ -6,12 +6,15 @@ export const isCurrentPath = (
   if (href === "/") {
     return pathname === href;
   }
+
   if (pathname === href) {
     return true;
   }
+
   if (!pathname.startsWith(`${href}/`)) {
     return false;
   }
+
   // The prefix matches, but a more specific nav item may match too; that one
   // owns the active state, so this item stays inactive.
   if (allHrefs) {
@@ -22,6 +25,7 @@ export const isCurrentPath = (
         (pathname === other || pathname.startsWith(`${other}/`))
     );
   }
+
   return true;
 };
 
@@ -45,6 +49,7 @@ const TENANT_ID_PATTERN =
 export const toConsolePathname = (pathname: string): string => {
   const segments = pathname.split("/").filter((segment) => segment.length > 0);
   const [first] = segments;
+
   const rest =
     first !== undefined && TENANT_ID_PATTERN.test(first.toLowerCase())
       ? segments.slice(1)

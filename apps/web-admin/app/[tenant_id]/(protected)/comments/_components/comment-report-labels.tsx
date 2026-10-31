@@ -25,9 +25,11 @@ export const CommentReportStatusMessage = ({
     case "open": {
       return <Message message="admin.comments.reports.status_open" />;
     }
+
     case "resolved": {
       return <Message message="admin.comments.reports.status_resolved" />;
     }
+
     default: {
       return <Message message="admin.comments.reports.status_rejected" />;
     }
@@ -41,9 +43,11 @@ export const commentReportStatusTone = (
     case "open": {
       return "warning";
     }
+
     case "resolved": {
       return "info";
     }
+
     default: {
       return "muted";
     }
@@ -65,12 +69,15 @@ export const CommentReportReasonMessage = ({
     case "spam": {
       return <Message message="admin.comments.reports.reason_spam" />;
     }
+
     case "abuse": {
       return <Message message="admin.comments.reports.reason_abuse" />;
     }
+
     case "spoiler": {
       return <Message message="admin.comments.reports.reason_spoiler" />;
     }
+
     default: {
       return <Message message="admin.comments.reports.reason_other" />;
     }

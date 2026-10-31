@@ -28,6 +28,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateTenantEmailRejectionAction: (_state: unknown, formData: FormData) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -43,8 +44,10 @@ vi.mock("#components/message", () => ({
 }));
 
 const SUBMIT = "Save the refused email addresses";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
+
 const NO_LIST_NOTE =
   "The platform has no disposable domain list configured, so this switch has no effect until one is.";
 
@@ -327,8 +330,10 @@ describe("TenantEmailRejectionForm", () => {
     await waitFor(() => {
       expect(save.formData).toBeDefined();
     });
+
     const refusal =
       "Check the list. Each entry must be one email address or domain, and at most 1000 can be listed.";
+
     save.current.resolve({
       fieldErrors: { entries: refusal },
       message: refusal,

@@ -75,6 +75,7 @@ const EditCampaignBannerTitle = async ({
   searchParams,
 }: Pick<EditCampaignBannerPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.campaign_banners.image_title" />
   ) : (
@@ -86,6 +87,7 @@ const EditCampaignBannerDescription = async ({
   searchParams,
 }: Pick<EditCampaignBannerPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.campaign_banners.image_description" />
   ) : (
@@ -101,10 +103,12 @@ const EditCampaignBannerTabNav = async ({
     params,
     resolveActiveTab(searchParams),
   ]);
+
   const parsedParams = parseRouteParams(
     editCampaignBannerParamsSchema,
     rawParams
   );
+
   if (!parsedParams) {
     notFound();
   }
@@ -126,15 +130,18 @@ const EditCampaignBannerFormData = async ({
     resolveActiveTab(searchParams),
     getTenantId(),
   ]);
+
   const parsedParams = parseRouteParams(
     editCampaignBannerParamsSchema,
     rawParams
   );
+
   if (!parsedParams) {
     notFound();
   }
 
   const locale = await getLocale(tenantId);
+
   const [result, timeZone] = await Promise.all([
     getCampaignBanner(
       { publicId: parsedParams.campaign_banner_id, tenantId },
@@ -149,6 +156,7 @@ const EditCampaignBannerFormData = async ({
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
+
     await redirectToLoginIfSessionRejected(result);
 
     return (

@@ -18,11 +18,13 @@ const IssueTicketDialogContext =
 
 const useIssueTicketDialog = () => {
   const context = use(IssueTicketDialogContext);
+
   if (!context) {
     throw new Error(
       "IssueTicketDialog parts must be rendered inside IssueTicketDialog."
     );
   }
+
   return context;
 };
 
@@ -34,6 +36,7 @@ const useIssueTicketDialog = () => {
 const IssueTicketDialog = ({ children }: { children: ReactNode }) => {
   const [open, setOpen] = useState(false);
   const [sessionKey, setSessionKey] = useState(0);
+
   const value = useMemo<IssueTicketDialogContextValue>(
     () => ({
       close: () => {
@@ -49,6 +52,7 @@ const IssueTicketDialog = ({ children }: { children: ReactNode }) => {
       <Dialog.Root
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen);
+
           if (nextOpen) {
             // A note typed the last time does not carry into the next ticket.
             setSessionKey((current) => current + 1);

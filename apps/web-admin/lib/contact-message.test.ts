@@ -82,6 +82,7 @@ describe("contact message lib", () => {
     });
 
     const { listContactMessages } = await import("./contact-message");
+
     const result = await listContactMessages("TENANT001", "en", {
       limit: 20,
       status: " unhandled ",
@@ -169,6 +170,7 @@ describe("contact message lib", () => {
     });
 
     const { listContactMessages } = await import("./contact-message");
+
     const {
       messages: [message],
     } = await listContactMessages("TENANT001", "en");
@@ -203,6 +205,7 @@ describe("contact message lib", () => {
       });
 
       const { listContactMessages } = await import("./contact-message");
+
       const {
         messages: [message],
       } = await listContactMessages("TENANT001", "en");
@@ -384,6 +387,7 @@ describe("contact message lib", () => {
     mockMarkContactMessageHandled.mockResolvedValue({});
 
     const { markContactMessageHandled } = await import("./contact-message");
+
     const result = await markContactMessageHandled(
       {
         contactMessageId: "018f0f80-0003-7000-8000-000000000001",
@@ -410,6 +414,7 @@ describe("contact message lib", () => {
     );
 
     const { markContactMessageHandled } = await import("./contact-message");
+
     const result = await markContactMessageHandled(
       {
         contactMessageId: "018f0f80-0003-7000-8000-000000000001",
@@ -445,6 +450,7 @@ describe("contact message lib", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { markContactMessageHandled } = await import("./contact-message");
+
     const result = await markContactMessageHandled(
       {
         contactMessageId: "018f0f80-0003-7000-8000-000000000001",
@@ -464,6 +470,7 @@ describe("contact message lib", () => {
       mockAssignContactMessage.mockResolvedValue({});
 
       const { assignContactMessage } = await import("./contact-message");
+
       const result = await assignContactMessage(
         {
           assigneeUserId,
@@ -491,6 +498,7 @@ describe("contact message lib", () => {
     );
 
     const { assignContactMessage } = await import("./contact-message");
+
     const result = await assignContactMessage(
       {
         assigneeUserId: "018f0f80-0001-7000-8000-000000000009",
@@ -529,6 +537,7 @@ describe("contact message lib", () => {
 
       const { updateContactMessageStaffNote } =
         await import("./contact-message");
+
       const result = await updateContactMessageStaffNote(
         {
           contactMessageId: "018f0f80-0003-7000-8000-000000000001",
@@ -556,6 +565,7 @@ describe("contact message lib", () => {
     );
 
     const { updateContactMessageStaffNote } = await import("./contact-message");
+
     const result = await updateContactMessageStaffNote(
       {
         contactMessageId: "018f0f80-0003-7000-8000-000000000001",
@@ -591,6 +601,7 @@ describe("contact message lib", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { updateContactMessageStaffNote } = await import("./contact-message");
+
     const result = await updateContactMessageStaffNote(
       {
         contactMessageId: "018f0f80-0003-7000-8000-000000000001",
@@ -608,6 +619,7 @@ describe("contact message lib", () => {
     mockReplyToContactMessage.mockResolvedValue({});
 
     const { replyToContactMessage } = await import("./contact-message");
+
     const result = await replyToContactMessage(
       {
         body: "Every episode marked free.",
@@ -634,6 +646,7 @@ describe("contact message lib", () => {
     );
 
     const { replyToContactMessage } = await import("./contact-message");
+
     const result = await replyToContactMessage(
       {
         body: "An answer.",
@@ -669,6 +682,7 @@ describe("contact message lib", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { replyToContactMessage } = await import("./contact-message");
+
     const result = await replyToContactMessage(
       {
         body: "An answer.",

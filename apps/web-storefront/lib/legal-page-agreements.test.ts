@@ -25,11 +25,13 @@ vi.mock("./api-client", () => ({
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
 const terms = {
   slug: "/terms",
   title: "Terms of service",
   versionId: "v-terms",
 };
+
 const privacy = {
   slug: "/legal/privacy",
   title: "Privacy policy",

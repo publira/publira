@@ -55,14 +55,17 @@ const issueTicketSchema = async (locale: Locale) => {
       // The form already converted the datetime-local wall clock to an absolute
       // instant, so anything without `Z` / an offset is rejected here.
       const parsed = parseInstant(value.expiresAt);
+
       if (!parsed) {
         ctx.addIssue({
           code: "custom",
           message: t("admin.access_tickets.validation.expires_at_invalid"),
           path: ["expiresAt"],
         });
+
         return;
       }
+
       if (Temporal.Instant.compare(parsed, Temporal.Now.instant()) <= 0) {
         ctx.addIssue({
           code: "custom",
@@ -72,6 +75,7 @@ const issueTicketSchema = async (locale: Locale) => {
       }
     });
 };
+
 const revokeTicketSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -84,6 +88,7 @@ const revokeTicketSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const listEpisodeOptionsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -96,17 +101,20 @@ const listEpisodeOptionsSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const existingTicketMessage = async (
   publicId: string,
   status: string,
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (status === "active") {
     return t("admin.access_tickets.existing_active", {
       id: publicId,
     });
   }
+
   if (status === "expired") {
     return t("admin.access_tickets.existing_expired", {
       id: publicId,
@@ -128,6 +136,7 @@ const issueTicketFromForm = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await issueTicketSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       episodeId: { kind: "value", name: "episode_id" },
@@ -137,6 +146,7 @@ const issueTicketFromForm = async (
       userId: { kind: "value", name: "user_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       state: {
@@ -176,6 +186,7 @@ const issueTicketFromForm = async (
     // The message sends the operator to the list to revoke the named ticket,
     // and a list cached before another operator issued it would not show it.
     updateTag(accessTicketsCacheTag(parsed.data.tenantId));
+
     return {
       state: {
         message: await existingTicketMessage(
@@ -189,6 +200,7 @@ const issueTicketFromForm = async (
   }
 
   updateTag(accessTicketsCacheTag(parsed.data.tenantId));
+
   return { locale };
 };
 
@@ -197,6 +209,7 @@ export const issueAccessTicketAction = async (
   formData: FormData
 ): Promise<IssueAccessTicketActionState> => {
   const outcome = await issueTicketFromForm(formData);
+
   if ("state" in outcome) {
     return outcome.state;
   }
@@ -214,11 +227,13 @@ export const issueAccessTicketInPlaceAction = async (
   formData: FormData
 ): Promise<IssueAccessTicketActionState> => {
   const outcome = await issueTicketFromForm(formData);
+
   if ("state" in outcome) {
     return outcome.state;
   }
 
   const t = await getMessagesFor(outcome.locale);
+
   return { message: t("admin.access_tickets.issued"), ok: true };
 };
 
@@ -230,10 +245,12 @@ export const listEpisodeOptionsAction = async (
   // This Server Action only reads episode options; the same-origin check
   // applies to mutations.
   const schema = await listEpisodeOptionsSchema(locale);
+
   const parsed = schema.safeParse({
     seriesId,
     tenantId,
   });
+
   if (!parsed.success) {
     return {
       episodes: [],
@@ -245,6 +262,7 @@ export const listEpisodeOptionsAction = async (
   // The tenant comes from the client and the episodes are read with the
   // service credential, which answers for any tenant.
   await verifyAdminSession(parsed.data.tenantId);
+
   const result = await listAllEpisodesForTenant(
     {
       seriesId: parsed.data.seriesId,
@@ -252,6 +270,7 @@ export const listEpisodeOptionsAction = async (
     },
     locale
   );
+
   if (!result.ok) {
     return {
       episodes: [],
@@ -276,12 +295,15 @@ export const revokeAccessTicketAction = async (
 ): Promise<RevokeAccessTicketActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const input = toFormDataInput(formData, {
     tenantId: { kind: "value", name: "tenant_id" },
     ticketId: { kind: "value", name: "access_ticket_id" },
   });
+
   const schema = await revokeTicketSchema(locale);
   const parsed = schema.safeParse(input);
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -292,11 +314,13 @@ export const revokeAccessTicketAction = async (
   const result = await withAdminSessionReauth(() =>
     revokeAccessTicket(parsed.data.tenantId, parsed.data.ticketId, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
   updateTag(accessTicketsCacheTag(parsed.data.tenantId));
   const t = await getMessagesFor(locale);
+
   return { message: t("admin.access_tickets.revoked"), ok: true };
 };

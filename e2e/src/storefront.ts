@@ -92,6 +92,7 @@ export const openStorefrontUserMenu = async (page: Page): Promise<void> => {
     if ((await trigger.getAttribute("aria-expanded")) !== "true") {
       await trigger.click();
     }
+
     await expect(trigger).toHaveAttribute("aria-expanded", "true", {
       timeout: 1000,
     });

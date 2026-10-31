@@ -34,11 +34,13 @@ const ProviderCredentialContext =
 
 const useProviderCredential = () => {
   const context = use(ProviderCredentialContext);
+
   if (!context) {
     throw new Error(
       "ProviderCredential slots must be rendered inside ProviderCredential."
     );
   }
+
   return context;
 };
 
@@ -70,6 +72,7 @@ const ProviderCredential = ({
   const { enabled } = ProviderEnabled.useState();
   const [mode, setMode] = useState(() => initialMode(configured));
   const required = declaredRequired && !disabled && enabled && !configured;
+
   const context = useMemo(
     () => ({ configured, hint, mode, name, required, setMode }),
     [configured, hint, mode, name, required]
@@ -168,6 +171,7 @@ const ProviderCredentialTextInput = () => {
       name={`credential_${name}`}
       onChange={(event) => {
         const value = event.target.value.trim();
+
         if (!configured) {
           setMode("replace");
         } else if (value === hint.trim()) {

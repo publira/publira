@@ -26,6 +26,7 @@ export const DEFAULT_TRUSTED_PROXIES = [
 ] as const;
 
 const IPV4_MAPPED = new BlockList();
+
 IPV4_MAPPED.addSubnet("::ffff:0:0", 96, "ipv6");
 
 const familyOf = (address: string): "ipv4" | "ipv6" | null => {
@@ -33,9 +34,11 @@ const familyOf = (address: string): "ipv4" | "ipv6" | null => {
     case 4: {
       return "ipv4";
     }
+
     case 6: {
       return "ipv6";
     }
+
     default: {
       return null;
     }
@@ -51,12 +54,14 @@ const familyOf = (address: string): "ipv4" | "ipv6" | null => {
  */
 export const parseTrustedProxies = (raw: string): BlockList => {
   const trusted = new BlockList();
+
   for (const field of raw.split(/[\s,]+/u).filter(Boolean)) {
     const slash = field.indexOf("/");
     const address = slash === -1 ? field : field.slice(0, slash);
     const family = familyOf(address);
     const bits = slash === -1 ? null : Number(field.slice(slash + 1));
     const maxBits = family === "ipv4" ? 32 : 128;
+
     if (
       !family ||
       address.includes("%") ||
@@ -71,25 +76,31 @@ export const parseTrustedProxies = (raw: string): BlockList => {
         `${TRUSTED_PROXIES_ENV}: ${JSON.stringify(field)} is not an address or a CIDR range`
       );
     }
+
     const prefix = bits ?? maxBits;
     const mapped = family === "ipv6" && IPV4_MAPPED.check(address, "ipv6");
+
     if (mapped && prefix < 96) {
       throw new Error(
         `${TRUSTED_PROXIES_ENV}: ${JSON.stringify(field)} is an IPv4-mapped range shorter than /96`
       );
     }
+
     if (prefix === (mapped ? 96 : 0)) {
       throw new Error(
         `${TRUSTED_PROXIES_ENV}: ${JSON.stringify(field)} trusts every address`
       );
     }
+
     trusted.addSubnet(address, prefix, family);
   }
+
   return trusted;
 };
 
 const trustedProxiesFromEnv = (): BlockList => {
   const raw = (process.env[TRUSTED_PROXIES_ENV] ?? "").trim();
+
   return parseTrustedProxies(raw || DEFAULT_TRUSTED_PROXIES.join(","));
 };
 
@@ -106,6 +117,7 @@ const unmap = (address: string): string => {
     .split(":")
     .slice(-2)
     .map((group) => Number.parseInt(group, 16));
+
   return groups
     .flatMap((group) => [Math.trunc(group / 256), group % 256])
     .join(".");
@@ -119,24 +131,31 @@ const unmap = (address: string): string => {
  */
 const parseNode = (raw: string): string | null => {
   let node = raw.trim();
+
   if (node.length >= 2 && node.startsWith('"') && node.endsWith('"')) {
     node = node.slice(1, -1).replaceAll("\\", "");
   }
+
   if (node.startsWith("[")) {
     const end = node.indexOf("]");
     const rest = node.slice(end + 1);
+
     if (end === -1 || !(rest === "" || /^:\d+$/u.test(rest))) {
       return null;
     }
+
     node = node.slice(1, end);
   } else if (/^[\d.]+:\d+$/u.test(node)) {
     node = node.slice(0, node.indexOf(":"));
   }
+
   const address = node.split("%")[0] ?? "";
   const family = familyOf(address);
+
   if (!family) {
     return null;
   }
+
   return family === "ipv6" && IPV4_MAPPED.check(address, "ipv6")
     ? unmap(address)
     : address;
@@ -148,6 +167,7 @@ const parseNode = (raw: string): string | null => {
  */
 const forwardedChain = (headers: HeadersLike): string[] | null => {
   const nodes = forwardedParameters(headers.get("forwarded") ?? "", "for");
+
   return nodes.length > 0
     ? nodes.map(parseNode).filter((node) => node !== null)
     : null;
@@ -175,9 +195,12 @@ export const getClientAddress = (headers: HeadersLike): string | null => {
   const chain =
     (isForwardedHeaderEnabled() ? forwardedChain(headers) : null) ??
     forwardedForChain(headers);
+
   const trusted = trustedProxiesFromEnv();
+
   const client = chain.findLast(
     (address) => !trusted.check(address, familyOf(address) ?? "ipv4")
   );
+
   return client ?? chain[0] ?? null;
 };

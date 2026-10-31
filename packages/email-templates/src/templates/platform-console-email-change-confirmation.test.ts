@@ -12,8 +12,10 @@ const data = {
   new_email: "new-owner@example.test",
   recipient_kind: "current_email",
 };
+
 const currentAddressBody =
   "This change needs confirmation from your current address.";
+
 const newAddressBody = "This change needs confirmation from your new address.";
 
 describe("platformConsoleEmailChangeConfirmationDataSchema", () => {
@@ -63,6 +65,7 @@ describe("platformConsoleEmailChangeConfirmationDataSchema", () => {
 describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
   it("the ja mail carries the link and the expiry in the given time zone", async () => {
     const timeZone = "UTC";
+
     const result = await renderEmail({
       data,
       locale: "ja",
@@ -72,6 +75,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -91,6 +95,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
 
   it("the en mail comes from the English catalog and its own time zone", async () => {
     const timeZone = "America/Los_Angeles";
+
     const result = await renderEmail({
       data,
       locale: "en",
@@ -100,6 +105,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -117,6 +123,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
 
   it("addresses the side of the change the sender names", async () => {
     const messages = await loadEmailMessages("en");
+
     const toCurrent = await renderEmail({
       data,
       locale: "en",
@@ -124,6 +131,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
       template: "platform_console_email_change_confirmation",
       timeZone: "UTC",
     });
+
     const toNew = await renderEmail({
       data: { ...data, recipient_kind: "new_email" },
       locale: "en",
@@ -134,6 +142,7 @@ describe("PlatformConsoleEmailChangeConfirmationEmail", () => {
 
     expect(toCurrent.ok).toBe(true);
     expect(toNew.ok).toBe(true);
+
     if (!(toCurrent.ok && toNew.ok)) {
       return;
     }

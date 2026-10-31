@@ -40,6 +40,7 @@ const getQueueStatusTone = (status: "draft" | "scheduled") => {
   if (status === "scheduled") {
     return "info" as const;
   }
+
   return "muted" as const;
 };
 
@@ -51,6 +52,7 @@ const QueueStatusMessage = ({ status }: { status: "draft" | "scheduled" }) => {
   if (status === "scheduled") {
     return <Message message="admin.dashboard.status_scheduled" />;
   }
+
   return <Message message="admin.dashboard.status_draft" />;
 };
 
@@ -116,6 +118,7 @@ const DashboardSkeleton = () => (
 
 const DashboardContent = async () => {
   const tenantId = await getTenantId();
+
   const [locale, timeZone, result] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),

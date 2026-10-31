@@ -44,6 +44,7 @@ export const toggleFollowAction = async (
   // Read first: the rejection below is worded in the reader's language, and a
   // submission that names no locale did not come from a form this site rendered.
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+
   const parsed = followFormSchema.safeParse(
     toFormDataInput(formData, {
       intent: "value",
@@ -54,13 +55,16 @@ export const toggleFollowAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return { message: validationErrorMessage(submittedLocale), ok: false };
   }
 
   const { intent, locale, returnTo, targetId, targetKind, tenantId } =
     parsed.data;
+
   await requirePublicSession(locale, returnTo, tenantId);
+
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
@@ -70,6 +74,7 @@ export const toggleFollowAction = async (
         : unfollowTarget({ locale, targetId, targetKind, tenantId }),
     tenantId
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -79,6 +84,7 @@ export const toggleFollowAction = async (
 
   updateTag(followsCacheTag(tenantId));
   const t = await getMessagesFor(locale);
+
   return {
     isFollowing: result.isFollowing,
     message:

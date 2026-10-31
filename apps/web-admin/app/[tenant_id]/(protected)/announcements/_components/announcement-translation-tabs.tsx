@@ -44,7 +44,9 @@ export const AnnouncementTranslationTabs = ({
     if (locale === selectedLocale) {
       return;
     }
+
     const field = event.target;
+
     if (
       !(
         field instanceof HTMLInputElement ||
@@ -53,6 +55,7 @@ export const AnnouncementTranslationTabs = ({
     ) {
       return;
     }
+
     event.preventDefault();
     setSelectedLocale(locale);
     requestAnimationFrame(() => {

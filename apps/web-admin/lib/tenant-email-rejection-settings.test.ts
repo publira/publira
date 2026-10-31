@@ -61,6 +61,7 @@ describe("tenant-email-rejection-settings", () => {
 
     const { getTenantEmailRejectionSettings } =
       await import("./tenant-email-rejection-settings");
+
     const result = await getTenantEmailRejectionSettings(" TENANT001 ", "en");
 
     expect(result).toEqual({ ok: true, ...STORED });
@@ -119,6 +120,7 @@ describe("tenant-email-rejection-settings", () => {
 
     const { getTenantEmailRejectionSettings } =
       await import("./tenant-email-rejection-settings");
+
     const result = await getTenantEmailRejectionSettings("TENANT001", "en");
 
     expect(result.ok).toBe(false);
@@ -158,6 +160,7 @@ describe("tenant-email-rejection-settings", () => {
 
     const { updateTenantEmailRejectionSettings } =
       await import("./tenant-email-rejection-settings");
+
     const result = await updateTenantEmailRejectionSettings(
       {
         entries: ["Refused.Example", "refused.example"],
@@ -196,6 +199,7 @@ describe("tenant-email-rejection-settings", () => {
 
     const { updateTenantEmailRejectionSettings } =
       await import("./tenant-email-rejection-settings");
+
     const result = await updateTenantEmailRejectionSettings(
       {
         entries: ["xn--zz.com"],
@@ -207,6 +211,7 @@ describe("tenant-email-rejection-settings", () => {
 
     const message =
       "Check the list. Each entry must be one email address or domain, and at most 1,000 can be listed.";
+
     expect(result).toEqual({ entriesError: message, message, ok: false });
   });
 

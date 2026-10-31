@@ -51,10 +51,12 @@ const toApplicationServerKey = (
   vapidPublicKey: string
 ): Uint8Array<ArrayBuffer> => {
   const base64 = vapidPublicKey.replaceAll("-", "+").replaceAll("_", "/");
+
   const padded = base64.padEnd(
     base64.length + ((4 - (base64.length % 4)) % 4),
     "="
   );
+
   const binary = window.atob(padded);
   const bytes = new Uint8Array(binary.length);
   bytes.set(Array.from(binary, (character) => character.codePointAt(0) ?? 0));
@@ -94,6 +96,7 @@ export const subscribeToPush = async (
   vapidPublicKey: string
 ): Promise<PushSubscription | "denied" | "dismissed"> => {
   const permission = await Notification.requestPermission();
+
   if (permission !== "granted") {
     return permission === "denied" ? "denied" : "dismissed";
   }
@@ -118,6 +121,7 @@ export const toWebPushSubscriptionKeys = (
   const { endpoint, keys } = subscription.toJSON();
   const auth = keys?.auth;
   const p256dh = keys?.p256dh;
+
   if (!(endpoint && auth && p256dh)) {
     return null;
   }

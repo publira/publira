@@ -1,4 +1,5 @@
 "use client";
+
 import { Select } from "@publira/ui-components/select";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -15,11 +16,13 @@ const ProviderChoiceContext = createContext<ProviderChoiceContextValue | null>(
 
 const useProviderChoice = () => {
   const context = use(ProviderChoiceContext);
+
   if (!context) {
     throw new Error(
       "ProviderChoice slots must be rendered inside ProviderChoice."
     );
   }
+
   return context;
 };
 
@@ -39,6 +42,7 @@ const ProviderChoice = ({
   initialProvider: string;
 }) => {
   const [provider, setProvider] = useState(initialProvider);
+
   const context = useMemo(
     () => ({ credentialsProvider, provider, setProvider }),
     [credentialsProvider, provider]

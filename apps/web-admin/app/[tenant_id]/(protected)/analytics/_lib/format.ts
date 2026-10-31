@@ -12,10 +12,12 @@ const formatterFor = (
 ): Intl.NumberFormat => {
   const intlLocale = toIntlLocale(locale);
   let formatter = cache.get(intlLocale);
+
   if (!formatter) {
     formatter = new Intl.NumberFormat(intlLocale, options);
     cache.set(intlLocale, formatter);
   }
+
   return formatter;
 };
 

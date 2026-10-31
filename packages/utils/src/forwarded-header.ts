@@ -22,9 +22,11 @@ const FALSE_VALUES = new Set(["0", "f", "F", "false", "FALSE", "False"]);
 
 export const isForwardedHeaderEnabled = (): boolean => {
   const value = (process.env[FORWARDED_HEADER_ENABLED_ENV] ?? "").trim();
+
   if (value === "" || TRUE_VALUES.has(value)) {
     return true;
   }
+
   if (FALSE_VALUES.has(value)) {
     return false;
   }
@@ -40,8 +42,10 @@ export const splitUnquoted = (value: string, separator: string): string[] => {
   let quoted = false;
   let escaped = false;
   let start = 0;
+
   for (let index = 0; index < value.length; index += 1) {
     const character = value[index];
+
     if (escaped) {
       escaped = false;
     } else if (quoted && character === "\\") {
@@ -53,7 +57,9 @@ export const splitUnquoted = (value: string, separator: string): string[] => {
       start = index + 1;
     }
   }
+
   parts.push(value.slice(start));
+
   return parts;
 };
 
@@ -71,9 +77,11 @@ export const forwardedParameters = (
   name: string
 ): string[] => {
   const values: string[] = [];
+
   for (const element of splitUnquoted(forwarded, ",")) {
     for (const pair of splitUnquoted(element, ";")) {
       const separator = pair.indexOf("=");
+
       if (
         separator !== -1 &&
         pair.slice(0, separator).trim().toLowerCase() === name
@@ -82,5 +90,6 @@ export const forwardedParameters = (
       }
     }
   }
+
   return values;
 };

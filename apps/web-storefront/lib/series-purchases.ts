@@ -60,9 +60,11 @@ const toRemainderQuote = (
 ): SeriesRemainderQuote | null => {
   const episodeCount = offer?.episodeCount ?? 0;
   const price = offer?.price ?? 0;
+
   if (episodeCount <= 0 || price <= 0) {
     return null;
   }
+
   return {
     discountPercent: offer?.discountPercent ?? 0,
     episodeCount,
@@ -107,6 +109,7 @@ export const getMySeriesPurchaseState = cache(
         { seriesId, surface: ClientSurface.WEB, tenant: { tenantId } },
         sessionId ? buildSessionHeaders(sessionId) : undefined
       );
+
       return {
         ok: true,
         ownedEpisodeIds: new Set(
@@ -118,10 +121,13 @@ export const getMySeriesPurchaseState = cache(
       };
     } catch (error) {
       rethrowUnclassifiedRpcError(error);
+
       if (isMissingResourceRpcError(error)) {
         return nothingToSell;
       }
+
       const t = await getMessagesFor(locale);
+
       return {
         message: rpcErrorMessage(
           error,

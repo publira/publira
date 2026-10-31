@@ -36,16 +36,19 @@ export const parseEpisodeRental = async (
   }
 
   const t = await getMessagesFor(locale);
+
   const rentalPrice = priceFormSchema(
     input.currency,
     t("admin.series.episodes.validation.rental_price_invalid")
   ).safeParse(input.rentalPrice);
+
   if (!rentalPrice.success || rentalPrice.data <= 0) {
     return {
       message: t("admin.series.episodes.validation.rental_price_invalid"),
       ok: false,
     };
   }
+
   if (rentalPrice.data >= input.price) {
     return {
       message: t("admin.series.episodes.validation.rental_price_not_cheaper"),
@@ -59,6 +62,7 @@ export const parseEpisodeRental = async (
     t("admin.series.episodes.validation.rental_period_invalid"),
     { max: MAX_INT32, min: 1 }
   ).safeParse(input.rentalPeriodHours);
+
   if (!rentalPeriodHours.success) {
     return {
       message: t("admin.series.episodes.validation.rental_period_invalid"),

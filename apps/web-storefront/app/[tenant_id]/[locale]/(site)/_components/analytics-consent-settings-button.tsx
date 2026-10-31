@@ -27,6 +27,7 @@ export const AnalyticsConsentSettingsButton = ({
 }) => {
   const pathname = usePathname();
   const consent = useAnalyticsConsent(cookieName);
+
   if (
     consent === "global_privacy_control" ||
     !loadsGoogleTagOn(toBarePathname(pathname))

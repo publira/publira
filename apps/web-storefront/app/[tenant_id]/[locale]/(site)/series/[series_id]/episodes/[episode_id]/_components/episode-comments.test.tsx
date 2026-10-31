@@ -73,6 +73,7 @@ vi.mock("#lib/tenant", () => ({
 // these tests are about.
 vi.mock("#lib/comments", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
+
   return {
     ...actual,
     listEpisodeComments: mockListEpisodeComments,
@@ -137,6 +138,7 @@ vi.mock("./comment-report-button", () => ({
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
 const viewer = {
   icon: null,
   name: "Sample Member",
@@ -191,6 +193,7 @@ const renderSection = async (
     tenantId,
     token,
   });
+
   render(section);
 };
 
@@ -299,9 +302,11 @@ describe("EpisodeComments", () => {
     await renderSection();
 
     const [withIcon, withoutIcon] = screen.getAllByRole("listitem");
+
     if (!(withIcon && withoutIcon)) {
       throw new Error("expected two comments");
     }
+
     expect(
       within(withIcon).getByRole<HTMLImageElement>("presentation").src
     ).toContain("icon-1.png");
@@ -334,9 +339,11 @@ describe("EpisodeComments", () => {
     await renderSection();
 
     const [creatorRow, readerRow] = screen.getAllByRole("listitem");
+
     if (!(creatorRow && readerRow)) {
       throw new Error("expected two comments");
     }
+
     expect(within(creatorRow).getByText("Sample Author")).toBeDefined();
     expect(within(creatorRow).getByText("Author")).toBeDefined();
     expect(within(creatorRow).queryByText("Sample Member")).toBeNull();
@@ -359,9 +366,11 @@ describe("EpisodeComments", () => {
     await renderSection();
 
     const [creatorRow, readerRow] = screen.getAllByRole("listitem");
+
     if (!(creatorRow && readerRow)) {
       throw new Error("expected two comments");
     }
+
     expect(
       within(creatorRow)
         .getByRole("link", { name: "Sample Author" })

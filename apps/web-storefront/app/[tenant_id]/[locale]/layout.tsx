@@ -59,6 +59,7 @@ export const generateStaticParams = () =>
  */
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [info, origin, siteVerification] = await Promise.all([
     getTenantSiteInfo(tenantId),
     getTenantPublicOrigin(tenantId),

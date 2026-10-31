@@ -136,10 +136,13 @@ const disabledSettings: TenantInboundEmailSettings = {
 
 const STAFF_ADDRESS_UNSET =
   "Readers' replies go to the address of the staff member who answered. Choose a provider and turn inbound email on to receive them in the console instead.";
+
 const STAFF_ADDRESS_DISABLED =
   "The settings are stored, but inbound email is off. Readers' replies go to the address of the staff member who answered.";
+
 const STAFF_ADDRESS_INCOMPLETE =
   "Inbound email is on, but the domain or a required credential is missing, so readers' replies still go to the address of the staff member who answered.";
+
 const CONSOLE_READY =
   "Readers' replies come back to the console under the message they answer.";
 
@@ -171,6 +174,7 @@ const chooseProvider = async (name: string) => {
   const select = screen.getByRole("combobox", {
     name: "Inbound email provider",
   });
+
   fireEvent.click(select);
   fireEvent.keyDown(select, { key: "ArrowDown" });
   fireEvent.keyDown(await screen.findByRole("option", { name }), {
@@ -373,6 +377,7 @@ describe("TenantInboundEmailSettingsForm", () => {
     await chooseProvider("Amazon SES");
 
     expect(await screen.findByLabelText("Webhook token")).toBeDefined();
+
     for (const label of [
       "SNS topic ARN",
       "AWS access key ID",
@@ -382,6 +387,7 @@ describe("TenantInboundEmailSettingsForm", () => {
     ]) {
       expect(screen.getByLabelText(label)).toBeDefined();
     }
+
     expect(
       screen.getByText(
         "https://inbound:<token>@comics.example/api/v1/webhook/email/ses"

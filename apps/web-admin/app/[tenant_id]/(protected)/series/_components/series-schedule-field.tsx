@@ -1,4 +1,5 @@
 "use client";
+
 import { Checkbox } from "@publira/ui-components/checkbox";
 import { formatWeekdayName, WEEKDAY_NUMBERS } from "@publira/utils";
 import {
@@ -23,11 +24,13 @@ const SeriesScheduleContext = createContext<SeriesScheduleState | null>(null);
 
 const useSeriesSchedule = (): SeriesScheduleState => {
   const state = use(SeriesScheduleContext);
+
   if (!state) {
     throw new Error(
       "SeriesSchedule slots must be rendered inside a SeriesScheduleField."
     );
   }
+
   return state;
 };
 
@@ -70,11 +73,13 @@ const SeriesScheduleWeekdays = () => {
     (weekday: number, checked: boolean) => {
       setValue((current) => {
         const next = new Set(current);
+
         if (checked) {
           next.add(weekday);
         } else {
           next.delete(weekday);
         }
+
         return [...next].toSorted((a, b) => a - b);
       });
     },

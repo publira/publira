@@ -101,9 +101,11 @@ const submitButton = () =>
 
 const posted = (name: string) => {
   const { form } = submitButton();
+
   if (!form) {
     throw new Error("the save button belongs to no form");
   }
+
   return new FormData(form).get(name);
 };
 
@@ -151,6 +153,7 @@ describe("TenantStorePaymentSettingsForm", () => {
     const url = screen.getByLabelText<HTMLInputElement>(
       "App Store Server Notifications URL"
     );
+
     expect(url.value).toBe(
       "https://shop.example.com/api/v1/webhook/payment/app-store"
     );
@@ -238,6 +241,7 @@ describe("TenantStorePaymentSettingsForm", () => {
     const [removeAppStoreKey] = screen.getAllByRole("button", {
       name: "Remove",
     });
+
     fireEvent.click(removeAppStoreKey);
     expect(posted("private_key_mode")).toBe("clear");
     expect(
@@ -339,11 +343,13 @@ describe("TenantStorePaymentSettingsForm", () => {
         .getByRole<HTMLInputElement>("textbox", { name: /Issuer ID/u })
         .matches(":disabled")
     ).toBe(true);
+
     for (const replace of screen.getAllByRole<HTMLButtonElement>("button", {
       name: "Replace",
     })) {
       expect(replace.matches(":disabled")).toBe(true);
     }
+
     // The store switches are Base UI checkboxes, which say so with
     // `aria-disabled` instead.
     for (const store of ["Use the App Store", "Use Google Play"]) {
@@ -353,6 +359,7 @@ describe("TenantStorePaymentSettingsForm", () => {
           .getAttribute("aria-disabled")
       ).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
   });
 });

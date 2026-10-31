@@ -49,21 +49,25 @@ const loginFormData = (): FormData => {
   data.set("password", "a-password");
   data.set("returnTo", "/my");
   data.set("tenantId", tenantId);
+
   return data;
 };
 
 /** The message the action sent the reader back to the sign-in page with. */
 const redirectedError = async (): Promise<string | null> => {
   const { loginAction } = await import("./actions");
+
   try {
     await loginAction(loginFormData());
   } catch (error) {
     const path = error instanceof Error ? error.message : "";
+
     return new URL(
       path.replace("NEXT_REDIRECT:", ""),
       "https://reader.example"
     ).searchParams.get("error");
   }
+
   return null;
 };
 
@@ -119,6 +123,7 @@ const passkeyFormData = (credential = '{"id":"cred"}'): FormData => {
   data.set("locale", "en");
   data.set("returnTo", "/my");
   data.set("tenantId", tenantId);
+
   return data;
 };
 

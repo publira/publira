@@ -102,10 +102,12 @@ test.describe("a series and its episodes in more than one language", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       synopsis: `Synopsis ${suffix}`,
       title: `E2E Translated Episode Series ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
     const title = `E2E Episode ${suffix}`;
     const japaneseTitle = `${title} (Japanese edition)`;

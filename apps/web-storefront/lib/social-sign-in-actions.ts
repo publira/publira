@@ -33,6 +33,7 @@ export const startSocialSignInAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = startSignInFormSchema.safeParse(
     toFormDataInput(formData, {
       intent: "value",
@@ -42,12 +43,14 @@ export const startSocialSignInAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     // Every field is hidden, so a form that fails here was not the site's.
     throw new Error("the sign-in form was tampered with");
   }
 
   const { intent, locale, provider, returnTo, tenantId } = parsed.data;
+
   const accessToken =
     intent === "delete"
       ? await requirePublicSession(locale, CONFIRMING_SCREENS.delete, tenantId)

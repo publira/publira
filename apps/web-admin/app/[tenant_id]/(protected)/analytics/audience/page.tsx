@@ -106,34 +106,44 @@ const audienceValue = (
     case "completions": {
       return row.completeCount;
     }
+
     case "date": {
       return row.date;
     }
+
     case "followed": {
       return row.followedCount;
     }
+
     case "followers": {
       return row.followerCount;
     }
+
     case "rating": {
       // An unrated series sorts below every rated one, whichever way.
       return row.ratingAverage ?? 0;
     }
+
     case "rating_count": {
       return row.ratingCount;
     }
+
     case "reactions": {
       return row.reactionCount;
     }
+
     case "series": {
       return row.seriesTitle;
     }
+
     case "unfollowed": {
       return row.unfollowedCount;
     }
+
     case "views": {
       return row.viewCount;
     }
+
     default: {
       return column satisfies never;
     }
@@ -301,10 +311,12 @@ const AudienceContent = async ({
   searchParams,
 }: Pick<AudiencePageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const { from, to } = parsePeriodSearchParams(sp);
   const period = resolveAnalyticsPeriod({ from, to }, timeZone);
   const group = groupSchema.parse(sp.group);
@@ -318,11 +330,13 @@ const AudienceContent = async ({
       )}
     </PeriodForm>
   );
+
   if (!period.ok) {
     return <ConsoleSection.Stack>{form}</ConsoleSection.Stack>;
   }
 
   const dates = { end: period.end, start: period.start };
+
   const [daily, breakdown, t] = await Promise.all([
     getAudienceStats(tenantId, locale, { ...dates, group: "day" }),
     group === "day"
@@ -330,6 +344,7 @@ const AudienceContent = async ({
       : getAudienceStats(tenantId, locale, { ...dates, group }),
     getMessagesFor(locale),
   ]);
+
   await redirectToLoginIfSessionRejected(
     daily,
     ...(breakdown ? [breakdown] : [])
@@ -355,11 +370,13 @@ const AudienceContent = async ({
 
   const rows = breakdown ?? daily;
   const query = { from, group: group === "day" ? "" : group, to };
+
   const hrefFor = (column: AudienceColumn) =>
     `${PATH}${buildQueryString({
       ...query,
       ...sortSearchParams(nextSort(sort, column, table.columns)),
     })}`;
+
   const groupHref = (target: AudienceGroup) =>
     `${PATH}${buildQueryString({
       ...query,

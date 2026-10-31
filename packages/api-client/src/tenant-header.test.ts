@@ -39,6 +39,7 @@ describe("createTenantHeaderInterceptor", () => {
     const interceptor = createTenantHeaderInterceptor({
       tenantId: "018f0e6a-1000-7000-8000-000000000002",
     });
+
     const next = vi.fn(() => Promise.resolve({ ok: true }));
     const header = new Headers();
     header.set("X-Publira-Tenant-Id", "018f0e6a-1000-7000-8000-000000000001");
@@ -59,6 +60,7 @@ describe("createTenantHeaderInterceptor", () => {
     const interceptor = createTenantHeaderInterceptor({
       tenantId: () => "018f0e6a-1000-7000-8000-000000000099",
     });
+
     const next = vi.fn(() => Promise.resolve({ ok: true }));
     const header = new Headers();
 

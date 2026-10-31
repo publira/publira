@@ -127,6 +127,7 @@ describe("comment lib", () => {
     });
 
     const { listComments } = await import("./comment");
+
     const result = await listComments("TENANT001", "en", {
       authorPublicId: " USER001 ",
       episodePublicId: " EPISODE001 ",
@@ -238,6 +239,7 @@ describe("comment lib", () => {
     mockPurgeComment.mockResolvedValue({});
 
     const { moderateComment } = await import("./comment");
+
     const input = {
       commentId: "018f0f80-0002-7000-8000-000000000001",
       reason: "Personal information",
@@ -254,6 +256,7 @@ describe("comment lib", () => {
       reason: "Personal information",
       tenant: { tenantId: "TENANT001" },
     };
+
     const headers = { headers: { Authorization: "Bearer session-token" } };
     expect(mockApproveComment).toHaveBeenCalledWith(request, headers);
     expect(mockHideComment).toHaveBeenCalledWith(request, headers);
@@ -267,6 +270,7 @@ describe("comment lib", () => {
     );
 
     const { moderateComment } = await import("./comment");
+
     const result = await moderateComment(
       {
         action: "approve",
@@ -312,6 +316,7 @@ describe("comment lib", () => {
     });
 
     const { listCommentReports } = await import("./comment");
+
     const result = await listCommentReports("TENANT001", "en", {
       limit: 10,
       status: " open ",
@@ -363,6 +368,7 @@ describe("comment lib", () => {
     mockResolveCommentReport.mockResolvedValue({});
 
     const { resolveCommentReport } = await import("./comment");
+
     const result = await resolveCommentReport(
       {
         reason: "Advertising, as reported.",
@@ -391,6 +397,7 @@ describe("comment lib", () => {
     );
 
     const { resolveCommentReport } = await import("./comment");
+
     const result = await resolveCommentReport(
       {
         reason: "",

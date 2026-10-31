@@ -40,9 +40,11 @@ const TicketTargetContext = createContext<TicketTargetContextValue | null>(
 
 const useTicketTarget = () => {
   const context = use(TicketTargetContext);
+
   if (!context) {
     throw new Error("TicketTarget slots must be rendered inside TicketTarget.");
   }
+
   return context;
 };
 
@@ -98,14 +100,18 @@ const TicketTarget = ({
           nextSeriesId,
           locale
         );
+
         if (requestId !== episodeRequestIdRef.current) {
           return;
         }
+
         if (result.ok) {
           setEpisodes(result.episodes);
           setEpisodesErrorMessage(undefined);
+
           return;
         }
+
         setEpisodesErrorMessage(result.message);
       });
     },
@@ -130,6 +136,7 @@ const TicketTarget = ({
         if (seriesId === "") {
           return;
         }
+
         setEpisodesErrorMessage(undefined);
         loadEpisodesForSeries(seriesId);
       },

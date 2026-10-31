@@ -37,12 +37,14 @@ const addPasskey = async (page: Page, name?: string): Promise<void> => {
   await expect(section.getByRole("status")).toContainText(
     "The passkey has been added."
   );
+
   if (name) {
     await section.getByLabel("Name this passkey").fill(name);
     await section.getByRole("button", { name: "Save" }).click();
   } else {
     await section.getByRole("button", { name: "Skip" }).click();
   }
+
   await expect(
     section.getByRole("button", { name: "Add a passkey" })
   ).toBeVisible();
@@ -59,6 +61,7 @@ const addPasskey = async (page: Page, name?: string): Promise<void> => {
  */
 const signInWithPasskey = async (page: Page): Promise<void> => {
   const signedIn = page.waitForURL(/\/settings\/security\/?$/u);
+
   try {
     await page
       .getByRole("button", { name: "Sign in with a passkey" })
@@ -66,6 +69,7 @@ const signInWithPasskey = async (page: Page): Promise<void> => {
   } catch {
     // The autofill signed the reader in first, taking the button away.
   }
+
   await signedIn;
 };
 
@@ -144,6 +148,7 @@ test.describe("web-storefront passkey settings", () => {
     const emailChange = page.getByRole("region", {
       name: "Change email address",
     });
+
     await emailChange
       .getByLabel("Current email address")
       .fill(PASSWORDLESS_PASSKEY_READER.email);
@@ -159,9 +164,11 @@ test.describe("web-storefront passkey settings", () => {
 
     await page.goto(storefrontUrl("/settings"));
     await page.getByRole("button", { name: "Delete account" }).click();
+
     const dialog = page.getByRole("dialog", {
       name: "Confirm account deletion",
     });
+
     await expect(dialog).toContainText(
       "Your account has no password. Confirm with a passkey or a linked account."
     );

@@ -37,15 +37,19 @@ export const formatCropRect = (rect: CropRect): string =>
  */
 export const parseCropRect = (value: string): CropRect | undefined => {
   const trimmed = value.trim();
+
   if (!CROP_RECT_PATTERN.test(trimmed)) {
     return;
   }
+
   const [x, y, width, height] = trimmed.split(",").map(Number);
+
   return { height, width, x, y };
 };
 
 /** Whether a field holds either a whole rectangle or nothing at all. */
 export const isCropRectField = (value: string): boolean => {
   const trimmed = value.trim();
+
   return trimmed === "" || CROP_RECT_PATTERN.test(trimmed);
 };

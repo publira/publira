@@ -68,9 +68,11 @@ const toTenantPurchaseSettings = (
   const purchaseAvailability = toSurfaceAvailabilityValue(
     settings?.purchaseAvailability
   );
+
   if (!purchaseAvailability) {
     return;
   }
+
   return {
     appStoreUrl: settings?.appStoreUrl ?? "",
     googlePlayUrl: settings?.googlePlayUrl ?? "",
@@ -87,8 +89,10 @@ const getTenantPurchaseSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -105,8 +109,10 @@ const getTenantPurchaseSettingsForSession = async (
     );
 
     const settings = toTenantPurchaseSettings(response.settings);
+
     if (settings === undefined) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.settings.purchase.load_failed"),
         ok: false,
@@ -116,6 +122,7 @@ const getTenantPurchaseSettingsForSession = async (
     return { ok: true, settings };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -149,7 +156,9 @@ export const updateTenantPurchaseSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -170,6 +179,7 @@ export const updateTenantPurchaseSettings = async (
       );
 
     const settings = toTenantPurchaseSettings(response.settings);
+
     if (settings === undefined) {
       return {
         message: t("admin.settings.purchase.save_failed"),
@@ -184,6 +194,7 @@ export const updateTenantPurchaseSettings = async (
     // Only the server's check is authoritative, so its refusal of an address
     // the form passed still names the field.
     let storeUrlMessage: string | undefined;
+
     if (rpcErrorHasFieldViolation(error, "settings.app_store_url")) {
       storeUrlMessage = t(
         "admin.settings.purchase.validation.app_store_url_invalid"
@@ -193,6 +204,7 @@ export const updateTenantPurchaseSettings = async (
         "admin.settings.purchase.validation.google_play_url_invalid"
       );
     }
+
     return {
       message: rpcErrorMessage(
         error,

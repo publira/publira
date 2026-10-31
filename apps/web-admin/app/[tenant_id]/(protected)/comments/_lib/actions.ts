@@ -40,6 +40,7 @@ const moderationSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const moderationFormFields = {
   commentId: { kind: "value", name: "comment_id" },
   reason: "value",
@@ -55,12 +56,15 @@ const moderatedMessage = (
     case "approve": {
       return t("admin.comments.approved");
     }
+
     case "hide": {
       return t("admin.comments.hidden");
     }
+
     case "purge": {
       return t("admin.comments.purged");
     }
+
     default: {
       return t("admin.comments.restored");
     }
@@ -83,16 +87,20 @@ const moderate = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     moderationSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, moderationFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+
   if (options.requireReason === true && parsed.data.reason === "") {
     return {
       message: t("admin.comments.validation.reason_required"),
@@ -111,6 +119,7 @@ const moderate = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -119,6 +128,7 @@ const moderate = async (
   // drop: the route is re-rendered instead, which is also what brings the
   // layout's queue badge back with the new count.
   refresh();
+
   return { message: moderatedMessage(t, action), ok: true };
 };
 
@@ -165,6 +175,7 @@ const reportDecisionSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const reportDecisionFormFields = {
   reason: "value",
   reportId: { kind: "value", name: "report_id" },
@@ -188,9 +199,11 @@ export const resolveCommentReportAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await reportDecisionSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, reportDecisionFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -206,6 +219,7 @@ export const resolveCommentReportAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -215,5 +229,6 @@ export const resolveCommentReportAction = async (
   // state it is now in.
   refresh();
   const t = await getMessagesFor(locale);
+
   return { message: decidedMessage(t, parsed.data.resolution), ok: true };
 };

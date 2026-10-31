@@ -102,8 +102,10 @@ const getTenantRetentionSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -127,6 +129,7 @@ const getTenantRetentionSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -164,7 +167,9 @@ export const updateTenantRetentionSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -189,6 +194,7 @@ export const updateTenantRetentionSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

@@ -75,9 +75,11 @@ const toChallengeKindName = (
   if (kind === MfaChallengeKind.VERIFY) {
     return "verify";
   }
+
   if (kind === MfaChallengeKind.ENROLL) {
     return "enroll";
   }
+
   return null;
 };
 
@@ -93,14 +95,18 @@ export const loginPlatform = async (
       },
       await buildClientAddressHeaders()
     );
+
     const challenge = response.mfaChallenge;
+
     if (challenge) {
       const challengeKind = toChallengeKindName(challenge.kind);
       const challengeToken = challenge.token.trim();
       const expiresAt = parseInstant(challenge.expiresAt);
+
       if (!(challengeKind && challengeToken && expiresAt)) {
         return { ok: false, refusal: "processing" };
       }
+
       return {
         challengeKind,
         challengeToken,
@@ -114,9 +120,11 @@ export const loginPlatform = async (
       response.accessToken?.token,
       response.accessToken?.expiresAt
     );
+
     if (!session) {
       return { ok: false, refusal: "credentials" };
     }
+
     return { kind: "session", ok: true, session };
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
@@ -128,6 +136,7 @@ export const loginPlatform = async (
             : "credentials",
       };
     }
+
     throw error;
   }
 };
@@ -136,6 +145,7 @@ export const logoutPlatform = async (accessToken: string): Promise<void> => {
   if (!accessToken.trim()) {
     return;
   }
+
   try {
     await apiClient.auth.logout({}, buildSessionHeaders(accessToken));
   } catch {
@@ -162,15 +172,20 @@ const getPlatformCurrentOperatorForSession = async (
 
   if (!sid) {
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: true };
   }
+
   try {
     const response = await apiClient.auth.getMe({}, buildSessionHeaders(sid));
     const { user } = response;
+
     if (!user) {
       dropFailedCacheEntry();
+
       return { ok: false, requiresSignIn: false };
     }
+
     return {
       ok: true,
       operator: {
@@ -184,16 +199,20 @@ const getPlatformCurrentOperatorForSession = async (
       // A rejected session must not be cached, or the console would keep
       // redirecting to /login after the operator has signed in again.
       dropFailedCacheEntry();
+
       return { ok: false, requiresSignIn: true };
     }
+
     if (isExpectedNullableRpcError(error)) {
       return { ok: false, requiresSignIn: false };
     }
+
     // Anything else — an unreachable API included — is the console's error
     // screen, thrown by the caller. Only the verdict crosses the cache
     // boundary, so the cause is logged here, where the error is still whole.
     console.warn("[web-platform] getPlatformCurrentOperator failed", error);
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
@@ -207,8 +226,10 @@ export const getPlatformCurrentOperator =
   async (): Promise<GetPlatformCurrentOperatorResult> => {
     const { unexpected, ...result } =
       await getPlatformCurrentOperatorForSession(await resolveAccessToken());
+
     if (unexpected) {
       throw new Error("The signed-in operator could not be read.");
     }
+
     return result;
   };

@@ -55,6 +55,7 @@ export const TicketForm = async ({
   timeZone,
 }: TicketFormProps) => {
   const t = await getMessages();
+
   const seriesItems = series.map((item) => ({
     label: t("admin.access_tickets.form.option", {
       id: item.publicId,

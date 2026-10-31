@@ -155,6 +155,7 @@ const CreatorCreditRow = ({
   shareText,
 }: CreatorCreditRowProps) => {
   const t = useClientMessages();
+
   // The author the row credits, or the position its unfilled picker is named by.
   const label =
     creatorItems.find((item) => item.value === creatorId)?.label ??
@@ -294,11 +295,13 @@ const SeriesCreatorCreditsEditor = ({
   // The save button belongs to the form around this field, which is told
   // whether the shares as typed can be saved whenever that changes.
   const setSavable = SubmitGate.useSetSubmittable();
+
   // Seeded once per mount: the edit route keys this form by the series' public
   // id, so switching to another series remounts it with that series' credits.
   const [rows, setRows] = useState(() =>
     toInitialRows(initialCredits, creatorRoles)
   );
+
   // Only ever identifies a row, so it is never drawn and does not belong in
   // state: bumping it must not redraw the list.
   const nextRowKey = useRef(initialCredits.length);
@@ -312,16 +315,19 @@ const SeriesCreatorCreditsEditor = ({
         ),
     [creators, locale]
   );
+
   // The role each row can still be given, resolved before anything is drawn,
   // so the list on screen is the list the form posts.
   const resolvedRows = rows.map((row) => {
     const roleItems = toRoleItems(rows, creatorRoles, row);
+
     return {
       ...row,
       roleId: toResolvedRoleId(roleItems, row.roleId),
       roleItems,
     };
   });
+
   const credits = resolvedRows.flatMap((row) =>
     isComplete(row)
       ? [
@@ -333,7 +339,9 @@ const SeriesCreatorCreditsEditor = ({
         ]
       : []
   );
+
   const shareTotal = totalCreditShares(rows.map((row) => row.shareText));
+
   const hasExhaustedAuthor = resolvedRows.some(
     (row) => row.creatorId.length > 0 && row.roleId.length === 0
   );
@@ -399,7 +407,9 @@ const SeriesCreatorCreditsEditor = ({
           if (row.key !== key) {
             return row;
           }
+
           const next = { ...row, creatorId: nextCreatorId };
+
           return {
             ...next,
             roleId: toResolvedRoleId(

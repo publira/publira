@@ -90,14 +90,17 @@ test.describe("admin free-after-publication settings", () => {
 
   test("saves a series' rule and records the change", async ({ page }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Free-after series ${suffix}`,
       title: `E2E Free After ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
 
     await page.goto(adminUrl(`/series/${seriesId}`));
+
     const fields = freeAfterFields(
       sectionNamed(page, "Free after publication")
     );
@@ -142,25 +145,31 @@ test.describe("admin free-after-publication settings", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Free-after episode ${suffix}`,
       title: `E2E Free After Episode ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       price: 100,
       publishAt: publishedAtOneHourAgo(),
       seriesPublicId: seriesId,
       title: `E2E Free After Episode ${suffix}`,
     });
+
     // A rule of one day has reached it.
     publishTwoDaysAgo(episodeId);
 
     await page.goto(adminUrl(`/series/${seriesId}`));
+
     const fields = freeAfterFields(
       sectionNamed(page, "Free after publication")
     );
+
     await expect(async () => {
       await fields.enabled.check({ timeout: 1000 });
     }).toPass();
@@ -176,9 +185,11 @@ test.describe("admin free-after-publication settings", () => {
     await expect.poll(() => ruleWindowCount(episodeId)).toBe(1);
 
     await page.goto(adminUrl(`/series/${seriesId}/episodes/${episodeId}`));
+
     const row = sectionNamed(page, "Free reading periods").getByRole(
       "listitem"
     );
+
     await expect(row).toHaveCount(1);
     await expect(row.getByText("By the series rule")).toBeVisible();
     await expect(row.getByText("Free now", { exact: true })).toBeVisible();

@@ -40,10 +40,12 @@ const AppLinksSkeleton = () => (
 const AppLinksSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [result, currentUserResult] = await Promise.all([
     getTenantMobileAppAssociation(tenantId, locale),
     getAdminCurrentUser(tenantId),
   ]);
+
   await redirectToLoginIfSessionRejected(result, currentUserResult);
 
   return (

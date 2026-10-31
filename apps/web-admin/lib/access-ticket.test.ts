@@ -69,6 +69,7 @@ describe("listAccessTickets", () => {
     });
 
     const { listAccessTickets } = await import("./access-ticket");
+
     const result = await listAccessTickets("TENANT001", "en", {
       limit: 20,
       token: "current-page",
@@ -164,6 +165,7 @@ describe("listAccessTickets", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { listAccessTickets } = await import("./access-ticket");
+
     const result = await listAccessTickets("TENANT001", "en", {
       token: "current-page",
     });
@@ -188,6 +190,7 @@ describe("listAccessTickets", () => {
     );
 
     const { listAccessTickets } = await import("./access-ticket");
+
     const result = await listAccessTickets("TENANT001", "en", {
       token: "current-page",
     });
@@ -230,6 +233,7 @@ const notFound = (field: string) =>
 
 const issue = async () => {
   const { issueAccessTicket } = await import("./access-ticket");
+
   return issueAccessTicket(
     {
       episodeId: "EPISODE001-ID",

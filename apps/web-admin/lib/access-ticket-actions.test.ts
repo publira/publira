@@ -49,6 +49,7 @@ const issueFormData = (): FormData => {
   formData.set("episode_id", "018f0e6a-5000-7000-8000-000000000002");
   formData.set("expires_at", "");
   formData.set("note", "Review access");
+
   return formData;
 };
 
@@ -153,6 +154,7 @@ describe("issueAccessTicketInPlaceAction", () => {
 
     const { issueAccessTicketInPlaceAction } =
       await import("./access-ticket-actions");
+
     const result = await issueAccessTicketInPlaceAction(null, issueFormData());
 
     expect(result).toEqual({
@@ -172,6 +174,7 @@ describe("issueAccessTicketInPlaceAction", () => {
 
     const { issueAccessTicketInPlaceAction } =
       await import("./access-ticket-actions");
+
     const result = await issueAccessTicketInPlaceAction(null, issueFormData());
 
     expect(result).toMatchObject({ ok: false });

@@ -30,6 +30,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateTenantCrawlerSettingsAction: (_state: unknown, formData: FormData) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -45,6 +46,7 @@ vi.mock("#components/message", () => ({
 }));
 
 const SUBMIT = "Save the crawler exclusions";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
 
@@ -197,6 +199,7 @@ describe("TenantCrawlerSettingsForm", () => {
 
   it("names a path the server would refuse once its field is left", () => {
     renderForm();
+
     const refusal =
       '"/sitemap.xml" cannot be excluded, since crawlers need robots.txt and the sitemap to read the site.';
 
@@ -266,8 +269,10 @@ describe("TenantCrawlerSettingsForm", () => {
     await waitFor(() => {
       expect(save.formData).toBeDefined();
     });
+
     const refusal =
       "CCBot can no longer be excluded. Reload the page and choose again.";
+
     save.current.resolve({
       fieldErrors: { excludedUserAgents: refusal },
       message: refusal,

@@ -121,15 +121,19 @@ type CatalogTopScheduleOptions = CatalogTopDataOptions & { timeZone: string };
 const compareNewestFirst = (left: string, right: string): number => {
   const leftAt = parseInstant(left);
   const rightAt = parseInstant(right);
+
   if (!(leftAt || rightAt)) {
     return 0;
   }
+
   if (!leftAt) {
     return 1;
   }
+
   if (!rightAt) {
     return -1;
   }
+
   return Temporal.Instant.compare(rightAt, leftAt);
 };
 
@@ -174,6 +178,7 @@ const loadSeriesDetailRows = async (
     limit: seriesLimit,
     locale,
   });
+
   if (!seriesPage.ok) {
     return cachedReadFailure(seriesPage.message);
   }
@@ -188,6 +193,7 @@ const loadSeriesDetailRows = async (
   );
 
   const rows: SeriesDetailRow[] = [];
+
   for (const { detail, seriesItem } of seriesDetails) {
     if (!detail.ok) {
       return cachedReadFailure(detail.message);
@@ -236,6 +242,7 @@ export const getCatalogTopRecommendedSeries = async (
     limit: maxRecommended,
     locale,
   });
+
   if (!page.ok) {
     return cachedReadFailure(page.message);
   }
@@ -260,14 +267,17 @@ export const getCatalogTopReaderRecommendedSeries = async (
   { locale, maxRecommended = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<SeriesListItem[]>> => {
   const accessToken = await resolveAccessToken();
+
   if (accessToken) {
     const mine = await listMyRecommendedSeries(tenantId, accessToken, {
       limit: maxRecommended,
       locale,
     });
+
     if (!mine.ok) {
       return mine;
     }
+
     if (mine.value.access === "signed_in") {
       return { ok: true, value: mine.value.page.series };
     }
@@ -302,6 +312,7 @@ export const getCatalogTopFreeSeries = async (
     limit: maxFreeSeries,
     locale,
   });
+
   if (!page.ok) {
     return cachedReadFailure(page.message);
   }
@@ -369,6 +380,7 @@ export const getCatalogTopWeeklySchedule = async (
   );
 
   const days: CatalogTopScheduledDay[] = [];
+
   for (const { page, weekday } of pages) {
     // One unreadable day makes the whole strip wrong: the reader would page
     // through a week with a silent hole in it and read the gap as "nothing
@@ -411,6 +423,7 @@ export const getCatalogTopPopularSeries = async (
     locale,
     period: "weekly",
   });
+
   if (!ranking.ok) {
     return ranking;
   }
@@ -426,6 +439,7 @@ export const getCatalogTopPopularSeries = async (
     locale,
     maxRecommended,
   });
+
   if (!recommended.ok) {
     return recommended;
   }
@@ -459,16 +473,19 @@ export const getCatalogTopFeaturedWork = async (
     locale,
     maxRecommended,
   });
+
   if (!recommended.ok) {
     return cachedReadFailure(recommended.message);
   }
 
   const [series] = recommended.value;
+
   if (!series) {
     return { ok: true, value: null };
   }
 
   const detail = await getSeriesDetail(tenantId, series.publicId, locale);
+
   if (!detail.ok) {
     return cachedReadFailure(detail.message);
   }
@@ -518,6 +535,7 @@ export const getCatalogTopNewEpisodes = async (
     seriesLimit,
     detailFetchLimit
   );
+
   if (!detailRows.ok) {
     return cachedReadFailure(detailRows.message);
   }
@@ -570,6 +588,7 @@ export const getCatalogTopUpdatedSeries = async (
     seriesLimit,
     detailFetchLimit
   );
+
   if (!detailRows.ok) {
     return cachedReadFailure(detailRows.message);
   }
@@ -627,6 +646,7 @@ export const getCatalogTopFeaturedLabels = async (
     limit: maxLabels,
     locale,
   });
+
   if (!labels.ok) {
     // Re-marking the outer entry is deliberate: the inner cache life does
     // propagate, but this scope owning its own drop keeps the guarantee local.
@@ -648,6 +668,7 @@ export const getCatalogTopFeaturedCreators = async (
     limit: maxCreators,
     locale,
   });
+
   if (!creatorsResult.ok) {
     return cachedReadFailure(creatorsResult.message);
   }

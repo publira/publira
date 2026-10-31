@@ -83,6 +83,7 @@ const banner = (
 const renderSection = async (banners: CampaignBannerItem[]) => {
   mockListCampaignBanners.mockResolvedValueOnce(banners);
   const element = await CampaignBannersSection();
+
   return element ? await renderWithClientMessages(element) : null;
 };
 
@@ -181,6 +182,7 @@ describe("CampaignBannersSection", () => {
  */
 const layOut = (track: HTMLElement, slideWidth: number) => {
   Object.defineProperty(track, "clientWidth", { value: slideWidth });
+
   for (const [index, slide] of [...track.children].entries()) {
     Object.defineProperty(slide, "offsetLeft", {
       value: index * slideWidth,
@@ -199,6 +201,7 @@ const renderStrip = async () => {
   await renderSection(threeBanners());
   const track = screen.getByRole("list");
   layOut(track, 300);
+
   return { track };
 };
 
@@ -210,10 +213,12 @@ describe("CampaignBannerCarousel", () => {
     mockListCampaignBanners.mockResolvedValueOnce(threeBanners());
     const element = await CampaignBannersSection();
     const loaded = await loadStorefrontClientMessages("en");
+
     const messages = Object.assign(Promise.resolve(loaded), {
       status: "fulfilled",
       value: loaded,
     });
+
     const markup = renderToString(
       <StorefrontMessagesContextProvider messages={messages}>
         {element}
@@ -230,9 +235,11 @@ describe("CampaignBannerCarousel", () => {
 
     const copies = track.querySelectorAll("li[inert]");
     expect(copies).toHaveLength(2);
+
     for (const copy of copies) {
       expect(copy.getAttribute("aria-hidden")).toBe("true");
     }
+
     expect(copies[0]?.querySelector("a")?.getAttribute("href")).toBe(
       "/en/series/BANNER03"
     );

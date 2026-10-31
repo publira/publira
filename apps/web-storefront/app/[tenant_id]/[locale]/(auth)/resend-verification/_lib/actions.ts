@@ -35,10 +35,12 @@ export const requestEmailVerificationAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     requestEmailVerificationFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
@@ -46,6 +48,7 @@ export const requestEmailVerificationAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -55,6 +58,7 @@ export const requestEmailVerificationAction = async (
 
   const { email, locale, tenantId } = parsed.data;
   const requested = await requestPublicEmailVerification(email, tenantId);
+
   if (!requested) {
     return {
       message: t("storefront.auth.errors.resend_verification_failed"),
@@ -66,10 +70,12 @@ export const requestEmailVerificationAction = async (
   // confirmed, already confirmed, or has no account at all: only the mailbox
   // says which.
   await setEmailFlashCookie(RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE, email);
+
   const requestedPath = await tenantLocalePath(
     tenantId,
     locale,
     "/resend-verification/requested"
   );
+
   redirect(requestedPath);
 };

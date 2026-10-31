@@ -33,12 +33,15 @@ const ceremonyFailureMessage = (
   t: AdminClientMessageAccessor
 ): string => {
   const name = error instanceof Error ? error.name : "";
+
   if (name === "NotAllowedError" || name === "AbortError") {
     return t("admin.auth.mfa.errors.passkey_cancelled");
   }
+
   if (name === "InvalidStateError") {
     return t("admin.auth.mfa.errors.passkey_already_registered");
   }
+
   return t("admin.auth.mfa.errors.passkey_failed");
 };
 
@@ -53,6 +56,7 @@ const runCeremony = async (
 ): Promise<CeremonyOutcome> => {
   try {
     const credential = await ceremony(optionsJson);
+
     return { credential: JSON.stringify(credential), ok: true };
   } catch (error) {
     return { message: ceremonyFailureMessage(error, t), ok: false };
@@ -91,15 +95,19 @@ export const usePasskeyCeremony = <State extends ActionForm.Result | null>(
     }
 
     const started = await begin(formData);
+
     if (!started.ok) {
       return started;
     }
+
     const outcome = await runCeremony(ceremony, started.optionsJson, t);
+
     if (!outcome.ok) {
       return outcome;
     }
 
     formData.set("credential", outcome.credential);
+
     return finish(formData);
   };
 };

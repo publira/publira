@@ -28,6 +28,7 @@ const getPercentFormatter = (
 ): Intl.NumberFormat => {
   const key = `${intlLocale}\0${fractionDigits}`;
   const cached = percentFormatterCache.get(key);
+
   if (cached) {
     return cached;
   }
@@ -37,7 +38,9 @@ const getPercentFormatter = (
     minimumFractionDigits: fractionDigits,
     style: "percent",
   });
+
   percentFormatterCache.set(key, formatter);
+
   return formatter;
 };
 
@@ -72,6 +75,7 @@ const getPriceFormatter = (
 ): Intl.NumberFormat => {
   const key = `${intlLocale}\0${currency}`;
   const cached = priceFormatterCache.get(key);
+
   if (cached) {
     return cached;
   }
@@ -80,7 +84,9 @@ const getPriceFormatter = (
     currency,
     style: "currency",
   });
+
   priceFormatterCache.set(key, formatter);
+
   return formatter;
 };
 
@@ -106,6 +112,7 @@ export const currencyDisplayName = (
 ): string => {
   const intlLocale = toIntlLocale(options.locale);
   let names = currencyNamesCache.get(intlLocale);
+
   if (!names) {
     names = new Intl.DisplayNames(intlLocale, {
       fallback: "code",
@@ -113,6 +120,7 @@ export const currencyDisplayName = (
     });
     currencyNamesCache.set(intlLocale, names);
   }
+
   return names.of(currency) ?? currency;
 };
 
@@ -129,6 +137,7 @@ let cachedCurrencies: readonly string[] | undefined;
  */
 export const listSupportedCurrencies = (): readonly string[] => {
   cachedCurrencies ??= Intl.supportedValuesOf("currency").toSorted();
+
   return cachedCurrencies;
 };
 

@@ -7,16 +7,21 @@ const decodeBase32 = (encoded: string): Buffer => {
   const bits = [...encoded.replace(/(?<!=)=+$/u, "").toUpperCase()]
     .map((character) => {
       const value = BASE32_ALPHABET.indexOf(character);
+
       if (value === -1) {
         throw new Error(`not a base32 character: ${character}`);
       }
+
       return value.toString(2).padStart(5, "0");
     })
     .join("");
+
   const bytes: number[] = [];
+
   for (let offset = 0; offset + 8 <= bits.length; offset += 8) {
     bytes.push(Number.parseInt(bits.slice(offset, offset + 8), 2));
   }
+
   return Buffer.from(bytes);
 };
 
@@ -37,11 +42,14 @@ export const totpCode = (secret: string, stepsAhead = 0): string => {
       Math.floor(Temporal.Now.instant().epochMilliseconds / 30_000) + stepsAhead
     )
   );
+
   const digest = createHmac("sha1", decodeBase32(secret))
     .update(counter)
     .digest();
+
   const offset = (digest.at(-1) ?? 0) % 16;
   // RFC 4226 drops the top bit so the value reads the same signed or unsigned.
   const binary = digest.readUInt32BE(offset) % 2 ** 31;
+
   return String(binary % 1_000_000).padStart(6, "0");
 };

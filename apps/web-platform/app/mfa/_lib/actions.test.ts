@@ -37,6 +37,7 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return { ...actual, getPlatformLocale: () => Promise.resolve("en") };
 });
 
@@ -77,6 +78,7 @@ const redirectsTo = (path: string): string => `NEXT_REDIRECT:${path}`;
 const codeForm = (code: string): FormData => {
   const data = new FormData();
   data.set("code", code);
+
   return data;
 };
 

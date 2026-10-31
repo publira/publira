@@ -51,6 +51,7 @@ export const clearAdminSessionCookie = async (): Promise<void> => {
  */
 const resolveReturnTo = async (): Promise<string> => {
   const requestHeaders = await headers();
+
   return sanitizeRedirectPath(requestHeaders.get(RETURN_TO_HEADER_NAME));
 };
 
@@ -98,10 +99,12 @@ export const verifyAdminSession = async (
   tenantId: string
 ): Promise<AdminCurrentUser> => {
   const result = await getAdminCurrentUser(tenantId);
+
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
     redirect("/login");
   }
+
   return result.user;
 };
 
@@ -141,9 +144,11 @@ export const isSignedInTenantEditor = (tenantId: string): Promise<boolean> =>
  */
 export const requireAdminSession = async (): Promise<string> => {
   const accessToken = await getAccessToken();
+
   if (!accessToken) {
     await redirectToLogin();
   }
+
   return accessToken;
 };
 
@@ -171,6 +176,7 @@ export const withAdminSessionReauth = async <T>(
     if (isUnauthenticatedError(error)) {
       await redirectToLogin();
     }
+
     throw error;
   }
 };

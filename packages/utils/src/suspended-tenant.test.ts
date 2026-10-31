@@ -8,6 +8,7 @@ import {
 } from "./suspended-tenant";
 
 const chosen = (locale: string) => `${LOCALE_COOKIE_NAME}=${locale}`;
+
 const published = (locale: string) =>
   `${RESOLVED_LOCALE_COOKIE_NAME}=${locale}`;
 

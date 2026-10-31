@@ -27,6 +27,7 @@ const savedEmail = {
   ok: true,
   settings: { hasPassword: true, host: "smtp.example.com", username: "mailer" },
 };
+
 const savedStorage = { ok: true, settings: { revision: "3" } };
 
 beforeEach(() => {

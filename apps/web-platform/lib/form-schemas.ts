@@ -57,28 +57,34 @@ export const intFormSchema = (
   const { max, min } = options ?? {};
 
   let checked = z.number({ error: message }).int(message);
+
   if (min !== undefined) {
     checked = checked.min(min, message);
   }
+
   if (max !== undefined) {
     checked = checked.max(max, message);
   }
 
   return z.preprocess((value) => {
     const raw = typeof value === "string" ? value.trim() : "";
+
     if (raw === "") {
       return fallback;
     }
+
     if (!INTEGER_RE.test(raw)) {
       return;
     }
 
     const parsed = Number(raw);
+
     if (!Number.isFinite(parsed)) {
       return;
     }
 
     const lowerBounded = min === undefined ? parsed : Math.max(min, parsed);
+
     return max === undefined ? lowerBounded : Math.min(max, lowerBounded);
   }, checked);
 };
@@ -96,6 +102,7 @@ export const boundedIntFormSchema = (
   z.preprocess(
     (value) => {
       const raw = typeof value === "string" ? value.trim() : "";
+
       return INTEGER_RE.test(raw) ? Number(raw) : undefined;
     },
     z
@@ -124,6 +131,7 @@ export const revisionFormSchema = (message: string) =>
  */
 export const commaOrNewlineStringListFormSchema = z.preprocess((value) => {
   const raw = typeof value === "string" ? value : "";
+
   return raw
     .split(/[\n,]/u)
     .map((entry) => entry.trim())

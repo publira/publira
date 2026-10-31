@@ -26,6 +26,7 @@ vi.mock("./api-client", () => ({
 
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const STORED_ACTOR_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
@@ -38,6 +39,7 @@ const cookieStore = (stored?: string) => {
         : undefined,
     set,
   });
+
   return set;
 };
 
@@ -46,6 +48,7 @@ const forwardedHeaders = (): Record<string, string> => {
     unknown,
     { headers: Record<string, string> },
   ];
+
   return options.headers;
 };
 
@@ -67,6 +70,7 @@ describe("recordContentView", () => {
     const [written] = set.mock.calls[0] as [
       { maxAge: number; name: string; value: string },
     ];
+
     expect(written.name).toBe(VIEW_ACTOR_COOKIE_NAME);
     expect(written.value).toMatch(UUID_PATTERN);
     // Outlives the raw events, and expires rather than living on forever.

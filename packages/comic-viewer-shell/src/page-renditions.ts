@@ -33,10 +33,12 @@ export const pageSrcset = (
           ...RENDITION_WIDTHS.filter((width) => width < storedWidth),
           storedWidth,
         ];
+
   const candidates = widths.map((width) => ({
     url: atRenditionWidth(imageUrl, width),
     width,
   }));
+
   if (candidates.some(({ url }) => url === imageUrl)) {
     return undefined;
   }
@@ -50,6 +52,7 @@ export const pageSrcset = (
  */
 export const renditionWidthOf = (url: string): number | undefined => {
   let value: string | null;
+
   try {
     value = new URL(
       url,
@@ -58,6 +61,7 @@ export const renditionWidthOf = (url: string): number | undefined => {
   } catch {
     return undefined;
   }
+
   const width = Number(value);
 
   return value !== null && Number.isInteger(width) && width > 0

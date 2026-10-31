@@ -29,10 +29,13 @@ const signupUrl = `${WEB_STOREFRONT_EMAIL_REJECTION_BASE_URL}${storefrontPath("/
 
 const SAVE = "Save the refused email addresses";
 const SAVED = "The refused email addresses were saved.";
+
 const SIGNUP_SENT_MESSAGE =
   "We sent an email to the address you entered. Open it to continue.";
+
 const DISPOSABLE_REFUSAL =
   "This site does not accept addresses from disposable email services. Use another email address.";
+
 const LISTED_REFUSAL =
   "This site does not accept this email address. Use another email address.";
 
@@ -109,9 +112,11 @@ test.describe("web-admin email rejection", () => {
   test.beforeAll(async () => {
     applyScenarioSql(EMAIL_REJECTION_SCENARIO);
     const [domain] = await disposableEmailDomains();
+
     if (!domain) {
       throw new Error("the stack serves no disposable domain");
     }
+
     disposableDomain = domain;
   });
 

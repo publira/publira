@@ -66,9 +66,11 @@ const renderForm = async (settings: PlatformStorageSettings) => {
     );
     await messages;
   });
+
   if (!rendered) {
     throw new Error("The form did not render.");
   }
+
   return rendered;
 };
 

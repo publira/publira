@@ -16,6 +16,7 @@ const stubDecodedSize = (width: number, height: number) => {
     "createImageBitmap",
     vi.fn(() => Promise.resolve({ close, height, width }))
   );
+
   return close;
 };
 

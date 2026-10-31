@@ -99,6 +99,7 @@ export const GenreNameFields = ({
   }
 
   const { defaultLocale, supportedLocales } = tenantLocales;
+
   const savedNames = new Map(
     (genre?.translations ?? []).map(({ locale, name }) => [locale, name])
   );

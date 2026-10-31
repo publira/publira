@@ -51,19 +51,23 @@ const buildPageStatusFormatter =
   (t: StorefrontClientMessageAccessor) =>
   (value: PageStatusValue): string => {
     const visible = describeVisiblePages(value);
+
     switch (visible.kind) {
       case "none": {
         return t("storefront.episode.viewer.no_pages");
       }
+
       case "end-page": {
         return t("storefront.episode.viewer.end_page");
       }
+
       case "page": {
         return t("storefront.episode.viewer.page_status", {
           first: visible.first,
           total: visible.total,
         });
       }
+
       case "spread": {
         return t("storefront.episode.viewer.page_status_range", {
           first: visible.first,
@@ -71,6 +75,7 @@ const buildPageStatusFormatter =
           total: visible.total,
         });
       }
+
       default: {
         return visible satisfies never;
       }
@@ -112,11 +117,13 @@ const WIDE_VIEWER_STORAGE_KEY = "publira.wide-viewer";
 
 const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
   const t = useClientMessages();
+
   const isFullscreen = useSyncExternalStore(
     subscribeToFullscreen,
     isFullscreenOpen,
     isFalseOnServer
   );
+
   const canGoFullscreen = useSyncExternalStore(
     subscribeToFullscreen,
     isFullscreenAvailable,
@@ -238,6 +245,7 @@ const EpisodeViewerPageNavigation = ({
 }) => {
   const t = useClientMessages();
   const { currentIndex, maxIndex, minIndex } = useViewerContext();
+
   const episodeLinkClassName = cn(
     buttonVariants({ variant: "outline" }),
     "pointer-events-auto absolute top-1/2"
@@ -351,6 +359,7 @@ export const EpisodeComicViewer = ({
   const t = useClientMessages();
   const [shell, setShell] = useState<HTMLDivElement | null>(null);
   const boxHeight = useBoxHeight(shell);
+
   const renewPageUrl = useMemo(
     () =>
       renewPageUrls === undefined
@@ -358,13 +367,16 @@ export const EpisodeComicViewer = ({
         : renewFromPageUrls(renewPageUrls),
     [renewPageUrls]
   );
+
   const wideViewerChoice = useWebStorage("session", WIDE_VIEWER_STORAGE_KEY);
+
   const isWide =
     wideViewerChoice === null ? wideViewerEnabled : wideViewerChoice === "true";
 
   const toggleWide = async () => {
     const next = !isWide;
     writeWebStorage("session", WIDE_VIEWER_STORAGE_KEY, String(next));
+
     try {
       await saveWideViewer?.(next);
     } catch {
@@ -380,8 +392,10 @@ export const EpisodeComicViewer = ({
     try {
       if (document.fullscreenElement === null) {
         await shell.requestFullscreen();
+
         return;
       }
+
       await document.exitFullscreen();
     } catch {
       // A browser that refuses full screen leaves the reader on the page as it

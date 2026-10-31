@@ -519,6 +519,7 @@ test.describe("web-storefront series titles in the reader's language", () => {
       level: 1,
       name: untranslated.japaneseTitle,
     });
+
     await expect(heading).toBeVisible();
     await expect(heading).toHaveAttribute("lang", "ja");
     await expect(
@@ -570,11 +571,13 @@ test.describe("web-storefront genre names in the reader's language", () => {
     await expect(page).toHaveURL(
       (url) => url.pathname === localeStorefrontPath("en", genrePath)
     );
+
     const heading = page.getByRole("heading", {
       exact: true,
       level: 1,
       name: translated.englishName,
     });
+
     await expect(heading).toBeVisible();
     await expect(heading).toHaveAttribute("lang", "en");
     await expect(
@@ -598,6 +601,7 @@ test.describe("web-storefront genre names in the reader's language", () => {
       level: 1,
       name: untranslated.japaneseName,
     });
+
     await expect(heading).toBeVisible();
     await expect(heading).toHaveAttribute("lang", "ja");
     await expect.poll(() => page.title()).toContain(untranslated.japaneseName);
@@ -628,6 +632,7 @@ test.describe("web-storefront genre names in the reader's language", () => {
     page,
   }) => {
     const seriesPath = `/series/${BILINGUAL_TENANT.translated.publicId}`;
+
     const badge = (name: string) =>
       page.getByRole("main").getByRole("link", { exact: true, name });
 
@@ -680,11 +685,13 @@ test.describe("web-storefront announcements in the reader's language", () => {
         url.pathname ===
         localeStorefrontPath("en", `/announcements/${translated.id}`)
     );
+
     const heading = page.getByRole("heading", {
       exact: true,
       level: 1,
       name: translated.englishTitle,
     });
+
     await expect(heading).toBeVisible();
     await expect(heading).toHaveAttribute("lang", "en");
     await expect(page.getByText(translated.englishBody)).toBeVisible();
@@ -711,6 +718,7 @@ test.describe("web-storefront announcements in the reader's language", () => {
       level: 1,
       name: untranslated.japaneseTitle,
     });
+
     await expect(heading).toBeVisible();
     await expect(heading).toHaveAttribute("lang", "ja");
     await expect(page.getByText(untranslated.japaneseBody)).toBeVisible();
@@ -740,6 +748,7 @@ test.describe("web-storefront announcements in the reader's language", () => {
       level: 3,
       name: translated.englishTitle,
     });
+
     await expect(englishTitle).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 3, name: untranslated.japaneseTitle })

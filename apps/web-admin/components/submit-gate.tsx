@@ -13,6 +13,7 @@ const SubmitGateContext = createContext<SubmitGateContextValue | null>(null);
 
 const useSubmitGateContext = (caller: string) => {
   const context = use(SubmitGateContext);
+
   if (!context) {
     throw new Error(`${caller} must be rendered inside a SubmitGate.`);
   }

@@ -84,9 +84,11 @@ describe("AnalyticsConsentPrompt", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Decline" }));
     expect(banner()).toBeNull();
+
     const { dataLayer = [] } = window as unknown as {
       dataLayer?: Iterable<unknown>[];
     };
+
     expect(dataLayer.slice(1).map((entry) => [...entry].slice(0, 3))).toEqual([
       [
         "consent",

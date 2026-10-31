@@ -43,7 +43,9 @@ const stubReplace = (body: EpisodePagesUploadResponse, status = 200) => {
   const fetch = vi.fn((_input: string, _init: RequestInit) =>
     Promise.resolve(Response.json(body, { status }))
   );
+
   vi.stubGlobal("fetch", fetch);
+
   return fetch;
 };
 
@@ -125,9 +127,11 @@ describe("EpisodeImageReplaceDialog", () => {
     Object.defineProperty(oversized, "size", {
       value: EPISODE_PAGE_IMAGE_MAX_BYTES + 1,
     });
+
     const values = vi
       .spyOn(FormData.prototype, "values")
       .mockImplementation(() => [oversized].values());
+
     onTestFinished(() => {
       values.mockRestore();
     });

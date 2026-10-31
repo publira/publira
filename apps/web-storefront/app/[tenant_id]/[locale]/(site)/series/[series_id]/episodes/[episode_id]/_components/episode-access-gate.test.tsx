@@ -191,6 +191,7 @@ describe("EpisodeAccessGate", () => {
 
       const codes = [...container.querySelectorAll("svg")];
       expect(codes).toHaveLength(2);
+
       for (const code of codes) {
         expect(code.classList.contains("hidden")).toBe(true);
         expect(code.classList.contains("md:block")).toBe(true);
@@ -216,6 +217,7 @@ describe("EpisodeAccessGate", () => {
       const appStore = screen.getByRole("link", {
         name: "storefront.episode.gate.app_store",
       });
+
       const badge = appStore.querySelector("img");
       expect(appStore.getAttribute("href")).toBe(
         "https://apps.apple.com/app/id123"
@@ -230,6 +232,7 @@ describe("EpisodeAccessGate", () => {
       const googlePlay = screen.getByRole("link", {
         name: "storefront.episode.gate.google_play",
       });
+
       expect(googlePlay.querySelector("img")).toBeNull();
       expect(googlePlay.textContent).toBe(
         "storefront.episode.gate.google_play"
@@ -496,6 +499,7 @@ describe("EpisodeAccessGate", () => {
       const button = screen.getByRole("button", {
         name: "storefront.episode.gate.purchase",
       });
+
       expect(kindOf(button)).toBe("purchase");
       expect(
         screen.queryByRole("button", {
@@ -627,6 +631,7 @@ describe("EpisodeAccessGate", () => {
       const link = screen.getByRole("link", {
         name: "storefront.episode.gate.next_free_episode",
       });
+
       expect(link.getAttribute("href")).toBe(
         "/series/SERIES_001/episodes/EPISODE_004"
       );

@@ -25,6 +25,7 @@ const readUploadResponse = async (
  */
 const untilOnline = (): Promise<"online"> => {
   const { promise, resolve } = Promise.withResolvers<"online">();
+
   if (navigator.onLine) {
     resolve("online");
   } else {
@@ -32,6 +33,7 @@ const untilOnline = (): Promise<"online"> => {
       once: true,
     });
   }
+
   return promise;
 };
 
@@ -84,12 +86,14 @@ export const usePageUploadAction = ({
 
     await untilOnline();
     let response: Response;
+
     try {
       response = await fetch(path, { body: formData, method: "POST" });
     } catch {
       // The pages may have changed before the connection went, so the list is
       // read again for the operator to check before sending them twice.
       router.refresh();
+
       return { message: interrupted, ok: false };
     }
 
@@ -98,10 +102,13 @@ export const usePageUploadAction = ({
     if (response.status === 413) {
       return { message: tooLarge, ok: false };
     }
+
     const result = await readUploadResponse(response);
+
     if (!result) {
       return { message: failed, ok: false };
     }
+
     if (result.location) {
       router.push(result.location);
     } else if (result.ok) {

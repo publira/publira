@@ -62,6 +62,7 @@ export const FollowUpdatesSection = async ({
     getLocale(),
     resolveMyPageToken(searchParams),
   ]);
+
   const returnTo = myPageHref(token);
   // This section is the page's first read of the reader's own data, so it is
   // where a visitor without a session is sent to sign in. The sections after

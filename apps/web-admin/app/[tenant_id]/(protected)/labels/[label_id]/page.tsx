@@ -73,6 +73,7 @@ const EditLabelTitle = async ({
   searchParams,
 }: Pick<EditLabelPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.labels.eye_catch_title" />
   ) : (
@@ -84,6 +85,7 @@ const EditLabelDescription = async ({
   searchParams,
 }: Pick<EditLabelPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.labels.eye_catch_description" />
   ) : (
@@ -99,10 +101,13 @@ const EditLabelTabNav = async ({
     params,
     resolveActiveTab(searchParams),
   ]);
+
   const parsedParams = parseRouteParams(editLabelParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { label_id: labelPublicId } = parsedParams;
 
   return <LabelTabNav current={activeTab} labelId={labelPublicId} />;
@@ -117,10 +122,13 @@ const EditLabelFormData = async ({
     resolveActiveTab(searchParams),
     getTenantId(),
   ]);
+
   const parsedParams = parseRouteParams(editLabelParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { label_id: labelPublicId } = parsedParams;
 
   const result = await getLabel({ publicId: labelPublicId });

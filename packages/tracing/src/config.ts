@@ -65,8 +65,10 @@ export const rootSampling = (env: TracingEnv): RootSampling => {
   if (read(env, SAMPLER_ENV)) {
     return { kind: "operator" };
   }
+
   if (deploymentEnvironment(env) === ENVIRONMENT_DEVELOPMENT) {
     return { kind: "always_on" };
   }
+
   return { kind: "ratio", ratio: PRODUCTION_SAMPLE_RATIO };
 };

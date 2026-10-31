@@ -43,6 +43,7 @@ describe("resolveAccessToken", () => {
       { accessToken: "access-token", expiresAt: "2999-01-01T00:00:00Z" },
       resolveAuthSecret()
     );
+
     mockCookies.mockResolvedValueOnce(cookieStore(sealed));
 
     await expect(resolveAccessToken()).resolves.toBe("access-token");

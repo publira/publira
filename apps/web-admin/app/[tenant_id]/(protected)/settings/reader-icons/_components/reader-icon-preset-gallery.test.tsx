@@ -28,6 +28,7 @@ const { remove } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   deleteReaderIconPresetAction: (_state: unknown, formData: FormData) => {
     remove.formData = formData;
+
     return remove.current.promise;
   },
   uploadReaderIconPresetAction: () => Promise.resolve(null),

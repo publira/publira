@@ -54,13 +54,16 @@ const termsUrlSchema = (message: string) =>
     if (value === "") {
       return true;
     }
+
     const lower = value.toLowerCase();
+
     if (
       /\s/u.test(value) ||
       !(lower.startsWith("https://") || lower.startsWith("http://"))
     ) {
       return false;
     }
+
     return URL.canParse(value) && new URL(value).host !== "";
   }, message);
 
@@ -69,9 +72,11 @@ const expiryDaysSchema = (message: string) =>
   z.preprocess(
     (value) => {
       const raw = typeof value === "string" ? value.trim() : "";
+
       if (raw === "") {
         return 0;
       }
+
       return /^\d+$/u.test(raw) ? Number(raw) : undefined;
     },
     z
@@ -127,9 +132,11 @@ const parseCoinNames = (
   const nameSchema = optionalTrimmedString(Number.MAX_SAFE_INTEGER);
   const names: CoinName[] = [];
   const fieldErrors: CoinSettingsFieldErrors = {};
+
   for (const code of locales.supportedLocales) {
     const parsed = nameSchema.safeParse(formData.get(coinNameField(code)));
     const name = parsed.success ? parsed.data : "";
+
     if (name === "") {
       if (code === locales.defaultLocale) {
         fieldErrors[coinNameField(code)] = t(
@@ -137,8 +144,10 @@ const parseCoinNames = (
           { language: getLocaleLabel(code) }
         );
       }
+
       continue;
     }
+
     if ([...name].length > COIN_NAME_MAX_LENGTH) {
       fieldErrors[coinNameField(code)] = t(
         "admin.coins.settings.validation.name_invalid",
@@ -146,8 +155,10 @@ const parseCoinNames = (
       );
       continue;
     }
+
     names.push({ locale: code, name });
   }
+
   return { fieldErrors, names };
 };
 
@@ -158,6 +169,7 @@ export const updateCoinSettingsAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = coinSettingsSchema(t).safeParse(
     toFormDataInput(formData, {
       coinName: { kind: "value", name: "coin_name" },
@@ -173,6 +185,7 @@ export const updateCoinSettingsAction = async (
       termsUrl: { kind: "value", name: "terms_url" },
     })
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -180,15 +193,18 @@ export const updateCoinSettingsAction = async (
       ok: false,
     };
   }
+
   const input = parsed.data;
 
   const locales = await findTenantLocales(input.tenantId);
+
   if (!locales) {
     return {
       message: t("admin.coins.settings.locales_unavailable"),
       ok: false,
     };
   }
+
   const { fieldErrors, names } = parseCoinNames(formData, locales, t);
 
   const coinUnitAmount = await parseTenantPrice(
@@ -198,6 +214,7 @@ export const updateCoinSettingsAction = async (
     locale,
     "admin.coins.settings.validation.unit_amount_invalid"
   );
+
   if (!coinUnitAmount.ok) {
     fieldErrors.coinUnitAmount = coinUnitAmount.message;
   }
@@ -237,6 +254,7 @@ export const updateCoinSettingsAction = async (
         "admin.coins.settings.validation.notice_required",
       ],
     ] as const;
+
     for (const [missing, field, message] of required) {
       if (missing && !fieldErrors[field]) {
         fieldErrors[field] = t(message);
@@ -270,6 +288,7 @@ export const updateCoinSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return {
       fieldErrors: result.fieldErrors,
@@ -293,6 +312,7 @@ const packFieldsSchema = (t: AdminMessageAccessor, coinName: string) =>
     coins: z.preprocess(
       (value) => {
         const raw = typeof value === "string" ? value.trim() : "";
+
         return /^\d+$/u.test(raw) ? Number(raw) : undefined;
       },
       z
@@ -361,13 +381,16 @@ const parsePackFields = async (
   const parsed = packFieldsSchema(t, coinName).safeParse(
     toFormDataInput(formData, packFormFields)
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
       ok: false,
     };
   }
+
   const { bonusCoins, coins, onSale } = parsed.data;
+
   if (coins + bonusCoins > MAX_INT32) {
     return {
       message: t("admin.coins.packs.validation.total_too_large", {
@@ -376,6 +399,7 @@ const parsePackFields = async (
       ok: false,
     };
   }
+
   const price = await parseTenantPrice(
     parsed.data.price,
     parsed.data.priceCurrency,
@@ -383,15 +407,18 @@ const parsePackFields = async (
     locale,
     "admin.coins.packs.validation.price_invalid"
   );
+
   if (!price.ok) {
     return price;
   }
+
   if (price.value <= 0) {
     return {
       message: t("admin.coins.packs.validation.price_invalid"),
       ok: false,
     };
   }
+
   return {
     ok: true,
     pack: {
@@ -412,6 +439,7 @@ export const createCoinPackAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = z
     .object({
       coinName: optionalTrimmedString(),
@@ -423,22 +451,27 @@ export const createCoinPackAction = async (
         tenantId: rowFormFields.tenantId,
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+
   const { tenantId } = parsed.data;
   const coinName = coinNameOrFallback(parsed.data.coinName, t);
 
   const fields = await parsePackFields(formData, tenantId, coinName, locale, t);
+
   if (!fields.ok) {
     return { message: fields.message, ok: false };
   }
 
   const result = await withAdminSessionReauth(async () => {
     const current = await readCoinPacksForWrite(tenantId, locale);
+
     if (!current.ok) {
       return current;
     }
+
     if (current.packs.length >= COIN_PACK_LIMIT) {
       return {
         message: t("admin.coins.packs.validation.limit", {
@@ -447,13 +480,16 @@ export const createCoinPackAction = async (
         ok: false as const,
       };
     }
+
     const sortOrder =
       Math.max(-1, ...current.packs.map((pack) => pack.sortOrder)) + 1;
+
     return createCoinPack(
       { coinName, pack: { ...fields.pack, sortOrder }, tenantId },
       locale
     );
   });
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -475,6 +511,7 @@ export const updateCoinPackAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = z
     .object({
       coinName: optionalTrimmedString(),
@@ -488,21 +525,27 @@ export const updateCoinPackAction = async (
         onSale: packFormFields.onSale,
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+
   const { id, onSale, tenantId } = parsed.data;
   const coinName = coinNameOrFallback(parsed.data.coinName, t);
 
   const result = await withAdminSessionReauth(async () => {
     const current = await readCoinPacksForWrite(tenantId, locale);
+
     if (!current.ok) {
       return current;
     }
+
     const stored = current.packs.find((pack) => pack.id === id);
+
     if (!stored) {
       return { message: t("admin.coins.packs.not_found"), ok: false as const };
     }
+
     if (stored.sold) {
       return updateCoinPack(
         {
@@ -514,6 +557,7 @@ export const updateCoinPackAction = async (
         locale
       );
     }
+
     const fields = await parsePackFields(
       formData,
       tenantId,
@@ -521,9 +565,11 @@ export const updateCoinPackAction = async (
       locale,
       t
     );
+
     if (!fields.ok) {
       return fields;
     }
+
     return updateCoinPack(
       {
         coinName,
@@ -534,6 +580,7 @@ export const updateCoinPackAction = async (
       locale
     );
   });
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -550,6 +597,7 @@ export const retireCoinPackAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = z
     .object({
       id: requiredRecordId(t("admin.coins.packs.not_found")),
@@ -561,14 +609,17 @@ export const retireCoinPackAction = async (
         tenantId: rowFormFields.tenantId,
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { id, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     retireCoinPack({ id, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -584,6 +635,7 @@ export const reorderCoinPacksAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = z
     .object({
       expectedIds: jsonRecordIdArrayFormSchema,
@@ -597,11 +649,13 @@ export const reorderCoinPacksAction = async (
         tenantId: rowFormFields.tenantId,
       })
     );
+
   if (!parsed.success || parsed.data.ids.length === 0) {
     return { message: t("admin.coins.packs.reorder_failed"), ok: false };
   }
 
   const { expectedIds, ids, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     reorderCoinPacks({ expectedIds, ids, tenantId }, locale)
   );

@@ -61,6 +61,7 @@ const CreatorRowsSkeleton = () => (
  */
 const CreatorsListDescription = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
@@ -122,6 +123,7 @@ const CreatorsListData = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { token } = parseCreatorsListSearchParams(resolvedSearchParams);
 
   const result = await listPublishedCreators(tenantId, {

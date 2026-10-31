@@ -28,6 +28,7 @@ import { WEB_ADMIN_TENANT_MEMBERS_BASE_URL } from "../src/urls";
 const MEMBERS_PATH = "/members";
 const ACCEPT_INVITE_PATH = "/accept-invite";
 const SECOND_INVITEE = "team-second-invitee@example.com";
+
 const EDITOR_INVITEE = {
   email: "team-editor-invitee@example.com",
   name: "Team E2E Editor Invitee",
@@ -36,6 +37,7 @@ const EDITOR_INVITEE = {
 
 const LAST_ADMIN_DEMOTE =
   "This member is the tenant's last tenant admin. Make someone else a tenant admin before changing this role.";
+
 const LAST_ADMIN_REMOVE =
   "This member is the tenant's last tenant admin. Make someone else a tenant admin before removing them.";
 
@@ -130,6 +132,7 @@ const acceptInvitation = async (
   const invitation = linkFrom(message, ACCEPT_INVITE_PATH);
 
   const inviteeContext = await browser.newContext();
+
   try {
     const page = await inviteeContext.newPage();
     // The mailed link itself, which names the tenant's console on this

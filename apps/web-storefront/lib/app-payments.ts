@@ -82,9 +82,11 @@ export const episodeSaleDestination = (
   if (purchaseSurface !== "app" && sales.web) {
     return "web";
   }
+
   if (purchaseSurface !== "web" && sales.app) {
     return "app";
   }
+
   return "none";
 };
 
@@ -121,6 +123,7 @@ export const toTenantAppPayments = ({
       googlePlay: acceptsGooglePlayPayments === true,
     };
   }
+
   return {
     appStore: acceptsPayments === true,
     googlePlay: acceptsPayments === true,

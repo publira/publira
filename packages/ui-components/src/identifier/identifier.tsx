@@ -71,8 +71,10 @@ export const IdentifierCopy = ({
       await navigator.clipboard.writeText(value);
     } catch {
       setCopied(false);
+
       return;
     }
+
     setCopied(true);
     setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
   }, [value]);

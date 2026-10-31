@@ -39,6 +39,7 @@ const NotificationManagerData = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
+
   const [listResult, unreadResult, timeZone] = await Promise.all([
     listNotifications(tenantId, locale, { token }),
     countUnreadNotifications(tenantId, locale),

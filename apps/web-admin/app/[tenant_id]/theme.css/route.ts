@@ -23,6 +23,7 @@ export const GET = async (
     isPlaceholderStaticParam(tenantId) || !isTenantIdFormat(tenantId)
       ? null
       : await getTenantThemeColors(tenantId.trim());
+
   const body = toPubliraThemeCssText(theme);
 
   return new Response(body, {

@@ -32,15 +32,18 @@ const deleteSeriesDocuments = async (
   publicIds: readonly string[]
 ): Promise<void> => {
   const url = process.env.PUBLIRA_E2E_OPENSEARCH_URL;
+
   if (!onOpenSearch || !url || publicIds.length === 0) {
     return;
   }
+
   const ids = querySql(`
     SELECT id FROM series
     WHERE public_id IN (${publicIds.map(quoteSqlLiteral).join(", ")})
   `)
     .split("\n")
     .filter(Boolean);
+
   // The index of every locale behind the alias `publiractl search set` saves
   // when it is given none: a series has a document in each of them.
   const index = "publira-catalog-*";
@@ -56,6 +59,7 @@ const deleteSeriesDocuments = async (
         method: "POST",
       }
     );
+
     const body = await response.text();
     expect(response.ok, body).toBe(true);
     expect(
@@ -88,6 +92,7 @@ const expectSeriesResult = async (
     const response = await page.goto(
       storefrontPath(`/search?q=${encodeURIComponent(query)}`)
     );
+
     expect(response?.status()).toBe(200);
 
     const series = page.getByRole("region", { exact: true, name: "Series" });
@@ -120,12 +125,15 @@ test.describe("catalog search", () => {
     title: string
   ): Promise<string> => {
     await signInAsSeedAdmin(page);
+
     const publicId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Search synopsis ${uniqueSuffix()}`,
       title,
     });
+
     createdSeriesIds.push(publicId);
+
     return publicId;
   };
 
@@ -145,10 +153,12 @@ test.describe("catalog search", () => {
     await page.goto(`${WEB_ADMIN_BASE_URL}/series/${publicId}`);
     const fields = seriesFormFields(page);
     await expect(fields.title).toHaveValue(title);
+
     const publishedAtInstant = page
       .locator("form")
       .filter({ has: fields.publishedAt })
       .locator('input[name="published_at"]');
+
     await expect(async () => {
       await fields.publishedAt.fill("");
       await expect(publishedAtInstant).toHaveValue("", { timeout: 2000 });

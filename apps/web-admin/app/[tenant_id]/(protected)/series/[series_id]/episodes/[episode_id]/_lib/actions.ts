@@ -94,6 +94,7 @@ const hiddenParamsSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const scheduleFormSchema = async (locale: Locale) => {
   const base = await hiddenParamsSchema(locale);
 
@@ -101,6 +102,7 @@ const scheduleFormSchema = async (locale: Locale) => {
     publishAt: optionalTrimmedString(),
   });
 };
+
 const freeWindowFormSchema = async (locale: Locale) => {
   const base = await hiddenParamsSchema(locale);
 
@@ -109,8 +111,10 @@ const freeWindowFormSchema = async (locale: Locale) => {
     startsAt: optionalTrimmedString(),
   });
 };
+
 const deleteFreeWindowSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const missing = t(
     "admin.series.episodes.free_windows.validation.free_window_missing"
   );
@@ -122,6 +126,7 @@ const deleteFreeWindowSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const campaignPriceFormSchema = async (locale: Locale) => {
   const base = await hiddenParamsSchema(locale);
 
@@ -134,8 +139,10 @@ const campaignPriceFormSchema = async (locale: Locale) => {
     startsAt: optionalTrimmedString(),
   });
 };
+
 const deleteCampaignPriceSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const missing = t(
     "admin.series.episodes.campaign_prices.validation.campaign_price_missing"
   );
@@ -147,18 +154,22 @@ const deleteCampaignPriceSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const creditsFormSchema = async (locale: Locale) => {
   const [base, t] = await Promise.all([
     hiddenParamsSchema(locale),
     getMessagesFor(locale),
   ]);
+
   const message = t("admin.series.episodes.validation.creator_credits_invalid");
+
   return base.extend({
     creatorCredits: z.preprocess(
       (value) => {
         if (typeof value !== "string" || value.trim() === "") {
           return [];
         }
+
         try {
           return JSON.parse(value);
         } catch {
@@ -176,6 +187,7 @@ const creditsFormSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const reorderImagesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -195,6 +207,7 @@ const reorderImagesSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const hiddenFormFields = {
   episodeId: { kind: "value", name: "episode_id" },
   episodePublicId: { kind: "value", name: "episode_public_id" },
@@ -217,6 +230,7 @@ const confirmEpisodeTarget = async (
   locale: Locale
 ): Promise<string | undefined> => {
   await verifyAdminSession(target.tenantId);
+
   const result = await getEpisodeForTenant(
     {
       publicId: target.episodePublicId,
@@ -225,13 +239,17 @@ const confirmEpisodeTarget = async (
     },
     locale
   );
+
   if (result.ok && result.episode.id === target.episodeId) {
     return;
   }
+
   if (!result.ok && "message" in result && result.message) {
     return result.message;
   }
+
   const t = await getMessagesFor(locale);
+
   return t("admin.series.episodes.validation.episode_missing");
 };
 
@@ -256,8 +274,10 @@ const parsePublishAtToRFC3339 = async (
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const iso = toInstantIsoString(value, timeZone);
   const parsed = parseInstant(iso);
+
   if (!parsed) {
     return toFailure(t("admin.series.episodes.validation.publish_at_invalid"));
   }
@@ -275,12 +295,14 @@ export const updateEpisodeScheduleAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await scheduleFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       publishAt: { kind: "value", name: "publish_at" },
     })
   );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
@@ -290,11 +312,13 @@ export const updateEpisodeScheduleAction = async (
     parsed.data.tenantId,
     locale
   );
+
   if (!schedule.ok) {
     return schedule;
   }
 
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return toFailure(mismatch);
   }
@@ -366,6 +390,7 @@ export const updateEpisodeTitleAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await titleFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -373,6 +398,7 @@ export const updateEpisodeTitleAction = async (
       translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -385,16 +411,20 @@ export const updateEpisodeTitleAction = async (
     title,
     translationLocale,
   } = parsed.data;
+
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
+
   const result = await withAdminSessionReauth(() =>
     updateEpisodeTitle(
       { episodeId, tenantId, title, translationLocale },
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -425,12 +455,14 @@ export const deleteEpisodeTranslationAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteTranslationSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -442,13 +474,17 @@ export const deleteEpisodeTranslationAction = async (
     tenantId,
     translationLocale,
   } = parsed.data;
+
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
+
   const result = await withAdminSessionReauth(() =>
     deleteEpisodeTranslation({ episodeId, tenantId, translationLocale }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -496,6 +532,7 @@ export const updateEpisodePricingAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await pricingFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -506,6 +543,7 @@ export const updateEpisodePricingAction = async (
       rentalPrice: { kind: "value", name: "rental_price" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -521,19 +559,24 @@ export const updateEpisodePricingAction = async (
     seriesPublicId,
     tenantId,
   } = parsed.data;
+
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
+
   const parsedPrice = await parseTenantPrice(
     price,
     priceCurrency,
     tenantId,
     locale
   );
+
   if (!parsedPrice.ok) {
     return { message: parsedPrice.message, ok: false };
   }
+
   const rental = await parseEpisodeRental(
     {
       currency: parsedPrice.currency,
@@ -543,9 +586,11 @@ export const updateEpisodePricingAction = async (
     },
     locale
   );
+
   if (!rental.ok) {
     return { message: rental.message, ok: false };
   }
+
   const result = await withAdminSessionReauth(() =>
     updateEpisodePricing(
       {
@@ -560,6 +605,7 @@ export const updateEpisodePricingAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -593,25 +639,31 @@ export const updateEpisodeAvailabilityAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await availabilityFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       availability: "value",
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { availability, episodeId, episodePublicId, seriesPublicId, tenantId } =
     parsed.data;
+
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
+
   const result = await withAdminSessionReauth(() =>
     updateEpisodeAvailability({ availability, episodeId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -647,12 +699,14 @@ export const updateEpisodePurchaseAvailabilityAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await purchaseAvailabilityFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       purchaseAvailability: { kind: "value", name: "purchase_availability" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -664,16 +718,20 @@ export const updateEpisodePurchaseAvailabilityAction = async (
     seriesPublicId,
     tenantId,
   } = parsed.data;
+
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
+
   const result = await withAdminSessionReauth(() =>
     updateEpisodePurchaseAvailability(
       { episodeId, purchaseAvailability, tenantId },
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -691,6 +749,7 @@ const layoutFormSchema = async (locale: Locale) => {
     getMessagesFor(locale),
     hiddenParamsSchema(locale),
   ]);
+
   const spreadStartInvalid = t(
     "admin.series.episodes.validation.spread_start_invalid"
   );
@@ -721,12 +780,14 @@ export const updateEpisodeLayoutAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await layoutFormSchema(locale);
+
   const input = toFormDataInput(formData, {
     ...hiddenFormFields,
     readingDirection: { kind: "value", name: "reading_direction" },
     spreadStartPage: { kind: "value", name: "spread_start_page" },
     spreadStartSource: { kind: "value", name: "spread_start_source" },
   });
+
   const parsed = schema.safeParse({
     ...input,
     spreadStart: {
@@ -734,6 +795,7 @@ export const updateEpisodeLayoutAction = async (
       source: input.spreadStartSource,
     },
   });
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -745,10 +807,13 @@ export const updateEpisodeLayoutAction = async (
     seriesPublicId,
     spreadStart,
   } = parsed.data;
+
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
+
   const result = await withAdminSessionReauth(() =>
     updateEpisodeLayout(
       {
@@ -761,6 +826,7 @@ export const updateEpisodeLayoutAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -780,19 +846,24 @@ export const replaceEpisodeCreditsAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await creditsFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       creatorCredits: { kind: "value", name: "creator_credits" },
     })
   );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
+
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return toFailure(mismatch);
   }
+
   const result = await withAdminSessionReauth(() =>
     replaceEpisodeCredits(
       {
@@ -803,9 +874,11 @@ export const replaceEpisodeCreditsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return toFailure(result.message);
   }
+
   updateTag(episodesCacheTag(parsed.data.tenantId));
   updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
   redirect(
@@ -825,6 +898,7 @@ const eyeCatchTargetSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const eyeCatchTargetFormFields = {
   episodeId: { kind: "value", name: "episode_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -843,10 +917,12 @@ export const updateEpisodeEyeCatchAction = async (
 ): Promise<EpisodeEditActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
     eyeCatchTargetSchema(locale),
   ]);
+
   const parsed = base
     .extend({
       clearEyeCatchImage: flagOneFormSchema,
@@ -864,6 +940,7 @@ export const updateEpisodeEyeCatchAction = async (
         eyeCatchImage: { kind: "file", name: "eye_catch_image" },
       })
     );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
@@ -880,6 +957,7 @@ export const updateEpisodeEyeCatchAction = async (
     const result = await withAdminSessionReauth(() =>
       deleteEpisodeEyeCatchImage({ episodeId, tenantId }, locale)
     );
+
     if (!result.ok) {
       return toFailure(result.message);
     }
@@ -887,7 +965,9 @@ export const updateEpisodeEyeCatchAction = async (
     if (!eyeCatchImage) {
       return toFailure(t("admin.series.episodes.eye_catch.choice_required"));
     }
+
     const imageData = new Uint8Array(await eyeCatchImage.arrayBuffer());
+
     const result = await withAdminSessionReauth(() =>
       uploadEpisodeEyeCatchImage(
         {
@@ -899,12 +979,15 @@ export const updateEpisodeEyeCatchAction = async (
         locale
       )
     );
+
     if (!result.ok) {
       return toFailure(result.message);
     }
+
     if (result.episode.eyeCatchImageVariants.length === 0) {
       return toFailure(t("admin.series.episodes.eye_catch.variants_missing"));
     }
+
     if (
       currentEyeCatchImageUpdatedAt.length > 0 &&
       result.episode.eyeCatchImageUpdatedAt === currentEyeCatchImageUpdatedAt
@@ -930,10 +1013,12 @@ export const uploadEpisodeEyeCatchAspectImageAction = async (
 ): Promise<EyeCatchAspectActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
     eyeCatchTargetSchema(locale),
   ]);
+
   const parsed = base
     .extend({
       aspectImage: optionalFileFormSchema,
@@ -950,16 +1035,19 @@ export const uploadEpisodeEyeCatchAspectImageAction = async (
         variantType: { kind: "value", name: "variant_type" },
       })
     );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const { aspectImage, crop, episodeId, tenantId, variantType } = parsed.data;
+
   if (!aspectImage) {
     return toFailure(t("admin.eye_catch.aspect.image_required"));
   }
 
   const imageData = new Uint8Array(await aspectImage.arrayBuffer());
+
   const result = await withAdminSessionReauth(() =>
     uploadEpisodeEyeCatchAspectImage(
       {
@@ -996,16 +1084,19 @@ export const reorderEpisodeImagesAction = async (formData: FormData) => {
 
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     reorderImagesSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
       orderedImageIds: { kind: "value", name: "ordered_image_ids" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -1069,6 +1160,7 @@ export const deleteEpisodeImageAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteImageSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       episodeId: { kind: "value", name: "episode_id" },
@@ -1076,6 +1168,7 @@ export const deleteEpisodeImageAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -1083,6 +1176,7 @@ export const deleteEpisodeImageAction = async (
   const result = await withAdminSessionReauth(() =>
     deleteEpisodeImage(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -1092,6 +1186,7 @@ export const deleteEpisodeImageAction = async (
   updateTag(episodesCacheTag(parsed.data.tenantId));
   updateTag(episodeCacheTag(parsed.data.tenantId, parsed.data.episodeId));
   const t = await getMessagesFor(locale);
+
   return { message: t("admin.series.episodes.image_delete.deleted"), ok: true };
 };
 
@@ -1102,6 +1197,7 @@ export const createEpisodeFreeWindowAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await freeWindowFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -1109,21 +1205,25 @@ export const createEpisodeFreeWindowAction = async (
       startsAt: { kind: "value", name: "starts_at" },
     })
   );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const { episodeId, episodePublicId, seriesPublicId, tenantId } = parsed.data;
+
   const period = await toScheduledPeriod(
     parsed.data,
     await getTenantDisplayTimeZone(tenantId),
     locale
   );
+
   if (!period.ok) {
     return toFailure(period.message);
   }
 
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return toFailure(mismatch);
   }
@@ -1139,6 +1239,7 @@ export const createEpisodeFreeWindowAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return toFailure(result.message);
   }
@@ -1157,12 +1258,14 @@ export const deleteEpisodeFreeWindowAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteFreeWindowSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       freeWindowId: { kind: "value", name: "free_window_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -1170,6 +1273,7 @@ export const deleteEpisodeFreeWindowAction = async (
   const result = await withAdminSessionReauth(() =>
     deleteEpisodeFreeWindow(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -1179,6 +1283,7 @@ export const deleteEpisodeFreeWindowAction = async (
   // the list too, which is why the tag is cleared on that outcome as well.
   updateTag(episodeFreeWindowsCacheTag(parsed.data.tenantId));
   const t = await getMessagesFor(locale);
+
   return {
     message: result.alreadyDeleted
       ? t("admin.series.episodes.free_windows.already_deleted")
@@ -1194,6 +1299,7 @@ export const createEpisodeCampaignPriceAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await campaignPriceFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...hiddenFormFields,
@@ -1203,26 +1309,31 @@ export const createEpisodeCampaignPriceAction = async (
       startsAt: { kind: "value", name: "starts_at" },
     })
   );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }));
   }
 
   const { episodeId, episodePublicId, seriesPublicId, tenantId } = parsed.data;
+
   const period = await toScheduledPeriod(
     parsed.data,
     await getTenantDisplayTimeZone(tenantId),
     locale
   );
+
   if (!period.ok) {
     return toFailure(period.message);
   }
 
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+
   if (mismatch) {
     return toFailure(mismatch);
   }
 
   const price = await parseCampaignPrice(parsed.data, tenantId, locale);
+
   if (!price.ok) {
     return toFailure(price.message);
   }
@@ -1243,6 +1354,7 @@ export const createEpisodeCampaignPriceAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return toFailure(result.message);
   }
@@ -1261,12 +1373,14 @@ export const deleteEpisodeCampaignPriceAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteCampaignPriceSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       campaignPriceId: { kind: "value", name: "campaign_price_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -1274,6 +1388,7 @@ export const deleteEpisodeCampaignPriceAction = async (
   const result = await withAdminSessionReauth(() =>
     deleteEpisodeCampaignPrice(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -1284,6 +1399,7 @@ export const deleteEpisodeCampaignPriceAction = async (
   // well.
   updateTag(episodeCampaignPricesCacheTag(parsed.data.tenantId));
   const t = await getMessagesFor(locale);
+
   return {
     message: result.alreadyDeleted
       ? t("admin.series.episodes.campaign_prices.already_deleted")
@@ -1308,11 +1424,13 @@ export const renewEpisodePreviewUrlsAction = async (
 ): Promise<Record<string, string>> => {
   // This Server Action only reads; the same-origin check applies to mutations.
   const parsed = renewPreviewUrlsSchema.safeParse({ episodeId, tenantId });
+
   if (!parsed.success) {
     return {};
   }
 
   // The tenant comes from the client, so the session is checked against it.
   await verifyAdminSession(parsed.data.tenantId);
+
   return (await renewEpisodeImageUrls(parsed.data)) ?? {};
 };

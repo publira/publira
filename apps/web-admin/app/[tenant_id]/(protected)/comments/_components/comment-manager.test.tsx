@@ -229,6 +229,7 @@ describe("CommentManager", () => {
     vi.setSystemTime(
       Temporal.Instant.from("2026-06-01T20:00:00Z").epochMilliseconds
     );
+
     try {
       render(
         await CommentManager({
@@ -260,6 +261,7 @@ describe("CommentManager", () => {
     vi.setSystemTime(
       Temporal.Instant.from("2026-06-07T09:00:00Z").epochMilliseconds
     );
+
     try {
       render(
         await CommentManager({
@@ -347,9 +349,11 @@ describe("CommentManager", () => {
     );
 
     const withIcon = screen.getByRole("link", { name: "Reader" }).closest("td");
+
     const withoutIcon = screen
       .getByRole("link", { name: "Reader Two" })
       .closest("td");
+
     expect(withIcon?.querySelector("img")?.getAttribute("src")).toContain(
       "icon.png"
     );

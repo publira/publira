@@ -36,6 +36,7 @@ const credentialUpdateMode = (credential: CredentialInput): number => {
   if (credential.mode === "clear") {
     return SECRET_UPDATE_MODE_CLEAR;
   }
+
   return credential.mode === "replace" && credential.value !== ""
     ? SECRET_UPDATE_MODE_REPLACE
     : SECRET_UPDATE_MODE_UNCHANGED;
@@ -43,6 +44,7 @@ const credentialUpdateMode = (credential: CredentialInput): number => {
 
 const isCredentialStored = (credential: CredentialInput): boolean => {
   const mode = credentialUpdateMode(credential);
+
   return (
     mode === SECRET_UPDATE_MODE_REPLACE ||
     (mode === SECRET_UPDATE_MODE_UNCHANGED && credential.configured)
@@ -83,24 +85,30 @@ export const toProviderCredentialUpdates = (
 ): ProviderCredentialUpdates => {
   const updates: ProviderCredentialUpdate[] = [];
   const fieldErrors: ProviderCredentialFieldErrors = {};
+
   for (const field of fields) {
     const credential = credentialSchema.safeParse(
       credentialFormInput(formData, field.name)
     );
+
     if (!credential.success) {
       return { ok: false };
     }
+
     if (enabled && field.required && !isCredentialStored(credential.data)) {
       fieldErrors[`credential_${field.name}`] = requiredMessage;
     }
+
     updates.push({
       mode: credentialUpdateMode(credential.data),
       name: field.name,
       value: credential.data.value,
     });
   }
+
   if (Object.keys(fieldErrors).length > 0) {
     return { fieldErrors, ok: false };
   }
+
   return { fields: updates, ok: true };
 };

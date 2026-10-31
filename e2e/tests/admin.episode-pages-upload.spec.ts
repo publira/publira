@@ -39,11 +39,14 @@ test.describe("admin episode page upload", () => {
     test.setTimeout(300_000);
 
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       synopsis: `E2E page upload synopsis ${suffix}`,
       title: `E2E Page Upload Series ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Page Upload Episode ${suffix}`,
@@ -57,6 +60,7 @@ test.describe("admin episode page upload", () => {
         name: `pages/${String(index + 1).padStart(3, "0")}.png`,
       }))
     );
+
     expect(archive.byteLength).toBeGreaterThan(PAGE_COUNT * 1_000_000);
     // Playwright hands a buffer this large to the browser only from a file.
     const archivePath = testInfo.outputPath("episode.zip");

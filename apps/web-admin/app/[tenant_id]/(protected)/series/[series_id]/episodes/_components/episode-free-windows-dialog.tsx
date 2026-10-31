@@ -55,6 +55,7 @@ const EpisodeFreeWindowsForm = ({
   const tenantId = useTenantId();
   const { selectedIds } = useEpisodeSelection();
   const selectedCount = selectedIds.size;
+
   // The form is remounted each time the dialog opens, so this reads the
   // checks the list holds at that moment.
   const [target, setTarget] = useState<FreeWindowTarget>(
@@ -192,6 +193,7 @@ export const EpisodeFreeWindowsDialog = (
     <Dialog.Root
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
+
         if (nextOpen) {
           // A message or a period typed the last time does not survive into
           // the next campaign.

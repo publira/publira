@@ -14,6 +14,7 @@ describe("forEachPageWithToken", () => {
         items: [{ id: "b" }],
         nextToken: "",
       });
+
     const onPage = vi.fn();
 
     await expect(forEachPageWithToken(fetchPage, onPage)).resolves.toBe(
@@ -31,6 +32,7 @@ describe("forEachPageWithToken", () => {
       items: [{ id: "a" }],
       nextToken: "page-2",
     });
+
     const onPage = vi.fn().mockReturnValue(false);
 
     await expect(forEachPageWithToken(fetchPage, onPage)).resolves.toBe(
@@ -46,6 +48,7 @@ describe("forEachPageWithToken", () => {
       items: [{ id: "a" }],
       nextToken: "page-2",
     });
+
     const onPage = vi.fn();
 
     await expect(forEachPageWithToken(fetchPage, onPage)).resolves.toBe(
@@ -57,10 +60,13 @@ describe("forEachPageWithToken", () => {
 
   it("the page limit returns max-pages", async () => {
     let page = 0;
+
     const fetchPage = vi.fn().mockImplementation(() => {
       page += 1;
+
       return { items: [{ id: `p${page}` }], nextToken: `page-${page}` };
     });
+
     const onPage = vi.fn();
 
     await expect(
@@ -77,6 +83,7 @@ describe("forEachPageWithToken", () => {
       })),
       nextToken: "page-2",
     });
+
     const onPage = vi.fn();
 
     await expect(
@@ -96,6 +103,7 @@ describe("forEachPageWithToken", () => {
       items: [{ id: "1" }, { id: "2" }, { id: "3" }],
       nextToken: "page-2",
     });
+
     const onPage = vi.fn();
 
     await expect(
@@ -153,8 +161,10 @@ describe("findByPublicIdWithToken", () => {
 
   it("the page limit stops the scan even while the tokens keep changing", async () => {
     let page = 0;
+
     const fetchPage = vi.fn().mockImplementation(() => {
       page += 1;
+
       return { items: [], nextToken: `page-${page}` };
     });
 

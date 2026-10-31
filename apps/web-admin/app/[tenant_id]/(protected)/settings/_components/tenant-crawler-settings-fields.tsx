@@ -42,6 +42,7 @@ const CrawlerPurposeHeading = ({ purpose }: { purpose: CrawlerPurpose }) => {
         </>
       );
     }
+
     case "ai_assistant": {
       return (
         <>
@@ -54,6 +55,7 @@ const CrawlerPurposeHeading = ({ purpose }: { purpose: CrawlerPurpose }) => {
         </>
       );
     }
+
     case "image_search": {
       return (
         <>
@@ -66,6 +68,7 @@ const CrawlerPurposeHeading = ({ purpose }: { purpose: CrawlerPurpose }) => {
         </>
       );
     }
+
     default: {
       return (
         <>
@@ -90,6 +93,7 @@ const CrawlerPath = () => {
   const t = useClientMessages();
   const { position, touched, value } = EntryList.useRow();
   const result = parseCrawlerPaths([value]);
+
   const message =
     touched && !result.ok && result.reason !== "too_many"
       ? crawlerPathMessage(t, result)
@@ -128,6 +132,7 @@ const CrawlerPathsMessage = () => {
       </EntryList.Message>
     );
   }
+
   return (
     <EntryList.Message>
       {state?.ok === false ? state.fieldErrors?.excludedPaths : undefined}
@@ -154,12 +159,15 @@ export const TenantCrawlerSettingsFields = ({
 }: TenantCrawlerSettingsFieldsProps) => {
   const crawlersDescriptionId = useId();
   const state = ActionForm.useState<SettledState>();
+
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(
     () => new Set(initialSettings?.excludedUserAgents)
   );
+
   const [paths, setPaths] = useState(
     () => initialSettings?.excludedPaths ?? []
   );
+
   // Bumped by each save, which remounts the list on what the server stored.
   const [savedCount, setSavedCount] = useState(0);
 
@@ -167,6 +175,7 @@ export const TenantCrawlerSettingsFields = ({
     if (!settled?.ok) {
       return;
     }
+
     setExcluded(new Set(settled.settings.excludedUserAgents));
     setPaths(settled.settings.excludedPaths);
     setSavedCount((count) => count + 1);
@@ -175,11 +184,13 @@ export const TenantCrawlerSettingsFields = ({
   const setCrawlerExcluded = (userAgent: string, checked: boolean) => {
     setExcluded((current) => {
       const next = new Set(current);
+
       if (checked) {
         next.add(userAgent);
       } else {
         next.delete(userAgent);
       }
+
       return next;
     });
   };
@@ -190,6 +201,7 @@ export const TenantCrawlerSettingsFields = ({
   const groups = CRAWLER_PURPOSES.flatMap((purpose) => {
     const crawlers =
       knownCrawlers?.filter((crawler) => crawler.purpose === purpose) ?? [];
+
     return crawlers.length > 0 ? [{ crawlers, purpose }] : [];
   });
 

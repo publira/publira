@@ -38,6 +38,7 @@ describe("FollowLoginLink", () => {
     const link = screen.getByRole("link", {
       name: "Sign in to follow Published Series",
     });
+
     expect(link.getAttribute("href")).toBe(
       "/login?returnTo=%2Fseries%2FSERIES01"
     );

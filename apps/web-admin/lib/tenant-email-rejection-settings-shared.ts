@@ -17,6 +17,7 @@ export const MAX_EMAIL_REJECTION_ENTRIES = 1000;
 
 /** The longest address SMTP carries, and so the longest entry that could match one. */
 const MAX_ENTRY_BYTES = 254;
+
 /** The longest local part SMTP carries. */
 const MAX_LOCAL_BYTES = 64;
 const MAX_DOMAIN_LENGTH = 253;
@@ -49,6 +50,7 @@ const isValidLocal = (local: string): boolean => {
   ) {
     return false;
   }
+
   return local
     .split(".")
     .every(
@@ -75,7 +77,9 @@ const isAsciiDomain = (name: string): boolean => {
   if (name.length > MAX_DOMAIN_LENGTH) {
     return false;
   }
+
   const labels = name.split(".");
+
   return (
     labels.length >= 2 &&
     labels.every(
@@ -97,18 +101,23 @@ const isAsciiDomain = (name: string): boolean => {
  */
 const toAsciiDomain = (domain: string): string | null => {
   const name = domain.endsWith(".") ? domain.slice(0, -1) : domain;
+
   if (isAscii(name)) {
     return isAsciiDomain(name) ? name : null;
   }
+
   if (HOST_DELIMITER.test(name) || !name.isWellFormed()) {
     return null;
   }
+
   let host: string;
+
   try {
     ({ hostname: host } = new URL(`http://${name}/`));
   } catch {
     return null;
   }
+
   return isAsciiDomain(host) ? host : null;
 };
 
@@ -118,17 +127,22 @@ const toAsciiDomain = (domain: string): string | null => {
  */
 const toEntryKey = (entry: string): string | null => {
   const value = entry.trim().toLowerCase();
+
   if (utf8Length(value.replace(/\.$/u, "")) > MAX_ENTRY_BYTES) {
     return null;
   }
+
   // The last @, as the server splits: a quoted local part may hold one of its
   // own, and it is refused below as a local part rather than read as a domain.
   const at = value.lastIndexOf("@");
+
   if (at === -1) {
     return toAsciiDomain(value);
   }
+
   const local = value.slice(0, at);
   const host = toAsciiDomain(value.slice(at + 1));
+
   return host !== null && isValidLocal(local) ? `${local}@${host}` : null;
 };
 
@@ -151,21 +165,28 @@ export const parseEmailRejectionEntries = (
 ): EmailRejectionEntriesResult => {
   const entries: string[] = [];
   const keys = new Set<string>();
+
   for (const value of values) {
     const entry = value.trim();
+
     if (entry === "") {
       continue;
     }
+
     const key = toEntryKey(entry);
+
     if (key === null) {
       return { entry, ok: false, reason: "entry_invalid" };
     }
+
     entries.push(entry);
     keys.add(key);
   }
+
   // Counted after duplicates are dropped, as the server counts.
   if (keys.size > MAX_EMAIL_REJECTION_ENTRIES) {
     return { ok: false, reason: "too_many" };
   }
+
   return { entries, ok: true };
 };

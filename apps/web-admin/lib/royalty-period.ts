@@ -71,12 +71,15 @@ export const closesAutomatically = (
   if (policy.closeMode !== "automatic" || policy.autoCloseDay === undefined) {
     return false;
   }
+
   let since: Temporal.Instant;
+
   try {
     since = Temporal.Instant.from(policy.automaticSince);
   } catch {
     return false;
   }
+
   return (
     Temporal.Instant.compare(royaltyPeriodEnd(period, timeZone), since) > 0
   );
@@ -101,7 +104,9 @@ export const defaultOpenRoyaltyPeriod = (
   if (latestClosedPeriod === undefined) {
     return shiftRoyaltyPeriod(currentPeriod, -1);
   }
+
   const next = shiftRoyaltyPeriod(latestClosedPeriod, 1);
+
   return next < currentPeriod ? next : currentPeriod;
 };
 
@@ -129,9 +134,11 @@ export const royaltyCloseState = (
       kind: "automatic",
     };
   }
+
   if (!isRoyaltyPeriodOver(period, timeZone, now)) {
     return { kind: "in-progress", lastDay: royaltyPeriodLastDay(period) };
   }
+
   return { kind: "ready" };
 };
 

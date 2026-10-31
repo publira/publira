@@ -41,12 +41,15 @@ export const checkAccountIconFile = (file: {
   if (!isAcceptedContentType(file.type)) {
     return "unsupported";
   }
+
   if (file.size === 0) {
     return "unsupported";
   }
+
   if (file.size > ACCOUNT_ICON_MAX_BYTES) {
     return "too-large";
   }
+
   return null;
 };
 
@@ -59,16 +62,19 @@ export const checkAccountIconImage = async (
   file: Blob
 ): Promise<AccountIconFileProblem | null> => {
   const problem = checkAccountIconFile(file);
+
   if (problem) {
     return problem;
   }
 
   let bitmap: ImageBitmap;
+
   try {
     bitmap = await createImageBitmap(file);
   } catch {
     return "unsupported";
   }
+
   const shorterSide = Math.min(bitmap.width, bitmap.height);
   bitmap.close();
 
@@ -84,6 +90,7 @@ export const toAccountIcon = (
   variants: readonly Pick<UserIconVariant, "height" | "url" | "width">[]
 ): AccountIcon | null => {
   const [variant] = variants;
+
   return variant
     ? { height: variant.height, url: variant.url, width: variant.width }
     : null;

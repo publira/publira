@@ -26,11 +26,14 @@ export const appendPeerAddress = (
   if (!peerAddress) {
     return;
   }
+
   const forwardedFor = headerValue(headers["x-forwarded-for"]);
   const forwarded = headerValue(headers.forwarded);
+
   if (forwarded) {
     headers.forwarded = `${forwarded}, for=${forwardedNode(peerAddress)}`;
   }
+
   if (forwardedFor) {
     headers["x-forwarded-for"] = `${forwardedFor}, ${peerAddress}`;
   } else if (!forwarded) {

@@ -24,6 +24,7 @@ const adminUrl = (pathname: string): string =>
  */
 const scheduledPeriod = () => {
   const startsAt = Temporal.Now.instant().add({ hours: 24 });
+
   return { endsAt: startsAt.add({ hours: 48 }), startsAt };
 };
 
@@ -99,12 +100,15 @@ test.describe("admin free reading periods", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Free window series ${suffix}`,
       title: `E2E Free Window ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Free Window Episode ${suffix}`,
@@ -149,22 +153,27 @@ test.describe("admin free reading periods", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Free window campaign ${suffix}`,
       title: `E2E Free Window Campaign ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     // Created one after another: each lands at the end of the series, so the
     // order they are created in is the order the list shows.
     const first = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Campaign One ${suffix}`,
     });
+
     const second = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Campaign Two ${suffix}`,
     });
+
     const third = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Campaign Three ${suffix}`,
@@ -184,6 +193,7 @@ test.describe("admin free reading periods", () => {
     const dialog = page.getByRole("dialog", {
       name: "Add a free reading period",
     });
+
     await expect(
       dialog.getByRole("radio", { checked: true, name: "Selected episodes" })
     ).toBeVisible();

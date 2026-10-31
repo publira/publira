@@ -76,9 +76,11 @@ export const GoogleTagLoader = ({
 }) => {
   const pathname = usePathname();
   const answer = useAnalyticsConsent(consent?.cookieName ?? "");
+
   if (!loadsGoogleTagOn(toBarePathname(pathname))) {
     return null;
   }
+
   if (!consent) {
     return <GoogleTagScriptsLoader {...scripts} />;
   }

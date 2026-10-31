@@ -43,6 +43,7 @@ test.beforeAll(async ({ browser }) => {
   applyScenarioSql(STOREFRONT_COINS_SCENARIO);
   applyScenarioSql(PLATFORM_TENANT_COINS_SCENARIO);
   const page = await browser.newPage();
+
   try {
     await setTenantCoinsAllowed(page, true);
   } finally {
@@ -52,11 +53,13 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async ({ browser }) => {
   const page = await browser.newPage();
+
   try {
     await setTenantCoinsAllowed(page, false);
   } finally {
     await page.close();
   }
+
   applyScenarioSql(STOREFRONT_COINS_SCENARIO);
 });
 
@@ -108,6 +111,7 @@ for (const locale of DOCS_LOCALES) {
         exact: true,
         name: t("admin.coins.settings.enabled"),
       });
+
       await enabled.uncheck();
       await page
         .getByRole("button", { name: t("admin.coins.settings.submit") })

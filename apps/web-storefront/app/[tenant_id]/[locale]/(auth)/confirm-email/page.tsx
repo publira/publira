@@ -45,11 +45,13 @@ const confirmEmailOutcome = (
   if (result?.changed) {
     return "changed";
   }
+
   if (result?.confirmed) {
     return result.pendingConfirmationFor === "current_email"
       ? "pending_current_email"
       : "pending_new_email";
   }
+
   return "failed";
 };
 
@@ -62,19 +64,23 @@ const ConfirmEmailSentence = ({
     case "changed": {
       return <Message message="storefront.auth.confirm_email.changed" />;
     }
+
     case "invalid_link": {
       return <Message message="storefront.auth.fields.invalid_token" />;
     }
+
     case "pending_current_email": {
       return (
         <Message message="storefront.auth.confirm_email.pending_current_email" />
       );
     }
+
     case "pending_new_email": {
       return (
         <Message message="storefront.auth.confirm_email.pending_new_email" />
       );
     }
+
     default: {
       return <Message message="storefront.auth.confirm_email.failed" />;
     }
@@ -142,6 +148,7 @@ const ConfirmationFallback = () => (
 /** The tenant's own name and tagline, which only the site read can supply. */
 const ConfirmEmailHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [{ siteTagline }, siteLabel, t] = await Promise.all([
     getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),

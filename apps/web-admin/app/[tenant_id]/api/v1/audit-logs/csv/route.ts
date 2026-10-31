@@ -39,9 +39,11 @@ export const GET = async (
 ) => {
   const { tenant_id } = await params;
   const tenantId = tenantIdSchema.safeParse(tenant_id);
+
   const query = exportQuerySchema.safeParse(
     Object.fromEntries(new URL(request.url).searchParams)
   );
+
   if (!(tenantId.success && query.success)) {
     return notFound();
   }
@@ -52,22 +54,26 @@ export const GET = async (
     end: query.data.to,
     start: query.data.from,
   };
+
   const [tenant, file] = await Promise.all([
     getTenantForSession(tenantId.data),
     exportAuditLogs(tenantId.data, exported),
   ]);
+
   if (
     (!tenant.ok && tenant.requiresSignIn) ||
     (!file.ok && file.reason === "signedOut")
   ) {
     redirect(buildLoginPath(auditLogsHref(exported), { revoked: true }));
   }
+
   if (!(tenant.ok && file.ok)) {
     return notFound();
   }
 
   // `--` separates the two ends of an ISO 8601 interval where `/` cannot go.
   const fileName = `audit-log-${tenant.tenant.publicId}-${exported.start}--${exported.end}.csv`;
+
   return new NextResponse(file.csv, {
     headers: {
       "Cache-Control": "private, no-store",

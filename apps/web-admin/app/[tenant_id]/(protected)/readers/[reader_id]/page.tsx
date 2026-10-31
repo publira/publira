@@ -49,10 +49,12 @@ type ReaderDetailPageProps = PageProps<"/[tenant_id]/readers/[reader_id]">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -94,11 +96,14 @@ const ReaderAccountContent = async ({
   params,
 }: Pick<ReaderDetailPageProps, "params">) => {
   const parsedParams = parseRouteParams(readerParamsSchema, await params);
+
   if (!parsedParams) {
     notFound();
   }
+
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [result, timeZone] = await Promise.all([
     getPageReader(tenantId, locale, parsedParams.reader_id),
     getTenantDisplayTimeZone(tenantId),
@@ -156,20 +161,26 @@ const ReaderPurchasesContent = async ({
     searchParams,
     getTenantId(),
   ]);
+
   const parsedParams = parseRouteParams(readerParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const cursors = parseReaderPageCursors(sp);
   const locale = await getLocale(tenantId);
+
   const [readerResult, timeZone, providersResult] = await Promise.all([
     getPageReader(tenantId, locale, parsedParams.reader_id),
     getTenantDisplayTimeZone(tenantId),
     listPaymentProviders(tenantId, locale),
   ]);
+
   if (!readerResult.ok && readerResult.notFound) {
     notFound();
   }
+
   const result = readerResult.ok
     ? await listReaderPurchases(tenantId, locale, readerResult.reader.id, {
         limit: DEFAULT_PAGE_SIZE,
@@ -184,6 +195,7 @@ const ReaderPurchasesContent = async ({
   );
 
   let listErrorMessage: string | undefined;
+
   if (!readerResult.ok) {
     listErrorMessage = readerResult.message;
   } else if (result && !result.ok) {
@@ -233,12 +245,16 @@ const ReaderTicketsContent = async ({
     searchParams,
     getTenantId(),
   ]);
+
   const parsedParams = parseRouteParams(readerParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const cursors = parseReaderPageCursors(sp);
   const locale = await getLocale(tenantId);
+
   const [readerResult, result, timeZone, seriesResult] = await Promise.all([
     getPageReader(tenantId, locale, parsedParams.reader_id),
     listAccessTickets(tenantId, locale, {
@@ -249,6 +265,7 @@ const ReaderTicketsContent = async ({
     getTenantDisplayTimeZone(tenantId),
     listAllSeries(),
   ]);
+
   if (!readerResult.ok && readerResult.notFound) {
     notFound();
   }
@@ -301,10 +318,13 @@ const ReaderCommentsContent = async ({
     searchParams,
     getTenantId(),
   ]);
+
   const parsedParams = parseRouteParams(readerParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const cursors = parseReaderPageCursors(sp);
   const locale = await getLocale(tenantId);
 

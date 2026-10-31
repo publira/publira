@@ -45,10 +45,12 @@ type SectionErrorInfo = Pick<ErrorInfo, "error" | "retry">;
 const errorDigest = (error: unknown): string | undefined => {
   if (error instanceof Error && "digest" in error) {
     const { digest } = error;
+
     if (typeof digest === "string") {
       return digest;
     }
   }
+
   return undefined;
 };
 
@@ -101,11 +103,13 @@ export const SectionErrorCatch = catchError(sectionErrorFallback);
 
 const useSectionErrorState = (): SectionErrorState => {
   const state = useContext(SectionErrorStateContext);
+
   if (!state) {
     throw new Error(
       "SectionErrorRetry and SectionErrorDigest must be rendered inside a sectionErrorFallback body."
     );
   }
+
   return state;
 };
 

@@ -31,13 +31,16 @@ const withItemMoved = <T,>(
 ): T[] => {
   const ids = items.map(itemId);
   const nextIds = move(ids, event);
+
   if (nextIds === ids) {
     return items;
   }
 
   const byId = new Map(ids.map((id, index) => [id, items[index]]));
+
   return nextIds.flatMap((id) => {
     const item = byId.get(id);
+
     return item ? [item] : [];
   });
 };
@@ -51,6 +54,7 @@ const positionOf = (source: Draggable, initial = false): string => {
   if (!isSortable(source)) {
     return "";
   }
+
   return String((initial ? source.initialIndex : source.index) + 1);
 };
 
@@ -76,6 +80,7 @@ const localizedPlugins =
                 if (!source) {
                   return;
                 }
+
                 return canceled
                   ? t("admin.common.sortable.cancelled", {
                       name: labelOf(source),
@@ -93,11 +98,15 @@ const localizedPlugins =
                 if (!source || source.id !== target?.id) {
                   return;
                 }
+
                 const position = positionOf(source);
+
                 if (position === announcedPosition) {
                   return;
                 }
+
                 announcedPosition = position;
+
                 return t("admin.common.sortable.moved", {
                   name: labelOf(source),
                   position,
@@ -107,7 +116,9 @@ const localizedPlugins =
                 if (!source) {
                   return;
                 }
+
                 announcedPosition = positionOf(source);
+
                 return t("admin.common.sortable.picked_up", {
                   name: labelOf(source),
                   position: announcedPosition,
@@ -222,6 +233,7 @@ const SortableRows = ({ disabled = false, order, rows }: SortableRowsProps) => {
 /** The 0-based position of the row {@link SortableRows} put this inside. */
 const useSortableRowIndex = (): number => {
   const row = useContext(SortableRowContext);
+
   if (row === null) {
     throw new Error("SortableRows is required.");
   }
@@ -266,10 +278,13 @@ const SortableItem = ({
 }: SortableItemProps) => {
   const row = useContext(SortableRowContext);
   const index = ownIndex ?? row?.index;
+
   if (index === undefined) {
     throw new Error("SortableItem needs an index outside SortableRows.");
   }
+
   const disabled = ownDisabled ?? row?.disabled ?? false;
+
   const { handleRef, isDragging, ref } = useSortable({
     accept,
     data: { label },
@@ -278,6 +293,7 @@ const SortableItem = ({
     index,
     type,
   });
+
   const handle = useMemo(
     () => ({ disabled, handleRef }),
     [disabled, handleRef]
@@ -317,9 +333,11 @@ const SortableItemHandle = ({
 }) => {
   const t = useClientMessages();
   const handle = useContext(SortableItemContext);
+
   if (handle === null) {
     throw new Error("SortableItem is required.");
   }
+
   const { disabled, handleRef } = handle;
 
   return (
@@ -347,4 +365,5 @@ export {
   useSortableRowIndex as useRowIndex,
   withItemMoved,
 };
+
 export type { SortableRow as Row };

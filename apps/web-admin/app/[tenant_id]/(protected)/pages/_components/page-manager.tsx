@@ -180,6 +180,7 @@ export const PageManager = async ({
 }: PageManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
   const showPagination =

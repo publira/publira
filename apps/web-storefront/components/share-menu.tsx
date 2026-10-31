@@ -115,6 +115,7 @@ export const ShareMenu = ({
     if (!nextOpen) {
       setOpen(false);
       setCopyOutcome(null);
+
       return;
     }
 
@@ -122,6 +123,7 @@ export const ShareMenu = ({
       // Called rather than awaited: the sheet is asked for synchronously, which
       // is what keeps it inside the click's transient user activation.
       void openShareSheet();
+
       return;
     }
 
@@ -133,6 +135,7 @@ export const ShareMenu = ({
       await navigator.clipboard.writeText(url);
     } catch {
       setCopyOutcome("failed");
+
       return;
     }
 

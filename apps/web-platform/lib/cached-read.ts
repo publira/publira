@@ -15,8 +15,10 @@ export const settleCachedRead = <
   ...result
 }: CachedRead<TResult>): TResult => {
   const settled = result as TResult;
+
   if (unexpected && !settled.ok) {
     throw new Error(settled.message);
   }
+
   return settled;
 };

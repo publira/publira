@@ -86,5 +86,6 @@ export const cachedReadFailure = <TValue = never>(
   message: string
 ): CachedReadResult<TValue> => {
   dropFailedCacheEntry();
+
   return { message, ok: false };
 };

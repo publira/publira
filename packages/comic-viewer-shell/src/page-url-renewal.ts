@@ -31,6 +31,7 @@ export const renewFromPageUrls = (
     if (pending === undefined) {
       pending = readOnce();
     }
+
     const urls = await pending;
 
     return urls[page.id];

@@ -132,6 +132,7 @@ const turnCellOff = async (cell: Locator): Promise<void> => {
     if ((await cell.getAttribute("aria-checked")) === "true") {
       await cell.click();
     }
+
     await expect(cell).not.toBeChecked({ timeout: 1000 });
   }).toPass({ timeout: 15_000 });
 };
@@ -311,6 +312,7 @@ test.describe("web-storefront member settings", () => {
     const emailCells = NOTIFICATION_CELLS.filter(
       ([, channel]) => channel === "Email"
     );
+
     await Promise.all(
       emailCells.map(([category, channel]) =>
         expect(notificationCell(page, category, channel)).toBeChecked()
@@ -347,6 +349,7 @@ test.describe("web-storefront member settings", () => {
       exact: true,
       name: "Browser",
     });
+
     const episodes = notificationCell(page, FOLLOWED_EPISODES, "Browser");
     const creators = notificationCell(page, FOLLOWED_CREATORS, "Browser");
 
@@ -385,6 +388,7 @@ test.describe("web-storefront member settings", () => {
     const browserNotifications = page.getByRole("switch", {
       name: "Receive push notifications in this browser",
     });
+
     await expect(browserNotifications).not.toBeChecked();
     expect(webPushDeviceCount()).toBe("0");
 
@@ -409,6 +413,7 @@ test.describe("web-storefront member settings", () => {
     const browserNotifications = page.getByRole("switch", {
       name: "Receive push notifications in this browser",
     });
+
     await browserNotifications.click();
 
     await expect(
@@ -499,6 +504,7 @@ test.describe("web-storefront member settings", () => {
   }) => {
     const otherContext = await browser.newContext();
     const otherPage = await otherContext.newPage();
+
     try {
       await signInAsMember(otherPage, MEMBER_SETTINGS_MEMBER, "/my");
       await expect(
@@ -569,9 +575,11 @@ test.describe("web-storefront member settings", () => {
     await expect(page.getByText("You are now following this.")).toBeVisible();
 
     await page.goto(storefrontUrl("/settings/follows"));
+
     const entry = page.getByRole("article").filter({
       has: page.getByRole("link", { name: MEMBER_SETTINGS_SERIES.title }),
     });
+
     await expect(entry).toBeVisible();
     // `exact`: the entry's own link is `Seed Series 042`, which contains it.
     await expect(entry.getByText("Series", { exact: true })).toBeVisible();

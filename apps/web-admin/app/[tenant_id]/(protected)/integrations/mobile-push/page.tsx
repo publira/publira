@@ -27,10 +27,12 @@ import { FcmCredentialsForm } from "./_components/fcm-credentials-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -56,10 +58,12 @@ const FcmCredentialsSkeleton = () => (
 
 const FcmCredentialsSection = async () => {
   const tenantId = await getTenantId();
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const result = await getTenantFcmSettings(tenantId, locale);
   await redirectToLoginIfSessionRejected(result);
 

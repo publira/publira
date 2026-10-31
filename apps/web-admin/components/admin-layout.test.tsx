@@ -161,6 +161,7 @@ describe("AdminLayout", () => {
       </AdminLayout>,
       { signal: controller.signal }
     );
+
     // The shell renders in a microtask, so it is complete once a macrotask
     // has run; what still waits on the tenant or the session is cut off here.
     await setImmediate();
@@ -271,6 +272,7 @@ describe("AdminUser", () => {
   it("verifies the session against the tenant the console is serving", async () => {
     vi.mocked(getLocale).mockResolvedValue("en");
     vi.mocked(verifyAdminSession).mockResolvedValue(operator);
+
     const bind = vi.spyOn(
       logoutAction as unknown as { bind: (...args: unknown[]) => unknown },
       "bind"

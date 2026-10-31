@@ -39,6 +39,7 @@ const request = (url: string, cookie?: string): NextRequest => {
   const nextUrl = Object.assign(new URL(url), {
     clone: () => new URL(url),
   });
+
   return {
     cookies: {
       get: (name: string) =>
@@ -71,8 +72,10 @@ describe("web-platform proxy session handling", () => {
   afterAll(() => {
     if (originalAuthSecret === undefined) {
       delete process.env.PUBLIRA_AUTH_SECRET;
+
       return;
     }
+
     process.env.PUBLIRA_AUTH_SECRET = originalAuthSecret;
   });
 
@@ -100,6 +103,7 @@ describe("web-platform proxy session handling", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().subtract({ minutes: 1 }).toString()
     );
+
     const { proxy } = await import("./proxy");
 
     const response = await proxy(

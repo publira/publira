@@ -16,6 +16,7 @@ const resolveTenantId = (
   if (typeof tenantId === "function") {
     return tenantId();
   }
+
   return tenantId;
 };
 
@@ -23,6 +24,7 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   if (!value || typeof value !== "object") {
     return undefined;
   }
+
   return value as Record<string, unknown>;
 };
 
@@ -31,27 +33,33 @@ const readStringProp = (
   key: string
 ): string => {
   const value = record[key];
+
   return typeof value === "string" ? value.trim() : "";
 };
 
 const inferTenantIdFromMessage = (message: unknown): string | undefined => {
   const root = asRecord(message);
+
   if (!root) {
     return undefined;
   }
 
   const topLevel =
     readStringProp(root, "tenantId") || readStringProp(root, "tenant_id");
+
   if (topLevel) {
     return topLevel;
   }
 
   const tenant = asRecord(root.tenant);
+
   if (!tenant) {
     return undefined;
   }
+
   const tenantId =
     readStringProp(tenant, "tenantId") || readStringProp(tenant, "tenant_id");
+
   return tenantId || undefined;
 };
 
@@ -70,5 +78,6 @@ export const createTenantHeaderInterceptor =
     if (tenantId) {
       req.header.set(TENANT_ID_HEADER, tenantId);
     }
+
     return await next(req);
   };

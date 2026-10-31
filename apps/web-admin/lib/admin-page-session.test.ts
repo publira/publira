@@ -9,7 +9,9 @@ const { mockGetLocale, mockGetTenantId, mockVerifyAdminSession } = vi.hoisted(
 );
 
 vi.mock("./tenant-id", () => ({ getTenantId: mockGetTenantId }));
+
 vi.mock("./locale", () => ({ getLocale: mockGetLocale }));
+
 vi.mock("./auth-session", () => ({
   verifyAdminSession: mockVerifyAdminSession,
 }));

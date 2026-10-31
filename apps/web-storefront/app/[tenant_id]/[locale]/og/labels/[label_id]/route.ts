@@ -10,6 +10,7 @@ export const GET = async (
 ) => {
   const segments = await params;
   const labelId = parseLabelDetailParams(segments);
+
   return openGraphCardResponse(
     segments,
     labelId ? { kind: "label", labelId } : null

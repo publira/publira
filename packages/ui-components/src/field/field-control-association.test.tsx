@@ -28,6 +28,7 @@ import { Textarea } from "../textarea/textarea";
 
 const comboItems = [{ label: "Apple", value: "apple" }] as const;
 const selectItems = [{ label: "Option A", value: "a" }] as const;
+
 const radioItems = [
   { label: "Public", value: "public" },
   { label: "Private", value: "private" },
@@ -41,11 +42,13 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+
   // Base UI logs a mismatch between `nativeLabel` and the rendered element
   // from its development build, and only once per message.
   const nativeLabelErrors = consoleError.mock.calls.filter((args) =>
     args.some((arg) => String(arg).includes("nativeLabel"))
   );
+
   consoleError.mockRestore();
   expect(nativeLabelErrors).toEqual([]);
 });
@@ -54,6 +57,7 @@ const getAssociation = (container: HTMLElement, labelText: string) => {
   const label = [...container.querySelectorAll("label")].find((element) =>
     element.textContent?.includes(labelText)
   );
+
   expect(label).toBeTruthy();
 
   const htmlFor = label?.htmlFor ?? "";
@@ -62,6 +66,7 @@ const getAssociation = (container: HTMLElement, labelText: string) => {
   const control = container.ownerDocument.querySelector(
     `#${CSS.escape(htmlFor)}`
   );
+
   expect(control).toBeTruthy();
 
   return {
@@ -276,10 +281,12 @@ const renderServerMarkup = (element: ReactElement) => {
     renderToString(element),
     "text/html"
   );
+
   const container = document.createElement("div");
   container.append(...markup.body.childNodes);
   document.body.append(container);
   onTestFinished(() => container.remove());
+
   return container;
 };
 
@@ -339,6 +346,7 @@ describe("for/id association in the server-rendered HTML", () => {
 
 const LateSelect = ({ ready }: { ready: PromiseLike<unknown> }) => {
   use(ready);
+
   return <Select items={selectItems} />;
 };
 
@@ -374,6 +382,7 @@ describe("FieldLabel over a Select, whose trigger is a button that opens a popup
         <Field.Label>Label</Field.Label>
       </Field.Root>
     );
+
     expect(container.querySelector("label")).not.toBeNull();
 
     rerender(
@@ -392,22 +401,27 @@ describe("FieldLabel over a Select, whose trigger is a button that opens a popup
       status: "fulfilled",
       value: null,
     });
+
     const markup = new DOMParser().parseFromString(
       renderToString(<LateSelectForm ready={resolved} />),
       "text/html"
     );
+
     const container = document.createElement("div");
     container.append(...markup.body.childNodes);
     document.body.append(container);
     onTestFinished(() => container.remove());
 
     let released = false;
+
     const pending = vi.waitFor(() => {
       expect(released).toBe(true);
     });
+
     const root = await act(() =>
       hydrateRoot(container, <LateSelectForm ready={pending} />)
     );
+
     onTestFinished(() => act(() => root.unmount()));
     await act(async () => {
       released = true;
@@ -415,10 +429,12 @@ describe("FieldLabel over a Select, whose trigger is a button that opens a popup
     });
 
     const trigger = container.querySelector("[role=combobox]");
+
     const referenced = (attribute: string) =>
       container.querySelector(
         `#${CSS.escape(trigger?.getAttribute(attribute) ?? "")}`
       )?.textContent;
+
     expect(referenced("aria-labelledby")).toBe("Label");
     expect(referenced("aria-describedby")).toBe("Help");
   });

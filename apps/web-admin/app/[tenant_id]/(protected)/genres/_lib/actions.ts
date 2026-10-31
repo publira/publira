@@ -53,16 +53,19 @@ const nameSchema = async (locale: Locale) => {
     })
   );
 };
+
 const tenantIdSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return requiredTrimmedString(t("admin.genres.validation.tenant_missing"));
 };
+
 const idSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return requiredRecordId(t("admin.genres.validation.id_missing"));
 };
+
 const optionalNameSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -73,6 +76,7 @@ const optionalNameSchema = async (locale: Locale) => {
     })
   );
 };
+
 const createGenreSchema = async (locale: Locale) =>
   z.object({
     tenantId: await tenantIdSchema(locale),
@@ -101,9 +105,12 @@ const parseGenreNames = async (
 > => {
   const read = (name: string): string => {
     const value = formData.get(name);
+
     return typeof value === "string" ? value : "";
   };
+
   const defaultLocale = parseLocale(read(DEFAULT_LOCALE_FIELD));
+
   const fields: { translationLocale: Locale | undefined; required: boolean }[] =
     defaultLocale
       ? [
@@ -115,23 +122,28 @@ const parseGenreNames = async (
           ),
         ]
       : [{ required: true, translationLocale: undefined }];
+
   const [requiredName, optionalName] = await Promise.all([
     nameSchema(locale),
     optionalNameSchema(locale),
   ]);
+
   const savedNameSchema = optionalTrimmedString();
 
   const names: PostedGenreName[] = [];
+
   for (const { required, translationLocale } of fields) {
     const parsed = (required ? requiredName : optionalName).safeParse(
       read(nameField(translationLocale))
     );
+
     if (!parsed.success) {
       return {
         message: toFormErrorMessage(parsed.error, { locale }),
         ok: false,
       };
     }
+
     names.push({
       name: parsed.data,
       // Only compared with what was typed, so one that does not parse is
@@ -145,12 +157,14 @@ const parseGenreNames = async (
 
   return { names, ok: true };
 };
+
 /** The genre a rename or a delete addresses. */
 const genreRowSchema = async (locale: Locale) =>
   z.object({
     id: await idSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
+
 const genreEyeCatchSchema = async (locale: Locale) =>
   z.object({
     clearEyeCatchImage: flagOneFormSchema,
@@ -159,6 +173,7 @@ const genreEyeCatchSchema = async (locale: Locale) =>
     id: await idSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
+
 const genreEyeCatchAspectSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -172,12 +187,14 @@ const genreEyeCatchAspectSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const reorderGenresSchema = async (locale: Locale) =>
   z.object({
     expectedIds: jsonRecordIdArrayFormSchema,
     ids: jsonRecordIdArrayFormSchema,
     tenantId: await tenantIdSchema(locale),
   });
+
 const rowFormFields = {
   id: { kind: "value", name: "genre_id" },
   tenantId: { kind: "value", name: "tenant_id" },
@@ -189,19 +206,24 @@ export const createGenreAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     createGenreSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+
   const posted = await parseGenreNames(formData, locale);
+
   if (!posted.ok) {
     return posted;
   }
@@ -210,6 +232,7 @@ export const createGenreAction = async (
   // The first name is the default language's, which creates the genre; the
   // others are added to it.
   const [first, ...others] = posted.names;
+
   const created = await withAdminSessionReauth(() =>
     createGenre(
       {
@@ -220,6 +243,7 @@ export const createGenreAction = async (
       locale
     )
   );
+
   if (!created.ok) {
     return { message: created.message, ok: false };
   }
@@ -239,6 +263,7 @@ export const createGenreAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     // The genre exists, so creating it again would only be refused as taken.
     return {
@@ -258,35 +283,44 @@ export const renameGenreAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     genreRowSchema(locale),
   ]);
+
   const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+
   const posted = await parseGenreNames(formData, locale);
+
   if (!posted.ok) {
     return posted;
   }
 
   const { id, tenantId } = parsed.data;
+
   // A name left as it was is not written again, so a save records only the
   // languages it changed.
   const names = posted.names.flatMap(({ name, savedName, translationLocale }) =>
     name === "" || name === savedName ? [] : [{ name, translationLocale }]
   );
+
   const removedLocales = posted.names.flatMap(
     ({ name, savedName, translationLocale }) =>
       name === "" && savedName !== "" && translationLocale
         ? [translationLocale]
         : []
   );
+
   // The names are written one request at a time, so a save that stops part
   // way — refused, or thrown by an error the Action passes on — may already
   // have written the ones before it. The list is cleared however it ends.
   let result: Awaited<ReturnType<typeof saveGenreNames>>;
+
   try {
     result = await withAdminSessionReauth(() =>
       saveGenreNames({ id, names, removedLocales, tenantId }, locale)
@@ -294,6 +328,7 @@ export const renameGenreAction = async (
   } finally {
     updateTag(genresCacheTag(tenantId));
   }
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -310,19 +345,24 @@ export const deleteGenreAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     genreRowSchema(locale),
   ]);
+
   const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { id, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     deleteGenre({ id, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -340,10 +380,12 @@ export const reorderGenresAction = async (
 ): Promise<GenreReorderResult> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     reorderGenresSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       expectedIds: {
@@ -354,6 +396,7 @@ export const reorderGenresAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -365,6 +408,7 @@ export const reorderGenresAction = async (
   }
 
   const { expectedIds, ids, tenantId } = parsed.data;
+
   if (ids.length === 0 || ids.length !== expectedIds.length) {
     return {
       message: t("admin.genres.reorder_failed"),
@@ -375,6 +419,7 @@ export const reorderGenresAction = async (
   const result = await withAdminSessionReauth(() =>
     reorderGenres({ expectedIds, ids, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -395,10 +440,12 @@ export const updateGenreEyeCatchAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     genreEyeCatchSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...rowFormFields,
@@ -410,6 +457,7 @@ export const updateGenreEyeCatchAction = async (
       eyeCatchImage: { kind: "file", name: "eye_catch_image" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -421,9 +469,11 @@ export const updateGenreEyeCatchAction = async (
     id,
     tenantId,
   } = parsed.data;
+
   const eyeCatchImageData = eyeCatchImage
     ? new Uint8Array(await eyeCatchImage.arrayBuffer())
     : undefined;
+
   // `UpdateGenre` without a name needs an eye-catch change to save, and a
   // form submitted with neither has nothing to save.
   if (!(eyeCatchImageData || clearEyeCatchImage)) {
@@ -442,6 +492,7 @@ export const updateGenreEyeCatchAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -480,10 +531,12 @@ export const uploadGenreEyeCatchAspectImageAction = async (
 ): Promise<EyeCatchAspectActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     genreEyeCatchAspectSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...rowFormFields,
@@ -492,6 +545,7 @@ export const uploadGenreEyeCatchAspectImageAction = async (
       variantType: { kind: "value", name: "variant_type" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -500,6 +554,7 @@ export const uploadGenreEyeCatchAspectImageAction = async (
   }
 
   const { aspectImage, crop, id, tenantId, variantType } = parsed.data;
+
   if (!aspectImage) {
     return {
       message: t("admin.eye_catch.aspect.image_required"),
@@ -508,6 +563,7 @@ export const uploadGenreEyeCatchAspectImageAction = async (
   }
 
   const imageData = new Uint8Array(await aspectImage.arrayBuffer());
+
   const result = await withAdminSessionReauth(() =>
     uploadGenreEyeCatchAspectImage(
       {
@@ -521,6 +577,7 @@ export const uploadGenreEyeCatchAspectImageAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return {
       message:

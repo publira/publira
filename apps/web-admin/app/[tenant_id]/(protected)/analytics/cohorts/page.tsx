@@ -125,6 +125,7 @@ const CohortWeekCell = ({
         </Table.Cell>
       );
     }
+
     case "no_readers": {
       return (
         <Table.Cell>
@@ -134,10 +135,12 @@ const CohortWeekCell = ({
         </Table.Cell>
       );
     }
+
     case "open": {
       // A week still under way is left blank: its readers are not all in.
       return <Table.Cell />;
     }
+
     default: {
       return cell satisfies never;
     }
@@ -323,11 +326,13 @@ const CohortsContent = async ({
   searchParams,
 }: Pick<CohortsPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+
   const [locale, timeZone, isAdmin] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const { from, to } = parsePeriodSearchParams(sp);
   const period = resolveAnalyticsPeriod({ from, to }, timeZone);
   const series = seriesSchema.parse(sp.series);
@@ -337,17 +342,20 @@ const CohortsContent = async ({
       <SeriesField locale={locale} series={series} />
     </PeriodForm>
   );
+
   if (!period.ok) {
     return <ConsoleSection.Stack>{form}</ConsoleSection.Stack>;
   }
 
   const dates = { end: period.end, start: period.start };
+
   // The funnel counts purchases, which only a tenant admin may read: anyone
   // else is shown the cohorts alone, and the API is not asked for it.
   const [cohorts, funnel] = await Promise.all([
     getRetentionCohorts(tenantId, locale, { ...dates, seriesPublicId: series }),
     isAdmin ? getSignUpFunnel(tenantId, locale, dates) : null,
   ]);
+
   await redirectToLoginIfSessionRejected(cohorts, ...(funnel ? [funnel] : []));
 
   return (

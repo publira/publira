@@ -26,11 +26,13 @@ const loginFormSchema = async (locale: Locale) =>
     password: await passwordFormSchema(locale),
     tenantId: await tenantIdFormSchema(locale),
   });
+
 const buildLoginErrorPath = (message: string, nextPath: string): string => {
   const params = new URLSearchParams({
     error: message,
     next: nextPath,
   });
+
   return `/login?${params.toString()}`;
 };
 
@@ -38,14 +40,17 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const input = toFormDataInput(formData, {
     email: "value",
     next: "value",
     password: "value",
     tenantId: { kind: "value", name: "tenant_id" },
   });
+
   const schema = await loginFormSchema(locale);
   const parsed = schema.safeParse(input);
+
   if (!parsed.success) {
     const nextPath = nextPathFormSchema.parse(input.next);
     const tenantIdResultSchema = await tenantIdFormSchema(locale);
@@ -63,6 +68,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   const { email, next: nextPath, password, tenantId } = parsed.data;
 
   const result = await loginAdmin(email, password, tenantId, locale);
+
   if (!result.ok) {
     redirect(buildLoginErrorPath(result.message, nextPath));
   }

@@ -60,6 +60,7 @@ export const generateMetadata = async ({
   guardPlaceholders({ tag_slug });
 
   const tagSlug = parseTagDetailParams({ tag_slug });
+
   const [result, t, alternates, siteLabel, cardPath] = await Promise.all([
     tagSlug
       ? findPublishedTagBySlug(tenantId, tagSlug, locale)

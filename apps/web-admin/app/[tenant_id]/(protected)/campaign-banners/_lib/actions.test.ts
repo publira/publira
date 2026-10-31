@@ -94,6 +94,7 @@ const createFormData = (fields: Record<string, string | File | null> = {}) => {
   formData.set("ends_at", "2099-07-01T00:00:00Z");
   formData.set("published", "on");
   formData.set("eye_catch_image", imageFile());
+
   for (const [name, value] of Object.entries(fields)) {
     if (value === null) {
       formData.delete(name);
@@ -101,6 +102,7 @@ const createFormData = (fields: Record<string, string | File | null> = {}) => {
       formData.set(name, value);
     }
   }
+
   return formData;
 };
 
@@ -158,6 +160,7 @@ describe("createCampaignBannerAction", () => {
 
   it("refuses a banner with no image before it reaches the API", async () => {
     const { createCampaignBannerAction } = await import("./actions");
+
     const result = await createCampaignBannerAction(
       null,
       createFormData({ eye_catch_image: null })
@@ -172,6 +175,7 @@ describe("createCampaignBannerAction", () => {
 
   it("refuses a banner with no link before it reaches the API", async () => {
     const { createCampaignBannerAction } = await import("./actions");
+
     const result = await createCampaignBannerAction(
       null,
       createFormData({ link_url: "  " })
@@ -186,6 +190,7 @@ describe("createCampaignBannerAction", () => {
 
   it("refuses an alternative text longer than the API stores", async () => {
     const { createCampaignBannerAction } = await import("./actions");
+
     const result = await createCampaignBannerAction(
       null,
       createFormData({ alt_text: "a".repeat(256) })
@@ -200,6 +205,7 @@ describe("createCampaignBannerAction", () => {
 
   it("refuses a link a browser would read as another site", async () => {
     const { createCampaignBannerAction } = await import("./actions");
+
     const result = await createCampaignBannerAction(
       null,
       createFormData({ link_url: "//example.com/campaign" })
@@ -211,6 +217,7 @@ describe("createCampaignBannerAction", () => {
 
   it("refuses a window that is already over", async () => {
     const { createCampaignBannerAction } = await import("./actions");
+
     const result = await createCampaignBannerAction(
       null,
       createFormData({
@@ -264,6 +271,7 @@ describe("updateCampaignBannerAction", () => {
     });
 
     const { updateCampaignBannerAction } = await import("./actions");
+
     const result = await updateCampaignBannerAction(
       null,
       updateFormData({
@@ -301,6 +309,7 @@ describe("updateCampaignBannerAction", () => {
     });
 
     const { updateCampaignBannerAction } = await import("./actions");
+
     const result = await updateCampaignBannerAction(
       null,
       updateFormData({
@@ -322,6 +331,7 @@ describe("updateCampaignBannerImageAction", () => {
     });
 
     const { updateCampaignBannerImageAction } = await import("./actions");
+
     const result = await updateCampaignBannerImageAction(
       null,
       updateFormData({ eye_catch_image: imageFile() })
@@ -339,6 +349,7 @@ describe("updateCampaignBannerImageAction", () => {
 
   it("asks for an image rather than saving nothing", async () => {
     const { updateCampaignBannerImageAction } = await import("./actions");
+
     const result = await updateCampaignBannerImageAction(
       null,
       updateFormData()
@@ -358,6 +369,7 @@ describe("updateCampaignBannerImageAction", () => {
     });
 
     const { updateCampaignBannerImageAction } = await import("./actions");
+
     const result = await updateCampaignBannerImageAction(
       null,
       updateFormData({ eye_catch_image: imageFile() })
@@ -377,6 +389,7 @@ describe("updateCampaignBannerImageAction", () => {
     });
 
     const { updateCampaignBannerImageAction } = await import("./actions");
+
     const result = await updateCampaignBannerImageAction(
       null,
       updateFormData({ eye_catch_image: imageFile() })

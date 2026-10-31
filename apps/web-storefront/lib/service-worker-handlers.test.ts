@@ -72,6 +72,7 @@ const windowClient = (url: string): PushWorkerClient => ({
 describe("registerPushHandlers", () => {
   it("draws the notification the server sent, tagged by the record behind it", async () => {
     const { listeners, showNotification } = createScope();
+
     const { event, settle } = pushEvent(() => ({
       body: "Episode 12",
       data: {
@@ -96,6 +97,7 @@ describe("registerPushHandlers", () => {
 
   it("draws nothing for a payload that is not JSON", async () => {
     const { listeners, showNotification } = createScope();
+
     const { event, settle, waited } = pushEvent(() => {
       throw new SyntaxError("not JSON");
     });
@@ -120,6 +122,7 @@ describe("registerPushHandlers", () => {
   it("takes a window this site already has open to the route", async () => {
     const client = windowClient(`${ORIGIN}/my`);
     const { listeners, openWindow } = createScope([client]);
+
     const { close, event, settle } = clickEvent({
       route: "/series/SR01/episodes/EP12",
     });
@@ -137,6 +140,7 @@ describe("registerPushHandlers", () => {
 
   it("opens a window when this site has none", async () => {
     const { listeners, openWindow } = createScope();
+
     const { event, settle } = clickEvent({
       route: "/series/SR01/episodes/EP12",
     });

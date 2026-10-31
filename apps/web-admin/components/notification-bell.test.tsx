@@ -104,6 +104,7 @@ describe("NotificationBell", () => {
     const trigger = screen.getByRole("button", {
       name: "Notifications, none unread",
     });
+
     expect(trigger.textContent).not.toContain("0");
     expect(listNotifications).toHaveBeenCalledWith("tenant-1", "en", {
       limit: 5,
@@ -138,6 +139,7 @@ describe("NotificationBell", () => {
     const trigger = screen.getByRole("button", {
       name: "Notifications, 3 unread",
     });
+
     expect(screen.getByText("3")).toBeDefined();
 
     fireEvent.click(trigger);

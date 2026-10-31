@@ -64,7 +64,9 @@ const OperatorsContent = async ({
     getPlatformLocale(),
     searchParams,
   ]);
+
   const { token } = parseOperatorsSearchParams(rawSearchParams);
+
   const [t, result] = await Promise.all([
     getMessagesFor(locale),
     listPlatformOperators({
@@ -76,6 +78,7 @@ const OperatorsContent = async ({
   const previousHref = result.previousToken
     ? buildOperatorsPath({ token: result.previousToken })
     : undefined;
+
   const nextHref = result.nextToken
     ? buildOperatorsPath({ token: result.nextToken })
     : undefined;

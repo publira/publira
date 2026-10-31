@@ -36,12 +36,14 @@ export const expectDocumentWithoutCatalogNamespaces = async (
   const allowed = new Set(
     included.flatMap((namespace) => leafStrings(catalog[namespace] ?? {}))
   );
+
   const copyByNamespace = excluded.map((namespace) => ({
     copy: leafStrings(catalog[namespace] ?? {}).filter(
       (value) => DISTINCTIVE_COPY.test(value) && !allowed.has(value)
     ),
     namespace,
   }));
+
   expect(
     copyByNamespace.filter(({ copy }) => copy.length === 0),
     "every excluded namespace has copy to look for"

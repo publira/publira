@@ -55,6 +55,7 @@ export const smtpTestFailureErrorMessage = (
       return smtpTestFailureMessage(reason, locale);
     }
   }
+
   return undefined;
 };
 

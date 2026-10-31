@@ -591,6 +591,7 @@ describe("catalog-top section loaders", () => {
         if (seriesId === "SERIES_1") {
           return Promise.resolve({ ok: true, value: detailSeries1 });
         }
+
         return Promise.resolve({ ok: true, value: detailSeries2 });
       }
     );
@@ -633,6 +634,7 @@ describe("catalog-top section loaders", () => {
             },
           });
         }
+
         return Promise.resolve({ ok: true, value: detailSeries2 });
       }
     );
@@ -659,9 +661,11 @@ describe("catalog-top section loaders", () => {
 
   it("getCatalogTopNewEpisodes draws each episode's own eye-catch, and the series' where it has none", async () => {
     const seriesCover = eyeCatch("/images/series/SERIES_1/landscape/640");
+
     const episodeCover = eyeCatch(
       "/images/episode-eye-catches/EP_1_2/landscape/640"
     );
+
     mockListPublishedSeries.mockResolvedValue({
       ok: true,
       value: {
@@ -688,6 +692,7 @@ describe("catalog-top section loaders", () => {
             },
           });
         }
+
         return Promise.resolve({ ok: true, value: detailSeries2 });
       }
     );
@@ -722,6 +727,7 @@ describe("catalog-top section loaders", () => {
         if (seriesId === "SERIES_1") {
           return Promise.resolve({ ok: true, value: detailSeries1 });
         }
+
         return Promise.resolve({ ok: true, value: detailSeries2 });
       }
     );
@@ -889,6 +895,7 @@ describe("catalog-top section loaders", () => {
         if (seriesId === "SERIES_1") {
           return Promise.resolve({ ok: true, value: null });
         }
+
         return Promise.resolve({
           ok: true,
           value: {
@@ -987,6 +994,7 @@ describe("catalog-top section loaders", () => {
       // Sunday 22:00 UTC is already Monday morning in Seoul.
       Temporal.Instant.from("2026-03-01T22:00:00Z").epochMilliseconds
     );
+
     try {
       await expect(
         getCatalogTopWeeklySchedule("TENANT_001", {
@@ -1039,6 +1047,7 @@ describe("catalog-top cache tags", () => {
 
   beforeEach(() => {
     mockCacheTag.mockReset();
+
     for (const mock of [
       mockGetSeriesDetail,
       mockListPublishedCreators,

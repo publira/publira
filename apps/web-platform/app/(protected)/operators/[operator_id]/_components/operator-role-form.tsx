@@ -23,6 +23,7 @@ export const OperatorRoleForm = async ({
   operatorPublicId: string;
 }) => {
   const locale = await getPlatformLocale();
+
   const [t, roleItems] = await Promise.all([
     getMessagesFor(locale),
     getOperatorRoleSelectItems(locale),

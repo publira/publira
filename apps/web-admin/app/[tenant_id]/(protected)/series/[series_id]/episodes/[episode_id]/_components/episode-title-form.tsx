@@ -45,7 +45,9 @@ const EpisodeTitleDescription = ({
   if (!translationLocale) {
     return <Message message="admin.series.episodes.rename.description" />;
   }
+
   const language = getLocaleLabel(translationLocale);
+
   return translated ? (
     <Message
       message="admin.series.episodes.translations.title_description"

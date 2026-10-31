@@ -24,6 +24,7 @@ export const SearchBuildRefresh = () => {
     const timer = setInterval(() => {
       router.refresh();
     }, REFRESH_INTERVAL_MS);
+
     return () => {
       clearInterval(timer);
     };

@@ -47,9 +47,11 @@ const CreatorIconContext = createContext<CreatorIconContextValue | null>(null);
 
 const useCreatorIcon = () => {
   const context = use(CreatorIconContext);
+
   if (!context) {
     throw new Error("CreatorIcon slots must be rendered inside CreatorIcon.");
   }
+
   return context;
 };
 
@@ -102,19 +104,23 @@ const CreatorIcon = ({
           height: event.currentTarget.naturalHeight,
           width: event.currentTarget.naturalWidth,
         };
+
         setSource(size);
         setCrop((current) => current ?? centreCropRect(size, ICON_ASPECT));
       },
       onFramingChange: setIsFraming,
       onImageFileChange: (event) => {
         const file = event.currentTarget.files?.[0];
+
         if (!file) {
           return;
         }
+
         setLocalPreviewUrl((current) => {
           if (current) {
             URL.revokeObjectURL(current);
           }
+
           return URL.createObjectURL(file);
         });
         // Both belong to the file that was just replaced. The new one reports
@@ -150,8 +156,10 @@ const CreatorIcon = ({
 /** The picked file as it will be cut, or else the saved icon unless it is being removed. */
 const CreatorIconPreview = () => {
   const t = useClientMessages();
+
   const { clearIconImage, crop, iconImageUrl, localPreviewUrl, source } =
     useCreatorIcon();
+
   const framedStyle = crop && source ? framedPreviewStyle(crop, source) : null;
 
   if (localPreviewUrl) {

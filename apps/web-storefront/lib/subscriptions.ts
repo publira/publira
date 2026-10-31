@@ -144,6 +144,7 @@ const toSubscriptionPlanItem = (
   const interval = planIntervals[plan.interval];
   const scope = planScopes[plan.scope];
   const id = plan.id?.trim() ?? "";
+
   if (!(interval && scope && id)) {
     return null;
   }
@@ -174,12 +175,14 @@ export const subscriptionPlanOpens = (
     case "all": {
       return true;
     }
+
     case "label": {
       return (
         work.labelPublicId !== "" &&
         plan.labels.some((label) => label.publicId === work.labelPublicId)
       );
     }
+
     default: {
       return plan.series.some(
         (series) => series.publicId === work.seriesPublicId
@@ -202,6 +205,7 @@ export const listSubscriptionPlans = async (
   locale: Locale
 ): Promise<CachedReadResult<SubscriptionPlanItem[]>> => {
   "use cache";
+
   try {
     cacheLife("minutes");
   } catch {
@@ -215,6 +219,7 @@ export const listSubscriptionPlans = async (
   let response: Awaited<
     ReturnType<typeof apiClient.subscription.listSubscriptionPlans>
   >;
+
   try {
     response = await apiClient.subscription.listSubscriptionPlans({
       locale,
@@ -229,6 +234,7 @@ export const listSubscriptionPlans = async (
     ok: true,
     value: (response.plans ?? []).flatMap((plan) => {
       const mapped = toSubscriptionPlanItem(plan);
+
       return mapped ? [mapped] : [];
     }),
   };
@@ -251,6 +257,7 @@ const toSubscriptionItem = (
   subscription: RawSubscription
 ): SubscriptionItem | null => {
   const status = subscriptionStatuses[subscription.status];
+
   if (!status) {
     return null;
   }
@@ -296,6 +303,7 @@ export const getMySubscription = async (
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -309,6 +317,7 @@ export const getMySubscription = async (
       { tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       subscription: response.subscription
@@ -317,6 +326,7 @@ export const getMySubscription = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("storefront.my.plan_failed"), {
         locale,

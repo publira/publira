@@ -121,6 +121,7 @@ describe("theme-css-variables", () => {
       { primaryColor: "#112233" },
       DARK_PALETTE
     );
+
     const dark = `color-scheme:dark;--publira-color-accent:${DARK_PALETTE.accentColor};`;
 
     expect(css.startsWith(":root{--publira-color-accent:")).toBe(true);
@@ -147,6 +148,7 @@ describe("theme-css-variables", () => {
     expect(
       isTenantThemeFontFamily('"Noto Sans SC", PingFang SC, sans-serif')
     ).toBe(true);
+
     for (const value of [
       "Noto Sans; color:red",
       "Noto Sans { color: red }",
@@ -175,6 +177,7 @@ describe("the fallbacks in @publira/brand's theme.css", () => {
   it("name the same colors as DEFAULT_TENANT_THEME_COLORS", () => {
     const pattern =
       /var\(\s*(?<token>--publira-color-[a-z-]+)\s*,\s*(?<color>#[0-9a-f]{6})\s*\)/gu;
+
     const fallbacks = Object.fromEntries(
       [...themeCss.matchAll(pattern)].map((match) => [
         match.groups?.token,

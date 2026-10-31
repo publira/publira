@@ -121,6 +121,7 @@ test.describe("web-storefront comic viewer on a tablet", () => {
     await expect(
       page.locator('canvas[data-page-status="loaded"]').first()
     ).toBeVisible();
+
     const currentSlot = page
       .locator('.pcv-viewport [data-rail-slot="current"] [data-view-mode]')
       .first();

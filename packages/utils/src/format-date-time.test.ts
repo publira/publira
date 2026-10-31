@@ -86,6 +86,7 @@ describe("formatDateTime", () => {
 
   it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
     const instant = parseInstant(UTC_INSTANT);
+
     if (!instant) {
       throw new Error("expected UTC_INSTANT to parse");
     }
@@ -183,6 +184,7 @@ describe("formatDate", () => {
   it("uses the UI locale for Intl instead of a fixed ja-JP", () => {
     const lateInstant = "2024-03-10T23:00:00.000Z";
     const instant = parseInstant(lateInstant);
+
     if (!instant) {
       throw new Error("expected lateInstant to parse");
     }
@@ -216,6 +218,7 @@ describe("parseInstant", () => {
     const earlier = parseInstant(
       "2024-03-10T19:00:00+09:00"
     ) as Temporal.Instant;
+
     const later = parseInstant("2024-03-10T12:00:00Z") as Temporal.Instant;
     // Lexicographic string comparison would get this backwards.
     expect(Temporal.Instant.compare(earlier, later)).toBe(-1);
@@ -303,9 +306,11 @@ describe("date-only day boundaries", () => {
     const end = parseInstant(
       endOfDayIsoString("2024-03-10", "Asia/Seoul")
     ) as Temporal.Instant;
+
     const nextStart = parseInstant(
       startOfDayIsoString("2024-03-11", "Asia/Seoul")
     ) as Temporal.Instant;
+
     expect(nextStart.since(end).total({ unit: "nanosecond" })).toBe(1);
   });
 
@@ -315,6 +320,7 @@ describe("date-only day boundaries", () => {
     const end = parseInstant(
       endOfDayIsoString("2024-03-10", "UTC")
     ) as Temporal.Instant;
+
     for (const value of [
       "2024-03-10T23:59:59.999999Z",
       "2024-03-10T23:59:59.999999001Z",
@@ -395,6 +401,7 @@ describe("fromDateTimeLocalValue", () => {
 
   it("round-trips with toDateTimeLocalValue", () => {
     const zones = ["Asia/Seoul", "America/Los_Angeles", "Europe/London", "UTC"];
+
     for (const timeZone of zones) {
       const local = toDateTimeLocalValue(UTC_INSTANT, timeZone);
       const back = fromDateTimeLocalValue(local, timeZone);

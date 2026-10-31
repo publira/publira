@@ -68,8 +68,10 @@ const signInSettingsSchema = async (locale: Locale) => {
           path: ["servicesId"],
         });
       }
+
       for (const field of ["teamId", "keyId"] as const) {
         const id = value[field];
+
         if (id && !APPLE_ID_RE.test(id)) {
           ctx.addIssue({
             code: "custom",
@@ -81,6 +83,7 @@ const signInSettingsSchema = async (locale: Locale) => {
           });
         }
       }
+
       if (value.appleEnabled) {
         if (!value.teamId) {
           ctx.addIssue({
@@ -89,6 +92,7 @@ const signInSettingsSchema = async (locale: Locale) => {
             path: ["teamId"],
           });
         }
+
         if (!value.keyId) {
           ctx.addIssue({
             code: "custom",
@@ -96,6 +100,7 @@ const signInSettingsSchema = async (locale: Locale) => {
             path: ["keyId"],
           });
         }
+
         if (!hasSecretKey(value.privateKey)) {
           ctx.addIssue({
             code: "custom",
@@ -109,6 +114,7 @@ const signInSettingsSchema = async (locale: Locale) => {
 
       for (const field of ["webClientId", "iosClientId"] as const) {
         const id = value[field];
+
         if (id && !GOOGLE_CLIENT_ID_RE.test(id)) {
           ctx.addIssue({
             code: "custom",
@@ -117,6 +123,7 @@ const signInSettingsSchema = async (locale: Locale) => {
           });
         }
       }
+
       if (value.googleEnabled && !value.webClientId && !value.iosClientId) {
         ctx.addIssue({
           code: "custom",
@@ -133,10 +140,12 @@ export const updateTenantSignInSettingsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     signInSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse({
     ...toFormDataInput(formData, {
       appleEnabled: { kind: "value", name: "apple_enabled" },
@@ -150,6 +159,7 @@ export const updateTenantSignInSettingsAction = async (
     }),
     privateKey: secretKeyFormInput(formData, "apple_private_key"),
   });
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -160,6 +170,7 @@ export const updateTenantSignInSettingsAction = async (
 
   const { data } = parsed;
   const privateKey = await toSecretKeyUpdate(data.privateKey);
+
   const result = await withAdminSessionReauth(() =>
     updateTenantSignInSettings(
       {
@@ -180,6 +191,7 @@ export const updateTenantSignInSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return {
       fieldErrors: result.fieldErrors,

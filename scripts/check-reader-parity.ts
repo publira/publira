@@ -60,8 +60,10 @@ export interface Inventory {
 
 /** `  catalog: Client<typeof CatalogService>;` → `catalog`. */
 const CLIENT_SERVICE = /^[ \t]*(?<service>\w+): Client<typeof \w+>;/gmu;
+
 /** `  rpc GetSeriesDetail(GetSeriesDetailRequest)` → `GetSeriesDetail`. */
 const PROTO_RPC = /^[ \t]*rpc (?<method>\w+)\(/gmu;
+
 /**
  * `pb.GetSeriesDetailRequest(` → `GetSeriesDetail`. The app calls the public
  * API through the generated stubs, and each call builds its method's request
@@ -77,9 +79,11 @@ const isTestFile = (file: string): boolean =>
 
 const walk = async (directory: string): Promise<string[]> => {
   const entries = await readdir(directory, { withFileTypes: true });
+
   const files = await Promise.all(
     entries.map(async (entry) => {
       const entryPath = path.join(directory, entry.name);
+
       if (entry.isDirectory()) {
         return SKIP_DIRECTORIES.has(entry.name) ? [] : await walk(entryPath);
       }
@@ -155,17 +159,21 @@ const mobileProblems = (
   inventory: Inventory
 ): string[] => {
   const { exception, mobile, name } = capability;
+
   if (mobile && exception) {
     return [
       `"${name}" has both a mobile path and an exception; keep the one that is true.`,
     ];
   }
+
   if (!mobile) {
     return exception?.trim()
       ? []
       : [`"${name}" has neither a mobile path nor an exception.`];
   }
+
   const rpcs = mobile.rpcs ?? [];
+
   if ((mobile.routes ?? []).length === 0 && rpcs.length === 0) {
     return [
       `"${name}" names no app route and no app call for its mobile path.`,
@@ -185,6 +193,7 @@ const testProblems = (
   inventory: Inventory
 ): string[] => {
   const tests = capability.tests ?? [];
+
   const missing = tests
     .filter((test) => !inventory.mobileTests.includes(`'${test}'`))
     .map(
@@ -220,6 +229,7 @@ export const findProblems = (
   const claimedRoutes = new Set(
     capabilities.flatMap((capability) => capability.web.routes ?? [])
   );
+
   const claimedRpcs = new Set(
     capabilities.flatMap((capability) => capability.web.rpcs ?? [])
   );
@@ -247,27 +257,35 @@ const readSources = async (
 
 const takeInventory = async (): Promise<Inventory> => {
   const client = await readFile(PUBLIC_CLIENT_PATH, "utf-8");
+
   const services = Array.from(
     client.matchAll(CLIENT_SERVICE),
     (match) => match.groups?.service ?? ""
   );
+
   const protos = await readSources(PUBLIC_PROTO_ROOT, (file) =>
     file.endsWith(".proto")
   );
+
   const rpcs = new Set(
     protos.flatMap((source) => methodsIn(source, PROTO_RPC))
   );
+
   const webFiles = await walk(WEB_APP_ROOT);
+
   const webRoutes = new Set(
     webFiles.map(webRouteOf).filter((route) => route !== null)
   );
+
   const webSources = await readSources(
     WEB_SOURCE_ROOT,
     (file) => /\.tsx?$/u.test(file) && !isTestFile(file)
   );
+
   const mobileSources = await readSources(MOBILE_SOURCE_ROOT, (file) =>
     file.endsWith(".dart")
   );
+
   const testSources = await readSources(MOBILE_TEST_ROOT, (file) =>
     file.endsWith(".dart")
   );
@@ -300,6 +318,7 @@ const main = async (): Promise<void> => {
           : `${MATRIX_PATH}: ${problem}`
       );
     }
+
     process.exitCode = 1;
 
     return;

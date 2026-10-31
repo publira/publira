@@ -54,6 +54,7 @@ export const ReaderPurchases = async ({
 }: ReaderPurchasesProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (purchases.length > 0 || hasPageLinks);
 

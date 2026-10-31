@@ -76,6 +76,7 @@ const MOVER: GoogleAccount = {
   name: "Social Mover",
   subject: "google-social-mover",
 };
+
 const MOVER_NEW_EMAIL = "social-mover-moved@example.com";
 const MOVER_PASSWORD = "moverpass1";
 
@@ -295,9 +296,11 @@ test.describe("Sign in with Apple and Google on the public site", () => {
     await page.waitForURL(socialUrl("/"));
 
     await page.goto(socialUrl("/settings/security"));
+
     const emailChange = page.getByRole("region", {
       name: "Change email address",
     });
+
     await expect(emailChange.getByLabel("Current password")).toHaveCount(0);
     await emailChange.getByLabel("Current email address").fill(MOVER.email);
     await emailChange.getByLabel("New email address").fill(MOVER_NEW_EMAIL);

@@ -46,6 +46,7 @@ export const markAnnouncementAsReadAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = markAnnouncementAsReadFormSchema.safeParse(
     toFormDataInput(formData, {
       announcementId: "value",
@@ -53,16 +54,19 @@ export const markAnnouncementAsReadAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return;
   }
 
   const { announcementId, locale, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
     tenantId
   );
+
   await withPublicSessionReauth(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
@@ -76,19 +80,23 @@ export const markAllAnnouncementsAsReadAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = markAllAnnouncementsAsReadFormSchema.safeParse(
     toFormDataInput(formData, { locale: "value", tenantId: "value" })
   );
+
   if (!parsed.success) {
     return;
   }
 
   const { locale, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
     tenantId
   );
+
   await withPublicSessionReauth(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
@@ -102,6 +110,7 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = markAnnouncementAsReadAndNavigateFormSchema.safeParse(
     toFormDataInput(formData, {
       announcementId: "value",
@@ -109,22 +118,26 @@ export const markAnnouncementAsReadAndNavigateAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return;
   }
 
   const { announcementId, locale, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
     tenantId
   );
+
   const announcement = await withPublicSessionReauth(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
     () => getMyAnnouncement(tenantId, announcementId, locale, accessToken),
     tenantId
   );
+
   if (!announcement) {
     return;
   }
@@ -138,6 +151,7 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   updateTag(announcementsCacheTag(tenantId));
 
   const linkUrl = toSafeOperatorLinkUrl(announcement.linkUrl);
+
   if (!linkUrl) {
     return;
   }

@@ -23,6 +23,7 @@ export const ThemePreviewThemeContext = createContext<TenantTheme | null>(null);
  */
 export const ThemePreviewFrame = ({ children }: { children: ReactNode }) => {
   const theme = use(ThemePreviewThemeContext);
+
   if (theme === null) {
     throw new Error("ThemeSettingsScope is required.");
   }

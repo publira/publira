@@ -48,11 +48,13 @@ export const EpisodeSelectionProvider = ({
   const toggle = useCallback((id: string, selected: boolean) => {
     setSelectedIds((current) => {
       const next = new Set(current);
+
       if (selected) {
         next.add(id);
       } else {
         next.delete(id);
       }
+
       return next;
     });
   }, []);
@@ -61,6 +63,7 @@ export const EpisodeSelectionProvider = ({
     (ids: readonly string[], selected: boolean) => {
       setSelectedIds((current) => {
         const next = new Set(current);
+
         for (const id of ids) {
           if (selected) {
             next.add(id);
@@ -68,6 +71,7 @@ export const EpisodeSelectionProvider = ({
             next.delete(id);
           }
         }
+
         return next;
       });
     },
@@ -88,8 +92,10 @@ export const EpisodeSelectionProvider = ({
 
 export const useEpisodeSelection = (): EpisodeSelectionValue => {
   const value = useContext(EpisodeSelectionContext);
+
   if (value === null) {
     throw new Error("EpisodeSelectionProvider is required.");
   }
+
   return value;
 };

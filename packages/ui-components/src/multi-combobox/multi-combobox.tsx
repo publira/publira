@@ -71,6 +71,7 @@ export const MultiCombobox = ({
     (item: MultiComboboxItem) => item.label,
     []
   );
+
   const itemMap = useMemo(
     () => new Map(items.map((item) => [item.value, item])),
     [items]
@@ -80,6 +81,7 @@ export const MultiCombobox = ({
     () =>
       value.flatMap((valueItem) => {
         const item = itemMap.get(valueItem);
+
         return item ? [item] : [];
       }),
     [itemMap, value]
@@ -88,6 +90,7 @@ export const MultiCombobox = ({
   const handleValueChange = useCallback(
     (nextValue: MultiComboboxItem[] | MultiComboboxItem | null) => {
       let nextItems: MultiComboboxItem[] = [];
+
       if (Array.isArray(nextValue)) {
         nextItems = nextValue;
       } else if (nextValue) {

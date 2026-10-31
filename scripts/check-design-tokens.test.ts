@@ -87,12 +87,14 @@ describe("scan", () => {
       ".gitattributes",
       ["**/gen/** linguist-generated", "*.pb.ts linguist-generated"].join("\n")
     );
+
     const comment = [
       "/**",
       " * The store answers them in uppercase, with rounded-[ and font-mono.",
       " */",
       "export type Tenant = { code: string };",
     ].join("\n");
+
     await write("packages/api-client/src/gen/publira/v1/tenant_pb.ts", comment);
     await write("packages/api-client/src/tenant.pb.ts", comment);
     await write(

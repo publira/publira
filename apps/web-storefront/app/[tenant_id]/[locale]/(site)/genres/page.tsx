@@ -39,6 +39,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
  */
 const GenresListDescription = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),

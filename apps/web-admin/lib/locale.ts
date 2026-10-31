@@ -83,14 +83,17 @@ export const adminLocaleCookieOptions = {
 export const getLocale = async (tenantId: string): Promise<Locale> => {
   const cookieStore = await cookies();
   const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
+
   if (typeof raw === "string") {
     const trimmed = raw.trim();
+
     if (isLocale(trimmed)) {
       return trimmed;
     }
   }
 
   const normalizedTenantId = tenantId.trim();
+
   if (!isTenantIdFormat(normalizedTenantId)) {
     throw new Error(`not a tenant id: ${tenantId}`);
   }

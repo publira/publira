@@ -50,6 +50,7 @@ const EmailSettingsSection = async () => {
   const initialSettings = settingsResult.ok
     ? settingsResult.settings
     : emptySettings;
+
   const loadErrorMessage = settingsResult.ok
     ? undefined
     : settingsResult.message;

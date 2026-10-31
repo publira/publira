@@ -21,6 +21,7 @@ vi.mock("next/cache", () => ({
 vi.mock("@publira/api-client/public/client", () => ({
   createPublicApiClient: (options: unknown) => {
     mockCreatePublicApiClient(options);
+
     return {
       tenant: {
         getTenant: mockGetTenant,

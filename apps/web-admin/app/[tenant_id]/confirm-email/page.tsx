@@ -57,13 +57,16 @@ const ConfirmEmailHeadline = ({
     case "changed": {
       return <Message message="admin.auth.confirm_email.changed" />;
     }
+
     case "invalid_link": {
       return <Message message="admin.auth.confirm_email.invalid_link" />;
     }
+
     case "pending_current_email":
     case "pending_new_email": {
       return <Message message="admin.auth.confirm_email.pending" />;
     }
+
     default: {
       return <Message message="admin.auth.confirm_email.failed" />;
     }
@@ -76,14 +79,17 @@ const ConfirmEmailHelp = ({ outcome }: { outcome: ConfirmEmailOutcome }) => {
     case "changed": {
       return <Message message="admin.auth.confirm_email.changed_help" />;
     }
+
     case "pending_current_email": {
       return (
         <Message message="admin.auth.confirm_email.pending_current_email" />
       );
     }
+
     case "pending_new_email": {
       return <Message message="admin.auth.confirm_email.pending_new_email" />;
     }
+
     default: {
       return <Message message="admin.auth.confirm_email.failure_help" />;
     }

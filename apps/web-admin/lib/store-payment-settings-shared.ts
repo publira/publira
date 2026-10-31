@@ -53,11 +53,14 @@ export const storeStatus = (store: {
   if (store.ready) {
     return "ready";
   }
+
   if (store.enabled) {
     return "incomplete";
   }
+
   if (store.keyConfigured) {
     return "disabled";
   }
+
   return "unset";
 };

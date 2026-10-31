@@ -48,11 +48,13 @@ const PasskeyAddition = ({
   name: ReactNode;
 }) => {
   const [added, setAdded] = useState("");
+
   const supported = useSyncExternalStore(
     subscribeToNothing,
     browserSupportsWebAuthn,
     supportedOnServer
   );
+
   if (!supported) {
     return null;
   }
@@ -79,12 +81,15 @@ const ceremonyFailureMessage = (
   t: StorefrontClientMessageAccessor
 ): string => {
   const name = error instanceof Error ? error.name : "";
+
   if (name === "NotAllowedError" || name === "AbortError") {
     return t("storefront.settings.passkey_add_cancelled");
   }
+
   if (name === "InvalidStateError") {
     return t("storefront.settings.passkey_already_registered");
   }
+
   return t("storefront.settings.passkey_add_failed");
 };
 
@@ -101,17 +106,21 @@ const PasskeyAdditionAddForm = ({ children }: { children: ReactNode }) => {
     formData: FormData
   ): Promise<PasskeyRegistrationState> => {
     const started = await beginPasskeyRegistrationAction(formData);
+
     if (!started.ok) {
       return started;
     }
+
     try {
       const credential = await startRegistration({
         optionsJSON: JSON.parse(started.optionsJson),
       });
+
       formData.set("credential", JSON.stringify(credential));
     } catch (error) {
       return { message: ceremonyFailureMessage(error, t), ok: false };
     }
+
     return finishPasskeyRegistrationAction(formData);
   };
 

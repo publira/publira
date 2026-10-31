@@ -44,10 +44,13 @@ const aboutPage = { pageId: "page-3", slug: "about", title: "About us" };
 
 const termsInput = () =>
   screen.getByLabelText<HTMLInputElement>("Terms of service");
+
 const privacyInput = () =>
   screen.getByLabelText<HTMLInputElement>("Privacy policy");
+
 const hiddenValue = (container: HTMLElement, name: string) =>
   container.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.value;
+
 const submitButton = () =>
   screen.getByRole<HTMLButtonElement>("button", {
     name: "Save the terms and privacy policy",

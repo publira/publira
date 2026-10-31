@@ -25,6 +25,7 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     body: "My date of birth is wrong.",
     locale: "en",
@@ -35,6 +36,7 @@ const formData = (values: Record<string, string>): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -74,6 +76,7 @@ describe("submitContactMessageAction", () => {
 
   it("refuses an empty message without sending it", async () => {
     const { submitContactMessageAction } = await import("./actions");
+
     const result = await submitContactMessageAction(
       null,
       formData({ body: "   " })
@@ -98,6 +101,7 @@ describe("submitContactMessageAction", () => {
       null,
       formData({ body: "a".repeat(4001) })
     );
+
     expect(result).toEqual({
       message: "Keep the message to 4,000 characters or fewer.",
       ok: false,
@@ -106,6 +110,7 @@ describe("submitContactMessageAction", () => {
 
   it("refuses an address that is not one", async () => {
     const { submitContactMessageAction } = await import("./actions");
+
     const result = await submitContactMessageAction(
       null,
       formData({ replyToEmail: "not-an-address" })

@@ -10,6 +10,7 @@ import { cursorPageHref, cursorTokenSchema } from "./cursor-token";
  */
 const encodeLikeServer = (direction: "f" | "b", ...keys: string[]) => {
   const payload = ["v1", direction, ...keys.map(encodeURIComponent)].join("|");
+
   return Buffer.from(payload, "utf-8").toString("base64url");
 };
 

@@ -14,6 +14,7 @@ vi.mock("next/headers", () => ({
     },
     get: (name: string) => {
       const cookie = cookieJar.get(name);
+
       return cookie ? { name, value: cookie.value } : undefined;
     },
     set: ({ name, value, ...options }: { name: string; value: string }) => {
@@ -117,6 +118,7 @@ describe("social sign-in", () => {
   it("answers null for a cookie this deployment did not seal", async () => {
     const { readSignInRequest, SIGN_IN_REQUEST_COOKIE_NAME } =
       await import("./social-sign-in");
+
     cookieJar.set(SIGN_IN_REQUEST_COOKIE_NAME, {
       options: {},
       value: "not-a-sealed-value",
@@ -128,6 +130,7 @@ describe("social sign-in", () => {
   it("spends the request", async () => {
     const { clearSignInRequest, readSignInRequest, writeSignInRequest } =
       await import("./social-sign-in");
+
     await writeSignInRequest(signInRequest);
 
     await clearSignInRequest();
@@ -141,6 +144,7 @@ describe("social sign-in", () => {
       readPendingSignUp,
       writePendingSignUp,
     } = await import("./social-sign-in");
+
     const pending = {
       authorizationCode: "",
       idToken: "header.payload.signature",

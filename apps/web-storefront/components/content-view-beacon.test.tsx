@@ -25,6 +25,7 @@ afterEach(() => {
 
 const sentBody = async (call: number): Promise<unknown> => {
   const [, blob] = sendBeacon.mock.calls[call];
+
   return JSON.parse(await blob.text());
 };
 
@@ -36,6 +37,7 @@ describe("ContentViewBeacon", () => {
         id="e0000000-0000-4000-8000-000000000001"
       />
     );
+
     rerender(
       <ContentViewBeacon
         kind="episode"
@@ -59,6 +61,7 @@ describe("ContentViewBeacon", () => {
         id="e0000000-0000-4000-8000-000000000001"
       />
     );
+
     rerender(
       <ContentViewBeacon
         kind="episode"

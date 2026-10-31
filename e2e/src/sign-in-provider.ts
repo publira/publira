@@ -24,9 +24,11 @@ export const signIdToken = async (
     body: JSON.stringify(claims),
     method: "POST",
   });
+
   if (!response.ok) {
     throw new Error(`sign-in-provider refused the claims: ${response.status}`);
   }
+
   return response.text();
 };
 
@@ -38,12 +40,15 @@ export const disposableEmailDomains = async (): Promise<string[]> => {
   const response = await fetch(
     `${SIGN_IN_PROVIDER_BASE_URL}/disposable-email-domains`
   );
+
   if (!response.ok) {
     throw new Error(
       `sign-in-provider did not serve the disposable domain list: ${response.status}`
     );
   }
+
   const list = await response.text();
+
   return list
     .split("\n")
     .map((line) => line.trim())
@@ -84,6 +89,7 @@ export const stubGoogleSignIn = async (
   await page.unroute(`${GOOGLE_AUTHORIZATION_ENDPOINT}**`);
   await page.route(`${GOOGLE_AUTHORIZATION_ENDPOINT}**`, async (route) => {
     const request = new URL(route.request().url());
+
     const idToken = await signIdToken({
       aud: audience ?? request.searchParams.get("client_id"),
       email: account.email,
@@ -93,6 +99,7 @@ export const stubGoogleSignIn = async (
       nonce: request.searchParams.get("nonce"),
       sub: account.subject,
     });
+
     await route.fulfill({
       body: formPostPage(request.searchParams.get("redirect_uri") ?? "", {
         id_token: idToken,

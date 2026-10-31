@@ -32,6 +32,7 @@ const readJsonLd = async (
   // the static shell.
   await expect(page.locator(JSON_LD)).toHaveCount(count);
   const texts = await page.locator(JSON_LD).allTextContents();
+
   return texts.map((text) => JSON.parse(text) as JsonLdDocument);
 };
 
@@ -41,6 +42,7 @@ const documentOfType = (
 ): JsonLdDocument => {
   const found = documents.find((document) => document["@type"] === type);
   expect(found, `a ${type} document`).toBeDefined();
+
   return found as JsonLdDocument;
 };
 
@@ -59,8 +61,10 @@ const expectDescribesPage = async (
   for (const document of documents) {
     expect(document["@context"]).toBe("https://schema.org");
   }
+
   const document = documentOfType(documents, type);
   expect(document.url).toBe(await canonicalOf(page));
+
   return document;
 };
 
@@ -74,9 +78,11 @@ const expectBreadcrumbEndsAtPage = async (
 ): Promise<void> => {
   const breadcrumb = documentOfType(documents, "BreadcrumbList");
   const items = breadcrumb.itemListElement as { item: string }[];
+
   for (const { item } of items) {
     expect(new URL(item).origin).toBe(SEED_ORIGIN);
   }
+
   expect(items.at(-1)?.item).toBe(await canonicalOf(page));
 };
 
@@ -88,9 +94,11 @@ const expectSeriesPage = async (page: Page, path: string): Promise<void> => {
   const series = await expectDescribesPage(page, documents, "ComicSeries");
   expect(series.name).toBe(SEED_TENANT.series.title);
   expect(series["@id"]).toBe(`${await canonicalOf(page)}#series`);
+
   for (const image of (series.image as string[] | undefined) ?? []) {
     expect(new URL(image).origin).toBe(SEED_ORIGIN);
   }
+
   await expectBreadcrumbEndsAtPage(page, documents);
 };
 
@@ -177,6 +185,7 @@ test.describe("web-storefront structured data", () => {
     const seriesPath = storefrontPath(
       `/series/${SEED_TENANT.r18Series.publicId}`
     );
+
     const response = await request.get(
       `${WEB_STOREFRONT_BASE_URL}${seriesPath}`
     );

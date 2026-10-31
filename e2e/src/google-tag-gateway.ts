@@ -16,17 +16,20 @@ export const googleTagGatewayRequests = async (): Promise<
   GoogleTagGatewayRequest[]
 > => {
   const response = await fetch(requestsUrl);
+
   if (!response.ok) {
     throw new Error(
       `the Google tag gateway stand-in did not answer its requests: ${response.status}`
     );
   }
+
   return (await response.json()) as GoogleTagGatewayRequest[];
 };
 
 /** Forgets every request the stand-in received. */
 export const clearGoogleTagGatewayRequests = async (): Promise<void> => {
   const response = await fetch(requestsUrl, { method: "DELETE" });
+
   if (!response.ok) {
     throw new Error(
       `the Google tag gateway stand-in did not clear its requests: ${response.status}`

@@ -19,12 +19,15 @@ export const CommentStatusMessage = ({ status }: { status: CommentStatus }) => {
     case "pending": {
       return <Message message="admin.comments.status_pending" />;
     }
+
     case "published": {
       return <Message message="admin.comments.status_published" />;
     }
+
     case "hidden": {
       return <Message message="admin.comments.status_hidden" />;
     }
+
     default: {
       return <Message message="admin.comments.status_withdrawn" />;
     }
@@ -45,16 +48,20 @@ export const commentStatusLabel = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   switch (status) {
     case "pending": {
       return t("admin.comments.status_pending");
     }
+
     case "published": {
       return t("admin.comments.status_published");
     }
+
     case "hidden": {
       return t("admin.comments.status_hidden");
     }
+
     default: {
       return t("admin.comments.status_withdrawn");
     }
@@ -66,12 +73,15 @@ export const commentStatusTone = (status: CommentStatus): BadgeTone => {
     case "pending": {
       return "warning";
     }
+
     case "published": {
       return "success";
     }
+
     case "hidden": {
       return "destructive";
     }
+
     default: {
       return "muted";
     }

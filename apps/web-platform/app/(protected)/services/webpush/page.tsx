@@ -18,6 +18,7 @@ import { WebPushSettingsForm } from "./_components/webpush-settings-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   return { title: t("platform.webpush.page_title") };
 };
 

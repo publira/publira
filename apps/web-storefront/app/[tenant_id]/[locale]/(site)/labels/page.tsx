@@ -60,6 +60,7 @@ const LabelRowsSkeleton = () => (
  */
 const LabelsListDescription = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [siteLabel, t] = await Promise.all([
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
@@ -121,6 +122,7 @@ const LabelsListData = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { token } = parseLabelsListSearchParams(resolvedSearchParams);
 
   const result = await listPublishedLabels(tenantId, {

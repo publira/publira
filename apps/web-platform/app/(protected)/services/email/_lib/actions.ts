@@ -49,9 +49,11 @@ const loadActionCatalog = async () => {
 
 const secretUpdateModeFormSchema = z.preprocess((value) => {
   const raw = typeof value === "string" ? value.trim() : "";
+
   if (raw === String(SECRET_UPDATE_MODE_REPLACE)) {
     return SECRET_UPDATE_MODE_REPLACE;
   }
+
   return raw === String(SECRET_UPDATE_MODE_CLEAR)
     ? SECRET_UPDATE_MODE_CLEAR
     : SECRET_UPDATE_MODE_UNCHANGED;
@@ -59,6 +61,7 @@ const secretUpdateModeFormSchema = z.preprocess((value) => {
 
 const recipientTypeFormSchema = z.preprocess((value) => {
   const raw = typeof value === "string" ? value.trim() : "";
+
   return raw === String(TEST_EMAIL_RECIPIENT_TYPE_CUSTOM)
     ? TEST_EMAIL_RECIPIENT_TYPE_CUSTOM
     : TEST_EMAIL_RECIPIENT_TYPE_SELF;
@@ -132,6 +135,7 @@ export const updatePlatformEmailSettingsAction = async (
   const schema = await smtpSaveFormSchema(locale);
 
   const parsed = schema.safeParse(toFormDataInput(formData, smtpFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -161,6 +165,7 @@ export const updatePlatformEmailSettingsAction = async (
 
   updateTag(platformEmailSettingsCacheTag);
   updateTag(platformAuditLogsCacheTag);
+
   return {
     message: t("platform.settings.smtp_saved"),
     ok: true,
@@ -177,6 +182,7 @@ export const sendPlatformSmtpTestEmailAction = async (
   const schema = await smtpFormSchema(locale);
 
   const parsed = schema.safeParse(toFormDataInput(formData, smtpFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }

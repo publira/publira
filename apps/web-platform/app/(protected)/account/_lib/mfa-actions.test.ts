@@ -26,6 +26,7 @@ vi.mock("#lib/auth-session", () => ({
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return { ...actual, getPlatformLocale: () => Promise.resolve("en") };
 });
 
@@ -40,6 +41,7 @@ vi.mock("#lib/platform-mfa", () => ({
 const codeForm = (code: string): FormData => {
   const data = new FormData();
   data.set("code", code);
+
   return data;
 };
 
@@ -87,6 +89,7 @@ describe("account MFA Actions", () => {
     "%s clears the status and the audit log whether or not the code was right",
     async (name, succeed, refuse) => {
       const actions = await import("./mfa-actions");
+
       const action = actions[name] as (
         state: null,
         formData: FormData

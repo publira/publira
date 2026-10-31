@@ -47,12 +47,15 @@ vi.mock("./tenant", () => ({
 
 const TENANT_ID = "019d008d-184d-7d31-a78a-89728a746e38";
 const ORIGIN = "https://shop.example.com";
+
 const ADDRESS = {
   defaultLocale: "en",
   origin: ORIGIN,
   supportedLocales: getLocales(),
 } as const;
+
 const LOCALE_COUNT = getLocales().length;
+
 /** A tenant that offers Japanese and English, Japanese being its default. */
 const BILINGUAL_ADDRESS = {
   defaultLocale: "ja",
@@ -102,6 +105,7 @@ const answerPages = (
   mockListSitemapEntries.mockImplementation(
     ({ limit, token }: { limit: number; token: string }) => {
       const page = token ? Number(token.slice(1)) : 0;
+
       return {
         entries: Array.from({ length: limit }, (_, index) =>
           entryAt(page, index)
@@ -645,10 +649,12 @@ describe("respondWithSitemapFile", () => {
       sitemap_id: "0.xml",
       tenant_id: TENANT_ID,
     });
+
     const lastResponse = await respondWithSitemapFile({
       sitemap_id: "2.xml",
       tenant_id: TENANT_ID,
     });
+
     const first = await firstResponse.text();
     const last = await lastResponse.text();
 

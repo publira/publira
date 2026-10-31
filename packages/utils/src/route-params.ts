@@ -80,5 +80,6 @@ export const parseRouteParams = <S extends z.ZodType>(
   input: unknown
 ): z.output<S> | null => {
   const parsed = schema.safeParse(input);
+
   return parsed.success ? parsed.data : null;
 };

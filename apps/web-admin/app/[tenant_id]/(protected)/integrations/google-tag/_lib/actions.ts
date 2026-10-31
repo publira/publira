@@ -25,13 +25,16 @@ export const updateGoogleTagAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     googleTagFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, googleTagFormFields)
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -41,9 +44,11 @@ export const updateGoogleTagAction = async (
   }
 
   const input = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantAnalyticsSettings(input, locale)
   );
+
   if (!result.ok) {
     return {
       fieldErrors: result.fieldErrors,

@@ -19,6 +19,7 @@ describe("InstantInput", () => {
         <InstantInput name="publish_at" timeZone="America/Los_Angeles" />
       </form>
     );
+
     const form = container.querySelector("form") as HTMLFormElement;
 
     fireEvent.change(
@@ -40,6 +41,7 @@ describe("InstantInput", () => {
         />
       </form>
     );
+
     const form = container.querySelector("form") as HTMLFormElement;
 
     expect(posted(form, "publish_at_local")).toBe("2099-06-01T10:00");
@@ -56,6 +58,7 @@ describe("InstantInput", () => {
         />
       </form>
     );
+
     const form = container.querySelector("form") as HTMLFormElement;
 
     expect(posted(form, "publish_at_local")).toBe("2099-06-01T17:00");
@@ -79,6 +82,7 @@ describe("InstantInput", () => {
         />
       </form>
     );
+
     const form = container.querySelector("form") as HTMLFormElement;
 
     fireEvent.change(

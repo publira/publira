@@ -45,10 +45,12 @@ type RoyaltiesPageProps = PageProps<"/[tenant_id]/royalties">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -106,6 +108,7 @@ const PreviewContent = ({
 }) => {
   if (preview.ok) {
     const zone = preview.timeZone || timeZone;
+
     return (
       <OpenMonth
         closeState={royaltyCloseState(period, policy, zone)}
@@ -121,6 +124,7 @@ const PreviewContent = ({
       />
     );
   }
+
   if (!preview.notOpen) {
     return <LoadError message={preview.message} />;
   }
@@ -159,6 +163,7 @@ const OpenMonthContent = async ({
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const requested = parseOpenMonthSearchParams(sp).period;
   const locale = await getLocale(tenantId);
+
   const [timeZone, policyResult, latestResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
     getRoyaltyClosePolicy(tenantId, locale),
@@ -167,14 +172,17 @@ const OpenMonthContent = async ({
 
   await redirectToLoginIfSessionRejected(policyResult);
   await redirectToLoginIfSessionRejected(latestResult);
+
   if (!policyResult.ok) {
     return <LoadError message={policyResult.message} />;
   }
+
   if (!latestResult.ok) {
     return <LoadError message={latestResult.message} />;
   }
 
   const currentPeriod = currentRoyaltyPeriod(timeZone);
+
   const period =
     requested !== "" && requested <= currentPeriod
       ? requested
@@ -182,6 +190,7 @@ const OpenMonthContent = async ({
           latestResult.statements[0]?.period,
           currentPeriod
         );
+
   const preview = await previewRoyaltyStatement(tenantId, locale, period);
   await redirectToLoginIfSessionRejected(preview);
 

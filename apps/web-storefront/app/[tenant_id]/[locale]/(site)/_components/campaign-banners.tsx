@@ -60,12 +60,14 @@ const CampaignBannerLink = ({
  */
 export const CampaignBannersSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [banners, t] = await Promise.all([
     listCampaignBanners(tenantId),
     getMessagesFor(locale),
   ]);
 
   const [firstBanner, ...rest] = banners;
+
   if (!firstBanner) {
     return null;
   }

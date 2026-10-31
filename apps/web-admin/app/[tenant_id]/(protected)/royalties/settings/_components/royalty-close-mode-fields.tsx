@@ -25,6 +25,7 @@ const RoyaltyCloseModeContext =
 
 const useRoyaltyCloseMode = () => {
   const context = use(RoyaltyCloseModeContext);
+
   if (!context) {
     throw new Error("Rendered outside a RoyaltyCloseModeScope.");
   }
@@ -44,11 +45,13 @@ const RoyaltyCloseModeScope = ({
   initialPolicy?: RoyaltyClosePolicy;
 }) => {
   const [closeMode, setCloseMode] = useState(initialPolicy?.closeMode);
+
   const [autoCloseDay, setAutoCloseDay] = useState(
     initialPolicy?.autoCloseDay === undefined
       ? null
       : String(initialPolicy.autoCloseDay)
   );
+
   const context = useMemo(
     () => ({ autoCloseDay, closeMode, setAutoCloseDay, setCloseMode }),
     [autoCloseDay, closeMode]

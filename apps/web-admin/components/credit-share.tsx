@@ -71,6 +71,7 @@ export const CreditShareSummary = ({ total }: { total: CreditShareTotal }) => {
       </div>
     );
   }
+
   if (total.totalBps > MAX_CREDIT_SHARE_BPS) {
     return (
       <div aria-live="polite">
@@ -86,6 +87,7 @@ export const CreditShareSummary = ({ total }: { total: CreditShareTotal }) => {
       </div>
     );
   }
+
   return (
     <p aria-live="polite" className="text-sm text-foreground tabular-nums">
       <ClientMessage

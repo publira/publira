@@ -151,6 +151,7 @@ describe("NotificationManager", () => {
     const titleLink = screen.getByRole("link", {
       name: "An episode was published",
     });
+
     expect(titleLink.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
     expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(screen.getByText("Unread")).toBeDefined();

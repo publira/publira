@@ -108,6 +108,7 @@ export const listCreatorRolesForTenant = async (
 
   try {
     const creatorRoles: CreatorRoleItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.creatorRole.listCreatorRoles(
@@ -118,6 +119,7 @@ export const listCreatorRolesForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.creatorRoles ?? [],
           nextToken: response.nextToken ?? "",
@@ -132,6 +134,7 @@ export const listCreatorRolesForTenant = async (
 
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         creatorRoles: [],
         message: t("admin.creator_roles.list_failed"),
@@ -145,6 +148,7 @@ export const listCreatorRolesForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       creatorRoles: [],
       message: await mapErrorToMessage(
@@ -171,6 +175,7 @@ export const listCreatorRolesForTenant = async (
  */
 export const listCreatorRoles = async (): Promise<ListCreatorRolesResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listCreatorRolesForTenant(tenantId, locale);
 };
 
@@ -182,6 +187,7 @@ export const createCreatorRole = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -203,6 +209,7 @@ export const createCreatorRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -230,6 +237,7 @@ export const updateCreatorRole = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -252,6 +260,7 @@ export const updateCreatorRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -285,6 +294,7 @@ export const reorderCreatorRoles = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -308,6 +318,7 @@ export const reorderCreatorRoles = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -339,6 +350,7 @@ export const deleteCreatorRole = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -356,11 +368,13 @@ export const deleteCreatorRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     const creditCount = rpcErrorReasonMetadataNumber(
       error,
       RPC_ERROR_REASON.creatorRoleInUse,
       RPC_ERROR_METADATA.creditCount
     );
+
     return {
       message: await mapErrorToMessage(
         error,

@@ -183,6 +183,7 @@ describe("getCreator", () => {
     });
 
     const { getCreator } = await import("./creator");
+
     const result = await getCreator(
       {
         publicId: "CREATOR101",
@@ -235,6 +236,7 @@ describe("getCreator", () => {
     });
 
     const { getCreator } = await import("./creator");
+
     const result = await getCreator(
       { publicId: "CREATOR101", tenantId: "TENANT001" },
       "en"
@@ -261,6 +263,7 @@ describe("getCreator", () => {
     mockGetAccessToken.mockResolvedValue(null);
 
     const { getCreator } = await import("./creator");
+
     const result = await getCreator(
       {
         publicId: "CREATOR001",
@@ -292,6 +295,7 @@ describe("getCreator", () => {
     );
 
     const { getCreator } = await import("./creator");
+
     const result = await getCreator(
       {
         publicId: "MISSING",
@@ -312,6 +316,7 @@ describe("getCreator", () => {
     );
 
     const { getCreator } = await import("./creator");
+
     const result = await getCreator(
       {
         publicId: "CREATOR001",
@@ -353,6 +358,7 @@ describe("getCreator", () => {
     mockGetCreator.mockResolvedValue({});
 
     const { getCreator } = await import("./creator");
+
     const result = await getCreator(
       {
         publicId: "CREATOR001",
@@ -416,9 +422,11 @@ describe("listAllCreators", () => {
       { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
+
     expect(result.creators).toHaveLength(102);
     expect(result.creators.at(0)?.publicId).toBe("CREATOR102");
     expect(result.creators.at(-1)?.publicId).toBe("CREATOR101");
@@ -597,6 +605,7 @@ describe("the operator check before a shared read", () => {
       "listCreators",
       async () => {
         const { listCreators } = await import("./creator");
+
         return await listCreators();
       },
       mockListCreators,
@@ -605,6 +614,7 @@ describe("the operator check before a shared read", () => {
       "listAllCreators",
       async () => {
         const { listAllCreators } = await import("./creator");
+
         return await listAllCreators();
       },
       mockListCreators,

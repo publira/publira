@@ -21,10 +21,13 @@ const isStoreUrl = (value: string): boolean => {
   if (!value) {
     return true;
   }
+
   if (!URL.canParse(value)) {
     return false;
   }
+
   const url = new URL(value);
+
   return (
     (url.protocol === "http:" || url.protocol === "https:") &&
     url.host !== "" &&
@@ -104,6 +107,7 @@ export const storageFormSchema = async (locale: Locale) => {
       if (value.credentialMode !== "access_key") {
         return;
       }
+
       if (!value.accessKeyId) {
         ctx.addIssue({
           code: "custom",
@@ -111,6 +115,7 @@ export const storageFormSchema = async (locale: Locale) => {
           path: ["accessKeyId"],
         });
       }
+
       if (
         value.secretAccessKeyUpdateMode === STORAGE_SECRET_REPLACE &&
         !value.secretAccessKey

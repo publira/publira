@@ -44,11 +44,14 @@ export const groupRoyaltyLinesByCreator = (
   lines: readonly RoyaltyLine[]
 ): RoyaltyCreatorGroup[] => {
   const groups = new Map<string, RoyaltyCreatorGroup>();
+
   for (const line of lines) {
     const key = line.creatorPublicId
       ? `id:${line.creatorPublicId}`
       : `name:${line.creatorName}`;
+
     let group = groups.get(key);
+
     if (!group) {
       group = {
         creatorName: line.creatorName,
@@ -58,8 +61,10 @@ export const groupRoyaltyLinesByCreator = (
       };
       groups.set(key, group);
     }
+
     group.lines.push(line);
     group.payoutSubtotal += line.payoutAmount;
   }
+
   return [...groups.values()];
 };

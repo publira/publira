@@ -18,10 +18,12 @@ export const currencyItems = (
   current?: string
 ): Combobox.Item[] => {
   const supported = listSupportedCurrencies();
+
   const codes =
     !current || supported.includes(current)
       ? supported
       : [current, ...supported];
+
   const collator = new Intl.Collator(toIntlLocale(locale));
 
   return codes

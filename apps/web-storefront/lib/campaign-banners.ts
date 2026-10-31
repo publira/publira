@@ -34,6 +34,7 @@ const toCampaignBannerItem = (
 ): CampaignBannerItem | null => {
   const linkUrl = toSafeOperatorLinkUrl(banner.linkUrl ?? "");
   const imageVariants = toEyeCatchImageVariants(banner.imageVariants);
+
   if (!(linkUrl && imageVariants)) {
     return null;
   }
@@ -68,9 +69,11 @@ export const listCampaignBanners = async (
   "use cache";
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return [];
   }
+
   applyCacheTag(tenantCampaignBannersTag(normalizedTenantId));
 
   try {
@@ -80,13 +83,16 @@ export const listCampaignBanners = async (
 
     return (response.banners ?? []).flatMap((banner) => {
       const mapped = toCampaignBannerItem(banner);
+
       return mapped ? [mapped] : [];
     });
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {
       console.warn("[web-storefront] listCampaignBanners failed", error);
     }
+
     dropFailedCacheEntry();
+
     return [];
   }
 };

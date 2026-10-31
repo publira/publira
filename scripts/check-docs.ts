@@ -133,13 +133,17 @@ const splitFrontmatter = (
   source: string
 ): Frontmatter | { error: string } | null => {
   const lines = source.split(/\r?\n/u);
+
   if (lines[0] !== "---") {
     return null;
   }
+
   const end = lines.indexOf("---", 1);
+
   if (end === -1) {
     return { error: "The frontmatter has no closing `---`." };
   }
+
   try {
     return {
       values: parseYaml(lines.slice(1, end).join("\n")),
@@ -159,6 +163,7 @@ const frontmatterLength = (lines: readonly string[]): number => {
   if (lines[0] !== "---") {
     return 0;
   }
+
   const end = lines.indexOf("---", 1);
 
   return end === -1 ? 0 : end + 1;
@@ -193,6 +198,7 @@ const parseDate = (value: unknown): Temporal.PlainDate | null => {
   if (typeof value !== "string" || !DATE.test(value)) {
     return null;
   }
+
   try {
     return Temporal.PlainDate.from(value, { overflow: "reject" });
   } catch {
@@ -253,13 +259,17 @@ const checkText = (record: Record<string, unknown>): string[] =>
 const checkDates = (record: Record<string, unknown>): string[] => {
   const messages: string[] = [];
   const published = parseDate(record.published);
+
   if ("published" in record && !published) {
     messages.push("`published` is not a `YYYY-MM-DD` date.");
   }
+
   const updated = parseDate(record.updated);
+
   if ("updated" in record && !updated) {
     messages.push("`updated` is not a `YYYY-MM-DD` date.");
   }
+
   if (
     published &&
     updated &&
@@ -267,6 +277,7 @@ const checkDates = (record: Record<string, unknown>): string[] => {
   ) {
     messages.push("`updated` is earlier than `published`.");
   }
+
   if (SOURCE_UPDATED in record && !parseDate(record[SOURCE_UPDATED])) {
     messages.push(`\`${SOURCE_UPDATED}\` is not a \`YYYY-MM-DD\` date.`);
   }
@@ -304,7 +315,9 @@ const checkRedirects = (
   if (!("redirect_from" in record)) {
     return { messages: [], redirects: [] };
   }
+
   const value = record.redirect_from;
+
   if (
     !Array.isArray(value) ||
     value.length === 0 ||
@@ -317,8 +330,10 @@ const checkRedirects = (
       redirects: [],
     };
   }
+
   const messages: string[] = [];
   const redirects: string[] = [];
+
   for (const entry of value as string[]) {
     if (!URL_PATH.test(entry)) {
       messages.push(
@@ -347,6 +362,7 @@ const checkFrontmatter = (
       revision: null,
     };
   }
+
   const record = values as Record<string, unknown>;
   const translated = isTranslated(file);
   const { messages, redirects } = checkRedirects(record);
@@ -373,6 +389,7 @@ export interface Link {
 
 const visit = (node: Nodes, onNode: (node: Nodes) => void): void => {
   onNode(node);
+
   if ("children" in node) {
     for (const child of node.children) {
       visit(child, onNode);
@@ -400,20 +417,24 @@ const collectLinks = (tree: Root): Link[] => {
         url: node.url,
       });
     }
+
     // CommonMark lets the first of two definitions with one label win.
     if (node.type === "definition" && !definitions.has(node.identifier)) {
       definitions.set(node.identifier, node);
     }
+
     if (node.type === "linkReference" || node.type === "imageReference") {
       references.push(node);
     }
   });
 
   const resolved = new Set<string>();
+
   for (const reference of references) {
     const definition = definitions.get(reference.identifier);
     const image = reference.type === "imageReference";
     const key = `${reference.identifier}:${image}`;
+
     if (definition && !resolved.has(key)) {
       resolved.add(key);
       links.push({
@@ -436,6 +457,7 @@ const headingText = (node: Nodes): string => {
   if (node.type === "text" || node.type === "inlineCode") {
     return node.value;
   }
+
   if (node.type === "html" || node.type === "image") {
     return "";
   }
@@ -464,16 +486,20 @@ export const headingAnchors = (source: string): string[] => {
     if (node.type !== "heading") {
       return;
     }
+
     const base = headingText(node)
       .toLowerCase()
       .replaceAll(NOT_IN_ANCHOR, "")
       .replaceAll(" ", "-");
+
     let anchor = base;
+
     while (taken.has(anchor)) {
       const repeat = (repeats.get(base) ?? 0) + 1;
       repeats.set(base, repeat);
       anchor = `${base}-${repeat}`;
     }
+
     taken.add(anchor);
     anchors.push(anchor);
   });
@@ -497,6 +523,7 @@ export interface CheckedPage {
  */
 export const checkPage = (file: string, source: string): CheckedPage => {
   const frontmatter = splitFrontmatter(source);
+
   if (!frontmatter) {
     return {
       findings: [
@@ -512,6 +539,7 @@ export const checkPage = (file: string, source: string): CheckedPage => {
       revision: null,
     };
   }
+
   if ("error" in frontmatter) {
     return {
       findings: [{ file, line: 1, message: frontmatter.error }],
@@ -529,6 +557,7 @@ export const checkPage = (file: string, source: string): CheckedPage => {
   const tree = parseMarkdown(source);
   visit(tree, (node) => {
     const line = node.position?.start.line ?? 1;
+
     if (node.type === "heading" && node.depth === 1) {
       findings.push({
         file,
@@ -537,6 +566,7 @@ export const checkPage = (file: string, source: string): CheckedPage => {
           "The body has a `#` heading. `title` is the page's heading; the body starts at `##`.",
       });
     }
+
     // The alt text is the reference's own, so a definition two images share
     // can still leave one of them without any.
     if (
@@ -583,13 +613,16 @@ const createContext = (repository: string): Context => {
   return {
     anchors: (target) => {
       const cached = anchors.get(target);
+
       if (cached) {
         return cached;
       }
+
       const read = (async () =>
         new Set(
           headingAnchors(await readFile(path.join(repository, target), "utf-8"))
         ))();
+
       anchors.set(target, read);
 
       return read;
@@ -626,9 +659,11 @@ const splitUrl = (url: string): { fragment: string | null; path: string } => {
 /** Where an absolute URL to `main` in this repository leads, or `null` for any other URL. */
 const mainDestination = (url: string): Destination | null => {
   const start = MAIN_URL.exec(url);
+
   if (!start) {
     return null;
   }
+
   const { fragment, path: target } = splitUrl(url.slice(start[0].length));
 
   return {
@@ -640,6 +675,7 @@ const mainDestination = (url: string): Destination | null => {
 const kind = async (file: string): Promise<"directory" | "file" | null> => {
   try {
     const stats = await stat(file);
+
     if (stats.isFile()) {
       return "file";
     }
@@ -688,10 +724,13 @@ const checkDestination = async (
   destination: Destination
 ): Promise<string | null> => {
   const { target } = destination;
+
   if (target === ".." || target.startsWith("../")) {
     return `\`${url}\` leaves the repository.`;
   }
+
   const found = await kind(path.join(context.repository, target));
+
   if (!found) {
     return `\`${url}\` names ${target}, which is not in the repository.`;
   }
@@ -716,9 +755,12 @@ const checkLink = async (
 ): Promise<Resolved> => {
   const { line, url } = link;
   const tree = treeOf(file);
+
   const report = (message: string | null): Resolved =>
     message === null ? null : { finding: { file, line, message } };
+
   const main = mainDestination(url);
+
   if (
     url === "" ||
     url.startsWith("#") ||
@@ -731,6 +773,7 @@ const checkLink = async (
         `\`${url}\` is not a file in ${tree}/. An image sits beside the page that shows it and is referenced by a relative path.`
       );
     }
+
     if (main) {
       return report(await checkDestination(context, url, main));
     }
@@ -744,6 +787,7 @@ const checkLink = async (
         )
       : null;
   }
+
   if (url.startsWith("/")) {
     return report(
       `\`${url}\` is rooted at the repository. Link to a page by a path relative to this file, and to source code by an absolute https://github.com/publira/publira/ URL.`
@@ -751,34 +795,43 @@ const checkLink = async (
   }
 
   const { fragment, path: decoded } = splitUrl(url);
+
   const resolved = path.join(
     path.dirname(path.join(context.repository, file)),
     decoded
   );
+
   const root = path.join(context.repository, tree);
+
   if (path.relative(root, resolved).startsWith("..")) {
     return report(
       `\`${url}\` leaves ${tree}/, which the website does not serve. Link to source code by an absolute https://github.com/publira/publira/ URL.`
     );
   }
+
   const extension = path.extname(decoded);
+
   if (link.image && !IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
     return report(
       `\`${url}\` is not an image. An image is one of ${[...IMAGE_EXTENSIONS].join(", ")}, beside the page that shows it.`
     );
   }
+
   if (!link.image && extension !== PAGE_EXTENSION) {
     return report(
       `\`${url}\` is not a \`.md\` file. Link to the page itself — a directory by its \`index.md\` — so the website can rewrite the link to its URL.`
     );
   }
+
   if (!(await exists(resolved))) {
     return report(`\`${url}\` does not exist.`);
   }
+
   const target = path
     .relative(context.repository, resolved)
     .split(path.sep)
     .join("/");
+
   const missing = link.image
     ? null
     : await checkFragment(context, url, { fragment, target });
@@ -798,6 +851,7 @@ const checkDirectory = async (
   const entries = await readdir(path.join(repository, directory), {
     withFileTypes: true,
   });
+
   const findings: Finding[] = [];
   const pages: string[] = [];
   const images: string[] = [];
@@ -819,10 +873,12 @@ const checkDirectory = async (
   for (const entry of entries) {
     const entryPath = path.posix.join(directory, entry.name);
     const extension = path.extname(entry.name);
+
     if (entry.isFile() && entry.name === INDEX) {
       pages.push(entryPath);
       continue;
     }
+
     if (entry.isFile() && IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
       images.push(entryPath);
       continue;
@@ -831,7 +887,9 @@ const checkDirectory = async (
     const stem = entry.isFile()
       ? path.basename(entry.name, PAGE_EXTENSION)
       : entry.name;
+
     const name = ENTRY_NAME.exec(stem);
+
     if (!name?.groups || (entry.isFile() && extension !== PAGE_EXTENSION)) {
       findings.push({
         file: entryPath,
@@ -844,20 +902,24 @@ const checkDirectory = async (
 
     const { number = "", slug = "" } = name.groups;
     const sameNumber = numbers.get(number);
+
     if (sameNumber) {
       findings.push({
         file: entryPath,
         message: `${sameNumber} has the number ${number} already. Numbers are unique among siblings; a gap is fine.`,
       });
     }
+
     numbers.set(number, entryPath);
     const sameSlug = slugs.get(slug);
+
     if (sameSlug) {
       findings.push({
         file: entryPath,
         message: `${sameSlug} has the slug \`${slug}\` already, so both would be published at the same URL.`,
       });
     }
+
     slugs.set(slug, entryPath);
 
     (entry.isDirectory() ? directories : pages).push(entryPath);
@@ -889,6 +951,7 @@ const checkFile = async (
 }> => {
   const source = await readFile(path.join(context.repository, file), "utf-8");
   const { findings, links, redirects, revision } = checkPage(file, source);
+
   const resolved = await Promise.all(
     links.map(async (link) => ({
       image: link.image,
@@ -956,9 +1019,11 @@ const checkRedirectTargets = (
   const urls = new Map(pages.map((page) => [pageUrlPath(root, page), page]));
   const claims = new Map<string, string[]>();
   const findings: Finding[] = [];
+
   for (const [index, page] of pages.entries()) {
     for (const redirect of redirects[index] ?? []) {
       const existing = urls.get(redirect);
+
       if (existing) {
         findings.push({
           file: page,
@@ -970,6 +1035,7 @@ const checkRedirectTargets = (
       }
     }
   }
+
   for (const [redirect, claimants] of claims) {
     if (claimants.length > 1) {
       for (const page of claimants) {
@@ -977,6 +1043,7 @@ const checkRedirectTargets = (
           .filter((other) => other !== page)
           .toSorted((a, b) => a.localeCompare(b, "en"))
           .join(", ");
+
         findings.push({
           file: page,
           line: 1,
@@ -1010,6 +1077,7 @@ const checkImages = (
 ): Finding[] =>
   images.flatMap((image) => {
     const slugs = shownBy.get(image) ?? [];
+
     if (slugs.length === 0) {
       return [
         {
@@ -1019,7 +1087,9 @@ const checkImages = (
         },
       ];
     }
+
     const stem = path.posix.basename(image, path.posix.extname(image));
+
     const named = slugs.some(
       (slug) =>
         stem.startsWith(`${slug}-`) && SUBJECT.test(stem.slice(slug.length + 1))
@@ -1028,6 +1098,7 @@ const checkImages = (
     if (named) {
       return [];
     }
+
     const listed = [...new Set(slugs)]
       .toSorted((a, b) => a.localeCompare(b, "en"))
       .map((slug) => `\`${slug}\``)
@@ -1056,9 +1127,11 @@ const listTrees = async (
   const entries = await readdir(path.join(repository, DOCS), {
     withFileTypes: true,
   });
+
   const translations = entries
     .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE)
     .map((entry) => entry.name);
+
   const shipped = await Promise.all(
     translations.map((locale) =>
       exists(path.join(repository, CATALOGS, `${locale}.json`))
@@ -1104,10 +1177,13 @@ const checkTree = async (
     root,
     true
   );
+
   const inPages = await Promise.all(
     pages.map((page) => checkFile(context, page))
   );
+
   const shownBy = new Map<string, string[]>();
+
   for (const [index, page] of pages.entries()) {
     for (const image of inPages[index]?.images ?? []) {
       shownBy.set(image, [...(shownBy.get(image) ?? []), pageSlug(page)]);
@@ -1155,6 +1231,7 @@ const compareTrees = (
   translation: Awaited<ReturnType<typeof checkTree>>
 ): Finding[] => {
   const findings: Finding[] = [];
+
   const counterparts = (
     type: "image" | "page",
     english: Iterable<string>,
@@ -1162,6 +1239,7 @@ const compareTrees = (
   ): void => {
     const theirs = new Set(translated);
     const ours = new Set(english);
+
     for (const entry of ours) {
       if (!theirs.has(entry)) {
         findings.push({
@@ -1170,6 +1248,7 @@ const compareTrees = (
         });
       }
     }
+
     for (const entry of theirs) {
       if (!ours.has(entry)) {
         findings.push({
@@ -1179,16 +1258,20 @@ const compareTrees = (
       }
     }
   };
+
   counterparts("page", source.pages.keys(), translation.pages.keys());
   counterparts("image", source.images, translation.images);
 
   for (const [entry, translated] of translation.pages) {
     const english = source.pages.get(entry);
+
     if (!english) {
       continue;
     }
+
     const file = path.posix.join(root, entry);
     const { revision } = english;
+
     if (
       revision !== null &&
       translated.revision !== null &&
@@ -1203,11 +1286,13 @@ const compareTrees = (
             : `\`${SOURCE_UPDATED}\` is ${translated.revision}, later than ${revision}, the \`updated\` date of ${path.posix.join(SOURCE, entry)} (its \`published\` date while it has none), which is the date it records.`,
       });
     }
+
     const sameRedirects =
       english.redirects.length === translated.redirects.length &&
       english.redirects.every((redirect) =>
         translated.redirects.includes(redirect)
       );
+
     if (!sameRedirects) {
       findings.push({
         file,
@@ -1251,7 +1336,9 @@ const listMarkdown = async (
     ],
     { cwd: repository, maxBuffer: 16 * 1024 * 1024 }
   );
+
   const files = [...new Set(stdout.split("\0").filter(Boolean))];
+
   // A file deleted from the working tree is still in the index until the
   // deletion is staged, and has no links left to check.
   const present = await Promise.all(
@@ -1275,19 +1362,24 @@ const checkMarkdownLink = async (
   { image, line, url }: Link
 ): Promise<Finding | null> => {
   let destination = mainDestination(url);
+
   if (!destination) {
     if (url === "" || SCHEME.test(url) || url.startsWith("//")) {
       return null;
     }
+
     const { fragment, path: target } = splitUrl(url);
     let resolved = file;
+
     if (target.startsWith("/")) {
       resolved = path.posix.normalize(target.slice(1) || ".");
     } else if (target !== "") {
       resolved = path.posix.join(path.posix.dirname(file), target);
     }
+
     destination = { fragment, target: resolved.replace(/(?<=.)\/$/u, "") };
   }
+
   const message = await checkDestination(
     context,
     url,
@@ -1303,6 +1395,7 @@ const checkMarkdown = async (
   file: string
 ): Promise<Finding[]> => {
   const source = await readFile(path.join(context.repository, file), "utf-8");
+
   const findings = await Promise.all(
     collectLinks(parseMarkdown(source)).map((link) =>
       checkMarkdownLink(context, file, link)
@@ -1334,23 +1427,28 @@ export const collectQuotes = (
 ): { findings: Finding[]; quotes: Quote[] } => {
   const findings: Finding[] = [];
   const quotes: Quote[] = [];
+
   let open: {
     indent: string;
     line: number;
     lines: string[];
     page: string;
   } | null = null;
+
   const unclosed = (line: number): Finding => ({
     file,
     line,
     message: "This `# quoted by` comment has no `# end of quote` after it.",
   });
+
   for (const [index, text] of source.split(/\r?\n/u).entries()) {
     const start = QUOTE_START.exec(text);
+
     if (start?.groups) {
       if (open) {
         findings.push(unclosed(open.line));
       }
+
       open = {
         indent: start.groups.indent ?? "",
         line: index + 1,
@@ -1370,6 +1468,7 @@ export const collectQuotes = (
       );
     }
   }
+
   if (open) {
     findings.push(unclosed(open.line));
   }
@@ -1396,7 +1495,9 @@ const listQuotingScripts = async (repository: string): Promise<string[]> => {
     ],
     { cwd: repository, maxBuffer: 16 * 1024 * 1024 }
   );
+
   const files = [...new Set(stdout.split("\0").filter(Boolean))];
+
   const sources = await Promise.all(
     files.map((file) =>
       // A file deleted from the working tree is still in the index until the
@@ -1419,8 +1520,10 @@ const checkQuotes = async (
   root: string
 ): Promise<Finding[]> => {
   const blocks = new Map<string, Promise<Set<string> | null>>();
+
   const codeBlocks = (page: string): Promise<Set<string> | null> => {
     let found = blocks.get(page);
+
     if (!found) {
       found = readFile(path.join(repository, page), "utf-8").then(
         (source) => {
@@ -1430,14 +1533,17 @@ const checkQuotes = async (
               values.add(node.value);
             }
           });
+
           return values;
         },
         () => null
       );
       blocks.set(page, found);
     }
+
     return found;
   };
+
   const checkQuote = async (
     file: string,
     { line, page, text }: Quote
@@ -1446,6 +1552,7 @@ const checkQuotes = async (
       page.startsWith(`${root}/`) && page.endsWith(PAGE_EXTENSION)
         ? await codeBlocks(page)
         : null;
+
     if (values === null) {
       return {
         file,
@@ -1453,6 +1560,7 @@ const checkQuotes = async (
         message: `\`${page}\` is not a page under \`${root}/\`.`,
       };
     }
+
     if (!values.has(text)) {
       return {
         file,
@@ -1460,13 +1568,17 @@ const checkQuotes = async (
         message: `\`${page}\` has no code block that reads the same as the lines quoted from here; change the two together.`,
       };
     }
+
     return null;
   };
+
   const scripts = await listQuotingScripts(repository);
+
   const inScripts = await Promise.all(
     scripts.map(async (file) => {
       const source = await readFile(path.join(repository, file), "utf-8");
       const { findings, quotes } = collectQuotes(file, source);
+
       const checked = await Promise.all(
         quotes.map((quote) => checkQuote(file, quote))
       );
@@ -1488,10 +1600,13 @@ const checkQuotes = async (
 export const scan = async (repository = process.cwd()): Promise<Finding[]> => {
   const context = createContext(repository);
   const { findings: locales, trees } = await listTrees(repository);
+
   const checked = await Promise.all(
     trees.map((root) => checkTree(context, root))
   );
+
   const source = checked[trees.indexOf(SOURCE)];
+
   const translations = source
     ? trees.flatMap((root, index) => {
         const translation = checked[index];
@@ -1501,10 +1616,13 @@ export const scan = async (repository = process.cwd()): Promise<Finding[]> => {
           : compareTrees(source, root, translation);
       })
     : [];
+
   const markdown = await listMarkdown(repository, trees);
+
   const inMarkdown = await Promise.all(
     markdown.map((file) => checkMarkdown(context, file))
   );
+
   const quotes = await checkQuotes(repository, SOURCE);
 
   return [
@@ -1526,6 +1644,7 @@ const report = (finding: Finding): void => {
 
     return;
   }
+
   const line = finding.line === undefined ? "" : `:${finding.line}`;
   console.error(`${finding.file}${line}: ${finding.message}`);
 };
@@ -1537,6 +1656,7 @@ const main = async (): Promise<void> => {
     for (const finding of findings) {
       report(finding);
     }
+
     process.exitCode = 1;
 
     return;

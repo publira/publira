@@ -41,6 +41,7 @@ export const formatTenantAmount = (
  */
 export const toPriceInputValue = (amount: number, currency: string): string => {
   const digits = currencyFractionDigits(currency);
+
   return (amount / 10 ** digits).toFixed(digits);
 };
 
@@ -50,6 +51,7 @@ export const toPriceInputValue = (amount: number, currency: string): string => {
  */
 export const priceInputStep = (currency: string): string => {
   const digits = currencyFractionDigits(currency);
+
   return (1 / 10 ** digits).toFixed(digits);
 };
 
@@ -72,18 +74,23 @@ export const priceFormSchema = (
   message: string
 ): z.ZodType<number, unknown> => {
   const digits = currencyFractionDigits(currency);
+
   return z.preprocess(
     (value) => {
       const raw = typeof value === "string" ? value.trim() : "";
+
       if (raw === "") {
         return 0;
       }
+
       const match = PRICE_RE.exec(raw);
       const units = match?.groups?.units;
       const fraction = match?.groups?.fraction ?? "";
+
       if (units === undefined || fraction.length > digits) {
         return;
       }
+
       return (
         Number(units) * 10 ** digits + Number(fraction.padEnd(digits, "0"))
       );

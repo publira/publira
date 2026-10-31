@@ -70,9 +70,11 @@ const dropOffParamsSchema = z.object({
 
 const resolveDropOffParams = async (params: DropOffPageProps["params"]) => {
   const parsed = parseRouteParams(dropOffParamsSchema, await params);
+
   if (!parsed) {
     notFound();
   }
+
   return parsed;
 };
 
@@ -89,12 +91,15 @@ const dropOffValue = (row: DropOffRow, column: DropOffColumn): number => {
     case "left": {
       return row.leftCount;
     }
+
     case "page": {
       return row.pageIndex;
     }
+
     case "readers": {
       return row.readerCount;
     }
+
     default: {
       return column satisfies never;
     }
@@ -138,13 +143,16 @@ const ReaderShare = ({
 
 const DropOffContext = async ({ params }: Pick<DropOffPageProps, "params">) => {
   const { episode_id, series_id } = await resolveDropOffParams(params);
+
   const [episode, series] = await Promise.all([
     getEpisode({ publicId: episode_id, seriesPublicId: series_id }),
     getSeries({ publicId: series_id }),
   ]);
+
   if ((!episode.ok && episode.notFound) || (!series.ok && series.notFound)) {
     notFound();
   }
+
   // The context only names the episode, so a failed read leaves it out
   // rather than taking the report down with it.
   if (!(episode.ok && series.ok)) {
@@ -188,10 +196,12 @@ const DropOffContent = async ({ params, searchParams }: DropOffPageProps) => {
     searchParams,
     getTenantId(),
   ]);
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const path = `/analytics/episodes/${series_id}/${episode_id}`;
   const { from, to } = parsePeriodSearchParams(sp);
   const period = resolveAnalyticsPeriod({ from, to }, timeZone);
@@ -200,6 +210,7 @@ const DropOffContent = async ({ params, searchParams }: DropOffPageProps) => {
   const form = (
     <PeriodForm period={period} resetHref={path} timeZone={timeZone} />
   );
+
   if (!period.ok) {
     return <ConsoleSection.Stack>{form}</ConsoleSection.Stack>;
   }
@@ -212,11 +223,14 @@ const DropOffContent = async ({ params, searchParams }: DropOffPageProps) => {
     }),
     getMessagesFor(locale),
   ]);
+
   if (!result.ok && result.notFound) {
     notFound();
   }
+
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
+
     return (
       <ConsoleSection.Stack>
         {form}
@@ -238,12 +252,15 @@ const DropOffContent = async ({ params, searchParams }: DropOffPageProps) => {
 
   const rows = toDropOffRows(result.pages);
   const firstReaders = result.pages[0]?.readerCount ?? 0;
+
   const lastPage =
     result.pageCount > 0
       ? result.pages.find((page) => page.pageIndex === result.pageCount - 1)
       : undefined;
+
   const sorted = (column: DropOffColumn) =>
     sort.column === column ? sort.order : null;
+
   const hrefFor = (column: DropOffColumn) =>
     `${path}${buildQueryString({
       from,

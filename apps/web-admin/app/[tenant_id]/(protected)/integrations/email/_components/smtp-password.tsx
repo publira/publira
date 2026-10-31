@@ -29,9 +29,11 @@ const SmtpPasswordContext = createContext<SmtpPasswordContextValue | null>(
 
 const useSmtpPassword = () => {
   const context = use(SmtpPasswordContext);
+
   if (!context) {
     throw new Error("SmtpPassword slots must be rendered inside SmtpPassword.");
   }
+
   return context;
 };
 
@@ -49,11 +51,14 @@ const SmtpPassword = ({
   hasStoredPassword: boolean;
 }) => {
   const state = ActionForm.useState<SavedSettingsState>();
+
   const hasStoredPassword = state?.ok
     ? state.settings.hasPassword
     : initialHasStoredPassword;
+
   const [isEditing, setIsEditing] = useState(!initialHasStoredPassword);
   const [hasEntry, setHasEntry] = useState(false);
+
   // Opening or closing the box remounts it empty, so what it held goes too.
   const context = useMemo(
     () => ({
@@ -76,6 +81,7 @@ const SmtpPassword = ({
   });
 
   let mode = SECRET_UPDATE_MODE_UNCHANGED;
+
   if (isEditing) {
     mode = hasEntry ? SECRET_UPDATE_MODE_REPLACE : SECRET_UPDATE_MODE_CLEAR;
   }

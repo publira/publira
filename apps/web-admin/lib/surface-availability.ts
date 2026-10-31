@@ -47,8 +47,10 @@ export const episodeShownOn = (
   if (override === "" || override === "all") {
     return seriesAvailability;
   }
+
   if (seriesAvailability === "all" || seriesAvailability === override) {
     return override;
   }
+
   return "none";
 };

@@ -10,6 +10,7 @@ export const tenantWebhookUrl = (
   provider: string
 ): string | undefined => {
   const origin = storefrontOrigin(domain);
+
   return origin ? `${origin}/api/v1/webhook/payment/${provider}` : undefined;
 };
 
@@ -26,6 +27,7 @@ export const signInCallbackUrl = (
   provider: SignInProvider
 ): string | undefined => {
   const origin = storefrontOrigin(domain);
+
   return origin ? `${origin}/api/v1/auth/${provider}/callback` : undefined;
 };
 
@@ -37,5 +39,6 @@ export const signInCallbackUrl = (
  */
 export const appleAndroidCallbackUrl = (domain: string): string | undefined => {
   const callback = signInCallbackUrl(domain, "apple");
+
   return callback ? `${callback}/android` : undefined;
 };

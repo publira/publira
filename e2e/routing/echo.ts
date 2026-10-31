@@ -91,6 +91,7 @@ const respond = (
   if (!METHODS.has(req.method ?? "")) {
     res.writeHead(501, { Allow: [...METHODS].join(", ") });
     res.end();
+
     return;
   }
 
@@ -102,6 +103,7 @@ const respond = (
     path: req.url ?? "",
     port,
   };
+
   for (const name of [
     ...TRACE_CONTEXT_HEADERS,
     ...FORWARDED_HEADERS,
@@ -109,6 +111,7 @@ const respond = (
   ]) {
     payload[name] = firstHeader(req, name);
   }
+
   const raw = Buffer.from(JSON.stringify(payload));
 
   res.writeHead(200, {
@@ -138,6 +141,7 @@ for (const [port, backend] of BACKENDS) {
       respond(backend, port, req, res, bodyBytes);
     });
   });
+
   server.listen(port, "0.0.0.0", () => {
     console.log(`listening ${backend} on :${port}`);
   });

@@ -302,8 +302,10 @@ const mapPriceErrorToMessage = async (
 ): Promise<string> => {
   if (rpcErrorHasFieldViolation(error, "currency")) {
     const t = await getMessagesFor(locale);
+
     return t("admin.series.episodes.currency_changed");
   }
+
   return mapErrorToMessage(error, fallbackMessage, locale);
 };
 
@@ -384,6 +386,7 @@ const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
         variantType: variant.variantType ?? "",
         width: variant.width ?? 0,
       };
+
       return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
         ? [mappedVariant]
         : [];
@@ -414,9 +417,11 @@ const toEpisodeLayoutOverrides = (
   >
 ): EpisodeReadingLayoutOverrides | undefined => {
   const readingDirection = toReadingDirectionValue(response.readingDirection);
+
   if (readingDirection === undefined) {
     return;
   }
+
   return {
     readingDirection,
     spreadStartIndex: response.spreadStartIndex,
@@ -475,6 +480,7 @@ const listEpisodeCreditsForTenant = async (
   cacheTag(episodeCacheTag(input.tenantId, input.episodeId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const response = await apiClient.series.listEpisodeCredits(
       {
@@ -483,6 +489,7 @@ const listEpisodeCreditsForTenant = async (
       },
       withServiceHeaders()
     );
+
     return {
       credits: mapEpisodeCredits(
         response.creators ?? [],
@@ -495,6 +502,7 @@ const listEpisodeCreditsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -514,6 +522,7 @@ export const listEpisodeCredits = async (input: {
   episodeId: string;
 }): Promise<ListEpisodeCreditsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listEpisodeCreditsForTenant({ ...input, tenantId }, locale);
 };
 
@@ -529,9 +538,11 @@ export const replaceEpisodeCredits = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
+
   try {
     await apiClient.series.replaceEpisodeCredits(
       {
@@ -541,10 +552,12 @@ export const replaceEpisodeCredits = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -567,12 +580,15 @@ const archiveRejectionMessage = async (
   locale: Locale
 ): Promise<string | undefined> => {
   const t = await getMessagesFor(locale);
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUB)) {
     return t("admin.series.episodes.epub_invalid");
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidEPUBSpine)) {
     return t("admin.series.episodes.epub_spine_invalid");
   }
+
   return rpcErrorHasReason(error, RPC_ERROR_REASON.archiveInvalidPath)
     ? t("admin.series.episodes.archive_path_invalid")
     : undefined;
@@ -664,6 +680,7 @@ export const createEpisode = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -708,6 +725,7 @@ export const createEpisode = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapPriceErrorToMessage(
         error,
@@ -731,6 +749,7 @@ const listEpisodesForTenant = async (
   cacheTag(episodePublicationCacheTag(input.tenantId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const response = await apiClient.series.listEpisodes(
       {
@@ -751,6 +770,7 @@ const listEpisodesForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       episodes: [],
@@ -778,6 +798,7 @@ export const listEpisodes = async (
   input: { seriesId: string } & CursorPageOptions
 ): Promise<ListEpisodesResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listEpisodesForTenant({ ...input, tenantId }, locale);
 };
 
@@ -801,8 +822,10 @@ export const listAllEpisodesForTenant = async (
   cacheTag(episodePublicationCacheTag(input.tenantId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const episodes: EpisodeItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.series.listEpisodes(
@@ -814,6 +837,7 @@ export const listAllEpisodesForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.episodes ?? [],
           nextToken: response.nextToken ?? "",
@@ -828,6 +852,7 @@ export const listAllEpisodesForTenant = async (
 
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         ...emptyCursorPageTokens,
         episodes: [],
@@ -846,6 +871,7 @@ export const listAllEpisodesForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       episodes: [],
@@ -874,6 +900,7 @@ export const listAllEpisodes = async (input: {
   seriesId: string;
 }): Promise<ListEpisodesResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listAllEpisodesForTenant({ ...input, tenantId }, locale);
 };
 
@@ -910,9 +937,11 @@ export const getEpisodeForTenant = async (
     );
 
     const layout = toEpisodeLayoutOverrides(response);
+
     const purchaseAvailability = toSurfaceAvailabilityValue(
       response.purchaseAvailability
     );
+
     // An unknown availability would open the form on following the series,
     // and the next save would write that over the episode's own value.
     if (
@@ -922,6 +951,7 @@ export const getEpisodeForTenant = async (
       toSurfaceAvailabilityValue(response.episode.availability) === undefined
     ) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.series.episodes.get_failed"),
         ok: false,
@@ -929,6 +959,7 @@ export const getEpisodeForTenant = async (
     }
 
     cacheTag(episodeCacheTag(input.tenantId, response.episode.id));
+
     return {
       episode: mapEpisode(response.episode),
       layout,
@@ -940,10 +971,12 @@ export const getEpisodeForTenant = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -960,6 +993,7 @@ export const getEpisode = async (input: {
   publicId: string;
 }): Promise<GetEpisodeResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return getEpisodeForTenant({ ...input, tenantId }, locale);
 };
 
@@ -975,6 +1009,7 @@ export const updateEpisodePublishSchedule = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1006,6 +1041,7 @@ export const updateEpisodePublishSchedule = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -1030,6 +1066,7 @@ export const updateEpisodeAvailability = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1052,6 +1089,7 @@ export const updateEpisodeAvailability = async (
     const availability = toSurfaceAvailabilityValue(
       response.episode?.availability
     );
+
     if (availability === undefined) {
       return {
         message: t("admin.series.episodes.availability.failed"),
@@ -1063,6 +1101,7 @@ export const updateEpisodeAvailability = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -1087,6 +1126,7 @@ export const updateEpisodePurchaseAvailability = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1109,6 +1149,7 @@ export const updateEpisodePurchaseAvailability = async (
     const purchaseAvailability = toSurfaceAvailabilityValue(
       response.purchaseAvailability
     );
+
     if (purchaseAvailability === undefined) {
       return {
         message: t("admin.series.episodes.purchase_availability.failed"),
@@ -1120,6 +1161,7 @@ export const updateEpisodePurchaseAvailability = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -1146,6 +1188,7 @@ export const updateEpisodeLayout = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1167,6 +1210,7 @@ export const updateEpisodeLayout = async (
     );
 
     const layout = toEpisodeLayoutOverrides(response);
+
     if (layout === undefined) {
       return {
         message: t("admin.series.episodes.layout.failed"),
@@ -1178,6 +1222,7 @@ export const updateEpisodeLayout = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -1217,6 +1262,7 @@ export const uploadEpisodePages = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1254,6 +1300,7 @@ export const uploadEpisodePages = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapEpisodeUploadErrorMessage(error, locale),
       ok: false,
@@ -1273,8 +1320,10 @@ const listEpisodeImagesForSession = async (
   cacheTag(episodeCacheTag(input.tenantId, input.episodeId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       images: [],
       message: t("errors.rpc.unauthenticated"),
@@ -1298,6 +1347,7 @@ const listEpisodeImagesForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       images: [],
       message: await mapErrorToMessage(
@@ -1334,6 +1384,7 @@ export const renewEpisodeImageUrls = async (input: {
   episodeId: string;
 }): Promise<Record<string, string> | undefined> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return;
   }
@@ -1368,6 +1419,7 @@ const reorderEpisodes = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1400,6 +1452,7 @@ const reorderEpisodes = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapReorderErrorToMessage(error, locale),
       ok: false,
@@ -1447,11 +1500,13 @@ export const mergeEpisodeOrder = (
   }
 
   const pageIdSet = new Set(nextPageIds);
+
   if (pageIdSet.size !== nextPageIds.length) {
     return null;
   }
 
   const slots: number[] = [];
+
   for (const [index, id] of seriesEpisodeIds.entries()) {
     if (pageIdSet.has(id)) {
       slots.push(index);
@@ -1465,6 +1520,7 @@ export const mergeEpisodeOrder = (
   // One unbroken run of slots, holding exactly the order the page was showing.
   const [firstSlot = 0] = slots;
   const lastSlot = slots.at(-1) ?? 0;
+
   if (lastSlot - firstSlot !== slots.length - 1) {
     return null;
   }
@@ -1478,6 +1534,7 @@ export const mergeEpisodeOrder = (
   }
 
   const merged = [...seriesEpisodeIds];
+
   for (const [index, slot] of slots.entries()) {
     merged[slot] = nextPageIds[index];
   }
@@ -1545,6 +1602,7 @@ export const reorderEpisodePage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1560,6 +1618,7 @@ export const reorderEpisodePage = async (
   }
 
   let seriesEpisodeIds: string[] | null;
+
   try {
     seriesEpisodeIds = await listSeriesEpisodeIds({
       seriesId: input.seriesId,
@@ -1569,6 +1628,7 @@ export const reorderEpisodePage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -1591,6 +1651,7 @@ export const reorderEpisodePage = async (
     input.currentEpisodeIds,
     input.episodeIds
   );
+
   if (!episodeIds) {
     return {
       message: t("admin.series.episodes.reorder_conflict"),
@@ -1621,6 +1682,7 @@ export const reorderEpisodeImages = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1652,6 +1714,7 @@ export const reorderEpisodeImages = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -1695,6 +1758,7 @@ export const deleteEpisodeImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1719,6 +1783,7 @@ export const deleteEpisodeImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapEpisodeImageErrorToMessage(
         error,
@@ -1748,6 +1813,7 @@ export const replaceEpisodeImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1775,6 +1841,7 @@ export const replaceEpisodeImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -1818,6 +1885,7 @@ export const updateEpisodeTitle = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1850,6 +1918,7 @@ export const updateEpisodeTitle = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -1877,6 +1946,7 @@ export const deleteEpisodeTranslation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1898,6 +1968,7 @@ export const deleteEpisodeTranslation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -1940,6 +2011,7 @@ export const updateEpisodePricing = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1975,6 +2047,7 @@ export const updateEpisodePricing = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapPriceErrorToMessage(
         error,
@@ -2030,6 +2103,7 @@ export const uploadEpisodeEyeCatchImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -2059,6 +2133,7 @@ export const uploadEpisodeEyeCatchImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapEyeCatchErrorToMessage(error, locale),
       ok: false,
@@ -2087,6 +2162,7 @@ export const uploadEpisodeEyeCatchAspectImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -2118,9 +2194,11 @@ export const uploadEpisodeEyeCatchAspectImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     if (mentionsAspectImageRejection(error)) {
       return { imageRejected: true, ok: false };
     }
+
     return {
       // An episode with no eye-catch yet has no ratio to replace.
       message: await mapEyeCatchErrorToMessage(
@@ -2144,6 +2222,7 @@ export const deleteEpisodeEyeCatchImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -2171,6 +2250,7 @@ export const deleteEpisodeEyeCatchImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapEyeCatchErrorToMessage(error, locale),
       ok: false,
@@ -2184,12 +2264,15 @@ const toUnchangedReason = (
   if (reason === EpisodeCreditUnchangedReason.ALREADY_CREDITED) {
     return "already_credited";
   }
+
   if (reason === EpisodeCreditUnchangedReason.NOT_CREDITED) {
     return "not_credited";
   }
+
   if (reason === EpisodeCreditUnchangedReason.CREDITED_ON_THE_EPISODE) {
     return "credited_on_the_episode";
   }
+
   return "unspecified";
 };
 
@@ -2197,18 +2280,21 @@ const toBulkCreditOperation = (operation: BulkEpisodeCreditOperation) => {
   if (operation.type === "add") {
     return { case: "add" as const, value: { credit: operation.credit } };
   }
+
   if (operation.type === "replace") {
     return {
       case: "replace" as const,
       value: { from: operation.from, to: operation.to },
     };
   }
+
   if (operation.type === "set_share") {
     return {
       case: "setShare" as const,
       value: { credit: { ...operation.credit, shareBps: operation.shareBps } },
     };
   }
+
   return { case: "remove" as const, value: { credit: operation.credit } };
 };
 
@@ -2260,6 +2346,7 @@ export const bulkEditEpisodeCredits = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -2289,6 +2376,7 @@ export const bulkEditEpisodeCredits = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapBulkCreditErrorToMessage(
         error,

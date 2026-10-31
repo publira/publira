@@ -35,6 +35,7 @@ export const listTagSuggestions = async (
   cacheTag(`tenant:${tenantId}:series:list`);
 
   const tagNames: string[] = [];
+
   try {
     await forEachPageWithToken(
       async (token, limit) => {
@@ -43,6 +44,7 @@ export const listTagSuggestions = async (
           tenant: { tenantId },
           token,
         });
+
         return {
           items: response.tags ?? [],
           nextToken: response.nextToken ?? "",
@@ -51,6 +53,7 @@ export const listTagSuggestions = async (
       (items) => {
         for (const item of items) {
           const name = item.name?.trim() ?? "";
+
           if (name.length > 0) {
             tagNames.push(name);
           }
@@ -65,6 +68,7 @@ export const listTagSuggestions = async (
     // soon as the public API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("admin.series.tags_unavailable"), {
         locale,

@@ -79,18 +79,22 @@ const renderForm = async (settings: PlatformSearchSettings) => {
     rendered = render(withMessages(<SearchSettingsForm settings={settings} />));
     await messages;
   });
+
   if (!rendered) {
     throw new Error("The form did not render.");
   }
+
   return rendered;
 };
 
 /** The form data the last call of `action` was submitted with. */
 const submitted = (action: ReturnType<typeof vi.fn>): FormData => {
   const formData = action.mock.calls.at(-1)?.[1];
+
   if (!(formData instanceof FormData)) {
     throw new TypeError("The action was not submitted.");
   }
+
   return formData;
 };
 
@@ -216,6 +220,7 @@ describe("SearchSettingsForm", () => {
       const results = await screen.findByRole("list", {
         name: "Connection test results",
       });
+
       expect(
         within(results)
           .getAllByRole("listitem")

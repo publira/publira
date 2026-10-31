@@ -44,6 +44,7 @@ describe("emailFlashCookieOptions", () => {
   it("matches the cookie policy and stays short-lived", async () => {
     const { EMAIL_FLASH_COOKIE_MAX_AGE_SECONDS, emailFlashCookieOptions } =
       await importEmailFlashCookie();
+
     expect(emailFlashCookieOptions).toEqual({
       httpOnly: true,
       maxAge: EMAIL_FLASH_COOKIE_MAX_AGE_SECONDS,
@@ -61,6 +62,7 @@ describe("email flash cookie names", () => {
       RESET_PASSWORD_REQUESTED_EMAIL_COOKIE,
       SIGNUP_PENDING_EMAIL_COOKIE,
     } = await importEmailFlashCookie();
+
     expect(RESET_PASSWORD_REQUESTED_EMAIL_COOKIE).toBe(
       "publira_web_storefront_reset_password_email"
     );

@@ -82,6 +82,7 @@ const getPlatformDashboardSummaryForLocale = async (
     // soon as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.dashboard.list_failed"), {
         locale,
@@ -101,6 +102,7 @@ export const getPlatformDashboardSummary = async (
   input: { recentEventsLimit?: number } = {}
 ): Promise<GetPlatformDashboardSummaryResult> => {
   await verifyPlatformSession();
+
   return getPlatformDashboardSummaryForLocale(
     await getPlatformLocale(),
     normalizeRecentEventsLimit(input.recentEventsLimit)

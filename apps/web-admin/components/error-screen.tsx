@@ -62,11 +62,13 @@ const ErrorScreen = ({ children, digest, retry }: ErrorScreenProps) => {
 
 const useErrorScreenState = (): ErrorScreenState => {
   const state = useContext(ErrorScreenStateContext);
+
   if (!state) {
     throw new Error(
       "ErrorScreenRetry and ErrorScreenDigest must be rendered inside an ErrorScreen."
     );
   }
+
   return state;
 };
 

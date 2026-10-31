@@ -211,6 +211,7 @@ describe("listAllSeries", () => {
       synopsis: "",
       title: `Series ${String(index + 1).padStart(3, "0")}`,
     }));
+
     mockListSeries
       .mockResolvedValueOnce({
         nextToken: "page-2",
@@ -237,19 +238,24 @@ describe("listAllSeries", () => {
       { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
+
     expect(result.series).toHaveLength(102);
     expect(result.series.some((item) => item.publicId === "SERIES101")).toBe(
       true
     );
+
     const aIndex = result.series.findIndex(
       (item) => item.publicId === "SERIES102"
     );
+
     const nuIndex = result.series.findIndex(
       (item) => item.publicId === "SERIES101"
     );
+
     expect(aIndex).toBeGreaterThanOrEqual(0);
     expect(nuIndex).toBeGreaterThan(aIndex);
     expect(mockCacheLife).not.toHaveBeenCalled();
@@ -1103,6 +1109,7 @@ describe("getSeries", () => {
 
     const { getSeries, seriesCacheTag, seriesListCacheTag } =
       await import("./series");
+
     await getSeries({ publicId: "SERIES001" });
 
     expect(mockGetSeries).toHaveBeenCalledWith(
@@ -1239,6 +1246,7 @@ describe("a series' translations", () => {
     );
 
     const { updateSeries } = await import("./series");
+
     const result = await updateSeries(
       {
         creatorCredits: [],
@@ -1265,6 +1273,7 @@ describe("a series' translations", () => {
     mockDeleteSeriesTranslation.mockResolvedValue({ translations: [] });
 
     const { deleteSeriesTranslation } = await import("./series");
+
     const result = await deleteSeriesTranslation(
       { id: "SERIES001-ID", tenantId: "TENANT001", translationLocale: "en" },
       "en"
@@ -1290,6 +1299,7 @@ describe("a series' translations", () => {
     );
 
     const { deleteSeriesTranslation } = await import("./series");
+
     const result = await deleteSeriesTranslation(
       { id: "SERIES001-ID", tenantId: "TENANT001", translationLocale: "ja" },
       "en"
@@ -1314,6 +1324,7 @@ describe("the operator check before a shared read", () => {
       "listSeries",
       async () => {
         const { listSeries } = await import("./series");
+
         return await listSeries();
       },
       mockListSeries,
@@ -1322,6 +1333,7 @@ describe("the operator check before a shared read", () => {
       "listAllSeries",
       async () => {
         const { listAllSeries } = await import("./series");
+
         return await listAllSeries();
       },
       mockListSeries,
@@ -1330,6 +1342,7 @@ describe("the operator check before a shared read", () => {
       "getSeries",
       async () => {
         const { getSeries } = await import("./series");
+
         return await getSeries({ publicId: "SERIES001" });
       },
       mockGetSeries,

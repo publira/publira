@@ -48,6 +48,7 @@ const userIdSchema = async () => {
 const canCurrentOperatorManageEndUsers = async (): Promise<boolean> => {
   const result = await getPlatformCurrentOperator();
   await redirectToLoginIfSessionRejected(result);
+
   return result.ok && canManageEndUsers(result.operator.role);
 };
 
@@ -55,9 +56,11 @@ export const suspendEndUserAction = async (userId: string): Promise<void> => {
   await assertSameOrigin();
   const { schema } = await userIdSchema();
   const parsed = schema.safeParse(userId);
+
   if (!parsed.success) {
     return;
   }
+
   const normalizedUserId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
@@ -76,9 +79,11 @@ export const unsuspendEndUserAction = async (userId: string): Promise<void> => {
   await assertSameOrigin();
   const { schema } = await userIdSchema();
   const parsed = schema.safeParse(userId);
+
   if (!parsed.success) {
     return;
   }
+
   const normalizedUserId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
@@ -97,9 +102,11 @@ export const deleteEndUserAction = async (userId: string): Promise<void> => {
   await assertSameOrigin();
   const { locale, schema } = await userIdSchema();
   const parsed = schema.safeParse(userId);
+
   if (!parsed.success) {
     return;
   }
+
   const normalizedUserId = parsed.data;
 
   if (!(await canCurrentOperatorManageEndUsers())) {
@@ -109,6 +116,7 @@ export const deleteEndUserAction = async (userId: string): Promise<void> => {
   const result = await withPlatformSessionReauth(() =>
     deletePlatformEndUser(normalizedUserId, locale)
   );
+
   if (!result.ok) {
     return;
   }

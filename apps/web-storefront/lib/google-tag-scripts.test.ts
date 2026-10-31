@@ -175,8 +175,10 @@ const runConsentScript = (
     document: { cookie },
     navigator: { globalPrivacyControl: gpc },
   };
+
   page.window = page;
   runInNewContext(script, page);
+
   return (page.dataLayer as Iterable<unknown>[]).map((entry) => [...entry]);
 };
 
@@ -189,6 +191,7 @@ describe("gtagConsentDefaultScript", () => {
     ad_user_data: "denied",
     analytics_storage: "denied",
   };
+
   const granted = {
     ad_personalization: "granted",
     ad_storage: "granted",

@@ -30,6 +30,7 @@ vi.mock("#lib/api-client", () => ({
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return {
     ...actual,
     getPlatformLocale: mockGetPlatformLocale,
@@ -45,6 +46,7 @@ const subjectFormData = (subject: string): FormData => {
   const formData = new FormData();
   formData.set("revision", "3");
   formData.set("subject", subject);
+
   return formData;
 };
 

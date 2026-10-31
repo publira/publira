@@ -109,10 +109,12 @@ const toTenantBrandMark = (
   raw: RawTenantBrandMark | undefined
 ): TenantBrandMark | null => {
   const kind = raw?.mark ? fromProtoKind(raw.mark.kind) : undefined;
+
   const image = toTenantBrandingImage(
     raw?.mark?.imageUpdatedAt,
     raw?.mark?.imageVariants
   );
+
   if (!(kind && image)) {
     return null;
   }
@@ -139,6 +141,7 @@ const parseBrandMarkErrorMessage = async (
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   let precondition: string | undefined;
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.brandMarkTermsNotAccepted)) {
     precondition = t("admin.settings.brand_marks.terms_required");
   } else if (mentionsStorageNotConfigured(error)) {
@@ -167,8 +170,10 @@ const getTenantBrandMarksForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -183,15 +188,19 @@ const getTenantBrandMarksForSession = async (
     );
 
     const marks: TenantBrandMarks = {};
+
     for (const raw of response.brandMarks ?? []) {
       const mark = toTenantBrandMark(raw);
+
       if (mark) {
         marks[mark.kind] = mark;
       }
     }
+
     return { marks, ok: true };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -231,7 +240,9 @@ export const uploadTenantBrandMark = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -253,6 +264,7 @@ export const uploadTenantBrandMark = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseBrandMarkErrorMessage(
         error,
@@ -274,7 +286,9 @@ export const deleteTenantBrandMark = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -292,6 +306,7 @@ export const deleteTenantBrandMark = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseBrandMarkErrorMessage(
         error,

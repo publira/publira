@@ -26,6 +26,7 @@ export const OfflineNotice = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const notice = noticeRef.current;
+
     if (notice === null) {
       return;
     }

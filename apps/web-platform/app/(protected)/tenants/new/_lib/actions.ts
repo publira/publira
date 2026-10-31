@@ -62,6 +62,7 @@ export const createTenantAction = async (
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const schema = await createTenantFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       adminDomain: { kind: "value", name: "tenant_admin_domain" },
@@ -73,6 +74,7 @@ export const createTenantAction = async (
       supportedLocales: { kind: "values", name: "tenant_supported_locales" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -97,5 +99,6 @@ export const createTenantAction = async (
   if (result.publicId?.trim()) {
     redirect(`/tenants/${result.publicId}`);
   }
+
   redirect("/tenants");
 };

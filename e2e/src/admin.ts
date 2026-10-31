@@ -123,9 +123,11 @@ const optionInListOf = async (
   optionLabel: string
 ): Promise<Locator> => {
   const listId = await control.getAttribute("aria-controls");
+
   if (!listId) {
     throw new Error("the open control names no list in aria-controls");
   }
+
   return page
     .locator(`[id="${listId}"]`)
     .getByRole("option", { exact: true, name: optionLabel });
@@ -193,6 +195,7 @@ export const creditAuthorViaUi = async (
 
   const row = creditRowFields(page, position);
   await selectComboboxOption(page, row.creatorCombobox, input.creatorName);
+
   if (input.roleName) {
     await selectComboboxOption(page, row.roleCombobox, input.roleName);
   }
@@ -217,6 +220,7 @@ export const selectOption = async (
     if ((await select.getAttribute("aria-expanded")) !== "true") {
       await select.click();
     }
+
     await expect(select).toHaveAttribute("aria-expanded", "true", {
       timeout: 2000,
     });
@@ -310,6 +314,7 @@ export const createSeriesViaUi = async (
   const fields = seriesFormFields(page);
   await fields.title.fill(input.title);
   await fields.synopsis.fill(input.synopsis);
+
   if (input.readingPeriodHours !== undefined) {
     await fields.readingPeriodHours.fill(String(input.readingPeriodHours));
   }
@@ -345,14 +350,17 @@ export const createSeriesViaUi = async (
   await page.waitForURL((url) => {
     const match = url.pathname.match(/^\/series\/(?<publicId>[^/]+)(?:\/|$)/u);
     const publicId = match?.groups?.publicId;
+
     return Boolean(publicId && publicId !== "new");
   });
 
   const match = page.url().match(/\/series\/(?<publicId>[^/?#]+)/u);
   const publicId = match?.groups?.publicId?.trim() ?? "";
+
   if (!publicId || publicId === "new") {
     throw new Error(`could not parse series public id from ${page.url()}`);
   }
+
   return publicId;
 };
 
@@ -419,14 +427,17 @@ export const createEpisodeViaUi = async (
   await page.waitForURL((url) => {
     const match = url.pathname.match(/\/episodes\/(?<publicId>[^/]+)(?:\/|$)/u);
     const publicId = match?.groups?.publicId;
+
     return Boolean(publicId && publicId !== "new");
   });
 
   const match = page.url().match(/\/episodes\/(?<publicId>[^/?#]+)/u);
   const publicId = match?.groups?.publicId?.trim() ?? "";
+
   if (!publicId || publicId === "new") {
     throw new Error(`could not parse episode public id from ${page.url()}`);
   }
+
   return publicId;
 };
 
@@ -466,14 +477,17 @@ export const createLabelViaUi = async (
   await page.waitForURL((url) => {
     const match = url.pathname.match(/^\/labels\/(?<publicId>[^/]+)(?:\/|$)/u);
     const publicId = match?.groups?.publicId;
+
     return Boolean(publicId && publicId !== "new");
   });
 
   const match = page.url().match(/\/labels\/(?<publicId>[^/?#]+)/u);
   const publicId = match?.groups?.publicId?.trim() ?? "";
+
   if (!publicId || publicId === "new") {
     throw new Error(`could not parse label public id from ${page.url()}`);
   }
+
   return publicId;
 };
 
@@ -536,6 +550,7 @@ export const createCreatorViaUi = async (
 
   const fields = creatorFormFields(page);
   await fillField(fields.name, input.name);
+
   if (input.profileText !== undefined) {
     await fillField(fields.profileText, input.profileText);
   }
@@ -547,15 +562,19 @@ export const createCreatorViaUi = async (
     const match = url.pathname.match(
       /^\/creators\/(?<publicId>[^/]+)(?:\/|$)/u
     );
+
     const publicId = match?.groups?.publicId;
+
     return Boolean(publicId && publicId !== "new");
   });
 
   const match = page.url().match(/\/creators\/(?<publicId>[^/?#]+)/u);
   const publicId = match?.groups?.publicId?.trim() ?? "";
+
   if (!publicId || publicId === "new") {
     throw new Error(`could not parse creator public id from ${page.url()}`);
   }
+
   return publicId;
 };
 
@@ -628,6 +647,7 @@ export const writePageBody = async (
       editor.getByRole("heading", { level: 2, name: body.heading })
     ).toBeVisible();
   }
+
   await page.keyboard.type(body.text);
   await expect(editor).toContainText(body.text);
 };
@@ -649,9 +669,11 @@ export const createPageViaUi = async (
   const fields = pageFormFields(page);
   await fillField(fields.slug, input.slug);
   await fillField(fields.title, input.title);
+
   if (input.body !== undefined) {
     await writePageBody(page, input.body);
   }
+
   if (input.displayInFooter === true) {
     await fields.displayInFooter.check();
   }
@@ -662,14 +684,17 @@ export const createPageViaUi = async (
   await page.waitForURL((url) => {
     const match = url.pathname.match(/^\/pages\/(?<pageId>[^/]+)(?:\/|$)/u);
     const pageId = match?.groups?.pageId;
+
     return Boolean(pageId && pageId !== "new");
   });
 
   const match = page.url().match(/\/pages\/(?<pageId>[^/?#]+)/u);
   const pageId = match?.groups?.pageId?.trim() ?? "";
+
   if (!pageId || pageId === "new") {
     throw new Error(`could not parse page id from ${page.url()}`);
   }
+
   return pageId;
 };
 
@@ -711,6 +736,7 @@ export const genreRow = (page: Page, name: string): Locator =>
 /** The saved names of every genre, in the order the console lists them. */
 export const genreNamesInOrder = async (page: Page): Promise<string[]> => {
   const fields = await genreList(page).getByRole("textbox").all();
+
   return await Promise.all(fields.map((field) => field.inputValue()));
 };
 
@@ -740,5 +766,6 @@ export const expectPeriodInputsAligned = async (
     scope.getByLabel("Starts", { exact: true }).boundingBox(),
     scope.getByLabel("Ends", { exact: true }).boundingBox(),
   ]);
+
   expect(startsBox?.y).toBe(endsBox?.y);
 };

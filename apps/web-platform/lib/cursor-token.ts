@@ -12,5 +12,6 @@ export const cursorPageHref = (pathname: string, token: string): string => {
   }
 
   const search = new URLSearchParams({ token });
+
   return `${pathname}?${search.toString()}`;
 };

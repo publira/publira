@@ -12,14 +12,18 @@ import { isTenantIdFormat } from "./tenant-id-format";
  */
 export const getTenantId = async (): Promise<string> => {
   const value = await tenant_id();
+
   if (typeof value !== "string" || !value.trim()) {
     notFound();
   }
+
   guardPlaceholder(value);
   const tenantId = value.trim();
+
   // Only `proxy.ts` writes this segment, and it always writes a UUID.
   if (!isTenantIdFormat(tenantId)) {
     notFound();
   }
+
   return tenantId;
 };

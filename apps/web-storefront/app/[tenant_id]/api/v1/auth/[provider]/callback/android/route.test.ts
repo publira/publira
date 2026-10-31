@@ -33,10 +33,12 @@ const postAnswer = (
 /** The query of the intent a redirect opens, read back as Android would. */
 const intentQuery = (response: Response) => {
   const location = response.headers.get("Location") ?? "";
+
   const match =
     /^intent:\/\/callback\?(?<query>[^#]*)#Intent;(?<extras>.*);end$/u.exec(
       location
     );
+
   return {
     extras: match?.groups?.extras?.split(";") ?? [],
     query: Object.fromEntries(new URLSearchParams(match?.groups?.query ?? "")),
@@ -60,6 +62,7 @@ describe("POST /api/v1/auth/apple/callback/android", () => {
 
   it("hands Apple's answer to the tenant's app as the intent sign_in_with_apple waits for", async () => {
     vi.stubEnv("NODE_ENV", "production");
+
     const user = JSON.stringify({
       email: "reader@example.com",
       name: { firstName: "Ada", lastName: "Lovelace" },

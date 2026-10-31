@@ -39,6 +39,7 @@ export const submitContactMessage = async (
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   const callOptions = sessionId
     ? buildSessionHeaders(sessionId)
     : await buildClientAddressHeaders();
@@ -53,9 +54,11 @@ export const submitContactMessage = async (
       },
       callOptions
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("storefront.contact.submit_failed"), {
         locale: input.locale,

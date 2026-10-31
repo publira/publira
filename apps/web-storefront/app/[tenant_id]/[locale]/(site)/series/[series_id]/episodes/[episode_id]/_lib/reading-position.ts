@@ -27,6 +27,7 @@ export const resumePageIndex = (
   if (savedPageIndex === null || savedPageIndex <= 0 || pageCount === 0) {
     return 0;
   }
+
   return Math.min(savedPageIndex, pageCount - 1);
 };
 
@@ -109,21 +110,27 @@ export const createReadingPositionSaver = ({
     stopWaiting?.();
     stopWaiting = null;
     const pageIndex = pendingPageIndex;
+
     if (pageIndex === null || inFlightPageIndex !== null) {
       return;
     }
+
     pendingPageIndex = null;
     inFlightPageIndex = pageIndex;
     const delivered = await send(pageIndex);
     inFlightPageIndex = null;
+
     if (!delivered) {
       pendingPageIndex ??= pageIndex;
       stopWaiting = onReconnect(() => {
         void deliver();
       });
+
       return;
     }
+
     savedPageIndex = pageIndex;
+
     // A page the reader rested on while this one was in flight.
     if (pendingPageIndex !== null && timer === null) {
       await deliver();
@@ -138,16 +145,20 @@ export const createReadingPositionSaver = ({
     flush,
     leave: () => {
       cancelTimer();
+
       if (pendingPageIndex !== null) {
         beacon(pendingPageIndex);
       }
     },
     save: (pageIndex: number) => {
       cancelTimer();
+
       if (pageIndex === (inFlightPageIndex ?? savedPageIndex)) {
         pendingPageIndex = null;
+
         return;
       }
+
       pendingPageIndex = pageIndex;
       timer = setTimeout(flush, delayMs);
     },

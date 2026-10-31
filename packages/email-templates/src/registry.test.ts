@@ -74,9 +74,11 @@ describe("resolveEmail", () => {
     });
 
     expect(result.ok).toBe(false);
+
     if (result.ok) {
       return;
     }
+
     expect(result.reason).toBe("invalid_data");
     expect(result.message.length).toBeGreaterThan(0);
   });
@@ -107,9 +109,11 @@ describe("resolveEmail", () => {
     });
 
     expect(result.ok).toBe(false);
+
     if (result.ok) {
       return;
     }
+
     expect(result.reason).toBe("unsupported_locale");
   });
 });
@@ -143,9 +147,11 @@ describe("renderEmail", () => {
       });
 
       expect(result.ok).toBe(true);
+
       if (!result.ok) {
         return;
       }
+
       // `Body` moves the style onto the cell that wraps the whole mail.
       expect(result.html).toMatch(
         new RegExp(`lang="${locale}" style="[^"]*text-autospace:normal`, "u")
@@ -163,9 +169,11 @@ describe("renderEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
+
     expect(result.html).toMatch(/lang="en" style="[^"]*font-family:/u);
     expect(result.html).not.toContain("text-autospace");
   });

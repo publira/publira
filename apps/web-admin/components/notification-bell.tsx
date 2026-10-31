@@ -37,16 +37,20 @@ const notificationMenuLimit = 5;
 const NotificationBell = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [list, unread, t] = await Promise.all([
     listNotifications(tenantId, locale, { limit: notificationMenuLimit }),
     countUnreadNotifications(tenantId, locale),
     getMessagesFor(locale),
   ]);
+
   const count = Math.max(0, unread.unreadCount);
+
   const ariaLabel =
     count > 0
       ? t("admin.shell.notifications_unread", { count })
       : t("admin.shell.notifications_none");
+
   let notificationContent = (
     <NotificationBellError>
       <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -121,6 +125,7 @@ const NotificationBell = async () => {
 };
 
 export { NotificationBell as Root };
+
 export {
   NotificationBellContent as Content,
   NotificationBellEmpty as Empty,

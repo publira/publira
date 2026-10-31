@@ -151,6 +151,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadEpisodeImages,
     upload: async (locale) => {
       const { uploadEpisodePages } = await import("./episode");
+
       return uploadEpisodePages(
         {
           episodeId: "EPISODE001-ID",
@@ -167,6 +168,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadEpisodeImages,
     upload: async (locale) => {
       const { uploadEpisodePages } = await import("./episode");
+
       return uploadEpisodePages(
         {
           archive: new File([image], "episode.zip", {
@@ -186,6 +188,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadEpisodeEyeCatchImage,
     upload: async (locale) => {
       const { uploadEpisodeEyeCatchImage } = await import("./episode");
+
       return uploadEpisodeEyeCatchImage(
         {
           episodeId: "EPISODE001-ID",
@@ -203,6 +206,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadEpisodeEyeCatchAspectImage,
     upload: async (locale) => {
       const { uploadEpisodeEyeCatchAspectImage } = await import("./episode");
+
       return uploadEpisodeEyeCatchAspectImage(
         {
           episodeId: "EPISODE001-ID",
@@ -220,6 +224,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockCreateSeries,
     upload: async (locale) => {
       const { createSeries } = await import("./series");
+
       return createSeries(seriesInput, locale);
     },
   },
@@ -229,6 +234,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUpdateSeries,
     upload: async (locale) => {
       const { updateSeries } = await import("./series");
+
       return updateSeries({ ...seriesInput, id: "SERIES001-ID" }, locale);
     },
   },
@@ -238,6 +244,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadSeriesEyeCatchAspectImage,
     upload: async (locale) => {
       const { uploadSeriesEyeCatchAspectImage } = await import("./series");
+
       return uploadSeriesEyeCatchAspectImage(
         {
           id: "SERIES001-ID",
@@ -255,6 +262,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockCreateCreator,
     upload: async (locale) => {
       const { createCreator } = await import("./creator");
+
       return createCreator(
         {
           iconImageContentType: "image/png",
@@ -273,6 +281,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUpdateCreator,
     upload: async (locale) => {
       const { updateCreator } = await import("./creator");
+
       return updateCreator(
         {
           iconImageContentType: "image/png",
@@ -292,6 +301,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockCreateLabel,
     upload: async (locale) => {
       const { createLabel } = await import("./label");
+
       return createLabel(
         {
           eyeCatchImageContentType: "image/png",
@@ -309,6 +319,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUpdateLabel,
     upload: async (locale) => {
       const { updateLabel } = await import("./label");
+
       return updateLabel(
         {
           eyeCatchImageContentType: "image/png",
@@ -327,6 +338,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadLabelEyeCatchAspectImage,
     upload: async (locale) => {
       const { uploadLabelEyeCatchAspectImage } = await import("./label");
+
       return uploadLabelEyeCatchAspectImage(
         {
           id: "LABEL001",
@@ -344,6 +356,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadTenantIcon,
     upload: async (locale) => {
       const { uploadTenantIcon } = await import("./theme-settings");
+
       return uploadTenantIcon(
         {
           iconContentType: "image/png",
@@ -360,6 +373,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadTenantLogo,
     upload: async (locale) => {
       const { uploadTenantLogo } = await import("./theme-settings");
+
       return uploadTenantLogo(
         {
           logoContentType: "image/png",
@@ -376,6 +390,7 @@ const surfaces: UploadSurface[] = [
     rpc: mockUploadTenantSignInImage,
     upload: async (locale) => {
       const { uploadTenantSignInImage } = await import("./theme-settings");
+
       return uploadTenantSignInImage(
         {
           imageContentType: "image/png",

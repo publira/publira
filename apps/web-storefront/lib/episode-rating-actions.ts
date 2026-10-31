@@ -43,6 +43,7 @@ export const rateEpisodeAction = async (
 ): Promise<RateEpisodeActionState> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+
   const parsed = rateEpisodeFormSchema.safeParse(
     toFormDataInput(formData, {
       episodeId: "value",
@@ -53,19 +54,23 @@ export const rateEpisodeAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return { message: validationErrorMessage(submittedLocale), ok: false };
   }
 
   const { episodeId, locale, presses, returnTo, seriesPublicId, tenantId } =
     parsed.data;
+
   await requirePublicSession(locale, returnTo, tenantId);
+
   const result = await withPublicSessionReauth(
     locale,
     returnTo,
     () => rateEpisode({ episodeId, locale, presses, tenantId }),
     tenantId
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -78,6 +83,7 @@ export const rateEpisodeAction = async (
   // new tally once this press lands rather than when the catalog entry ages.
   updateTag(tenantSeriesDetailTag(tenantId));
   updateTag(tenantSeriesTag(tenantId, seriesPublicId));
+
   return {
     ok: true,
     ratingCount: result.ratingCount,

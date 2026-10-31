@@ -119,8 +119,10 @@ describe("createReadingPositionSaver", () => {
   const send = vi.fn<(pageIndex: number) => Promise<boolean>>();
   const beacon = vi.fn<(pageIndex: number) => boolean>();
   let reconnect: (() => void) | null = null;
+
   const onReconnect = vi.fn((retry: () => void) => {
     reconnect = retry;
+
     return () => {
       reconnect = null;
     };

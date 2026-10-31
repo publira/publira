@@ -72,9 +72,11 @@ describe("setVersion", () => {
     const updated = result.split("\n");
 
     assert.equal(updated.length, original.length);
+
     const changed = updated.flatMap((line, index) =>
       line === original[index] ? [] : [[original[index], line]]
     );
+
     assert.deepEqual(changed, [
       ['  "version": "0.1.0",', '  "version": "0.2.0-rc.1",'],
     ]);
@@ -193,6 +195,7 @@ describe("readManifests", () => {
 describe("this repository", () => {
   it("carries one version in every package.json", () => {
     const root = path.join(import.meta.dirname, "..");
+
     const { version } = JSON.parse(
       readManifests(root).find((entry) => entry.path === "package.json")
         ?.text ?? "{}"

@@ -29,6 +29,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateTenantLocalesAction: (_state: unknown, formData: FormData) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -76,6 +77,7 @@ const submittedLocales = async () => {
   await waitFor(() => {
     expect(save.formData).toBeDefined();
   });
+
   return {
     defaultLocale: save.formData?.get("default_locale"),
     supportedLocales: save.formData?.getAll("supported_locales"),

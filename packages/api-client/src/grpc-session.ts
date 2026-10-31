@@ -25,7 +25,9 @@ const isRefusedStream = (error: unknown): boolean => {
   if (!(error instanceof ConnectError)) {
     return false;
   }
+
   const { cause } = error;
+
   return (
     cause instanceof Error &&
     "code" in cause &&
@@ -49,12 +51,14 @@ export const retryRefusedStream: Interceptor = (next) => async (req) => {
   if (req.stream) {
     return next(req);
   }
+
   try {
     return await next(req);
   } catch (error) {
     if (!isRefusedStream(error) || req.signal.aborted) {
       throw error;
     }
+
     return next(req);
   }
 };

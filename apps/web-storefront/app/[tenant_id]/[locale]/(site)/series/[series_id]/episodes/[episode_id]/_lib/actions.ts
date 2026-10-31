@@ -65,6 +65,7 @@ export const startEpisodeCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = checkoutFormSchema.safeParse(
     toFormDataInput(formData, {
       episodeId: "value",
@@ -75,12 +76,14 @@ export const startEpisodeCheckoutAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     redirect("/");
   }
 
   const { episodeId, episodePublicId, kind, locale, seriesPublicId, tenantId } =
     parsed.data;
+
   // `returnTo` is the episode itself. Handing `episodeLoginHref()` to these
   // helpers would give them a `/login?...` URL, which `sanitizeRedirectPath`
   // rejects — the reader would come back to the tenant home instead. It stays
@@ -90,13 +93,16 @@ export const startEpisodeCheckoutAction = async (
   // Guard crafted form posts as well as the hidden CTA. A failed availability
   // read is not permission to attempt Checkout.
   const tenant = await getTenantSiteInfo(tenantId);
+
   if (!tenant?.acceptsPayments) {
     const returnPath = await tenantLocalePath(tenantId, locale, returnTo);
     redirect(returnPath);
   }
+
   const sessionId = await requirePublicSession(locale, returnTo, tenantId);
 
   let checkoutURL = "";
+
   try {
     const response = await apiClient.purchase.startEpisodeCheckout(
       {
@@ -107,11 +113,13 @@ export const startEpisodeCheckoutAction = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     checkoutURL = response.checkoutUrl.trim();
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
+
     // Already bought or still rented, or refused for a reason the episode page
     // states: free, not rented, sold in the app alone, or a tenant that cannot
     // take payments right now.
@@ -122,22 +130,28 @@ export const startEpisodeCheckoutAction = async (
       const returnPath = await tenantLocalePath(tenantId, locale, returnTo);
       redirect(returnPath);
     }
+
     rethrowUnclassifiedRpcError(error);
+
     const errorPath = await tenantLocalePath(
       tenantId,
       locale,
       checkoutErrorPath(seriesPublicId, episodePublicId)
     );
+
     redirect(errorPath);
   }
+
   if (!checkoutURL) {
     const errorPath = await tenantLocalePath(
       tenantId,
       locale,
       checkoutErrorPath(seriesPublicId, episodePublicId)
     );
+
     redirect(errorPath);
   }
+
   redirect(checkoutURL);
 };
 
@@ -161,6 +175,7 @@ export const openWithWaitFreeTicketAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = episodeFormSchema.safeParse(
     toFormDataInput(formData, {
       episodeId: "value",
@@ -170,16 +185,19 @@ export const openWithWaitFreeTicketAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     redirect("/");
   }
 
   const { episodeId, episodePublicId, locale, seriesPublicId, tenantId } =
     parsed.data;
+
   const returnTo = episodePath(seriesPublicId, episodePublicId);
   const sessionId = await requirePublicSession(locale, returnTo, tenantId);
 
   let failed = false;
+
   try {
     await apiClient.waitFree.useTicket(
       {
@@ -193,6 +211,7 @@ export const openWithWaitFreeTicketAction = async (
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
+
     rethrowUnclassifiedRpcError(error);
     // Too many attempts, or an API that could not be reached: nothing the
     // episode can show tells the reader the ticket was not used.
@@ -208,11 +227,13 @@ export const openWithWaitFreeTicketAction = async (
   // A refusal changes what the gate says as well — a ticket that was not ready
   // after all is a countdown now — so the reads are dropped either way.
   updateTag(tenantReaderAccessTag(tenantId));
+
   const returnPath = await tenantLocalePath(
     tenantId,
     locale,
     failed ? waitFreeErrorPath(seriesPublicId, episodePublicId) : returnTo
   );
+
   redirect(returnPath);
 };
 
@@ -240,6 +261,7 @@ export const payEpisodeWithCoinsAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = coinPaymentFormSchema.safeParse(
     toFormDataInput(formData, {
       coins: "value",
@@ -252,6 +274,7 @@ export const payEpisodeWithCoinsAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     redirect("/");
   }
@@ -266,10 +289,12 @@ export const payEpisodeWithCoinsAction = async (
     seriesPublicId,
     tenantId,
   } = parsed.data;
+
   const returnTo = episodePath(seriesPublicId, episodePublicId);
   const sessionId = await requirePublicSession(locale, returnTo, tenantId);
 
   let outcome: EpisodeCoinsOutcome | undefined;
+
   try {
     await apiClient.coin.payEpisodeWithCoins(
       {
@@ -287,7 +312,9 @@ export const payEpisodeWithCoinsAction = async (
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
+
     rethrowUnclassifiedRpcError(error);
+
     if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinPriceChanged)) {
       outcome = "price_changed";
       // The price the gate showed came from the shared episode read, which
@@ -312,10 +339,12 @@ export const payEpisodeWithCoinsAction = async (
   // offers a pack now — so the reads are dropped either way.
   updateTag(tenantReaderAccessTag(tenantId));
   updateTag(tenantPurchasesTag(tenantId));
+
   const returnPath = await tenantLocalePath(
     tenantId,
     locale,
     episodeCoinsPath(seriesPublicId, episodePublicId, outcome)
   );
+
   redirect(returnPath);
 };

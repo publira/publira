@@ -30,6 +30,7 @@ const platformUrl = (pathname: string): string =>
 const withHostname = (baseUrl: string, hostname: string): string => {
   const url = new URL(baseUrl);
   url.hostname = hostname;
+
   return url.toString().replace(/\/$/u, "");
 };
 
@@ -101,6 +102,7 @@ test.describe("platform tenant operations", () => {
 
   const trackTenant = (publicId: string): string => {
     createdTenantIds.push(publicId);
+
     return publicId;
   };
 
@@ -222,6 +224,7 @@ test.describe("platform tenant operations", () => {
         name: `E2E Image Host Neighbour ${suffix}`,
       })
     );
+
     const tenantId = trackTenant(
       await createTenantViaUi(page, { domain, imageDomain, name })
     );
@@ -306,6 +309,7 @@ test.describe("platform tenant operations", () => {
     // Session cookie is host-scoped to platform.localhost and survives the
     // detour through other Hosts.
     await page.goto(platformUrl(`/tenants/${tenantId}`));
+
     if (page.url().includes("/login")) {
       await signInAsSeedPlatformSuperAdmin(page, `/tenants/${tenantId}`);
     }
@@ -450,6 +454,7 @@ test.describe("platform tenant operations", () => {
         name: otherName,
       })
     );
+
     const tenantId = trackTenant(
       await createTenantViaUi(page, {
         domain: `e2e-audit-filter-${suffix}.localhost`,
@@ -469,6 +474,7 @@ test.describe("platform tenant operations", () => {
     const tenantFilter = page
       .getByText(`Tenant: ${name}`, { exact: true })
       .filter({ visible: true });
+
     await expect(tenantFilter).toBeVisible();
     const rows = page.locator("table tbody tr");
     await expect(
@@ -574,9 +580,11 @@ test.describe("platform tenant operations", () => {
     // action answers with an error. Never a successful redirect.
     await expect(page).toHaveURL(/\/tenants\/new/u);
     const domainInput = tenantDomainInput(page);
+
     const validationMessage = await domainInput.evaluate(
       (el: HTMLInputElement) => el.validationMessage
     );
+
     if (validationMessage) {
       expect(validationMessage.length).toBeGreaterThan(0);
     } else {

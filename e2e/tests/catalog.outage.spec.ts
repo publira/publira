@@ -130,9 +130,11 @@ test.describe("web-storefront public API outage", () => {
       await expect(
         page.getByRole("heading", { level: 1, name: "Announcements" })
       ).toBeVisible();
+
       const inbox = page
         .locator("section")
         .filter({ hasText: "Could not display the announcements" });
+
       await expect(
         inbox.getByText(
           "Could not connect to the server. Please try again later."
@@ -176,6 +178,7 @@ test.describe("web-storefront public API outage", () => {
     const resolved = await page.goto(
       `${uncachedTenantBaseUrl()}${storefrontPath("/")}`
     );
+
     expect(resolved?.status(), await page.content()).toBe(404);
 
     const response = await page.goto(storefrontPath("/"));

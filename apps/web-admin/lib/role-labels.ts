@@ -20,24 +20,31 @@ export const getTenantRoleLabel = async (
     case "": {
       return t("admin.common.roles.unset");
     }
+
     case "system": {
       return t("admin.common.roles.system");
     }
+
     case "tenant_admin": {
       return t("admin.common.roles.tenant_admin");
     }
+
     case "tenant_auditor": {
       return t("admin.common.roles.tenant_auditor");
     }
+
     case "tenant_editor": {
       return t("admin.common.roles.tenant_editor");
     }
+
     case "tenant_member": {
       return t("admin.common.roles.tenant_member");
     }
+
     case "tenant_owner": {
       return t("admin.common.roles.tenant_owner");
     }
+
     default: {
       return role.trim();
     }

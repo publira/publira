@@ -15,9 +15,11 @@ export const emailRefusalMessage = (
     case "disposable_domain": {
       return t("storefront.auth.errors.email_disposable_domain");
     }
+
     case "refused": {
       return t("storefront.auth.errors.email_refused");
     }
+
     default: {
       return fallback;
     }

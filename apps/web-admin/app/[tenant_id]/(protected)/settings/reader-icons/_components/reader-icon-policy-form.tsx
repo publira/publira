@@ -38,6 +38,7 @@ export const ReaderIconPolicyForm = ({
   // whatever happened to be picked, and a narrower one clears icons, so
   // editing stays closed until the read succeeds.
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
+
   const submitLabel = (
     <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
       <ActionForm.Idle>

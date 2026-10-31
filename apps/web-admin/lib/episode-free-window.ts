@@ -97,12 +97,14 @@ const mapCreateErrorToMessage = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (
     rpcErrorHasFieldViolation(error, "starts_at") ||
     rpcErrorHasFieldViolation(error, "ends_at")
   ) {
     return t("admin.series.episodes.period.invalid");
   }
+
   if (rpcErrorHasFieldViolation(error, "episode_ids")) {
     return t("admin.series.episodes.free_windows.episodes_changed");
   }
@@ -131,8 +133,10 @@ const listEpisodeFreeWindowsForTenant = async (
   cacheTag(episodesCacheTag(input.tenantId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const freeWindows: EpisodeFreeWindowItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.series.listEpisodeFreeWindows(
@@ -144,6 +148,7 @@ const listEpisodeFreeWindowsForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.freeWindows ?? [],
           nextToken: response.nextToken ?? "",
@@ -159,6 +164,7 @@ const listEpisodeFreeWindowsForTenant = async (
     // A partial list would hide a window the editor came here to remove.
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.series.episodes.free_windows.list_failed"),
         ok: false,
@@ -171,6 +177,7 @@ const listEpisodeFreeWindowsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -193,6 +200,7 @@ export const listEpisodeFreeWindows = async (input: {
   episodeId: string;
 }): Promise<ListEpisodeFreeWindowsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listEpisodeFreeWindowsForTenant({ ...input, tenantId }, locale);
 };
 
@@ -209,6 +217,7 @@ export const createEpisodeFreeWindow = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -223,6 +232,7 @@ export const createEpisodeFreeWindow = async (
       },
       withSessionHeaders(sessionId)
     );
+
     if (!response.freeWindow) {
       return {
         message: t("admin.series.episodes.free_windows.create_failed"),
@@ -234,6 +244,7 @@ export const createEpisodeFreeWindow = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapCreateErrorToMessage(
         error,
@@ -263,6 +274,7 @@ export const createSeriesFreeWindows = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -288,6 +300,7 @@ export const createSeriesFreeWindows = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapCreateErrorToMessage(
         error,
@@ -307,6 +320,7 @@ export const deleteEpisodeFreeWindow = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -319,9 +333,11 @@ export const deleteEpisodeFreeWindow = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { alreadyDeleted: false, ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
+
     // Another operator deleted it first, or an earlier attempt committed and
     // lost its response. Either way the window is gone, which is what the
     // delete asked for, so the caller still clears the list that shows it.
@@ -329,7 +345,9 @@ export const deleteEpisodeFreeWindow = async (
     if (rpcErrorCode(error) === Code.NotFound) {
       return { alreadyDeleted: true, ok: true };
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

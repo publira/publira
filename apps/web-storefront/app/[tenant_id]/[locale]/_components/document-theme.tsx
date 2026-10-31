@@ -25,6 +25,7 @@ export const DocumentTheme = () => {
     };
 
     apply();
+
     return subscribeToWebStorage("local", THEME_PREFERENCE_STORAGE_KEY, apply);
   }, []);
 

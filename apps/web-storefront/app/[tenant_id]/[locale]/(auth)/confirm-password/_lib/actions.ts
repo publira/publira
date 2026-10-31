@@ -61,7 +61,9 @@ const buildConfirmPasswordErrorPath = async (
     error: message,
     token,
   });
+
   const path = await tenantLocalePath(tenantId, locale, "/confirm-password");
+
   return `${path}?${params.toString()}`;
 };
 
@@ -71,6 +73,7 @@ const buildLoginPathWithResetResult = async (
 ): Promise<string> => {
   const params = new URLSearchParams({ reset: "done" });
   const path = await tenantLocalePath(tenantId, locale, "/login");
+
   return `${path}?${params.toString()}`;
 };
 
@@ -78,6 +81,7 @@ export const confirmPasswordAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const input = toFormDataInput(formData, {
     confirmPassword: "value",
     locale: "value",
@@ -85,31 +89,39 @@ export const confirmPasswordAction = async (
     tenantId: "value",
     token: "value",
   });
+
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(input.locale);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     confirmPasswordFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(input);
+
   if (!parsed.success) {
     const token = await tokenOrEmpty(submittedLocale, input.token);
+
     const errorPath = await buildConfirmPasswordErrorPath(
       submittedLocale,
       String(input.tenantId ?? ""),
       token,
       toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+
     redirect(errorPath);
   }
 
   const { locale, newPassword, tenantId, token } = parsed.data;
+
   const confirmed = await confirmPublicPasswordReset(
     token,
     newPassword,
     tenantId
   );
+
   if (!confirmed) {
     const errorPath = await buildConfirmPasswordErrorPath(
       locale,
@@ -117,6 +129,7 @@ export const confirmPasswordAction = async (
       token,
       t("storefront.auth.errors.reset_confirm_failed")
     );
+
     redirect(errorPath);
   }
 
@@ -129,6 +142,7 @@ export const confirmPasswordAction = async (
   if (await isSessionRejected(tenantId)) {
     await clearPublicSessionCookie();
   }
+
   const loginPath = await buildLoginPathWithResetResult(locale, tenantId);
   redirect(loginPath);
 };

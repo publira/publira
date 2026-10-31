@@ -1,4 +1,5 @@
 export { negotiateInitialLocale } from "./accept-language";
+
 export {
   bindMessages,
   formatMessage,
@@ -16,6 +17,7 @@ export {
   RESOLVED_LOCALE_COOKIE_NAME,
   toIntlLocale,
 } from "./i18n";
+
 export type {
   CatalogModule,
   ExactCatalog,

@@ -32,20 +32,24 @@ export const CampaignBannerSortableList = ({
   const t = useClientMessages();
   const bannerIds = rows.map((row) => row.id);
   const [isPending, startTransition] = useTransition();
+
   const [optimisticBannerIds, setOptimisticBannerIds] = useOptimistic(
     bannerIds,
     (_currentBannerIds, nextBannerIds: string[]) => nextBannerIds
   );
+
   const [reorderErrorMessage, setReorderErrorMessage] = useState("");
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentBannerIds = optimisticBannerIds;
+
       const nextBannerIds = Sortable.withItemMoved(
         currentBannerIds,
         identity,
         event
       );
+
       if (nextBannerIds === currentBannerIds) {
         return;
       }

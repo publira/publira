@@ -73,10 +73,12 @@ export const updateTenantPaymentSettingsAction = async (
 ): Promise<TenantPaymentSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantPaymentSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currency: "value",
@@ -85,6 +87,7 @@ export const updateTenantPaymentSettingsAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -96,11 +99,13 @@ export const updateTenantPaymentSettingsAction = async (
   const declared = await withAdminSessionReauth(() =>
     getPaymentProvider(parsed.data.tenantId, parsed.data.provider, locale)
   );
+
   if (!declared.ok) {
     return { message: declared.message, ok: false };
   }
 
   const { currency } = parsed.data;
+
   if (currency && !declared.provider.currencies.includes(currency)) {
     return {
       fieldErrors: {
@@ -119,6 +124,7 @@ export const updateTenantPaymentSettingsAction = async (
       requiredMessage: t("admin.settings.payment.validation.field_required"),
     }
   );
+
   if (!credentials.ok) {
     return {
       fieldErrors: credentials.fieldErrors,
@@ -139,6 +145,7 @@ export const updateTenantPaymentSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -180,10 +187,12 @@ export const updateTenantPurchaseSettingsAction = async (
 ): Promise<TenantPurchaseSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantPurchaseSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       appStoreUrl: { kind: "value", name: "app_store_url" },
@@ -192,6 +201,7 @@ export const updateTenantPurchaseSettingsAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -203,6 +213,7 @@ export const updateTenantPurchaseSettingsAction = async (
   const result = await withAdminSessionReauth(() =>
     updateTenantPurchaseSettings(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -220,6 +231,7 @@ export const updateTenantPurchaseSettingsAction = async (
 
 const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const fileTooLarge = t(
     "admin.settings.store_payment.validation.key_file_too_large"
   );
@@ -248,6 +260,7 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
             path: ["issuerId"],
           });
         }
+
         if (value.keyId === "") {
           ctx.addIssue({
             code: "custom",
@@ -257,6 +270,7 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
             path: ["keyId"],
           });
         }
+
         if (!hasSecretKey(value.privateKey)) {
           ctx.addIssue({
             code: "custom",
@@ -267,6 +281,7 @@ const tenantStorePaymentSettingsSchema = async (locale: Locale) => {
           });
         }
       }
+
       if (value.googlePlayEnabled && !hasSecretKey(value.serviceAccountKey)) {
         ctx.addIssue({
           code: "custom",
@@ -285,10 +300,12 @@ export const updateTenantStorePaymentSettingsAction = async (
 ): Promise<TenantStorePaymentSettingsFormState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantStorePaymentSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse({
     ...toFormDataInput(formData, {
       appPurchaseRoute: { kind: "value", name: "app_purchase_route" },
@@ -301,6 +318,7 @@ export const updateTenantStorePaymentSettingsAction = async (
     privateKey: secretKeyFormInput(formData, "private_key"),
     serviceAccountKey: secretKeyFormInput(formData, "service_account_key"),
   });
+
   if (!parsed.success) {
     return {
       fieldErrors: toFieldErrors(parsed.error),
@@ -333,6 +351,7 @@ export const updateTenantStorePaymentSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return {
       fieldErrors: result.fieldErrors,

@@ -179,6 +179,7 @@ describe("negotiateInitialLocale", () => {
       "ja;q=0",
       "not a header",
     ];
+
     for (const header of headers) {
       expect(supported).toContain(negotiateInitialLocale(header));
     }

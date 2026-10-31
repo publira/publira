@@ -63,6 +63,7 @@ setup("the scenario tenants the documentation's screenshots show", async () => {
   for (const scenario of SCENARIOS) {
     applyScenarioSql(scenario);
   }
+
   // The Platform Console holds its lists for minutes, and the baseline project
   // before this one has already read the tenants and the dashboard; the rows
   // written straight to Postgres above reach it only once those are dropped.

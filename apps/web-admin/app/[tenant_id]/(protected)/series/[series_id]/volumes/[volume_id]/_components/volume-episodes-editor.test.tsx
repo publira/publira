@@ -117,9 +117,11 @@ const postedEpisodeIds = (): string[] => {
   const field = document.querySelector<HTMLInputElement>(
     'input[name="episode_ids"]'
   );
+
   if (!field) {
     throw new Error("the episode list field is not on screen");
   }
+
   return JSON.parse(field.value) as string[];
 };
 

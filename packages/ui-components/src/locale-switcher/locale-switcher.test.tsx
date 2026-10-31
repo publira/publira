@@ -50,6 +50,7 @@ describe("LocaleSwitcher", () => {
     const trigger = screen.getByRole("button", {
       name: "Language",
     });
+
     fireEvent.click(trigger);
 
     expect(screen.getByRole("dialog", { name: "Language" })).toBeDefined();
@@ -67,6 +68,7 @@ describe("LocaleSwitcher", () => {
     const action = vi.fn<(formData: FormData) => Promise<void>>(() =>
       Promise.resolve()
     );
+
     render(<Switcher action={action} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Language" }));
@@ -85,6 +87,7 @@ describe("LocaleSwitcher", () => {
     const trigger = screen.getByRole("button", {
       name: "Language",
     });
+
     trigger.focus();
     fireEvent.click(trigger);
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });

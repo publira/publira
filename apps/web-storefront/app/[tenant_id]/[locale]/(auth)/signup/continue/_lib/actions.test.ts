@@ -67,6 +67,7 @@ const session = { accessToken: "access-token" };
 
 const form = (fields: Record<string, string> = {}): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     agreedPageVersionIds: termsVersionId,
     birthDate: "",
@@ -77,11 +78,13 @@ const form = (fields: Record<string, string> = {}): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 
 const submit = async (data: FormData) => {
   const { continueSignUpAction } = await import("./actions");
+
   return continueSignUpAction(null, data);
 };
 

@@ -27,9 +27,11 @@ export const RefusedSignUpNotice = async () => {
  */
 export const SignUpPrompt = async ({ refused }: { refused: boolean }) => {
   const signUp = await getTenantSignUp(await getTenantId());
+
   if (!signUp.open) {
     return refused ? null : <SignUpClosedNotice message={signUp.message} />;
   }
+
   if (refused) {
     return null;
   }

@@ -34,6 +34,7 @@ export const sealPublicSessionCookie = async (
     expiresAt: session.expiresAt.toISOString(),
     tenantId,
   });
+
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions(session.expiresAt),
@@ -94,9 +95,11 @@ export const redirectToLogin = async (
   tenantId: string
 ): Promise<never> => {
   const defaultLocale = await getTenantDefaultLocale(tenantId);
+
   const loginPath = buildLoginPath(locale, defaultLocale, returnTo, {
     revoked: true,
   });
+
   return redirect(loginPath);
 };
 
@@ -111,6 +114,7 @@ export const redirectToLegalPageAgreement = async (
   tenantId: string
 ): Promise<never> => {
   const defaultLocale = await getTenantDefaultLocale(tenantId);
+
   return redirect(
     legalPageAgreementHref(
       withLocalePrefix(locale, defaultLocale, LEGAL_PAGE_AGREEMENT_PATH),
@@ -131,9 +135,11 @@ export const requirePublicSession = async (
   tenantId: string
 ): Promise<string> => {
   const accessToken = await resolveAccessToken();
+
   if (!accessToken) {
     return redirectToLogin(locale, returnTo, tenantId);
   }
+
   return accessToken;
 };
 
@@ -159,9 +165,11 @@ export const withPublicSessionReauth = async <T>(
     if (isUnauthenticatedError(error)) {
       return redirectToLogin(locale, returnTo, tenantId);
     }
+
     if (isLegalPageAgreementRequiredRpcError(error)) {
       return redirectToLegalPageAgreement(locale, returnTo, tenantId);
     }
+
     throw error;
   }
 };

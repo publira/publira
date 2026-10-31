@@ -28,13 +28,16 @@ export const saveFcmCredentialsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     fcmCredentialsFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, fcmCredentialsFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -42,18 +45,21 @@ export const saveFcmCredentialsAction = async (
   const { projectId, serviceAccountFile, tenantId } = parsed.data;
   const serviceAccountJson = await serviceAccountFile.text();
   const problem = checkServiceAccountKey(serviceAccountJson, projectId);
+
   if (problem?.kind === "not-json") {
     return {
       message: t("admin.settings.mobile_push.validation.not_json"),
       ok: false,
     };
   }
+
   if (problem?.kind === "not-service-account") {
     return {
       message: t("admin.settings.mobile_push.validation.not_service_account"),
       ok: false,
     };
   }
+
   if (problem?.kind === "project-mismatch") {
     return {
       message: t("admin.settings.mobile_push.validation.project_mismatch", {
@@ -70,6 +76,7 @@ export const saveFcmCredentialsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -85,21 +92,26 @@ export const deleteFcmCredentialsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     fcmDeleteFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, fcmCredentialsFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     deleteTenantFcmCredentials(tenantId, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

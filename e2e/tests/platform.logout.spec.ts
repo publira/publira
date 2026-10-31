@@ -69,6 +69,7 @@ test.describe("platform GET /logout", () => {
         Referer: "https://evil.example/attack",
       },
     });
+
     expect(response.status()).toBe(404);
     expect(response.headers()["set-cookie"] ?? "").not.toContain(
       PLATFORM_SESSION_COOKIE_NAME

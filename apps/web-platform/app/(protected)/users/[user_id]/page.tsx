@@ -99,11 +99,14 @@ const UserDetailContent = async ({
   params,
 }: Pick<UserDetailPageProps, "params">) => {
   const parsedParams = parseRouteParams(userDetailParamsSchema, await params);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { user_id: userPublicId } = parsedParams;
   const locale = await getPlatformLocale();
+
   const [t, userResult, currentOperator, timeZone] = await Promise.all([
     getMessagesFor(locale),
     getPlatformEndUser(userPublicId),
@@ -122,9 +125,11 @@ const UserDetailContent = async ({
   }
 
   const { user } = userResult;
+
   if (!user) {
     notFound();
   }
+
   const canManage = canManageEndUsers(currentOperator.role);
   const canSuspend = canManage && user.status === "active";
   const canUnsuspend = canManage && user.status === "suspended";

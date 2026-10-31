@@ -59,6 +59,7 @@ const renderButton = () =>
 
 const openDialog = async () => {
   fireEvent.click(screen.getByRole("button", { name: "Refund" }));
+
   return within(await screen.findByRole("dialog"));
 };
 

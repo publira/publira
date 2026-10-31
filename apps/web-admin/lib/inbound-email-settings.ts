@@ -34,6 +34,7 @@ export type {
   InboundEmailProvider,
   TenantInboundEmailSettings,
 } from "./inbound-email-settings-shared";
+
 export {
   emptyTenantInboundEmailSettings,
   inboundEmailSettingsStatus,
@@ -101,6 +102,7 @@ const parseErrorMessage = (
   locale: Locale
 ): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+
   return rpcErrorMessage(error, fallback, {
     locale,
     overrides: {
@@ -173,6 +175,7 @@ const requestInboundEmailProviders = async (
       { tenant: { tenantId } },
       withSessionHeaders(sessionId)
     );
+
   return (response.providers ?? []).map(toInboundEmailProvider);
 };
 
@@ -185,8 +188,10 @@ const getTenantInboundEmailSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -209,6 +214,7 @@ const getTenantInboundEmailSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: parseErrorMessage(
         error,
@@ -252,7 +258,9 @@ export const getTenantInboundEmailReadiness = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -267,9 +275,11 @@ export const getTenantInboundEmailReadiness = async (
         { tenant: { tenantId: normalizedTenantId } },
         withSessionHeaders(sessionId)
       );
+
     return { ok: true, ready: Boolean(response.settings?.ready) };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,
@@ -291,8 +301,10 @@ const listInboundEmailProvidersForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -312,6 +324,7 @@ const listInboundEmailProvidersForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: parseErrorMessage(
         error,
@@ -352,7 +365,9 @@ export const getInboundEmailProvider = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -362,7 +377,9 @@ export const getInboundEmailProvider = async (
       normalizedTenantId,
       sessionId
     );
+
     const provider = providers.find((candidate) => candidate.id === providerId);
+
     return provider
       ? { ok: true, provider }
       : {
@@ -374,6 +391,7 @@ export const getInboundEmailProvider = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,
@@ -393,7 +411,9 @@ export const updateTenantInboundEmailSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -418,6 +438,7 @@ export const updateTenantInboundEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     if (
       rpcErrorDisposition(error) === "invalid-argument" &&
       rpcErrorHasFieldViolation(error, "domain")
@@ -428,6 +449,7 @@ export const updateTenantInboundEmailSettings = async (
         ok: false,
       };
     }
+
     return {
       message: parseErrorMessage(
         error,

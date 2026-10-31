@@ -77,8 +77,10 @@ const getTenantEmailRejectionSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -94,6 +96,7 @@ const getTenantEmailRejectionSettingsForSession = async (
         { tenant: { tenantId: normalizedTenantId } },
         withSessionHeaders(sessionId)
       );
+
     return {
       disposableDomainListAvailable: response.disposableDomainListAvailable,
       ok: true,
@@ -101,6 +104,7 @@ const getTenantEmailRejectionSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -140,7 +144,9 @@ export const updateTenantEmailRejectionSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -157,6 +163,7 @@ export const updateTenantEmailRejectionSettings = async (
         },
         withSessionHeaders(sessionId)
       );
+
     return {
       disposableDomainListAvailable: response.disposableDomainListAvailable,
       ok: true,
@@ -165,6 +172,7 @@ export const updateTenantEmailRejectionSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     // The Action checks each line by the server's rule first, so this is a
     // line the two rules read differently; the server's answer is the one
     // that stands, and it does not say which line it refused.
@@ -173,8 +181,10 @@ export const updateTenantEmailRejectionSettings = async (
         "admin.settings.email_rejection.validation.entries_refused",
         { max: MAX_EMAIL_REJECTION_ENTRIES }
       );
+
       return { entriesError, message: entriesError, ok: false };
     }
+
     return {
       message: rpcErrorMessage(
         error,

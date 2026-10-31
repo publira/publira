@@ -33,20 +33,24 @@ export const CreatorRoleSortableList = ({
 }: CreatorRoleSortableListProps) => {
   const creatorRoleIds = rows.map((row) => row.id);
   const [isPending, startTransition] = useTransition();
+
   const [optimisticCreatorRoleIds, setOptimisticCreatorRoleIds] = useOptimistic(
     creatorRoleIds,
     (_currentCreatorRoleIds, nextCreatorRoleIds: string[]) => nextCreatorRoleIds
   );
+
   const [reorderErrorMessage, setReorderErrorMessage] = useState("");
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentCreatorRoleIds = optimisticCreatorRoleIds;
+
       const nextCreatorRoleIds = Sortable.withItemMoved(
         currentCreatorRoleIds,
         identity,
         event
       );
+
       if (nextCreatorRoleIds === currentCreatorRoleIds) {
         return;
       }

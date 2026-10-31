@@ -37,9 +37,11 @@ const horizontalAlignClassName = (
   if (style?.textAlign === "center") {
     return "text-center";
   }
+
   if (style?.textAlign === "right") {
     return "text-right";
   }
+
   return undefined;
 };
 
@@ -62,9 +64,11 @@ const markdownComponents: Components = {
   ),
   code: ({ className, children }) => {
     const isBlock = Boolean(className);
+
     if (isBlock) {
       return <code className={className}>{children}</code>;
     }
+
     return (
       <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.95em]">
         {children}

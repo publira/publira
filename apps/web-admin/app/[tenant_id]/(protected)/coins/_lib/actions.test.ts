@@ -59,9 +59,11 @@ const PACK_TWO = "018f0e6a-6000-7000-8000-0000000000d2";
 const formData = (fields: Record<string, string>) => {
   const data = new FormData();
   data.set("tenant_id", "TENANT001");
+
   for (const [name, value] of Object.entries(fields)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -144,6 +146,7 @@ describe("coin settings actions", () => {
 
   it("refuses a save without the name in the default language, naming that field", async () => {
     const { updateCoinSettingsAction } = await import("./actions");
+
     const result = await updateCoinSettingsAction(
       null,
       settingsForm({ enabled: "", "name.en": "  ", selling: "" })
@@ -159,6 +162,7 @@ describe("coin settings actions", () => {
 
   it("names every field coins cannot be turned on without", async () => {
     const { updateCoinSettingsAction } = await import("./actions");
+
     const result = await updateCoinSettingsAction(
       null,
       settingsForm({
@@ -187,6 +191,7 @@ describe("coin settings actions", () => {
 
   it("saves coins that are off with nothing but the name", async () => {
     const { updateCoinSettingsAction } = await import("./actions");
+
     const result = await updateCoinSettingsAction(
       null,
       formData({ currency: "JPY", "name.en": "Points" })
@@ -214,6 +219,7 @@ describe("coin settings actions", () => {
     });
 
     const { updateCoinSettingsAction } = await import("./actions");
+
     const result = await updateCoinSettingsAction(
       null,
       settingsForm({ enabled: "" })
@@ -231,6 +237,7 @@ describe("coin settings actions", () => {
     mockCreateCoinPack.mockResolvedValueOnce({ ok: true, pack: {} });
 
     const { createCoinPackAction } = await import("./actions");
+
     const result = await createCoinPackAction(
       null,
       formData({
@@ -264,6 +271,7 @@ describe("coin settings actions", () => {
 
   it("refuses a pack that would be free", async () => {
     const { createCoinPackAction } = await import("./actions");
+
     const result = await createCoinPackAction(
       null,
       formData({ coins: "100", price: "0", price_currency: "JPY" })
@@ -285,6 +293,7 @@ describe("coin settings actions", () => {
     mockUpdateCoinPack.mockResolvedValueOnce({ ok: true, pack: {} });
 
     const { updateCoinPackAction } = await import("./actions");
+
     const result = await updateCoinPackAction(
       null,
       formData({
@@ -322,6 +331,7 @@ describe("coin settings actions", () => {
     });
 
     const { reorderCoinPacksAction } = await import("./actions");
+
     const result = await reorderCoinPacksAction(
       formData({
         coin_pack_ids: JSON.stringify([PACK_TWO, PACK_ONE]),

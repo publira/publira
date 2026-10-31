@@ -15,10 +15,13 @@ const USE_CLIENT = /["']use client["']/uy;
 const hasUseClient = (source: string): boolean => {
   let offset = 0;
   LEADING_TRIVIA.lastIndex = 0;
+
   while (LEADING_TRIVIA.test(source)) {
     offset = LEADING_TRIVIA.lastIndex;
   }
+
   USE_CLIENT.lastIndex = offset;
+
   return USE_CLIENT.test(source);
 };
 
@@ -43,6 +46,7 @@ const startsWithUseClient = async (id: string): Promise<boolean> => {
   if (!path.isAbsolute(id) || id.includes("/node_modules/")) {
     return false;
   }
+
   try {
     return hasUseClient(await readFile(id, "utf-8"));
   } catch {
@@ -63,6 +67,7 @@ export const requireClientDirectives = () => ({
     bundle: Record<string, OutputAsset | OutputChunk>
   ) {
     const candidates: { fileName: string; id: string }[] = [];
+
     for (const output of Object.values(bundle)) {
       if (
         output.type === "chunk" &&
@@ -74,15 +79,19 @@ export const requireClientDirectives = () => ({
         }
       }
     }
+
     const marked = await Promise.all(
       candidates.map(({ id }) => startsWithUseClient(id))
     );
+
     const dropped: string[] = [];
+
     for (const [index, { fileName, id }] of candidates.entries()) {
       if (marked[index]) {
         dropped.push(`${id} -> ${fileName}`);
       }
     }
+
     if (dropped.length > 0) {
       this.error(
         `"use client" was dropped from ${dropped.length} module(s):\n${dropped.join("\n")}`

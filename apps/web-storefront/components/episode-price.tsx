@@ -66,6 +66,7 @@ export const EpisodePrice = ({
       />
     );
   }
+
   if (price <= 0) {
     return (
       <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
@@ -73,6 +74,7 @@ export const EpisodePrice = ({
       </Suspense>
     );
   }
+
   if (episodeSaleDestination(purchaseSurface, sales) === "app") {
     return (
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -80,9 +82,11 @@ export const EpisodePrice = ({
       </Suspense>
     );
   }
+
   if (!sales.currency) {
     return null;
   }
+
   if (campaign && timeZone) {
     return (
       <CampaignPrice
@@ -94,5 +98,6 @@ export const EpisodePrice = ({
       />
     );
   }
+
   return formatPrice(price, { currency: sales.currency, locale });
 };

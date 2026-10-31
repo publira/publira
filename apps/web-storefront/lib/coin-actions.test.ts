@@ -49,6 +49,7 @@ const packForm = (): FormData => {
   data.set("coinPackId", coinPackId);
   data.set("locale", "en");
   data.set("tenantId", tenantId);
+
   return data;
 };
 
@@ -57,6 +58,7 @@ const gatePackForm = (): FormData => {
   data.set("episodeId", episodeId);
   data.set("episodePublicId", "EP_001");
   data.set("seriesPublicId", "SERIES_001");
+
   return data;
 };
 

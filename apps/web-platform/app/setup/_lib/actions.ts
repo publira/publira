@@ -78,6 +78,7 @@ export const setupAction = async (
   const locale = await getInitialLocaleCandidate();
 
   const schema = await setupFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmPassword: "value",
@@ -89,6 +90,7 @@ export const setupAction = async (
       password: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -104,6 +106,7 @@ export const setupAction = async (
     name,
     password,
   } = parsed.data;
+
   const result = await createInitialUser({
     defaultCurrency,
     defaultLocale,
@@ -113,11 +116,13 @@ export const setupAction = async (
     name,
     password,
   });
+
   if (!result.ok) {
     if (result.alreadyCompleted) {
       updateTag(platformSetupStatusCacheTag);
       redirect("/login");
     }
+
     return { message: result.message, ok: false };
   }
 

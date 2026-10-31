@@ -38,6 +38,7 @@ export const PagePublishForm = ({
   version,
 }: PagePublishFormProps) => {
   const formId = `publish-page-version-${version.id}`;
+
   const label = (
     <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
       <Message message="admin.pages.workspace.publish" />

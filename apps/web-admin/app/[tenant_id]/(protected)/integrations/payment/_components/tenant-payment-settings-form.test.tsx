@@ -555,10 +555,12 @@ describe("TenantPaymentSettingsForm", () => {
 
   it("drops the typed secret after saving and shows only the hint", async () => {
     const leakedSecret = "plaintext-secret-value";
+
     const savedSettings = {
       ...readySettings,
       fields: stripeFields("sk_test_••••••••NEW1", "whsec_••••••••WXYZ"),
     };
+
     action.current = vi.fn().mockResolvedValue({
       message: "The payment settings were saved.",
       ok: true,

@@ -46,6 +46,7 @@ export const searchConfigurationState = (
   if (settings.buildState === "failed") {
     return "needs_setup";
   }
+
   return settings.engine === "sql" ? "defaults" : "configured";
 };
 
@@ -82,5 +83,6 @@ export const getRequiredConfigurationState =
     ) {
       return "needs_setup";
     }
+
     return email.ok && storage.ok ? "ready" : "unknown";
   };

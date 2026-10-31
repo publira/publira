@@ -31,6 +31,7 @@ const renderEditor = async (defaultValue: string) => {
 
   const textbox = await screen.findByRole("textbox", { name: "Content" });
   const { editor } = textbox as HTMLElement & { editor?: Editor };
+
   if (!editor) {
     throw new Error("The textbox is not the editor's.");
   }
@@ -40,6 +41,7 @@ const renderEditor = async (defaultValue: string) => {
 
 const postedBody = (): FormDataEntryValue | null => {
   const form = document.querySelector("form");
+
   if (!form) {
     throw new Error("The editor is not inside a form.");
   }

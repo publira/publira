@@ -72,6 +72,7 @@ describe("PasswordInput", () => {
     const frames: FrameRequestCallback[] = [];
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((frame) => {
       frames.push(frame);
+
       return frames.length;
     });
     renderPasswordInput();
@@ -81,6 +82,7 @@ describe("PasswordInput", () => {
 
     fireEvent.click(getToggle());
     input.setSelectionRange(0, 0);
+
     for (const frame of frames) {
       frame(0);
     }

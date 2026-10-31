@@ -70,6 +70,7 @@ export const centreCropRect = (
           height: Math.round(source.width / targetRatio),
           width: source.width,
         };
+
   const width = Math.min(fitted.width, source.width);
   const height = Math.min(fitted.height, source.height);
 
@@ -138,6 +139,7 @@ const resizeCropRect = (
     roomX,
     Math.floor((roomY * largest.width) / largest.height)
   );
+
   const width = clamp(Math.round(targetWidth), narrowestWidth(bounds), widest);
   const height = heightFor(bounds, width);
 
@@ -165,6 +167,7 @@ export const resizeCropRectToPointer = (
   const anchorX = growsRight ? rect.x : rect.x + rect.width;
   const anchorY = growsDown ? rect.y : rect.y + rect.height;
   const fromX = Math.abs(pointer.x - anchorX);
+
   const fromY =
     (Math.abs(pointer.y - anchorY) * largest.width) / largest.height;
 

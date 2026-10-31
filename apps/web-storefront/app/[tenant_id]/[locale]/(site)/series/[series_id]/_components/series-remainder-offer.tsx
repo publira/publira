@@ -40,6 +40,7 @@ export const SeriesRemainderOffer = async ({
   tenantId: string;
 }) => {
   const { currency } = sales;
+
   if (!(sales.web && currency)) {
     return null;
   }
@@ -62,6 +63,7 @@ export const SeriesRemainderOffer = async ({
   }
 
   const { remainder } = state;
+
   if (!remainder) {
     return null;
   }

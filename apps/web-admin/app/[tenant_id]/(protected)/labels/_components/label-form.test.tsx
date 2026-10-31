@@ -118,10 +118,12 @@ it("closes the fields while the save is in flight", async () => {
     expect(image.matches(":disabled")).toBe(true);
   });
   expect(pendingAction).toHaveBeenCalledOnce();
+
   const [, formData] = pendingAction.mock.calls[0] as unknown as [
     LabelActionState,
     FormData,
   ];
+
   expect(formData.get("tenant_id")).toBe("TENANT001");
   expect(formData.get("name")).toBe("Monthly Novels");
 });

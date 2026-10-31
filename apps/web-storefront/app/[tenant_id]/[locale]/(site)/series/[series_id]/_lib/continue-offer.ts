@@ -37,6 +37,7 @@ export const resolveContinueOffer = (
   progress: SeriesProgressItem | null
 ): ContinueOffer | null => {
   const [first] = episodes;
+
   if (!first) {
     return null;
   }
@@ -55,6 +56,7 @@ export const resolveContinueOffer = (
   const next = episodes.find(
     (episode) => episode.orderIndex > progress.episode.orderIndex
   );
+
   return next
     ? { episodePublicId: next.publicId, isContinuation: true }
     : startOffer(first);

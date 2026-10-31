@@ -26,6 +26,7 @@ export const describeVisiblePages = ({
   if (pageCount === 0) {
     return { kind: "none" };
   }
+
   if (firstPage === 0) {
     return slot === "end" ? { kind: "end-page" } : { kind: "none" };
   }

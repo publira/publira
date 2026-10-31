@@ -22,10 +22,12 @@ import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -49,6 +51,7 @@ const NewAccessTicketFormSkeleton = () => (
 
 const NewAccessTicketFormData = async () => {
   const tenantId = await getTenantId();
+
   const [timeZone, seriesResult] = await Promise.all([
     getTenantDisplayTimeZone(tenantId),
     listAllSeries(),

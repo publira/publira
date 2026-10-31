@@ -124,6 +124,7 @@ const previewFrame = (container: HTMLElement, index = 0): HTMLElement => {
   const frame = container.querySelectorAll<HTMLElement>(".publira-theme-scope")[
     index
   ];
+
   if (!frame) {
     throw new Error("the preview frame is missing");
   }
@@ -220,6 +221,7 @@ describe("ThemeSettingsForm", { timeout: caseTimeout }, () => {
     ];
 
     expect(controls().length).toBeGreaterThan(2);
+
     for (const control of controls()) {
       expect(control.matches(":disabled")).toBe(false);
     }
@@ -317,6 +319,7 @@ describe("ThemeSettingsForm", { timeout: caseTimeout }, () => {
   it("leaves the console's own colors alone while the dark palette is edited", async () => {
     await renderForm();
     await openTab("Dark");
+
     const before = document.documentElement.style.getPropertyValue(
       "--publira-color-primary"
     );
@@ -385,6 +388,7 @@ describe("ThemeSettingsForm", { timeout: caseTimeout }, () => {
         ok: false,
       },
     });
+
     await openTab("Dark");
 
     expect(screen.getByText("Could not display the dark palette")).toBeTruthy();

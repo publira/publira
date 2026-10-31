@@ -54,9 +54,11 @@ const fileInput = () =>
 /** Picks `file` the way the browser's file chooser hands it to the input. */
 const pick = async (file: File) => {
   const input = fileInput();
+
   if (!input) {
     throw new Error("no file input");
   }
+
   await act(() => {
     fireEvent.change(input, { target: { files: [file] } });
   });
@@ -68,9 +70,11 @@ const png = () =>
 /** The form the Action was called with. */
 const sentForm = (action: typeof mockUploadIcon): FormData => {
   const [form] = action.mock.calls[0] ?? [];
+
   if (!(form instanceof FormData)) {
     throw new TypeError("the Action was not called with a form");
   }
+
   return form;
 };
 
@@ -244,6 +248,7 @@ describe("AccountIconField", () => {
     const remove = await screen.findByRole("button", {
       name: "アイコンを削除",
     });
+
     await act(() => {
       fireEvent.click(remove);
     });
@@ -269,6 +274,7 @@ describe("AccountIconField", () => {
       const list = await screen.findByRole("list", {
         name: "Icons to choose from",
       });
+
       expect(list.querySelectorAll("li")).toHaveLength(2);
       expect(screen.getByRole("button", { name: "Icon 1" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Icon 2" })).toBeTruthy();

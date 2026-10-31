@@ -65,9 +65,11 @@ describe("ConsoleUserMenu slots", () => {
     const logout = screen.getByRole("menuitem", { name: "Sign out" });
     const form = logout.closest("form");
     expect(form).toBeTruthy();
+
     if (form) {
       fireEvent.submit(form);
     }
+
     expect(logoutAction).toHaveBeenCalledOnce();
   });
 });

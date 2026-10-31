@@ -163,12 +163,15 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   const perAddress = t("platform.policy.security.mail_per_address_legend");
   const perSource = t("platform.policy.security.mail_per_source_legend");
   const storePurchase = t("platform.policy.security.store_purchase_title");
+
   const waitFreeTicketUse = t(
     "platform.policy.security.wait_free_ticket_use_title"
   );
+
   const loginPerAccount = t(
     "platform.policy.security.login_attempts_per_account_title"
   );
+
   const loginPerSource = t(
     "platform.policy.security.login_attempts_per_source_title"
   );
@@ -312,9 +315,11 @@ export const communityLimitsFormSchema = async (locale: Locale) => {
   const perAccount = t("platform.policy.community.contact_per_account_legend");
   const perClient = t("platform.policy.community.contact_per_client_legend");
   const episodeRating = t("platform.policy.community.episode_rating_legend");
+
   const viewerPreferences = t(
     "platform.policy.community.viewer_preferences_legend"
   );
+
   const notificationSettings = t(
     "platform.policy.community.notification_settings_legend"
   );
@@ -408,6 +413,7 @@ export const retentionDefaultsFormFields = {
 
 export const retentionDefaultsFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const days = (setting: string) =>
     boundedIntFormSchema(
       t("platform.policy.retention.days_invalid", { setting }),

@@ -6,6 +6,7 @@ import { WEB_PLATFORM_BASE_URL } from "../src/urls";
 
 const dashboardHeading = "Cross-tenant operations hub";
 const rootErrorHeading = "Could not display Platform Console";
+
 // `/setup` runs before a language has been saved, so it is the one screen here
 // that follows the browser rather than the platform.
 const setupApiUnavailableMessage =

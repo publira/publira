@@ -11,6 +11,7 @@ import { storageFormFields, storageFormSchema } from "./form-schemas";
 
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     bucket: "publira-media",
     region: "us-east-1",
@@ -19,11 +20,13 @@ const formData = (fields: Record<string, string>): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 
 const parse = async (fields: Record<string, string>) => {
   const schema = await storageFormSchema("en");
+
   return schema.safeParse(toFormDataInput(formData(fields), storageFormFields));
 };
 

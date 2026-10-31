@@ -30,9 +30,11 @@ export const readSetupDefaultLocale = async (): Promise<Locale | null> => {
 
   try {
     const response = await apiClient.setup.checkSetupStatus({});
+
     return parseLocale(response.defaultLocale.trim()) ?? null;
   } catch {
     dropFailedCacheEntry();
+
     return null;
   }
 };

@@ -19,6 +19,7 @@ import { getMessagesFor } from "./messages";
 
 /** Public catalog follow targets this app exposes on detail pages. */
 export const followTargetKinds = ["creator", "series"] as const;
+
 export type FollowTargetKind = (typeof followTargetKinds)[number];
 
 const followTargetTypeByKind: Record<FollowTargetKind, FollowTargetType> = {
@@ -114,6 +115,7 @@ const readFollowStatus = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     if (isUnauthenticatedRpcError(error)) {
       return {
         isFollowing: false,
@@ -122,6 +124,7 @@ const readFollowStatus = async (
         unexpected: false,
       };
     }
+
     return {
       message: rpcErrorMessage(error, t("storefront.follow.status_failed"), {
         locale,
@@ -155,10 +158,12 @@ export const getMyFollowStatus = async (
     ),
     getMessagesFor(locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("storefront.follow.status_failed") : result.message
   );
+
   return result;
 };
 
@@ -174,6 +179,7 @@ export const followTarget = async (input: {
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -190,12 +196,15 @@ export const followTarget = async (input: {
       },
       buildSessionHeaders(sessionId)
     );
+
     return { isFollowing: true, ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("storefront.follow.follow_failed"), {
         locale: input.locale,
@@ -217,6 +226,7 @@ export const unfollowTarget = async (input: {
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -233,12 +243,15 @@ export const unfollowTarget = async (input: {
       },
       buildSessionHeaders(sessionId)
     );
+
     return { isFollowing: false, ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("storefront.follow.unfollow_failed"), {
         locale: input.locale,

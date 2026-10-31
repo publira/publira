@@ -52,6 +52,7 @@ export const EyeCatchPicture = ({
   const [bestType] = [...new Set(pool.map((v) => v.contentType))].toSorted(
     (a, b) => (CT_PRIORITY[a] ?? 99) - (CT_PRIORITY[b] ?? 99)
   );
+
   const best = pool
     .filter((v) => v.contentType === bestType)
     .toSorted((a, b) => a.width - b.width);

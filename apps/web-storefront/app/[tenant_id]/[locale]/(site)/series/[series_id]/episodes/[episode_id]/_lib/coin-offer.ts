@@ -87,13 +87,16 @@ export const toCoinOffer = ({
   if (!balance.ok) {
     return { kind: "failed", message: balance.message };
   }
+
   if (!balance.value) {
     return undefined;
   }
 
   const { coins, owedCoins } = balance.value;
+
   const needed =
     coins >= episode.coinPrice ? 0 : episode.coinPrice - coins + owedCoins;
+
   const packs = acceptsPayments && settings?.selling ? settings.packs : [];
 
   return {

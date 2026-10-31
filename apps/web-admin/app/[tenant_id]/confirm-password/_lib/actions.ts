@@ -22,6 +22,7 @@ const tokenOrEmpty = async (
 ): Promise<string> => {
   const schema = await authTokenFormSchema(locale);
   const parsed = schema.safeParse(value);
+
   return parsed.success ? parsed.data : "";
 };
 
@@ -40,6 +41,7 @@ const confirmPasswordFormSchema = async (locale: Locale) => {
       path: ["confirmPassword"],
     });
 };
+
 const buildConfirmPasswordPath = ({
   error,
   status,
@@ -54,14 +56,17 @@ const buildConfirmPasswordPath = ({
   if (error) {
     params.set("error", error);
   }
+
   if (status) {
     params.set("status", status);
   }
+
   if (token) {
     params.set("token", token);
   }
 
   const query = params.toString();
+
   return query ? `/confirm-password?${query}` : "/confirm-password";
 };
 
@@ -74,21 +79,26 @@ export const confirmPasswordAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const input = toFormDataInput(formData, {
     confirmPassword: { kind: "value", name: "confirm_password" },
     password: "value",
     tenantId: { kind: "value", name: "tenant_id" },
     token: "value",
   });
+
   const schema = await confirmPasswordFormSchema(locale);
   const parsed = schema.safeParse(input);
+
   if (!parsed.success) {
     const token = await tokenOrEmpty(locale, input.token);
     const tenantIdResultSchema = await tenantIdFormSchema(locale);
     const tenantIdResult = tenantIdResultSchema.safeParse(input.tenantId);
+
     if (!token) {
       redirect(buildConfirmPasswordPath({ status: "invalid" }));
     }
+
     redirect(
       buildConfirmPasswordPath({
         error: tenantIdResult.success
@@ -100,12 +110,14 @@ export const confirmPasswordAction = async (
   }
 
   const { password, tenantId, token } = parsed.data;
+
   const result = await confirmAdminPasswordReset(
     tenantId,
     token,
     password,
     locale
   );
+
   if (!result.ok) {
     if (result.reason === "expired" || result.reason === "invalid") {
       redirect(buildConfirmPasswordPath({ status: result.reason }));

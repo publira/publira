@@ -8,6 +8,7 @@ export const isPlatformOperator = (role: string | undefined): boolean =>
 
 export const canManageEndUsers = (role: string | undefined): boolean => {
   const normalizedRole = normalizePlatformRole(role ?? "");
+
   return (
     normalizedRole === "platform_super_admin" ||
     normalizedRole === "platform_operator"

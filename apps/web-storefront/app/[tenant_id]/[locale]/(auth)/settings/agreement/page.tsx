@@ -45,6 +45,7 @@ const agreementSearchParamsSchema = z.object({
 
 const AgreementHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [{ siteTagline }, siteLabel, t] = await Promise.all([
     getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
@@ -92,15 +93,18 @@ const AgreementForm = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const returnTo = legalPageAgreementReturnTo(
     agreementSearchParamsSchema.parse(params).returnTo
   );
+
   const pages = await withPublicSessionReauth(
     locale,
     legalPageAgreementHref(LEGAL_PAGE_AGREEMENT_PATH, returnTo),
     () => getOwedLegalPages(tenantId, locale),
     tenantId
   );
+
   if (pages.length === 0) {
     redirect(await tenantLocalePath(tenantId, locale, returnTo));
   }

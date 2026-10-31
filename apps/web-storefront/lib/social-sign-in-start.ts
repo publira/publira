@@ -22,11 +22,14 @@ export const sendToProvider = async (
   request: Omit<SignInRequest, "nonce" | "redirectUri" | "state">
 ): Promise<never> => {
   const { locale, provider, tenantId } = request;
+
   const [clients, origin] = await Promise.all([
     getTenantSignInClients(tenantId),
     getTenantPublicOrigin(tenantId),
   ]);
+
   const clientId = clients[provider];
+
   if (!clientId || !origin) {
     const t = await getMessagesFor(locale);
     redirect(

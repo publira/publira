@@ -48,11 +48,13 @@ const EpisodePagesUploadContext =
 
 const useEpisodePagesUpload = () => {
   const context = use(EpisodePagesUploadContext);
+
   if (!context) {
     throw new Error(
       "EpisodePagesUpload slots must be rendered inside EpisodePagesUpload."
     );
   }
+
   return context;
 };
 
@@ -67,6 +69,7 @@ const toFileNames = (files: FileList | null) =>
  */
 const EpisodePagesUploadForm = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
+
   const upload = usePageUploadAction({
     failed: t("admin.series.episodes.upload_failed"),
     interrupted: t("admin.series.episodes.upload_interrupted"),
@@ -108,6 +111,7 @@ const EpisodePagesUpload = ({ children }: { children: ReactNode }) => {
       setMode: (nextMode: EpisodePagesUploadMode) => {
         setMode(nextMode);
         setSelectedFileNames([]);
+
         if (inputRef.current) {
           inputRef.current.value = "";
         }
@@ -173,6 +177,7 @@ const EpisodePagesDropZone = ({ children }: { children: ReactNode }) => {
     event.preventDefault();
     setIsDragOver(false);
     const { files } = event.dataTransfer;
+
     // A closed input belongs to an upload already in flight.
     if (
       !inputRef.current ||
@@ -187,9 +192,11 @@ const EpisodePagesDropZone = ({ children }: { children: ReactNode }) => {
       : [files[0]].filter(Boolean);
 
     const dataTransfer = new DataTransfer();
+
     for (const file of droppedFiles) {
       dataTransfer.items.add(file);
     }
+
     inputRef.current.files = dataTransfer.files;
     setSelectedFileNames(toFileNames(dataTransfer.files));
   };

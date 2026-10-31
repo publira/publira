@@ -11,11 +11,13 @@ const psqlBin = (): string =>
 
 const resolveDbUrl = (): string => {
   const url = process.env.PUBLIRA_DB_URL?.trim();
+
   if (!url) {
     throw new Error(
       "PUBLIRA_DB_URL is required to apply scenario SQL (set by e2e scripts)"
     );
   }
+
   return url;
 };
 
@@ -26,6 +28,7 @@ const resolveDbUrl = (): string => {
  */
 export const applyScenarioSql = (name: string): void => {
   const normalized = name.trim().replace(/\.sql$/u, "");
+
   if (!normalized || normalized.includes("/") || normalized.includes("..")) {
     throw new Error(`invalid scenario name: ${name}`);
   }
@@ -62,6 +65,7 @@ export const applyScenarioSql = (name: string): void => {
  */
 export const runSql = (sql: string): void => {
   const statement = sql.trim();
+
   if (!statement) {
     throw new Error("runSql requires a non-empty SQL statement");
   }
@@ -81,6 +85,7 @@ export const runSql = (sql: string): void => {
  */
 export const querySql = (sql: string): string => {
   const statement = sql.trim();
+
   if (!statement) {
     throw new Error("querySql requires a non-empty SQL statement");
   }
@@ -129,6 +134,7 @@ export const restorePlatformSettingsRow = (
   const revision = Number(
     querySql(`SELECT COALESCE(MAX(revision), 0) FROM ${table};`) || "0"
   );
+
   runSql(`
     DELETE FROM ${table};
     INSERT INTO ${table}
@@ -155,15 +161,19 @@ export const restorePlatformSettingsRow = (
  */
 export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
   const quoted: string[] = [];
+
   for (const publicId of publicIds) {
     const trimmed = publicId.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   const list = quoted.join(", ");
   runSql(`
     BEGIN;
@@ -203,15 +213,19 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
  */
 export const deleteLabelsByPublicIds = (publicIds: readonly string[]): void => {
   const quoted: string[] = [];
+
   for (const publicId of publicIds) {
     const trimmed = publicId.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   runSql(`DELETE FROM labels WHERE public_id IN (${quoted.join(", ")});`);
 };
 
@@ -226,15 +240,19 @@ export const deleteCreatorsByPublicIds = (
   publicIds: readonly string[]
 ): void => {
   const quoted: string[] = [];
+
   for (const publicId of publicIds) {
     const trimmed = publicId.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   runSql(`DELETE FROM creators WHERE public_id IN (${quoted.join(", ")});`);
 };
 
@@ -252,15 +270,19 @@ export const deleteCreatorsByPublicIds = (
  */
 export const deleteGenresByNames = (names: readonly string[]): void => {
   const quoted: string[] = [];
+
   for (const name of names) {
     const trimmed = name.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   const list = quoted.join(", ");
   runSql(
     `DELETE FROM series_genres WHERE genre_id IN (SELECT genre_id FROM genre_translations WHERE name IN (${list}));
@@ -277,15 +299,19 @@ export const deleteGenresByNames = (names: readonly string[]): void => {
  */
 export const deleteCreatorRolesByNames = (names: readonly string[]): void => {
   const quoted: string[] = [];
+
   for (const name of names) {
     const trimmed = name.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   runSql(`DELETE FROM creator_roles WHERE name IN (${quoted.join(", ")});`);
 };
 
@@ -298,15 +324,19 @@ export const deleteCreatorRolesByNames = (names: readonly string[]): void => {
  */
 export const deletePagesByIds = (ids: readonly string[]): void => {
   const quoted: string[] = [];
+
   for (const id of ids) {
     const trimmed = id.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   runSql(`DELETE FROM pages WHERE id IN (${quoted.join(", ")});`);
 };
 
@@ -325,15 +355,19 @@ export const deleteTenantsByPublicIds = (
   publicIds: readonly string[]
 ): void => {
   const quoted: string[] = [];
+
   for (const publicId of publicIds) {
     const trimmed = publicId.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   const list = quoted.join(", ");
   runSql(`
     BEGIN;
@@ -383,15 +417,19 @@ export const deletePlatformOperatorsByEmails = (
   emails: readonly string[]
 ): void => {
   const quoted: string[] = [];
+
   for (const email of emails) {
     const trimmed = email.trim();
+
     if (trimmed.length > 0) {
       quoted.push(quoteSqlLiteral(trimmed));
     }
   }
+
   if (quoted.length === 0) {
     return;
   }
+
   const list = quoted.join(", ");
   runSql(`
     BEGIN;

@@ -87,6 +87,7 @@ const VersionStatusCell = ({
       </Suspense>
     </Badge>
   );
+
   if (!version.agreementRequiredAt) {
     return badge;
   }

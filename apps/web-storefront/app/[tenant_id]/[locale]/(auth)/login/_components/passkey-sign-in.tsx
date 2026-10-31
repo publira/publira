@@ -43,9 +43,11 @@ const ceremonyFailureMessage = (
   t: StorefrontClientMessageAccessor
 ): string => {
   const name = error instanceof Error ? error.name : "";
+
   if (name === "NotAllowedError" || name === "AbortError") {
     return t("storefront.auth.errors.passkey_cancelled");
   }
+
   return t("storefront.auth.errors.passkey_failed");
 };
 
@@ -68,17 +70,21 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
 
     buttonUsedRef.current = true;
     const started = await beginPasskeyLoginAction(formData);
+
     if (!started.ok) {
       return started;
     }
+
     try {
       const credential = await startAuthentication({
         optionsJSON: JSON.parse(started.optionsJson),
       });
+
       formData.set(CREDENTIAL_FIELD, JSON.stringify(credential));
     } catch (error) {
       return { message: ceremonyFailureMessage(error, t), ok: false };
     }
+
     return finishPasskeyLoginAction(formData);
   };
 
@@ -93,9 +99,11 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const field = credentialRef.current;
     const form = field?.form;
+
     if (!field || !form) {
       return;
     }
+
     let active = true;
     const offering = () => active && !buttonUsedRef.current;
 
@@ -103,21 +111,27 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
       if (!(await browserSupportsWebAuthnAutofill()) || !offering()) {
         return;
       }
+
       const started = await beginPasskeyLoginAction(new FormData(form));
+
       if (!offering() || !started.ok) {
         return;
       }
+
       const credential = await startAuthentication({
         optionsJSON: JSON.parse(started.optionsJson),
         useBrowserAutofill: true,
       });
+
       if (!active) {
         return;
       }
+
       field.value = JSON.stringify(credential);
       form.requestSubmit();
       field.value = "";
     };
+
     const offerUntilStopped = async () => {
       try {
         await offerInAutofill();
@@ -125,6 +139,7 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
         // Left unreported, as above.
       }
     };
+
     offerUntilStopped();
 
     return () => {

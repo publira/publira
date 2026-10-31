@@ -45,11 +45,14 @@ const readStoredAnswer = (
 ): AnalyticsConsentAnswer | undefined => {
   for (const pair of document.cookie.split("; ")) {
     const separator = pair.indexOf("=");
+
     if (pair.slice(0, separator) === cookieName) {
       const value = pair.slice(separator + 1);
+
       return isAnswer(value) ? value : undefined;
     }
   }
+
   return undefined;
 };
 
@@ -59,6 +62,7 @@ export const readAnalyticsConsent = (
   if (sendsGlobalPrivacyControl()) {
     return "global_privacy_control";
   }
+
   return readStoredAnswer(cookieName) ?? "unanswered";
 };
 
@@ -84,10 +88,13 @@ const signalledConsent = (): AnalyticsConsentAnswer | undefined => {
   const { dataLayer = [] } = window as unknown as {
     dataLayer?: Record<number, unknown>[];
   };
+
   const command = dataLayer.findLast((entry) => entry[0] === "consent");
+
   if (!command) {
     return undefined;
   }
+
   return (command[2] as { analytics_storage?: string } | undefined)
     ?.analytics_storage === "granted"
     ? "granted"
@@ -102,12 +109,15 @@ const signalledConsent = (): AnalyticsConsentAnswer | undefined => {
  */
 const signalConsent = (answer: AnalyticsConsentAnswer): void => {
   const signalled = signalledConsent();
+
   if (signalled === undefined || signalled === answer) {
     return;
   }
+
   if (answer === "granted" && sendsGlobalPrivacyControl()) {
     return;
   }
+
   gtag("consent", "update", consentSignals(answer));
 };
 
@@ -124,6 +134,7 @@ const openChannel = (): BroadcastChannel | undefined => {
   if (channel || typeof BroadcastChannel === "undefined") {
     return channel;
   }
+
   channel = new BroadcastChannel(CHANNEL_NAME);
   channel.addEventListener("message", (event: MessageEvent<unknown>) => {
     if (typeof event.data === "string" && isAnswer(event.data)) {
@@ -131,6 +142,7 @@ const openChannel = (): BroadcastChannel | undefined => {
       window.dispatchEvent(new Event(CHANGE_EVENT));
     }
   });
+
   return channel;
 };
 
@@ -160,6 +172,7 @@ export const answerAnalyticsConsent = (
 const subscribe = (onChange: () => void): (() => void) => {
   openChannel();
   window.addEventListener(CHANGE_EVENT, onChange);
+
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange);
   };
@@ -192,6 +205,7 @@ export const onAnalyticsConsentBannerReopen = (
   onReopen: () => void
 ): (() => void) => {
   window.addEventListener(REOPEN_EVENT, onReopen);
+
   return () => {
     window.removeEventListener(REOPEN_EVENT, onReopen);
   };

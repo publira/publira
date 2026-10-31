@@ -28,12 +28,15 @@ export const EyeCatchAspectNameMessage = ({
     case "portrait": {
       return <Message message="admin.eye_catch.aspect.names.portrait" />;
     }
+
     case "square": {
       return <Message message="admin.eye_catch.aspect.names.square" />;
     }
+
     case "landscape": {
       return <Message message="admin.eye_catch.aspect.names.landscape" />;
     }
+
     default: {
       return <Message message="admin.eye_catch.aspect.names.og" />;
     }
@@ -51,14 +54,17 @@ const SeriesAspectUsageMessage = ({
         <Message message="admin.eye_catch.aspect.usages.series.portrait" />
       );
     }
+
     case "square": {
       return <Message message="admin.eye_catch.aspect.usages.series.square" />;
     }
+
     case "landscape": {
       return (
         <Message message="admin.eye_catch.aspect.usages.series.landscape" />
       );
     }
+
     default: {
       return <Message message="admin.eye_catch.aspect.usages.series.og" />;
     }
@@ -74,14 +80,17 @@ const LabelAspectUsageMessage = ({
     case "portrait": {
       return <Message message="admin.eye_catch.aspect.usages.label.portrait" />;
     }
+
     case "square": {
       return <Message message="admin.eye_catch.aspect.usages.label.square" />;
     }
+
     case "landscape": {
       return (
         <Message message="admin.eye_catch.aspect.usages.label.landscape" />
       );
     }
+
     default: {
       return <Message message="admin.eye_catch.aspect.usages.label.og" />;
     }
@@ -97,14 +106,17 @@ const GenreAspectUsageMessage = ({
     case "portrait": {
       return <Message message="admin.eye_catch.aspect.usages.genre.portrait" />;
     }
+
     case "square": {
       return <Message message="admin.eye_catch.aspect.usages.genre.square" />;
     }
+
     case "landscape": {
       return (
         <Message message="admin.eye_catch.aspect.usages.genre.landscape" />
       );
     }
+
     default: {
       return <Message message="admin.eye_catch.aspect.usages.genre.og" />;
     }
@@ -122,14 +134,17 @@ const EpisodeAspectUsageMessage = ({
         <Message message="admin.eye_catch.aspect.usages.episode.portrait" />
       );
     }
+
     case "square": {
       return <Message message="admin.eye_catch.aspect.usages.episode.square" />;
     }
+
     case "landscape": {
       return (
         <Message message="admin.eye_catch.aspect.usages.episode.landscape" />
       );
     }
+
     default: {
       return <Message message="admin.eye_catch.aspect.usages.episode.og" />;
     }
@@ -153,16 +168,19 @@ const CampaignBannerAspectUsageMessage = ({
         <Message message="admin.eye_catch.aspect.usages.campaign_banner.portrait" />
       );
     }
+
     case "square": {
       return (
         <Message message="admin.eye_catch.aspect.usages.campaign_banner.square" />
       );
     }
+
     case "landscape": {
       return (
         <Message message="admin.eye_catch.aspect.usages.campaign_banner.landscape" />
       );
     }
+
     default: {
       return (
         <Message message="admin.eye_catch.aspect.usages.campaign_banner.og" />
@@ -189,15 +207,19 @@ export const EyeCatchAspectUsageMessage = ({
     case "series": {
       return <SeriesAspectUsageMessage variantType={variantType} />;
     }
+
     case "label": {
       return <LabelAspectUsageMessage variantType={variantType} />;
     }
+
     case "campaign_banner": {
       return <CampaignBannerAspectUsageMessage variantType={variantType} />;
     }
+
     case "episode": {
       return <EpisodeAspectUsageMessage variantType={variantType} />;
     }
+
     default: {
       return <GenreAspectUsageMessage variantType={variantType} />;
     }

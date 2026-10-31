@@ -52,6 +52,7 @@ export const findTenantLocales = async (
   tenantId: string
 ): Promise<TenantLocales | null> => {
   const info = await getTenantPublicInfo(tenantId);
+
   return (
     resolveTenantLocales(info?.defaultLocale, info?.supportedLocales) ?? null
   );
@@ -66,11 +67,13 @@ export const getTenantLocales = async (
   locale: Locale
 ): Promise<GetTenantLocalesResult> => {
   const locales = await findTenantLocales(tenantId);
+
   if (locales) {
     return { ...locales, ok: true };
   }
 
   const t = await getMessagesFor(locale);
+
   return {
     message: t("admin.settings.locales.load_failed"),
     ok: false,
@@ -94,7 +97,9 @@ export const updateTenantLocales = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -108,10 +113,12 @@ export const updateTenantLocales = async (
       },
       withSessionHeaders(sessionId)
     );
+
     const saved = resolveTenantLocales(
       parseLocale(response.defaultLocale.trim()),
       readSupportedLocales(response.supportedLocales)
     );
+
     if (!saved) {
       return {
         message: t("admin.settings.locales.save_failed"),
@@ -123,6 +130,7 @@ export const updateTenantLocales = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.settings.locales.save_failed"), {
         locale,

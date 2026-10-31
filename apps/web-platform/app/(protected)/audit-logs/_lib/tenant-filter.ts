@@ -21,12 +21,15 @@ export const resolveAuditLogTenantFilter = (
   if (!tenantPublicId) {
     return { kind: "none" };
   }
+
   if (!result.ok) {
     return { kind: "failed", label: tenantPublicId, message: result.message };
   }
+
   if (!result.tenant) {
     return { kind: "unknown", label: tenantPublicId };
   }
+
   return {
     kind: "resolved",
     label: result.tenant.name.trim() || tenantPublicId,

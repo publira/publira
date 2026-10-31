@@ -23,11 +23,13 @@ import { PlatformMessagesContext } from "./platform-messages-context";
  */
 export const useClientMessages = (): PlatformClientMessageAccessor => {
   const messages = use(PlatformMessagesContext);
+
   if (messages === null) {
     throw new Error("PlatformMessagesProvider is required.");
   }
 
   const { catalog, locale } = use(messages);
+
   return bindMessages(catalog, locale);
 };
 

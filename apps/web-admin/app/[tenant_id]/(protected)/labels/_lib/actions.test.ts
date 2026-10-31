@@ -48,6 +48,7 @@ const renameFormData = (): FormData => {
   formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
   formData.set("name", "Renamed label");
   formData.set("clear_eye_catch_image", "0");
+
   return formData;
 };
 

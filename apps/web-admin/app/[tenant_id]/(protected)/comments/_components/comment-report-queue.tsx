@@ -431,6 +431,7 @@ export const CommentReportQueue = async ({
 }: CommentReportQueueProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   const showPagination =
     !listErrorMessage && (reports.length > 0 || hasPageLinks);
 

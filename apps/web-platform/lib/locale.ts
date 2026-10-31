@@ -80,8 +80,10 @@ let lastConfirmedDisplayLocale: Locale | undefined;
  */
 const getPlatformDisplayLocale = async (): Promise<Locale> => {
   const saved = await readSetupDefaultLocale();
+
   if (saved) {
     lastConfirmedDisplayLocale = saved;
+
     return saved;
   }
 
@@ -90,6 +92,7 @@ const getPlatformDisplayLocale = async (): Promise<Locale> => {
   }
 
   const requestHeaders = await headers();
+
   return negotiateInitialLocale(requestHeaders.get("accept-language"));
 };
 
@@ -110,8 +113,10 @@ export const getPlatformLocale = async (): Promise<Locale> => {
   const cookieStore = await cookies();
 
   const raw = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
+
   if (typeof raw === "string") {
     const trimmed = raw.trim();
+
     if (isLocale(trimmed)) {
       return trimmed;
     }

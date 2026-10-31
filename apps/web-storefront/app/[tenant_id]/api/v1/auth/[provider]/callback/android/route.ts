@@ -28,6 +28,7 @@ const readAndroidCallbackForm = async (
 ): Promise<AndroidCallbackForm | null> => {
   try {
     const formData = await request.formData();
+
     const parsed = androidCallbackFormSchema.safeParse(
       Object.fromEntries(
         [...formData.entries()].filter(
@@ -35,6 +36,7 @@ const readAndroidCallbackForm = async (
         )
       )
     );
+
     return parsed.success ? parsed.data : null;
   } catch {
     return null;
@@ -71,11 +73,13 @@ const appIntentUrl = (
   fields: Record<string, string | undefined>
 ) => {
   const query = new URLSearchParams();
+
   for (const [name, value] of Object.entries(fields)) {
     if (value !== undefined) {
       query.set(name, value);
     }
   }
+
   return `intent://callback?${query.toString()}#Intent;package=${applicationId};scheme=signinwithapple;end`;
 };
 
@@ -106,35 +110,43 @@ export const POST = async (
   }: RouteContext<"/[tenant_id]/api/v1/auth/[provider]/callback/android">
 ) => {
   const { provider, tenant_id } = await params;
+
   const path = androidCallbackPathSchema.safeParse({
     provider,
     tenantId: tenant_id,
   });
+
   if (!path.success) {
     return new Response(null, { status: 404 });
   }
 
   const form = await readAndroidCallbackForm(request);
+
   if (!form) {
     return new Response(null, { status: 400 });
   }
 
   const association = await getTenantMobileAppAssociation(path.data.tenantId);
+
   if (!association.ok) {
     return new Response(null, {
       headers: { "Retry-After": "30" },
       status: 503,
     });
   }
+
   const applicationId = association.value.android?.applicationId ?? "";
+
   if (!applicationId) {
     return new Response(null, { status: 404 });
   }
+
   // Only an app of this tenant's is handed the answer, whatever a forged post
   // names.
   if (acceptedApplicationIds(applicationId).includes(form.state)) {
     return openApp(form.state, form);
   }
+
   // A `dev` build pointed at a production storefront offers Apple too, since
   // it cannot tell how the storefront runs; it is told the sign-in failed,
   // with nothing of Apple's answer.
@@ -144,5 +156,6 @@ export const POST = async (
       state: form.state,
     });
   }
+
   return new Response(null, { status: 400 });
 };

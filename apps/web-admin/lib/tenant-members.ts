@@ -169,8 +169,10 @@ const listTenantMembersForSession = async (
   cacheTag(tenantMembersCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       members: [],
@@ -195,6 +197,7 @@ const listTenantMembersForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       members: [],
@@ -232,8 +235,10 @@ const listTenantAdminInvitationsForSession = async (
   cacheTag(tenantAdminInvitationsCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       invitations: [],
@@ -258,6 +263,7 @@ const listTenantAdminInvitationsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       invitations: [],
@@ -295,6 +301,7 @@ export const updateTenantMemberRole = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -308,6 +315,7 @@ export const updateTenantMemberRole = async (
       },
       withSessionHeaders(sessionId)
     );
+
     if (!response.member?.userId?.trim()) {
       return { message: t("admin.members.role_update_failed"), ok: false };
     }
@@ -316,6 +324,7 @@ export const updateTenantMemberRole = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.members.role_update_failed"), {
         locale,
@@ -340,6 +349,7 @@ export const removeTenantMember = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -360,6 +370,7 @@ export const removeTenantMember = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.members.remove_failed"), {
         locale,
@@ -384,6 +395,7 @@ export const createTenantAdminInvitation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -405,6 +417,7 @@ export const createTenantAdminInvitation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.members.invite_failed"), {
         locale,
@@ -431,6 +444,7 @@ export const resendTenantAdminInvitation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -448,6 +462,7 @@ export const resendTenantAdminInvitation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.members.resend_failed"), {
         locale,
@@ -470,6 +485,7 @@ export const cancelTenantAdminInvitation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -487,6 +503,7 @@ export const cancelTenantAdminInvitation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("admin.members.cancel_failed"), {
         locale,

@@ -15,8 +15,11 @@ const {
 }));
 
 vi.mock("next/navigation", () => ({ notFound: mockNotFound }));
+
 vi.mock("next/root-params", () => ({ locale: mockRootLocale }));
+
 vi.mock("./tenant-id", () => ({ getTenantId: mockTenantId }));
+
 vi.mock("./tenant", () => ({
   getTenantLinkDefaultLocale: mockGetTenantLinkDefaultLocale,
 }));

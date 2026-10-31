@@ -194,6 +194,7 @@ const slugInvalidMessage = (
   ) {
     return t("admin.pages.slug_reserved");
   }
+
   if (
     rpcErrorHasFieldViolation(
       error,
@@ -203,6 +204,7 @@ const slugInvalidMessage = (
   ) {
     return t("admin.pages.slug_unreachable");
   }
+
   return rpcErrorHasFieldViolation(error, "slug")
     ? t("admin.pages.slug_invalid")
     : t("errors.validation");
@@ -283,6 +285,7 @@ const mapPageTranslations = (
 ): PageTranslationItem[] =>
   translations.flatMap((translation) => {
     const item = mapPageTranslation(translation);
+
     return item ? [item] : [];
   });
 
@@ -324,8 +327,10 @@ const listPagesForSession = async (
   cacheTag(pagesCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: t("errors.rpc.unauthenticated"),
@@ -351,6 +356,7 @@ const listPagesForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: await mapErrorToMessage(
@@ -391,8 +397,10 @@ const listPublishedPagesForSession = async (
   cacheTag(pagesCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -402,12 +410,14 @@ const listPublishedPagesForSession = async (
 
   try {
     const pages: PageItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.pages.listPages(
           { limit, tenant: { tenantId }, token },
           withSessionHeaders(sessionId)
         );
+
         return {
           items: response.pages ?? [],
           nextToken: response.nextToken ?? "",
@@ -416,6 +426,7 @@ const listPublishedPagesForSession = async (
       (items) => {
         for (const item of items) {
           const page = mapPage(item);
+
           if (page.publishedVersionId) {
             pages.push(page);
           }
@@ -425,6 +436,7 @@ const listPublishedPagesForSession = async (
 
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.pages.list_failed"),
         ok: false,
@@ -440,6 +452,7 @@ const listPublishedPagesForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -482,8 +495,10 @@ const getPageForSession = async (
   cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -522,7 +537,9 @@ const getPageForSession = async (
     ) {
       return { notFound: true, ok: false };
     }
+
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -561,8 +578,10 @@ const listPageVersionsForSession = async (
   cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -589,6 +608,7 @@ const listPageVersionsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -628,6 +648,7 @@ export const createPage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -660,6 +681,7 @@ export const createPage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       ...(isSlugError(error) ? { field: "slug" as const } : {}),
       message: await mapErrorToMessage(
@@ -686,6 +708,7 @@ export const updatePage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -724,6 +747,7 @@ export const updatePage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -748,6 +772,7 @@ export const createPageVersion = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -780,6 +805,7 @@ export const createPageVersion = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -809,6 +835,7 @@ export const publishPageVersion = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -842,6 +869,7 @@ export const publishPageVersion = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -865,6 +893,7 @@ export const unpublishPage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -896,6 +925,7 @@ export const unpublishPage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -920,6 +950,7 @@ export const rollbackPageVersion = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -952,6 +983,7 @@ export const rollbackPageVersion = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -976,8 +1008,10 @@ const listPageTranslationsForSession = async (
   cacheTag(pageCacheTag(input.tenantId, input.pageId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -1007,7 +1041,9 @@ const listPageTranslationsForSession = async (
     ) {
       return { notFound: true, ok: false };
     }
+
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -1063,6 +1099,7 @@ export const createPageTranslation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1084,6 +1121,7 @@ export const createPageTranslation = async (
     const translation = response.translation
       ? mapPageTranslation(response.translation)
       : null;
+
     if (!translation?.id.trim()) {
       return {
         message: t("admin.pages.translations.add_failed"),
@@ -1095,6 +1133,7 @@ export const createPageTranslation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapTranslationErrorToMessage(
         error,
@@ -1119,6 +1158,7 @@ export const deletePageTranslation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -1140,6 +1180,7 @@ export const deletePageTranslation = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapTranslationErrorToMessage(
         error,

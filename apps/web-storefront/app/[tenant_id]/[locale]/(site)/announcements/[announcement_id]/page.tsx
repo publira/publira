@@ -39,13 +39,16 @@ export const generateMetadata = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(
     announcementDetailParamsSchema,
     rawParams
   );
+
   if (!parsedParams) {
     notFound();
   }
+
   const { announcement_id } = parsedParams;
 
   const [result, t] = await Promise.all([
@@ -56,6 +59,7 @@ export const generateMetadata = async (
   // An unavailable announcement reads as "not found" for the `<title>` alone;
   // the page body below says what actually happened.
   const announcement = result.ok ? result.value : null;
+
   if (!announcement) {
     return { title: t("storefront.errors.not_found_title") };
   }
@@ -91,10 +95,12 @@ const AnnouncementDetailBody = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(
     announcementDetailParamsSchema,
     rawParams
   );
+
   if (!parsedParams) {
     notFound();
   }
@@ -109,6 +115,7 @@ const AnnouncementDetailBody = async (
   }
 
   const announcement = result.value;
+
   if (!announcement) {
     notFound();
   }

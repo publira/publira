@@ -34,6 +34,7 @@ const GOOGLE_COOKIE_NAMES: ReadonlySet<string> = new Set([
   "FPID",
   "FPLC",
 ]);
+
 const GOOGLE_COOKIE_PREFIXES = [
   "_ga_",
   "_gac_",
@@ -66,6 +67,7 @@ const FORWARDED_REQUEST_HEADERS: ReadonlySet<string> = new Set([
   "referer",
   "user-agent",
 ]);
+
 const FORWARDED_REQUEST_HEADER_PREFIXES = ["sec-ch-", "sec-fetch-"] as const;
 
 /**
@@ -76,6 +78,7 @@ const FORWARDED_REQUEST_HEADER_PREFIXES = ["sec-ch-", "sec-fetch-"] as const;
  * passed on for Google to misread.
  */
 const COUNTRY_REGION_HEADER = "x-forwarded-countryregion";
+
 const countryRegionSchema = z
   .string()
   .trim()
@@ -110,6 +113,7 @@ const PASSED_RESPONSE_HEADERS: ReadonlySet<string> = new Set([
 
 const cookieName = (pair: string): string => {
   const separator = pair.indexOf("=");
+
   return (separator === -1 ? "" : pair.slice(0, separator)).trim();
 };
 
@@ -127,6 +131,7 @@ export const gatewayRequestHeaders = (
   { clientAddress, host }: { clientAddress: string | null; host: string }
 ): Record<string, string> => {
   const headers: Record<string, string> = {};
+
   for (const [name, value] of incoming) {
     if (
       FORWARDED_REQUEST_HEADERS.has(name) ||
@@ -137,24 +142,31 @@ export const gatewayRequestHeaders = (
       headers[name] = value;
     }
   }
+
   const cookie = (incoming.get("cookie") ?? "")
     .split(";")
     .map((pair) => pair.trim())
     .filter((pair) => isGoogleCookieName(cookieName(pair)))
     .join("; ");
+
   if (cookie) {
     headers.cookie = cookie;
   }
+
   if (clientAddress) {
     headers["x-forwarded-for"] = clientAddress;
   }
+
   const countryRegion = countryRegionSchema.safeParse(
     incoming.get(COUNTRY_REGION_HEADER)
   );
+
   if (countryRegion.success) {
     headers[COUNTRY_REGION_HEADER] = countryRegion.data;
   }
+
   headers.host = host;
+
   return headers;
 };
 
@@ -168,10 +180,12 @@ export const gatewayResponseHeaders = (
   received: IncomingHttpHeaders
 ): Headers => {
   const headers = new Headers();
+
   for (const [name, value] of Object.entries(received)) {
     if (value === undefined) {
       continue;
     }
+
     if (name === "set-cookie") {
       for (const cookie of [value].flat()) {
         if (isGoogleCookieName(cookieName(cookie))) {
@@ -182,6 +196,7 @@ export const gatewayResponseHeaders = (
       headers.set(name, [value].flat().join(", "));
     }
   }
+
   return headers;
 };
 
@@ -195,15 +210,19 @@ interface UpstreamTarget {
 
 const readGatewayUrlOverride = (): URL | null => {
   const raw = (process.env[GOOGLE_TAG_GATEWAY_URL_ENV] ?? "").trim();
+
   if (!raw) {
     return null;
   }
+
   const url = URL.canParse(raw) ? new URL(raw) : null;
+
   if (!(url?.protocol === "http:" || url?.protocol === "https:")) {
     throw new Error(
       `${GOOGLE_TAG_GATEWAY_URL_ENV} must be an absolute http or https URL, not ${JSON.stringify(raw)}`
     );
   }
+
   return url;
 };
 
@@ -220,10 +239,13 @@ const readGatewayUrlOverride = (): URL | null => {
 const upstreamTarget = ({ upstream }: GoogleTagGateway): UpstreamTarget => {
   if (upstream.mode === "server_container") {
     const origin = new URL(upstream.origin);
+
     return { checkAddress: true, host: origin.host, origin };
   }
+
   const host = `${upstream.tagId}.fps.goog`;
   const override = readGatewayUrlOverride();
+
   return override
     ? { checkAddress: false, host, origin: override }
     : { checkAddress: true, host, origin: new URL(`https://${host}`) };
@@ -273,19 +295,24 @@ export const forwardToGoogleTagGateway = async (
 ): Promise<NextResponse> => {
   const target = upstreamTarget(gateway);
   const incomingUrl = new URL(request.url);
+
   const url = new URL(
     `${incomingUrl.pathname}${incomingUrl.search}`,
     target.origin
   );
+
   const method = request.method.toUpperCase();
+
   const body =
     method === "GET" || method === "HEAD"
       ? null
       : Buffer.from(await request.arrayBuffer());
+
   const headers = gatewayRequestHeaders(request.headers, {
     clientAddress,
     host: target.host,
   });
+
   if (body) {
     headers["content-length"] = String(body.byteLength);
   }
@@ -294,6 +321,7 @@ export const forwardToGoogleTagGateway = async (
   const hostname = url.hostname.replaceAll(/^\[|\]$/gu, "");
 
   let received: IncomingMessage;
+
   try {
     const options: RequestOptions = {
       headers,
@@ -309,6 +337,7 @@ export const forwardToGoogleTagGateway = async (
       ...(isIP(hostname) === 0 && { servername: hostname }),
       signal: request.signal,
     };
+
     const outgoing = send(options);
     outgoing.setTimeout(idleTimeoutMs, () => {
       outgoing.destroy(new UpstreamTimeoutError());
@@ -324,22 +353,28 @@ export const forwardToGoogleTagGateway = async (
         error
       );
     }
+
     return error instanceof UpstreamTimeoutError
       ? textResponse(504, "Gateway Timeout")
       : textResponse(502, "Bad Gateway");
   }
 
   const status = received.statusCode ?? 502;
+
   if (status < 200 || status > 599) {
     received.resume();
+
     return textResponse(502, "Bad Gateway");
   }
+
   if (bodylessStatus(method, status)) {
     received.resume();
   }
+
   received.setTimeout(idleTimeoutMs, () => {
     received.destroy(new UpstreamTimeoutError());
   });
+
   return new NextResponse(
     bodylessStatus(method, status)
       ? null

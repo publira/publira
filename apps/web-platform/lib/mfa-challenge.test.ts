@@ -123,6 +123,7 @@ describe("writeMfaChallenge", () => {
   it("writes a cookie the browser cannot read, expiring with the challenge", async () => {
     const { MFA_CHALLENGE_COOKIE_NAME, readMfaChallenge, writeMfaChallenge } =
       await import("./mfa-challenge");
+
     const stored = challenge();
 
     await writeMfaChallenge(stored);
@@ -154,6 +155,7 @@ describe("finishMfaChallenge", () => {
   it("keeps where the sign-in was heading and drops the spent token", async () => {
     const { finishMfaChallenge, readMfaChallenge, readStoredMfaChallenge } =
       await import("./mfa-challenge");
+
     const stored = challenge();
 
     await finishMfaChallenge(stored);

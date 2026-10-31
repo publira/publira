@@ -30,6 +30,7 @@ const renderPreview = async (
   });
 
   const frame = container?.querySelector<HTMLElement>(".publira-theme-scope");
+
   if (!frame) {
     throw new Error("the preview frame is missing");
   }
@@ -73,10 +74,13 @@ describe("ThemePreview", () => {
     await renderPreview();
 
     const siteName = await screen.findAllByText("Aozora Books");
+
     const featured = await screen.findAllByText(
       "The Lighthouse at the End of Summer"
     );
+
     const second = await screen.findByText("Notes from the Night Bakery");
+
     const typeSamples = await screen.findAllByText(
       "日本語 · Latin · 한국어 · 中文"
     );

@@ -70,6 +70,7 @@ export const registerBrowserPushAction = async (
   // language.
   const submittedLocale = requireInputLocale(input);
   const parsed = registerInputSchema.safeParse(input);
+
   if (!parsed.success) {
     return { message: validationErrorMessage(submittedLocale), ok: false };
   }
@@ -99,6 +100,7 @@ export const unregisterBrowserPushAction = async (
   await assertSameOrigin();
   const submittedLocale = requireInputLocale(input);
   const parsed = unregisterInputSchema.safeParse(input);
+
   if (!parsed.success) {
     return { message: validationErrorMessage(submittedLocale), ok: false };
   }

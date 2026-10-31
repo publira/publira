@@ -44,6 +44,7 @@ const creatorCommonSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const creatorUpdateSchema = async (locale: Locale) => {
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
@@ -54,6 +55,7 @@ const creatorUpdateSchema = async (locale: Locale) => {
     id: requiredRecordId(t("admin.creators.validation.id_missing")),
   });
 };
+
 const creatorFormFields = {
   clearIconImage: { kind: "value", name: "clear_icon_image" },
   iconImage: { kind: "file", name: "icon_image" },
@@ -91,6 +93,7 @@ export const createCreatorAction = async (
   const locale = await getActionLocale(formData);
   const schema = await creatorCommonSchema(locale);
   const parsed = schema.safeParse(toFormDataInput(formData, creatorFormFields));
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "create");
   }
@@ -127,16 +130,19 @@ export const updateCreatorAction = async (
 ): Promise<CreatorActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     creatorUpdateSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ...creatorFormFields,
       id: { kind: "value", name: "creator_id" },
     })
   );
+
   if (!parsed.success) {
     return toFailure(toFormErrorMessage(parsed.error, { locale }), "update");
   }
@@ -150,6 +156,7 @@ export const updateCreatorAction = async (
     profileText,
     tenantId,
   } = parsed.data;
+
   const { iconImageContentType, iconImageData } = await toIconImage(iconImage);
 
   const result = await withAdminSessionReauth(() =>
@@ -201,6 +208,7 @@ const creatorAccountSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const creatorAccountFormFields = {
   creatorId: { kind: "value", name: "creator_id" },
   creatorPublicId: { kind: "value", name: "creator_public_id" },
@@ -214,21 +222,26 @@ export const linkCreatorAccountAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     creatorAccountSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, creatorAccountFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { creatorId, creatorPublicId, readerId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     linkCreatorAccount({ creatorId, readerId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -236,6 +249,7 @@ export const linkCreatorAccountAction = async (
   updateTag(`creator-${tenantId}-${creatorPublicId}`);
 
   const account = result.accounts.find((item) => item.id === readerId);
+
   return {
     message: t("admin.creators.accounts.linked", {
       name: account?.name || account?.email || "",
@@ -250,21 +264,26 @@ export const unlinkCreatorAccountAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     creatorAccountSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, creatorAccountFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { creatorId, creatorPublicId, readerId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     unlinkCreatorAccount({ creatorId, readerId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

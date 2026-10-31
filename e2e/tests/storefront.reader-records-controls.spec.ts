@@ -47,9 +47,11 @@ const readingProgress = (page: Page) => page.getByLabel(VIEWER_PROGRESS_LABEL);
 const tapViewer = async (page: Page, ratio: number): Promise<void> => {
   const viewport = page.locator(".pcv-viewport");
   const box = await viewport.boundingBox();
+
   if (box === null) {
     throw new Error("the viewer is not laid out");
   }
+
   await viewport.click({
     position: { x: box.width * ratio, y: box.height / 4 },
   });

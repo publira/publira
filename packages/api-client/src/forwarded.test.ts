@@ -80,6 +80,7 @@ describe("createForwardedInterceptor", () => {
     const resolve = vi.fn(() =>
       Promise.resolve({ "X-Forwarded-For": "203.0.113.7" })
     );
+
     const header = new Headers();
 
     await run(resolve, header);
@@ -92,6 +93,7 @@ describe("createForwardedInterceptor", () => {
     const resolve = vi.fn(() =>
       Promise.resolve({ "X-Forwarded-For": "203.0.113.7" })
     );
+
     const header = new Headers({ Authorization: "Bearer service-token" });
 
     await run(resolve, header, serviceCallContextValues());
@@ -109,6 +111,7 @@ describe("createForwardedInterceptor", () => {
           "X-Forwarded-For": "203.0.113.7",
         })
       );
+
       const header = new Headers({
         Authorization: "Bearer session",
         [name]: "198.51.100.4",

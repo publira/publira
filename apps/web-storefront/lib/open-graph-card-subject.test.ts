@@ -20,15 +20,19 @@ vi.mock("./catalog", () => ({
   getSeriesDetail: reads.getSeriesDetail,
   listPublishedGenres: reads.listPublishedGenres,
 }));
+
 vi.mock("./creators", () => ({
   CREATOR_SERIES_PAGE_SIZE: 20,
   getPublishedCreatorDetail: reads.getPublishedCreatorDetail,
 }));
+
 vi.mock("./labels", () => ({
   LABEL_SERIES_PAGE_SIZE: 20,
   getPublishedLabelDetail: reads.getPublishedLabelDetail,
 }));
+
 vi.mock("./pages", () => ({ getPublishedPage: reads.getPublishedPage }));
+
 vi.mock("./tenant", () => ({
   getTenantDefaultLocale: reads.getTenantDefaultLocale,
   getTenantPublicOrigin: reads.getTenantPublicOrigin,

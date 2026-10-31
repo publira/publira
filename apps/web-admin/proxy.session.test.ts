@@ -37,6 +37,7 @@ const request = (url: string, cookie?: string): NextRequest => {
   const nextUrl = Object.assign(new URL(url), {
     clone: () => new URL(url),
   });
+
   return {
     cookies: {
       get: (name: string) =>
@@ -85,6 +86,7 @@ describe("web-admin proxy session handling", () => {
     const cookie = await sealedCookie(
       Temporal.Now.instant().subtract({ minutes: 1 }).toString()
     );
+
     const { proxy } = await import("./proxy");
 
     const response = await proxy(

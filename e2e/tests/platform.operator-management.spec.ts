@@ -79,6 +79,7 @@ const openWhen = async (
     .poll(
       async () => {
         await page.goto(platformUrl(path));
+
         return await ready();
       },
       { message: `${path} never caught up with the reset`, timeout: 30_000 }
@@ -172,6 +173,7 @@ test.describe("platform operator management", () => {
 
   const trackOperator = (email: string): string => {
     invitedEmails.push(email);
+
     return email;
   };
 
@@ -213,6 +215,7 @@ test.describe("platform operator management", () => {
       name: `E2E First Password Operator ${suffix}`,
       roleLabel: "Auditor",
     });
+
     // The account's password is one nobody is told, so the mailed link is the
     // only way in.
     const token = tokenFromLink(
@@ -271,6 +274,7 @@ test.describe("platform operator management", () => {
     const role = roleForm(page).getByRole("combobox");
     await openWhen(page, detailPath, async () => {
       await expect(role).toBeVisible();
+
       return (await role.textContent()) === "Operator";
     });
     await expect(
@@ -325,10 +329,12 @@ test.describe("platform operator management", () => {
       exact: true,
       name: "Deactivate",
     });
+
     await openWhen(page, detailPath, async () => {
       await page
         .getByRole("heading", { level: 1 })
         .waitFor({ state: "visible" });
+
       return (await deactivate.count()) > 0;
     });
     await confirmDangerAction(page, "Deactivate", "Deactivate");
@@ -410,6 +416,7 @@ test.describe("platform operator management", () => {
       await page
         .getByRole("heading", { level: 1, name: "Users" })
         .waitFor({ state: "visible" });
+
       return (await listRow(page, NOTIFICATION_INBOX_MEMBER.name).count()) > 0;
     });
     await expect(

@@ -55,10 +55,13 @@ const parseTenantId = async (
     getMessagesFor(locale),
     tenantIdFormSchema(locale),
   ]);
+
   const tenantId = tenantIdSchema.safeParse(formData.get("tenant_id"));
+
   if (!tenantId.success) {
     return { message: t("admin.settings.tenant_missing") };
   }
+
   return { tenantId: tenantId.data };
 };
 
@@ -74,16 +77,21 @@ const parsePasskeyForm = async (
     getMessagesFor(locale),
     parseTenantId(formData, locale),
   ]);
+
   if ("message" in tenant) {
     return tenant;
   }
+
   const notFound = t("admin.settings.mfa.passkey_not_found");
+
   const id = requiredTrimmedString(notFound, 64).safeParse(
     formData.get("passkey_id")
   );
+
   if (!id.success) {
     return { message: notFound };
   }
+
   return { id: id.data, tenantId: tenant.tenantId };
 };
 
@@ -100,11 +108,13 @@ const parseMfaForm = async (
     getMessagesFor(locale),
     parseTenantId(formData, locale),
   ]);
+
   if ("message" in tenant) {
     return tenant;
   }
 
   const code = mfaCodeFormSchema.safeParse(formData.get("code"));
+
   if (!code.success) {
     return { message: t("admin.auth.mfa.code_required") };
   }
@@ -119,6 +129,7 @@ export const startAccountMfaEnrollmentAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const input = await parseTenantId(formData, locale);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -126,6 +137,7 @@ export const startAccountMfaEnrollmentAction = async (
   const result = await withAdminSessionReauth(() =>
     startAdminMfaEnrollment(input.tenantId, "", locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -144,10 +156,12 @@ export const confirmAccountMfaEnrollmentAction = async (
 ): Promise<MfaEnrollmentConfirmState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseMfaForm(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -155,6 +169,7 @@ export const confirmAccountMfaEnrollmentAction = async (
   const result = await withAdminSessionReauth(() =>
     confirmAdminMfaEnrollment(input.tenantId, "", input.code, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -177,10 +192,12 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
 ): Promise<MfaRecoveryCodesState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseMfaForm(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -192,6 +209,7 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -217,6 +235,7 @@ export const beginAccountPasskeyConfirmationAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const input = await parseTenantId(formData, locale);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -224,9 +243,11 @@ export const beginAccountPasskeyConfirmationAction = async (
   const result = await withAdminSessionReauth(() =>
     beginAdminPasskeyConfirmation(input.tenantId, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
   return { message: "", ok: true, optionsJson: result.optionsJson };
 };
 
@@ -239,18 +260,22 @@ export const regenerateAccountMfaRecoveryCodesWithPasskeyAction = async (
 ): Promise<MfaRecoveryCodesState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseTenantId(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
+
   // A submission without a credential did not come from the ceremony, so it
   // is reported the way a ceremony that failed in the browser is.
   const credential = passkeyCredentialFormSchema.safeParse(
     formData.get("credential")
   );
+
   if (!credential.success) {
     return { message: t("admin.auth.mfa.errors.passkey_failed"), ok: false };
   }
@@ -262,6 +287,7 @@ export const regenerateAccountMfaRecoveryCodesWithPasskeyAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -281,10 +307,12 @@ export const disableAccountMfaAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseMfaForm(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -292,6 +320,7 @@ export const disableAccountMfaAction = async (
   const result = await withAdminSessionReauth(() =>
     disableAdminMfa(input.tenantId, input.code, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -318,6 +347,7 @@ export const beginAccountPasskeyRegistrationAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const input = await parseTenantId(formData, locale);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -325,9 +355,11 @@ export const beginAccountPasskeyRegistrationAction = async (
   const result = await withAdminSessionReauth(() =>
     beginAdminPasskeyRegistration(input.tenantId, "", locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
+
   return { message: "", ok: true, optionsJson: result.optionsJson };
 };
 
@@ -341,18 +373,22 @@ export const finishAccountPasskeyRegistrationAction = async (
 ): Promise<PasskeyRegistrationState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parseTenantId(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
+
   // A submission without a credential did not come from the ceremony, so it
   // is reported the way a ceremony that failed in the browser is.
   const credential = passkeyCredentialFormSchema.safeParse(
     formData.get("credential")
   );
+
   if (!credential.success) {
     return { message: t("admin.auth.mfa.errors.passkey_failed"), ok: false };
   }
@@ -360,6 +396,7 @@ export const finishAccountPasskeyRegistrationAction = async (
   const result = await withAdminSessionReauth(() =>
     finishAdminPasskeyRegistration(input.tenantId, "", credential.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -380,15 +417,19 @@ export const renameAccountPasskeyAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, input, nameSchema] = await Promise.all([
     getMessagesFor(locale),
     parsePasskeyForm(formData, locale),
     passkeyNameFormSchema(locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
+
   const name = nameSchema.safeParse(formData.get("name"));
+
   if (!name.success) {
     return {
       message: name.error.issues[0]?.message ?? "",
@@ -399,6 +440,7 @@ export const renameAccountPasskeyAction = async (
   const result = await withAdminSessionReauth(() =>
     renameAdminPasskey(input.tenantId, input.id, name.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -414,10 +456,12 @@ export const deleteAccountPasskeyAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, input] = await Promise.all([
     getMessagesFor(locale),
     parsePasskeyForm(formData, locale),
   ]);
+
   if ("message" in input) {
     return { message: input.message, ok: false };
   }
@@ -425,6 +469,7 @@ export const deleteAccountPasskeyAction = async (
   const result = await withAdminSessionReauth(() =>
     deleteAdminPasskey(input.tenantId, input.id, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

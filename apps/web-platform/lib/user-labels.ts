@@ -19,12 +19,15 @@ export const getEndUserStatusLabel = async (
     case "active": {
       return t("platform.common.account_status.active");
     }
+
     case "inactive": {
       return t("platform.common.account_status.inactive");
     }
+
     case "suspended": {
       return t("platform.common.account_status.suspended");
     }
+
     default: {
       return status;
     }
@@ -36,9 +39,11 @@ export const getEndUserStatusTone = (status: string): EndUserStatusTone => {
     case "active": {
       return "success";
     }
+
     case "suspended": {
       return "destructive";
     }
+
     default: {
       return "info";
     }

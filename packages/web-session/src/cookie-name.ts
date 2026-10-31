@@ -10,11 +10,14 @@ const COOKIE_SUFFIX_PATTERN = /^-[a-z][a-z0-9-]{0,31}$/u;
  */
 export const profileCookieName = (baseName: string): string => {
   const suffix = process.env.PUBLIRA_COOKIE_SUFFIX?.trim() ?? "";
+
   if (!suffix) {
     return baseName;
   }
+
   if (!COOKIE_SUFFIX_PATTERN.test(suffix)) {
     throw new Error("PUBLIRA_COOKIE_SUFFIX must match -[a-z][a-z0-9-]{0,31}");
   }
+
   return `${baseName}${suffix}`;
 };

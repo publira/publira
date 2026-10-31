@@ -32,10 +32,12 @@ export const loginAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     loginFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
@@ -43,6 +45,7 @@ export const loginAction = async (
       password: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -53,6 +56,7 @@ export const loginAction = async (
   const { email, next: nextPath, password } = parsed.data;
 
   const result = await loginPlatform(email, password);
+
   if (!result.ok) {
     // A refusal for too many attempts came before the password was checked,
     // so it says nothing about whether the password was right, and neither
@@ -61,12 +65,14 @@ export const loginAction = async (
       case "rate-limited": {
         return { message: t("errors.rpc.rate-limited"), ok: false };
       }
+
       case "processing": {
         return {
           message: t("platform.auth.login.processing_failed"),
           ok: false,
         };
       }
+
       default: {
         return { message: t("platform.auth.login.failed"), ok: false };
       }

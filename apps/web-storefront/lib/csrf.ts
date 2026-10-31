@@ -11,6 +11,7 @@ const sameHost = (left: string, right: string): boolean =>
 const isMatchingOrigin = (value: string, host: string): boolean => {
   try {
     const origin = new URL(value);
+
     return (
       isHttpOrigin(origin) &&
       origin.origin === value &&
@@ -24,6 +25,7 @@ const isMatchingOrigin = (value: string, host: string): boolean => {
 const isMatchingReferer = (value: string, host: string): boolean => {
   try {
     const referer = new URL(value);
+
     return isHttpOrigin(referer) && sameHost(referer.host, host);
   } catch {
     return false;
@@ -46,16 +48,19 @@ export const isSameOriginRequest = (requestHeaders: {
   get: (name: string) => string | null;
 }): boolean => {
   const host = getRequestHost(requestHeaders);
+
   if (!host) {
     return false;
   }
 
   const origin = requestHeaders.get("origin")?.trim();
+
   if (origin) {
     return isMatchingOrigin(origin, host);
   }
 
   const referer = requestHeaders.get("referer")?.trim();
+
   return referer !== undefined && isMatchingReferer(referer, host);
 };
 

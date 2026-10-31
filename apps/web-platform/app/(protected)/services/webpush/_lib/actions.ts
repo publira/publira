@@ -25,6 +25,7 @@ export const updatePlatformWebPushSubjectAction = async (
   const locale = await getPlatformLocale();
   const schema = await webPushFormSchema(locale);
   const parsed = schema.safeParse(toFormDataInput(formData, webPushFormFields));
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -36,6 +37,7 @@ export const updatePlatformWebPushSubjectAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -44,5 +46,6 @@ export const updatePlatformWebPushSubjectAction = async (
   updateTag(platformAuditLogsCacheTag);
 
   const t = await getMessagesFor(locale);
+
   return { message: t("platform.webpush.saved"), ok: true };
 };

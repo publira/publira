@@ -21,18 +21,23 @@ export const createEmailRendererServer = () =>
         if (request.method !== "GET") {
           response.writeHead(404);
           response.end();
+
           return;
         }
 
         const pathname = request.url?.split("?", 1)[0];
+
         if (pathname === "/livez") {
           response.writeHead(200, livezHeaders);
           response.end("ok");
+
           return;
         }
+
         if (pathname === "/readyz") {
           response.writeHead(200, readyzHeaders);
           response.end('{"status":"ok","checks":{}}\n');
+
           return;
         }
 
@@ -49,8 +54,10 @@ export const parsePort = (value: string | undefined): number => {
   }
 
   const port = Number(value);
+
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error("PORT must be an integer between 1 and 65535");
   }
+
   return port;
 };

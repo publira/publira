@@ -32,6 +32,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
     getLocale(),
     getMessages(),
   ]);
+
   const settings = await getCoinSettings(tenantId, locale);
 
   return {
@@ -50,6 +51,7 @@ const HISTORY_HEADING_ID = "coin-history-heading";
 
 const CoinBalanceSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [balance, timeZone] = await Promise.all([
     getMyCoinBalance(tenantId, locale),
     getTenantDisplayTimeZone(tenantId),
@@ -58,6 +60,7 @@ const CoinBalanceSection = async () => {
   if (!balance.ok && balance.requiresSignIn) {
     await redirectToLogin(locale, coinsPageHref(""), tenantId);
   }
+
   if (!balance.ok) {
     return (
       <SectionError.Root>
@@ -72,6 +75,7 @@ const CoinBalanceSection = async () => {
       </SectionError.Root>
     );
   }
+
   // The tenant turned its coins off after the page read them.
   if (!balance.value) {
     return null;
@@ -97,16 +101,20 @@ const CoinsContent = async ({
   searchParams: CoinsPageSearchParams;
 }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [settingsResult, tenant] = await Promise.all([
     getCoinSettings(tenantId, locale),
     getTenantSiteInfo(tenantId),
   ]);
+
   if (!settingsResult.ok) {
     return <PageLoadError description={settingsResult.message} />;
   }
+
   if (!settingsResult.value) {
     notFound();
   }
+
   const settings = settingsResult.value;
 
   return (

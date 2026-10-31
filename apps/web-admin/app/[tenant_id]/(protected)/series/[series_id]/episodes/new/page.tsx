@@ -34,10 +34,12 @@ import { createEpisodeAction } from "../_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isEditor] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantEditor(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -56,6 +58,7 @@ type NewEpisodePageProps =
 const resolveSeriesId = async (params: NewEpisodePageProps["params"]) => {
   const { series_id: seriesId } = await params;
   guardPlaceholder(seriesId);
+
   return seriesId;
 };
 
@@ -63,6 +66,7 @@ const NewEpisodeContext = async ({
   params,
 }: Pick<NewEpisodePageProps, "params">) => {
   const seriesId = await resolveSeriesId(params);
+
   return `Series ${seriesId}`;
 };
 
@@ -96,7 +100,9 @@ const NewEpisodeFormData = async ({
     resolveSeriesId(params),
     getTenantId(),
   ]);
+
   const locale = await getLocale(tenantId);
+
   const [timeZone, seriesResult, purchaseSettingsResult, currency] =
     await Promise.all([
       getTenantDisplayTimeZone(tenantId),
@@ -104,12 +110,14 @@ const NewEpisodeFormData = async ({
       getTenantPurchaseSettings(tenantId, locale),
       getTenantCurrency(tenantId),
     ]);
+
   await redirectToLoginIfSessionRejected(purchaseSettingsResult);
 
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {
       notFound();
     }
+
     return (
       <SectionError.Root>
         <SectionError.Heading>

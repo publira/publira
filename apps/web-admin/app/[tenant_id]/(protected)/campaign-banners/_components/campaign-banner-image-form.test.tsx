@@ -102,8 +102,10 @@ describe("CampaignBannerImageForm", () => {
     await waitFor(() => {
       expect(mockUpdateCampaignBannerImageAction).toHaveBeenCalledOnce();
     });
+
     const [, formData] = mockUpdateCampaignBannerImageAction.mock
       .calls[0] as unknown as [ActionForm.State, FormData];
+
     expect(formData.get("campaign_banner_id")).toBe(banner.id);
     expect(formData.get("link_url")).toBe("/series/SERIES001");
     // The API replaces it with the image, so leaving it out would clear it.

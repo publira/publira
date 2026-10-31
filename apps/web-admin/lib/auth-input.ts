@@ -44,6 +44,7 @@ export const nextPathFormSchema = z.preprocess((value) => {
   }
 
   const trimmed = value.trim();
+
   if (trimmed.length === 0 || trimmed.length > NEXT_PATH_MAX_LENGTH) {
     return "/";
   }
@@ -75,6 +76,7 @@ export const authTokenFormSchema = async (locale: Locale) => {
       error: t("admin.auth.fields.invalid_token"),
     });
 };
+
 export const inviteTokenFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -87,6 +89,7 @@ export const inviteTokenFormSchema = async (locale: Locale) => {
       error: t("admin.auth.accept_invite.invalid_token"),
     });
 };
+
 /**
  * Email shown on a login / reset screen. Not an input we act on as a
  * destination, so a malformed value is dropped rather than 404ing the page.

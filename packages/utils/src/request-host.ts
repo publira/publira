@@ -40,11 +40,13 @@ export const getRequestHost = (headers: HeadersLike): string | null =>
 const normalizeRequestHost = (value: string): string => {
   let host = value.trim().toLowerCase();
   const scheme = host.indexOf("://");
+
   if (scheme !== -1) {
     host = host.slice(scheme + 3);
   }
 
   const slash = host.indexOf("/");
+
   if (slash !== -1) {
     host = host.slice(0, slash);
   }
@@ -55,10 +57,12 @@ const normalizeRequestHost = (value: string): string => {
 /** The stored tenant domains {@link getRequestHost} can match. */
 export const getTenantDomainCandidates = (headers: HeadersLike): string[] => {
   const host = getRequestHost(headers);
+
   if (!host) {
     return [];
   }
 
   const normalized = normalizeRequestHost(host);
+
   return normalized.length > 0 ? [normalized] : [];
 };

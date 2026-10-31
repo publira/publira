@@ -53,6 +53,7 @@ const adminUrl = (pathname: string): string =>
 
 const auditLogsUrl = (params: Record<string, string> = {}): string => {
   const query = new URLSearchParams(params).toString();
+
   return adminUrl(query ? `/audit-logs?${query}` : "/audit-logs");
 };
 
@@ -70,6 +71,7 @@ const auditRow = (page: Page, targetId: string): Locator =>
 /** Target ids of the listed audit rows, in table order. */
 const auditTargetIds = async (page: Page): Promise<string[]> => {
   const texts = await auditRows(page).allTextContents();
+
   return texts.map((text) => text.match(/rpt-audit-\d{3}/u)?.[0] ?? "");
 };
 
@@ -107,6 +109,7 @@ const moveAuditPage = async (
   await expect
     .poll(async () => {
       const ids = await auditTargetIds(page);
+
       return ids.length > 0 && ids[0] !== fromLeadingId;
     })
     .toBe(true);
@@ -116,12 +119,14 @@ const moveAuditPage = async (
 const downloadAuditCsv = async (page: Page): Promise<Download> => {
   const downloading = page.waitForEvent("download");
   await page.getByRole("link", { exact: true, name: "Download CSV" }).click();
+
   return downloading;
 };
 
 /** A downloaded CSV's header and body rows, split on its CRLF endings. */
 const csvRows = async (download: Download): Promise<string[]> => {
   const csv = await readFile(await download.path(), "utf-8");
+
   return csv.split("\r\n").filter((row) => row !== "");
 };
 
@@ -173,11 +178,14 @@ const expectedPeriodText = (timeZone: string): string => {
   const end = Temporal.Now.plainDateISO(timeZone).subtract({
     days: 1,
   });
+
   const start = end.subtract({ days: READ_THROUGH_WINDOW_DAYS - 1 });
+
   const formatter = new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeZone: "UTC",
   });
+
   const format = (date: Temporal.PlainDate): string =>
     formatter.format(date.toZonedDateTime("UTC").epochMilliseconds);
 
@@ -232,6 +240,7 @@ test.describe("admin reporting screens", () => {
       page,
       `E2E Audit Label ${uniqueSuffix()}`
     );
+
     createdLabelIds.push(labelPublicId);
 
     // The audit row is written by an asynchronous recorder behind the API, so
@@ -547,6 +556,7 @@ test.describe("admin reporting screens", () => {
     page,
   }) => {
     await signInAsSeedAdmin(page, "/audit-logs");
+
     const downloadLink = page.getByRole("link", {
       exact: true,
       name: "Download CSV",

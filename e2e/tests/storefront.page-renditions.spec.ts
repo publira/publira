@@ -20,10 +20,12 @@ const recordFirstPageWidths = (page: Page): number[] => {
   page.on("request", (request) => {
     const url = new URL(request.url());
     const width = url.searchParams.get("w");
+
     if (url.pathname === firstPageImagePath && width !== null) {
       widths.push(Number(width));
     }
   });
+
   return widths;
 };
 

@@ -17,6 +17,7 @@ import { StorageSettingsForm } from "./_components/storage-settings-form";
 export const generateMetadata = async (): Promise<Metadata> => {
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
+
   return { title: t("platform.storage.page_title") };
 };
 

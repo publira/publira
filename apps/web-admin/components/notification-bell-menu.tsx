@@ -11,6 +11,7 @@ const NotificationBellCloseContext = createContext<(() => void) | null>(null);
 
 const useNotificationBellClose = () => {
   const close = useContext(NotificationBellCloseContext);
+
   if (!close) {
     throw new Error(
       "NotificationBell links must be rendered inside NotificationBell"
@@ -158,6 +159,7 @@ export const NotificationBellItem = ({
   isRead: boolean;
 }) => {
   const close = useNotificationBellClose();
+
   const content = (
     <span className="flex items-start gap-2">
       <span

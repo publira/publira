@@ -132,6 +132,7 @@ const EditSeriesTitle = async ({
   searchParams,
 }: Pick<EditSeriesPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.series.eye_catch_title" />
   ) : (
@@ -143,6 +144,7 @@ const EditSeriesDescription = async ({
   searchParams,
 }: Pick<EditSeriesPageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.series.eye_catch_description" />
   ) : (
@@ -158,10 +160,13 @@ const EditSeriesTabs = async ({
     params,
     resolveActiveTab(searchParams),
   ]);
+
   const parsedParams = parseRouteParams(editSeriesParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { series_id: seriesId } = parsedParams;
 
   return <SeriesTabNav current={activeTab} seriesId={seriesId} />;
@@ -193,6 +198,7 @@ const SeriesWaitFreeSection = async ({
   tenantId: string;
 }) => {
   const result = await getSeriesWaitFreeSettings({ seriesId });
+
   // A failed read has no rule to open the form on, and a save from defaults
   // would write them over the one the series holds.
   if (!result.ok) {
@@ -211,6 +217,7 @@ const SeriesWaitFreeSection = async ({
   }
 
   const { settings } = result;
+
   return (
     <SeriesWaitFreeForm
       action={updateSeriesWaitFreeSettingsAction}
@@ -233,6 +240,7 @@ const SeriesFreeAfterSection = async ({
   tenantId: string;
 }) => {
   const result = await getSeriesFreeAfterSettings({ seriesId });
+
   // A failed read has no rule to open the form on, and a save from defaults
   // would write them over the one the series holds.
   if (!result.ok) {
@@ -251,6 +259,7 @@ const SeriesFreeAfterSection = async ({
   }
 
   const { settings } = result;
+
   return (
     <SeriesFreeAfterForm
       action={updateSeriesFreeAfterSettingsAction}
@@ -274,15 +283,19 @@ const SeriesEyeCatchTabData = async ({
     getSeries({ publicId: seriesId }),
     findTenantLocales(tenantId),
   ]);
+
   if (!result.ok) {
     if (result.notFound) {
       // Missing, or another tenant's series — never told apart. Renders
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
+
     return <SeriesLoadError message={result.message} />;
   }
+
   const translation = titleTranslation(result.translations, tenantLocales);
+
   return (
     // Both cards hold the picked file and the chosen ratio in local state,
     // so the tab is keyed by the series it belongs to: moving to another
@@ -317,14 +330,19 @@ const EditSeriesFormData = async ({
     resolveActiveTab(searchParams),
     getTenantId(),
   ]);
+
   const parsedParams = parseRouteParams(editSeriesParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { series_id: seriesId } = parsedParams;
+
   if (activeTab === "eye-catch") {
     return <SeriesEyeCatchTabData seriesId={seriesId} tenantId={tenantId} />;
   }
+
   const locale = await getLocale(tenantId);
 
   const [
@@ -369,10 +387,12 @@ const EditSeriesFormData = async ({
     if (result.notFound) {
       notFound();
     }
+
     return <SeriesLoadError message={result.message} />;
   }
 
   const { translations } = result;
+
   const { locales, shownLocale, translation, visibleLocales } =
     resolveTranslationToEdit({
       requestedLocale: requestedTranslationLocale(rawSearchParams),

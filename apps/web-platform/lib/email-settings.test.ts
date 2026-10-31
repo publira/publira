@@ -306,6 +306,7 @@ describe("sendPlatformSmtpTestEmail", () => {
       replyTo: "",
       username: "mailer",
     };
+
     mockSendPlatformSmtpTestEmail.mockRejectedValueOnce(
       smtpAuthenticationError()
     );

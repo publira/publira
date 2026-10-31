@@ -50,6 +50,7 @@ const subscribeForm = (): FormData => {
   data.set("locale", "en");
   data.set("planId", planId);
   data.set("tenantId", tenantId);
+
   return data;
 };
 

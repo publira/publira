@@ -26,9 +26,11 @@ const PluginsMessage = ({
   if (!pluginsListed) {
     return <ClientMessage message="platform.search.test.plugins_unlisted" />;
   }
+
   if (plugins.length === 0) {
     return <ClientMessage message="platform.search.test.plugins_none" />;
   }
+
   return (
     <ClientMessage
       message="platform.search.test.plugins"

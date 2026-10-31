@@ -49,6 +49,7 @@ export const requestPlatformEmailChangeAction = async (
       newEmail: { kind: "value", name: "new_email" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }

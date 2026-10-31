@@ -215,11 +215,13 @@ describe("MfaEnrollFlow", () => {
 
   it("registers a passkey instead and shows the recovery codes it came with", async () => {
     const creationOptions = { challenge: "Y2hhbGxlbmdl", rp: { name: "Seed" } };
+
     const credential = {
       id: "credential-id",
       response: {},
       type: "public-key",
     };
+
     beginPasskey.mockResolvedValue({
       message: "",
       ok: true,

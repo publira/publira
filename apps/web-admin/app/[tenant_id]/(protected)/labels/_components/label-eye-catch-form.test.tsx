@@ -96,10 +96,12 @@ describe("LabelEyeCatchForm", () => {
         expect(control.disabled).toBe(true);
       }
     });
+
     const [, formData] = pendingAction.mock.calls[0] as unknown as [
       LabelActionState,
       FormData,
     ];
+
     expect(formData.get("label_id")).toBe("label-1");
     expect(formData.get("name")).toBe("Monthly Novels");
     expect(formData.get("current_eye_catch_image_updated_at")).toBe(

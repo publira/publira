@@ -89,11 +89,13 @@ const isStringRecord = (value: unknown): value is Record<string, string> =>
  */
 const parsePushMessage = (event: PushWorkerPushEvent): PushMessage | null => {
   let raw: unknown;
+
   try {
     raw = event.data?.json();
   } catch {
     return null;
   }
+
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
@@ -103,6 +105,7 @@ const parsePushMessage = (event: PushWorkerPushEvent): PushMessage | null => {
     data?: unknown;
     title?: unknown;
   };
+
   if (typeof title !== "string" || title.trim() === "") {
     return null;
   }
@@ -133,12 +136,15 @@ const clickTargetUrl = (scope: PushWorkerScope, data: unknown): string => {
     typeof data === "object" && data !== null && "route" in data
       ? (data as { route?: unknown }).route
       : undefined;
+
   const siteRoot = new URL("/", scope.location.origin);
+
   if (typeof route !== "string" || !route.startsWith("/")) {
     return siteRoot.toString();
   }
 
   const target = new URL(route, siteRoot);
+
   return target.origin === siteRoot.origin
     ? target.toString()
     : siteRoot.toString();
@@ -172,12 +178,15 @@ const openPushTarget = async (
     includeUncontrolled: true,
     type: "window",
   });
+
   const existing = clients.find((client) =>
     client.url.startsWith(scope.location.origin)
   );
+
   if (existing) {
     await existing.focus();
     await existing.navigate(target);
+
     return;
   }
 
@@ -188,6 +197,7 @@ const openPushTarget = async (
 export const registerPushHandlers = (scope: PushWorkerScope): void => {
   scope.addEventListener("push", (event) => {
     const message = parsePushMessage(event);
+
     if (!message) {
       return;
     }

@@ -52,6 +52,7 @@ for (const locale of DOCS_LOCALES) {
         exact: true,
         name: t("admin.settings.sign_in.apple.title"),
       });
+
       const google = page.getByRole("group", {
         exact: true,
         name: t("admin.settings.sign_in.google.title"),
@@ -77,16 +78,20 @@ for (const locale of DOCS_LOCALES) {
           name: t("admin.settings.sign_in.apple.key_id"),
         })
         .fill("2X9R4HXF34");
+
       // The run in the locale before this one saved a key, which the form
       // keeps until it is asked to take another.
       const changeKey = apple.getByRole("button", {
         name: t("admin.settings.sign_in.key_change"),
       });
+
       const keyFile = page.locator('input[name="apple_private_key_file"]');
       await expect(changeKey.or(keyFile).first()).toBeAttached();
+
       if ((await changeKey.count()) > 0) {
         await changeKey.click();
       }
+
       await keyFile.setInputFiles({
         buffer: Buffer.from(APPLE_KEY),
         mimeType: "application/octet-stream",

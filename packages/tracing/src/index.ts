@@ -33,9 +33,11 @@ export {
  */
 const defaultSampler = (env: TracingEnv): Sampler | undefined => {
   const sampling = rootSampling(env);
+
   if (sampling.kind === "operator") {
     return undefined;
   }
+
   return new ParentBasedSampler({
     root:
       sampling.kind === "always_on"
@@ -65,6 +67,7 @@ const defaultSampler = (env: TracingEnv): Sampler | undefined => {
  */
 export const registerTracing = (serviceName: string): void => {
   const { env } = process;
+
   if (!isTracingEnabled(env)) {
     return;
   }

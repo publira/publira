@@ -43,18 +43,25 @@ const RESEND_VERIFICATION_PATH = "/resend-verification";
  */
 const SIGNUP_SENT_MESSAGE =
   "We sent an email to the address you entered. Open it to continue.";
+
 /** Subject of the mail a sign-up for a registered address sends its owner. */
 const SIGNUP_ATTEMPT_SUBJECT = "Seed Tenant sign-up attempt";
+
 const VERIFIED_MESSAGE =
   "Your email address has been confirmed. You can sign in now.";
+
 const VERIFY_FAILED_MESSAGE =
   "Could not confirm your email address. The link may have expired or be invalid.";
+
 const RESET_SENT_MESSAGE =
   "We sent a reset email. Open the link in it to set a new password.";
+
 const RESET_DONE_MESSAGE =
   "Your password has been reset. Sign in with your new password.";
+
 const RESET_CONFIRM_FAILED_MESSAGE =
   "Could not reset your password. The link may have expired or be invalid.";
+
 /**
  * The resend page says the same thing for every address, the way the reset
  * request does: a sign-up waiting to be confirmed, one already confirmed, and
@@ -62,13 +69,17 @@ const RESET_CONFIRM_FAILED_MESSAGE =
  */
 const RESEND_SENT_MESSAGE =
   "We sent a confirmation email. Open the link in it to finish signing up.";
+
 /** What a failed confirmation offers instead of a dead end. */
 const RESEND_VERIFICATION_LINK = "Send a new confirmation email";
+
 /** What each flow says about a link that arrived without its token. */
 const VERIFY_LINK_INVALID_MESSAGE =
   "This confirmation link is not valid. Request a new confirmation email.";
+
 const RESET_LINK_INVALID_MESSAGE =
   "This password reset link is not valid. Request a new reset email.";
+
 const RESET_PASSWORD_LINK = "Back to password reset";
 
 const accountStatus = (email: string): string =>
@@ -140,6 +151,7 @@ const expireResetToken = (): void => {
 
 const sessionCookie = async (page: Page): Promise<string | undefined> => {
   const cookies = await page.context().cookies();
+
   return sessionCookieValue(cookies, HOST_SESSION_COOKIE_NAME);
 };
 
@@ -399,6 +411,7 @@ test.describe("web-storefront reader account lifecycle", () => {
     const message = await waitForMessageTo(
       ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email
     );
+
     const token = tokenFromLink(message, VERIFY_PATH);
     expireVerificationToken(ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email);
 
@@ -443,6 +456,7 @@ test.describe("web-storefront reader account lifecycle", () => {
     const message = await waitForMessageTo(
       ACCOUNT_LIFECYCLE_EXPIRED_SIGNUP.email
     );
+
     await openWithToken(page, VERIFY_PATH, tokenFromLink(message, VERIFY_PATH));
 
     await expect(page.getByText(VERIFIED_MESSAGE)).toBeVisible();

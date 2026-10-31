@@ -216,6 +216,7 @@ describe("coins", () => {
     );
 
     const { reorderCoinPacks } = await import("./coins");
+
     const result = await reorderCoinPacks(
       {
         expectedIds: [PACK_ONE, PACK_TWO, PACK_THREE],
@@ -259,6 +260,7 @@ describe("coins", () => {
     });
 
     const { reorderCoinPacks } = await import("./coins");
+
     const result = await reorderCoinPacks(
       {
         expectedIds: [PACK_ONE, PACK_TWO],

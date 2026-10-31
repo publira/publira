@@ -22,6 +22,7 @@ const SETTLE_DELAY_MS = 150;
 const subscribeToNothing = () => () => {
   // No teardown: there is no subscription to end.
 };
+
 const loopsInBrowser = () => true;
 const loopsOnServer = () => false;
 
@@ -30,18 +31,22 @@ const nearestChild = (track: HTMLElement): number => {
   const centre = track.scrollLeft + track.clientWidth / 2;
   let nearest = 0;
   let nearestDistance = Number.POSITIVE_INFINITY;
+
   for (const [index, slide] of [...track.children].entries()) {
     if (!(slide instanceof HTMLElement)) {
       continue;
     }
+
     const distance = Math.abs(
       slide.offsetLeft + slide.offsetWidth / 2 - centre
     );
+
     if (distance < nearestDistance) {
       nearest = index;
       nearestDistance = distance;
     }
   }
+
   return nearest;
 };
 
@@ -52,9 +57,11 @@ const centreChild = (
   behavior?: ScrollBehavior
 ) => {
   const slide = track.children.item(index);
+
   if (!(slide instanceof HTMLElement)) {
     return;
   }
+
   track.scrollTo({
     left: slide.offsetLeft + slide.offsetWidth / 2 - track.clientWidth / 2,
     ...(behavior ? { behavior } : {}),
@@ -70,6 +77,7 @@ const openOnFirstBanner = (copy: HTMLLIElement | null) => {
   // The copy's own parent rather than `trackRef`: a child's ref is attached
   // before its parent's.
   const track = copy?.parentElement;
+
   if (track) {
     centreChild(track, 1, "instant");
   }
@@ -181,6 +189,7 @@ const CampaignBannerCarousel = ({
    */
   const targetRef = useRef<number | null>(null);
   const [current, setCurrent] = useState(0);
+
   const loops = useSyncExternalStore(
     subscribeToNothing,
     loopsInBrowser,
@@ -192,22 +201,28 @@ const CampaignBannerCarousel = ({
     if (!loops) {
       return child;
     }
+
     return (child - 1 + count) % count;
   };
 
   /** When the strip has come to rest on a copy, put the banner in its place. */
   const settle = () => {
     const track = trackRef.current;
+
     if (!track) {
       return;
     }
+
     const child = nearestChild(track);
+
     // A strip that rests short of where a press aimed it is between two moves
     // — the jump off a copy ends one too — so the press still stands.
     if (targetRef.current !== null && targetRef.current !== child) {
       return;
     }
+
     targetRef.current = null;
+
     if (loops && (child === 0 || child === count + 1)) {
       centreChild(track, bannerAt(child) + 1, "instant");
     }
@@ -219,10 +234,12 @@ const CampaignBannerCarousel = ({
 
   const handleScroll = (event: UIEvent<HTMLUListElement>) => {
     setCurrent(bannerAt(nearestChild(event.currentTarget)));
+
     if (!("onscrollend" in window)) {
       if (settleTimerRef.current) {
         clearTimeout(settleTimerRef.current);
       }
+
       settleTimerRef.current = setTimeout(settle, SETTLE_DELAY_MS);
     }
   };
@@ -240,10 +257,13 @@ const CampaignBannerCarousel = ({
   const step = (offset: number) => {
     const track = trackRef.current;
     const [firstChild, secondChild] = track ? [...track.children] : [];
+
     if (!(track && firstChild instanceof HTMLElement)) {
       return;
     }
+
     let from = targetRef.current ?? nearestChild(track);
+
     if (
       loops &&
       secondChild instanceof HTMLElement &&
@@ -257,6 +277,7 @@ const CampaignBannerCarousel = ({
       });
       from += shift;
     }
+
     targetRef.current = from + offset;
     // No `behavior`: the strip's own `scroll-behavior` decides, which is how a
     // reader who asked for reduced motion gets a jump instead of a glide.

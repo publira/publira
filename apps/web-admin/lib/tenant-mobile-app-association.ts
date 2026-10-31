@@ -89,8 +89,10 @@ const getTenantMobileAppAssociationForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -106,12 +108,14 @@ const getTenantMobileAppAssociationForSession = async (
         { tenant: { tenantId: normalizedTenantId } },
         withSessionHeaders(sessionId)
       );
+
     return {
       association: toTenantMobileAppAssociation(response.association),
       ok: true,
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -146,6 +150,7 @@ const refusedFieldMessage = (
   if (rpcErrorHasFieldViolation(error, "association.android.application_id")) {
     return t("admin.settings.app_links.validation.application_id_invalid");
   }
+
   if (
     rpcErrorHasFieldViolation(
       error,
@@ -156,24 +161,30 @@ const refusedFieldMessage = (
       max: String(MAX_ANDROID_CERT_FINGERPRINTS),
     });
   }
+
   const fingerprints = association.android?.sha256CertFingerprints ?? [];
+
   const refused = fingerprints.find((_, index) =>
     rpcErrorHasFieldViolation(
       error,
       `association.android.sha256_cert_fingerprints[${index}]`
     )
   );
+
   if (refused !== undefined) {
     return t("admin.settings.app_links.validation.fingerprint_refused", {
       fingerprint: refused,
     });
   }
+
   if (rpcErrorHasFieldViolation(error, "association.ios.team_id")) {
     return t("admin.settings.app_links.validation.team_id_invalid");
   }
+
   if (rpcErrorHasFieldViolation(error, "association.ios.bundle_identifier")) {
     return t("admin.settings.app_links.validation.bundle_identifier_invalid");
   }
+
   return undefined;
 };
 
@@ -186,7 +197,9 @@ export const updateTenantMobileAppAssociation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -203,6 +216,7 @@ export const updateTenantMobileAppAssociation = async (
         },
         withSessionHeaders(sessionId)
       );
+
     return {
       association: toTenantMobileAppAssociation(response.association),
       ok: true,
@@ -211,6 +225,7 @@ export const updateTenantMobileAppAssociation = async (
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const fieldMessage = refusedFieldMessage(error, input.association, t);
+
     return {
       message: rpcErrorMessage(
         error,

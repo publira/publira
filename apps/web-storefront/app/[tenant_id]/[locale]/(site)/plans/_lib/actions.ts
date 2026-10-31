@@ -40,6 +40,7 @@ export const startSubscriptionCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = subscribeFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -47,6 +48,7 @@ export const startSubscriptionCheckoutAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     redirect("/");
   }
@@ -59,17 +61,21 @@ export const startSubscriptionCheckoutAction = async (
 
   let checkoutURL = "";
   let outcome: "error" | "held" | "unavailable" | null = null;
+
   try {
     const response = await apiClient.subscription.startSubscriptionCheckout(
       { planId, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     checkoutURL = response.checkoutUrl.trim();
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
+
     rethrowUnclassifiedRpcError(error);
+
     if (isRpcError(error, Code.AlreadyExists)) {
       outcome = "held";
     } else if (isRpcError(error, Code.FailedPrecondition, Code.NotFound)) {
@@ -78,9 +84,11 @@ export const startSubscriptionCheckoutAction = async (
       outcome = "error";
     }
   }
+
   if (outcome === "held") {
     redirect(await tenantLocalePath(tenantId, locale, "/my"));
   }
+
   if (outcome || !checkoutURL) {
     redirect(
       await tenantLocalePath(
@@ -90,5 +98,6 @@ export const startSubscriptionCheckoutAction = async (
       )
     );
   }
+
   redirect(checkoutURL);
 };

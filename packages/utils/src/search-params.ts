@@ -133,6 +133,7 @@ const singleValue = (value: unknown): string | undefined => {
 
   if (Array.isArray(value) && value.length > 0) {
     const [first, ...rest] = value as unknown[];
+
     if (typeof first !== "string") {
       return undefined;
     }
@@ -153,6 +154,7 @@ const truncateToLength = (value: string, maxLength: number): string => {
   // At the last position a high surrogate has no pair to complete, so
   // `codePointAt` reports the surrogate itself.
   const lastCode = sliced.codePointAt(sliced.length - 1) ?? 0;
+
   if (lastCode >= HIGH_SURROGATE_FIRST && lastCode <= HIGH_SURROGATE_LAST) {
     return sliced.slice(0, -1);
   }
@@ -167,6 +169,7 @@ const normalizeString = (
   truncate: boolean
 ): string | undefined => {
   const trimmed = value.trim();
+
   if (!trimmed) {
     return undefined;
   }
@@ -180,6 +183,7 @@ const normalizeSingle = (
   truncate: boolean
 ): string | undefined => {
   const single = singleValue(value);
+
   if (single === undefined) {
     return undefined;
   }
@@ -209,6 +213,7 @@ const withFallback = <Out, F>(
     .optional()
     .transform((value) => {
       const parsed = schema.safeParse(value);
+
       return parsed.success ? parsed.data : fallback;
     });
 };
@@ -218,6 +223,7 @@ export const searchParamString = (
   options?: SearchParamStringOptions
 ): z.ZodType<string, unknown> => {
   const maxLength = options?.maxLength ?? DEFAULT_MAX_LENGTH;
+
   const schema = z.preprocess(
     (value) => normalizeSingle(value, maxLength, options?.truncate ?? false),
     z.string().max(maxLength)
@@ -241,6 +247,7 @@ export const searchParamStringArray = (
   const schema = z.preprocess(
     (value): string[] | undefined => {
       const entries = typeof value === "string" ? [value] : value;
+
       if (!Array.isArray(entries)) {
         return undefined;
       }
@@ -251,6 +258,7 @@ export const searchParamStringArray = (
         }
 
         const single = normalizeString(entry, maxLength, truncate);
+
         return single === undefined ? [] : [single];
       });
 
@@ -274,6 +282,7 @@ export const searchParamEnum = <T extends string, F extends string = never>(
   const maxLength = options.maxLength ?? DEFAULT_MAX_LENGTH;
   const { fallback, locale } = options;
   const rejection = locale && sharedMessage("errors.disallowed_value", locale);
+
   const schema = z.preprocess(
     (value) => normalizeSingle(value, maxLength, false),
     z
@@ -295,25 +304,30 @@ export const searchParamNumber = (
   const integer = options?.integer ?? true;
 
   let checked = integer ? z.number().int() : z.number();
+
   if (min !== undefined) {
     checked = checked.min(min);
   }
+
   if (max !== undefined) {
     checked = checked.max(max);
   }
 
   const schema = z.preprocess((value): number | undefined => {
     const single = normalizeSingle(value, DEFAULT_MAX_LENGTH, false);
+
     if (single === undefined || !NUMBER_RE.test(single)) {
       return undefined;
     }
 
     const parsed = Number(single);
+
     if (!clamp) {
       return parsed;
     }
 
     const lowerBounded = min === undefined ? parsed : Math.max(min, parsed);
+
     return max === undefined ? lowerBounded : Math.min(max, lowerBounded);
   }, checked);
 
@@ -329,14 +343,17 @@ export const searchParamBoolean = (
 ): z.ZodType<boolean, unknown> => {
   const schema = z.preprocess((value): boolean | undefined => {
     const single = normalizeSingle(value, DEFAULT_MAX_LENGTH, false);
+
     if (single === undefined) {
       return undefined;
     }
 
     const normalized = single.toLowerCase();
+
     if (TRUE_VALUES.has(normalized)) {
       return true;
     }
+
     if (FALSE_VALUES.has(normalized)) {
       return false;
     }
@@ -360,6 +377,7 @@ export const searchParamDate = (
 ): z.ZodType<string, unknown> => {
   const schema = z.preprocess((value): string | undefined => {
     const single = normalizeSingle(value, DEFAULT_MAX_LENGTH, false);
+
     if (single === undefined || !PLAIN_DATE_RE.test(single)) {
       return undefined;
     }

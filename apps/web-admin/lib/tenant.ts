@@ -60,6 +60,7 @@ export const resolveTenantRouting = async (
 
   const cacheKey = domainCandidates.join("\0");
   const cached = tenantCache.get(cacheKey);
+
   if (cached !== undefined) {
     return cached;
   }
@@ -68,11 +69,14 @@ export const resolveTenantRouting = async (
     const response = await apiClient.auth.getTenantByDomain({
       domains: [...domainCandidates],
     });
+
     const routing: TenantRouting = {
       defaultLocale: parseLocale(response.defaultLocale?.trim()) ?? null,
       tenantId: response.tenantId?.trim() || null,
     };
+
     tenantCache.set(cacheKey, routing);
+
     return routing;
   } catch (error) {
     // Only an unknown domain is cached as "no tenant"; a transient failure
@@ -80,8 +84,10 @@ export const resolveTenantRouting = async (
     if (isMissingResourceRpcError(error)) {
       const missing: TenantRouting = { defaultLocale: null, tenantId: null };
       tenantCache.set(cacheKey, missing);
+
       return missing;
     }
+
     if (isTenantSuspendedRpcError(error)) {
       return SUSPENDED_TENANT;
     }

@@ -22,6 +22,7 @@ import * as ErrorScreen from "#components/error-screen";
  */
 export const PageLoadError = ({ description }: { description: string }) => {
   const router = useRouter();
+
   const onRetry = useCallback(() => {
     // Re-fetches this route from the server; the cached read is retried because
     // a failed `"use cache"` fill is never stored (see

@@ -92,12 +92,15 @@ const missingTargetMessage = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   if (rpcErrorHasFieldViolation(error, "user_id")) {
     return t("admin.access_tickets.user_not_found");
   }
+
   if (rpcErrorHasFieldViolation(error, "episode_id")) {
     return t("admin.access_tickets.episode_not_found");
   }
+
   return t("errors.rpc.not-found");
 };
 
@@ -171,8 +174,10 @@ const listAccessTicketsForSession = async (
   cacheTag(accessTicketsCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: t("errors.rpc.unauthenticated"),
@@ -201,6 +206,7 @@ const listAccessTicketsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       message: await mapErrorMessage(
@@ -245,6 +251,7 @@ export const issueAccessTicket = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -279,6 +286,7 @@ export const issueAccessTicket = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorMessage(
         error,
@@ -299,6 +307,7 @@ export const revokeAccessTicket = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -329,6 +338,7 @@ export const revokeAccessTicket = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorMessage(
         error,

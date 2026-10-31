@@ -23,6 +23,7 @@ const StatusMessage = ({ status }: { status: "published" | "scheduled" }) => {
   if (status === "published") {
     return <Message message="admin.calendar.status_published" />;
   }
+
   return <Message message="admin.calendar.status_scheduled" />;
 };
 
@@ -93,8 +94,10 @@ export const MonthGrid = ({ days, locale, month, today }: MonthGridProps) => (
               />
             );
           }
+
           const entries = days.get(day) ?? [];
           const isToday = day === today;
+
           return (
             <li
               aria-current={isToday ? "date" : undefined}

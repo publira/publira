@@ -64,6 +64,7 @@ describe("JsonLd", () => {
     const text = html
       .replace('<script type="application/ld+json">', "")
       .replace("</script>", "");
+
     expect(JSON.parse(text)).toStrictEqual({
       "@context": "https://schema.org",
       "@type": "Person",

@@ -29,6 +29,7 @@ export const resolveTenantIcons = (
   info: TenantSiteInfo | null
 ): TenantIcons | undefined => {
   const iconUrl = info?.iconImageVariants?.[0]?.url.trim();
+
   if (!iconUrl) {
     return undefined;
   }

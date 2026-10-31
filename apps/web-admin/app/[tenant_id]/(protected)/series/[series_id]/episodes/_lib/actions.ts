@@ -106,6 +106,7 @@ const createEpisodeSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const reorderEpisodesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
@@ -120,6 +121,7 @@ const reorderEpisodesSchema = async (locale: Locale) => {
     ),
   });
 };
+
 const toCreateFailure = (
   message: string
 ): { message: string; mode: "create"; ok: false } => ({
@@ -146,8 +148,10 @@ const toScheduledAt = async (
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const value = toInstantIsoString(publishAtRaw, timeZone);
   const parsed = parseInstant(value);
+
   if (!parsed) {
     return toCreateFailure(
       t("admin.series.episodes.validation.publish_at_invalid")
@@ -165,6 +169,7 @@ export const createEpisodeAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await createEpisodeSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       availability: "value",
@@ -181,6 +186,7 @@ export const createEpisodeAction = async (
       title: "value",
     })
   );
+
   if (!parsed.success) {
     return toCreateFailure(toFormErrorMessage(parsed.error, { locale }));
   }
@@ -191,9 +197,11 @@ export const createEpisodeAction = async (
     parsed.data.tenantId,
     locale
   );
+
   if (!price.ok) {
     return toCreateFailure(price.message);
   }
+
   const rental = await parseEpisodeRental(
     {
       currency: price.currency,
@@ -203,6 +211,7 @@ export const createEpisodeAction = async (
     },
     locale
   );
+
   if (!rental.ok) {
     return toCreateFailure(rental.message);
   }
@@ -212,6 +221,7 @@ export const createEpisodeAction = async (
     parsed.data.tenantId,
     locale
   );
+
   if (!scheduledAt.ok) {
     return scheduledAt;
   }
@@ -255,10 +265,12 @@ export const reorderEpisodesAction = async (formData: FormData) => {
 
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     reorderEpisodesSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       currentEpisodeIds: { kind: "value", name: "current_episode_ids" },
@@ -267,6 +279,7 @@ export const reorderEpisodesAction = async (formData: FormData) => {
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, {
@@ -307,6 +320,7 @@ export const reorderEpisodesAction = async (formData: FormData) => {
       locale
     )
   );
+
   if (!reordered.ok) {
     return reordered;
   }
@@ -364,6 +378,7 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
           ),
           path: ["operation"],
         });
+
         return;
       }
 
@@ -382,6 +397,7 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
             path: ["fromCreatorId"],
           });
         }
+
         if (
           value.fromCreatorId === value.toCreatorId &&
           value.fromRoleId === value.toRoleId &&
@@ -393,6 +409,7 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
             path: ["toCreatorId"],
           });
         }
+
         return;
       }
 
@@ -405,6 +422,7 @@ const bulkEditEpisodeCreditsSchema = async (locale: Locale) => {
           path: ["creatorId"],
         });
       }
+
       // An empty box names no share to set, so set-share needs a value.
       if (
         value.operation === "set_share" &&
@@ -426,6 +444,7 @@ const toBulkCreditOperation = (
   if (!isBulkCreditOperationType(parsed.operation)) {
     return undefined;
   }
+
   if (parsed.operation === "replace") {
     return {
       from: {
@@ -439,19 +458,24 @@ const toBulkCreditOperation = (
       type: "replace",
     };
   }
+
   if (parsed.creatorId.length === 0 || parsed.roleId.length === 0) {
     return undefined;
   }
+
   const credit = {
     creatorId: parsed.creatorId,
     roleId: parsed.roleId,
   };
+
   if (parsed.operation === "set_share") {
     const shareBps = sharePercentToBps(parsed.share);
+
     return shareBps === undefined
       ? undefined
       : { credit, shareBps, type: "set_share" };
   }
+
   return { credit, type: parsed.operation };
 };
 
@@ -474,12 +498,15 @@ export const listEpisodeCreditRangeOptionsAction = async (
   locale: Locale
 ): Promise<ListEpisodeCreditRangeCatalogResult> => {
   const schema = await listEpisodeCreditRangeOptionsSchema(locale);
+
   const parsed = schema.safeParse({
     seriesId,
     tenantId,
   });
+
   if (!parsed.success) {
     const message = toFormErrorMessage(parsed.error, { locale });
+
     return {
       creatorRoles: [],
       creators: [],
@@ -491,6 +518,7 @@ export const listEpisodeCreditRangeOptionsAction = async (
   // The tenant comes from the client and these lists are read with the
   // service credential, which answers for any tenant.
   await verifyAdminSession(parsed.data.tenantId);
+
   const [episodesResult, creatorsResult, creatorRolesResult] =
     await Promise.all([
       listAllEpisodesForTenant(
@@ -532,10 +560,12 @@ export const bulkEditEpisodeCreditsAction = async (
 ): Promise<BulkEditEpisodeCreditsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     bulkEditEpisodeCreditsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       creatorId: { kind: "value", name: "creator_id" },
@@ -551,6 +581,7 @@ export const bulkEditEpisodeCreditsAction = async (
       toRoleId: { kind: "value", name: "to_role_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -559,6 +590,7 @@ export const bulkEditEpisodeCreditsAction = async (
   }
 
   const operation = toBulkCreditOperation(parsed.data);
+
   if (!operation) {
     return {
       message: t("admin.series.episodes.credits.validation.credit_required"),
@@ -567,10 +599,12 @@ export const bulkEditEpisodeCreditsAction = async (
   }
 
   await verifyAdminSession(parsed.data.tenantId);
+
   const listed = await listAllEpisodesForTenant(
     { seriesId: parsed.data.seriesId, tenantId: parsed.data.tenantId },
     locale
   );
+
   if (!listed.ok) {
     return {
       message: listed.message,
@@ -582,12 +616,14 @@ export const bulkEditEpisodeCreditsAction = async (
     listed.episodes,
     parsed.data.episodeIds
   );
+
   if (selected.length === 0) {
     return {
       message: t("admin.series.episodes.credits.validation.selection_required"),
       ok: false,
     };
   }
+
   if (selected.length > MAX_BULK_EPISODE_CREDIT_EPISODES) {
     return {
       message: t("admin.series.episodes.credits.selection_too_many", {
@@ -608,14 +644,17 @@ export const bulkEditEpisodeCreditsAction = async (
       locale
     )
   );
+
   if (result.ok) {
     updateTag(episodesCacheTag(parsed.data.tenantId));
   }
+
   return result;
 };
 
 const createSeriesFreeWindowsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const base = {
     endsAt: optionalTrimmedString(),
     seriesId: requiredRecordId(
@@ -666,10 +705,12 @@ export const createSeriesFreeWindowsAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     createSeriesFreeWindowsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       endsAt: { kind: "value", name: "ends_at" },
@@ -681,27 +722,32 @@ export const createSeriesFreeWindowsAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { seriesId, tenantId } = parsed.data;
+
   const period = await toScheduledPeriod(
     parsed.data,
     await getTenantDisplayTimeZone(tenantId),
     locale
   );
+
   if (!period.ok) {
     return period;
   }
 
   await verifyAdminSession(tenantId);
   const listed = await listAllEpisodesForTenant({ seriesId, tenantId }, locale);
+
   if (!listed.ok) {
     return { message: listed.message, ok: false };
   }
 
   const covered = freeWindowEpisodes(listed.episodes, parsed.data);
+
   if (!covered.ok) {
     if (covered.reason === "too-many") {
       return {
@@ -712,6 +758,7 @@ export const createSeriesFreeWindowsAction = async (
         ok: false,
       };
     }
+
     return {
       message:
         parsed.data.target === "selected"
@@ -733,11 +780,13 @@ export const createSeriesFreeWindowsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
   updateTag(episodeFreeWindowsCacheTag(tenantId));
+
   return {
     message: t("admin.series.episodes.free_windows.bulk_created", {
       count: result.freeWindows.length,
@@ -784,10 +833,12 @@ export const createSeriesCampaignPricesAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     createSeriesCampaignPricesSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       endsAt: { kind: "value", name: "ends_at" },
@@ -799,32 +850,38 @@ export const createSeriesCampaignPricesAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { seriesId, tenantId } = parsed.data;
+
   const period = await toScheduledPeriod(
     parsed.data,
     await getTenantDisplayTimeZone(tenantId),
     locale
   );
+
   if (!period.ok) {
     return period;
   }
 
   await verifyAdminSession(tenantId);
   const price = await parseCampaignPrice(parsed.data, tenantId, locale);
+
   if (!price.ok) {
     return price;
   }
 
   const listed = await listAllEpisodesForTenant({ seriesId, tenantId }, locale);
+
   if (!listed.ok) {
     return { message: listed.message, ok: false };
   }
 
   const checkedIds = new Set(parsed.data.episodeIds);
+
   if (checkedIds.size === 0) {
     return {
       message: t(
@@ -833,12 +890,14 @@ export const createSeriesCampaignPricesAction = async (
       ok: false,
     };
   }
+
   // Named in reading order, as the free reading period action names them, so
   // a reorder between checking and saving cannot change which ones are meant.
   const selected = episodesSelectedInReadingOrder(
     listed.episodes,
     parsed.data.episodeIds
   );
+
   // A checked episode that has left the series since the list was rendered is
   // refused rather than dropped, as the API refuses one: the editor confirmed
   // a sale on the episodes they checked, not on whichever of them remain.
@@ -848,6 +907,7 @@ export const createSeriesCampaignPricesAction = async (
       ok: false,
     };
   }
+
   if (selected.length > MAX_SERIES_CAMPAIGN_PRICE_EPISODES) {
     return {
       message: t(
@@ -872,11 +932,13 @@ export const createSeriesCampaignPricesAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
   updateTag(episodeCampaignPricesCacheTag(tenantId));
+
   return {
     message: t("admin.series.episodes.campaign_prices.bulk_created", {
       count: result.campaignPrices.length,

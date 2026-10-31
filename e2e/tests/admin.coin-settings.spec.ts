@@ -66,6 +66,7 @@ test.describe("web-admin coin settings", () => {
     applyScenarioSql(PLATFORM_TENANT_COINS_SCENARIO);
 
     const page = await browser.newPage();
+
     try {
       await setTenantCoinsAllowed(page, true);
       await takePaymentsThroughStripe(
@@ -82,11 +83,13 @@ test.describe("web-admin coin settings", () => {
     // Switches the platform's allowance off again, the value every other
     // suite expects, and puts the tenant back as it was.
     const page = await browser.newPage();
+
     try {
       await setTenantCoinsAllowed(page, false);
     } finally {
       await page.close();
     }
+
     applyScenarioSql(ADMIN_COIN_SETTINGS_SCENARIO);
   });
 
@@ -164,6 +167,7 @@ test.describe("web-admin coin settings", () => {
     await expect(status(page, "On, selling")).toBeVisible();
 
     const reader = await browser.newPage();
+
     try {
       await signInAsMember(
         reader,
@@ -203,6 +207,7 @@ test.describe("web-admin coin settings", () => {
     await expect(status(page, "On, not selling")).toBeVisible();
 
     const reader = await browser.newPage();
+
     try {
       await signInAsMember(
         reader,

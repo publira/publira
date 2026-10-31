@@ -23,10 +23,12 @@ export interface CreatorOption {
   id: string;
   name: string;
 }
+
 export interface CreatorRoleOption {
   id: string;
   name: string;
 }
+
 interface CreditEditorRow extends Omit<EpisodeCreatorCredit, "shareBps"> {
   key: string;
   /** The share box as typed, parsed when the list is summed and posted. */
@@ -147,6 +149,7 @@ export const EpisodeCreatorCreditsField = ({
   // The save button belongs to the form around this field, which is told
   // whether the shares as typed can be saved whenever that changes.
   const setSubmittable = SubmitGate.useSetSubmittable();
+
   const [rows, setRows] = useState<CreditEditorRow[]>(() =>
     initialCredits.map(({ shareBps, ...credit }, index) => ({
       ...credit,
@@ -154,7 +157,9 @@ export const EpisodeCreatorCreditsField = ({
       shareText: shareBpsToPercentText(shareBps),
     }))
   );
+
   const nextKey = useRef(initialCredits.length);
+
   const creatorItems = useMemo<Combobox.Item[]>(
     () =>
       creators.map((creator) => ({
@@ -163,10 +168,12 @@ export const EpisodeCreatorCreditsField = ({
       })),
     [creators]
   );
+
   const roleItems = useMemo<Combobox.Item[]>(
     () => creatorRoles.map((role) => ({ label: role.name, value: role.id })),
     [creatorRoles]
   );
+
   const credits = rows.flatMap((row) =>
     isComplete(row)
       ? [
@@ -178,7 +185,9 @@ export const EpisodeCreatorCreditsField = ({
         ]
       : []
   );
+
   const shareTotal = totalCreditShares(rows.map((row) => row.shareText));
+
   const add = () => {
     const key = String(nextKey.current);
     nextKey.current += 1;
@@ -193,6 +202,7 @@ export const EpisodeCreatorCreditsField = ({
       },
     ]);
   };
+
   /** Writes the rows an edit leaves, and tells the form whether they can be saved. */
   const commitRows = (nextRows: CreditEditorRow[]) => {
     setRows(nextRows);
@@ -202,12 +212,15 @@ export const EpisodeCreatorCreditsField = ({
       )
     );
   };
+
   const changeRow = (next: CreditEditorRow) => {
     commitRows(rows.map((item) => (item.key === next.key ? next : item)));
   };
+
   const removeRow = (key: string) => {
     commitRows(rows.filter((item) => item.key !== key));
   };
+
   return (
     <>
       <input

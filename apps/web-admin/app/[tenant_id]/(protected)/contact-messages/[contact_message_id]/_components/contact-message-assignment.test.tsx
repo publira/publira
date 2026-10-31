@@ -65,9 +65,11 @@ const assignedTo = (staff: ContactMessageAssigneeOption) => ({
 /** What the form the named button submits would post. */
 const submittedBy = (name: string) => {
   const form = screen.getByRole("button", { name }).closest("form");
+
   if (!form) {
     throw new Error(`"${name}" submits no form`);
   }
+
   return Object.fromEntries(new FormData(form));
 };
 

@@ -31,10 +31,12 @@ import { TenantSignInSettingsForm } from "./_components/tenant-sign-in-settings-
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -60,6 +62,7 @@ const SignInSettingsSkeleton = () => (
 const SignInSettingsSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [
     result,
     currentUserResult,
@@ -73,6 +76,7 @@ const SignInSettingsSection = async () => {
     getTenantMobileAppAssociation(tenantId, locale),
     getTenantEmailSender(tenantId, locale),
   ]);
+
   await redirectToLoginIfSessionRejected(
     result,
     currentUserResult,

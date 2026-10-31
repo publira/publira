@@ -137,6 +137,7 @@ test.describe("web-platform display language", () => {
     expect(await storedLocaleCookie(page)).toBeUndefined();
 
     const visitorContext = await browser.newContext();
+
     try {
       const visitor = await visitorContext.newPage();
       await visitor.goto(platformUrl("/login"));

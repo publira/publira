@@ -25,6 +25,7 @@ const LegalPageSelectionContext = createContext<LegalPageSelection | null>(
 
 const useLegalPageSelection = () => {
   const selection = use(LegalPageSelectionContext);
+
   if (!selection) {
     throw new Error("Render this inside a LegalPagePicker.");
   }
@@ -80,6 +81,7 @@ const LegalPageCombobox = ({
         value: page.pageId,
       })),
     ];
+
     if (
       nominated &&
       !publishedPages.some((page) => page.pageId === nominated.pageId)
@@ -92,6 +94,7 @@ const LegalPageCombobox = ({
         value: nominated.pageId,
       });
     }
+
     return options;
   }, [nominated, publishedPages, t]);
 
@@ -122,4 +125,5 @@ export {
   LegalPageCombobox as Combobox,
   LegalPageWhileSelected as WhileSelected,
 };
+
 export type { LegalPageOption as Option };

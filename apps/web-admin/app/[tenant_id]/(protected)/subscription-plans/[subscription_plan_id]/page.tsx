@@ -48,10 +48,12 @@ const editSubscriptionPlanParamsSchema = z.object({
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -68,15 +70,18 @@ const EditSubscriptionPlanContent = async ({
   params,
 }: Pick<EditSubscriptionPlanPageProps, "params">) => {
   const [rawParams, tenantId] = await Promise.all([params, getTenantId()]);
+
   const parsedParams = parseRouteParams(
     editSubscriptionPlanParamsSchema,
     rawParams
   );
+
   if (!parsedParams) {
     notFound();
   }
 
   const locale = await getLocale(tenantId);
+
   const result = await getSubscriptionPlan(
     { publicId: parsedParams.subscription_plan_id, tenantId },
     locale
@@ -88,6 +93,7 @@ const EditSubscriptionPlanContent = async ({
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
+
     await redirectToLoginIfSessionRejected(result);
 
     return (

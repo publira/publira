@@ -24,6 +24,7 @@ const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
 const NotificationsSection = async () => {
   const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
   await requirePublicSession(locale, NOTIFICATION_SETTINGS_RETURN_TO, tenantId);
+
   const preferences =
     (await withPublicSessionReauth(
       locale,
@@ -75,6 +76,7 @@ const NotificationsSection = async () => {
 const BrowserNotificationsSection = async () => {
   const [locale, tenantId] = await Promise.all([getLocale(), getTenantId()]);
   const vapidPublicKey = await getTenantWebPushPublicKey(tenantId);
+
   if (!vapidPublicKey) {
     return null;
   }

@@ -38,6 +38,7 @@ vi.mock("#lib/email-settings", () => ({
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return {
     ...actual,
     getPlatformLocale: mockGetPlatformLocale,
@@ -50,6 +51,7 @@ const smtpFormData = (): FormData => {
   formData.set("host", "smtp.example.com");
   formData.set("port", "587");
   formData.set("revision", "3");
+
   return formData;
 };
 

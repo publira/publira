@@ -13,8 +13,10 @@ const data = {
   recipient_kind: "current_email",
   tenant_name: "Aoto Press",
 };
+
 const currentAddressBody =
   "This change needs confirmation from your current address.";
+
 const newAddressBody = "This change needs confirmation from your new address.";
 
 describe("readerEmailChangeConfirmationDataSchema", () => {
@@ -71,6 +73,7 @@ describe("readerEmailChangeConfirmationDataSchema", () => {
 describe("ReaderEmailChangeConfirmationEmail", () => {
   it("the ja mail carries the link and the expiry in the given time zone", async () => {
     const timeZone = "UTC";
+
     const result = await renderEmail({
       data,
       locale: "ja",
@@ -80,6 +83,7 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -98,6 +102,7 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
 
   it("the en mail comes from the English catalog and its own time zone", async () => {
     const timeZone = "America/Los_Angeles";
+
     const result = await renderEmail({
       data,
       locale: "en",
@@ -107,6 +112,7 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -122,6 +128,7 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
 
   it("addresses the side of the change the sender names", async () => {
     const messages = await loadEmailMessages("en");
+
     const toCurrent = await renderEmail({
       data,
       locale: "en",
@@ -129,6 +136,7 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
       template: "reader_email_change_confirmation",
       timeZone: "UTC",
     });
+
     const toNew = await renderEmail({
       data: { ...data, recipient_kind: "new_email" },
       locale: "en",
@@ -139,6 +147,7 @@ describe("ReaderEmailChangeConfirmationEmail", () => {
 
     expect(toCurrent.ok).toBe(true);
     expect(toNew.ok).toBe(true);
+
     if (!(toCurrent.ok && toNew.ok)) {
       return;
     }

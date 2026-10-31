@@ -37,6 +37,7 @@ describe("PlatformConsoleEmailChangedNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -60,6 +61,7 @@ describe("PlatformConsoleEmailChangedNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

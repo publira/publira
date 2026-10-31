@@ -88,6 +88,7 @@ const purchasedItemLink = (
   t: StorefrontMessageAccessor
 ): { href: string; open: string; title: string } => {
   const seriesHref = `/series/${series.publicId}`;
+
   switch (item.kind) {
     case "coin_pack": {
       return {
@@ -100,6 +101,7 @@ const purchasedItemLink = (
         }),
       };
     }
+
     case "volume": {
       return {
         href: seriesHref,
@@ -107,6 +109,7 @@ const purchasedItemLink = (
         title: item.title,
       };
     }
+
     case "series_bundle": {
       return {
         href: seriesHref,
@@ -116,6 +119,7 @@ const purchasedItemLink = (
         }),
       };
     }
+
     default: {
       return {
         href: `${seriesHref}/episodes/${item.publicId}`,
@@ -139,6 +143,7 @@ const PurchaseCard = async ({
   // A pack is no reading right: it neither expires nor is read, so it says
   // when it was bought and what was paid, and whether it was refunded.
   const isCoinPack = purchase.item.kind === "coin_pack";
+
   const expiryLabel = purchase.expiresAt
     ? formatDateTime(purchase.expiresAt, { fallback: "-", locale, timeZone })
     : t("storefront.library.no_expiry");

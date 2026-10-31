@@ -51,11 +51,13 @@ test.describe("admin volumes", () => {
     page,
   }) => {
     const suffix = uniqueSuffix();
+
     const seriesId = await createSeriesViaUi(page, {
       publishedAt: publishedAtOneHourAgo(),
       synopsis: `Volume series ${suffix}`,
       title: `E2E Volumes ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
     const firstEpisode = `E2E Volume Episode A ${suffix}`;
     const secondEpisode = `E2E Volume Episode B ${suffix}`;

@@ -13,11 +13,13 @@ const startServer = async (): Promise<Server> => {
   const server = createEmailRendererServer();
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
+
   return server;
 };
 
 const baseUrlOf = (server: Server): string => {
   const address = server.address() as AddressInfo;
+
   return `http://127.0.0.1:${address.port}`;
 };
 
@@ -25,6 +27,7 @@ describe("email renderer server", () => {
   it("renders a template into HTML", async () => {
     await using server = await startServer();
     const baseUrl = baseUrlOf(server);
+
     const client = createClient(
       EmailRendererService,
       createConnectTransport({ baseUrl, httpVersion: "1.1" })
@@ -50,6 +53,7 @@ describe("email renderer server", () => {
   it("invalid template input comes back as invalid_argument", async () => {
     await using server = await startServer();
     const baseUrl = baseUrlOf(server);
+
     const client = createClient(
       EmailRendererService,
       createConnectTransport({ baseUrl, httpVersion: "1.1" })

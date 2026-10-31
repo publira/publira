@@ -58,6 +58,7 @@ test.describe("web-storefront catalog browsing", () => {
     const updatedSeries = page.getByRole("region", {
       name: "Recently updated",
     });
+
     await expect(
       updatedSeries.locator(`a[href^="${storefrontPath("/series/")}"]`).first()
     ).toBeVisible();
@@ -65,6 +66,7 @@ test.describe("web-storefront catalog browsing", () => {
     const featuredLabels = page.getByRole("region", {
       name: "Featured labels",
     });
+
     await expect(
       featuredLabels.getByText(/^Seed Label \d{2}$/u).first()
     ).toBeVisible();
@@ -77,6 +79,7 @@ test.describe("web-storefront catalog browsing", () => {
     const featuredCreators = page.getByRole("region", {
       name: "Featured authors",
     });
+
     await expect(
       featuredCreators
         .locator(`a[href^="${storefrontPath("/creators/")}"]`)
@@ -135,6 +138,7 @@ test.describe("web-storefront catalog browsing", () => {
       level: 2,
       name: "You may also like",
     });
+
     await expect(relatedHeading).toBeVisible();
     await expect(
       page.locator("section").filter({ has: relatedHeading }).getByRole("link")
@@ -143,6 +147,7 @@ test.describe("web-storefront catalog browsing", () => {
     const episodeLink = page.getByRole("link", {
       name: new RegExp(SEED_TENANT.series.freeEpisodeTitle, "u"),
     });
+
     await expect(episodeLink).toHaveCount(1);
     await episodeLink.click();
 
@@ -178,7 +183,9 @@ test.describe("web-storefront catalog browsing", () => {
     const seriesCards = page.locator(
       `a[href^="${storefrontPath("/series/")}"]:not([href*="/episodes/"]):visible`
     );
+
     await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
+
     const firstPageHrefs = await seriesCards.evaluateAll((links) =>
       links.map((link) => link.getAttribute("href"))
     );
@@ -186,6 +193,7 @@ test.describe("web-storefront catalog browsing", () => {
     const pagination = page.getByRole("navigation", {
       name: "Series list pagination",
     });
+
     // The first page has nothing before it, so only "Next page" is a link.
     await expect(
       pagination.getByRole("link", { name: "Previous page" })
@@ -194,9 +202,11 @@ test.describe("web-storefront catalog browsing", () => {
 
     await expect(page).toHaveURL(/\/series\?token=/u);
     await expect(seriesCards).toHaveCount(SERIES_PAGE_SIZE);
+
     const secondPageHrefs = await seriesCards.evaluateAll((links) =>
       links.map((link) => link.getAttribute("href"))
     );
+
     // Keyset paging must not repeat a row across the page boundary.
     expect(
       secondPageHrefs.filter((href) => firstPageHrefs.includes(href))
@@ -213,12 +223,15 @@ test.describe("web-storefront catalog browsing", () => {
       "h1, button:text-matches('I am (?:15|18) or older', 'u')",
       { timeout: 15_000 }
     );
+
     const ageConfirmation = page.getByRole("button", {
       name: /I am (?:15|18) or older/u,
     });
+
     if (await ageConfirmation.isVisible()) {
       await ageConfirmation.click();
     }
+
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
     await page.goBack();
@@ -255,6 +268,7 @@ test.describe("web-storefront catalog browsing", () => {
     const labelRow = page.getByRole("link", {
       name: new RegExp(`^${SEED_TENANT.labelName}\\b`, "u"),
     });
+
     await expect(labelRow).toHaveCount(1);
     await labelRow.click();
 
@@ -309,6 +323,7 @@ test.describe("web-storefront catalog browsing", () => {
     const response = await page.goto(
       storefrontPath(`/search?q=${encodeURIComponent(SEED_TENANT.creatorName)}`)
     );
+
     expect(response?.status(), await page.content()).toBe(200);
 
     // The seeded synopses name their own series and never a creator, so this
@@ -323,6 +338,7 @@ test.describe("web-storefront catalog browsing", () => {
       .getByRole("link", {
         name: new RegExp(`^${SEED_TENANT.creatorName}\\b`, "u"),
       });
+
     await expect(creatorRow).toHaveCount(1);
     await creatorRow.click();
 
@@ -367,6 +383,7 @@ test.describe("web-storefront catalog browsing", () => {
     const creatorRow = page.getByRole("link", {
       name: new RegExp(`^${SEED_TENANT.creatorName}\\b`, "u"),
     });
+
     await expect(creatorRow).toHaveCount(1);
     await creatorRow.click();
 
@@ -395,6 +412,7 @@ test.describe("web-storefront catalog browsing", () => {
     const list = await page.request.get(storefrontPath("/authors"), {
       maxRedirects: 0,
     });
+
     expect(list.status()).toBe(308);
     expect(new URL(list.headers().location ?? "", list.url()).pathname).toBe(
       "/creators"
@@ -404,11 +422,14 @@ test.describe("web-storefront catalog browsing", () => {
       storefrontPath(`/authors/${SEED_TENANT.creatorId}?token=djF8Zg`),
       { maxRedirects: 0 }
     );
+
     expect(detail.status()).toBe(308);
+
     const detailLocation = new URL(
       detail.headers().location ?? "",
       detail.url()
     );
+
     expect(detailLocation.pathname).toBe(`/creators/${SEED_TENANT.creatorId}`);
     expect(detailLocation.search).toBe("?token=djF8Zg");
 
@@ -416,6 +437,7 @@ test.describe("web-storefront catalog browsing", () => {
       localeStorefrontPath("ja", `/authors/${SEED_TENANT.creatorId}`),
       { maxRedirects: 0 }
     );
+
     expect(prefixed.status()).toBe(308);
     expect(
       new URL(prefixed.headers().location ?? "", prefixed.url()).pathname

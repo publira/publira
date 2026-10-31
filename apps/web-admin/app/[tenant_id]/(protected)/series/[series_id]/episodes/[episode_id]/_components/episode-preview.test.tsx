@@ -113,7 +113,9 @@ describe("EpisodePreview", () => {
         })
       )
     );
+
     vi.stubGlobal("fetch", fetchMock);
+
     const renewPageUrls = vi.fn(() =>
       Promise.resolve(
         Object.fromEntries(

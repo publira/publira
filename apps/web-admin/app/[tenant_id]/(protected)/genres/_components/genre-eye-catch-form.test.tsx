@@ -28,6 +28,7 @@ const { save, submitted } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateGenreEyeCatchAction: (_state: ActionForm.State, formData: FormData) => {
     submitted.current.resolve(formData);
+
     return save.current.promise;
   },
 }));

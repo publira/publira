@@ -282,6 +282,7 @@ const LabelDetailContent = async ({
   }
 
   const { token } = parseLabelDetailSearchParams(await searchParams);
+
   const result = token
     ? await loadPublishedLabelDetail(tenantId, labelId, locale, token)
     : firstPage;

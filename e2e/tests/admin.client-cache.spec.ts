@@ -22,6 +22,7 @@ test.describe("web-admin client cache", () => {
     const accountMenu = page.getByRole("button", {
       name: `Account menu for ${SEED_ADMIN.name}`,
     });
+
     const seriesTable = page.getByRole("columnheader", {
       exact: true,
       name: "Title",

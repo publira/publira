@@ -33,14 +33,17 @@ export const updateTenantCommunityLimitsAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return { message: t("admin.settings.tenant_missing"), ok: false };
   }
 
   const schema = await communityLimitsFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, communityLimitsFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -55,6 +58,7 @@ export const updateTenantCommunityLimitsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -77,14 +81,17 @@ export const updateTenantRetentionSettingsAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return { message: t("admin.settings.tenant_missing"), ok: false };
   }
 
   const schema = await retentionSettingsFormSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, retentionSettingsFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -99,6 +106,7 @@ export const updateTenantRetentionSettingsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

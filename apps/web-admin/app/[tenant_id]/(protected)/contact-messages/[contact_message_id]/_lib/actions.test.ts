@@ -39,6 +39,7 @@ const staffNoteFormData = (staffNote: string) => {
   formData.set("contact_message_id", contactMessageId);
   formData.set("public_id", "CONTACT0001");
   formData.set("staff_note", staffNote);
+
   return formData;
 };
 
@@ -48,6 +49,7 @@ const replyFormData = (body: string) => {
   formData.set("contact_message_id", contactMessageId);
   formData.set("public_id", "CONTACT0001");
   formData.set("body", body);
+
   return formData;
 };
 
@@ -116,6 +118,7 @@ describe("updateContactMessageStaffNoteAction", () => {
       null,
       staffNoteFormData("a".repeat(4001))
     );
+
     expect(result).toEqual({
       message: "Keep the note to 4000 characters or fewer.",
       ok: false,
@@ -141,6 +144,7 @@ describe("updateContactMessageStaffNoteAction", () => {
     });
 
     const { updateContactMessageStaffNoteAction } = await import("./actions");
+
     const result = await updateContactMessageStaffNoteAction(
       null,
       staffNoteFormData("A note.")
@@ -180,6 +184,7 @@ describe("replyToContactMessageAction", () => {
 
   it("refuses an answer that is only whitespace", async () => {
     const { replyToContactMessageAction } = await import("./actions");
+
     const result = await replyToContactMessageAction(
       null,
       replyFormData("  \n ")
@@ -201,6 +206,7 @@ describe("replyToContactMessageAction", () => {
       null,
       replyFormData("a".repeat(4001))
     );
+
     expect(result).toEqual({
       message: "Keep the answer to 4000 characters or fewer.",
       ok: false,
@@ -226,6 +232,7 @@ describe("replyToContactMessageAction", () => {
     });
 
     const { replyToContactMessageAction } = await import("./actions");
+
     const result = await replyToContactMessageAction(
       null,
       replyFormData("An answer.")

@@ -43,9 +43,11 @@ const renderPicker = async (initialDefaultLocale: Locale) => {
     );
     await messages;
   });
+
   if (!form) {
     throw new Error("The picker did not render.");
   }
+
   return form;
 };
 
@@ -77,6 +79,7 @@ describe("TenantLocalesPicker", () => {
     const trigger = screen.getByRole("combobox", {
       name: /^Default language/u,
     });
+
     fireEvent.click(trigger);
     fireEvent.keyDown(trigger, { key: "ArrowDown" });
     fireEvent.keyDown(

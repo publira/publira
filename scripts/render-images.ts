@@ -101,6 +101,7 @@ const resize = (svg: Buffer, output: SizedOutput): sharp.Sharp => {
   const resized = sharp(svg).resize(output.width, output.height, {
     fit: "fill",
   });
+
   return output.background === undefined
     ? resized
     : resized.flatten({ background: output.background });
@@ -110,9 +111,11 @@ const encode = (pipeline: sharp.Sharp, path: string): sharp.Sharp => {
   if (path.endsWith(".png")) {
     return pipeline.png(PNG);
   }
+
   if (path.endsWith(".jpg")) {
     return pipeline.jpeg(JPEG);
   }
+
   throw new Error(`${path}: no encoder for this extension`);
 };
 
@@ -122,24 +125,30 @@ const renderOutput = async (
   output: ImageOutput
 ): Promise<string> => {
   const path = typeof output === "string" ? output : output.path;
+
   const pipeline =
     typeof output === "string" ? sharp(svg) : resize(svg, output);
+
   const image = await encode(
     entry.monochrome ? pipeline.toColourspace("b-w") : pipeline,
     path
   ).toBuffer();
+
   await writeFile(new URL(path, ROOT), image);
+
   return `${path} (${image.length} bytes)`;
 };
 
 const renderEntry = async (entry: ImageEntry): Promise<string[]> => {
   const svg = await readFile(new URL(entry.source, ASSETS));
+
   return await Promise.all(
     entry.outputs.map((output) => renderOutput(svg, entry, output))
   );
 };
 
 const rendered = await Promise.all(manifest.map(renderEntry));
+
 for (const line of rendered.flat()) {
   console.log(line);
 }

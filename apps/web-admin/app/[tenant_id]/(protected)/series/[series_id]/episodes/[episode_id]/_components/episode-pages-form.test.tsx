@@ -66,7 +66,9 @@ const stubUpload = (body?: EpisodePagesUploadResponse, status = 200) => {
       ? Promise.resolve(Response.json(body, { status }))
       : Promise.withResolvers<never>().promise
   );
+
   vi.stubGlobal("fetch", fetch);
+
   return fetch;
 };
 
@@ -119,6 +121,7 @@ describe("EpisodePagesForm", () => {
     const uploadMode = container.querySelector(
       'input[name="upload_mode"]'
     ) as HTMLInputElement | null;
+
     const input = fileInput();
 
     expect(uploadMode?.value).toBe("pages");
@@ -340,9 +343,11 @@ describe("EpisodePagesForm", () => {
     Object.defineProperty(oversized, "size", {
       value: EPISODE_PAGES_UPLOAD_MAX_BYTES + 1,
     });
+
     const values = vi
       .spyOn(FormData.prototype, "values")
       .mockImplementation(() => [oversized].values());
+
     onTestFinished(() => {
       values.mockRestore();
     });
@@ -394,9 +399,11 @@ describe("EpisodePagesForm", () => {
     const dropZone = screen.getByText(
       "Drop images here or select files."
     ).parentElement;
+
     if (!dropZone) {
       throw new Error("The drop zone is missing.");
     }
+
     fireEvent.drop(dropZone, {
       dataTransfer: {
         files: [new File(["b"], "page-2.png", { type: "image/png" })],

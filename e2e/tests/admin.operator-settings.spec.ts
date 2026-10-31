@@ -28,20 +28,27 @@ const SETTINGS_PATHS = ["/settings/account", "/integrations/email"] as const;
 
 const REQUESTED_MESSAGE =
   "A confirmation email was sent to both the current and the new address. Open both links to complete the change.";
+
 const CHANGED_MESSAGE = "Your email address has been changed.";
 const PENDING_MESSAGE = "Confirmation is complete.";
+
 const FAILED_MESSAGE =
   "Could not change your email address. The link may have expired or be invalid. Request a new confirmation email.";
+
 const WRONG_PASSWORD_MESSAGE = "That password is not correct.";
 const SMTP_SAVED_MESSAGE = "The email settings were saved.";
 const SEED_FROM_NAME = "Operator Settings Tenant Mail";
 const INBOUND_SAVED_MESSAGE = "The inbound email settings were saved.";
+
 const INBOUND_UNSET_MESSAGE =
   "Readers' replies go to the address of the staff member who answered. Choose a provider and turn inbound email on to receive them in the console instead.";
+
 const INBOUND_READY_MESSAGE =
   "Readers' replies come back to the console under the message they answer.";
+
 const INBOUND_DISABLED_MESSAGE =
   "The settings are stored, but inbound email is off. Readers' replies go to the address of the staff member who answered.";
+
 const INBOUND_DOMAIN = "reply.aset.example";
 const INBOUND_WEBHOOK_TOKEN = "e2e-inbound-webhook-token";
 
@@ -145,9 +152,11 @@ const emailChangeTokenCount = (): string =>
  */
 const pointTenantSmtpAtMailpit = (): void => {
   const port = process.env.PUBLIRA_E2E_MAILPIT_SMTP_PORT?.trim() || "1026";
+
   if (!/^\d+$/u.test(port)) {
     throw new Error(`invalid PUBLIRA_E2E_MAILPIT_SMTP_PORT: ${port}`);
   }
+
   runSql(`
     UPDATE tenant_smtp_config
     SET host = '127.0.0.1',
@@ -182,6 +191,7 @@ const requestEmailChange = async (
  */
 const confirmationLinkFor = async (recipient: string): Promise<string> => {
   const message = await waitForMessageTo(recipient);
+
   return linkFrom(message, CONFIRM_EMAIL_PATH);
 };
 
@@ -279,6 +289,7 @@ test.describe("web-admin operator settings", () => {
       ADMIN_OPERATOR_SETTINGS_EXPIRED_EMAIL
     );
     await expect(page.getByRole("status")).toContainText(REQUESTED_MESSAGE);
+
     const link = await confirmationLinkFor(
       ADMIN_OPERATOR_SETTINGS_EXPIRED_EMAIL
     );
@@ -311,9 +322,11 @@ test.describe("web-admin operator settings", () => {
       ADMIN_OPERATOR_SETTINGS_NEW_EMAIL
     );
     await expect(page.getByRole("status")).toContainText(REQUESTED_MESSAGE);
+
     const currentEmailLink = await confirmationLinkFor(
       ADMIN_OPERATOR_SETTINGS_ADMIN.email
     );
+
     const newEmailLink = await confirmationLinkFor(
       ADMIN_OPERATOR_SETTINGS_NEW_EMAIL
     );
@@ -469,6 +482,7 @@ test.describe("web-admin operator settings", () => {
     const provider = inbound.getByRole("combobox", {
       name: "Inbound email provider",
     });
+
     await expect(provider).toContainText("Mailgun");
     await expect(
       inbound.getByLabel(/^HTTP webhook signing key/u)

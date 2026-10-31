@@ -170,6 +170,7 @@ const pollEndPageControl = (
     .poll(
       async () => {
         await page.goto(storefrontPath(VIEWER_EPISODE_PATH));
+
         return await turnToEndPage(page, control);
       },
       { message, timeout: 60_000 }
@@ -293,15 +294,19 @@ const SLIDER_THUMB_PX = 14;
 const dragProgressTo = async (page: Page, index: number): Promise<void> => {
   const slider = readingProgress(page);
   const box = await slider.boundingBox();
+
   if (box === null) {
     throw new Error("the reading progress slider is not laid out");
   }
+
   const min = Number(await slider.getAttribute("min"));
   const max = Number(await slider.getAttribute("max"));
+
   const thumbX = (value: number) =>
     box.x +
     SLIDER_THUMB_PX / 2 +
     (1 - (value - min) / (max - min)) * (box.width - SLIDER_THUMB_PX);
+
   const y = box.y + box.height / 2;
 
   await page.mouse.move(thumbX(Number(await slider.inputValue())), y);
@@ -502,12 +507,14 @@ test.describe("web-storefront episode reading", () => {
       .toBe("0");
 
     await page.context().setOffline(true);
+
     const refused = page.waitForEvent(
       "requestfailed",
       (request) =>
         request.method() === "POST" &&
         request.url().endsWith("/reading-position")
     );
+
     await turnPages(page, 3);
     const stoppedOn = await lastPageOnScreen(page);
     expect(stoppedOn, "the reader moved off the first page").toBeGreaterThan(1);
@@ -761,6 +768,7 @@ test.describe("web-storefront episode reading", () => {
     const nextEpisode = endPage(page).getByRole("link", {
       name: NEXT_EPISODE_TITLE,
     });
+
     expect(
       await turnToEndPage(page, nextEpisode),
       "the page after the last one offers the next episode"
@@ -782,9 +790,11 @@ test.describe("web-storefront episode reading", () => {
   }) => {
     await page.goto(storefrontPath(VIEWER_EPISODE_PATH));
     await expectFirstPageDrawn(page);
+
     const nextEpisode = endPage(page).getByRole("link", {
       name: NEXT_EPISODE_TITLE,
     });
+
     expect(
       await turnToEndPage(page, nextEpisode),
       "the page after the last one offers the next episode"
@@ -797,12 +807,14 @@ test.describe("web-storefront episode reading", () => {
       document.documentElement.dataset.e2eSoftNavigation = "pending";
     });
     await page.context().setOffline(true);
+
     const refused = page.waitForEvent(
       "requestfailed",
       (request) =>
         request.resourceType() === "fetch" &&
         request.url().includes(NEXT_EPISODE_PATH)
     );
+
     await nextEpisode.click();
     await refused;
     // The retry checks for the connection with a `HEAD` against the current
@@ -889,6 +901,7 @@ test.describe("web-storefront episode reading", () => {
     const nextEpisode = endPage(page).getByRole("button", {
       name: "Next episode",
     });
+
     expect(
       await turnToEndPage(page, nextEpisode),
       "the page after the last one keeps the control"
@@ -965,6 +978,7 @@ test.describe("web-storefront episode reading", () => {
       exact: true,
       name: "Sign in to react to this episode. Readers who reacted: 0",
     });
+
     await expect(
       loginLink,
       "a reaction is a reader's, so a guest reaches it only by finishing the episode"
@@ -993,6 +1007,7 @@ test.describe("web-storefront episode reading", () => {
       exact: true,
       name: "React to this episode. Readers who reacted: 0",
     });
+
     await pollEndPageControl(
       page,
       reactButton,
@@ -1004,6 +1019,7 @@ test.describe("web-storefront episode reading", () => {
       exact: true,
       name: "You have reacted to this episode. Readers who reacted: 1",
     });
+
     await expect(
       reacted,
       "one press in single mode fills the control and counts the reader once"

@@ -40,6 +40,7 @@ const InvitationStatusBadge = ({ status }: { status: string }) => {
         </Badge>
       );
     }
+
     case "accepted": {
       return (
         <Badge tone="success">
@@ -49,6 +50,7 @@ const InvitationStatusBadge = ({ status }: { status: string }) => {
         </Badge>
       );
     }
+
     case "canceled": {
       return (
         <Badge tone="destructive">
@@ -58,6 +60,7 @@ const InvitationStatusBadge = ({ status }: { status: string }) => {
         </Badge>
       );
     }
+
     case "expired": {
       return (
         <Badge tone="muted">
@@ -67,6 +70,7 @@ const InvitationStatusBadge = ({ status }: { status: string }) => {
         </Badge>
       );
     }
+
     default: {
       return <Badge tone="muted">{status}</Badge>;
     }

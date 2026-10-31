@@ -76,9 +76,11 @@ export const buildLoginPath = (
   const params = new URLSearchParams({
     [RETURN_TO_PARAM_NAME]: sanitizeRedirectPath(returnTo),
   });
+
   if (options?.revoked) {
     params.set(SESSION_REVOKED_PARAM_NAME, SESSION_REVOKED_REASON);
   }
+
   return `/login?${params.toString()}`;
 };
 
@@ -119,11 +121,13 @@ export const hasActiveAdminSessionCookie = async (
   value?: string | null
 ): Promise<boolean> => {
   const raw = value?.trim();
+
   if (!raw) {
     return false;
   }
 
   const payload = await decryptSessionPayload(raw, resolveAuthSecret());
+
   return payload !== null && !isSessionExpired(payload.expiresAt);
 };
 
@@ -137,5 +141,6 @@ export const buildLoginUrl = (requestUrl: URL): URL => {
     RETURN_TO_PARAM_NAME,
     buildReturnToPath(requestUrl)
   );
+
   return loginUrl;
 };

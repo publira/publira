@@ -41,7 +41,9 @@ const PurchaseLibraryData = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { token } = parsePurchasesSearchParams(resolvedSearchParams);
+
   const [result, timeZone] = await Promise.all([
     listMyPurchases(tenantId, {
       limit: defaultPurchasesPageSize,

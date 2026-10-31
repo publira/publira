@@ -81,27 +81,33 @@ export const forEachPageWithToken = async <T>(
     const { items, nextToken } = await fetchPage(token, limit);
     const pageItems = items.slice(0, remainingRows);
     const shouldContinue = await onPage(pageItems);
+
     if (shouldContinue === false) {
       return "stopped-by-callback";
     }
 
     rowsRead += pageItems.length;
     pagesRead += 1;
+
     if (!nextToken) {
       return "completed";
     }
+
     if (rowsRead >= maxRows) {
       return "max-rows";
     }
+
     token = nextToken;
   }
 
   if (visitedTokens.has(token)) {
     return "repeated-token";
   }
+
   if (pagesRead >= maxPages) {
     return "max-pages";
   }
+
   return "max-rows";
 };
 
@@ -124,8 +130,10 @@ export const findByPublicIdWithToken = async <T extends { publicId: string }>(
     fetchPage,
     (items) => {
       const found = items.find((item) => item.publicId === publicId);
+
       if (found) {
         match = found;
+
         return false;
       }
     },

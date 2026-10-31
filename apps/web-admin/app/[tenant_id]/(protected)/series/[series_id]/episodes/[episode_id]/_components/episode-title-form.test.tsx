@@ -60,11 +60,13 @@ describe("EpisodeTitleForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
+
     renderForm(action);
 
     const input = screen.getByRole<HTMLInputElement>("textbox", {
       name: /Title/u,
     });
+
     fireEvent.change(input, { target: { value: "Episode 1 — Morning" } });
     fireEvent.click(screen.getByRole("button", { name: "Update title" }));
 
@@ -100,6 +102,7 @@ describe("EpisodeTitleForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
+
     render(
       <EpisodeTitleForm
         action={action}
@@ -130,6 +133,7 @@ describe("EpisodeTitleForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve(null)
     );
+
     render(
       <EpisodeTitleForm
         action={action}
@@ -148,9 +152,11 @@ describe("EpisodeTitleForm", () => {
         exact: false,
       })
     ).toBeTruthy();
+
     const input = screen.getByRole<HTMLInputElement>("textbox", {
       name: /Title/u,
     });
+
     expect(input.value).toBe("");
     fireEvent.change(input, { target: { value: "Episode 1 — Morning" } });
     fireEvent.click(screen.getByRole("button", { name: "Add translation" }));

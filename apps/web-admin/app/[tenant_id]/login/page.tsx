@@ -63,6 +63,7 @@ const LoginPageContent = async ({
     passwordResetDone,
     sessionRevoked,
   } = parseLoginSearchParams(await searchParams);
+
   const forgotPasswordHref = defaultEmail
     ? `/forgot-password?${new URLSearchParams({ email: defaultEmail }).toString()}`
     : "/forgot-password";

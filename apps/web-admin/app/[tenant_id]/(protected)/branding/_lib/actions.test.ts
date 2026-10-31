@@ -36,6 +36,7 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -84,9 +85,11 @@ vi.mock("#lib/theme-settings", () => ({
 
 const textFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -132,6 +135,7 @@ describe("updateTenantThemeSettingsAction", () => {
 
     const message =
       "The contrast ratio between Primary color and Primary text color must be at least 4.5:1 (currently 1.00:1).";
+
     expect(result).toEqual({
       fieldErrors: {
         primaryColor: message,
@@ -387,12 +391,15 @@ const iconFormData = (
   file?: File
 ): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   if (file) {
     formData.set("icon", file);
   }
+
   return formData;
 };
 
@@ -420,6 +427,7 @@ const pngFile = () =>
 const oversizedPngFile = () => {
   const file = pngFile();
   Object.defineProperty(file, "size", { value: 10 * 1024 * 1024 + 1 });
+
   return file;
 };
 
@@ -559,12 +567,15 @@ const logoFormData = (
   file?: File
 ): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   if (file) {
     formData.set("logo", file);
   }
+
   return formData;
 };
 
@@ -704,12 +715,15 @@ const signInImageFormData = (
   file?: File
 ): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   if (file) {
     formData.set("sign_in_image", file);
   }
+
   return formData;
 };
 
@@ -858,12 +872,15 @@ const brandMarkFormData = (
   file?: File
 ): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   if (file) {
     formData.set("image", file);
   }
+
   return formData;
 };
 

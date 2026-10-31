@@ -44,16 +44,19 @@ const PlanPrice = ({
     case "day": {
       return <Message message="storefront.plans.billing.day" values={values} />;
     }
+
     case "week": {
       return (
         <Message message="storefront.plans.billing.week" values={values} />
       );
     }
+
     case "month": {
       return (
         <Message message="storefront.plans.billing.month" values={values} />
       );
     }
+
     default: {
       return (
         <Message message="storefront.plans.billing.year" values={values} />
@@ -145,6 +148,7 @@ export const PlanList = async () => {
     getLocale(),
     resolveAccessToken(),
   ]);
+
   const [result, tenant, mine] = await Promise.all([
     listSubscriptionPlans(tenantId, locale),
     getTenantSiteInfo(tenantId),
@@ -181,10 +185,12 @@ export const PlanList = async () => {
   // A reader whose session the API rejected is offered the way to sign in,
   // the same as a guest.
   const signedIn = mine !== null && !(mine.ok === false && mine.requiresSignIn);
+
   const held =
     mine?.ok && mine.subscription && holdsSubscription(mine.subscription)
       ? mine.subscription
       : null;
+
   const sells = tenant?.acceptsPayments === true;
 
   return (

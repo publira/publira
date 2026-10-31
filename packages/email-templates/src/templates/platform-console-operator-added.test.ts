@@ -37,6 +37,7 @@ describe("platformConsoleOperatorAddedDataSchema", () => {
 describe("PlatformConsoleOperatorAddedEmail", () => {
   it("carries the link, its expiry in the given time zone, and the way back once it expires", async () => {
     const timeZone = "America/Los_Angeles";
+
     const result = await renderEmail({
       data,
       locale: "en",
@@ -46,6 +47,7 @@ describe("PlatformConsoleOperatorAddedEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

@@ -53,6 +53,7 @@ export const AnalyticsConsentPrompt = ({
   );
 
   const answered = consent === "granted" || consent === "denied";
+
   if (
     !(consent === "unanswered" || (reopened && answered)) ||
     !loadsGoogleTagOn(toBarePathname(pathname))

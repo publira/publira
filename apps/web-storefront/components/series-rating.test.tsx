@@ -59,6 +59,7 @@ describe("SeriesRating", () => {
   });
   it("Omits the private figure when the read has no rating", async () => {
     vi.mocked(getMySeriesRating).mockResolvedValue(null);
+
     const { container } = render(
       await MySeriesRating({
         locale: "en",
@@ -66,6 +67,7 @@ describe("SeriesRating", () => {
         tenantId: "tenant-1",
       })
     );
+
     expect(container.textContent).toBe("");
   });
 });

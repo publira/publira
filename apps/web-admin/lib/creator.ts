@@ -172,6 +172,7 @@ const listCreatorsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       creators: [],
@@ -189,6 +190,7 @@ export const listCreators = async (
   options: CursorPageOptions = {}
 ): Promise<ListCreatorsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listCreatorsForTenant(tenantId, locale, options);
 };
 
@@ -211,6 +213,7 @@ export const listAllCreatorsForTenant = async (
 
   try {
     const creators: CreatorItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.creator.listCreators(
@@ -221,6 +224,7 @@ export const listAllCreatorsForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.creators ?? [],
           nextToken: response.nextToken ?? "",
@@ -237,6 +241,7 @@ export const listAllCreatorsForTenant = async (
     // option list that operators treat as complete.
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         ...emptyCursorPageTokens,
         creators: [],
@@ -257,6 +262,7 @@ export const listAllCreatorsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       creators: [],
@@ -283,6 +289,7 @@ export const listAllCreatorsForTenant = async (
  */
 export const listAllCreators = async (): Promise<ListCreatorsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listAllCreatorsForTenant(tenantId, locale);
 };
 
@@ -302,6 +309,7 @@ export const createCreator = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -336,6 +344,7 @@ export const createCreator = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -365,6 +374,7 @@ export const updateCreator = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -401,6 +411,7 @@ export const updateCreator = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -425,8 +436,10 @@ const getCreatorForSession = async (
   cacheTag(`creator-${input.tenantId}-${input.publicId}`);
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -445,6 +458,7 @@ const getCreatorForSession = async (
 
     if (!response.creator?.publicId?.trim()) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.creators.list_failed"),
         ok: false,
@@ -460,7 +474,9 @@ const getCreatorForSession = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -506,6 +522,7 @@ export const linkCreatorAccount = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -524,6 +541,7 @@ export const linkCreatorAccount = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -551,6 +569,7 @@ export const unlinkCreatorAccount = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -569,6 +588,7 @@ export const unlinkCreatorAccount = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

@@ -68,6 +68,7 @@ describe("tenant-mobile-app-association", () => {
 
     const { getTenantMobileAppAssociation } =
       await import("./tenant-mobile-app-association");
+
     const result = await getTenantMobileAppAssociation("TENANT001", "en");
 
     expect(result).toEqual({
@@ -97,6 +98,7 @@ describe("tenant-mobile-app-association", () => {
 
     const { getTenantMobileAppAssociation } =
       await import("./tenant-mobile-app-association");
+
     const result = await getTenantMobileAppAssociation("TENANT001", "en");
 
     expect(result).toEqual({
@@ -110,6 +112,7 @@ describe("tenant-mobile-app-association", () => {
 
     const { getTenantMobileAppAssociation } =
       await import("./tenant-mobile-app-association");
+
     const result = await getTenantMobileAppAssociation("TENANT001", "en");
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
@@ -128,6 +131,7 @@ describe("tenant-mobile-app-association", () => {
 
     const { getTenantMobileAppAssociation } =
       await import("./tenant-mobile-app-association");
+
     const result = await getTenantMobileAppAssociation("TENANT001", "en");
 
     expect(result).toMatchObject({
@@ -170,6 +174,7 @@ describe("tenant-mobile-app-association", () => {
 
     const { updateTenantMobileAppAssociation } =
       await import("./tenant-mobile-app-association");
+
     const result = await updateTenantMobileAppAssociation(
       {
         association: {
@@ -221,6 +226,7 @@ describe("tenant-mobile-app-association", () => {
 
     const { updateTenantMobileAppAssociation } =
       await import("./tenant-mobile-app-association");
+
     const result = await updateTenantMobileAppAssociation(
       {
         association: {
@@ -245,6 +251,7 @@ describe("tenant-mobile-app-association", () => {
 
     const { updateTenantMobileAppAssociation } =
       await import("./tenant-mobile-app-association");
+
     const result = await updateTenantMobileAppAssociation(
       { association: {}, tenantId: "TENANT001" },
       "en"

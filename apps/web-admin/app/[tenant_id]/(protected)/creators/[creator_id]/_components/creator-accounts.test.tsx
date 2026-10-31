@@ -101,6 +101,7 @@ describe("CreatorAccounts", () => {
     const readerOneLink = await screen.findByRole("link", {
       name: "Reader One",
     });
+
     expect(readerOneLink.getAttribute("href")).toBe("/readers/READER001");
     // A reader with no name is still named: by public id on the link, and by
     // email in the confirmation.

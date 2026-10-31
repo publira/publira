@@ -81,6 +81,7 @@ describe("applyReactionPress", () => {
 
   it("counts the reader once across five presses in multiple mode", () => {
     let state = { ratingCount: 10, score: 0 };
+
     for (let i = 0; i < 5; i += 1) {
       state = applyReactionPress(state, "multiple");
     }

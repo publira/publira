@@ -22,11 +22,13 @@ const SpreadStartSourceContext = createContext<SpreadStartSourceState | null>(
 
 const useSpreadStartSource = (): SpreadStartSourceState => {
   const state = use(SpreadStartSourceContext);
+
   if (!state) {
     throw new Error(
       "SpreadStartSource slots must be rendered inside a SpreadStartSourceField."
     );
   }
+
   return state;
 };
 
@@ -82,7 +84,9 @@ const SpreadStartSourceSelect = ({
       : t("admin.series.episodes.layout.follow_series_spread_start", {
           page: String(seriesSpreadStartPage),
         });
+
   const items = [{ label: followSeries, value: "series" }];
+
   if (!hasNoPages) {
     items.push({
       label: t("admin.series.episodes.layout.spread_start_override"),

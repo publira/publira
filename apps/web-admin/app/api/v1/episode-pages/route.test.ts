@@ -53,9 +53,11 @@ const pagesForm = (fields: Record<string, File | string>) => {
   const formData = new FormData();
   formData.set("episode_id", EPISODE_ID);
   formData.set("series_id", SERIES_ID);
+
   for (const [name, value] of Object.entries(fields)) {
     formData.append(name, value);
   }
+
   return formData;
 };
 
@@ -66,6 +68,7 @@ const upload = async (
 ) => {
   const encoded = new Request(URL, { body: formData, method: "POST" });
   const body = await encoded.arrayBuffer();
+
   const request = new NextRequest(URL, {
     body,
     headers: {
@@ -76,6 +79,7 @@ const upload = async (
     },
     method: "POST",
   });
+
   return { request, response: await POST(request) };
 };
 
@@ -257,6 +261,7 @@ describe("POST /api/v1/episode-pages", () => {
       archive: new File(["zip"], "pages.zip", { type: "application/zip" }),
       upload_mode: "zip",
     });
+
     formData.delete("series_id");
 
     const { response } = await upload(formData);

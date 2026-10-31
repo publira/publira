@@ -30,6 +30,7 @@ const confirmFormData = (password: string, confirmPassword = password) => {
   formData.set("token", TOKEN);
   formData.set("password", password);
   formData.set("confirm_password", confirmPassword);
+
   return formData;
 };
 

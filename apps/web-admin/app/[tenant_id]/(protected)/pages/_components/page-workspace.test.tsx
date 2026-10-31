@@ -105,6 +105,7 @@ const renderWorkspace = async (
   });
   // The editor is built once the screen has mounted.
   await screen.findByRole("textbox", { name: "Content" });
+
   return rendered as ReturnType<typeof renderBase>;
 };
 
@@ -113,6 +114,7 @@ const bodyEditor = (): Editor => {
   const { editor } = screen.getByRole("textbox", {
     name: "Content",
   }) as HTMLElement & { editor?: Editor };
+
   if (!editor) {
     throw new Error("The body's textbox is not an editor.");
   }
@@ -124,6 +126,7 @@ const editForm = (): HTMLFormElement => {
   const form = screen
     .getByRole("textbox", { name: /Title/u })
     .closest("form") as HTMLFormElement | null;
+
   if (!form) {
     throw new Error("The title field is not inside a form.");
   }
@@ -154,6 +157,7 @@ describe("PageWorkspace", () => {
 
     // Save, unpublish, and the version row's publish and roll back.
     expect(forms).toHaveLength(4);
+
     for (const form of forms) {
       expect(new FormData(form).get("translation_locale")).toBe("en");
     }
@@ -242,6 +246,7 @@ describe("PageWorkspace", () => {
     for (const control of submittedControls()) {
       expect(control.matches(":disabled")).toBe(false);
     }
+
     expect(bodyIsEditable()).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Save page" }));
@@ -250,6 +255,7 @@ describe("PageWorkspace", () => {
       for (const control of submittedControls()) {
         expect(control.matches(":disabled")).toBe(true);
       }
+
       expect(bodyIsEditable()).toBe(false);
     });
 
@@ -285,9 +291,11 @@ describe("PageWorkspace", () => {
     await renderWorkspace(() => save.promise);
 
     fireEvent.click(screen.getByRole("button", { name: "Save page" }));
+
     const load = screen.getByRole<HTMLButtonElement>("button", {
       name: "Load content",
     });
+
     await waitFor(() => {
       expect(load.disabled).toBe(true);
     });
@@ -324,12 +332,15 @@ describe("PageWorkspace", () => {
 
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain("Publish v2");
+
     const ask = screen.getByRole<HTMLButtonElement>("button", {
       name: "Publish and ask readers to agree",
     });
+
     const correction = screen.getByRole<HTMLButtonElement>("button", {
       name: "Publish without asking",
     });
+
     for (const [button, value] of [
       [ask, "true"],
       [correction, "false"],

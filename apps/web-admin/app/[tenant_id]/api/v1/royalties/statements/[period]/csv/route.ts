@@ -28,6 +28,7 @@ export const GET = async (
 ) => {
   const { period, tenant_id } = await params;
   const path = exportPathSchema.safeParse({ period, tenantId: tenant_id });
+
   if (!path.success) {
     return notFound();
   }
@@ -36,6 +37,7 @@ export const GET = async (
     getTenantForSession(path.data.tenantId),
     exportRoyaltyStatement(path.data.tenantId, path.data.period),
   ]);
+
   if (
     (!tenant.ok && tenant.requiresSignIn) ||
     (!statement.ok && statement.reason === "signedOut")
@@ -46,11 +48,13 @@ export const GET = async (
       })
     );
   }
+
   if (!(tenant.ok && statement.ok)) {
     return notFound();
   }
 
   const fileName = `royalties-${tenant.tenant.publicId}-${path.data.period}.csv`;
+
   return new NextResponse(statement.csv, {
     headers: {
       "Cache-Control": "private, no-store",

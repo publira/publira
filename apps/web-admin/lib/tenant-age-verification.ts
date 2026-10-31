@@ -58,12 +58,15 @@ const toTenantAgeVerification = (
     case AgeVerification.NONE: {
       return "none";
     }
+
     case AgeVerification.R18: {
       return "r18";
     }
+
     case AgeVerification.R15_AND_R18: {
       return "r15_and_r18";
     }
+
     default: {
       return undefined;
     }
@@ -77,9 +80,11 @@ const toAgeVerificationEnum = (
     case "r18": {
       return AgeVerification.R18;
     }
+
     case "r15_and_r18": {
       return AgeVerification.R15_AND_R18;
     }
+
     default: {
       return AgeVerification.NONE;
     }
@@ -95,8 +100,10 @@ const getTenantAgeVerificationForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -115,8 +122,10 @@ const getTenantAgeVerificationForSession = async (
     );
 
     const ageVerification = toTenantAgeVerification(response.ageVerification);
+
     if (ageVerification === undefined) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.settings.age_verification.load_failed"),
         ok: false,
@@ -127,6 +136,7 @@ const getTenantAgeVerificationForSession = async (
     return { ageVerification, ok: true };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -160,7 +170,9 @@ export const updateTenantAgeVerification = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -173,7 +185,9 @@ export const updateTenantAgeVerification = async (
       },
       withSessionHeaders(sessionId)
     );
+
     const saved = toTenantAgeVerification(response.ageVerification);
+
     if (saved === undefined) {
       return {
         message: t("admin.settings.age_verification.save_failed"),
@@ -185,6 +199,7 @@ export const updateTenantAgeVerification = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

@@ -37,9 +37,11 @@ test.describe("web-storefront campaign banners", () => {
     const bandBottom = await campaigns.evaluate(
       (band) => band.getBoundingClientRect().bottom
     );
+
     const headingTop = await page
       .getByRole("heading", { level: 1 })
       .evaluate((heading) => heading.getBoundingClientRect().top);
+
     expect(bandBottom).toBeLessThan(headingTop);
   });
 
@@ -47,9 +49,11 @@ test.describe("web-storefront campaign banners", () => {
     await page.goto(storefrontPath("/"));
 
     const campaigns = page.getByRole("region", { name: "Campaigns" });
+
     const previous = campaigns.getByRole("button", {
       name: "Previous campaign",
     });
+
     const next = campaigns.getByRole("button", { name: "Next campaign" });
     await expect(campaigns.getByText("1 / 3")).toBeVisible();
 
@@ -77,12 +81,14 @@ test.describe("web-storefront campaign banners", () => {
           (slide as HTMLElement).offsetWidth / 2 -
           strip.clientWidth / 2
       );
+
       return {
         first: centring[0] ?? 0,
         last: centring.at(-1) ?? 0,
         max: strip.scrollWidth - strip.clientWidth,
       };
     });
+
     expect(reach.first).toBeGreaterThanOrEqual(-1);
     expect(reach.last).toBeLessThanOrEqual(reach.max + 1);
 

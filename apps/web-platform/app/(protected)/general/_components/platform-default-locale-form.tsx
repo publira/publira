@@ -25,6 +25,7 @@ export const PlatformDefaultLocaleForm = async ({
   const locale = await getPlatformLocale();
   const t = await getMessagesFor(locale);
   const hasLoadError = Boolean(loadErrorMessage);
+
   const items = getLocales().map((value) => ({
     label: getLocaleLabel(value),
     value,

@@ -27,6 +27,7 @@ export const closeRoyaltyStatementAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = z
     .object({
       period: royaltyPeriodSchema,
@@ -38,6 +39,7 @@ export const closeRoyaltyStatementAction = async (
         tenantId: { kind: "value", name: "tenant_id" },
       })
     );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
@@ -45,6 +47,7 @@ export const closeRoyaltyStatementAction = async (
   const result = await withAdminSessionReauth(() =>
     closeRoyaltyStatement(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

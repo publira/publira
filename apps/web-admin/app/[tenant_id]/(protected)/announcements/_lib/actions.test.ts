@@ -15,6 +15,7 @@ vi.mock("#lib/action-messages", () => ({
 vi.mock("#lib/messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getMessagesFor: () =>
       Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
@@ -51,11 +52,13 @@ const announcementFormData = (tabs: readonly Tab[]): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("link_url", "");
+
   for (const { body, locale, title } of tabs) {
     formData.append("translation_locale", locale);
     formData.append("title", title);
     formData.append("body", body);
   }
+
   return formData;
 };
 
@@ -106,6 +109,7 @@ describe("createAnnouncementAction", () => {
     const formData = announcementFormData([
       { body: "The terms change on July 1.", locale: "", title: "New terms" },
     ]);
+
     formData.set("delivery", "everyone");
 
     const { createAnnouncementAction } = await import("./actions");
@@ -119,6 +123,7 @@ describe("createAnnouncementAction", () => {
 
   it("refuses an announcement whose default language has no title, even with another language written", async () => {
     const { createAnnouncementAction } = await import("./actions");
+
     const state = await createAnnouncementAction(
       null,
       announcementFormData([
@@ -133,6 +138,7 @@ describe("createAnnouncementAction", () => {
 
   it("refuses an announcement whose default language has no body", async () => {
     const { createAnnouncementAction } = await import("./actions");
+
     const state = await createAnnouncementAction(
       null,
       announcementFormData([{ body: "", locale: "", title: "Maintenance" }])
@@ -144,6 +150,7 @@ describe("createAnnouncementAction", () => {
 
   it("refuses a language with a title and no body, naming the language", async () => {
     const { createAnnouncementAction } = await import("./actions");
+
     const state = await createAnnouncementAction(
       null,
       announcementFormData([
@@ -161,6 +168,7 @@ describe("createAnnouncementAction", () => {
 
   it("refuses a language this build serves no catalog for", async () => {
     const { createAnnouncementAction } = await import("./actions");
+
     const state = await createAnnouncementAction(
       null,
       announcementFormData([

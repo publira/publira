@@ -36,6 +36,7 @@ export const writeAdminSessionCookie = async (
     },
     resolveAuthSecret()
   );
+
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions(toCookieExpires(session.expiresAt)),

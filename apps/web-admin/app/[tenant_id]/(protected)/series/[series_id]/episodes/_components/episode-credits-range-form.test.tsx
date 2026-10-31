@@ -146,6 +146,7 @@ const episodeCheckbox = (publicId: string, title: string) =>
 
 const authorPickers = () =>
   screen.getAllByRole<HTMLSelectElement>("combobox", { name: "Author" });
+
 const applyButton = () => screen.getByRole("button", { name: "Apply" });
 
 afterEach(cleanup);
@@ -192,6 +193,7 @@ describe("EpisodeCreditsRangeForm", () => {
         expect(formData.get("from_role_id")).toBe("ROLE_ARTIST");
         expect(formData.get("to_creator_id")).toBe("CREATOR_C");
         expect(formData.get("to_role_id")).toBe("ROLE_ARTIST");
+
         return Promise.resolve({
           changedEpisodeIds: episodes.slice(0, 11).map((episode) => episode.id),
           ok: true,
@@ -207,9 +209,11 @@ describe("EpisodeCreditsRangeForm", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /Replace/u }));
     const [fromAuthor, toAuthor] = authorPickers();
+
     if (!fromAuthor || !toAuthor) {
       throw new Error("replace offers two author pickers");
     }
+
     fireEvent.change(fromAuthor, { target: { value: "CREATOR_B" } });
     fireEvent.change(toAuthor, { target: { value: "CREATOR_C" } });
 
@@ -227,9 +231,11 @@ describe("EpisodeCreditsRangeForm", () => {
     expect(applyButton().hasAttribute("disabled")).toBe(false);
 
     const form = applyButton().closest("form");
+
     if (!(form instanceof HTMLFormElement)) {
       throw new TypeError("apply is not inside a form");
     }
+
     fireEvent.submit(form);
 
     expect(await screen.findByText("Changed 11 episodes")).toBeDefined();
@@ -250,6 +256,7 @@ describe("EpisodeCreditsRangeForm", () => {
           "EP07-ID",
           "EP11-ID",
         ]);
+
         return Promise.resolve({
           changedEpisodeIds: ["EP01-ID", "EP07-ID", "EP11-ID"],
           ok: true,
@@ -265,18 +272,22 @@ describe("EpisodeCreditsRangeForm", () => {
     fireEvent.click(episodeCheckbox("EP07", "Episode 7"));
     fireEvent.click(screen.getByRole("radio", { name: /Add/u }));
     const [author] = authorPickers();
+
     if (!author) {
       throw new Error("add offers an author picker");
     }
+
     fireEvent.change(author, { target: { value: "CREATOR_B" } });
 
     expect(screen.getByText("3 episodes selected.")).toBeDefined();
     expect(applyButton().hasAttribute("disabled")).toBe(false);
 
     const form = applyButton().closest("form");
+
     if (!(form instanceof HTMLFormElement)) {
       throw new TypeError("apply is not inside a form");
     }
+
     fireEvent.submit(form);
 
     expect(await screen.findByText("Changed 3 episodes")).toBeDefined();
@@ -293,6 +304,7 @@ describe("EpisodeCreditsRangeForm", () => {
         expect(formData.get("creator_id")).toBe("CREATOR_B");
         expect(formData.get("role_id")).toBe("ROLE_ARTIST");
         expect(formData.get("share")).toBe("25");
+
         return Promise.resolve({
           changedEpisodeIds: ["EP01-ID", "EP02-ID", "EP03-ID"],
           ok: true,
@@ -305,9 +317,11 @@ describe("EpisodeCreditsRangeForm", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /Set share/u }));
     const [author] = authorPickers();
+
     if (!author) {
       throw new Error("set-share offers an author picker");
     }
+
     fireEvent.change(author, { target: { value: "CREATOR_B" } });
 
     // The credit alone is not a set-share: the share has to be stated.
@@ -325,9 +339,11 @@ describe("EpisodeCreditsRangeForm", () => {
     expect(applyButton().hasAttribute("disabled")).toBe(false);
 
     const form = applyButton().closest("form");
+
     if (!(form instanceof HTMLFormElement)) {
       throw new TypeError("apply is not inside a form");
     }
+
     fireEvent.submit(form);
 
     expect(await screen.findByText("Changed 3 episodes")).toBeDefined();
@@ -339,9 +355,11 @@ describe("EpisodeCreditsRangeForm", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /Set share/u }));
     const [author] = authorPickers();
+
     if (!author) {
       throw new Error("set-share offers an author picker");
     }
+
     fireEvent.change(author, { target: { value: "CREATOR_B" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Share (%)" }), {
       target: { value: "120" },
@@ -364,9 +382,11 @@ describe("EpisodeCreditsRangeForm", () => {
     render({ action: () => edit.promise, initialSelectedIds: ["EP01-ID"] });
 
     const [author] = authorPickers();
+
     if (!author) {
       throw new Error("add offers an author picker");
     }
+
     fireEvent.change(author, { target: { value: "CREATOR_B" } });
 
     for (const control of submittedControls()) {

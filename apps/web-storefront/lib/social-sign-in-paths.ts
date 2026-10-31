@@ -37,6 +37,7 @@ export const signInFailurePath = async (
       locale,
       CONFIRMING_SCREENS[intent]
     );
+
     return message
       ? `${path}?${new URLSearchParams({ message, status: "error" }).toString()}`
       : path;
@@ -44,9 +45,11 @@ export const signInFailurePath = async (
 
   const path = await tenantLocalePath(tenantId, locale, "/login");
   const params = new URLSearchParams({ returnTo });
+
   if (message) {
     params.set("error", message);
   }
+
   return `${path}?${params.toString()}`;
 };
 
@@ -67,9 +70,11 @@ export const signUpClosedPath = async ({
   tenantId,
 }: Omit<SignInOrigin, "intent">): Promise<string> => {
   const path = await tenantLocalePath(tenantId, locale, "/login");
+
   const params = new URLSearchParams({
     [SESSION_REVOKED_PARAM_NAME]: SIGN_UP_CLOSED_REASON,
     returnTo,
   });
+
   return `${path}?${params.toString()}`;
 };

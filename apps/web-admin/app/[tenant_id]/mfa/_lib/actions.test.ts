@@ -39,6 +39,7 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -90,9 +91,11 @@ const redirectsTo = (path: string): string => `NEXT_REDIRECT:${path}`;
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -156,6 +159,7 @@ describe("verifyMfaAction", () => {
     });
 
     const { verifyMfaAction } = await import("./actions");
+
     const result = await verifyMfaAction(
       null,
       formData({ code: "ABCDE-FGHJK", tenant_id: TENANT_ID })
@@ -187,6 +191,7 @@ describe("verifyMfaAction", () => {
     });
 
     const { verifyMfaAction } = await import("./actions");
+
     const result = await verifyMfaAction(
       null,
       formData({ code: "000000", tenant_id: TENANT_ID })
@@ -247,6 +252,7 @@ describe("verifyMfaAction", () => {
 
   it("rejects an empty code without calling the API", async () => {
     const { verifyMfaAction } = await import("./actions");
+
     const result = await verifyMfaAction(
       null,
       formData({ code: "  ", tenant_id: TENANT_ID })
@@ -267,11 +273,13 @@ describe("verifyMfaAction", () => {
       session,
     });
     mockWriteAdminSessionCookie.mockRejectedValueOnce(new Error("no secret"));
+
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
 
     const { verifyMfaAction } = await import("./actions");
+
     const result = await verifyMfaAction(
       null,
       formData({ code: "123456", tenant_id: TENANT_ID })
@@ -303,6 +311,7 @@ describe("enrollment actions", () => {
     });
 
     const { startMfaEnrollmentAction } = await import("./actions");
+
     const result = await startMfaEnrollmentAction(
       null,
       formData({ tenant_id: TENANT_ID })
@@ -341,6 +350,7 @@ describe("enrollment actions", () => {
     });
 
     const { confirmMfaEnrollmentAction } = await import("./actions");
+
     const result = await confirmMfaEnrollmentAction(
       null,
       formData({ code: "123456", tenant_id: TENANT_ID })
@@ -374,6 +384,7 @@ describe("enrollment actions", () => {
     });
 
     const { confirmMfaEnrollmentAction } = await import("./actions");
+
     const result = await confirmMfaEnrollmentAction(
       null,
       formData({ code: "123456", tenant_id: TENANT_ID })
@@ -408,6 +419,7 @@ describe("passkey verification actions", () => {
     });
 
     const { beginPasskeyVerificationAction } = await import("./actions");
+
     const result = await beginPasskeyVerificationAction(
       formData({ tenant_id: TENANT_ID })
     );
@@ -489,6 +501,7 @@ describe("passkey verification actions", () => {
     });
 
     const { finishPasskeyVerificationAction } = await import("./actions");
+
     const result = await finishPasskeyVerificationAction(
       formData({ credential: CREDENTIAL, tenant_id: TENANT_ID })
     );
@@ -503,6 +516,7 @@ describe("passkey verification actions", () => {
 
   it("refuses a submission carrying no credential without calling the API", async () => {
     const { finishPasskeyVerificationAction } = await import("./actions");
+
     const result = await finishPasskeyVerificationAction(
       formData({ tenant_id: TENANT_ID })
     );
@@ -533,6 +547,7 @@ describe("passkey enrollment actions", () => {
     });
 
     const { beginPasskeyRegistrationAction } = await import("./actions");
+
     const result = await beginPasskeyRegistrationAction(
       formData({ tenant_id: TENANT_ID })
     );
@@ -557,6 +572,7 @@ describe("passkey enrollment actions", () => {
     });
 
     const { finishPasskeyRegistrationAction } = await import("./actions");
+
     const result = await finishPasskeyRegistrationAction(
       formData({ credential: CREDENTIAL, tenant_id: TENANT_ID })
     );
@@ -587,6 +603,7 @@ describe("passkey enrollment actions", () => {
     });
 
     const { finishPasskeyRegistrationAction } = await import("./actions");
+
     const result = await finishPasskeyRegistrationAction(
       formData({ credential: CREDENTIAL, tenant_id: TENANT_ID })
     );

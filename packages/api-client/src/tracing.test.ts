@@ -40,6 +40,7 @@ const invoke = async (
 ) => {
   const req = request();
   const response = await interceptor(next)(req);
+
   return { req, response };
 };
 

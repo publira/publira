@@ -34,6 +34,7 @@ export const RelatedSeries = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
+
   const result = await listRelatedSeries(tenantId, {
     limit,
     locale,

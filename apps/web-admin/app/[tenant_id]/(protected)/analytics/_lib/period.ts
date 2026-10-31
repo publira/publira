@@ -60,17 +60,21 @@ export const resolveAnalyticsPeriod = (
   const to = input.to ? Temporal.PlainDate.from(input.to) : null;
 
   let end = to ?? yesterday;
+
   if (!to && from && Temporal.PlainDate.compare(from, end) > 0) {
     end = from;
   }
+
   const start = from ?? end.subtract({ days: DEFAULT_PERIOD_DAYS - 1 });
   const dates = { end: end.toString(), start: start.toString() };
 
   if (Temporal.PlainDate.compare(start, end) > 0) {
     return { ...dates, ok: false, reason: "reversed" };
   }
+
   if (start.until(end, { largestUnit: "days" }).days + 1 > MAX_PERIOD_DAYS) {
     return { ...dates, ok: false, reason: "too_long" };
   }
+
   return { ...dates, ok: true };
 };

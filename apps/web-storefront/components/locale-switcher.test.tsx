@@ -79,6 +79,7 @@ describe("LocaleSwitcher", () => {
     const trigger = screen.getByRole("button", {
       name: "Language",
     });
+
     trigger.focus();
     fireEvent.click(trigger);
 

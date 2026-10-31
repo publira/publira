@@ -22,7 +22,9 @@ import { formatMessageSource } from "./mf2";
 import type { MessageValues } from "./mf2";
 
 export { getLocales } from "./__generated__/locale-registry";
+
 export type { Locale } from "./__generated__/locale-registry";
+
 export type { MessageValues } from "./mf2";
 
 /** Cookie that stores the UI locale for apps that do not put lang in the URL. */
@@ -260,16 +262,19 @@ const lookupMessage = (
 ): string | undefined => {
   if (Object.hasOwn(catalog, key)) {
     const exact = catalog[key];
+
     if (typeof exact === "string") {
       return exact;
     }
   }
 
   let current: MessageTree | string = catalog;
+
   for (const part of key.split(".")) {
     if (!isMessageTree(current) || !Object.hasOwn(current, part)) {
       return undefined;
     }
+
     current = current[part];
   }
 
@@ -343,6 +348,7 @@ export const getMessage = <TCatalog extends MessageTree>(
   }
 
   const message = lookupMessage(catalog, key);
+
   if (message === undefined) {
     return missingMessage(key);
   }

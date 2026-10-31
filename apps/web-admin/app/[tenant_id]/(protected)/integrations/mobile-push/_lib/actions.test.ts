@@ -51,12 +51,14 @@ const saveFormData = (projectId: string, keyFile?: string): FormData => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("project_id", projectId);
+
   if (keyFile !== undefined) {
     formData.set(
       "service_account_file",
       new File([keyFile], "key.json", { type: "application/json" })
     );
   }
+
   return formData;
 };
 

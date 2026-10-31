@@ -17,6 +17,7 @@ export const CoinsNavigationItem = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   let allowed = false;
+
   try {
     const result = await getCoinSettings(tenantId, locale);
     allowed = result.ok && result.platformAllowsCoins;

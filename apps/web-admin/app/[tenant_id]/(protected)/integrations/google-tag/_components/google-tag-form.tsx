@@ -32,6 +32,7 @@ const GatewayPath = ({ gatewayPath }: { gatewayPath: string }) => {
   }
 
   const path = `/${gatewayPath}`;
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Identifier.Root>

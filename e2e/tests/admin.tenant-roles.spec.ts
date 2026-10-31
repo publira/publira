@@ -47,6 +47,7 @@ const SHARED_ENTRIES = [
 
 const EDITOR_ONLY_NOTICE =
   "Only an editor or a tenant admin can change this. You have read-only access.";
+
 const ADMIN_ONLY_NOTICE =
   "Only a tenant administrator can change this setting. You have read-only access.";
 
@@ -136,10 +137,12 @@ test.describe("tenant roles in the console", () => {
     await expect(
       page.getByRole("spinbutton", { name: /^Reading period/u })
     ).toBeDisabled();
+
     const episodePages = page.getByRole("list", {
       exact: true,
       name: "Registered page images",
     });
+
     await expect(
       episodePages.getByRole("img", { exact: true, name: "Page 1" })
     ).toBeVisible();
@@ -193,11 +196,13 @@ test.describe("tenant roles in the console", () => {
     ).toBeDisabled();
 
     await expectNotFound(page, "/audit-logs");
+
     // The download behind the audit log's button is refused as well, so a
     // link copied from an administrator's screen saves nothing either.
     const auditCsv = await page.request.get(
       adminUrl("/api/v1/audit-logs/csv?from=2026-01-01&to=2026-01-31")
     );
+
     expect(auditCsv.status()).toBe(404);
     await expectNotFound(page, "/integrations/sign-in");
     await expectNotFound(page, "/integrations/google-tag");

@@ -39,6 +39,7 @@ describe("RentalTimeLeft", () => {
     const { container } = await renderWithClientMessages(
       <RentalTimeLeft expiresAt="2026-10-05T12:00:30Z" />
     );
+
     expect(screen.getByText("1 min left")).toBeDefined();
 
     spy.mockReturnValue(start.add({ seconds: 30 }));

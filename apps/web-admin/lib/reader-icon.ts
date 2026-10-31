@@ -16,6 +16,7 @@ export const toReaderIconImage = (
   variants: readonly Pick<UserIconVariant, "height" | "url" | "width">[]
 ): ReaderIconImage | null => {
   const [variant] = variants;
+
   return variant
     ? { height: variant.height, url: variant.url, width: variant.width }
     : null;

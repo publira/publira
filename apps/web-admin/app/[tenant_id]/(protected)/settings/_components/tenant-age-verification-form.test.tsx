@@ -27,6 +27,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateTenantAgeVerificationAction: (_state: unknown, formData: FormData) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -72,6 +73,7 @@ describe("TenantAgeVerificationForm", () => {
     const radios = screen.getAllByRole("radio");
 
     expect(radios).toHaveLength(3);
+
     const r18Radio = await screen.findByRole("radio", {
       name: /Check R18 only/u,
     });
@@ -125,6 +127,7 @@ describe("TenantAgeVerificationForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(
@@ -145,6 +148,7 @@ describe("TenantAgeVerificationForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(submitButton().disabled).toBe(true);
     expect(
       screen.getByText(/Could not load the age verification./u)

@@ -84,10 +84,13 @@ export const generateMetadata = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(episodeDetailParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { episode_id, series_id } = parsedParams;
 
   const [result, seriesResult, siteLabel, t] = await Promise.all([
@@ -101,11 +104,13 @@ export const generateMetadata = async (
   // unreadable keeps the site label the `(site)` layout puts in the document
   // title, and unfurls no card of its own.
   const detail = result.ok ? result.value : undefined;
+
   if (!detail) {
     return {};
   }
 
   const { episode, publishedLocales, series } = detail;
+
   // Alternates wait on the episode, as a series page's do on the series: its
   // own title is what the languages of this URL are decided by.
   const [alternates, cardPath] = await Promise.all([
@@ -121,12 +126,14 @@ export const generateMetadata = async (
       seriesId: series_id,
     }),
   ]);
+
   const title = episodeDisplayTitle(t, episode);
   // The description is the series': an episode carries no synopsis of its
   // own. `GetEpisodeDetail` answers with the work's id, title, and rating
   // rather than its artwork, so the card falls back on the series detail too.
   const work = seriesResult.ok ? seriesResult.value?.series : undefined;
   const description = work?.synopsis.trim() || undefined;
+
   const image = cardPath
     ? resolveEpisodeOpenGraphImage(
         { alt: title, variants: episode.eyeCatchImageVariants },
@@ -235,6 +242,7 @@ const fromSeriesRead = (
   seriesResult: Awaited<ReturnType<typeof getSeriesDetail>>
 ) => {
   const work = seriesResult.ok ? seriesResult.value?.series : undefined;
+
   return {
     // GetSeriesDetail resolves a series override against the tenant default.
     // If that read failed, do not offer a form whose submission might be
@@ -264,10 +272,13 @@ const EpisodeContent = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(episodeDetailParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { episode_id, series_id } = parsedParams;
 
   // Missing / unpublished / other-series / other-tenant episodes resolve to
@@ -299,6 +310,7 @@ const EpisodeContent = async (
   const searchParams = await props.searchParams;
   const purchaseSearchParams = parsePurchaseSearchParams(searchParams);
   const commentSearchParams = parseCommentSearchParams(searchParams);
+
   const checkoutSessionId =
     purchaseSearchParams.checkout === "success"
       ? purchaseSearchParams.session_id
@@ -314,21 +326,28 @@ const EpisodeContent = async (
     previousEpisode,
     series,
   } = result.value;
+
   const { commentMode, labelPublicId, waitFree, workCredits } =
     fromSeriesRead(seriesResult);
+
   // The site-info read resolves the tenant zone. The fallback only covers an
   // unavailable tenant read, never the host machine's local zone.
   const timeZone = tenant?.timeZone ?? DEFAULT_TIME_ZONE;
+
   // A tenant that could not be read sells nowhere, in the app as on the site.
   const appPayments = tenant?.appPayments ?? {
     appStore: false,
     googlePlay: false,
   };
+
   const sales = tenantSales(tenant);
+
   const appStoreBadge =
     resolveTenantBrandMarkVariant(tenant, "app_store_badge") ?? undefined;
+
   const googlePlayBadge =
     resolveTenantBrandMarkVariant(tenant, "google_play_badge") ?? undefined;
+
   // Empty where the episode carries no such moment, and the colophon leaves
   // the fact out rather than standing "Not set" where a date would be.
   const publishedAt = formatDateTime(episode.publishedAt, {
@@ -336,6 +355,7 @@ const EpisodeContent = async (
     locale,
     timeZone,
   });
+
   const scheduledAt = formatDateTime(episode.scheduledAt, {
     fallback: "",
     locale,

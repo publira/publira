@@ -19,8 +19,10 @@ const INVISIBLE = /[\p{Cf}\p{Zs}]/u;
 /** `value` as an interpreted Go string literal. */
 export const goString = (value: string): string => {
   let literal = '"';
+
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0;
+
     if (character === '"' || character === "\\") {
       literal += `\\${character}`;
     } else if (character === "\n") {
@@ -55,6 +57,7 @@ export const goLocaleEntries = (
     key: `${goString(code)}:`,
     value,
   }));
+
   const width = Math.max(...keyed.map(({ key }) => key.length));
 
   return keyed.map(

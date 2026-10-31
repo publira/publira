@@ -50,6 +50,7 @@ export const toFieldErrors = <T>(error: z.ZodError<T>): FieldErrors<T> => {
 
   for (const [field, messages] of Object.entries(fieldErrors)) {
     const message = (messages as string[] | undefined)?.[0];
+
     if (message) {
       result[field] = message;
     }
@@ -69,12 +70,14 @@ export const toFormErrorMessage = <T>(
 ): string => {
   const { fieldErrors, formErrors } = z.flattenError(error);
   const [formError] = formErrors;
+
   if (formError) {
     return formError;
   }
 
   for (const messages of Object.values(fieldErrors)) {
     const message = (messages as string[] | undefined)?.[0];
+
     if (message) {
       return message;
     }

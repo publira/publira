@@ -16,6 +16,7 @@ const appended = (
 ): IncomingHttpHeaders => {
   const copy = { ...headers };
   appendPeerAddress(copy, peerAddress);
+
   return copy;
 };
 
@@ -73,6 +74,7 @@ describe("appendPeerAddress", () => {
 describe("appendPeerAddressOnEveryRequest", () => {
   it("appends the address before the server's request handler runs", async () => {
     appendPeerAddressOnEveryRequest();
+
     const server = createServer((req, res) => {
       res.end(
         JSON.stringify({
@@ -82,10 +84,13 @@ describe("appendPeerAddressOnEveryRequest", () => {
         })
       );
     });
+
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
+
     try {
       const { port } = server.address() as AddressInfo;
+
       const req = request({
         headers: {
           Forwarded: "for=203.0.113.7",
@@ -94,9 +99,11 @@ describe("appendPeerAddressOnEveryRequest", () => {
         host: "127.0.0.1",
         port,
       });
+
       req.end();
       const [res] = await once(req, "response");
       let body = "";
+
       for await (const chunk of res) {
         body += chunk;
       }

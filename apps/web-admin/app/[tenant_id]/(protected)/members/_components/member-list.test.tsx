@@ -94,6 +94,7 @@ describe("MemberList", () => {
         timeZone: "UTC",
       })
     );
+
     const role = screen.getByRole("combobox", {
       name: "Role of Grace Hopper",
     });

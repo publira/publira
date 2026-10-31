@@ -25,6 +25,7 @@ const downloadLocale = async (
 ): Promise<Locale> => {
   const requested = new URL(request.url).searchParams.get("locale");
   const supportedLocales = await getTenantSupportedLocales(tenantId);
+
   return (
     supportedLocales.find((locale) => locale === requested) ??
     getTenantDefaultLocale(tenantId)
@@ -46,17 +47,20 @@ export const GET = async (
 ) => {
   const { tenant_id } = await params;
   const tenant = tenantIdSchema.safeParse(tenant_id);
+
   if (!tenant.success) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
   const tenantId = tenant.data;
   const locale = await downloadLocale(request, tenantId);
+
   const accessToken = await requirePublicSession(
     locale,
     LIBRARY_PATH,
     tenantId
   );
+
   const purchases = await withPublicSessionReauth(
     locale,
     LIBRARY_PATH,

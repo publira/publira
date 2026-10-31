@@ -36,6 +36,7 @@ vi.mock("#lib/auth-session", async (importOriginal) => ({
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -508,6 +509,7 @@ describe("series actions", () => {
     formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
+
     for (let index = 0; index <= 20; index += 1) {
       formData.append("tag_names", `tag-${index}`);
     }
@@ -655,6 +657,7 @@ describe("series actions", () => {
 
     expect(mockUpdateSeries).toHaveBeenCalledOnce();
     const input = mockUpdateSeries.mock.calls[0]?.[0];
+
     for (const field of [
       "ageRating",
       "availability",
@@ -1058,9 +1061,11 @@ describe("updateSeriesWaitFreeSettingsAction", () => {
     formData.set("recharge_hours", "23");
     formData.set("access_hours", "72");
     formData.set("excluded_latest_count", "1");
+
     for (const [name, value] of Object.entries(fields)) {
       formData.set(name, value);
     }
+
     return formData;
   };
 
@@ -1163,6 +1168,7 @@ describe("updateSeriesWaitFreeSettingsAction", () => {
     "refuses %s=%j next to the field without calling the API",
     async (name, value, field, message) => {
       const { updateSeriesWaitFreeSettingsAction } = await import("./actions");
+
       const result = await updateSeriesWaitFreeSettingsAction(
         null,
         waitFreeFormData({ [name]: value })
@@ -1185,6 +1191,7 @@ describe("updateSeriesWaitFreeSettingsAction", () => {
     });
 
     const { updateSeriesWaitFreeSettingsAction } = await import("./actions");
+
     const result = await updateSeriesWaitFreeSettingsAction(
       null,
       waitFreeFormData({ enabled: "on" })
@@ -1209,9 +1216,11 @@ describe("updateSeriesFreeAfterSettingsAction", () => {
     formData.set("series_public_id", "SERIES001");
     formData.set("days_after_publication", "30");
     formData.set("excluded_latest_count", "2");
+
     for (const [name, value] of Object.entries(fields)) {
       formData.set(name, value);
     }
+
     return formData;
   };
 
@@ -1315,6 +1324,7 @@ describe("updateSeriesFreeAfterSettingsAction", () => {
     "refuses %s=%j next to the field without calling the API",
     async (name, value, field, message) => {
       const { updateSeriesFreeAfterSettingsAction } = await import("./actions");
+
       const result = await updateSeriesFreeAfterSettingsAction(
         null,
         freeAfterFormData({ [name]: value })
@@ -1337,6 +1347,7 @@ describe("updateSeriesFreeAfterSettingsAction", () => {
     });
 
     const { updateSeriesFreeAfterSettingsAction } = await import("./actions");
+
     const result = await updateSeriesFreeAfterSettingsAction(
       null,
       freeAfterFormData({ enabled: "on" })
@@ -1357,6 +1368,7 @@ const deleteForm = (translationLocale: string): FormData => {
   formData.set("tenant_id", "TENANT001");
   formData.set("series_public_id", "SERIES001");
   formData.set("translation_locale", translationLocale);
+
   return formData;
 };
 
@@ -1380,6 +1392,7 @@ describe("a series' title and synopsis per language", () => {
     formData.set("purchase_availability", "");
     formData.set("reading_direction", "rtl");
     formData.set("spread_start_page", "2");
+
     return formData;
   };
 

@@ -39,6 +39,7 @@ interface SetupStatusResponse {
 const readSetupStatus = async (): Promise<SetupStatusResponse> => {
   try {
     const response = await apiClient.setup.checkSetupStatus({});
+
     return {
       completed: response.setupCompleted,
       defaultLocale: parseLocale(response.defaultLocale.trim()) ?? null,
@@ -47,6 +48,7 @@ const readSetupStatus = async (): Promise<SetupStatusResponse> => {
     if (isSetupStatusUnknownError(error)) {
       return { completed: null, defaultLocale: null };
     }
+
     throw error;
   }
 };
@@ -65,11 +67,13 @@ export const isSetupCompleted = async (): Promise<SetupStatus> => {
 
   try {
     const { completed } = await readSetupStatus();
+
     return { available: true, completed };
   } catch {
     // A cache fill must not throw: the page can render its API-unavailable
     // message, while a successful read on the next request replaces it.
     dropFailedCacheEntry();
+
     return { available: false };
   }
 };
@@ -138,6 +142,7 @@ export const resolveSetupState = async (): Promise<SetupState> => {
     const { completed, defaultLocale } = await readSetupStatus();
     lastKnownSetupState = completed;
     lastKnownDefaultLocale = defaultLocale ?? "none";
+
     return { completed, defaultLocale: lastKnownDefaultLocale };
   } catch {
     return {
@@ -195,6 +200,7 @@ export const createInitialUser = async ({
       },
       await buildInitialSetupHeaders()
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);

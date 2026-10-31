@@ -49,6 +49,7 @@ const toResolvedTenant = (
   tenantId: string
 ): ResolvedTenant => {
   const locale = parseLocale(defaultLocale);
+
   if (locale === undefined) {
     throw new Error(
       `tenant default locale is not supported: ${defaultLocale} (${tenantId})`
@@ -85,6 +86,7 @@ export const createTenantResolver = (
 ) => {
   const now = options?.now ?? (() => Temporal.Now.instant().epochMilliseconds);
   const readRevalidatedAt = options?.readRevalidatedAt ?? readTagRevalidatedAt;
+
   const tenantCache = new LRUCache<string, TenantCacheValue>({
     max: options?.max ?? 500,
     ttl: options?.ttl ?? 300_000,
@@ -97,9 +99,11 @@ export const createTenantResolver = (
     if (!tenant) {
       return true;
     }
+
     const revalidatedAt = await readRevalidatedAt(
       tenantSiteTag(tenant.tenantId)
     );
+
     // `undefined` is a Redis that cannot be read; the entry's TTL covers it.
     return revalidatedAt === undefined || readAt > revalidatedAt;
   };
@@ -113,16 +117,20 @@ export const createTenantResolver = (
 
     const cacheKey = domainCandidates.join("\0");
     const cached = tenantCache.get(cacheKey);
+
     if (cached !== undefined && (await isCurrent(cached))) {
       return cached.tenant;
     }
 
     const readAt = now();
+
     try {
       const response = await publicApiClient.domain.getTenantByDomain({
         domains: [...domainCandidates],
       });
+
       const tenantId = response.tenantId?.trim() || null;
+
       // The API documents `default_locale` as never empty, and falls back to
       // the platform setting itself, so a value that fails to parse is one this
       // build does not serve. The proxy redirects a locale-less URL to this
@@ -134,18 +142,23 @@ export const createTenantResolver = (
             tenantId
           )
         : null;
+
       tenantCache.set(cacheKey, { readAt, tenant });
+
       return tenant;
     } catch (error) {
       // Only an unknown domain is cached as "no tenant"; a transient failure
       // must not pin every request on this host to 404 for the whole TTL.
       if (isMissingResourceRpcError(error)) {
         tenantCache.set(cacheKey, { readAt, tenant: null });
+
         return null;
       }
+
       if (isTenantSuspendedRpcError(error)) {
         return SUSPENDED_TENANT;
       }
+
       // A held tenant whose tag moved keeps serving what was read rather than
       // taking the host down until the API answers again.
       if (cached?.tenant) {

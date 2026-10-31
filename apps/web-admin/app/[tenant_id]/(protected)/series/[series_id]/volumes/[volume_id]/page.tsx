@@ -58,9 +58,11 @@ const editVolumeParamsSchema = z.object({
 
 const resolveParams = async (params: EditVolumePageProps["params"]) => {
   const parsedParams = parseRouteParams(editVolumeParamsSchema, await params);
+
   if (!parsedParams) {
     notFound();
   }
+
   return parsedParams;
 };
 
@@ -113,14 +115,17 @@ const EditVolumeBackLink = async ({ params }: EditVolumePageProps) => {
 const EditVolumeData = async ({ params }: EditVolumePageProps) => {
   const [{ series_id: seriesPublicId, volume_id: volumePublicId }, tenantId] =
     await Promise.all([resolveParams(params), getTenantId()]);
+
   const [locale, seriesResult] = await Promise.all([
     getLocale(tenantId),
     getSeries({ publicId: seriesPublicId }),
   ]);
+
   if (!seriesResult.ok) {
     if (seriesResult.notFound) {
       notFound();
     }
+
     return (
       <VolumeLoadError
         message={seriesResult.message}
@@ -130,19 +135,23 @@ const EditVolumeData = async ({ params }: EditVolumePageProps) => {
   }
 
   const seriesId = seriesResult.series.id;
+
   const [volumeResult, episodesResult, currency, t] = await Promise.all([
     getVolume({ publicId: volumePublicId, seriesId, tenantId }, locale),
     listAllEpisodes({ seriesId }),
     getTenantCurrency(tenantId),
     getMessagesFor(locale),
   ]);
+
   if (!volumeResult.ok) {
     if (volumeResult.notFound) {
       // Missing, or another series' volume — never told apart. Renders
       // `(protected)/not-found.tsx` inside the console chrome.
       notFound();
     }
+
     await redirectToLoginIfSessionRejected(volumeResult);
+
     return (
       <VolumeLoadError
         message={volumeResult.message}
@@ -152,9 +161,11 @@ const EditVolumeData = async ({ params }: EditVolumePageProps) => {
   }
 
   const { volume } = volumeResult;
+
   const takenEpisodeIds = volumeResult.volumes.flatMap((other) =>
     other.id === volume.id ? [] : other.episodeIds
   );
+
   const episodes = episodesResult.episodes.map((episode, index) => ({
     id: episode.id,
     position: index + 1,

@@ -26,7 +26,9 @@ const SubscriptionPlanBillingMessage = ({
     currency: readCurrency(plan.currency),
     locale,
   });
+
   const values = { count: plan.intervalCount, price };
+
   switch (plan.interval) {
     case "day": {
       return (
@@ -36,6 +38,7 @@ const SubscriptionPlanBillingMessage = ({
         />
       );
     }
+
     case "week": {
       return (
         <Message
@@ -44,6 +47,7 @@ const SubscriptionPlanBillingMessage = ({
         />
       );
     }
+
     case "month": {
       return (
         <Message
@@ -52,6 +56,7 @@ const SubscriptionPlanBillingMessage = ({
         />
       );
     }
+
     case "year": {
       return (
         <Message
@@ -60,6 +65,7 @@ const SubscriptionPlanBillingMessage = ({
         />
       );
     }
+
     default: {
       return price;
     }

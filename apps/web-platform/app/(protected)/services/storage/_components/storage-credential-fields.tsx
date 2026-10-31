@@ -56,6 +56,7 @@ export const StorageCredentialFields = ({
   const hasStoredKey = Boolean(
     settings.accessKeyId && settings.hasSecretAccessKey
   );
+
   const [mode, setMode] = useState(() => storageCredentialMode(settings));
   const [isReplacing, setIsReplacing] = useState(!hasStoredKey);
 
@@ -64,9 +65,11 @@ export const StorageCredentialFields = ({
       setMode(value);
     }
   }, []);
+
   const handleStartReplace = useCallback(() => {
     setIsReplacing(true);
   }, []);
+
   const handleKeepStored = useCallback(() => {
     setIsReplacing(false);
   }, []);

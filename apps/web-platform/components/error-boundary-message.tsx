@@ -22,6 +22,7 @@ const readCookie = (name: string): string => {
   const match = document.cookie.match(
     new RegExp(`(?:^|; )${name}=([^;]*)`, "u")
   );
+
   if (!match?.[1]) {
     return "";
   }
@@ -70,6 +71,7 @@ const catalogs = new Map<Locale, Promise<PlatformMessages>>();
 
 const platformCatalog = (locale: Locale): Promise<PlatformMessages> => {
   const loaded = catalogs.get(locale);
+
   if (loaded) {
     return loaded;
   }

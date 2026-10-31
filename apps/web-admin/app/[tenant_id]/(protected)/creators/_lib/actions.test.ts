@@ -49,9 +49,11 @@ const formData = (fields: Record<string, string>): FormData => {
   data.set("tenant_id", "TENANT001");
   data.set("creator_id", creatorId);
   data.set("creator_public_id", "CREATOR001");
+
   for (const [name, value] of Object.entries(fields)) {
     data.set(name, value);
   }
+
   return data;
 };
 

@@ -59,14 +59,17 @@ export const scan = async (repository = process.cwd()): Promise<Finding[]> => {
     ],
     { cwd: repository, stdio: ["ignore", "pipe", "inherit"] }
   );
+
   const [output, [code]] = await Promise.all([
     text(git.stdout),
     once(git, "close"),
   ]);
+
   // `git grep` exits 1 when nothing matched, which is the passing case.
   if (code === 1) {
     return [];
   }
+
   if (code !== 0) {
     throw new Error(`git grep exited with ${code}`);
   }
@@ -86,6 +89,7 @@ export const scan = async (repository = process.cwd()): Promise<Finding[]> => {
 const report = (finding: Finding): void => {
   const message =
     "Use an icon from @publira/icons instead of writing <svg> in JSX. See apps/AGENTS.md.";
+
   if (process.env.GITHUB_ACTIONS) {
     console.error(
       `::error file=${finding.file},line=${finding.line}::${message}`
@@ -93,6 +97,7 @@ const report = (finding: Finding): void => {
 
     return;
   }
+
   console.error(`${finding.file}:${finding.line}: ${message}`);
 };
 
@@ -103,6 +108,7 @@ const main = async (): Promise<void> => {
     for (const finding of findings) {
       report(finding);
     }
+
     process.exitCode = 1;
 
     return;

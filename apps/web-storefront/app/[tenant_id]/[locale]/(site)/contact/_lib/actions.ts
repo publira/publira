@@ -77,6 +77,7 @@ export const submitContactMessageAction = async (
   // so every rejection below is worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const schema = await contactFormSchema(submittedLocale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       body: "value",
@@ -86,6 +87,7 @@ export const submitContactMessageAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -94,6 +96,7 @@ export const submitContactMessageAction = async (
   }
 
   const { body, locale, replyToEmail, subject, tenantId } = parsed.data;
+
   const result = await submitContactMessage({
     body,
     locale,
@@ -101,6 +104,7 @@ export const submitContactMessageAction = async (
     subject,
     tenantId,
   });
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

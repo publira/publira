@@ -28,11 +28,13 @@ import type {
  */
 export const useClientMessages = (): AdminClientMessageAccessor => {
   const messages = use(AdminMessagesContext);
+
   if (messages === null) {
     throw new Error("AdminLocaleProvider is required.");
   }
 
   const catalog: AdminClientMessages = use(messages);
+
   return bindMessages(catalog, useAdminLocale());
 };
 

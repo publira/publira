@@ -12,40 +12,51 @@ const operatorActionName = (action: string) => {
     case "operator_created": {
       return <Message message="platform.audit.actions.operator_created" />;
     }
+
     case "operator_deleted": {
       return <Message message="platform.audit.actions.operator_deleted" />;
     }
+
     case "operator_mfa_disabled": {
       return <Message message="platform.audit.actions.operator_mfa_disabled" />;
     }
+
     case "operator_mfa_enrolled": {
       return <Message message="platform.audit.actions.operator_mfa_enrolled" />;
     }
+
     case "operator_mfa_recovery_code_used": {
       return (
         <Message message="platform.audit.actions.operator_mfa_recovery_code_used" />
       );
     }
+
     case "operator_mfa_recovery_codes_regenerated": {
       return (
         <Message message="platform.audit.actions.operator_mfa_recovery_codes_regenerated" />
       );
     }
+
     case "operator_mfa_reset": {
       return <Message message="platform.audit.actions.operator_mfa_reset" />;
     }
+
     case "operator_mfa_verified": {
       return <Message message="platform.audit.actions.operator_mfa_verified" />;
     }
+
     case "operator_resumed": {
       return <Message message="platform.audit.actions.operator_resumed" />;
     }
+
     case "operator_suspended": {
       return <Message message="platform.audit.actions.operator_suspended" />;
     }
+
     case "operator_updated": {
       return <Message message="platform.audit.actions.operator_updated" />;
     }
+
     default: {
       return null;
     }
@@ -60,51 +71,61 @@ const platformActionName = (action: string) => {
         <Message message="platform.audit.actions.platform_email_settings_updated" />
       );
     }
+
     case "platform_policy_updated": {
       return (
         <Message message="platform.audit.actions.platform_policy_updated" />
       );
     }
+
     case "platform_retention_defaults_updated": {
       return (
         <Message message="platform.audit.actions.platform_retention_defaults_updated" />
       );
     }
+
     case "platform_search_connection_tested": {
       return (
         <Message message="platform.audit.actions.platform_search_connection_tested" />
       );
     }
+
     case "platform_search_settings_updated": {
       return (
         <Message message="platform.audit.actions.platform_search_settings_updated" />
       );
     }
+
     case "platform_settings_updated": {
       return (
         <Message message="platform.audit.actions.platform_settings_updated" />
       );
     }
+
     case "platform_smtp_test_email_sent": {
       return (
         <Message message="platform.audit.actions.platform_smtp_test_email_sent" />
       );
     }
+
     case "platform_storage_connection_tested": {
       return (
         <Message message="platform.audit.actions.platform_storage_connection_tested" />
       );
     }
+
     case "platform_storage_settings_updated": {
       return (
         <Message message="platform.audit.actions.platform_storage_settings_updated" />
       );
     }
+
     case "platform_webpush_subject_updated": {
       return (
         <Message message="platform.audit.actions.platform_webpush_subject_updated" />
       );
     }
+
     default: {
       return null;
     }
@@ -119,45 +140,57 @@ const tenantActionName = (action: string) => {
         <Message message="platform.audit.actions.tenant_admin_invite_canceled" />
       );
     }
+
     case "tenant_admin_invite_resent": {
       return (
         <Message message="platform.audit.actions.tenant_admin_invite_resent" />
       );
     }
+
     case "tenant_admin_invited": {
       return <Message message="platform.audit.actions.tenant_admin_invited" />;
     }
+
     case "tenant_created": {
       return <Message message="platform.audit.actions.tenant_created" />;
     }
+
     case "tenant_info_updated": {
       return <Message message="platform.audit.actions.tenant_info_updated" />;
     }
+
     case "tenant_member_added": {
       return <Message message="platform.audit.actions.tenant_member_added" />;
     }
+
     case "tenant_member_created": {
       return <Message message="platform.audit.actions.tenant_member_created" />;
     }
+
     case "tenant_member_mfa_reset": {
       return (
         <Message message="platform.audit.actions.tenant_member_mfa_reset" />
       );
     }
+
     case "tenant_member_removed": {
       return <Message message="platform.audit.actions.tenant_member_removed" />;
     }
+
     case "tenant_member_role_updated": {
       return (
         <Message message="platform.audit.actions.tenant_member_role_updated" />
       );
     }
+
     case "tenant_resumed": {
       return <Message message="platform.audit.actions.tenant_resumed" />;
     }
+
     case "tenant_suspended": {
       return <Message message="platform.audit.actions.tenant_suspended" />;
     }
+
     default: {
       return null;
     }
@@ -170,12 +203,15 @@ const userActionName = (action: string) => {
     case "user_deleted": {
       return <Message message="platform.audit.actions.user_deleted" />;
     }
+
     case "user_suspended": {
       return <Message message="platform.audit.actions.user_suspended" />;
     }
+
     case "user_unsuspended": {
       return <Message message="platform.audit.actions.user_unsuspended" />;
     }
+
     default: {
       return null;
     }
@@ -185,6 +221,7 @@ const userActionName = (action: string) => {
 /** An audit action's name, or the action itself when the console has none. */
 export const AuditActionName = ({ action }: { action: string }) => {
   const normalized = action.trim();
+
   if (!normalized) {
     return <Message message="platform.audit.unset" />;
   }

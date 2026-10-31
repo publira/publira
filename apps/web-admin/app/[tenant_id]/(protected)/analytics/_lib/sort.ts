@@ -61,6 +61,7 @@ export const nextSort = <C extends string>(
   if (current.column !== column) {
     return { column, order: firstOrder(columns, column) };
   }
+
   return { column, order: current.order === "asc" ? "desc" : "asc" };
 };
 
@@ -86,15 +87,18 @@ export const sortRows = <T, C extends string>(
   const collator = new Intl.Collator(toIntlLocale(locale), {
     numeric: true,
   });
+
   const direction = state.order === "asc" ? 1 : -1;
 
   return rows.toSorted((left, right) => {
     const a = value(left, state.column);
     const b = value(right, state.column);
+
     const compared =
       typeof a === "number" && typeof b === "number"
         ? a - b
         : collator.compare(String(a), String(b));
+
     return compared * direction;
   });
 };

@@ -120,9 +120,11 @@ const toEngine = (value: number | undefined): PlatformSearchEngine => {
     case engineNumbers.opensearch: {
       return "opensearch";
     }
+
     case engineNumbers.elasticsearch: {
       return "elasticsearch";
     }
+
     default: {
       return "sql";
     }
@@ -143,6 +145,7 @@ const toAnalysisRequest = (analysis?: PlatformSearchAnalysisInput) => {
   if (!analysis) {
     return {};
   }
+
   return {
     analysis: analysis.mode === "replace" ? analysis.definition : "",
     analysisUpdateMode: analysisModeNumbers[analysis.mode],
@@ -182,6 +185,7 @@ const indentJson = (json: string): string => {
   for (const [index, char] of [...json].entries()) {
     if (inString) {
       out += char;
+
       if (escaped) {
         escaped = false;
       } else if (char === "\\") {
@@ -189,17 +193,21 @@ const indentJson = (json: string): string => {
       } else if (char === '"') {
         inString = false;
       }
+
       continue;
     }
+
     switch (char) {
       case '"': {
         inString = true;
         out += char;
         break;
       }
+
       case "{":
       case "[": {
         const close = char === "{" ? "}" : "]";
+
         // An empty object or array stays on one line.
         if (
           json
@@ -212,8 +220,10 @@ const indentJson = (json: string): string => {
           depth += 1;
           out += char + newline();
         }
+
         break;
       }
+
       case "}":
       case "]": {
         if (out.endsWith("{") || out.endsWith("[")) {
@@ -222,16 +232,20 @@ const indentJson = (json: string): string => {
           depth -= 1;
           out += newline() + char;
         }
+
         break;
       }
+
       case ",": {
         out += char + newline();
         break;
       }
+
       case ":": {
         out += ": ";
         break;
       }
+
       default: {
         if (!WHITESPACE_RE.test(char)) {
           out += char;
@@ -239,17 +253,21 @@ const indentJson = (json: string): string => {
       }
     }
   }
+
   return out;
 };
+
 /** The generated enum numbers `PlatformSearchBuildState`. */
 const toBuildState = (value: number | undefined): PlatformSearchBuildState => {
   switch (value) {
     case 2: {
       return "building";
     }
+
     case 3: {
       return "failed";
     }
+
     default: {
       return "serving";
     }
@@ -296,12 +314,15 @@ const toLocaleAnalyses = (
   settings?: Pick<RawPlatformSearchSettings, "localeAnalyses">
 ): PlatformSearchSettings["localeAnalyses"] => {
   const byLocale: PlatformSearchSettings["localeAnalyses"] = {};
+
   for (const { analysis, locale } of settings?.localeAnalyses ?? []) {
     const code = parseLocale(locale);
+
     if (code) {
       byLocale[code] = indentJson(analysis);
     }
   }
+
   return byLocale;
 };
 
@@ -316,6 +337,7 @@ export const toPlatformSearchSettings = (
   settings?: RawPlatformSearchSettings
 ): PlatformSearchSettings => {
   const buildState = toBuildState(settings?.buildState);
+
   return {
     analysis: indentJson(settings?.analysis ?? ""),
     buildFailure:
@@ -348,20 +370,25 @@ export const searchTestFailureMessage = async (
     case "SEARCH_TEST_NOT_A_SEARCH_ENGINE": {
       return t("platform.search.test.reasons.not_a_search_engine");
     }
+
     // No test fails for it any more, but the audit log keeps the entries of
     // the tests that did while the default analysis needed both plugins.
     case "SEARCH_TEST_PLUGIN_MISSING": {
       return t("platform.search.test.reasons.plugin_missing");
     }
+
     case "SEARCH_TEST_UNAUTHORIZED": {
       return t("platform.search.test.reasons.unauthorized");
     }
+
     case "SEARCH_TEST_UNREACHABLE": {
       return t("platform.search.test.reasons.unreachable");
     }
+
     case "SEARCH_TEST_WRONG_PRODUCT": {
       return t("platform.search.test.reasons.wrong_product");
     }
+
     default: {
       return undefined;
     }
@@ -382,11 +409,13 @@ const toTestResult = async (
     succeeded: response.succeeded,
     version: response.version,
   };
+
   if (response.succeeded) {
     return { ...result, failure: "" };
   }
 
   const t = await getMessagesFor(locale);
+
   return {
     ...result,
     failure:
@@ -421,6 +450,7 @@ const writeFailure = async (
   const t = await getMessagesFor(locale);
   const fallback = t(fallbackKey);
   const detail = rpcErrorRawMessage(error)?.trim();
+
   return {
     ...(detail &&
     analysisFields.some((field) => rpcErrorHasFieldViolation(error, field))
@@ -448,7 +478,9 @@ const getPlatformSearchSettingsForLocale = async (
       {},
       withServiceHeaders()
     );
+
     const settings = toPlatformSearchSettings(response.settings);
+
     // The worker finishes a build without a write through this console, and
     // retries a failed one on its next pass, so while either is pending the
     // entry is kept no longer than the screen's own refresh asks it again.
@@ -457,6 +489,7 @@ const getPlatformSearchSettingsForLocale = async (
     } else {
       cacheLife("seconds");
     }
+
     return { ok: true, settings };
   } catch (error) {
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
@@ -464,6 +497,7 @@ const getPlatformSearchSettingsForLocale = async (
     // soon as the API does.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       message: rpcErrorMessage(error, t("platform.search.load_failed"), {
         locale,
@@ -485,6 +519,7 @@ const getPlatformSearchSettingsForLocale = async (
 export const getPlatformSearchSettings =
   async (): Promise<GetPlatformSearchSettingsResult> => {
     await verifyPlatformSession();
+
     return getPlatformSearchSettingsForLocale(await getPlatformLocale());
   };
 
@@ -501,8 +536,10 @@ export const updatePlatformSearchSettings = async (
   locale: Locale
 ): Promise<UpdatePlatformSearchSettingsResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
@@ -522,6 +559,7 @@ export const updatePlatformSearchSettings = async (
         },
         buildSessionHeaders(sessionId)
       );
+
     return { ok: true, settings: toPlatformSearchSettings(response.settings) };
   } catch (error) {
     return writeFailure(error, locale, "platform.search.save_failed", [
@@ -542,8 +580,10 @@ export const testPlatformSearchConnection = async (
   locale: Locale
 ): Promise<TestPlatformSearchConnectionResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
@@ -559,6 +599,7 @@ export const testPlatformSearchConnection = async (
         },
         buildSessionHeaders(sessionId)
       );
+
     return { ok: true, result: await toTestResult(response, locale) };
   } catch (error) {
     return writeFailure(error, locale, "platform.search.test.failed");

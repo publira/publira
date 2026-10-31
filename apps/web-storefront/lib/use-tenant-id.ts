@@ -10,11 +10,14 @@ import { useParams } from "next/navigation";
 export const useTenantId = (): string => {
   const params = useParams();
   const value = params?.tenant_id;
+
   if (typeof value === "string") {
     return value;
   }
+
   if (Array.isArray(value) && typeof value[0] === "string") {
     return value[0];
   }
+
   return "";
 };

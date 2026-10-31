@@ -293,6 +293,7 @@ describe("listAllLabels", () => {
       name: `Label ${String(index + 1).padStart(3, "0")}`,
       publicId: `LABEL${String(index + 1).padStart(3, "0")}`,
     }));
+
     mockListLabels
       .mockResolvedValueOnce({
         labels: firstPage,
@@ -328,9 +329,11 @@ describe("listAllLabels", () => {
       { headers: { Authorization: "Bearer service-token" } }
     );
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
+
     expect(result.labels).toHaveLength(102);
     expect(result.labels.at(0)?.publicId).toBe("LABEL102");
     expect(result.labels.at(-1)?.publicId).toBe("LABEL101");
@@ -422,6 +425,7 @@ describe("label eye-catch aspect images", () => {
 
     const imageData = new Uint8Array([1, 2, 3]);
     const { uploadLabelEyeCatchAspectImage } = await import("./label");
+
     const result = await uploadLabelEyeCatchAspectImage(
       {
         id: "LABEL101",
@@ -444,6 +448,7 @@ describe("label eye-catch aspect images", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toMatchObject({ ok: true });
+
     if (result.ok) {
       expect(result.label.eyeCatchImageVariants[0].variantType).toBe(
         "landscape"
@@ -455,6 +460,7 @@ describe("label eye-catch aspect images", () => {
     mockGetAccessToken.mockResolvedValue("");
 
     const { uploadLabelEyeCatchAspectImage } = await import("./label");
+
     const result = await uploadLabelEyeCatchAspectImage(
       {
         id: "LABEL101",
@@ -481,6 +487,7 @@ describe("the operator check before a shared read", () => {
       "listLabels",
       async () => {
         const { listLabels } = await import("./label");
+
         return await listLabels();
       },
       mockListLabels,
@@ -489,6 +496,7 @@ describe("the operator check before a shared read", () => {
       "listAllLabels",
       async () => {
         const { listAllLabels } = await import("./label");
+
         return await listAllLabels();
       },
       mockListLabels,
@@ -497,6 +505,7 @@ describe("the operator check before a shared read", () => {
       "getLabel",
       async () => {
         const { getLabel } = await import("./label");
+
         return await getLabel({ publicId: "LABEL101" });
       },
       mockGetLabel,

@@ -65,6 +65,7 @@ describe("notification lib", () => {
     });
 
     const { listNotifications } = await import("./notification");
+
     const result = await listNotifications("en", {
       limit: 20,
       token: "current-page",
@@ -204,6 +205,7 @@ describe("notification lib", () => {
     mockResolveAccessToken.mockResolvedValue("");
 
     const { listNotifications } = await import("./notification");
+
     const result = await listNotifications("en", {
       token: "current-page",
     });
@@ -258,6 +260,7 @@ describe("notification lib", () => {
     mockMarkNotificationAsReadApi.mockResolvedValue({ marked: true });
 
     const { markNotificationAsRead } = await import("./notification");
+
     const result = await markNotificationAsRead(
       { notificationId: "11111111-1111-4111-8111-111111111111" },
       "en"

@@ -48,6 +48,7 @@ export const ReadingHistorySection = async ({
     getLocale(),
     resolveMyPageToken(searchParams),
   ]);
+
   const [result, t, timeZone] = await Promise.all([
     listMyEpisodeReads(tenantId, {
       limit: defaultReadingHistoryPageSize,

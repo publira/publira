@@ -71,14 +71,18 @@ export const EpisodesSortableList = ({
   const router = useRouter();
   const { add } = Toast.useManager();
   const [isPending, startTransition] = useTransition();
+
   const [optimisticItems, setOptimisticItems] = useOptimistic(
     episodes,
     (_currentItems, nextItems: EpisodeItem[]) => nextItems
   );
+
   const pageIds = optimisticItems.map(episodeId);
   const selectedOnPage = pageIds.filter((id) => selectedIds.has(id));
+
   const allOnPageSelected =
     pageIds.length > 0 && selectedOnPage.length === pageIds.length;
+
   const someOnPageSelected = selectedOnPage.length > 0 && !allOnPageSelected;
 
   const submitReorder = useCallback(
@@ -96,14 +100,17 @@ export const EpisodesSortableList = ({
         "ordered_episode_ids",
         JSON.stringify(nextItems.map(episodeId))
       );
+
       try {
         const result = await reorderAction(formData);
+
         if (!result.ok) {
           add({
             title: result.message ?? t("admin.series.episodes.reorder_error"),
             type: "error",
           });
           router.refresh();
+
           return;
         }
 
@@ -127,6 +134,7 @@ export const EpisodesSortableList = ({
     (event: DragEndEvent) => {
       const currentItems = optimisticItems;
       const movedItems = Sortable.withItemMoved(currentItems, episodeId, event);
+
       if (movedItems === currentItems) {
         return;
       }
@@ -137,6 +145,7 @@ export const EpisodesSortableList = ({
       const pageOrderIndexes = currentItems
         .map((item) => item.orderIndex)
         .toSorted((left, right) => left - right);
+
       const nextItems = movedItems.map((item, index) => ({
         ...item,
         orderIndex: pageOrderIndexes[index] ?? item.orderIndex,

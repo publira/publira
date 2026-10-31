@@ -269,6 +269,7 @@ describe("getPlatformCurrentOperator", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {
       // Asserted below.
     });
+
     const error = new ConnectError("boom", Code.Internal);
     mockGetMe.mockRejectedValueOnce(error);
 

@@ -46,6 +46,7 @@ export const getMyReadingPosition = async ({
   tenantId,
 }: ReadingPositionRead): Promise<number | null> => {
   const sessionId = accessToken.trim();
+
   if (!sessionId) {
     return null;
   }
@@ -55,12 +56,14 @@ export const getMyReadingPosition = async ({
       { episodeId, surface: ClientSurface.WEB, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     return response.position?.pageIndex ?? null;
   } catch (error) {
     // The position is an improvement on opening at the first page, never the
     // reason the episode is unreadable, so a classified failure leaves the
     // reader at the first page rather than replacing the body with an error.
     rethrowUnclassifiedRpcError(error);
+
     return null;
   }
 };
@@ -85,6 +88,7 @@ export const saveReadingPosition = async ({
   tenantId,
 }: ReadingPositionSave): Promise<void> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return;
   }

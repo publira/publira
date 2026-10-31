@@ -43,6 +43,7 @@ export const refundPurchaseAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await refundPurchaseSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       purchaseId: { kind: "value", name: "purchase_id" },
@@ -50,6 +51,7 @@ export const refundPurchaseAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -60,11 +62,13 @@ export const refundPurchaseAction = async (
   const result = await withAdminSessionReauth(() =>
     refundPurchase(parsed.data, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
 
   updateTag(purchasesCacheTag(parsed.data.tenantId));
   const t = await getMessagesFor(locale);
+
   return { message: t("admin.purchases.refunded"), ok: true };
 };

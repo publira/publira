@@ -20,16 +20,19 @@ const UnchangedReason = ({
         <ClientMessage message="admin.series.episodes.credits.reason_already_credited" />
       );
     }
+
     case "not_credited": {
       return (
         <ClientMessage message="admin.series.episodes.credits.reason_not_credited" />
       );
     }
+
     case "credited_on_the_episode": {
       return (
         <ClientMessage message="admin.series.episodes.credits.reason_credited_on_the_episode" />
       );
     }
+
     default: {
       return (
         <ClientMessage message="admin.series.episodes.credits.reason_unspecified" />
@@ -53,9 +56,11 @@ export const EpisodeCreditsRangeResult = ({
   result,
 }: EpisodeCreditsRangeResultProps) => {
   const t = useClientMessages();
+
   const titleById = new Map(
     episodes.map((episode) => [episode.id, episode.title])
   );
+
   const labelFor = (id: string): string => titleById.get(id) ?? id;
 
   return (

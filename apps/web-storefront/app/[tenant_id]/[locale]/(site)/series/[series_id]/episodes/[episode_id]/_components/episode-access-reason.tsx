@@ -36,6 +36,7 @@ export const EpisodeAccessReason = async ({
     getLocale(),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return null;
   }
@@ -48,6 +49,7 @@ export const EpisodeAccessReason = async ({
     locale,
     checkoutSessionId
   );
+
   if (!viewer.ok) {
     return null;
   }
@@ -61,6 +63,7 @@ export const EpisodeAccessReason = async ({
       </span>
     );
   }
+
   // Staff open an episode to check it, so the line also says what a reader it
   // is sold to sees in place of the pages.
   if (viewer.value?.entitlementSource === "staff") {
@@ -72,5 +75,6 @@ export const EpisodeAccessReason = async ({
       </span>
     );
   }
+
   return null;
 };

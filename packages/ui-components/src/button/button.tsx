@@ -14,12 +14,15 @@ import type { ComponentPropsWithoutRef } from "react";
 const HOVER_FILL_PRIMARY = cn(
   "hover:bg-[color-mix(in_oklab,var(--color-primary)_88%,var(--color-foreground))]"
 );
+
 const HOVER_FILL_SECONDARY = cn(
   "hover:bg-[color-mix(in_oklab,var(--color-secondary)_88%,var(--color-foreground))]"
 );
+
 const HOVER_FILL_DESTRUCTIVE = cn(
   "hover:bg-[color-mix(in_oklab,var(--color-destructive)_88%,var(--color-foreground))]"
 );
+
 const HOVER_FILL_INK = cn(
   "hover:bg-[color-mix(in_oklab,var(--color-foreground)_85%,var(--color-muted-foreground))]"
 );

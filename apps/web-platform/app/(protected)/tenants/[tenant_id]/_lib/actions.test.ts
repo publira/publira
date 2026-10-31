@@ -40,6 +40,7 @@ vi.mock("#lib/api-client", () => ({
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
 
@@ -69,9 +70,11 @@ vi.mock("#lib/audit-logs", () => ({
 
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [key, value] of Object.entries(fields)) {
     data.set(key, value);
   }
+
   return data;
 };
 
@@ -104,6 +107,7 @@ describe("tenant detail actions", () => {
       "platform:dashboard",
       "platform:audit-logs",
     ];
+
     expect(clearedTags()).toEqual([...expected, ...expected]);
   });
 
@@ -221,6 +225,7 @@ describe("tenant detail actions", () => {
       "platform:users",
       "platform:dashboard",
     ];
+
     expect(clearedTags()).toEqual([...expected, ...expected]);
   });
 
@@ -286,6 +291,7 @@ describe("tenant detail actions", () => {
       invitation_id: "01a0deb5-0000-7000-8000-000000000004",
       tenant_id: "01a0deb5-0000-7000-8000-000000000002",
     };
+
     await resendTenantAdminInvitationAction(null, formData(invitation));
     await cancelTenantAdminInvitationAction(null, formData(invitation));
 
@@ -293,6 +299,7 @@ describe("tenant detail actions", () => {
       "platform:tenants:01a0deb5-0000-7000-8000-000000000002",
       "platform:audit-logs",
     ];
+
     expect(clearedTags()).toEqual([...expected, ...expected]);
   });
 

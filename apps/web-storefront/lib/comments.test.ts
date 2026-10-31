@@ -50,11 +50,13 @@ const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const episodeId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const episodePublicId = "SeedEPSDAAA1";
 const commentId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
 const authorIcon = {
   height: 512,
   url: "/images/users/SeedMMBRAAA1/icon-1.png",
   width: 512,
 };
+
 const author = {
   icon: authorIcon,
   name: "Sample Member",

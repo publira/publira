@@ -24,6 +24,7 @@ export const ConfigurationStatusBadge = ({
         </Badge>
       );
     }
+
     case "needs_setup": {
       return (
         <Badge tone="warning" variant="outline">
@@ -33,6 +34,7 @@ export const ConfigurationStatusBadge = ({
         </Badge>
       );
     }
+
     case "not_configured": {
       return (
         <Badge tone="muted" variant="outline">
@@ -42,6 +44,7 @@ export const ConfigurationStatusBadge = ({
         </Badge>
       );
     }
+
     case "defaults": {
       return (
         <Badge tone="muted" variant="outline">
@@ -51,6 +54,7 @@ export const ConfigurationStatusBadge = ({
         </Badge>
       );
     }
+
     case "unavailable": {
       return (
         <Badge tone="destructive" variant="outline">
@@ -60,6 +64,7 @@ export const ConfigurationStatusBadge = ({
         </Badge>
       );
     }
+
     default: {
       return null;
     }

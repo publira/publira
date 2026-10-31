@@ -41,6 +41,7 @@ vi.mock("../_lib/actions", () => ({
     data: FormData
   ) => {
     save.calls.push(data);
+
     return save.current.promise;
   },
 }));
@@ -101,9 +102,11 @@ describe("SearchAnalysisForm", () => {
     expect(editor().value).toBe(DEFINITION);
     expect(screen.getByText("In use: the default definition.")).toBeTruthy();
     expect(screen.getByText("Used by every language.")).toBeTruthy();
+
     for (const role of ["written_form", "alternate_form", "exact_match"]) {
       expect(screen.getByText(role)).toBeTruthy();
     }
+
     // The default is already in force, so there is nothing to reset.
     expect(
       screen.queryByRole("button", { name: "Reset to default" })
@@ -251,6 +254,7 @@ describe("SearchAnalysisForm", () => {
         }}
       />
     );
+
     fireEvent.change(editor(), { target: { value: NORI_DEFINITION } });
 
     rerender(

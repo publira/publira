@@ -45,9 +45,11 @@ export const resolveTranslationLocales = ({
   if (requestedLocale && offered.has(requestedLocale)) {
     return { locales, shownLocale: requestedLocale, visibleLocales };
   }
+
   if (!tenantLocales) {
     return { locales, shownLocale: undefined, visibleLocales };
   }
+
   return {
     locales,
     shownLocale: visibleLocales.includes(tenantLocales.defaultLocale)
@@ -90,11 +92,13 @@ export const resolveTranslationToEdit = <T extends { locale: Locale }>({
   const translatedLocales = translations.map(
     (translation) => translation.locale
   );
+
   const { locales, shownLocale, visibleLocales } = resolveTranslationLocales({
     requestedLocale,
     tenantLocales,
     translatedLocales,
   });
+
   const localeToEdit = shownLocale ?? visibleLocales[0] ?? translatedLocales[0];
 
   return {
@@ -118,12 +122,15 @@ export const translationEditPath = (
   flash?: string
 ): string => {
   const query = new URLSearchParams();
+
   if (translationLocale) {
     query.set("locale", translationLocale);
   }
+
   if (flash) {
     query.set(flash, "1");
   }
+
   const search = query.toString();
 
   return search ? `${path}?${search}` : path;

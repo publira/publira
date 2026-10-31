@@ -48,6 +48,7 @@ export const returnToFormSchema = z.preprocess((value) => {
   }
 
   const trimmed = value.trim();
+
   if (trimmed.length === 0 || trimmed.length > RETURN_TO_MAX_LENGTH) {
     return "/";
   }
@@ -142,10 +143,13 @@ export const birthDateFormSchema = async (locale: Locale) => {
       if (value === "") {
         return true;
       }
+
       const born = plainDateOrNull(value);
+
       if (!born || Temporal.PlainDate.compare(born, latestToday) > 0) {
         return false;
       }
+
       return (
         latestToday.since(born, { largestUnit: "year" }).years <=
         OLDEST_PLAUSIBLE_AGE

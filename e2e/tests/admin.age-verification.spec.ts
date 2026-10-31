@@ -91,6 +91,7 @@ const pollAgeGate = (page: Page) =>
           )
           .first()
       ).toBeVisible();
+
       return await page.getByText(AGE_GATE_MESSAGE).count();
     },
     {
@@ -186,6 +187,7 @@ test.describe("web-admin age verification", () => {
 
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
+
     try {
       // Sixteen, so `r18` is a rating this reader can never prove, and the
       // rule stops them before the browser confirmation is ever offered.
@@ -242,6 +244,7 @@ test.describe("web-admin age verification", () => {
 
     const readerContext = await browser.newContext();
     const readerPage = await readerContext.newPage();
+
     try {
       await signInAsMember(
         readerPage,

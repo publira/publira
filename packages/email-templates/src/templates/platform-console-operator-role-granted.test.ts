@@ -35,6 +35,7 @@ describe("PlatformConsoleOperatorRoleGrantedEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

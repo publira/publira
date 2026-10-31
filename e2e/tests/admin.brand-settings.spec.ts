@@ -70,26 +70,32 @@ const largestBrandingImage = async (): Promise<{
   const fixture = await readFile(BRANDING_FIXTURE);
   const segments: Buffer[] = [];
   let remaining = BRANDING_IMAGE_MAX_BYTES - fixture.length;
+
   while (remaining > 0) {
     // A segment's length counts itself and nothing before it, so a segment is
     // never shorter than its marker and length; the last one is kept at least
     // that long by taking the shortfall from the one before.
     let size = Math.min(remaining, JPEG_SEGMENT_MAX_BYTES);
+
     if (remaining - size > 0 && remaining - size < JPEG_SEGMENT_MIN_BYTES) {
       size -= JPEG_SEGMENT_MIN_BYTES;
     }
+
     const segment = Buffer.alloc(size);
     segment.writeUInt16BE(JPEG_COMMENT_MARKER, 0);
     segment.writeUInt16BE(size - 2, 2);
     segments.push(segment);
     remaining -= size;
   }
+
   const buffer = Buffer.concat([
     fixture.subarray(0, 2),
     ...segments,
     fixture.subarray(2),
   ]);
+
   expect(buffer).toHaveLength(BRANDING_IMAGE_MAX_BYTES);
+
   return { buffer, mimeType: "image/jpeg", name: "largest-branding-image.jpg" };
 };
 
@@ -135,19 +141,23 @@ const fetchThemeCss = async (
 ): Promise<string> => {
   const url = new URL(THEME_CSS_PATH, `${origin}/`);
   url.searchParams.set("e2e", crypto.randomUUID());
+
   const response = await request.get(url.toString(), {
     headers: {
       "Cache-Control": "no-cache",
       Pragma: "no-cache",
     },
   });
+
   expect(response.status(), await response.text()).toBe(200);
+
   return await response.text();
 };
 
 const themePrimaryDeclaration = (css: string): string => {
   const match = css.match(/--publira-color-primary:[^;]+/u);
   expect(match, css).not.toBeNull();
+
   return match?.[0] ?? "";
 };
 
@@ -195,6 +205,7 @@ const disableThemeCssHttpCache = async (page: Page): Promise<void> => {
       "cache-control": "no-cache",
       pragma: "no-cache",
     };
+
     await route.continue({ headers });
   });
 };
@@ -216,6 +227,7 @@ const pollStorefrontPage = <T>(
   expect.poll(
     async () => {
       await page.goto(url);
+
       return await read();
     },
     { message: `${url} never caught up with the console`, timeout: 30_000 }
@@ -243,12 +255,14 @@ const restorePrimaryColor = async (
 ): Promise<void> => {
   const css = await fetchThemeCss(request);
   const formValue = await primaryColorField(page).inputValue();
+
   if (
     css.includes(`--publira-color-primary:${DEFAULT_PRIMARY_COLOR}`) &&
     formValue.toLowerCase() === DEFAULT_PRIMARY_COLOR
   ) {
     return;
   }
+
   await fillPrimaryColor(page, DEFAULT_PRIMARY_COLOR);
   await saveTheme(page);
   await expectThemeCssToContain(
@@ -264,6 +278,7 @@ const restoreFontFamilies = async (page: Page): Promise<void> => {
   ) {
     return;
   }
+
   await fillField(page.locator('input[name="serif_font_family"]'), "");
   await fillField(sansFontFamilyField(page), "");
   await saveTheme(page);
@@ -291,6 +306,7 @@ const darkPaletteDeleteButton = (page: Page): Locator =>
 const deleteDarkPaletteIfSet = async (page: Page): Promise<void> => {
   await openDarkTab(page);
   const deleteButton = darkPaletteDeleteButton(page);
+
   if (await deleteButton.isVisible()) {
     await deleteButton.click();
     const dialog = page.getByRole("alertdialog");
@@ -298,6 +314,7 @@ const deleteDarkPaletteIfSet = async (page: Page): Promise<void> => {
     await dialog.getByRole("button", { exact: true, name: "Delete" }).click();
     await expectStatus(page, "The dark palette was deleted.");
   }
+
   await page.getByRole("tab", { name: "Light" }).click();
   await expect(primaryColorField(page)).toBeVisible();
 };
@@ -325,13 +342,16 @@ const deleteBrandingIfSet = async (
   confirmation: string
 ): Promise<void> => {
   const form = brandingForm(page, fileInputName);
+
   const deleteButton = form.getByRole("button", {
     exact: true,
     name: "Delete",
   });
+
   if (!(await deleteButton.isVisible())) {
     return;
   }
+
   await deleteButton.click();
   const dialog = page.getByRole("alertdialog");
   await expect(dialog).toBeVisible();
@@ -359,11 +379,14 @@ const uploadBranding = async (
  */
 const fetchOtherTenantThemeCss = async (page: Page): Promise<string> => {
   await page.goto(otherStorefrontUrl("/"));
+
   return await page.evaluate(async () => {
     const response = await fetch("/theme.css", { cache: "no-store" });
+
     if (!response.ok) {
       throw new Error(`/theme.css ${response.status}`);
     }
+
     return response.text();
   });
 };
@@ -415,6 +438,7 @@ const appleTouchIconLink = (page: Page): Locator =>
 const headerBrandMark = (page: Page): Promise<string> =>
   headerBrand(page).evaluate((brand) => {
     const logo = brand.querySelector("img");
+
     return logo ? new URL(logo.src).pathname : (brand.textContent ?? "").trim();
   });
 
@@ -426,6 +450,7 @@ const headerBrandMark = (page: Page): Promise<string> =>
 const declaredIconHref = async (page: Page): Promise<string> => {
   await page.locator("head title").waitFor({ state: "attached" });
   const link = iconLink(page);
+
   return (await link.count()) > 0
     ? ((await link.getAttribute("href")) ?? "")
     : "";
@@ -486,14 +511,18 @@ test.describe("admin brand settings", () => {
     ) {
       return;
     }
+
     await signInAsSeedAdmin(page, "/branding");
     await expect(primaryColorField(page)).toBeVisible({ timeout: 30_000 });
+
     if (restoreLogo) {
       await deleteBrandingIfSet(page, "logo", "The logo was deleted.");
     }
+
     if (restoreIcon) {
       await deleteBrandingIfSet(page, "icon", "The icon was deleted.");
     }
+
     if (restoreSignInImage) {
       await deleteBrandingIfSet(
         page,
@@ -501,10 +530,12 @@ test.describe("admin brand settings", () => {
         "The sign-in image was deleted."
       );
     }
+
     if (restoreTheme) {
       await restorePrimaryColor(page, request);
       await restoreFontFamilies(page);
     }
+
     if (restoreDarkTheme) {
       await restoreSeedDarkPalette(page);
     }
@@ -528,6 +559,7 @@ test.describe("admin brand settings", () => {
       await expect(
         page.getByRole("heading", { exact: true, name: "New episodes" })
       ).toBeVisible({ timeout: 5000 });
+
       return await primaryCustomProperty(page);
     }).toBe(SAVED_PRIMARY_COLOR);
   });
@@ -550,6 +582,7 @@ test.describe("admin brand settings", () => {
       await expect(
         page.getByRole("heading", { exact: true, name: "New episodes" })
       ).toBeVisible({ timeout: 5000 });
+
       return await storefrontSansFontFamily(page);
     }).toBe("Arial, sans-serif");
   });
@@ -583,6 +616,7 @@ test.describe("admin brand settings", () => {
   }) => {
     restoreDarkTheme = true;
     await deleteDarkPaletteIfSet(page);
+
     const lightBackground = await page
       .locator('input[name="background_color"]')
       .inputValue();
@@ -591,9 +625,11 @@ test.describe("admin brand settings", () => {
     await expect(page.getByText(DARK_PALETTE_UNSAVED)).toBeVisible();
     await fillField(page.locator('input[name="background_color"]'), "#ffffff");
     await page.getByRole("button", { name: "Derive from light" }).click();
+
     const darkBackground = await page
       .locator('input[name="background_color"]')
       .inputValue();
+
     expect(darkBackground).not.toBe("#ffffff");
     expect(darkBackground).not.toBe(lightBackground);
 

@@ -24,6 +24,7 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -57,9 +58,11 @@ vi.mock("#lib/inbound-email-settings", () => ({
 
 const textFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -198,6 +201,7 @@ describe("updateTenantEmailSettingsAction", () => {
   it("puts the refusal of a password without a username on the username field", async () => {
     const refusal =
       "A password needs a username. Enter the username, or remove the password to send without authenticating.";
+
     mockUpdateTenantEmailSettings.mockResolvedValueOnce({
       fieldErrors: { username: refusal },
       message: "Please check the information you entered.",

@@ -99,6 +99,7 @@ export const updatePlatformDefaultTimezoneAction = async (
       defaultTimezone: { kind: "value", name: "default_timezone" },
     })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
@@ -107,6 +108,7 @@ export const updatePlatformDefaultTimezoneAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformDefaultTimezone(parsed.data.defaultTimezone, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -137,6 +139,7 @@ export const updatePlatformDefaultLocaleAction = async (
       defaultLocale: { kind: "value", name: "default_locale" },
     })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
@@ -145,6 +148,7 @@ export const updatePlatformDefaultLocaleAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformDefaultLocale(parsed.data.defaultLocale, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -175,6 +179,7 @@ export const updatePlatformDefaultCurrencyAction = async (
       defaultCurrency: { kind: "value", name: "default_currency" },
     })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
@@ -183,6 +188,7 @@ export const updatePlatformDefaultCurrencyAction = async (
   const result = await withPlatformSessionReauth(() =>
     updatePlatformDefaultCurrency(parsed.data.defaultCurrency, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

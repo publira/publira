@@ -75,6 +75,7 @@ const readField = (
   if (kind === "files") {
     return formData.getAll(name).flatMap((entry) => {
       const file = toFile(entry);
+
       return file ? [file] : [];
     });
   }
@@ -86,6 +87,7 @@ const readField = (
   }
 
   const value = formData.get(name);
+
   return typeof value === "string" ? value : undefined;
 };
 
@@ -102,6 +104,7 @@ export const toFormDataInput = <T extends Record<string, FormDataFieldSpec>>(
     Object.entries(fields).map(([key, spec]) => {
       const kind = typeof spec === "string" ? spec : spec.kind;
       const name = typeof spec === "string" ? key : spec.name;
+
       return [key, readField(formData, name, kind)];
     })
   ) as FormDataInput<T>;

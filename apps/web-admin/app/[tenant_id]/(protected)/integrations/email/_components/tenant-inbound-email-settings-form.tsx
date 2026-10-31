@@ -49,14 +49,17 @@ const InboundEmailStatusLabel = ({
     case "disabled": {
       return <Message message="admin.settings.inbound_email.status.disabled" />;
     }
+
     case "incomplete": {
       return (
         <Message message="admin.settings.inbound_email.status.incomplete" />
       );
     }
+
     case "ready": {
       return <Message message="admin.settings.inbound_email.status.ready" />;
     }
+
     default: {
       return <Message message="admin.settings.inbound_email.status.unset" />;
     }
@@ -78,16 +81,19 @@ const InboundEmailStatusDescription = ({
         <Message message="admin.settings.inbound_email.status.disabled_description" />
       );
     }
+
     case "incomplete": {
       return (
         <Message message="admin.settings.inbound_email.status.incomplete_description" />
       );
     }
+
     case "ready": {
       return (
         <Message message="admin.settings.inbound_email.status.ready_description" />
       );
     }
+
     default: {
       return (
         <Message message="admin.settings.inbound_email.status.unset_description" />
@@ -113,56 +119,67 @@ const InboundEmailCredentialName = ({
         <Message message="admin.settings.inbound_email.fields.sendgrid.webhook_token" />
       );
     }
+
     case "resend.api_key": {
       return (
         <Message message="admin.settings.inbound_email.fields.resend.api_key" />
       );
     }
+
     case "resend.webhook_secret": {
       return (
         <Message message="admin.settings.inbound_email.fields.resend.webhook_secret" />
       );
     }
+
     case "mailgun.webhook_signing_key": {
       return (
         <Message message="admin.settings.inbound_email.fields.mailgun.webhook_signing_key" />
       );
     }
+
     case "mime.webhook_token": {
       return (
         <Message message="admin.settings.inbound_email.fields.mime.webhook_token" />
       );
     }
+
     case "ses.webhook_token": {
       return (
         <Message message="admin.settings.inbound_email.fields.ses.webhook_token" />
       );
     }
+
     case "ses.topic_arn": {
       return (
         <Message message="admin.settings.inbound_email.fields.ses.topic_arn" />
       );
     }
+
     case "ses.access_key_id": {
       return (
         <Message message="admin.settings.inbound_email.fields.ses.access_key_id" />
       );
     }
+
     case "ses.secret_access_key": {
       return (
         <Message message="admin.settings.inbound_email.fields.ses.secret_access_key" />
       );
     }
+
     case "ses.region": {
       return (
         <Message message="admin.settings.inbound_email.fields.ses.region" />
       );
     }
+
     case "ses.bucket": {
       return (
         <Message message="admin.settings.inbound_email.fields.ses.bucket" />
       );
     }
+
     default: {
       return field;
     }
@@ -187,6 +204,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "resend.api_key": {
       return (
         <Field.Description>
@@ -196,6 +214,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "resend.webhook_secret": {
       return (
         <Field.Description>
@@ -205,6 +224,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "mailgun.webhook_signing_key": {
       return (
         <Field.Description>
@@ -214,6 +234,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "mime.webhook_token": {
       return (
         <Field.Description>
@@ -223,6 +244,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "ses.webhook_token": {
       return (
         <Field.Description>
@@ -232,6 +254,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "ses.topic_arn": {
       return (
         <Field.Description>
@@ -241,6 +264,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "ses.access_key_id": {
       return (
         <Field.Description>
@@ -250,6 +274,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "ses.secret_access_key": {
       return (
         <Field.Description>
@@ -259,6 +284,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "ses.region": {
       return (
         <Field.Description>
@@ -268,6 +294,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "ses.bucket": {
       return (
         <Field.Description>
@@ -277,6 +304,7 @@ const InboundEmailCredentialSource = ({
         </Field.Description>
       );
     }
+
     default: {
       return null;
     }
@@ -295,6 +323,7 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
         </Field.Description>
       );
     }
+
     case "resend": {
       return (
         <Field.Description>
@@ -304,6 +333,7 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
         </Field.Description>
       );
     }
+
     case "mailgun": {
       return (
         <Field.Description>
@@ -313,6 +343,7 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
         </Field.Description>
       );
     }
+
     case "mime": {
       return (
         <Field.Description>
@@ -322,6 +353,7 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
         </Field.Description>
       );
     }
+
     case "ses": {
       return (
         <Field.Description>
@@ -331,6 +363,7 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
         </Field.Description>
       );
     }
+
     default: {
       return null;
     }
@@ -349,26 +382,31 @@ const InboundEmailWebhookNote = ({
         <Message message="admin.settings.inbound_email.webhook_url_sendgrid_description" />
       );
     }
+
     case "resend": {
       return (
         <Message message="admin.settings.inbound_email.webhook_url_resend_description" />
       );
     }
+
     case "mailgun": {
       return (
         <Message message="admin.settings.inbound_email.webhook_url_mailgun_description" />
       );
     }
+
     case "mime": {
       return (
         <Message message="admin.settings.inbound_email.webhook_url_mime_description" />
       );
     }
+
     case "ses": {
       return (
         <Message message="admin.settings.inbound_email.webhook_url_ses_description" />
       );
     }
+
     default: {
       return (
         <Message
@@ -400,20 +438,25 @@ export const TenantInboundEmailSettingsForm = ({
 }: TenantInboundEmailSettingsFormProps) => {
   const status = inboundEmailSettingsStatus(settings);
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
+
   const initialProvider =
     providers.find((provider) => provider.id === settings.provider)?.id ??
     providers[0]?.id ??
     "";
+
   const credentialsProvider = settings.fields.some((field) => field.configured)
     ? settings.provider
     : "";
+
   const credentialsProviderName =
     providers.find((provider) => provider.id === credentialsProvider)
       ?.displayName ?? credentialsProvider;
+
   const stateOf = (provider: string, field: string) =>
     provider === settings.provider
       ? settings.fields.find((state) => state.name === field)
       : undefined;
+
   const replyAddress = settings.domain
     ? inboundReplyAddressPattern(settings.domain)
     : undefined;
@@ -557,6 +600,7 @@ export const TenantInboundEmailSettingsForm = ({
                 <ProviderChoice.Panel key={provider.id} provider={provider.id}>
                   {provider.fields.map((field) => {
                     const state = stateOf(provider.id, field.name);
+
                     return (
                       <ProviderCredential.Root
                         configured={Boolean(state?.configured)}
@@ -612,6 +656,7 @@ export const TenantInboundEmailSettingsForm = ({
                     webhookOrigin,
                     provider
                   );
+
                   return (
                     <ProviderChoice.Panel
                       key={provider.id}

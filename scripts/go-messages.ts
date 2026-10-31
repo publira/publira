@@ -52,9 +52,11 @@ export const renderGoMessages = (
     catalogs,
     GO_NAMESPACES
   );
+
   const namespaces = GO_NAMESPACES.map((namespace) => `\`${namespace}\``).join(
     " and "
   );
+
   const lines: string[] = [
     GENERATED_HEADER,
     "",
@@ -64,20 +66,25 @@ export const renderGoMessages = (
     `// namespace${GO_NAMESPACES.length > 1 ? "s" : ""}, keyed by the message key and then by locale code.`,
     "var Messages = map[string]map[string]string{",
   ];
+
   for (const key of keys) {
     const sources = locales.map(({ code }): [string, string] => {
       const source = leavesByCode.get(code)?.get(key);
+
       if (source === undefined) {
         throw new Error(`locales/${code}.json has no ${key}`);
       }
+
       return [code, goString(source)];
     });
+
     lines.push(
       `${INDENT}${goString(key)}: {`,
       ...goLocaleEntries(sources, INDENT.repeat(2)),
       `${INDENT}},`
     );
   }
+
   lines.push("}");
 
   return `${lines.join("\n")}\n`;

@@ -77,6 +77,7 @@ export const listSupportedTimeZones = (): readonly string[] => {
   );
 
   cachedTimeZones = zones;
+
   return zones;
 };
 
@@ -89,12 +90,14 @@ export const listSupportedTimeZones = (): readonly string[] => {
  */
 export const isValidTimeZone = (value: string): boolean => {
   const trimmed = value.trim();
+
   if (!IANA_TIME_ZONE_RE.test(trimmed) || trimmed.toLowerCase() === "local") {
     return false;
   }
 
   try {
     Temporal.Instant.fromEpochMilliseconds(0).toZonedDateTimeISO(trimmed);
+
     return true;
   } catch {
     return false;

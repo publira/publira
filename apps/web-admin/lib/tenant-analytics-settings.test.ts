@@ -94,6 +94,7 @@ describe("tenant-analytics-settings", () => {
 
     const { getTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await getTenantAnalyticsSettings("TENANT001", "en");
 
     expect(result).toEqual({
@@ -128,6 +129,7 @@ describe("tenant-analytics-settings", () => {
 
     const { getTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await getTenantAnalyticsSettings("TENANT001", "en");
 
     expect(result).toMatchObject({
@@ -150,6 +152,7 @@ describe("tenant-analytics-settings", () => {
 
     const { getTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await getTenantAnalyticsSettings("TENANT001", "en");
 
     expect(result).toMatchObject({
@@ -167,6 +170,7 @@ describe("tenant-analytics-settings", () => {
 
     const { getTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await getTenantAnalyticsSettings("TENANT001", "en");
 
     expect(result).toEqual({
@@ -183,6 +187,7 @@ describe("tenant-analytics-settings", () => {
 
     const { getTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await getTenantAnalyticsSettings("TENANT001", "en");
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
@@ -197,6 +202,7 @@ describe("tenant-analytics-settings", () => {
 
     const { getTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await getTenantAnalyticsSettings("TENANT001", "en");
 
     expect(result).toMatchObject({
@@ -220,6 +226,7 @@ describe("tenant-analytics-settings", () => {
 
     const { updateTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await updateTenantAnalyticsSettings(
       updateInput(
         {
@@ -334,6 +341,7 @@ describe("tenant-analytics-settings", () => {
 
       const { updateTenantAnalyticsSettings } =
         await import("./tenant-analytics-settings");
+
       const result = await updateTenantAnalyticsSettings(input, "en");
 
       expect(result).toEqual({
@@ -351,6 +359,7 @@ describe("tenant-analytics-settings", () => {
 
     const { updateTenantAnalyticsSettings } =
       await import("./tenant-analytics-settings");
+
     const result = await updateTenantAnalyticsSettings(updateInput(), "en");
 
     expect(result).toEqual({

@@ -65,8 +65,10 @@ const listEpisodePublicationsForTenant = async (
   cacheTag(episodePublicationCacheTag(input.tenantId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const episodes: EpisodePublicationItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.series.listEpisodesByPublicationDate(
@@ -79,6 +81,7 @@ const listEpisodePublicationsForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.episodes ?? [],
           nextToken: response.nextToken ?? "",
@@ -95,6 +98,7 @@ const listEpisodePublicationsForTenant = async (
     // reads as an answer rather than as a failure.
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return { message: t("admin.calendar.load_error"), ok: false };
     }
 
@@ -104,6 +108,7 @@ const listEpisodePublicationsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.calendar.load_error"), {
         locale,
@@ -124,5 +129,6 @@ export const listEpisodePublications = async (input: {
   startDate: string;
 }): Promise<ListEpisodePublicationsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listEpisodePublicationsForTenant({ ...input, tenantId }, locale);
 };

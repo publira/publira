@@ -44,5 +44,6 @@ export const resolveMyPageToken = async (
   searchParams: MyPageSearchParams
 ): Promise<string> => {
   const resolved = await searchParams;
+
   return parseMySearchParams(resolved).token;
 };

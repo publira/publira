@@ -85,6 +85,7 @@ const ConfirmPasswordPageContent = async ({
   if (status === "expired") {
     return <FailureState reason="expired" />;
   }
+
   if (status === "invalid" || token === "") {
     return <FailureState reason="invalid" />;
   }

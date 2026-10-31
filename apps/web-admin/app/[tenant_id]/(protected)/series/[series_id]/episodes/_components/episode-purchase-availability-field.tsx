@@ -34,6 +34,7 @@ export const EpisodePurchaseAvailabilityField = ({
   let followSeries = t(
     "admin.series.episodes.purchase_availability.follow_series"
   );
+
   if (seriesPurchaseAvailability === "all") {
     followSeries = t(
       "admin.series.episodes.purchase_availability.follow_series_value",

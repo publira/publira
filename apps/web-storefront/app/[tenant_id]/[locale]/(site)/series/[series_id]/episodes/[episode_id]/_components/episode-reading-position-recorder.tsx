@@ -50,6 +50,7 @@ export const EpisodeReadingPositionRecorder = ({
       beacon: (index) => sendReadingPositionBeacon(beaconPath, index),
       send: (index) => sendReadingPosition(beaconPath, index),
     });
+
     saverRef.current = saver;
 
     // `pagehide` rather than `unload`: a page the browser keeps for the back
@@ -58,6 +59,7 @@ export const EpisodeReadingPositionRecorder = ({
     const leave = () => {
       saver.leave();
     };
+
     window.addEventListener("pagehide", leave);
 
     return () => {

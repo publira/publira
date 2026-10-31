@@ -46,6 +46,7 @@ const tenantRefusal = (reason: string, code = Code.FailedPrecondition) =>
 const rehydratedConnectError = (message: string): Error => {
   const error = new Error(message);
   error.name = "ConnectError";
+
   return error;
 };
 
@@ -168,6 +169,7 @@ describe("Connect error details", () => {
         },
       ]
     );
+
     expect(rpcErrorHasFieldViolation(error, "slug")).toBe(true);
     expect(rpcErrorHasFieldViolation(error, "title")).toBe(false);
     expect(
@@ -193,6 +195,7 @@ describe("Connect error details", () => {
         },
       ]
     );
+
     expect(
       rpcErrorHasFieldViolation(
         error,
@@ -218,6 +221,7 @@ describe("Connect error details", () => {
         },
       ]
     );
+
     expect(rpcErrorHasReason(error, "INVITATION_CANCELED")).toBe(true);
     expect(rpcErrorHasReason(error, "ARCHIVE_INVALID_PATH")).toBe(false);
 

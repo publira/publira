@@ -60,6 +60,7 @@ describe("tenant-site-verification", () => {
 
     const { getTenantSiteVerification } =
       await import("./tenant-site-verification");
+
     const result = await getTenantSiteVerification(" TENANT001 ", "en");
 
     expect(result).toEqual({
@@ -118,6 +119,7 @@ describe("tenant-site-verification", () => {
 
     const { getTenantSiteVerification } =
       await import("./tenant-site-verification");
+
     const result = await getTenantSiteVerification("TENANT001", "en");
 
     expect(result.ok).toBe(false);
@@ -178,6 +180,7 @@ describe("tenant-site-verification", () => {
 
     const { updateTenantSiteVerification } =
       await import("./tenant-site-verification");
+
     const result = await updateTenantSiteVerification(
       { bing: "", google: "aBc-123", tenantId: " TENANT001 " },
       "en"
@@ -216,6 +219,7 @@ describe("tenant-site-verification", () => {
 
       const { updateTenantSiteVerification } =
         await import("./tenant-site-verification");
+
       const result = await updateTenantSiteVerification(
         { bing: "0123ABCD", google: "aBc-123", tenantId: "T" },
         "en"

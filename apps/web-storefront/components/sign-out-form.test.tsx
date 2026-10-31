@@ -63,19 +63,24 @@ afterEach(cleanup);
 describe("SignOutForm", () => {
   it("drops this browser's registration before ending the session", async () => {
     const order: string[] = [];
+
     const subscription = {
       endpoint: ENDPOINT,
       unsubscribe: vi.fn(() => {
         order.push("unsubscribe");
       }),
     };
+
     mockReadSubscription.mockResolvedValue(subscription);
     mockUnregisterAction.mockImplementation(() => {
       order.push("unregister");
+
       return Promise.resolve({ ok: true });
     });
+
     const signOut = vi.fn(() => {
       order.push("signOut");
+
       return Promise.resolve();
     });
 

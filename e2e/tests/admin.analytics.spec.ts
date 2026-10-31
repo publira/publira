@@ -62,12 +62,14 @@ const rowTexts = (page: Page): Promise<(string | null)[][]> =>
 const downloadCsv = async (page: Page): Promise<Download> => {
   const downloading = page.waitForEvent("download");
   await page.getByRole("link", { exact: true, name: "Download CSV" }).click();
+
   return downloading;
 };
 
 /** A downloaded CSV's header and body rows, split on its CRLF endings. */
 const csvRows = async (download: Download): Promise<string[]> => {
   const csv = await readFile(await download.path(), "utf-8");
+
   return csv.split("\r\n").filter((row) => row !== "");
 };
 
@@ -377,6 +379,7 @@ test.describe("admin analytics", () => {
       { length: 13 - ANALYTICS_COHORTS.weeks.length },
       () => "0%"
     );
+
     await expect
       .poll(() => sectionRowTexts(page, "Retention by sign-up week"))
       .toEqual([

@@ -15,12 +15,15 @@ export const registerStripeWebhook = async (
     headers: { authorization: `Bearer ${secretKey}` },
     method: "POST",
   });
+
   if (!response.ok) {
     throw new Error(
       `the Stripe stand-in refused the webhook endpoint: ${response.status}`
     );
   }
+
   const { secret } = (await response.json()) as { secret: string };
+
   return secret;
 };
 
@@ -38,6 +41,7 @@ export const registerStripePaymentIntent = async (
     headers: { authorization: `Bearer ${secretKey}` },
     method: "POST",
   });
+
   if (!response.ok) {
     throw new Error(
       `the Stripe stand-in refused the payment intent: ${response.status}`
@@ -73,11 +77,14 @@ export const createStripePrice = async (
     headers: { authorization: `Bearer ${secretKey}` },
     method: "POST",
   });
+
   if (!response.ok) {
     throw new Error(
       `the Stripe stand-in refused the price: ${response.status}`
     );
   }
+
   const { id } = (await response.json()) as { id: string };
+
   return id;
 };

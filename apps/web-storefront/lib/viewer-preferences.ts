@@ -30,6 +30,7 @@ export const getMyViewerPreferences = async ({
   tenantId: string;
 }): Promise<ViewerPreferences> => {
   const sessionId = accessToken.trim();
+
   if (!sessionId) {
     return DEFAULT_VIEWER_PREFERENCES;
   }
@@ -39,11 +40,13 @@ export const getMyViewerPreferences = async ({
       { tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     return {
       wideViewerEnabled: response.preferences?.wideViewerEnabled ?? false,
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return DEFAULT_VIEWER_PREFERENCES;
   }
 };
@@ -60,6 +63,7 @@ export const saveWideViewerPreference = async ({
   wideViewerEnabled: boolean;
 }): Promise<void> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return;
   }

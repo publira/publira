@@ -45,8 +45,10 @@ export const EpisodeCreditsRangeDialog = ({
   const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [sessionKey, setSessionKey] = useState(0);
+
   const [catalog, setCatalog] =
     useState<ListEpisodeCreditRangeCatalogResult>(emptyCatalog);
+
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isCatalogPending, startCatalogTransition] = useTransition();
   const catalogRequestIdRef = useRef(0);
@@ -61,9 +63,11 @@ export const EpisodeCreditsRangeDialog = ({
         seriesId,
         locale
       );
+
       if (requestId !== catalogRequestIdRef.current) {
         return;
       }
+
       setCatalog(result);
       setHasLoaded(true);
     });
@@ -72,9 +76,11 @@ export const EpisodeCreditsRangeDialog = ({
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen);
+
       if (!nextOpen) {
         return;
       }
+
       // Remount the form so a previous result or half-filled credit does not
       // survive from the last time the dialog was open. The checked episodes
       // live on the list provider and are left as they are.

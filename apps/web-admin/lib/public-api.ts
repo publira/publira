@@ -83,6 +83,7 @@ export const readSupportedLocales = (
 ): readonly Locale[] | null => {
   const offered = new Set(codes?.map((code) => parseLocale(code.trim())));
   const locales = getLocales().filter((code) => offered.has(code));
+
   return locales.length > 0 ? locales : null;
 };
 
@@ -99,6 +100,7 @@ export const getTenantPublicInfo = async (
   cacheLife("hours");
 
   const normalized = tenantId.trim();
+
   if (!normalized) {
     return null;
   }
@@ -129,6 +131,7 @@ export const getTenantPublicInfo = async (
       console.warn("[web-admin] getTenantPublicInfo failed", error);
       dropFailedCacheEntry();
     }
+
     return null;
   }
 };
@@ -146,6 +149,7 @@ export const getTenantCurrency = async (
   tenantId: string
 ): Promise<string | null> => {
   const info = await getTenantPublicInfo(tenantId);
+
   return info?.currency ?? null;
 };
 
@@ -153,6 +157,7 @@ export const getTenantName = async (
   tenantId: string
 ): Promise<string | null> => {
   const info = await getTenantPublicInfo(tenantId);
+
   return info?.name ?? null;
 };
 
@@ -160,6 +165,7 @@ export const getTenantThemeColors = async (
   tenantId: string
 ): Promise<TenantTheme | null> => {
   const info = await getTenantPublicInfo(tenantId);
+
   return info?.theme ?? null;
 };
 
@@ -182,6 +188,7 @@ export const findTenantDisplayLocale = async (
   tenantId: string
 ): Promise<Locale | null> => {
   const info = await getTenantPublicInfo(tenantId);
+
   return info?.defaultLocale ?? null;
 };
 
@@ -214,12 +221,15 @@ export const getTenantDisplayLocale = async (
   tenantId: string
 ): Promise<Locale> => {
   const defaultLocale = await findTenantDisplayLocale(tenantId);
+
   if (defaultLocale) {
     lastConfirmedTenantLocale.set(tenantId, defaultLocale);
+
     return defaultLocale;
   }
 
   const lastConfirmed = lastConfirmedTenantLocale.get(tenantId);
+
   if (lastConfirmed) {
     return lastConfirmed;
   }

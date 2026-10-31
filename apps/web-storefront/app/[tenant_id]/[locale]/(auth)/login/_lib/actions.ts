@@ -57,7 +57,9 @@ const buildLoginErrorPath = async (
     error: message,
     returnTo: returnToPath,
   });
+
   const path = await tenantLocalePath(tenantId, locale, "/login");
+
   return `${path}?${params.toString()}`;
 };
 
@@ -66,11 +68,14 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   // The locale field falls back rather than failing, so the rejection below can
   // be worded in the reader's language even when the rest of the form is not.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     loginFormSchema(submittedLocale),
   ]);
+
   const loginFailed = t("storefront.auth.errors.login_failed");
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
@@ -80,16 +85,19 @@ export const loginAction = async (formData: FormData): Promise<void> => {
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const returnToPath = returnToFormSchema.parse(
       toFormDataInput(formData, { returnTo: "value" }).returnTo
     );
+
     const errorPath = await buildLoginErrorPath(
       submittedLocale,
       String(formData.get("tenantId") ?? ""),
       loginFailed,
       returnToPath
     );
+
     redirect(errorPath);
   }
 
@@ -102,6 +110,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
   } = parsed.data;
 
   const result = await loginPublic(email, password, tenantId);
+
   if (!result.ok) {
     // A refusal for too many attempts came before the password was checked,
     // so it says nothing about whether the password was right.
@@ -109,12 +118,14 @@ export const loginAction = async (formData: FormData): Promise<void> => {
       result.refusal === "rate-limited"
         ? t("errors.rpc.rate-limited")
         : loginFailed;
+
     const errorPath = await buildLoginErrorPath(
       locale,
       tenantId,
       message,
       returnToPath
     );
+
     redirect(errorPath);
   }
 
@@ -144,17 +155,21 @@ export const beginPasskeyLoginAction = async (
 ): Promise<PasskeyLoginStartState> => {
   await assertSameOrigin();
   const t = await getMessagesFor(requireFormLocale(formData.get("locale")));
+
   const tenantId = tenantIdSchema.safeParse(
     toFormDataInput(formData, { tenantId: "value" }).tenantId
   );
+
   if (!tenantId.success) {
     return { message: t("storefront.auth.errors.passkey_failed"), ok: false };
   }
 
   const result = await beginPasskeyLoginPublic(tenantId.data);
+
   if (!result.ok) {
     return { message: passkeyRefusalMessage(t, result.refusal), ok: false };
   }
+
   return { message: "", ok: true, optionsJson: result.optionsJson };
 };
 
@@ -176,6 +191,7 @@ export const finishPasskeyLoginAction = async (
 ): Promise<PasskeyLoginState> => {
   await assertSameOrigin();
   const t = await getMessagesFor(requireFormLocale(formData.get("locale")));
+
   const parsed = passkeyLoginFormSchema.safeParse(
     toFormDataInput(formData, {
       credential: "value",
@@ -184,12 +200,14 @@ export const finishPasskeyLoginAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return { message: t("storefront.auth.errors.passkey_failed"), ok: false };
   }
 
   const { credential, locale, returnTo: returnToPath, tenantId } = parsed.data;
   const result = await finishPasskeyLoginPublic(tenantId, credential);
+
   if (!result.ok) {
     return { message: passkeyRefusalMessage(t, result.refusal), ok: false };
   }

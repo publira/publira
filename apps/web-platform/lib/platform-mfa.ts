@@ -84,12 +84,15 @@ const mfaCodeRejectionMessage = async (
   locale: Locale
 ): Promise<string | null> => {
   const t = await getMessagesFor(locale);
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
     return t("platform.auth.mfa.errors.locked");
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaInvalidCode)) {
     return t("platform.auth.mfa.errors.invalid_code");
   }
+
   return null;
 };
 
@@ -131,6 +134,7 @@ const sessionMfaFailureMessage = async (
   requires: MfaRequirement
 ): Promise<string> => {
   const rejected = await mfaCodeRejectionMessage(error, locale);
+
   if (rejected) {
     return rejected;
   }
@@ -160,11 +164,13 @@ const challengeMfaFailure = async (
   requires: MfaRequirement
 ): Promise<{ message: string; challengeExpired: boolean }> => {
   const rejected = await mfaCodeRejectionMessage(error, locale);
+
   if (rejected) {
     return { challengeExpired: false, message: rejected };
   }
 
   const t = await getMessagesFor(locale);
+
   if (isUnauthenticatedRpcError(error)) {
     return {
       challengeExpired: true,
@@ -200,6 +206,7 @@ const getPlatformMfaStatusForSession = async (
 
   if (!token) {
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: true };
   }
 
@@ -220,13 +227,16 @@ const getPlatformMfaStatusForSession = async (
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       dropFailedCacheEntry();
+
       return { ok: false, requiresSignIn: true };
     }
+
     // Any other failure is the error screen, thrown by the caller. Only the
     // verdict crosses the cache boundary, so the cause is logged here, where
     // the error is still whole.
     console.warn("[web-platform] getPlatformMfaStatus failed", error);
     dropFailedCacheEntry();
+
     return { ok: false, requiresSignIn: false, unexpected: true };
   }
 };
@@ -241,9 +251,11 @@ export const getPlatformMfaStatus =
     const { unexpected, ...result } = await getPlatformMfaStatusForSession(
       await resolveAccessToken()
     );
+
     if (unexpected) {
       throw new Error("The second factor's status could not be read.");
     }
+
     return result;
   };
 
@@ -264,6 +276,7 @@ export const verifyPlatformMfa = async (
       response.accessToken?.token,
       response.accessToken?.expiresAt
     );
+
     if (!session) {
       return {
         challengeExpired: false,
@@ -313,6 +326,7 @@ export const startPlatformMfaEnrollment = async (
 
     const secret = response.secret.trim();
     const otpauthUri = response.otpauthUri.trim();
+
     if (!(secret && otpauthUri)) {
       return {
         challengeExpired: false,
@@ -391,6 +405,7 @@ export const disablePlatformMfa = async (
       { code },
       buildSessionHeaders(sessionToken)
     );
+
     return { ok: true };
   } catch (error) {
     return {
@@ -411,6 +426,7 @@ export const regeneratePlatformMfaRecoveryCodes = async (
       { code },
       buildSessionHeaders(sessionToken)
     );
+
     return { ok: true, recoveryCodes: response.recoveryCodes };
   } catch (error) {
     return {

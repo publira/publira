@@ -13,9 +13,11 @@ type Box = NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>;
 
 const boxOf = async (locator: Locator): Promise<Box> => {
   const box = await locator.boundingBox();
+
   if (box === null) {
     throw new Error(`${locator.toString()} has no bounding box`);
   }
+
   return box;
 };
 
@@ -34,6 +36,7 @@ export const expectNoticeClearOf = async (
     boxOf(offlineNotice(page)),
     controls.all(),
   ]);
+
   const boxes = await Promise.all(
     controlList.map(async (control) => ({
       box: await boxOf(control),
@@ -57,6 +60,7 @@ const BAND_SETTLE_READS = 10;
 /** The strip of the screen the notice floats in, as a screenshot clip. */
 const noticeBand = (page: Page) => {
   const viewport = page.viewportSize();
+
   if (viewport === null) {
     throw new Error("the page has no viewport to photograph");
   }

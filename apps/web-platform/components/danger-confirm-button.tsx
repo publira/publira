@@ -21,11 +21,13 @@ const DangerConfirmContext = createContext<DangerConfirmState | null>(null);
 
 const useDangerConfirm = (): DangerConfirmState => {
   const state = useContext(DangerConfirmContext);
+
   if (!state) {
     throw new Error(
       "DangerConfirmButton slots must be rendered inside a DangerConfirmButton."
     );
   }
+
   return state;
 };
 

@@ -33,10 +33,12 @@ import { TenantInboundEmailSettingsForm } from "./_components/tenant-inbound-ema
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -142,6 +144,7 @@ const SettingsInboundEmailForm = async () => {
   );
 
   let loadErrorMessage: string | undefined;
+
   if (!settingsResult.ok) {
     loadErrorMessage = settingsResult.message;
   } else if (!providersResult.ok) {

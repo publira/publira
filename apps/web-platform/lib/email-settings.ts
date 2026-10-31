@@ -31,6 +31,7 @@ export {
   TEST_EMAIL_RECIPIENT_TYPE_CUSTOM,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "./email-settings-shared";
+
 export type { PlatformSmtpSettings } from "./email-settings-shared";
 
 export interface UpdatePlatformSmtpSettingsInput {
@@ -94,6 +95,7 @@ const parseErrorMessage = async (
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
   const genericErrorMessage = t("platform.common.generic_failed");
+
   return rpcErrorMessage(error, genericErrorMessage, {
     locale,
     overrides: {
@@ -166,12 +168,14 @@ const getPlatformEmailSettingsForLocale = async (
       {},
       withServiceHeaders()
     );
+
     return { ok: true, settings: toPlatformSmtpSettings(response.settings) };
   } catch (error) {
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
     // request. The entry is dropped instead, so the settings come back as
     // soon as the API does.
     dropFailedCacheEntry();
+
     return {
       message: await parseErrorMessage(error, locale),
       ok: false,
@@ -189,6 +193,7 @@ const getPlatformEmailSettingsForLocale = async (
 export const getPlatformEmailSettings =
   async (): Promise<PlatformSmtpSettingsResult> => {
     await verifyPlatformSession();
+
     return getPlatformEmailSettingsForLocale(await getPlatformLocale());
   };
 
@@ -199,6 +204,7 @@ export const updatePlatformEmailSettings = async (
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -226,6 +232,7 @@ export const updatePlatformEmailSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     // The one refusal naming the username is a password, entered or kept from
     // the stored settings, with no username to authenticate it.
     if (rpcErrorHasFieldViolation(error, "username")) {
@@ -237,6 +244,7 @@ export const updatePlatformEmailSettings = async (
         ok: false,
       };
     }
+
     return {
       message: await parseErrorMessage(error, input.locale),
       ok: false,
@@ -251,6 +259,7 @@ export const sendPlatformSmtpTestEmail = async (
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -279,6 +288,7 @@ export const sendPlatformSmtpTestEmail = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseSmtpTestErrorMessage(error, input.locale),
       ok: false,

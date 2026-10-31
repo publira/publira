@@ -114,6 +114,7 @@ export const badgeVariants = cva(
 type BadgeVariantOptions = VariantProps<typeof badgeVariants>;
 
 export type BadgeTone = NonNullable<BadgeVariantOptions["tone"]>;
+
 export type BadgeVariant = NonNullable<BadgeVariantOptions["variant"]>;
 
 export type BadgeProps = ComponentPropsWithoutRef<"span"> & BadgeVariantOptions;

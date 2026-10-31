@@ -33,6 +33,7 @@ const SentTo = async ({
   searchParams: Promise<{ email?: string | string[] }>;
 }) => {
   const { email } = parseResetPasswordRequestedSearchParams(await searchParams);
+
   if (!email) {
     return null;
   }

@@ -49,6 +49,7 @@ describe("PublishedPageContent", () => {
     const guide = screen.getByRole("link", {
       name: "https://example.com/guide",
     });
+
     expect(guide.getAttribute("href")).toBe("https://example.com/guide");
     expect(guide.getAttribute("rel")).toBe("noreferrer");
     expect(guide.getAttribute("target")).toBe("_blank");

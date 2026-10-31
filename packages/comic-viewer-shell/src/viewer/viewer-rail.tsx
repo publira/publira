@@ -37,6 +37,7 @@ export const useBoxHeight = (box: HTMLElement | null): number => {
           // Nothing was observed, so there is nothing to stop.
         };
       }
+
       const observer = new ResizeObserver(onStoreChange);
       observer.observe(box);
 
@@ -46,6 +47,7 @@ export const useBoxHeight = (box: HTMLElement | null): number => {
     },
     [box]
   );
+
   const getHeight = useCallback(
     () => box?.getBoundingClientRect().height ?? 0,
     [box]

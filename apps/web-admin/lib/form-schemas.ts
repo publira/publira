@@ -73,14 +73,17 @@ export const nonNegativeIntFormSchema = (
   z.preprocess(
     (value) => {
       const raw = typeof value === "string" ? value.trim() : "";
+
       if (raw === "") {
         return 0;
       }
+
       if (!NUMBER_RE.test(raw)) {
         return;
       }
 
       const parsed = Math.trunc(Number(raw));
+
       return Number.isFinite(parsed) ? parsed : undefined;
     },
     z
@@ -105,6 +108,7 @@ export const boundedIntFormSchema = (
   z.preprocess(
     (value) => {
       const raw = typeof value === "string" ? value.trim() : "";
+
       return INTEGER_RE.test(raw) ? Number(raw) : undefined;
     },
     z
@@ -125,6 +129,7 @@ export const optionalBoundedIntFormSchema = (
   z.preprocess(
     (value) => {
       const raw = typeof value === "string" ? value.trim() : "";
+
       return raw === "" ? undefined : raw;
     },
     z.optional(boundedIntFormSchema(message, options))
@@ -147,6 +152,7 @@ export const spreadStartPageFormSchema = (
   z.preprocess(
     (value) => {
       const raw = typeof value === "string" ? value.trim() : "";
+
       return PAGE_NUMBER_RE.test(raw) ? Number(raw) : undefined;
     },
     z
@@ -195,6 +201,7 @@ export const trimmedStringListFormSchema = z
   .transform((values) =>
     values.flatMap((value) => {
       const trimmed = value.trim();
+
       return trimmed.length > 0 ? [trimmed] : [];
     })
   );
@@ -207,6 +214,7 @@ export const jsonStringArrayFormSchema = z.preprocess((value): string[] => {
 
   try {
     const parsed: unknown = JSON.parse(value);
+
     return Array.isArray(parsed)
       ? parsed.filter((entry): entry is string => typeof entry === "string")
       : [];
@@ -267,8 +275,10 @@ export const optionalHttpsUrlFormSchema = (
     if (value === "") {
       return true;
     }
+
     if (/\s/u.test(value) || !value.toLowerCase().startsWith("https://")) {
       return false;
     }
+
     return URL.canParse(value) && new URL(value).host !== "";
   }, message);

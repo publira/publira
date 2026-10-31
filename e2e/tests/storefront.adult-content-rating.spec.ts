@@ -18,8 +18,10 @@ const ratingMetaTags = async (
   const response = await request.get(
     `${WEB_STOREFRONT_BASE_URL}${storefrontPath(pathname)}`
   );
+
   expect(response.status()).toBe(200);
   const html = await response.text();
+
   return html.match(RATING_META) ?? [];
 };
 
@@ -47,6 +49,7 @@ test.describe("web-storefront adult content rating meta", () => {
       const tags = await Promise.all(
         seriesPages(series).map((pathname) => ratingMetaTags(request, pathname))
       );
+
       expect(tags).toStrictEqual([
         ['<meta name="rating" content="adult"/>'],
         ['<meta name="rating" content="adult"/>'],
@@ -62,6 +65,7 @@ test.describe("web-storefront adult content rating meta", () => {
         ratingMetaTags(request, pathname)
       )
     );
+
     expect(tags).toStrictEqual([[], []]);
   });
 
@@ -73,9 +77,11 @@ test.describe("web-storefront adult content rating meta", () => {
       `/creators/${SEED_TENANT.creatorId}`,
       `/labels/${SEED_TENANT.labelId}`,
     ];
+
     const tags = await Promise.all(
       listings.map((pathname) => ratingMetaTags(request, pathname))
     );
+
     expect(tags).toStrictEqual(listings.map(() => []));
   });
 });

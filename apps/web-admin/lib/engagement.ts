@@ -111,8 +111,10 @@ export const listEpisodeReadThrough = async (
   options: CursorPageOptions = {}
 ): Promise<ListEpisodeReadThroughResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return {
       episodes: [],
       message: t("errors.rpc.unauthenticated"),
@@ -149,6 +151,7 @@ export const listEpisodeReadThrough = async (
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       episodes: [],
       message: await mapErrorToMessage(error, locale),
@@ -206,7 +209,9 @@ const readRemainingPages = async <T>(
   if (!token) {
     return rows;
   }
+
   const page = await readPage(token);
+
   return readRemainingPages(page.nextToken, readPage, [...rows, ...page.rows]);
 };
 
@@ -222,6 +227,7 @@ const statsReadFailure = (
 
 const signInRequired = async (locale: Locale): Promise<StatsReadFailure> => {
   const t = await getMessagesFor(locale);
+
   return {
     message: t("errors.rpc.unauthenticated"),
     ok: false,
@@ -317,6 +323,7 @@ export const getRevenueStats = async (
   input: StatsPeriodRequest & { group: RevenueGroup }
 ): Promise<GetRevenueStatsResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return signInRequired(locale);
   }
@@ -336,10 +343,12 @@ export const getRevenueStats = async (
 
   try {
     const first = await readPage("");
+
     const rows = await readRemainingPages(
       first.nextToken ?? "",
       async (token) => {
         const page = await readPage(token);
+
         return { nextToken: page.nextToken ?? "", rows: page.rows ?? [] };
       },
       first.rows ?? []
@@ -359,6 +368,7 @@ export const getRevenueStats = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(locale);
+
     return statsReadFailure(
       error,
       t("admin.analytics.revenue.load_failed"),
@@ -479,6 +489,7 @@ export const getAudienceStats = async (
   input: StatsPeriodRequest & { group: AudienceGroup }
 ): Promise<GetAudienceStatsResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return signInRequired(locale);
   }
@@ -498,10 +509,12 @@ export const getAudienceStats = async (
 
   try {
     const first = await readPage("");
+
     const rows = await readRemainingPages(
       first.nextToken ?? "",
       async (token) => {
         const page = await readPage(token);
+
         return { nextToken: page.nextToken ?? "", rows: page.rows ?? [] };
       },
       first.rows ?? []
@@ -520,6 +533,7 @@ export const getAudienceStats = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(locale);
+
     return statsReadFailure(
       error,
       t("admin.analytics.audience.load_failed"),
@@ -567,6 +581,7 @@ export const getEpisodeDropOff = async (
   input: StatsPeriodRequest & { episodePublicId: string }
 ): Promise<GetEpisodeDropOffResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return signInRequired(locale);
   }
@@ -596,8 +611,10 @@ export const getEpisodeDropOff = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(locale);
+
     return statsReadFailure(
       error,
       t("admin.analytics.drop_off.load_failed"),
@@ -650,6 +667,7 @@ export const getRetentionCohorts = async (
   input: StatsPeriodRequest & { seriesPublicId: string }
 ): Promise<GetRetentionCohortsResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return signInRequired(locale);
   }
@@ -679,6 +697,7 @@ export const getRetentionCohorts = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(locale);
+
     return statsReadFailure(
       error,
       t("admin.analytics.cohorts.load_failed"),
@@ -709,6 +728,7 @@ export const getSignUpFunnel = async (
   input: StatsPeriodRequest
 ): Promise<GetSignUpFunnelResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return signInRequired(locale);
   }
@@ -722,6 +742,7 @@ export const getSignUpFunnel = async (
       },
       withSessionHeaders(sessionId)
     );
+
     const purchasedCount = Number(response.purchasedCount ?? 0);
 
     return {
@@ -750,6 +771,7 @@ export const getSignUpFunnel = async (
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
     const t = await getMessagesFor(locale);
+
     return statsReadFailure(
       error,
       t("admin.analytics.funnel.load_failed"),
@@ -786,15 +808,18 @@ const statsExportFields = (
     case "audience": {
       return { kind: audienceExportKind[report.group] };
     }
+
     case "drop_off": {
       return {
         episodePublicId: report.episodePublicId,
         kind: StatsExportKind.EPISODE_DROP_OFF,
       };
     }
+
     case "revenue": {
       return { kind: revenueExportKind[report.group] };
     }
+
     default: {
       return report satisfies never;
     }
@@ -844,6 +869,7 @@ export const exportStats = async (
   period: StatsPeriodRequest
 ): Promise<ExportStatsResult> => {
   const sessionId = await getAccessToken();
+
   if (!sessionId) {
     return { ok: false, reason: "signedOut" };
   }
@@ -858,17 +884,20 @@ export const exportStats = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { csv: new Uint8Array(response.csv), ok: true };
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       return { ok: false, reason: "signedOut" };
     }
+
     if (
       isMissingResourceRpcError(error) ||
       isRpcError(error, Code.InvalidArgument)
     ) {
       return { ok: false, reason: "missing" };
     }
+
     throw error;
   }
 };

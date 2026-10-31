@@ -138,6 +138,7 @@ describe("searchParamEnum", () => {
   it("rejects with the Japanese shared wording when locale is ja", () => {
     const parsed = searchParamEnum(["asc"], { locale: "ja" }).safeParse("desc");
     expect(parsed.success).toBe(false);
+
     if (parsed.success) {
       throw new Error("expected the schema to reject this input");
     }
@@ -150,6 +151,7 @@ describe("searchParamEnum", () => {
   it("rejects with the English shared wording when locale is en", () => {
     const parsed = searchParamEnum(["asc"], { locale: "en" }).safeParse("desc");
     expect(parsed.success).toBe(false);
+
     if (parsed.success) {
       throw new Error("expected the schema to reject this input");
     }
@@ -192,6 +194,7 @@ describe("searchParamNumber", () => {
       max: 50,
       min: 1,
     });
+
     expect(schema.parse("99999999")).toBe(50);
     expect(schema.parse("-5")).toBe(1);
     expect(schema.parse("abc")).toBe(20);

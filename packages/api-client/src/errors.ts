@@ -5,6 +5,7 @@ import {
 import { Code, ConnectError } from "@connectrpc/connect";
 
 export { Code, ConnectError } from "@connectrpc/connect";
+
 export {
   BadRequestSchema,
   ErrorInfoSchema,
@@ -135,11 +136,13 @@ const toWireName = (name: string): string =>
 
 const buildCodeByWireName = (): ReadonlyMap<string, Code> => {
   const byWireName = new Map<string, Code>();
+
   for (const value of Object.values(Code)) {
     if (typeof value === "number") {
       byWireName.set(toWireName(Code[value]), value);
     }
   }
+
   return byWireName;
 };
 
@@ -152,11 +155,13 @@ let codeByWireName: ReadonlyMap<string, Code> | undefined;
 const codeFromMessagePrefix = (message: string): Code | null => {
   const match = /^\[(?<wireName>[a-z_]+)\]/u.exec(message);
   const wireName = match?.groups?.wireName;
+
   if (!wireName) {
     return null;
   }
 
   codeByWireName ??= buildCodeByWireName();
+
   return codeByWireName.get(wireName) ?? null;
 };
 
@@ -186,9 +191,11 @@ export const rpcErrorCode = (error: unknown): Code | null => {
   if (error instanceof ConnectError) {
     return error.code;
   }
+
   if (isRehydratedConnectError(error)) {
     return codeFromMessagePrefix(error.message);
   }
+
   return null;
 };
 
@@ -198,12 +205,14 @@ export const isRpcError = (
   ...codes: readonly [Code, ...Code[]]
 ): boolean => {
   const code = rpcErrorCode(error);
+
   return code !== null && codes.includes(code);
 };
 
 /** The handling category for a caught value. Non-RPC errors are `"unexpected"`. */
 export const rpcErrorDisposition = (error: unknown): RpcErrorDisposition => {
   const code = rpcErrorCode(error);
+
   return code === null ? "unexpected" : DISPOSITION_BY_CODE[code];
 };
 
@@ -286,9 +295,11 @@ export const rpcErrorRawMessage = (error: unknown): string | null => {
   if (error instanceof ConnectError) {
     return error.rawMessage;
   }
+
   if (isRehydratedConnectError(error)) {
     return error.message.replace(/^\[[a-z_]+\]\s*/u, "");
   }
+
   return null;
 };
 
@@ -385,17 +396,23 @@ export const rpcErrorReasonMetadataNumber = (
     if (detail.domain !== RPC_ERROR_INFO_DOMAIN || detail.reason !== reason) {
       continue;
     }
+
     const raw = detail.metadata[key];
+
     if (raw === undefined) {
       return null;
     }
+
     if (!/^\d+$/u.test(raw)) {
       return null;
     }
+
     const value = Number(raw);
+
     if (!Number.isSafeInteger(value)) {
       return null;
     }
+
     return value;
   }
 

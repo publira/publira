@@ -17,6 +17,7 @@ const INVALID_SUBJECT = "operator@publira.test";
 const SAVED_MESSAGE = "Web Push settings saved.";
 const CONFIGURED_MESSAGE = /^Web Push is configured\./u;
 const UNCONFIGURED_MESSAGE = /^Web Push isn't configured yet\./u;
+
 const INVALID_SUBJECT_MESSAGE =
   "Enter a mailto: URI with one email address, such as mailto:push@example.com, or an https:// URL, such as https://example.com/contact.";
 

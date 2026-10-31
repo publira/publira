@@ -24,10 +24,12 @@ import { GoogleTagForm } from "./_components/google-tag-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -54,10 +56,12 @@ const GoogleTagSkeleton = () => (
 const GoogleTagSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [result, legalPages] = await Promise.all([
     getTenantAnalyticsSettings(tenantId, locale),
     getTenantLegalPages(tenantId, locale),
   ]);
+
   await redirectToLoginIfSessionRejected(result);
 
   return (

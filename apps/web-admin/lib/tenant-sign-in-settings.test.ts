@@ -97,6 +97,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { getTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await getTenantSignInSettings("TENANT001", "en");
 
     expect(result).toEqual({ ok: true, settings: STORED });
@@ -115,6 +116,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { getTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await getTenantSignInSettings("TENANT001", "en");
 
     expect(result).toEqual({
@@ -145,6 +147,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { getTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await getTenantSignInSettings("TENANT001", "en");
 
     expect(result).toMatchObject({ ok: false, requiresSignIn: true });
@@ -163,6 +166,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { getTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await getTenantSignInSettings("TENANT001", "en");
 
     expect(result).toMatchObject({
@@ -204,6 +208,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { updateTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await updateTenantSignInSettings(INPUT, "en");
 
     expect(result).toEqual({ ok: true, settings: STORED });
@@ -235,6 +240,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { updateTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await updateTenantSignInSettings(INPUT, "en");
 
     expect(result).toEqual({
@@ -254,6 +260,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { updateTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await updateTenantSignInSettings(INPUT, "en");
 
     expect(result).toMatchObject({
@@ -275,6 +282,7 @@ describe("tenant-sign-in-settings", () => {
 
     const { updateTenantSignInSettings } =
       await import("./tenant-sign-in-settings");
+
     const result = await updateTenantSignInSettings(INPUT, "en");
 
     expect(result).toEqual({

@@ -93,8 +93,10 @@ const listAnnouncementsForSession = async (
   cacheTag(`announcements-${tenantId}`);
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       announcements: [],
@@ -122,6 +124,7 @@ const listAnnouncementsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       announcements: [],
@@ -175,6 +178,7 @@ export const createAnnouncement = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -199,6 +203,7 @@ export const createAnnouncement = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,
@@ -209,6 +214,7 @@ export const createAnnouncement = async (
     };
   }
 };
+
 /**
  * Stop showing an announcement as a banner, leaving the announcement itself in
  * the list it was posted to. It is what an operator reaches for when the event
@@ -222,6 +228,7 @@ export const unpinAnnouncement = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -242,6 +249,7 @@ export const unpinAnnouncement = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,

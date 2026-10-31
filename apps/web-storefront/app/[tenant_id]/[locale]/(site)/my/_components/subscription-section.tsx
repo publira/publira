@@ -80,22 +80,27 @@ const PlanState = ({
       if (!date) {
         return null;
       }
+
       return subscription.cancelAtPeriodEnd ? (
         <Message message="storefront.my.plan_ends_on" values={{ date }} />
       ) : (
         <Message message="storefront.my.plan_renews_on" values={{ date }} />
       );
     }
+
     case "past_due": {
       return <Message message="storefront.my.plan_past_due" />;
     }
+
     case "paused":
     case "unpaid": {
       return <Message message="storefront.my.plan_on_hold" />;
     }
+
     case "incomplete": {
       return <Message message="storefront.my.plan_incomplete" />;
     }
+
     default: {
       return <Message message="storefront.my.plan_ended" />;
     }
@@ -139,14 +144,17 @@ export const SubscriptionSection = async () => {
   }
 
   const { subscription } = result;
+
   if (!subscription) {
     const [plans, tenant] = await Promise.all([
       listSubscriptionPlans(tenantId, locale),
       getTenantSiteInfo(tenantId),
     ]);
+
     if (!(plans.ok && plans.value.length > 0 && tenant?.acceptsPayments)) {
       return null;
     }
+
     return (
       <PlanSection>
         <div className="grid justify-items-start gap-4">
@@ -162,6 +170,7 @@ export const SubscriptionSection = async () => {
   }
 
   const timeZone = await getTenantDisplayTimeZone(tenantId);
+
   const over =
     !holdsSubscription(subscription) && subscription.status !== "incomplete";
 

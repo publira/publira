@@ -27,6 +27,7 @@ export const renderEmail = async (
   input: ResolveEmailInput
 ): Promise<RenderEmailResult> => {
   const resolved = resolveEmail(input);
+
   if (!resolved.ok) {
     return resolved;
   }

@@ -39,11 +39,13 @@ export const updatePlatformSecurityPolicyAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, securityPolicyFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { data } = parsed;
+
   const result = await withPlatformSessionReauth(() =>
     updatePlatformSecurityPolicy(
       {
@@ -84,6 +86,7 @@ export const updatePlatformSecurityPolicyAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -95,6 +98,7 @@ export const updatePlatformSecurityPolicyAction = async (
   updateTag(PLATFORM_MFA_STATUS_CACHE_TAG);
 
   const t = await getMessagesFor(locale);
+
   return { message: t("platform.policy.security.saved"), ok: true };
 };
 
@@ -109,11 +113,13 @@ export const updatePlatformCommunityLimitsAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, communityLimitsFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { data } = parsed;
+
   const result = await withPlatformSessionReauth(() =>
     updatePlatformCommunityLimits(
       {
@@ -151,6 +157,7 @@ export const updatePlatformCommunityLimitsAction = async (
       locale
     )
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -159,6 +166,7 @@ export const updatePlatformCommunityLimitsAction = async (
   updateTag(platformAuditLogsCacheTag);
 
   const t = await getMessagesFor(locale);
+
   return { message: t("platform.policy.community.saved"), ok: true };
 };
 
@@ -173,14 +181,17 @@ export const updatePlatformRetentionDefaultsAction = async (
   const parsed = schema.safeParse(
     toFormDataInput(formData, retentionDefaultsFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { revision, ...defaults } = parsed.data;
+
   const result = await withPlatformSessionReauth(() =>
     updatePlatformRetentionDefaults(defaults, revision, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -189,5 +200,6 @@ export const updatePlatformRetentionDefaultsAction = async (
   updateTag(platformAuditLogsCacheTag);
 
   const t = await getMessagesFor(locale);
+
   return { message: t("platform.policy.retention.saved"), ok: true };
 };

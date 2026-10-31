@@ -55,6 +55,7 @@ export const isLocaleExemptTopLevelSegment = (segment: string): boolean =>
  */
 export const isLocaleExemptPathname = (pathname: string): boolean => {
   const [first] = splitSegments(pathname);
+
   return first !== undefined && isLocaleExemptTopLevelSegment(first);
 };
 
@@ -70,6 +71,7 @@ export const splitLocalePathname = (
 ): { locale: Locale | null; pathname: string } => {
   const segments = splitSegments(pathname);
   const [first] = segments;
+
   if (first === undefined || !isLocale(first)) {
     return { locale: null, pathname: joinSegments(segments) };
   }
@@ -168,6 +170,7 @@ export const publishedLocaleAlternates = (
   const published = new Set<Locale>([...publishedLocales, servedLocale]);
 
   const languages: Partial<Record<Locale, string>> = {};
+
   for (const code of supportedLocales) {
     if (published.has(code)) {
       languages[code] = withLocalePrefix(code, defaultLocale, href);
@@ -199,6 +202,7 @@ export const publishedLocaleAlternates = (
  */
 export const toBarePathname = (pathname: string): string => {
   const segments = splitSegments(pathname);
+
   const withoutTenant =
     segments[0] !== undefined && isTenantIdFormat(segments[0])
       ? segments.slice(1)

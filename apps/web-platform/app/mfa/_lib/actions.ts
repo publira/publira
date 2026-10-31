@@ -41,9 +41,11 @@ const requireChallenge = async (
   kind: MfaChallengeKindName
 ): Promise<MfaChallenge> => {
   const challenge = await readMfaChallenge();
+
   if (!challenge || challenge.kind !== kind) {
     redirect(buildLoginPath(challenge?.nextPath, { revoked: true }));
   }
+
   return challenge;
 };
 
@@ -59,9 +61,11 @@ const parseCode = async (
 ): Promise<{ code: string } | { message: string }> => {
   const t = await getMessagesFor(locale);
   const parsed = mfaCodeFormSchema.safeParse(formData.get("code"));
+
   if (!parsed.success) {
     return { message: t("platform.auth.mfa.code_required") };
   }
+
   return { code: parsed.data };
 };
 
@@ -72,10 +76,12 @@ const parseCode = async (
 const storeSession = async (session: PlatformSession): Promise<boolean> => {
   try {
     await writePlatformSessionCookie(session);
+
     return true;
   } catch (error) {
     // Sealing or writing the cookie broke; the reason is only in the log.
     console.error("[web-platform] mfa session cookie seal failed", error);
+
     return false;
   }
 };
@@ -87,10 +93,12 @@ export const verifyMfaAction = async (
   await assertSameOrigin();
   const challenge = await requireChallenge("verify");
   const locale = await getPlatformLocale();
+
   const [t, parsed] = await Promise.all([
     getMessagesFor(locale),
     parseCode(formData, locale),
   ]);
+
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }
@@ -100,26 +108,32 @@ export const verifyMfaAction = async (
     parsed.code,
     locale
   );
+
   // The audit log records the attempt whatever it came to.
   updateTag(platformAuditLogsCacheTag);
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 
   const stored = await storeSession(result.session);
+
   if (!stored) {
     return {
       message: t("platform.auth.login.processing_failed"),
       ok: false,
     };
   }
+
   // A recovery code is one the operator can never use again, so the screen
   // says so and offers the way back to a full set before moving on.
   if (result.recoveryCodeUsed) {
     await finishMfaChallenge(challenge);
+
     return {
       message: t("platform.auth.mfa.recovery_used_description", {
         count: result.remainingRecoveryCodes,
@@ -144,10 +158,12 @@ export const startMfaEnrollmentAction = async (
     challenge.challengeToken,
     locale
   );
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 
@@ -167,6 +183,7 @@ export const confirmMfaEnrollmentAction = async (
   const challenge = await requireChallenge("enroll");
   const locale = await getPlatformLocale();
   const parsed = await parseCode(formData, locale);
+
   if ("message" in parsed) {
     return { message: parsed.message, ok: false };
   }
@@ -176,12 +193,15 @@ export const confirmMfaEnrollmentAction = async (
     parsed.code,
     locale
   );
+
   // The audit log records the attempt whatever it came to.
   updateTag(platformAuditLogsCacheTag);
+
   if (!result.ok) {
     if (result.challengeExpired) {
       await abandonChallenge(challenge);
     }
+
     return { message: result.message, ok: false };
   }
 

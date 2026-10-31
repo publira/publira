@@ -32,16 +32,19 @@ const CONSOLE_UNAVAILABLE = "This admin console is unavailable";
 const moveTenantToFreshHosts = (): { console: string; site: string } => {
   const label = `suspend-${randomUUID()}`;
   const site = withHostname(WEB_STOREFRONT_INTERNAL_URL, `${label}.localhost`);
+
   const admin = withHostname(
     WEB_ADMIN_INTERNAL_URL,
     `admin.${label}.localhost`
   );
+
   runSql(`
     UPDATE tenants
     SET domain = '${new URL(site).host}',
         admin_domain = '${new URL(admin).host}'
     WHERE public_id = '${SUSPENSION_TENANT.publicId}';
   `);
+
   return { console: admin, site };
 };
 
@@ -53,6 +56,7 @@ const openVisitor = async (
   browser: Browser
 ): Promise<{ context: BrowserContext; page: Page }> => {
   const context = await browser.newContext({ locale: "en-US" });
+
   return { context, page: await context.newPage() };
 };
 
@@ -95,10 +99,13 @@ test.describe("a suspended tenant", () => {
   }) => {
     const hosts = moveTenantToFreshHosts();
     const siteUrl = (pathname: string): string => `${hosts.site}${pathname}`;
+
     const consoleUrl = (pathname: string): string =>
       `${hosts.console}${pathname}`;
+
     const reader = await openVisitor(browser);
     const staff = await openVisitor(browser);
+
     try {
       await plantSessionCookie(
         staff.page,

@@ -32,6 +32,7 @@ const OPENSEARCH_URL = process.env.PUBLIRA_E2E_OPENSEARCH_URL ?? "";
 const UNREACHABLE_URL = "http://127.0.0.1:9";
 
 const SAVED_MESSAGE = "Search settings saved.";
+
 const SAVED_BUILDING_MESSAGE =
   "Search settings saved. The index is being built now, and the search moves to the new engine once it's ready.";
 
@@ -86,10 +87,13 @@ const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
       method: "POST",
     }
   );
+
   expect(response.ok, await response.clone().text()).toBe(true);
+
   const { series = [] } = (await response.json()) as {
     series?: { publicId: string }[];
   };
+
   return series.some((item) => item.publicId === SEED_TENANT.series.publicId);
 };
 
@@ -151,10 +155,13 @@ const writtenFormTokens = async (
     headers: { "content-type": "application/json" },
     method: "POST",
   });
+
   expect(response.ok, await response.clone().text()).toBe(true);
+
   const { tokens = [] } = (await response.json()) as {
     tokens?: { token: string }[];
   };
+
   return tokens.map((item) => item.token);
 };
 
@@ -192,6 +199,7 @@ test.describe("web-platform search settings", () => {
     } else {
       runSql(`DELETE FROM platform_search_config;`);
     }
+
     await revalidatePlatformTags([platformSearchSettingsTag]);
   });
 
@@ -352,9 +360,11 @@ test.describe("web-platform search settings", () => {
       // in English's.
       const english = page.getByRole("tabpanel", { name: "English" });
       const editor = english.getByRole("textbox", { name: /^Definition/u });
+
       const useShared = english.getByRole("button", {
         name: "Use the shared definition",
       });
+
       // A language without a definition of its own starts from the shared
       // one, which every index is built from.
       await expect(
@@ -440,6 +450,7 @@ test.describe("web-platform search settings", () => {
         .toContain("별을");
       await expectOpenSearchAnswering(true);
     });
+
     return;
   }
 

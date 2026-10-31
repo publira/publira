@@ -61,6 +61,7 @@ export const RecommendedCreatorsSkeleton = ({
  */
 export const RecommendedSeriesSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const result = await getCatalogTopReaderRecommendedSeries(tenantId, {
     locale,
     maxRecommended,
@@ -105,6 +106,7 @@ export const RecommendedSeriesSection = async () => {
 /** The authors behind the catalogue, as the other half of "what next". */
 export const RecommendedCreatorsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const result = await getCatalogTopFeaturedCreators(tenantId, {
     locale,
     maxCreators: maxRecommended,

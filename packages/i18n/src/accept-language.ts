@@ -68,6 +68,7 @@ const parseElement = (element: string): WeightedRange | undefined => {
   }
 
   const weight = WEIGHT_PATTERN.exec(parameters[0])?.groups?.weight;
+
   if (weight === undefined) {
     return undefined;
   }
@@ -117,15 +118,18 @@ export const matchSupportedLocale = <T extends string>(
 ): T | undefined => {
   const wanted = range.toLowerCase();
   const exact = supported.find((locale) => locale.toLowerCase() === wanted);
+
   if (exact !== undefined) {
     return exact;
   }
 
   const wantedLanguageAndScript = languageAndScript(range);
+
   if (wantedLanguageAndScript !== undefined) {
     const sameScript = supported.find(
       (locale) => languageAndScript(locale) === wantedLanguageAndScript
     );
+
     if (sameScript !== undefined) {
       return sameScript;
     }
@@ -162,16 +166,20 @@ export const negotiateInitialLocale = (
   }
 
   const accepted: WeightedRange[] = [];
+
   for (const element of acceptLanguage.split(",")) {
     const parsed = parseElement(element);
+
     if (parsed !== undefined && parsed.weight > 0) {
       accepted.push(parsed);
     }
   }
+
   accepted.sort((a, b) => b.weight - a.weight);
 
   for (const { range } of accepted) {
     const locale = matchSupportedLocale(range, SUPPORTED_LOCALES);
+
     if (locale !== undefined) {
       return locale;
     }

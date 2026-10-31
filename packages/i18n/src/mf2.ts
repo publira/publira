@@ -54,14 +54,17 @@ const formatterFor = (locale: string, source: string): MessageFormat => {
   // space ends it whatever the source contains.
   const key = `${locale} ${source}`;
   const cached = formatters.get(key);
+
   if (cached) {
     return cached;
   }
 
   const formatter = new MessageFormat(locale, source, FORMAT_OPTIONS);
+
   if (formatters.size >= MAX_FORMATTERS) {
     formatters.clear();
   }
+
   formatters.set(key, formatter);
 
   return formatter;
@@ -77,6 +80,7 @@ const formatterFor = (locale: string, source: string): MessageFormat => {
  * reaches a message rather than by MF2.
  */
 const CATALOG_FUNCTIONS = new Set(["integer", "number", "offset", "string"]);
+
 const CATALOG_FUNCTION_LIST = [...CATALOG_FUNCTIONS]
   .map((name) => `:${name}`)
   .join(", ");
@@ -93,6 +97,7 @@ const CATALOG_FUNCTION_LIST = [...CATALOG_FUNCTIONS]
  */
 export const catalogMessageError = (source: string): string | undefined => {
   let message: Model.Message;
+
   try {
     message = parseMessage(source);
     validate(message);
@@ -179,12 +184,15 @@ export const messageVariables = (source: string): MessageVariable[] => {
   // A declaration can only read the ones above it, so walking them bottom up
   // carries a number through any chain of locals in one pass.
   const locals = new Set<string>();
+
   for (const declaration of message.declarations.toReversed()) {
     if (declaration.type !== "local") {
       continue;
     }
+
     locals.add(declaration.name);
     const { arg, functionRef } = declaration.value;
+
     if (
       numeric.has(declaration.name) &&
       functionRef === undefined &&

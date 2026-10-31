@@ -24,9 +24,11 @@ vi.mock("#lib/royalties", () => ({
 const formData = (fields: Record<string, string>): FormData => {
   const data = new FormData();
   data.set("tenant_id", "TENANT001");
+
   for (const [name, value] of Object.entries(fields)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -80,6 +82,7 @@ describe("updateRoyaltyCloseSettingsAction", () => {
       automaticSince: "2026-09-21T00:00:00Z",
       closeMode: "automatic",
     };
+
     mockUpdatePolicy.mockResolvedValueOnce({ ok: true, policy });
     const { updateRoyaltyCloseSettingsAction } = await import("./actions");
 

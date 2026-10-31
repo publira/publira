@@ -96,9 +96,11 @@ const toScopeValue = (
   if (scope === SubscriptionPlanScope.LABEL) {
     return "label";
   }
+
   if (scope === SubscriptionPlanScope.SERIES) {
     return "series";
   }
+
   return "all";
 };
 
@@ -152,18 +154,22 @@ const saveOverrides = async (
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
+
   const invalidArgument = (): string => {
     if (rpcErrorHasFieldViolation(error, "plan.stripe_price_id")) {
       return t("admin.subscription_plans.validation.price_invalid");
     }
+
     // The form refuses an empty name before it is sent, so a refused name
     // is one the API counts longer than the form did.
     if (rpcErrorHasFieldViolation(error, "plan.name")) {
       return t("admin.subscription_plans.validation.name_too_long");
     }
+
     if (rpcErrorHasFieldViolation(error, "plan.description")) {
       return t("admin.subscription_plans.validation.description_too_long");
     }
+
     if (
       rpcErrorHasFieldViolation(error, "plan.scope") ||
       rpcErrorHasFieldViolation(error, "plan.label_ids") ||
@@ -171,6 +177,7 @@ const saveOverrides = async (
     ) {
       return t("admin.subscription_plans.validation.targets_invalid");
     }
+
     return t("errors.validation");
   };
 
@@ -195,8 +202,10 @@ const listSubscriptionPlansForSession = async (
   cacheTag(subscriptionPlansCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -220,6 +229,7 @@ const listSubscriptionPlansForSession = async (
     // request. The entry is dropped instead, so the list comes back as soon
     // as the API does, and an unexpected failure is thrown by the caller.
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -266,6 +276,7 @@ export const getSubscriptionPlan = async (
   locale: Locale
 ): Promise<GetSubscriptionPlanResult> => {
   const result = await listSubscriptionPlans(input.tenantId, locale);
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -277,6 +288,7 @@ export const getSubscriptionPlan = async (
   const plan = result.plans.find(
     (candidate) => candidate.publicId === input.publicId
   );
+
   return plan ? { ok: true, plan } : { notFound: true, ok: false };
 };
 
@@ -316,6 +328,7 @@ export const createSubscriptionPlan = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -337,6 +350,7 @@ export const createSubscriptionPlan = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -360,6 +374,7 @@ export const updateSubscriptionPlan = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -385,6 +400,7 @@ export const updateSubscriptionPlan = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -408,6 +424,7 @@ export const deleteSubscriptionPlan = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -425,6 +442,7 @@ export const deleteSubscriptionPlan = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

@@ -161,14 +161,17 @@ const toNotificationPreferenceCells = (
   preferences?: RawNotificationPreferences
 ): NotificationPreferenceCells => {
   const cells = { ...UNSAVED_NOTIFICATION_PREFERENCE_CELLS };
+
   if (!preferences) {
     return cells;
   }
+
   for (const cell of Object.keys(
     cells
   ) as (keyof NotificationPreferenceCells)[]) {
     cells[cell] = preferences[cell];
   }
+
   return cells;
 };
 
@@ -195,10 +198,13 @@ export const loginPublic = async (
       },
       await buildClientAddressHeaders()
     );
+
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
+
     if (!accessToken || !expiresAt) {
       return { ok: false, refusal: "credentials" };
     }
+
     return {
       ok: true,
       session: { accessToken, expiresAt: new Date(expiresAt) },
@@ -213,6 +219,7 @@ export const loginPublic = async (
             : "credentials",
       };
     }
+
     throw error;
   }
 };
@@ -237,6 +244,7 @@ const passkeyLoginRefusal = (error: unknown): PasskeyLoginRefusal => {
   if (!isRejectedRequestRpcError(error)) {
     throw error;
   }
+
   return rpcErrorDisposition(error) === "rate-limited"
     ? "rate-limited"
     : "refused";
@@ -256,6 +264,7 @@ export const beginPasskeyLoginPublic = async (
       { tenant: { tenantId } },
       await buildClientAddressHeaders()
     );
+
     return { ok: true, optionsJson: response.requestOptionsJson };
   } catch (error) {
     return { ok: false, refusal: passkeyLoginRefusal(error) };
@@ -277,10 +286,13 @@ export const finishPasskeyLoginPublic = async (
       { credentialJson, tenant: { tenantId } },
       await buildClientAddressHeaders()
     );
+
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
+
     if (!accessToken || !expiresAt) {
       return { ok: false, refusal: "refused" };
     }
+
     return {
       ok: true,
       session: { accessToken, expiresAt: new Date(expiresAt) },
@@ -302,9 +314,11 @@ const toSignInProvider = (
     case IdentityProvider.APPLE: {
       return "apple";
     }
+
     case IdentityProvider.GOOGLE: {
       return "google";
     }
+
     default: {
       return null;
     }
@@ -364,25 +378,31 @@ export const loginWithIdToken = async (
       },
       await buildClientAddressHeaders()
     );
+
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
+
     if (!accessToken || !expiresAt) {
       throw new Error("LoginWithIdToken answered without an access token");
     }
+
     return {
       kind: "signed_in",
       session: { accessToken, expiresAt: new Date(expiresAt) },
     };
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     if (
       rpcErrorDisposition(error) === "invalid-argument" &&
       rpcErrorHasFieldViolation(error, "agreed_page_version_ids")
     ) {
       return { kind: "consent_required" };
     }
+
     if (isSignUpClosedRpcError(error)) {
       return { kind: "sign_up_closed" };
     }
+
     return { error, kind: "refused" };
   }
 };
@@ -419,6 +439,7 @@ export interface MyIdentities {
 const toMyIdentities = (identities: RawLinkedIdentity[]): MyIdentity[] =>
   identities.flatMap((identity) => {
     const provider = toSignInProvider(identity.provider);
+
     return provider
       ? [{ email: identity.email, linkedAt: identity.linkedAt, provider }]
       : [];
@@ -429,6 +450,7 @@ export const listMyIdentities = async (
   accessToken?: string
 ): Promise<MyIdentities | null> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return null;
   }
@@ -438,6 +460,7 @@ export const listMyIdentities = async (
       { tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     return {
       hasPasskey: response.hasPasskey,
       hasPassword: response.hasPassword,
@@ -447,9 +470,11 @@ export const listMyIdentities = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     if (isExpectedNullableRpcError(error)) {
       return null;
     }
+
     throw error;
   }
 };
@@ -465,17 +490,21 @@ export const unlinkMyIdentity = async (
   accessToken?: string
 ): Promise<{ ok: true } | { error: unknown; ok: false }> => {
   const sid = await resolveAccessToken(accessToken);
+
   try {
     await apiClient.auth.unlinkIdentity(
       { provider: IDENTITY_PROVIDERS[provider], tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     return { ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return { error, ok: false };
   }
 };
@@ -503,6 +532,7 @@ export const linkMyIdentity = async (
   accessToken?: string
 ): Promise<LinkIdentityOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   try {
     await apiClient.auth.linkIdentity(
       {
@@ -515,12 +545,15 @@ export const linkMyIdentity = async (
       },
       buildSessionHeaders(sid)
     );
+
     return { kind: "linked" };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     if (rpcErrorDisposition(error) === "precondition") {
       if (
         rpcErrorHasReason(
@@ -530,10 +563,12 @@ export const linkMyIdentity = async (
       ) {
         return { kind: "linked_to_another_account" };
       }
+
       if (rpcErrorHasReason(error, RPC_ERROR_REASON.providerAlreadyLinked)) {
         return { kind: "provider_already_linked" };
       }
     }
+
     return { error, kind: "refused" };
   }
 };
@@ -574,7 +609,9 @@ const passkeyChangeRefusal = (
   if (isUnauthenticatedRpcError(error)) {
     throw error;
   }
+
   rethrowUnclassifiedRpcError(error);
+
   return { error, ok: false };
 };
 
@@ -584,6 +621,7 @@ export const listMyPasskeys = async (
   accessToken?: string
 ): Promise<MyPasskey[] | null> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return null;
   }
@@ -593,14 +631,17 @@ export const listMyPasskeys = async (
       { tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     return response.passkeys.map(toMyPasskey);
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     if (isExpectedNullableRpcError(error)) {
       return null;
     }
+
     throw error;
   }
 };
@@ -615,11 +656,13 @@ export const beginMyPasskeyRegistration = async (
   accessToken?: string
 ): Promise<PasskeyChangeOutcome<{ optionsJson: string }>> => {
   const sid = await resolveAccessToken(accessToken);
+
   try {
     const response = await apiClient.auth.beginPasskeyRegistration(
       { tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     return { ok: true, optionsJson: response.creationOptionsJson };
   } catch (error) {
     return passkeyChangeRefusal(error);
@@ -638,14 +681,17 @@ export const finishMyPasskeyRegistration = async (
   accessToken?: string
 ): Promise<PasskeyChangeOutcome<{ passkey: MyPasskey }>> => {
   const sid = await resolveAccessToken(accessToken);
+
   try {
     const response = await apiClient.auth.finishPasskeyRegistration(
       { credentialJson, name: "", tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     if (!response.passkey) {
       throw new Error("FinishPasskeyRegistration answered no passkey.");
     }
+
     return { ok: true, passkey: toMyPasskey(response.passkey) };
   } catch (error) {
     return passkeyChangeRefusal(error);
@@ -660,11 +706,13 @@ export const renameMyPasskey = async (
   accessToken?: string
 ): Promise<PasskeyChangeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   try {
     await apiClient.auth.renamePasskey(
       { id, name, tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     return { ok: true };
   } catch (error) {
     return passkeyChangeRefusal(error);
@@ -682,11 +730,13 @@ export const deleteMyPasskey = async (
   accessToken?: string
 ): Promise<PasskeyChangeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   try {
     await apiClient.auth.deletePasskey(
       { id, tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     return { ok: true };
   } catch (error) {
     return passkeyChangeRefusal(error);
@@ -703,11 +753,13 @@ export const beginMyPasskeyConfirmation = async (
   accessToken?: string
 ): Promise<PasskeyChangeOutcome<{ optionsJson: string }>> => {
   const sid = await resolveAccessToken(accessToken);
+
   try {
     const response = await apiClient.auth.beginPasskeyConfirmation(
       { tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
+
     return { ok: true, optionsJson: response.requestOptionsJson };
   } catch (error) {
     return passkeyChangeRefusal(error);
@@ -741,6 +793,7 @@ const emailRefusalOf = (
   ) {
     return "disposable_domain";
   }
+
   if (
     rpcErrorHasFieldViolation(
       error,
@@ -750,6 +803,7 @@ const emailRefusalOf = (
   ) {
     return "refused";
   }
+
   return undefined;
 };
 
@@ -786,14 +840,17 @@ export const signupPublic = async ({
       },
       await buildClientAddressHeaders()
     );
+
     return response.accepted ? { ok: true } : { ok: false };
   } catch (error) {
     if (isSignUpClosedRpcError(error)) {
       return { ok: false, signUpClosed: true };
     }
+
     if (isRejectedRequestRpcError(error)) {
       return { emailRefusal: emailRefusalOf(error, "email"), ok: false };
     }
+
     throw error;
   }
 };
@@ -829,9 +886,11 @@ const verifyPublicEmailOnce = async (
       tenant: { tenantId },
       token,
     });
+
     return { result: Boolean(response.verified), unexpected: false };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       result: false,
       unexpected: rpcErrorDisposition(error) === "unexpected",
@@ -848,9 +907,11 @@ export const verifyPublicEmail = async (
   tenantId: string
 ): Promise<boolean> => {
   const { result, unexpected } = await verifyPublicEmailOnce(token, tenantId);
+
   if (unexpected) {
     throw new Error("The email verification failed unexpectedly.");
   }
+
   return result;
 };
 
@@ -872,9 +933,11 @@ export const requestPublicEmailVerification = async (
       { email, tenant: { tenantId } },
       await buildClientAddressHeaders()
     );
+
     return Boolean(response.requested);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -905,6 +968,7 @@ const confirmPublicEmailChangeOnce = async (
       },
       await buildClientAddressHeaders()
     );
+
     return {
       result: {
         changed: Boolean(response.changed),
@@ -915,6 +979,7 @@ const confirmPublicEmailChangeOnce = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return { result: null, unexpected: !isRejectedRequestRpcError(error) };
   }
 };
@@ -932,9 +997,11 @@ export const confirmPublicEmailChange = async (
     token,
     tenantId
   );
+
   if (unexpected) {
     throw new Error("The email change confirmation failed unexpectedly.");
   }
+
   return result;
 };
 
@@ -947,9 +1014,11 @@ export const requestPublicPasswordReset = async (
       { email, tenant: { tenantId } },
       await buildClientAddressHeaders()
     );
+
     return Boolean(response.requested);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -968,9 +1037,11 @@ export const confirmPublicPasswordReset = async (
       },
       await buildClientAddressHeaders()
     );
+
     return Boolean(response.confirmed);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return false;
   }
 };
@@ -995,6 +1066,7 @@ export const changePublicPassword = async (
   accessToken?: string
 ): Promise<PublicSession | null> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return null;
   }
@@ -1008,16 +1080,21 @@ export const changePublicPassword = async (
       },
       buildSessionHeaders(sid)
     );
+
     const { token, expiresAt } = response.accessToken ?? {};
+
     if (!token || !expiresAt) {
       return null;
     }
+
     return { accessToken: token, expiresAt: new Date(expiresAt) };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return null;
   }
 };
@@ -1029,6 +1106,7 @@ export const logoutPublic = async (
   if (!accessToken.trim()) {
     return;
   }
+
   try {
     await apiClient.auth.logout(
       {
@@ -1046,9 +1124,11 @@ export const getPublicCurrentUser = async (
   tenantId: string
 ): Promise<PublicCurrentUser | null> => {
   const sid = await resolveAccessToken();
+
   if (!sid) {
     return null;
   }
+
   try {
     const response = await apiClient.auth.getMe(
       {
@@ -1056,10 +1136,13 @@ export const getPublicCurrentUser = async (
       },
       buildSessionHeaders(sid)
     );
+
     const { user } = response;
+
     if (!user) {
       return null;
     }
+
     return {
       name: user.name,
       publicId: user.publicId,
@@ -1068,9 +1151,11 @@ export const getPublicCurrentUser = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     if (isExpectedNullableRpcError(error)) {
       return null;
     }
+
     throw error;
   }
 };
@@ -1109,6 +1194,7 @@ export const requestPublicEmailChange = async (
   accessToken?: string
 ): Promise<EmailSubmissionOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return { ok: false };
   }
@@ -1131,7 +1217,9 @@ export const requestPublicEmailChange = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return { emailRefusal: emailRefusalOf(error, "new_email"), ok: false };
   }
 };
@@ -1179,6 +1267,7 @@ export const getMe = async (
   accessToken?: string
 ): Promise<MeInfo | null> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return null;
   }
@@ -1199,6 +1288,7 @@ export const getMe = async (
           if (isStaleSessionReadError(error)) {
             throw error;
           }
+
           throw new AbortError(error instanceof Error ? error : String(error));
         }
       },
@@ -1208,6 +1298,7 @@ export const getMe = async (
     if (isStaleSessionReadError(error)) {
       return null;
     }
+
     throw error;
   }
 };
@@ -1241,6 +1332,7 @@ const readMyAccount = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return { me: null, unexpected: !isExpectedNullableRpcError(error) };
   }
 };
@@ -1260,9 +1352,11 @@ export const getMyAccount = async (
     tenantId,
     await resolveAccessToken()
   );
+
   if (unexpected) {
     throw new Error("The account could not be read.");
   }
+
   return me;
 };
 
@@ -1280,17 +1374,20 @@ export const isSessionRejected = async (
   accessToken?: string
 ): Promise<boolean> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return false;
   }
 
   try {
     await getMe(tenantId, sid);
+
     return false;
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       return true;
     }
+
     throw error;
   }
 };
@@ -1301,6 +1398,7 @@ export const updateMe = async (
   accessToken?: string
 ): Promise<MeInfo | null> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return null;
   }
@@ -1320,9 +1418,11 @@ export const updateMe = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     if (isRejectedRequestRpcError(error)) {
       return null;
     }
+
     throw error;
   }
 };
@@ -1360,18 +1460,22 @@ const iconChangeRefusal = (
   error: unknown
 ): Extract<IconChangeOutcome, { ok: false }> => {
   rethrowUnclassifiedRpcError(error);
+
   if (
     rpcErrorHasFieldViolation(error, "icon_data") ||
     rpcErrorHasFieldViolation(error, "icon_crop")
   ) {
     return { ok: false, refusal: "image" };
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.storageNotConfigured)) {
     return { ok: false, refusal: "storage-not-configured" };
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIconNotAllowed)) {
     return { ok: false, refusal: "not-allowed" };
   }
+
   return { ok: false, refusal: rpcErrorDisposition(error) };
 };
 
@@ -1385,6 +1489,7 @@ export const uploadMyIcon = async (
   accessToken?: string
 ): Promise<IconChangeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return { ok: false, refusal: "unauthenticated" };
   }
@@ -1408,6 +1513,7 @@ export const selectMyIcon = async (
   accessToken?: string
 ): Promise<IconChangeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return { ok: false, refusal: "unauthenticated" };
   }
@@ -1430,6 +1536,7 @@ export const deleteMyIcon = async (
   accessToken?: string
 ): Promise<IconChangeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return { ok: false, refusal: "unauthenticated" };
   }
@@ -1460,6 +1567,7 @@ export const deleteMe = async (
   accessToken?: string
 ): Promise<DeleteMeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return "failed";
   }
@@ -1480,13 +1588,16 @@ export const deleteMe = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     if (
       rpcErrorDisposition(error) === "precondition" &&
       rpcErrorHasReason(error, RPC_ERROR_REASON.lastTenantAdmin)
     ) {
       return "last_tenant_admin";
     }
+
     return "failed";
   }
 };
@@ -1496,6 +1607,7 @@ export const getNotificationSettings = async (
   accessToken?: string
 ): Promise<NotificationPreferenceCells | null> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return null;
   }
@@ -1513,9 +1625,11 @@ export const getNotificationSettings = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     if (isExpectedNullableRpcError(error)) {
       return null;
     }
+
     throw error;
   }
 };
@@ -1532,6 +1646,7 @@ export const updateNotificationSettings = async (
   accessToken?: string
 ): Promise<NotificationPreferenceCells | null> => {
   const sid = await resolveAccessToken(accessToken);
+
   if (!sid) {
     return null;
   }
@@ -1550,9 +1665,11 @@ export const updateNotificationSettings = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     if (isRejectedRequestRpcError(error)) {
       return null;
     }
+
     throw error;
   }
 };

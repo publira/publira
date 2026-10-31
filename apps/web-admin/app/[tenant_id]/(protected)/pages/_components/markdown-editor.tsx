@@ -183,12 +183,14 @@ const LinkControl = ({
 
   const apply = () => {
     setOpen(false);
+
     if (!editor) {
       return;
     }
 
     const value = href.trim();
     const chain = editor.chain().focus().extendMarkRange("link");
+
     if (!value) {
       chain.unsetLink().run();
     } else if (editor.state.selection.empty && !active) {
@@ -215,6 +217,7 @@ const LinkControl = ({
         if (next) {
           setHref(editor?.getAttributes("link").href ?? "");
         }
+
         setOpen(next);
       }}
       open={open}
@@ -267,6 +270,7 @@ const FormatToolbar = ({
   editor: Editor | null;
 }) => {
   const t = useClientMessages();
+
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -295,6 +299,7 @@ const FormatToolbar = ({
           <Toolbar.Group className="flex items-center gap-1">
             {formats.map((format) => {
               const Icon = format.icon;
+
               return (
                 <Toolbar.Button
                   aria-label={t(format.label)}
@@ -355,6 +360,7 @@ export const MarkdownEditor = ({
 }: MarkdownEditorProps) => {
   const { pending } = useFormStatus();
   const [markdown, setMarkdown] = useState(defaultValue);
+
   const editor = useEditor({
     content: defaultValue,
     contentType: "markdown",

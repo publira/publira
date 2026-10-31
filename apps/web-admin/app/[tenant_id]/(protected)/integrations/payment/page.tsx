@@ -38,10 +38,12 @@ import { TenantStorePaymentSettingsForm } from "./_components/tenant-store-payme
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -90,6 +92,7 @@ const SettingsPaymentForm = async () => {
   );
 
   let loadErrorMessage: string | undefined;
+
   if (!paymentSettingsResult.ok) {
     loadErrorMessage = paymentSettingsResult.message;
   } else if (!providersResult.ok) {

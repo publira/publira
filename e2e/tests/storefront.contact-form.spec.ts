@@ -58,9 +58,11 @@ test.describe("web-storefront contact form", () => {
     ).toBeVisible();
 
     await signInAsSeedAdmin(page, "/contact-messages");
+
     const row = page.getByRole("row").filter({
       has: page.getByRole("link", { exact: true, name: subject }),
     });
+
     await expect(
       row.getByRole("link", { name: CONTACT_FORM_MEMBER.name })
     ).toBeVisible();
@@ -104,9 +106,11 @@ test.describe("web-storefront contact form", () => {
     await expect(page).toHaveURL(/\/contact\/sent$/u);
 
     await signInAsSeedAdmin(page, "/contact-messages");
+
     const row = page.getByRole("row").filter({
       has: page.getByRole("link", { exact: true, name: subject }),
     });
+
     await expect(row.getByText("Guest", { exact: true })).toBeVisible();
     await expect(
       row.getByRole("cell", { exact: true, name: CONTACT_FORM_GUEST_EMAIL })

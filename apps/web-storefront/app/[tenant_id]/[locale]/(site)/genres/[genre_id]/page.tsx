@@ -82,6 +82,7 @@ export const generateMetadata = async ({
   guardPlaceholders({ genre_id });
 
   const genreId = parseGenreDetailParams({ genre_id });
+
   const [genres, t, alternates, siteLabel, cardPath] = await Promise.all([
     genreId
       ? listPublishedGenres(tenantId, locale)

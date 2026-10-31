@@ -127,6 +127,7 @@ describe("toAppleAppSiteAssociation", () => {
     },
     ["ja", "en"]
   );
+
   const [detail] = document.applinks.details;
   const paths = detail?.components.map((component) => component["/"]);
 
@@ -151,6 +152,7 @@ describe("toAppleAppSiteAssociation", () => {
       "/confirm-email",
       "/announcements",
     ];
+
     expect(paths).toStrictEqual(
       ["", "/ja", "/en"].flatMap((prefix) =>
         claimed.map((path) => `${prefix}${path}`)

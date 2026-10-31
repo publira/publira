@@ -34,11 +34,14 @@ test.describe("web-admin connectivity drop", () => {
   }) => {
     const suffix = uniqueSuffix();
     await signInAsSeedAdmin(page);
+
     const seriesId = await createSeriesViaUi(page, {
       synopsis: `E2E offline upload synopsis ${suffix}`,
       title: `E2E Offline Upload Series ${suffix}`,
     });
+
     createdSeriesIds.push(seriesId);
+
     const episodeId = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: `E2E Offline Upload Episode ${suffix}`,

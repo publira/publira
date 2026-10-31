@@ -110,6 +110,7 @@ describe("TenantPurchaseSettingsForm", () => {
         ok: false,
       })
     );
+
     action.current = refuse;
     await renderCard(
       <TenantPurchaseSettingsForm
@@ -122,6 +123,7 @@ describe("TenantPurchaseSettingsForm", () => {
     const googlePlay = screen.getByRole<HTMLInputElement>("textbox", {
       name: "Google Play address",
     });
+
     fireEvent.change(googlePlay, { target: { value: "play.google.com" } });
     await act(() => {
       fireEvent.click(submitButton());

@@ -9,10 +9,13 @@ import {
 
 const parse = async (fields: Record<string, string>) => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({ revision: "3", ...fields })) {
     data.set(name, value);
   }
+
   const schema = await webPushFormSchema("en");
+
   return schema.safeParse(toFormDataInput(data, webPushFormFields));
 };
 

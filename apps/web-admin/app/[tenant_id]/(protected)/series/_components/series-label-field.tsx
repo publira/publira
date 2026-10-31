@@ -28,6 +28,7 @@ export const SeriesLabelCombobox = ({
   const locale = useAdminLocale();
   const t = useClientMessages();
   const [value, setValue] = useState(initialValue);
+
   const items = useMemo<Combobox.Item[]>(
     () =>
       labels

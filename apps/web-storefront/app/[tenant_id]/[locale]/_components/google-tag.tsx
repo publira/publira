@@ -14,6 +14,7 @@ import { GoogleTagLoader } from "./google-tag-loader";
 export const GoogleTag = async () => {
   const tenantId = await getTenantId();
   const settings = await getTenantGoogleTag(tenantId);
+
   if (!settings) {
     return null;
   }
@@ -22,10 +23,13 @@ export const GoogleTag = async () => {
     settings.serving.mode === "gateway"
       ? await getTenantPublicOrigin(tenantId)
       : null;
+
   const scripts = googleTagScripts(settings, origin);
+
   if (!scripts) {
     return null;
   }
+
   return settings.consentMode === "not_required" ? (
     <GoogleTagLoader {...scripts} />
   ) : (

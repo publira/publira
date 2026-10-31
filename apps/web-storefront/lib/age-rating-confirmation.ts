@@ -24,12 +24,14 @@ export const readConfirmedAgeRating = (
   tenantId: string
 ): RestrictedAgeRating | undefined => {
   const id = tenantId.trim();
+
   if (!id || typeof window === "undefined") {
     return undefined;
   }
 
   try {
     const stored = window.localStorage.getItem(storageKey(id));
+
     return isRestrictedAgeRating(stored) ? stored : undefined;
   } catch {
     // Private mode and blocked storage are an unconfirmed reader, not a crash.
@@ -47,6 +49,7 @@ export const writeConfirmedAgeRating = (
   rating: RestrictedAgeRating
 ): RestrictedAgeRating | undefined => {
   const id = tenantId.trim();
+
   if (!id || typeof window === "undefined") {
     return undefined;
   }
@@ -61,6 +64,7 @@ export const writeConfirmedAgeRating = (
   }
 
   window.dispatchEvent(new Event(CONFIRMATION_EVENT));
+
   return next;
 };
 

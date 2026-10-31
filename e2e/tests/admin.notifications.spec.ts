@@ -31,6 +31,7 @@ test.describe("web-admin notification bell", () => {
     const bell = page.getByRole("button", {
       name: "Notifications, none unread",
     });
+
     await expect(bell).toBeVisible();
     await expect(bell).toHaveAttribute("aria-expanded", "false");
 
@@ -50,6 +51,7 @@ test.describe("web-admin notification bell", () => {
     await bell.click();
     const more = menu.getByRole("link", { name: "View all" });
     await expect(more).toHaveAttribute("href", "/notifications");
+
     // The trigger sits in the sticky header, so the menu has to hold still in
     // the frame the page scrolls in: a click's press and release are otherwise
     // split across two elements. This tenant's dashboard fits the screen, so
@@ -58,14 +60,18 @@ test.describe("web-admin notification bell", () => {
       document.body.style.minHeight = "200vh";
       const before = link.getBoundingClientRect().y;
       window.scrollBy(0, 200);
+
       const result = {
         drift: link.getBoundingClientRect().y - before,
         scrolled: window.scrollY,
       };
+
       window.scrollTo(0, 0);
       document.body.style.minHeight = "";
+
       return result;
     });
+
     expect(scrolled).toBeGreaterThan(0);
     expect(drift).toBe(0);
     await Promise.all([page.waitForURL(/\/notifications\/?$/u), more.click()]);

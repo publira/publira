@@ -85,8 +85,10 @@ export const generateMetadata = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { genre: genreId, rating } =
     parseRankingSearchParams(resolvedSearchParams);
+
   const [t, alternates, genres] = await Promise.all([
     getMessages(),
     getPageAlternates(
@@ -237,6 +239,7 @@ const getReaderRankingAgeRatings = async (
   tenantId: string
 ): Promise<RankingAgeRatingName[]> => {
   const rule = await getTenantAgeVerification(tenantId);
+
   const provenAgeRating =
     rule === "none" ? undefined : await getReaderProvenAgeRating(tenantId);
 
@@ -265,13 +268,16 @@ const RankingTabs = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { genre, period, rating } =
     parseRankingSearchParams(resolvedSearchParams);
+
   const [t, ratings, genres] = await Promise.all([
     getMessagesFor(locale),
     getReaderRankingAgeRatings(tenantId),
     listPublishedGenres(tenantId, locale),
   ]);
+
   // The genres are a way into the chart rather than the chart itself, so a
   // failed read leaves the row out and the tabs above it standing.
   const genreItems = genres.ok ? genres.value : [];
@@ -638,8 +644,10 @@ const RankingList = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { genre, period, rating, token } =
     parseRankingSearchParams(resolvedSearchParams);
+
   const query = {
     ageRating: rating,
     limit: RANKING_PAGE_SIZE,
@@ -656,6 +664,7 @@ const RankingList = async ({
     // A failed read is a value, not a throw: a `"use cache"` fill that throws
     // fails the whole request, so no boundary would get to render anything.
     const genres = await listPublishedGenres(tenantId, locale);
+
     if (!genres.ok) {
       return (
         <RankingChart
@@ -692,17 +701,21 @@ const RankingList = async ({
 
   let result: CachedReadResult<RankedSeriesPage>;
   const rule = await getTenantAgeVerification(tenantId);
+
   if (ageVerificationCovers(rule, rating)) {
     const accessToken = await resolveAccessToken();
+
     const readerResult = await listReaderRankedSeries(
       tenantId,
       accessToken,
       query
     );
+
     if (!readerResult.ok) {
       result = readerResult;
     } else if (readerResult.value.access === "age_restricted") {
       const signedIn = accessToken !== "";
+
       return (
         <RankingAgeGate
           hasBirthDate={signedIn && (await readerHasBirthDate(tenantId))}
@@ -753,11 +766,13 @@ const RankingTitle = async ({
     getTenantId(),
     getLocale(),
   ]);
+
   const { genre: genreId } = parseRankingSearchParams(resolvedSearchParams);
 
   if (genreId) {
     const genres = await listPublishedGenres(tenantId, locale);
     const genre = genres.ok ? findRankingGenre(genres.value, genreId) : null;
+
     if (genre) {
       return (
         <Message

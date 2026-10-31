@@ -45,6 +45,7 @@ export const sanitizeRedirectPath = (
   const pathname = suffixStart === -1 ? path : path.slice(0, suffixStart);
   const suffix = suffixStart === -1 ? "" : path.slice(suffixStart);
   const bare = splitLocalePathname(pathname).pathname;
+
   if (bare.startsWith("/login")) {
     return "/";
   }
@@ -77,9 +78,11 @@ export const buildLoginPath = (
   const params = new URLSearchParams({
     returnTo: sanitizeRedirectPath(returnTo),
   });
+
   if (options?.revoked) {
     params.set(SESSION_REVOKED_PARAM_NAME, SESSION_REVOKED_REASON);
   }
+
   return `${withLocalePrefix(locale, defaultLocale, "/login")}?${params.toString()}`;
 };
 
@@ -101,11 +104,13 @@ export const hasActivePublicSessionCookie = async (
   value?: string | null
 ): Promise<boolean> => {
   const raw = value?.trim();
+
   if (!raw) {
     return false;
   }
 
   const payload = await decryptSessionPayload(raw, resolveAuthSecret());
+
   return payload !== null && !isSessionExpired(payload.expiresAt);
 };
 
@@ -125,9 +130,12 @@ export const buildLoginUrl = (
     withLocalePrefix(locale, defaultLocale, "/login"),
     requestUrl
   );
+
   const returnToPath = sanitizeRedirectPath(
     `${requestUrl.pathname}${requestUrl.search}`
   );
+
   loginUrl.searchParams.set(returnToParamName, returnToPath);
+
   return loginUrl;
 };

@@ -19,6 +19,7 @@ import { getTenantId } from "#lib/tenant-id";
 export const PendingCommentBadge = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [result] = await Promise.all([
     countPendingComments(tenantId, locale),
     loadAdminMessages(locale),
@@ -26,6 +27,7 @@ export const PendingCommentBadge = async () => {
 
   const count = Math.max(0, result.pendingCount);
   const t = await getMessagesFor(locale);
+
   if (!result.ok || count === 0) {
     return null;
   }

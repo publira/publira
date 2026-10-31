@@ -70,6 +70,7 @@ const pollStorefrontPage = <T>(
   expect.poll(
     async () => {
       await page.goto(url);
+
       return await read();
     },
     { message: `${url} never caught up with the console`, timeout: 30_000 }
@@ -79,6 +80,7 @@ const pollStorefrontPage = <T>(
 const mainHeadingText = async (page: Page): Promise<string> => {
   const heading = page.getByRole("heading", { level: 1 }).first();
   const text = await heading.textContent({ timeout: 15_000 });
+
   return text?.trim() ?? "";
 };
 
@@ -98,7 +100,9 @@ const savedIconPath = async (page: Page): Promise<string> => {
   const src = await page
     .getByAltText("Current author icon")
     .getAttribute("src", { timeout: 30_000 });
+
   const url = new URL(src ?? "", WEB_ADMIN_BASE_URL);
+
   return url.searchParams.get("url") ?? url.pathname;
 };
 
@@ -132,11 +136,13 @@ const uploadIcon = async (
       page.getByRole("heading", { name: "Frame the author icon" })
     ).toBeVisible({ timeout: 2000 });
   }).toPass({ timeout: 30_000 });
+
   if (framing === "off-centre") {
     await page
       .getByRole("button", { name: "Move the crop frame" })
       .press("Shift+ArrowUp");
   }
+
   await page.getByRole("button", { name: "Done" }).click();
   await page.getByRole("button", { name: "Update author" }).click();
   await expect(formMessage(page)).toContainText("Author updated.");
@@ -150,6 +156,7 @@ const uploadIcon = async (
   // host, which the runner can resolve.
   const response = await request.get(`${WEB_STOREFRONT_BASE_URL}${path}`);
   expect(response.status(), path).toBe(200);
+
   return createHash("sha256")
     .update(await response.body())
     .digest("hex");
@@ -203,16 +210,19 @@ test.describe("admin catalog masters", () => {
 
   const trackSeries = (publicId: string): string => {
     createdSeriesIds.push(publicId);
+
     return publicId;
   };
 
   const trackCreator = (publicId: string): string => {
     createdCreatorIds.push(publicId);
+
     return publicId;
   };
 
   const trackLabel = (publicId: string): string => {
     createdLabelIds.push(publicId);
+
     return publicId;
   };
 
@@ -226,6 +236,7 @@ test.describe("admin catalog masters", () => {
   const trackGenre = async (page: Page, name: string): Promise<string> => {
     createdGenreNames.push(name);
     await createGenreViaUi(page, name);
+
     return name;
   };
 
@@ -334,6 +345,7 @@ test.describe("admin catalog masters", () => {
     const suffix = uniqueSuffix();
     const name = `E2E Author ${suffix}`;
     const profileText = `E2E author profile ${suffix}`;
+
     const creatorId = trackCreator(
       await createCreatorViaUi(page, { name, profileText })
     );
@@ -385,11 +397,13 @@ test.describe("admin catalog masters", () => {
     request,
   }) => {
     const name = `E2E Icon Author ${uniqueSuffix()}`;
+
     const creatorPublicId = trackCreator(
       await createCreatorViaUi(page, { name })
     );
 
     const centred = await uploadIcon(page, request, creatorPublicId, "centred");
+
     const framed = await uploadIcon(
       page,
       request,
@@ -425,6 +439,7 @@ test.describe("admin catalog masters", () => {
         .locator('main a[href*="/labels/"]')
         .first()
         .waitFor({ state: "attached", timeout: 15_000 });
+
       return await labelRow(page, name).count();
     }).toBe(1);
     await labelRow(page, name).click();
@@ -533,6 +548,7 @@ test.describe("admin catalog masters", () => {
     await expect
       .poll(async () => {
         const names = await genreNamesInOrder(page);
+
         return names.indexOf(second) < names.indexOf(first);
       })
       .toBe(true);
@@ -581,6 +597,7 @@ test.describe("admin catalog masters", () => {
     const english = `E2E Genre English ${suffix}`;
     const japanese = `E2E Genre Japanese ${suffix}`;
     createdGenreNames.push(english);
+
     // The fields are labelled by each language's own name; the seed tenant
     // offers all five and starts in English.
     const nameIn = (language: RegExp | string) =>
@@ -710,6 +727,7 @@ test.describe("admin catalog masters", () => {
     const creatorResponse = await page.goto(
       adminUrl(`/creators/${OTHER_TENANT.creatorId}`)
     );
+
     // Cache Components commits the shell with 200. The resource itself is
     // either the console not-found page or an inline load error — never the
     // foreign creator's form (see (protected)/not-found.tsx and getCreator).
@@ -723,6 +741,7 @@ test.describe("admin catalog masters", () => {
     const labelResponse = await page.goto(
       adminUrl(`/labels/${OTHER_TENANT.labelId}`)
     );
+
     expect(labelResponse?.status(), await page.content()).toBe(200);
     await expect(
       page.getByText(/Page not found|Could not display the label/u)

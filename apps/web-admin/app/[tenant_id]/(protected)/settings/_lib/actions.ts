@@ -113,6 +113,7 @@ const tenantTimezoneSchema = async (locale: Locale) => {
       }),
   });
 };
+
 /**
  * The Go server validates against the supported locale list
  * (`server/internal/locale`) and refuses a set without the default, and stays
@@ -139,6 +140,7 @@ const tenantLocalesSchema = async (locale: Locale) => {
       path: ["supportedLocales"],
     });
 };
+
 /**
  * The Go server validates what it is sent and stays the authority; this only
  * gives the operator immediate feedback instead of a round trip.
@@ -150,6 +152,7 @@ const tenantLocalesSchema = async (locale: Locale) => {
  */
 const tenantCommentSettingsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const thresholdError = t(
     "admin.settings.comments.validation.auto_hide_range",
     { max: MAX_TENANT_COMMENT_AUTO_HIDE_REPORT_THRESHOLD }
@@ -188,6 +191,7 @@ const tenantAgeVerificationSchema = async (locale: Locale) => {
 const tenantLegalPagesSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
   const error = t("admin.settings.legal_pages.validation.page_invalid");
+
   const pageId = z
     .string({ error })
     .trim()
@@ -214,9 +218,11 @@ const tenantEmailRejectionSchema = async (locale: Locale) => {
   return z.object({
     entries: z.array(z.string()).transform((values, context) => {
       const result = parseEmailRejectionEntries(values);
+
       if (result.ok) {
         return result.entries;
       }
+
       context.addIssue({
         code: "custom",
         message:
@@ -228,6 +234,7 @@ const tenantEmailRejectionSchema = async (locale: Locale) => {
                 entry: result.entry,
               }),
       });
+
       return z.NEVER;
     }),
     rejectDisposableDomains: z
@@ -255,9 +262,11 @@ const tenantCrawlerSettingsSchema = async (locale: Locale) => {
   return z.object({
     excludedPaths: z.array(z.string()).transform((values, context) => {
       const result = parseCrawlerPaths(values);
+
       if (result.ok) {
         return result.paths;
       }
+
       context.addIssue({
         code: "custom",
         message:
@@ -267,6 +276,7 @@ const tenantCrawlerSettingsSchema = async (locale: Locale) => {
               })
             : crawlerPathMessage(t, result),
       });
+
       return z.NEVER;
     }),
     excludedUserAgents: z.array(z.string()),
@@ -295,6 +305,7 @@ export const updateSiteSettingsAction = async (
   const copyrightText = String(formData.get("copyright_text") ?? "");
   const siteDescription = String(formData.get("site_description") ?? "");
   const siteTagline = String(formData.get("site_tagline") ?? "");
+
   const translationLocale = siteTranslationLocaleSchema.safeParse(
     formData.get("translation_locale")
   );
@@ -305,6 +316,7 @@ export const updateSiteSettingsAction = async (
       ok: false,
     };
   }
+
   if (!translationLocale.success) {
     return {
       message: t("admin.settings.site.locale_not_offered"),
@@ -348,6 +360,7 @@ export const updateTenantTimezoneAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return {
       message: t("admin.settings.tenant_missing"),
@@ -356,9 +369,11 @@ export const updateTenantTimezoneAction = async (
   }
 
   const schema = await tenantTimezoneSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, { timezone: "value" })
   );
+
   if (!parsed.success) {
     // One control, so the field message is the form message.
     return {
@@ -402,6 +417,7 @@ export const updateTenantLocalesAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return {
       message: t("admin.settings.tenant_missing"),
@@ -410,12 +426,14 @@ export const updateTenantLocalesAction = async (
   }
 
   const schema = await tenantLocalesSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       defaultLocale: { kind: "value", name: "default_locale" },
       supportedLocales: { kind: "values", name: "supported_locales" },
     })
   );
+
   if (!parsed.success) {
     // The two controls answer for one setting, so the message is the form's.
     return {
@@ -470,6 +488,7 @@ export const updateTenantCommentSettingsAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return {
       message: t("admin.settings.tenant_missing"),
@@ -478,6 +497,7 @@ export const updateTenantCommentSettingsAction = async (
   }
 
   const schema = await tenantCommentSettingsSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       autoHideReportThreshold: {
@@ -487,6 +507,7 @@ export const updateTenantCommentSettingsAction = async (
       commentMode: { kind: "value", name: "comment_mode" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -531,6 +552,7 @@ export const updateTenantAgeVerificationAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return {
       message: t("admin.settings.tenant_missing"),
@@ -539,11 +561,13 @@ export const updateTenantAgeVerificationAction = async (
   }
 
   const schema = await tenantAgeVerificationSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       ageVerification: { kind: "value", name: "age_verification" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -584,6 +608,7 @@ export const updateTenantLegalPagesAction = async (
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
+
   if (!tenantId) {
     return {
       message: t("admin.settings.tenant_missing"),
@@ -592,12 +617,14 @@ export const updateTenantLegalPagesAction = async (
   }
 
   const schema = await tenantLegalPagesSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       privacyPageId: { kind: "value", name: "privacy_page_id" },
       termsPageId: { kind: "value", name: "terms_page_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -639,10 +666,12 @@ export const updateTenantEmailRejectionAction = async (
 ): Promise<TenantEmailRejectionActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantEmailRejectionSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       entries: "values",
@@ -653,8 +682,10 @@ export const updateTenantEmailRejectionAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     const fieldErrors = toFieldErrors(parsed.error);
+
     return {
       fieldErrors: { entries: fieldErrors.entries },
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -663,6 +694,7 @@ export const updateTenantEmailRejectionAction = async (
   }
 
   const { entries, rejectDisposableDomains, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantEmailRejectionSettings(
       { entries, rejectDisposableDomains, tenantId },
@@ -699,10 +731,12 @@ export const updateTenantCrawlerSettingsAction = async (
 ): Promise<TenantCrawlerSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantCrawlerSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       excludedPaths: { kind: "values", name: "excluded_paths" },
@@ -710,8 +744,10 @@ export const updateTenantCrawlerSettingsAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     const fieldErrors = toFieldErrors(parsed.error);
+
     return {
       fieldErrors: {
         excludedPaths: fieldErrors.excludedPaths,
@@ -723,6 +759,7 @@ export const updateTenantCrawlerSettingsAction = async (
   }
 
   const { excludedPaths, excludedUserAgents, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantCrawlerSettings(
       { excludedPaths, excludedUserAgents, tenantId },
@@ -760,16 +797,20 @@ const tenantSiteVerificationSchema = async (locale: Locale) => {
     getMessagesFor(locale),
     tenantIdFormSchema(locale),
   ]);
+
   const code = (service: SiteVerificationService) =>
     z.string().transform((value, context) => {
       const result = parseSiteVerificationCode(service, value);
+
       if (result.ok) {
         return result.code;
       }
+
       context.addIssue({
         code: "custom",
         message: siteVerificationCodeMessage(t, service, result.reason),
       });
+
       return z.NEVER;
     });
 
@@ -786,10 +827,12 @@ export const updateTenantSiteVerificationAction = async (
 ): Promise<TenantSiteVerificationActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantSiteVerificationSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       bing: { kind: "value", name: "bing_site_verification" },
@@ -797,8 +840,10 @@ export const updateTenantSiteVerificationAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     const fieldErrors = toFieldErrors(parsed.error);
+
     return {
       fieldErrors: { bing: fieldErrors.bing, google: fieldErrors.google },
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -807,6 +852,7 @@ export const updateTenantSiteVerificationAction = async (
   }
 
   const { bing, google, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantSiteVerification({ bing, google, tenantId }, locale)
   );
@@ -864,10 +910,12 @@ export const updateTenantSignUpSettingsAction = async (
 ): Promise<TenantSignUpSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     tenantSignUpSettingsSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       closedMessage: { kind: "value", name: "closed_message" },
@@ -875,8 +923,10 @@ export const updateTenantSignUpSettingsAction = async (
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     const fieldErrors = toFieldErrors(parsed.error);
+
     return {
       fieldErrors: { closedMessage: fieldErrors.closedMessage },
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -885,6 +935,7 @@ export const updateTenantSignUpSettingsAction = async (
   }
 
   const { closedMessage, signUpOpen, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantSignUpSettings({ closedMessage, signUpOpen, tenantId }, locale)
   );

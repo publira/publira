@@ -41,12 +41,15 @@ const PaymentStatusLabel = ({ status }: { status: PaymentSettingsStatus }) => {
     case "disabled": {
       return <Message message="admin.settings.payment.status.disabled" />;
     }
+
     case "incomplete": {
       return <Message message="admin.settings.payment.status.incomplete" />;
     }
+
     case "ready": {
       return <Message message="admin.settings.payment.status.ready" />;
     }
+
     default: {
       return <Message message="admin.settings.payment.status.unset" />;
     }
@@ -64,16 +67,19 @@ const PaymentStatusDescription = ({
         <Message message="admin.settings.payment.status.disabled_description" />
       );
     }
+
     case "incomplete": {
       return (
         <Message message="admin.settings.payment.status.incomplete_description" />
       );
     }
+
     case "ready": {
       return (
         <Message message="admin.settings.payment.status.ready_description" />
       );
     }
+
     default: {
       return (
         <Message message="admin.settings.payment.status.unset_description" />
@@ -99,21 +105,25 @@ const PaymentCredentialName = ({
         <Message message="admin.settings.payment.fields.stripe.secret_key" />
       );
     }
+
     case "stripe.webhook_secret": {
       return (
         <Message message="admin.settings.payment.fields.stripe.webhook_secret" />
       );
     }
+
     case "payjp.secret_key": {
       return (
         <Message message="admin.settings.payment.fields.payjp.secret_key" />
       );
     }
+
     case "payjp.webhook_token": {
       return (
         <Message message="admin.settings.payment.fields.payjp.webhook_token" />
       );
     }
+
     default: {
       return field;
     }
@@ -138,6 +148,7 @@ const PaymentCredentialSource = ({
         </Field.Description>
       );
     }
+
     case "payjp.webhook_token": {
       return (
         <Field.Description>
@@ -147,6 +158,7 @@ const PaymentCredentialSource = ({
         </Field.Description>
       );
     }
+
     default: {
       return null;
     }
@@ -158,6 +170,7 @@ const PaymentWebhookNote = ({ provider }: { provider: string }) => {
   if (provider !== "payjp") {
     return null;
   }
+
   return (
     <Field.Description>
       <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
@@ -175,6 +188,7 @@ const PaymentCredentialDescription = ({
   if (field.secret) {
     return <ProviderSecretDescription />;
   }
+
   if (field.public) {
     return (
       <Field.Description>
@@ -184,6 +198,7 @@ const PaymentCredentialDescription = ({
       </Field.Description>
     );
   }
+
   return null;
 };
 
@@ -260,16 +275,20 @@ export const TenantPaymentSettingsForm = ({
 }: TenantPaymentSettingsFormProps) => {
   const status = paymentSettingsStatus(settings);
   const fieldsDisabled = !canEdit || Boolean(loadErrorMessage);
+
   const initialProvider =
     providers.find((provider) => provider.id === settings.provider)?.id ??
     providers[0]?.id ??
     "";
+
   const credentialsProvider = settings.fields.some((field) => field.configured)
     ? settings.provider
     : "";
+
   const credentialsProviderName =
     providers.find((provider) => provider.id === credentialsProvider)
       ?.displayName ?? credentialsProvider;
+
   const stateOf = (provider: string, field: string) =>
     provider === settings.provider
       ? settings.fields.find((state) => state.name === field)
@@ -393,6 +412,7 @@ export const TenantPaymentSettingsForm = ({
                 <ProviderChoice.Panel key={provider.id} provider={provider.id}>
                   {provider.fields.map((field) => {
                     const state = stateOf(provider.id, field.name);
+
                     return (
                       <ProviderCredential.Root
                         configured={Boolean(state?.configured)}

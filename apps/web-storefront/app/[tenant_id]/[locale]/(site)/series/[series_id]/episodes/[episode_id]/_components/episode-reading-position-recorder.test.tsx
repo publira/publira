@@ -91,12 +91,14 @@ const settle = async () => {
 const savedPageIndex = (call: number): number => {
   const [, init] = fetchMock.mock.calls[call];
   const payload: unknown = JSON.parse(String(init?.body));
+
   return (payload as { pageIndex: number }).pageIndex;
 };
 
 const beaconPageIndex = async (call: number): Promise<number> => {
   const [, body] = sendBeacon.mock.calls[call];
   const payload: unknown = JSON.parse(await body.text());
+
   return (payload as { pageIndex: number }).pageIndex;
 };
 

@@ -189,7 +189,9 @@ const httpUrlOrEmpty = (value: string): string => {
   if (!URL.canParse(value)) {
     return "";
   }
+
   const { protocol } = new URL(value);
+
   return protocol === "http:" || protocol === "https:" ? value : "";
 };
 
@@ -204,6 +206,7 @@ const toCoinDisclosuresItem = (
 
 const toCoinSettingsItem = (settings: RawCoinSettings): CoinSettingsItem => {
   const selling = settings.selling ?? false;
+
   return {
     coinName: settings.coinName ?? "",
     disclosures: toCoinDisclosuresItem(settings.disclosures),
@@ -211,6 +214,7 @@ const toCoinSettingsItem = (settings: RawCoinSettings): CoinSettingsItem => {
     packs: selling
       ? (settings.packs ?? []).flatMap((pack) => {
           const item = toCoinPackItem(pack);
+
           return item.id ? [item] : [];
         })
       : [],
@@ -235,10 +239,13 @@ const toCoinTransactionItem = (
   requestedLocale: Locale
 ): CoinTransactionItem | null => {
   const kind = transactionKinds[transaction.kind];
+
   if (!kind) {
     return null;
   }
+
   const { episode, series } = transaction;
+
   return {
     coins: transaction.coins ?? 0,
     createdAt: transaction.createdAt ?? "",
@@ -281,6 +288,7 @@ export const getCoinSettings = async (
   applyCacheTag(tenantSeriesDetailTag(normalizedTenantId));
 
   let response;
+
   try {
     response = await apiClient.coin.getCoinSettings({
       locale,
@@ -290,6 +298,7 @@ export const getCoinSettings = async (
     if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinsUnavailable)) {
       return { ok: true, value: null };
     }
+
     return localizedReadFailure(error, locale, "storefront.coins.failed");
   }
 
@@ -310,10 +319,13 @@ const myCoinsFailure = async (
   key: "storefront.coins.balance_failed" | "storefront.coins.history_failed"
 ): Promise<MyCoinsResult<never>> => {
   rethrowUnclassifiedRpcError(error);
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.coinsUnavailable)) {
     return { ok: true, value: null };
   }
+
   const t = await getMessagesFor(locale);
+
   return {
     message: rpcErrorMessage(error, t(key), { locale }),
     ok: false,
@@ -325,6 +337,7 @@ const signInRequired = async (
   locale: Locale
 ): Promise<MyCoinsResult<never>> => {
   const t = await getMessagesFor(locale);
+
   return {
     message: t("errors.rpc.unauthenticated"),
     ok: false,
@@ -345,6 +358,7 @@ export const getMyCoinBalance = async (
   locale: Locale
 ): Promise<MyCoinsResult<CoinBalanceItem>> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return signInRequired(locale);
   }
@@ -354,6 +368,7 @@ export const getMyCoinBalance = async (
       { locale, tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       value: response.balance ? toCoinBalanceItem(response.balance) : null,
@@ -374,6 +389,7 @@ export const listMyCoinTransactions = async (
   { locale, token }: { locale: Locale; token: string }
 ): Promise<MyCoinsResult<CoinTransactionPage>> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     return signInRequired(locale);
   }
@@ -389,6 +405,7 @@ export const listMyCoinTransactions = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       ok: true,
       value: {
@@ -397,6 +414,7 @@ export const listMyCoinTransactions = async (
         previousToken: response.previousToken ?? "",
         transactions: (response.transactions ?? []).flatMap((transaction) => {
           const item = toCoinTransactionItem(transaction, locale);
+
           return item ? [item] : [];
         }),
       },

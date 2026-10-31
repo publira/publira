@@ -21,9 +21,11 @@ export const EpisodeAvailabilityBadge = ({
   seriesAvailability: SurfaceAvailabilityValue;
 }) => {
   const shownOn = episodeShownOn(seriesAvailability, override);
+
   if (shownOn === "all") {
     return null;
   }
+
   if (shownOn === "none") {
     return (
       <Badge tone="warning" variant="soft">

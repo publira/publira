@@ -165,6 +165,7 @@ describe("getAdminMfaStatus", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {
       // Asserted below.
     });
+
     const error = new ConnectError("upstream down", Code.Unavailable);
     mockGetMfaStatus.mockRejectedValueOnce(error);
 
@@ -202,6 +203,7 @@ describe("passkey verification", () => {
     });
 
     const { beginAdminPasskeyVerification } = await import("./admin-mfa");
+
     const result = await beginAdminPasskeyVerification(
       "TENANT001",
       "challenge-token",
@@ -239,6 +241,7 @@ describe("passkey verification", () => {
     });
 
     const { finishAdminPasskeyVerification } = await import("./admin-mfa");
+
     const result = await finishAdminPasskeyVerification(
       "TENANT001",
       "challenge-token",
@@ -336,6 +339,7 @@ describe("passkey registration", () => {
     });
 
     const { finishAdminPasskeyRegistration } = await import("./admin-mfa");
+
     const result = await finishAdminPasskeyRegistration(
       "TENANT001",
       "challenge-token",

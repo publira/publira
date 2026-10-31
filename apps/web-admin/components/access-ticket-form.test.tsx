@@ -113,6 +113,7 @@ const seriesA = {
   publicId: "SERIES001",
   title: "Series A",
 };
+
 const seriesB = {
   id: "018f0e6a-3000-7000-8000-000000000002",
   publicId: "SERIES002",
@@ -198,11 +199,13 @@ describe("TicketForm", () => {
       ok: true,
     });
     const submitted = Promise.withResolvers<FormData>();
+
     const recordingAction = (
       _state: IssueAccessTicketActionState,
       formData: FormData
     ) => {
       submitted.resolve(formData);
+
       return Promise.resolve<IssueAccessTicketActionState>(null);
     };
 
@@ -230,11 +233,13 @@ describe("TicketForm", () => {
       ok: true,
     });
     const submitted = Promise.withResolvers<FormData>();
+
     const recordingAction = (
       _state: IssueAccessTicketActionState,
       formData: FormData
     ) => {
       submitted.resolve(formData);
+
       return Promise.resolve<IssueAccessTicketActionState>(null);
     };
 

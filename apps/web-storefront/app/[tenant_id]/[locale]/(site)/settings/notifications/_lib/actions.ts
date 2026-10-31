@@ -26,11 +26,13 @@ const buildSettingsPath = async (
   message: string
 ): Promise<string> => {
   const params = new URLSearchParams({ message, status });
+
   const path = await tenantLocalePath(
     tenantId,
     locale,
     NOTIFICATION_SETTINGS_RETURN_TO
   );
+
   return `${path}?${params.toString()}`;
 };
 
@@ -74,10 +76,12 @@ export const updateNotificationSettingsAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     updateNotificationSettingsFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       announcementsEmailEnabled: "value",
@@ -96,6 +100,7 @@ export const updateNotificationSettingsAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const errorPath = await buildSettingsPath(
       submittedLocale,
@@ -103,21 +108,25 @@ export const updateNotificationSettingsAction = async (
       "error",
       toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+
     redirect(errorPath);
   }
 
   const { locale, tenantId, ...preferences } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     NOTIFICATION_SETTINGS_RETURN_TO,
     tenantId
   );
+
   const updated = await withPublicSessionReauth(
     locale,
     NOTIFICATION_SETTINGS_RETURN_TO,
     () => updateNotificationSettings(tenantId, preferences, accessToken),
     tenantId
   );
+
   if (!updated) {
     const errorPath = await buildSettingsPath(
       locale,
@@ -125,6 +134,7 @@ export const updateNotificationSettingsAction = async (
       "error",
       t("storefront.settings.notification_preferences_update_failed")
     );
+
     redirect(errorPath);
   }
 
@@ -134,5 +144,6 @@ export const updateNotificationSettingsAction = async (
     "success",
     t("storefront.settings.notification_preferences_updated")
   );
+
   redirect(successPath);
 };

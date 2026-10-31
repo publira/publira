@@ -49,6 +49,7 @@ export const listReaderOptionsAction = async (
   // applies to mutations.
   const schema = await listReaderOptionsSchema(locale);
   const parsed = schema.safeParse({ query, tenantId });
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -62,10 +63,13 @@ export const listReaderOptionsAction = async (
     query: parsed.data.query,
     status: "active",
   });
+
   await redirectToLoginIfSessionRejected(result);
+
   if (!result.ok) {
     return { message: result.message, ok: false, readers: [] };
   }
+
   return {
     ok: true,
     readers: result.readers.map((reader) => ({

@@ -46,7 +46,9 @@ export const toSecretKeyUpdate = async (
   if (key.mode === "clear") {
     return { mode: SECRET_UPDATE_MODE_CLEAR, value: "" };
   }
+
   const value = (key.file ? await key.file.text() : key.text).trim();
+
   return value === ""
     ? { mode: SECRET_UPDATE_MODE_UNCHANGED, value: "" }
     : { mode: SECRET_UPDATE_MODE_REPLACE, value };

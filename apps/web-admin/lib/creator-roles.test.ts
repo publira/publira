@@ -248,6 +248,7 @@ describe("the operator check before a shared read", () => {
       "listCreatorRoles",
       async () => {
         const { listCreatorRoles } = await import("./creator-roles");
+
         return await listCreatorRoles();
       },
       mockListCreatorRoles,

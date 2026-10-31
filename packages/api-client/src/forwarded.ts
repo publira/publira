@@ -31,12 +31,15 @@ export const forwardedHeadersOf = (
   requestHeaders: Headers
 ): ForwardedHeaders => {
   const forwarded: ForwardedHeaders = {};
+
   for (const name of [FORWARDED_FOR_HEADER, FORWARDED_HEADER] as const) {
     const value = requestHeaders.get(name)?.trim();
+
     if (value) {
       forwarded[name] = value;
     }
   }
+
   return forwarded;
 };
 
@@ -75,9 +78,11 @@ export const createForwardedInterceptor =
       !req.contextValues.get(serviceCallKey)
     ) {
       const forwarded = await resolve();
+
       for (const [name, value] of Object.entries(forwarded)) {
         req.header.set(name, value);
       }
     }
+
     return await next(req);
   };

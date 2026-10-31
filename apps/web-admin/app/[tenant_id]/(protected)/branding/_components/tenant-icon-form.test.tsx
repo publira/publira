@@ -27,6 +27,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateTenantIconAction: (_state: TenantIconActionState, data: FormData) => {
     save.calls.push(data);
+
     return save.current.promise;
   },
 }));

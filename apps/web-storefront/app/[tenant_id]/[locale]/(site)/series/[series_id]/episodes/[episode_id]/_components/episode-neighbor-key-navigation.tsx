@@ -53,18 +53,25 @@ const NeighborKeyListener = ({
       if (event.repeat || isControlKeyTarget(event.target)) {
         return;
       }
+
       const side = resolveNeighborSide(event.key, readingDirection);
+
       if (side === undefined) {
         return;
       }
+
       const href = side === "next" ? nextHref : previousHref;
+
       if (href === undefined) {
         return;
       }
+
       if (armedSide !== side) {
         setArmedSide(side);
+
         return;
       }
+
       router.push(withLocalePrefix(locale, defaultLocale, href));
     };
 
@@ -130,6 +137,7 @@ export const EpisodeNeighborKeyNavigation = ({
 }) => {
   const { currentIndex, minIndex, pageCount, spreadStartIndex, viewMode } =
     useViewerContext();
+
   const atLastPage = isLastPageVisible({
     currentIndex,
     pageCount,

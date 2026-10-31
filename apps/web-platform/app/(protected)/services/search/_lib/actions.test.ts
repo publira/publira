@@ -39,6 +39,7 @@ vi.mock("#lib/api-client", () => ({
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return {
     ...actual,
     getPlatformLocale: mockGetPlatformLocale,
@@ -54,9 +55,11 @@ vi.mock("#lib/search-settings", () => ({
 
 const searchFormData = (fields: Record<string, string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries({ revision: "3", ...fields })) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -240,6 +243,7 @@ describe("updatePlatformSearchAnalysisAction", () => {
   it("puts the reason a refused definition was refused next to the editor", async () => {
     const reason =
       "the search engine refused the analysis definition: illegal_argument_exception: Unknown tokenizer type [nori_tokenizer]";
+
     mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
       fieldErrors: { analysis: reason },
       message: reason,
@@ -427,6 +431,7 @@ describe("testPlatformSearchConnectionAction", () => {
       succeeded: false,
       version: "9.5.5",
     };
+
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
       ok: true,
       result,

@@ -21,6 +21,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 const ResendVerificationHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [{ siteTagline }, siteLabel, t] = await Promise.all([
     getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),

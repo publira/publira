@@ -39,6 +39,7 @@ const signupFormSchema = async (locale: Locale) => {
     passwordFormSchema(locale),
     tenantIdFormSchema(locale),
   ]);
+
   const confirmRequired = t("storefront.auth.errors.password_confirm_required");
   const nameRequired = t("storefront.auth.errors.name_required");
 
@@ -85,10 +86,12 @@ export const signupAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     signupFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       agreedPageVersionIds: "values",
@@ -102,6 +105,7 @@ export const signupAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -118,14 +122,17 @@ export const signupAction = async (
     password,
     tenantId,
   } = parsed.data;
+
   // Sent only while they are still the published versions: a reader who
   // opened a link from the form read whatever was published then, so older
   // versions would record consent to text they were never shown.
   let publishedVersionIds: string[];
+
   try {
     publishedVersionIds = await readConsentPageVersionIds(tenantId, locale);
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -137,6 +144,7 @@ export const signupAction = async (
       ok: false,
     };
   }
+
   if (
     publishedVersionIds.length > 0 &&
     !sameVersions(agreedPageVersionIds, publishedVersionIds)
@@ -144,6 +152,7 @@ export const signupAction = async (
     // The form's cached pages are the stale ones, so dropping them is what
     // re-renders it with the current pages to agree to.
     updateTag(tenantSiteTag(tenantId));
+
     return {
       message: t("storefront.auth.errors.consent_changed"),
       ok: false,
@@ -158,16 +167,19 @@ export const signupAction = async (
     password,
     tenantId,
   });
+
   if (!signup.ok && "signUpClosed" in signup) {
     // The page that offered the form read sign-up as open from a cache the
     // setting has since changed under, so dropping it is what re-renders the
     // page with the tenant's notice in place of the form.
     updateTag(tenantSiteTag(tenantId));
+
     return {
       message: t("storefront.auth.sign_up_closed.default_message"),
       ok: false,
     };
   }
+
   if (!signup.ok) {
     return {
       message: emailRefusalMessage(
@@ -183,10 +195,12 @@ export const signupAction = async (
   // an account: the reader is told to open their mail, and only the mail says
   // which of the two happened.
   await setEmailFlashCookie(SIGNUP_PENDING_EMAIL_COOKIE, email);
+
   const pendingPath = await tenantLocalePath(
     tenantId,
     locale,
     "/signup/pending"
   );
+
   redirect(pendingPath);
 };

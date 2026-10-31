@@ -11,10 +11,12 @@
  */
 export const resolveWebServiceToken = (): string => {
   const token = process.env.PUBLIRA_WEB_SERVICE_TOKEN?.trim() ?? "";
+
   if (!token) {
     throw new Error(
       "PUBLIRA_WEB_SERVICE_TOKEN is not set: web-platform reads the platform's tenants, settings, operators, and end users with the token publira server accepts as PUBLIRA_WEB_SERVICE_TOKEN"
     );
   }
+
   return token;
 };

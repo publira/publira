@@ -39,6 +39,7 @@ vi.mock("#lib/auth-session", () => ({
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
 

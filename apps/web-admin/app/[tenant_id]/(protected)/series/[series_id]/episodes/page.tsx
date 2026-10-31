@@ -100,11 +100,13 @@ const SeriesEpisodeBulkActions = async ({
 }: Pick<SeriesEpisodesPageProps, "params">) => {
   const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
   guardPlaceholder(series_id);
+
   const [seriesResult, timeZone, currency] = await Promise.all([
     getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
     getTenantCurrency(tenantId),
   ]);
+
   if (!seriesResult.ok) {
     return null;
   }
@@ -182,10 +184,12 @@ const SeriesEpisodesData = async ({
     searchParams,
     getTenantId(),
   ]);
+
   guardPlaceholder(series_id);
 
   const { token } = parseCursorSearchParams(sp);
   const locale = await getLocale(tenantId);
+
   const [seriesResult, timeZone, t, canEdit, currency] = await Promise.all([
     getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
@@ -198,6 +202,7 @@ const SeriesEpisodesData = async ({
     if (seriesResult.notFound) {
       notFound();
     }
+
     return (
       <SectionError.Root>
         <SectionError.Heading>

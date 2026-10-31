@@ -47,6 +47,7 @@ const FreeWindowStatus = ({ status }: { status: ScheduledPeriodStatus }) => {
         </StatusChip>
       );
     }
+
     case "scheduled": {
       return (
         <StatusChip status="info">
@@ -56,6 +57,7 @@ const FreeWindowStatus = ({ status }: { status: ScheduledPeriodStatus }) => {
         </StatusChip>
       );
     }
+
     default: {
       return (
         <StatusChip>
@@ -78,6 +80,7 @@ const FreeWindowPeriod = ({
   window: EpisodeFreeWindowItem;
 }) => {
   const startsAt = formatDateTime(window.startsAt, { locale, timeZone });
+
   // A rule's window ends at the far end, which is no date an editor reads:
   // it lasts until the rule stops covering the episode.
   if (window.ruleSeriesId) {
@@ -88,6 +91,7 @@ const FreeWindowPeriod = ({
       />
     );
   }
+
   return (
     <Message
       message="admin.series.episodes.free_windows.period"

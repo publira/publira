@@ -14,6 +14,7 @@ const buildTargetLabel = (targetType: string, targetId: string): string => {
   if (targetType && targetId) {
     return `${targetType}: ${targetId}`;
   }
+
   return targetId || targetType || "-";
 };
 
@@ -26,24 +27,31 @@ const settingsTargetName = (targetType: string) => {
     case "platform_config": {
       return <Message message="platform.audit.targets.platform_config" />;
     }
+
     case "platform_policy": {
       return <Message message="platform.audit.targets.platform_policy" />;
     }
+
     case "platform_retention": {
       return <Message message="platform.audit.targets.platform_retention" />;
     }
+
     case "search_config": {
       return <Message message="platform.audit.targets.search_config" />;
     }
+
     case "smtp_config": {
       return <Message message="platform.audit.targets.smtp_config" />;
     }
+
     case "storage_config": {
       return <Message message="platform.audit.targets.storage_config" />;
     }
+
     case "webpush_config": {
       return <Message message="platform.audit.targets.webpush_config" />;
     }
+
     default: {
       return null;
     }
@@ -138,6 +146,7 @@ export const AuditLogTarget = ({ log }: { log: PlatformAuditLogSummary }) => {
   }
 
   const settingsTarget = settingsTargetName(log.targetType);
+
   if (settingsTarget) {
     return (
       <p>

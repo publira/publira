@@ -27,26 +27,32 @@ const controlsWhere = (
   region.evaluate(
     (element, { check: kind, limit: bound }) => {
       const found: string[] = [];
+
       for (const control of element.querySelectorAll("a, button, input")) {
         if (!control.checkVisibility()) {
           continue;
         }
+
         const rect = control.getBoundingClientRect();
+
         const wrong =
           kind === "small"
             ? rect.height < bound ||
               (control.tagName === "BUTTON" && rect.width < bound)
             : rect.left < 0 || rect.right > bound;
+
         if (wrong) {
           const label =
             control.getAttribute("aria-label") ??
             control.textContent?.trim() ??
             control.tagName;
+
           found.push(
             `${label} (${Math.round(rect.height)}x${Math.round(rect.width)} from ${Math.round(rect.left)} to ${Math.round(rect.right)})`
           );
         }
       }
+
       return found;
     },
     { check, limit }

@@ -27,21 +27,26 @@ export const updateAppLinksAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
+
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
     appLinksFormSchema(locale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, appLinksFormFields)
   );
+
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const { association, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantMobileAppAssociation({ association, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }

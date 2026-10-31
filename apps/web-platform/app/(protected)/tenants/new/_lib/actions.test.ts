@@ -45,6 +45,7 @@ vi.mock("#lib/audit-logs", () => ({
 
 vi.mock("#lib/locale", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+
   return { ...actual, getPlatformLocale: mockGetPlatformLocale };
 });
 
@@ -64,19 +65,23 @@ const tenantFormData = (
     tenant_name: "Example Tenant",
     ...overrides,
   };
+
   const supportedLocales = fields.tenant_supported_locales ?? [
     String(fields.tenant_default_locale),
   ];
 
   const formData = new FormData();
+
   for (const [key, value] of Object.entries(fields)) {
     if (typeof value === "string") {
       formData.set(key, value);
     }
   }
+
   for (const code of supportedLocales) {
     formData.append("tenant_supported_locales", code);
   }
+
   return formData;
 };
 

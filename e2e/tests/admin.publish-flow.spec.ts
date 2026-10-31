@@ -61,6 +61,7 @@ test.describe("admin publish flow", () => {
 
   const trackSeries = (publicId: string): string => {
     createdSeriesIds.push(publicId);
+
     return publicId;
   };
 
@@ -232,6 +233,7 @@ test.describe("admin publish flow", () => {
     const suffix = uniqueSuffix();
     const title = `E2E Published Series ${suffix}`;
     const synopsis = `Published synopsis ${suffix}`;
+
     // Past wall clock → immediate publish on create.
     const seriesId = trackSeries(
       await createSeriesViaUi(page, {
@@ -299,6 +301,7 @@ test.describe("admin publish flow", () => {
     const episodeResponse = await page.goto(
       storefrontUrl(`/series/${seriesId}/episodes/${episodeId}`)
     );
+
     expect(episodeResponse?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: episodeTitle })
@@ -342,6 +345,7 @@ test.describe("admin publish flow", () => {
     const episodeResponse = await page.goto(
       storefrontUrl(`/series/${seriesId}/episodes/${episodeId}`)
     );
+
     expect(episodeResponse?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: episodeTitle })
@@ -369,14 +373,18 @@ test.describe("admin publish flow", () => {
         title: seriesTitle,
       })
     );
+
     const episodeId = await createEpisodeViaUi(page, {
       seriesPublicId: seriesId,
       title: episodeTitle,
     });
+
     const editUrl = adminUrl(`/series/${seriesId}/episodes/${episodeId}`);
+
     const save = page.getByRole("button", {
       name: "Update publication date and time",
     });
+
     const saved = page.getByText("Publication date and time updated.");
 
     // Nothing nudges the schedule here: the save itself publishes, so the
@@ -401,6 +409,7 @@ test.describe("admin publish flow", () => {
     const episodeResponse = await page.goto(
       storefrontUrl(`/series/${seriesId}/episodes/${episodeId}`)
     );
+
     expect(episodeResponse?.status(), await page.content()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: episodeTitle })
@@ -438,6 +447,7 @@ test.describe("admin publish flow", () => {
     const response = await page.goto(
       adminUrl(`/series/${OTHER_TENANT.publishedSeries.publicId}`)
     );
+
     // Cache Components commits the shell with 200. The resource itself is
     // either the console not-found page or an inline load error — never the
     // foreign series body (see (protected)/not-found.tsx and getSeries).

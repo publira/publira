@@ -70,14 +70,17 @@ const render = (ui: React.ReactNode) =>
 
 const labels = [{ id: "LABEL001", name: "Label A" }];
 const creators = [{ id: "CREATOR001", name: "Creator A" }];
+
 const creatorRoles = [
   { id: "ROLE001", name: "Original Author" },
   { id: "ROLE002", name: "Artist" },
 ];
+
 const genres = [
   { id: "GENRE001", name: "Fantasy" },
   { id: "GENRE002", name: "Mystery" },
 ];
+
 const tagSuggestions = ["seaside", "letterpress"];
 
 const series: SeriesListItem = {
@@ -552,6 +555,7 @@ it("posts the publication date as the instant its wall clock names", () => {
       titlePlaceholder="Title"
     />
   );
+
   const publicationDate =
     screen.getByLabelText<HTMLInputElement>(/Publication date/u);
 
@@ -600,6 +604,7 @@ it("disables the save while the credit shares pass 100%", () => {
       titlePlaceholder="Title"
     />
   );
+
   const save = screen.getByRole<HTMLButtonElement>("button", {
     name: "Update series",
   });

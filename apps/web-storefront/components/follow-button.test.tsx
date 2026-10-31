@@ -67,6 +67,7 @@ describe("FollowButton", () => {
     const button = screen.getByRole("button", {
       name: "Follow Published Series",
     });
+
     expect(button.getAttribute("aria-pressed")).toBe("false");
     expect(button.textContent).toBe("Follow");
     expect(screen.queryByRole("status")).toBeNull();
@@ -78,6 +79,7 @@ describe("FollowButton", () => {
     const button = screen.getByRole("button", {
       name: "Unfollow Published Series",
     });
+
     expect(button.getAttribute("aria-pressed")).toBe("true");
     expect(button.textContent).toBe("Unfollow");
   });

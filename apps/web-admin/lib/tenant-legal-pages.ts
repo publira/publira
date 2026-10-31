@@ -71,8 +71,10 @@ const getTenantLegalPagesForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -92,6 +94,7 @@ const getTenantLegalPagesForSession = async (
     return { ok: true, pages: toTenantLegalPages(response.pages) };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -128,7 +131,9 @@ export const updateTenantLegalPages = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -150,6 +155,7 @@ export const updateTenantLegalPages = async (
     // The server refuses a page that is not a published page of this tenant,
     // which happens when it was unpublished or deleted after the screen loaded.
     let pageMessage: string | undefined;
+
     if (rpcErrorHasFieldViolation(error, "terms_page_id")) {
       pageMessage = t(
         "admin.settings.legal_pages.validation.terms_unavailable"
@@ -159,6 +165,7 @@ export const updateTenantLegalPages = async (
         "admin.settings.legal_pages.validation.privacy_unavailable"
       );
     }
+
     return {
       message: rpcErrorMessage(
         error,

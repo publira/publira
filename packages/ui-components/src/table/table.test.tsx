@@ -36,6 +36,7 @@ describe("Table", () => {
     const headerClasses = [
       ...(container.querySelector("thead")?.classList ?? []),
     ];
+
     const rowClasses = [
       ...(container.querySelector("tbody tr")?.classList ?? []),
     ];

@@ -202,6 +202,7 @@ describe("ContactMessageReplyForm", () => {
         tenantId="TENANT001"
       />
     );
+
     fireEvent.change(answerField(), { target: { value: "An answer." } });
 
     rerender(

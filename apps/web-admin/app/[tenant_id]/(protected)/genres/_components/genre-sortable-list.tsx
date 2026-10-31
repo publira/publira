@@ -33,20 +33,24 @@ export const GenreSortableList = ({
   const t = useClientMessages();
   const genreIds = rows.map((row) => row.id);
   const [isPending, startTransition] = useTransition();
+
   const [optimisticGenreIds, setOptimisticGenreIds] = useOptimistic(
     genreIds,
     (_currentGenreIds, nextGenreIds: string[]) => nextGenreIds
   );
+
   const [reorderErrorMessage, setReorderErrorMessage] = useState("");
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const currentGenreIds = optimisticGenreIds;
+
       const nextGenreIds = Sortable.withItemMoved(
         currentGenreIds,
         identity,
         event
       );
+
       if (nextGenreIds === currentGenreIds) {
         return;
       }

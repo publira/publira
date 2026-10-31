@@ -35,9 +35,11 @@ export const readerIconPolicyClearance = (
     case "disabled": {
       return "all";
     }
+
     case "preset": {
       return "uploads";
     }
+
     default: {
       return "none";
     }

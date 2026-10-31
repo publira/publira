@@ -33,12 +33,14 @@ export const markNotificationAsReadAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       notificationId: { kind: "value", name: "notification_id" },
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: t("errors.validation"),
@@ -49,6 +51,7 @@ export const markNotificationAsReadAction = async (
   const result = await withAdminSessionReauth(() =>
     markNotificationAsRead(parsed.data, locale)
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -57,6 +60,7 @@ export const markNotificationAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
+
   // The control unmounts once the item is read, so a success message would
   // never reach the screen.
   return { message: "", ok: true };
@@ -69,11 +73,13 @@ export const markAllNotificationsAsReadAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const t = await getMessagesFor(locale);
+
   const parsed = markAllSchema.safeParse(
     toFormDataInput(formData, {
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
+
   if (!parsed.success) {
     return {
       message: t("errors.validation"),
@@ -84,6 +90,7 @@ export const markAllNotificationsAsReadAction = async (
   const result = await withAdminSessionReauth(() =>
     markAllNotificationsAsRead(parsed.data.tenantId, locale)
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -92,5 +99,6 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
+
   return { message: "", ok: true };
 };

@@ -56,29 +56,35 @@ const registerPasskey = async (page: Page): Promise<void> => {
           },
           method: "POST",
         });
+
         if (!response.ok) {
           throw new Error(`${method}: ${response.status}`);
         }
+
         return response.json();
       };
 
       const login = await call("Login", { email, password });
       const { token } = login.accessToken as { token: string };
+
       const { creationOptionsJson } = await call(
         "BeginPasskeyRegistration",
         {},
         token
       );
+
       const credential = await navigator.credentials.create({
         publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(
           JSON.parse(creationOptionsJson as string)
         ),
       });
+
       const finished = await call(
         "FinishPasskeyRegistration",
         { credentialJson: JSON.stringify(credential) },
         token
       );
+
       return finished.passkey !== undefined;
     },
     {
@@ -87,6 +93,7 @@ const registerPasskey = async (page: Page): Promise<void> => {
       tenantId: SEED_TENANT_ID,
     }
   );
+
   expect(registered).toBe(true);
 };
 

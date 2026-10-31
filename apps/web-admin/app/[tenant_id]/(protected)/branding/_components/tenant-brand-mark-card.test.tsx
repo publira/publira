@@ -34,6 +34,7 @@ vi.mock("../_lib/actions", () => ({
     data: FormData
   ) => {
     save.calls.push(data);
+
     return save.current.promise;
   },
 }));
@@ -92,6 +93,7 @@ const renderCard = async (mark: TenantBrandMark | null) =>
 
 const openUploadDialog = async (name: string) => {
   fireEvent.click(screen.getByRole("button", { name }));
+
   return await screen.findByRole("dialog");
 };
 
@@ -161,9 +163,11 @@ describe("TenantBrandMarkCard", () => {
         .getAttribute("href")
     ).toBe(BRAND_MARK_GUIDELINE_URLS.x_share);
     const file = within(dialog).getByLabelText<HTMLInputElement>("Mark image");
+
     const submit = within(dialog).getByRole("button", {
       name: "Upload the mark",
     });
+
     expect(file.matches(":disabled")).toBe(true);
     expect(submit.matches(":disabled")).toBe(true);
 
@@ -188,9 +192,11 @@ describe("TenantBrandMarkCard", () => {
         name: "I have read these guidelines and accept them.",
       })
     );
+
     const submit = within(dialog).getByRole("button", {
       name: "Upload the mark",
     });
+
     await waitFor(() => {
       expect(submit.matches(":disabled")).toBe(false);
     });

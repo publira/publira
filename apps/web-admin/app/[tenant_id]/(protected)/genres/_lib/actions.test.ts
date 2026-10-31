@@ -67,9 +67,11 @@ const eyeCatchFormData = (fields: Record<string, string | File> = {}) => {
   formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
   formData.set("clear_eye_catch_image", "0");
   formData.set("current_eye_catch_image_updated_at", "");
+
   for (const [name, value] of Object.entries(fields)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -78,9 +80,11 @@ const aspectFormData = (fields: Record<string, string | File> = {}) => {
   formData.set("tenant_id", "TENANT001");
   formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
   formData.set("variant_type", "square");
+
   for (const [name, value] of Object.entries(fields)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -110,18 +114,22 @@ const namesFormData = (
   formData.set("tenant_id", "TENANT001");
   formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
   formData.set("default_locale", "en");
+
   for (const [code, name] of Object.entries(names)) {
     formData.set(`name.${code}`, name);
   }
+
   for (const [code, name] of Object.entries(savedNames)) {
     formData.set(`saved_name.${code}`, name);
   }
+
   return formData;
 };
 
 describe("createGenreAction", () => {
   it("refuses a genre without a name in the default language", async () => {
     const { createGenreAction } = await import("./actions");
+
     const result = await createGenreAction(
       null,
       namesFormData({ en: "  ", ja: "Fantaji" })
@@ -137,6 +145,7 @@ describe("createGenreAction", () => {
     mockSaveGenreNames.mockResolvedValueOnce({ ok: true });
 
     const { createGenreAction } = await import("./actions");
+
     const result = await createGenreAction(
       null,
       namesFormData({ en: " Fantasy ", ja: "Fantaji", ko: "" })
@@ -167,6 +176,7 @@ describe("createGenreAction", () => {
     });
 
     const { createGenreAction } = await import("./actions");
+
     const result = await createGenreAction(
       null,
       namesFormData({ en: "Fantasy", ja: "Fantaji" })
@@ -184,6 +194,7 @@ describe("createGenreAction", () => {
 describe("renameGenreAction", () => {
   it("refuses to empty the default language's name", async () => {
     const { renameGenreAction } = await import("./actions");
+
     const result = await renameGenreAction(
       null,
       namesFormData({ en: "", ja: "Fantaji" }, { en: "Fantasy", ja: "Fantaji" })
@@ -197,6 +208,7 @@ describe("renameGenreAction", () => {
     mockSaveGenreNames.mockResolvedValueOnce({ ok: true });
 
     const { renameGenreAction } = await import("./actions");
+
     const result = await renameGenreAction(
       null,
       namesFormData(
@@ -247,6 +259,7 @@ describe("renameGenreAction", () => {
     });
 
     const { renameGenreAction } = await import("./actions");
+
     const result = await renameGenreAction(
       null,
       namesFormData({ en: "Mystery", ja: "Fantaji" })
@@ -276,6 +289,7 @@ describe("updateGenreEyeCatchAction", () => {
     mockUpdateGenre.mockResolvedValueOnce({ genre: savedGenre(), ok: true });
 
     const { updateGenreEyeCatchAction } = await import("./actions");
+
     const result = await updateGenreEyeCatchAction(
       null,
       eyeCatchFormData({ eye_catch_image: imageFile() })
@@ -325,6 +339,7 @@ describe("updateGenreEyeCatchAction", () => {
     });
 
     const { updateGenreEyeCatchAction } = await import("./actions");
+
     const result = await updateGenreEyeCatchAction(
       null,
       eyeCatchFormData({ clear_eye_catch_image: "1" })
@@ -345,6 +360,7 @@ describe("updateGenreEyeCatchAction", () => {
     });
 
     const { updateGenreEyeCatchAction } = await import("./actions");
+
     const result = await updateGenreEyeCatchAction(
       null,
       eyeCatchFormData({ eye_catch_image: imageFile() })
@@ -362,6 +378,7 @@ describe("updateGenreEyeCatchAction", () => {
     mockUpdateGenre.mockResolvedValueOnce({ genre: savedGenre(), ok: true });
 
     const { updateGenreEyeCatchAction } = await import("./actions");
+
     const result = await updateGenreEyeCatchAction(
       null,
       eyeCatchFormData({
@@ -383,6 +400,7 @@ describe("updateGenreEyeCatchAction", () => {
     });
 
     const { updateGenreEyeCatchAction } = await import("./actions");
+
     const result = await updateGenreEyeCatchAction(
       null,
       eyeCatchFormData({ eye_catch_image: imageFile() })
@@ -404,6 +422,7 @@ describe("uploadGenreEyeCatchAspectImageAction", () => {
     });
 
     const { uploadGenreEyeCatchAspectImageAction } = await import("./actions");
+
     const result = await uploadGenreEyeCatchAspectImageAction(
       null,
       aspectFormData({ aspect_image: imageFile(), crop: "0,0,1200,1200" })
@@ -429,6 +448,7 @@ describe("uploadGenreEyeCatchAspectImageAction", () => {
 
   it("asks for an image before calling the API", async () => {
     const { uploadGenreEyeCatchAspectImageAction } = await import("./actions");
+
     const result = await uploadGenreEyeCatchAspectImageAction(
       null,
       aspectFormData()
@@ -448,6 +468,7 @@ describe("uploadGenreEyeCatchAspectImageAction", () => {
     });
 
     const { uploadGenreEyeCatchAspectImageAction } = await import("./actions");
+
     const result = await uploadGenreEyeCatchAspectImageAction(
       null,
       aspectFormData({ aspect_image: imageFile() })

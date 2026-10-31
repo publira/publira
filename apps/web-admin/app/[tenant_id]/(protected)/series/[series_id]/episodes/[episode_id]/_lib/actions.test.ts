@@ -57,6 +57,7 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -144,9 +145,11 @@ const layoutFormData = (fields: Record<string, string>) => {
   formData.set("series_public_id", "SERIES001");
   formData.set("episode_public_id", "EP001");
   formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
+
   for (const [name, value] of Object.entries(fields)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -157,6 +160,7 @@ const deleteFormData = (freeWindowId: string) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("free_window_id", freeWindowId);
+
   return formData;
 };
 
@@ -173,6 +177,7 @@ const deleteCampaignPriceFormData = (campaignPriceId: string) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("campaign_price_id", campaignPriceId);
+
   return formData;
 };
 
@@ -181,6 +186,7 @@ const deleteImageFormData = (imageId: string) => {
   formData.set("tenant_id", "TENANT001");
   formData.set("episode_id", "018f0e6a-4000-7000-8000-000000000001");
   formData.set("image_id", imageId);
+
   return formData;
 };
 
@@ -218,6 +224,7 @@ describe("episode actions", () => {
     });
 
     const { updateEpisodeLayoutAction } = await import("./actions");
+
     const result = await updateEpisodeLayoutAction(
       { message: "", ok: false },
       layoutFormData({ reading_direction: "", spread_start_source: "series" })
@@ -291,6 +298,7 @@ describe("episode actions", () => {
 
   it("updating the layout refuses a direction the form could not have offered", async () => {
     const { updateEpisodeLayoutAction } = await import("./actions");
+
     const result = await updateEpisodeLayoutAction(
       null,
       layoutFormData({
@@ -310,6 +318,7 @@ describe("episode actions", () => {
     "updating the layout refuses %j as the page spreads start at",
     async (page) => {
       const { updateEpisodeLayoutAction } = await import("./actions");
+
       const result = await updateEpisodeLayoutAction(
         null,
         layoutFormData({
@@ -336,6 +345,7 @@ describe("episode actions", () => {
     });
 
     const { updateEpisodeLayoutAction } = await import("./actions");
+
     const result = await updateEpisodeLayoutAction(
       null,
       layoutFormData({
@@ -404,6 +414,7 @@ describe("episode actions", () => {
 
   it("updating the availability refuses surfaces the form could not have offered", async () => {
     const { updateEpisodeAvailabilityAction } = await import("./actions");
+
     const result = await updateEpisodeAvailabilityAction(
       null,
       layoutFormData({ availability: "everywhere" })
@@ -424,6 +435,7 @@ describe("episode actions", () => {
     });
 
     const { updateEpisodeAvailabilityAction } = await import("./actions");
+
     const result = await updateEpisodeAvailabilityAction(
       null,
       layoutFormData({ availability: "web" })
@@ -445,6 +457,7 @@ describe("episode actions", () => {
 
     const { updateEpisodePurchaseAvailabilityAction } =
       await import("./actions");
+
     await updateEpisodePurchaseAvailabilityAction(
       null,
       layoutFormData({ purchase_availability: "app" })
@@ -477,6 +490,7 @@ describe("episode actions", () => {
 
     const { updateEpisodePurchaseAvailabilityAction } =
       await import("./actions");
+
     await updateEpisodePurchaseAvailabilityAction(
       null,
       layoutFormData({ purchase_availability: "" })
@@ -491,6 +505,7 @@ describe("episode actions", () => {
   it("updating where it is sold refuses a value the form could not have offered", async () => {
     const { updateEpisodePurchaseAvailabilityAction } =
       await import("./actions");
+
     const result = await updateEpisodePurchaseAvailabilityAction(
       null,
       layoutFormData({ purchase_availability: "everywhere" })
@@ -512,6 +527,7 @@ describe("episode actions", () => {
 
     const { updateEpisodePurchaseAvailabilityAction } =
       await import("./actions");
+
     const result = await updateEpisodePurchaseAvailabilityAction(
       null,
       layoutFormData({ purchase_availability: "web" })
@@ -774,6 +790,7 @@ describe("episode actions", () => {
 
     it("refuses a period that ends before it starts without calling the API", async () => {
       const { createEpisodeFreeWindowAction } = await import("./actions");
+
       const result = await createEpisodeFreeWindowAction(
         null,
         layoutFormData({ ends_at: startsAt(), starts_at: endsAt() })
@@ -794,6 +811,7 @@ describe("episode actions", () => {
       });
 
       const { createEpisodeFreeWindowAction } = await import("./actions");
+
       const result = await createEpisodeFreeWindowAction(
         null,
         layoutFormData({ ends_at: endsAt(), starts_at: startsAt() })
@@ -845,6 +863,7 @@ describe("episode actions", () => {
       ["a price with more decimal places than the currency has", "300.5"],
     ])("refuses %s without calling the API", async (_name, price) => {
       const { createEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await createEpisodeCampaignPriceAction(
         null,
         campaignFormData({ price })
@@ -860,6 +879,7 @@ describe("episode actions", () => {
 
     it("refuses a price typed in a currency the tenant no longer sells in", async () => {
       const { createEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await createEpisodeCampaignPriceAction(
         null,
         campaignFormData({ price_currency: "USD" })
@@ -871,6 +891,7 @@ describe("episode actions", () => {
 
     it("refuses a period that ends before it starts without calling the API", async () => {
       const { createEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await createEpisodeCampaignPriceAction(
         null,
         campaignFormData({ ends_at: startsAt(), starts_at: endsAt() })
@@ -891,6 +912,7 @@ describe("episode actions", () => {
       });
 
       const { createEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await createEpisodeCampaignPriceAction(
         null,
         campaignFormData({})
@@ -937,6 +959,7 @@ describe("episode actions", () => {
 
     it("refuses a title of nothing but white space", async () => {
       const { updateEpisodeTitleAction } = await import("./actions");
+
       const result = await updateEpisodeTitleAction(
         null,
         layoutFormData({ title: "   " })
@@ -953,6 +976,7 @@ describe("episode actions", () => {
       });
 
       const { updateEpisodeTitleAction } = await import("./actions");
+
       const result = await updateEpisodeTitleAction(
         null,
         layoutFormData({ title: "Episode 1" })
@@ -997,6 +1021,7 @@ describe("episode actions", () => {
 
     it("refuses a language this build serves no catalog for", async () => {
       const { updateEpisodeTitleAction } = await import("./actions");
+
       const result = await updateEpisodeTitleAction(
         null,
         layoutFormData({ title: "Episode 1", translation_locale: "xx" })
@@ -1047,6 +1072,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeTranslationAction } = await import("./actions");
+
       const result = await deleteEpisodeTranslationAction(
         null,
         layoutFormData({ translation_locale: "ja" })
@@ -1063,6 +1089,7 @@ describe("episode actions", () => {
 
     it("refuses a delete that names no language", async () => {
       const { deleteEpisodeTranslationAction } = await import("./actions");
+
       const result = await deleteEpisodeTranslationAction(
         null,
         layoutFormData({})
@@ -1219,6 +1246,7 @@ describe("episode actions", () => {
       "refuses %s",
       async (_case, price, rentalPrice, rentalPeriodHours, message) => {
         const { updateEpisodePricingAction } = await import("./actions");
+
         const result = await updateEpisodePricingAction(
           null,
           layoutFormData({
@@ -1264,6 +1292,7 @@ describe("episode actions", () => {
       ],
     ])("refuses %s", async (_case, price, readingPeriodHours, message) => {
       const { updateEpisodePricingAction } = await import("./actions");
+
       const result = await updateEpisodePricingAction(
         null,
         layoutFormData({
@@ -1281,6 +1310,7 @@ describe("episode actions", () => {
     // number in it is an amount of that currency.
     it("refuses a price typed in the currency the tenant sold in before", async () => {
       const { updateEpisodePricingAction } = await import("./actions");
+
       const result = await updateEpisodePricingAction(
         null,
         layoutFormData({
@@ -1306,6 +1336,7 @@ describe("episode actions", () => {
       });
 
       const { updateEpisodePricingAction } = await import("./actions");
+
       const result = await updateEpisodePricingAction(
         null,
         layoutFormData({
@@ -1330,6 +1361,7 @@ describe("episode actions", () => {
       mockDeleteEpisodeImage.mockResolvedValueOnce({ images: [], ok: true });
 
       const { deleteEpisodeImageAction } = await import("./actions");
+
       const result = await deleteEpisodeImageAction(
         null,
         deleteImageFormData("018f0e6a-5000-7000-8000-000000000001")
@@ -1358,6 +1390,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeImageAction } = await import("./actions");
+
       const result = await deleteEpisodeImageAction(
         null,
         deleteImageFormData("018f0e6a-5000-7000-8000-000000000001")
@@ -1373,6 +1406,7 @@ describe("episode actions", () => {
 
     it("refuses a page id that is not one", async () => {
       const { deleteEpisodeImageAction } = await import("./actions");
+
       const result = await deleteEpisodeImageAction(
         null,
         deleteImageFormData("not-an-id")
@@ -1391,6 +1425,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeFreeWindowAction } = await import("./actions");
+
       const result = await deleteEpisodeFreeWindowAction(
         null,
         deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
@@ -1419,6 +1454,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeFreeWindowAction } = await import("./actions");
+
       const result = await deleteEpisodeFreeWindowAction(
         null,
         deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
@@ -1440,6 +1476,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeFreeWindowAction } = await import("./actions");
+
       const result = await deleteEpisodeFreeWindowAction(
         null,
         deleteFormData("018f0e6a-4000-7000-8000-0000000000f1")
@@ -1454,6 +1491,7 @@ describe("episode actions", () => {
 
     it("refuses a window id that is not one", async () => {
       const { deleteEpisodeFreeWindowAction } = await import("./actions");
+
       const result = await deleteEpisodeFreeWindowAction(
         null,
         deleteFormData("not-an-id")
@@ -1472,6 +1510,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await deleteEpisodeCampaignPriceAction(
         null,
         deleteCampaignPriceFormData("018f0e6a-4000-7000-8000-0000000000c1")
@@ -1497,6 +1536,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await deleteEpisodeCampaignPriceAction(
         null,
         deleteCampaignPriceFormData("018f0e6a-4000-7000-8000-0000000000c1")
@@ -1518,6 +1558,7 @@ describe("episode actions", () => {
       });
 
       const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await deleteEpisodeCampaignPriceAction(
         null,
         deleteCampaignPriceFormData("018f0e6a-4000-7000-8000-0000000000c1")
@@ -1532,6 +1573,7 @@ describe("episode actions", () => {
 
     it("refuses a campaign id that is not one", async () => {
       const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+
       const result = await deleteEpisodeCampaignPriceAction(
         null,
         deleteCampaignPriceFormData("not-an-id")
@@ -1548,6 +1590,7 @@ const image = (name = "cover.png") =>
 
 describe("episode eye-catch actions", () => {
   const episodeId = "018f0e6a-4000-7000-8000-000000000001";
+
   const storedVariant = {
     contentType: "image/webp",
     fileSizeBytes: 1024,
@@ -1562,9 +1605,11 @@ describe("episode eye-catch actions", () => {
     const formData = new FormData();
     formData.set("tenant_id", "TENANT001");
     formData.set("episode_id", episodeId);
+
     for (const [name, value] of Object.entries(fields)) {
       formData.set(name, value);
     }
+
     return formData;
   };
 
@@ -1735,6 +1780,7 @@ describe("episode eye-catch actions", () => {
         episode: { eyeCatchImageVariants: [storedVariant] },
         ok: true,
       });
+
       const { uploadEpisodeEyeCatchAspectImageAction } =
         await import("./actions");
 
@@ -1771,6 +1817,7 @@ describe("episode eye-catch actions", () => {
         imageRejected: true,
         ok: false,
       });
+
       const { uploadEpisodeEyeCatchAspectImageAction } =
         await import("./actions");
 

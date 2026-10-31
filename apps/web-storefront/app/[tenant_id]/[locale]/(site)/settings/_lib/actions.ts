@@ -35,6 +35,7 @@ const updateProfileFormSchema = async (locale: Locale) => {
     birthDateFormSchema(locale),
     tenantIdFormSchema(locale),
   ]);
+
   const nameRequired = t("storefront.settings.name_required");
 
   return z.object({
@@ -56,10 +57,12 @@ export const updateProfileAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     updateProfileFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       birthDate: "value",
@@ -68,6 +71,7 @@ export const updateProfileAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     const errorPath = await buildSettingsPath(
       submittedLocale,
@@ -75,21 +79,25 @@ export const updateProfileAction = async (
       "error",
       toFormErrorMessage(parsed.error, { locale: submittedLocale })
     );
+
     redirect(errorPath);
   }
 
   const { birthDate, locale, name, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SETTINGS_RETURN_TO,
     tenantId
   );
+
   const updated = await withPublicSessionReauth(
     locale,
     SETTINGS_RETURN_TO,
     () => updateMe(tenantId, { birthDate, name }, accessToken),
     tenantId
   );
+
   if (!updated) {
     const errorPath = await buildSettingsPath(
       locale,
@@ -97,17 +105,20 @@ export const updateProfileAction = async (
       "error",
       t("storefront.settings.profile_update_failed")
     );
+
     redirect(errorPath);
   }
 
   // The site header names the reader from the private account read.
   updateTag(accountCacheTag(tenantId));
+
   const successPath = await buildSettingsPath(
     locale,
     tenantId,
     "success",
     t("storefront.settings.profile_updated")
   );
+
   redirect(successPath);
 };
 
@@ -129,6 +140,7 @@ export const deleteAccountWithPasskeyAction = async (
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);
+
   const parsed = deleteAccountWithPasskeyFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -136,16 +148,19 @@ export const deleteAccountWithPasskeyAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return { message: t("storefront.settings.delete_failed"), ok: false };
   }
 
   const { locale, passkeyCredential, tenantId } = parsed.data;
+
   const accessToken = await requirePublicSession(
     locale,
     SETTINGS_RETURN_TO,
     tenantId
   );
+
   // An assertion that does not verify is `invalid_argument`, not
   // `unauthenticated`, so it stays a form error instead of ending the session.
   const outcome = await withPublicSessionReauth(
@@ -154,21 +169,25 @@ export const deleteAccountWithPasskeyAction = async (
     () => deleteMe(tenantId, { passkeyCredential }, accessToken),
     tenantId
   );
+
   if (outcome === "last_tenant_admin") {
     return {
       message: t("storefront.settings.delete_last_tenant_admin"),
       ok: false,
     };
   }
+
   if (outcome !== "deleted") {
     return { message: t("storefront.settings.delete_failed"), ok: false };
   }
 
   await clearPublicSessionCookie();
+
   const params = new URLSearchParams({
     message: t("storefront.settings.deleted"),
     status: "success",
   });
+
   const loginPath = await tenantLocalePath(tenantId, locale, "/login");
   redirect(`${loginPath}?${params.toString()}`);
 };

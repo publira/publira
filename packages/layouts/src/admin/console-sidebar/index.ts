@@ -10,6 +10,7 @@ export {
   ConsoleSidebarNavigationTitle as NavigationTitle,
   ConsoleSidebar as Root,
 } from "./console-sidebar";
+
 export {
   ConsoleSidebarNavigation as Navigation,
   ConsoleSidebarNavigationItem as NavigationItem,

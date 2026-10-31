@@ -30,9 +30,11 @@ describe("SignInPanelImage", () => {
     const { container } = render(<SignInPanelImage variant={variant} />);
 
     const image = container.querySelector("img");
+
     if (!image) {
       throw new Error("the image was not rendered");
     }
+
     fireEvent.error(image);
 
     expect(container.querySelector("img")).toBeNull();

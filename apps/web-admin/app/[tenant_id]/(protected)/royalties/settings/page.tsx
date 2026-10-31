@@ -26,10 +26,12 @@ import { RoyaltyCloseSettingsForm } from "./_components/royalty-close-settings-f
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -55,10 +57,12 @@ const RoyaltyCloseSettingsSkeleton = () => (
 const RoyaltyCloseSettingsSection = async () => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
+
   const [policyResult, currentUserResult] = await Promise.all([
     getRoyaltyClosePolicy(tenantId, locale),
     getAdminCurrentUser(tenantId),
   ]);
+
   await redirectToLoginIfSessionRejected(policyResult, currentUserResult);
 
   return (

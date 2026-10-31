@@ -55,18 +55,22 @@ export const checkServiceAccountKey = (
   projectId: string
 ): ServiceAccountKeyProblem | null => {
   let key: unknown;
+
   try {
     key = JSON.parse(json);
   } catch {
     return { kind: "not-json" };
   }
+
   if (typeof key !== "object" || key === null || Array.isArray(key)) {
     return { kind: "not-json" };
   }
 
   const record = key as Record<string, unknown>;
+
   const keyProjectId =
     typeof record.project_id === "string" ? record.project_id.trim() : "";
+
   if (
     record.type !== "service_account" ||
     keyProjectId === "" ||
@@ -75,6 +79,7 @@ export const checkServiceAccountKey = (
   ) {
     return { kind: "not-service-account" };
   }
+
   if (keyProjectId !== projectId) {
     return { keyProjectId, kind: "project-mismatch" };
   }

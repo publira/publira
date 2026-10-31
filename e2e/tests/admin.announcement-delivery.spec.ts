@@ -58,6 +58,7 @@ const notifiedUserPublicIds = (title: string): string[] => {
     WHERE at.title = ${quoteSqlLiteral(title)}
     ORDER BY u.public_id;
   `);
+
   return rows === "" ? [] : rows.split("\n");
 };
 
@@ -73,6 +74,7 @@ const announcementFormFields = (page: Page) => ({
  */
 const translationFields = (page: Page, language: string) => {
   const panel = page.getByRole("tabpanel", { name: language });
+
   return {
     body: panel.getByRole("textbox", { name: /Body/u }),
     title: panel.getByRole("textbox", { name: /Title/u }),
@@ -265,6 +267,7 @@ test.describe("admin announcement delivery", () => {
       .locator("article")
       .filter({ hasText: `“${title}”` })
       .first();
+
     await expect(
       row.getByRole("heading", {
         exact: true,
@@ -352,6 +355,7 @@ test.describe("admin announcement delivery", () => {
     const row = page.getByRole("row").filter({
       has: page.getByRole("cell", { exact: true, name: title }),
     });
+
     await expect(row.getByRole("listitem")).toHaveText(["日本語", "English"]);
 
     expect(
@@ -391,13 +395,17 @@ test.describe("admin announcement delivery", () => {
       const title = `E2E ${delivery} ${uniqueSuffix()}`;
 
       await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
+
       const sendToEveryoneCheckbox = page.getByRole("checkbox", {
         name: "Send to everyone",
       });
+
       await expect(sendToEveryoneCheckbox).not.toBeChecked();
+
       if (sendToEveryone) {
         await sendToEveryoneCheckbox.check();
       }
+
       await deliverAnnouncement(page, {
         body: `Delivery body ${uniqueSuffix()}`,
         title,
@@ -406,6 +414,7 @@ test.describe("admin announcement delivery", () => {
       const row = page.getByRole("row").filter({
         has: page.getByRole("cell", { exact: true, name: title }),
       });
+
       await expect(
         row.getByRole("cell", { exact: true, name: label })
       ).toBeVisible();

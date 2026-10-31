@@ -49,6 +49,7 @@ vi.mock("@dnd-kit/react", () => ({
     onDragEnd: (event: DropEvent) => void;
   }) => {
     dnd.drop = onDragEnd;
+
     return children;
   },
 }));
@@ -101,6 +102,7 @@ const renderList = async (ui: ReactNode) => {
 /** Drop the row `sourceId` names over the row `targetId` names. */
 const dropOver = async (sourceId: string, targetId: string) => {
   const { drop } = dnd;
+
   if (!drop) {
     throw new Error("the list was never rendered");
   }
@@ -122,9 +124,11 @@ const namesOnScreen = () =>
 
 const submittedOrder = (field: string): string[] => {
   const formData = reorder.mock.calls.at(0)?.at(0);
+
   if (!formData) {
     throw new Error("the reorder Action was never called");
   }
+
   return JSON.parse(String(formData.get(field))) as string[];
 };
 

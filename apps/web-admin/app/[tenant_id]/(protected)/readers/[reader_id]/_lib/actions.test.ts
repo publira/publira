@@ -45,6 +45,7 @@ const readerForm = (): FormData => {
   data.set("tenant_id", "TENANT001");
   data.set("public_id", "READER00001");
   data.set("reader_id", READER_ID);
+
   return data;
 };
 

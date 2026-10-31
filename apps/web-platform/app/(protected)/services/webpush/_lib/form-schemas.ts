@@ -19,10 +19,13 @@ export const isWebPushSubject = (value: string): boolean => {
   if (value.length > MAX_SUBJECT_LENGTH || !URL.canParse(value)) {
     return false;
   }
+
   const url = new URL(value);
+
   if (url.protocol === "mailto:") {
     return BARE_ADDRESS_RE.test(url.pathname);
   }
+
   // A WHATWG parser reads `https:example.com` as absolute; Go does not.
   return (
     url.protocol === "https:" &&

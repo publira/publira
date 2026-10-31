@@ -26,6 +26,7 @@ export {
   MAX_EPISODE_REACTION_SCORE,
   reactionFillRatio,
 } from "./episode-rating-state";
+
 export type {
   EpisodeReactionMode,
   EpisodeReactionState,
@@ -50,11 +51,13 @@ const toScore = (score: number | undefined): number => {
   if (score === undefined || score < 0) {
     return 0;
   }
+
   return Math.min(score, MAX_EPISODE_REACTION_SCORE);
 };
 
 const toRatingCount = (ratingCount: bigint | number | undefined): number => {
   const count = Number(ratingCount ?? 0);
+
   return Number.isFinite(count) && count > 0 ? count : 0;
 };
 
@@ -133,6 +136,7 @@ const readMyEpisodeRating = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     if (isUnauthenticatedRpcError(error)) {
       return {
         mode: "single",
@@ -145,6 +149,7 @@ const readMyEpisodeRating = async (
         unexpected: false,
       };
     }
+
     return {
       message: rpcErrorMessage(
         error,
@@ -183,10 +188,12 @@ export const getMyEpisodeRating = async (
     ),
     getMessagesFor(locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("storefront.episode.reaction.status_failed") : result.message
   );
+
   return result;
 };
 
@@ -202,9 +209,11 @@ const refusalMessage = (
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerCreditedOnEpisode)) {
     return t("storefront.episode.reaction.reader_credited");
   }
+
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIsTenantStaff)) {
     return t("storefront.episode.reaction.reader_is_staff");
   }
+
   return undefined;
 };
 
@@ -221,6 +230,7 @@ export const rateEpisode = async (input: {
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -238,6 +248,7 @@ export const rateEpisode = async (input: {
       },
       buildSessionHeaders(sessionId)
     );
+
     return {
       mode: toEpisodeReactionMode(response.mode),
       ok: true,
@@ -248,7 +259,9 @@ export const rateEpisode = async (input: {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, t("storefront.episode.reaction.failed"), {
         locale: input.locale,

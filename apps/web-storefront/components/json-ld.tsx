@@ -29,10 +29,12 @@ export const JsonLd = async ({
   build: (site: JsonLdSite, t: StorefrontMessageAccessor) => WithContext<Thing>;
 }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [site, t] = await Promise.all([
     getJsonLdSite(tenantId, locale),
     getMessagesFor(locale),
   ]);
+
   if (!site) {
     return null;
   }

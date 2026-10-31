@@ -42,10 +42,12 @@ export const POST = async (
   }
 
   const { episode_id, tenant_id } = await params;
+
   const path = episodeReadPathSchema.safeParse({
     episodeId: episode_id,
     tenantId: tenant_id,
   });
+
   if (!path.success) {
     return NextResponse.json({ error: "invalid path" }, { status: 400 });
   }
@@ -54,5 +56,6 @@ export const POST = async (
     episodeId: path.data.episodeId,
     tenantId: path.data.tenantId,
   });
+
   return noContent();
 };

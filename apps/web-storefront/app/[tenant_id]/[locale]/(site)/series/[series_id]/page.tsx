@@ -98,10 +98,13 @@ export const generateMetadata = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(seriesDetailParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { series_id } = parsedParams;
 
   const [result, siteLabel] = await Promise.all([
@@ -114,6 +117,7 @@ export const generateMetadata = async (
   // says which of those happened, and a card for a page nobody can open has
   // nothing true to put on it.
   const series = result.ok ? result.value?.series : undefined;
+
   if (!series) {
     return {};
   }
@@ -132,7 +136,9 @@ export const generateMetadata = async (
       seriesId: series_id,
     }),
   ]);
+
   const description = series.synopsis.trim() || undefined;
+
   // Relative, like the alternates, so both need the same `metadataBase`.
   const image = cardPath
     ? resolveSeriesOpenGraphImage(
@@ -210,9 +216,11 @@ const SeriesStatusText = ({
     case "ongoing": {
       return <Message message="storefront.series.status_ongoing" />;
     }
+
     case "completed": {
       return <Message message="storefront.series.status_completed" />;
     }
+
     default: {
       return <Message message="storefront.series.status_hiatus" />;
     }
@@ -315,10 +323,13 @@ const SeriesDetailContent = async (
     getTenantId(),
     getLocale(),
   ]);
+
   const parsedParams = parseRouteParams(seriesDetailParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
+
   const { series_id } = parsedParams;
 
   // Missing / unpublished / other-tenant series all resolve to `null`, and the
@@ -342,6 +353,7 @@ const SeriesDetailContent = async (
   const { episodes, series, volumes } = result.value;
   const [firstEpisode] = episodes;
   const waitFreeExcludedIds = new Set(series.waitFree?.excludedEpisodeIds);
+
   // Read only for a series that carries a rating: an unrated page has nothing
   // to ask the reader, so it never touches the session cookie.
   const provenAgeRating = series.ageRating

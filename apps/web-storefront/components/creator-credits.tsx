@@ -24,10 +24,12 @@ const toCreditGroups = (credits: CreatorCredit[]): CreditGroup[] => {
 
   for (const credit of credits) {
     const current = groups.at(-1);
+
     if (current && current.roleName === credit.roleName) {
       current.names.push(credit.name);
       continue;
     }
+
     groups.push({
       id: `${credit.publicId}:${credit.roleName}`,
       names: [credit.name],

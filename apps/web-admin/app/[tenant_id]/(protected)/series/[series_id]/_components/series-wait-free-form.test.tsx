@@ -94,6 +94,7 @@ describe("SeriesWaitFreeForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve<ActionForm.State>(null)
     );
+
     renderForm(action);
 
     submit();
@@ -119,6 +120,7 @@ describe("SeriesWaitFreeForm", () => {
     const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
       Promise.resolve<ActionForm.State>(null)
     );
+
     renderForm(action);
 
     fireEvent.click(
@@ -147,6 +149,7 @@ describe("SeriesWaitFreeForm", () => {
         ok: false,
       })
     );
+
     const rechargeHours = screen.getByRole<HTMLInputElement>("spinbutton", {
       name: /Hours until the next ticket/u,
     });

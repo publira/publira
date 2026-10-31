@@ -5,6 +5,7 @@ export {
   FieldError as Error,
   FieldLabel as Label,
 } from "./field";
+
 export type {
   FieldContentProps as ContentProps,
   FieldDescriptionProps as DescriptionProps,

@@ -32,9 +32,11 @@ vi.mock("next/navigation", () => ({
 const { GET } = await import("./route");
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
+
 const CSV = new TextEncoder().encode(
   "﻿start_date,end_date,series_id,series_title\r\n"
 );
+
 const SESSION = { headers: { Authorization: "Bearer session-token" } };
 
 const download = (query: string, tenantId = TENANT_ID) =>

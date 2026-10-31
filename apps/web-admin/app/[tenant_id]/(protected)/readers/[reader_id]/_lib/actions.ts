@@ -31,6 +31,7 @@ import { tenantMembersCacheTag } from "#lib/tenant-members";
  */
 const readerActionSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
+
   const target = requiredTrimmedString(
     t("admin.readers.validation.target_missing")
   );
@@ -66,9 +67,11 @@ const moderate = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await readerActionSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, readerActionFormFields)
   );
+
   if (!parsed.success) {
     return {
       state: {
@@ -79,12 +82,15 @@ const moderate = async (
   }
 
   const { readerId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     moderateReader({ action, readerId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { state: { message: result.message, ok: false } };
   }
+
   // The account may be a staff member's, whose state and presence the members
   // screen lists.
   updateTag(tenantMembersCacheTag(tenantId));
@@ -100,9 +106,11 @@ export const suspendReaderAction = async (
   formData: FormData
 ): Promise<ActionForm.State> => {
   const outcome = await moderate("suspend", formData);
+
   if ("state" in outcome) {
     return outcome.state;
   }
+
   redirect(readerPage(outcome.publicId, "suspended"));
 };
 
@@ -111,9 +119,11 @@ export const unsuspendReaderAction = async (
   formData: FormData
 ): Promise<ActionForm.State> => {
   const outcome = await moderate("unsuspend", formData);
+
   if ("state" in outcome) {
     return outcome.state;
   }
+
   redirect(readerPage(outcome.publicId, "unsuspended"));
 };
 
@@ -131,9 +141,11 @@ export const setReaderBirthDateAction = async (
   const locale = await getActionLocale(formData);
   const readerSchema = await readerActionSchema(locale);
   const schema = readerSchema.extend({ birthDate: optionalTrimmedString() });
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, birthDateFormFields)
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -142,9 +154,11 @@ export const setReaderBirthDateAction = async (
   }
 
   const { birthDate, publicId, readerId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     setReaderBirthDate({ birthDate, readerId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -163,9 +177,11 @@ export const removeReaderIconAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await readerActionSchema(locale);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, readerActionFormFields)
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -174,9 +190,11 @@ export const removeReaderIconAction = async (
   }
 
   const { publicId, readerId, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     removeReaderIcon({ readerId, tenantId }, locale)
   );
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -189,9 +207,11 @@ export const deleteReaderAction = async (
   formData: FormData
 ): Promise<ActionForm.State> => {
   const outcome = await moderate("delete", formData);
+
   if ("state" in outcome) {
     return outcome.state;
   }
+
   // The detail page is gone with the account, so the list confirms it.
   redirect("/readers?deleted=1");
 };

@@ -94,6 +94,7 @@ const renderList = async (
     unreadCount: 0,
     ...props,
   });
+
   render(list);
 };
 
@@ -139,6 +140,7 @@ describe("NotificationList", () => {
     const titleLink = screen.getByRole("link", {
       name: "A new episode has been published",
     });
+
     expect(titleLink.getAttribute("href")).toBe("/series/SR01/episodes/EP01");
     expect(screen.getByText("Jun 1, 2026, 12:00 AM")).toBeDefined();
     expect(screen.getByText("Unread")).toBeDefined();

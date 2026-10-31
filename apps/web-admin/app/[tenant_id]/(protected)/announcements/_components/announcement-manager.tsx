@@ -37,9 +37,11 @@ type AnnouncementManagerProps = CursorPageHrefs & {
 
 const excerpt = (text: string, maxLength: number): string => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
+
   if (normalized.length <= maxLength) {
     return normalized;
   }
+
   return `${normalized.slice(0, maxLength)}...`;
 };
 
@@ -313,6 +315,7 @@ export const AnnouncementManager = async ({
 }: AnnouncementManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
   const showPagination =

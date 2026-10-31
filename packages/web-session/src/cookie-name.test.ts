@@ -7,8 +7,10 @@ const originalSuffix = process.env.PUBLIRA_COOKIE_SUFFIX;
 afterEach(() => {
   if (originalSuffix === undefined) {
     delete process.env.PUBLIRA_COOKIE_SUFFIX;
+
     return;
   }
+
   process.env.PUBLIRA_COOKIE_SUFFIX = originalSuffix;
 });
 

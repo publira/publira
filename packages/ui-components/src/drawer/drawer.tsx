@@ -15,6 +15,7 @@ export const Drawer = ({
 }: BaseDrawer.Root.Props) => (
   <BaseDrawer.Root {...props} swipeDirection={swipeDirection} />
 );
+
 export const DrawerTrigger = BaseDrawer.Trigger;
 export const DrawerClose = BaseDrawer.Close;
 export const DrawerTitle = BaseDrawer.Title;

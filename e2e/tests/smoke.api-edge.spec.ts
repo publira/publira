@@ -10,6 +10,7 @@ import {
 
 const CATALOG_PROCEDURE = "/publira.v1.CatalogService/ListPublishedSeries";
 const ADMIN_PROCEDURE = "/publira.admin.v1.AdminSeriesService/ListSeries";
+
 const PLATFORM_PROCEDURE =
   "/publira.platform.v1.PlatformTenantService/ListTenants";
 
@@ -43,12 +44,15 @@ const postThroughEdge = (
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
+
       let answer: unknown = null;
+
       try {
         answer = await response.json();
       } catch {
         // Anything but a Connect error leaves the code undefined.
       }
+
       const code =
         typeof answer === "object" &&
         answer !== null &&
@@ -56,6 +60,7 @@ const postThroughEdge = (
         typeof answer.code === "string"
           ? answer.code
           : undefined;
+
       return { code, status: response.status };
     },
     [procedure, JSON.stringify(body)] as const

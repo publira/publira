@@ -117,6 +117,7 @@ const render = (
   onSavableChange: (next: boolean) => void = vi.fn()
 ) => {
   savable.onChange = onSavableChange;
+
   return renderBase(
     <SeriesCreatorCredits.Editor
       creatorRoles={creatorRoles}
@@ -138,9 +139,11 @@ const postedCredits = (): SeriesCreatorCredit[] => {
   const field = document.querySelector<HTMLInputElement>(
     'input[name="creator_credits"]'
   );
+
   if (!field) {
     throw new Error("the credits field is not on screen");
   }
+
   return JSON.parse(field.value) as SeriesCreatorCredit[];
 };
 

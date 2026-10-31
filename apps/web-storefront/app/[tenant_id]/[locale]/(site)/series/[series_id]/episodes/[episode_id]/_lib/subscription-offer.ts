@@ -22,7 +22,9 @@ export const offersSubscription = async (
   if (!acceptsPayments) {
     return false;
   }
+
   const result = await listSubscriptionPlans(tenantId, locale);
+
   return (
     result.ok &&
     result.value.some((plan) =>

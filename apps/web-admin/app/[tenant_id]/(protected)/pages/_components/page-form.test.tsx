@@ -72,6 +72,7 @@ it("keeps the ids unique when it is mounted twice", async () => {
     PageForm({ action, tenantId: "TENANT001" }),
     PageForm({ action, tenantId: "TENANT001" }),
   ]);
+
   render(
     <>
       {first}
@@ -102,10 +103,13 @@ const slugInput = () =>
 /** Whether `message` sits between the slug input and the title input. */
 const isBesideSlug = (message: HTMLElement): boolean => {
   const order = [...document.querySelectorAll("*")];
+
   const at = (element: Element | null) =>
     element ? order.indexOf(element) : -1;
+
   const slug = at(slugInput());
   const title = at(screen.getByLabelText<HTMLInputElement>(/Title/u));
+
   return slug < at(message) && at(message) < title;
 };
 
@@ -130,6 +134,7 @@ it("shows a slug failure beside the slug field", async () => {
     message: "Please check the information you entered.",
     ok: false,
   };
+
   await renderForm(() => Promise.resolve(failure));
 
   submit();
@@ -137,6 +142,7 @@ it("shows a slug failure beside the slug field", async () => {
   const message = await screen.findByText(
     "The site keeps this path for signing in."
   );
+
   expect(isBesideSlug(message)).toBe(true);
   expect(slugInput()?.getAttribute("aria-invalid")).toBe("true");
   expect(
@@ -164,10 +170,12 @@ it("posts whether the page is shown in the footer either way", async () => {
   await waitFor(() => {
     expect(create).toHaveBeenCalledOnce();
   });
+
   const [, formData] = create.mock.calls[0] as unknown as [
     PageFormState,
     FormData,
   ];
+
   expect(formData.get("tenant_id")).toBe("TENANT001");
   expect(formData.get("title")).toBe("Help");
   expect(formData.get("display_in_footer")).toBe("false");

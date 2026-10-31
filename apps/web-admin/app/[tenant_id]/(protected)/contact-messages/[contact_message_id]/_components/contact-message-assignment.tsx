@@ -56,10 +56,12 @@ const assigneeItems = async (
   locale: Locale
 ): Promise<{ label: string; value: string }[]> => {
   const t = await getMessagesFor(locale);
+
   const items = assignees.map((assignee) => ({
     label: assignee.name || assignee.userPublicId,
     value: assignee.userId,
   }));
+
   if (
     contactMessage.assigneeUserId &&
     !items.some((item) => item.value === contactMessage.assigneeUserId)
@@ -94,6 +96,7 @@ export const ContactMessageAssignment = async ({
   const self = assignees.find(
     (assignee) => assignee.userPublicId === currentUserPublicId
   );
+
   const canAssignSelf =
     !assigneesErrorMessage &&
     self !== undefined &&

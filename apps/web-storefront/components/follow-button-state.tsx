@@ -10,11 +10,13 @@ const FollowingContext = createContext<boolean | null>(null);
 
 const useFollowing = (): boolean => {
   const following = use(FollowingContext);
+
   if (following === null) {
     throw new Error(
       "FollowButtonFollow and FollowButtonUnfollow must be rendered inside a FollowButton."
     );
   }
+
   return following;
 };
 

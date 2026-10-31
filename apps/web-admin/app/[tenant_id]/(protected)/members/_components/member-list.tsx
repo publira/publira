@@ -43,6 +43,7 @@ const MemberStatusBadge = ({ status }: { status: string }) => {
         </Badge>
       );
     }
+
     case "suspended": {
       return (
         <Badge tone="destructive">
@@ -52,6 +53,7 @@ const MemberStatusBadge = ({ status }: { status: string }) => {
         </Badge>
       );
     }
+
     case "inactive": {
       return (
         <Badge tone="muted">
@@ -61,6 +63,7 @@ const MemberStatusBadge = ({ status }: { status: string }) => {
         </Badge>
       );
     }
+
     default: {
       return <Badge tone="muted">{status}</Badge>;
     }

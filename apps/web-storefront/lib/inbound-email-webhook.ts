@@ -45,24 +45,30 @@ const readBoundedBody = async (
   }
 
   let length = 0;
+
   const bounded = request.body.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, controller) {
         length += chunk.byteLength;
+
         if (length > maxBytes) {
           controller.error(new PayloadTooLargeError());
+
           return;
         }
+
         controller.enqueue(chunk);
       },
     })
   );
+
   try {
     return new Uint8Array(await new Response(bounded).arrayBuffer());
   } catch (error) {
     if (error instanceof PayloadTooLargeError) {
       return null;
     }
+
     throw error;
   }
 };
@@ -89,6 +95,7 @@ export const forwardInboundEmailWebhook = async (
   { provider, tenantId }: { provider: string; tenantId: string }
 ): Promise<NextResponse> => {
   const path = parseWebhookPath("email", { provider, tenantId });
+
   if (path instanceof NextResponse) {
     return path;
   }
@@ -97,11 +104,13 @@ export const forwardInboundEmailWebhook = async (
     request,
     MAX_INBOUND_EMAIL_PAYLOAD_BYTES
   );
+
   if (!payload) {
     console.warn(
       "[web-storefront] inbound email webhook body exceeds the payload limit and was dropped",
       { provider: path.provider, tenantId: path.tenantId }
     );
+
     return new NextResponse(null, { status: 200 });
   }
 
@@ -113,8 +122,10 @@ export const forwardInboundEmailWebhook = async (
       tenant: { tenantId: path.tenantId },
     })
   );
+
   if (response.status === 401) {
     response.headers.set("WWW-Authenticate", INBOUND_EMAIL_AUTH_CHALLENGE);
   }
+
   return response;
 };

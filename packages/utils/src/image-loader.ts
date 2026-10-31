@@ -40,6 +40,7 @@ const parseImageServerUrl = (
   hostRelative: boolean
 ): URL | undefined => {
   let url: URL;
+
   try {
     url = hostRelative ? new URL(src, "http://localhost") : new URL(src);
   } catch {
@@ -56,6 +57,7 @@ export const imageServerLoader = ({
 }: ImageServerLoaderParams): string => {
   const hostRelative = src.startsWith("/") && !src.startsWith("//");
   const url = parseImageServerUrl(src, hostRelative);
+
   // Object URLs for a not-yet-uploaded file, and anything served by something
   // other than the image routes, have no transform to ask for.
   if (!url) {
@@ -64,6 +66,7 @@ export const imageServerLoader = ({
 
   url.searchParams.set("w", String(width));
   url.searchParams.set("fit", RESIZE_FIT);
+
   // Manael tunes quality per format (WebP 90, AVIF 60), and `next/image` hands
   // the loader `undefined` when there is no `quality` prop, so leaving `q` out
   // is what lets those defaults apply. A call site that does ask for a quality

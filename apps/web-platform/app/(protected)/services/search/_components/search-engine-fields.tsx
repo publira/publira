@@ -71,6 +71,7 @@ export const SearchEngineFields = ({
   const handleTestedValueChange = useCallback(() => {
     setTestedValues((version) => version + 1);
   }, []);
+
   const handleEngineChange = useCallback((value: unknown) => {
     if (isSearchEngine(value)) {
       setEngine(value);

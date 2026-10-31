@@ -56,6 +56,7 @@ export const startCoinPackCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = coinPackCheckoutFormSchema.safeParse(
     toFormDataInput(formData, {
       coinPackId: "value",
@@ -66,28 +67,34 @@ export const startCoinPackCheckoutAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     redirect("/");
   }
 
   const { coinPackId, locale, tenantId } = parsed.data;
+
   // Locale-less, the shape `sanitizeRedirectPath` stores; only the
   // `redirect()` targets below take a prefix.
   const fromPath = (outcome?: CoinPackCheckoutOutcome): string => {
     if (parsed.data.episodeId === undefined) {
       return coinsPagePath(outcome);
     }
+
     const { episodePublicId, seriesPublicId } = parsed.data;
+
     return episodeCoinsPath(
       seriesPublicId,
       episodePublicId,
       outcome && (outcome === "error" ? "pack_error" : "pack_unavailable")
     );
   };
+
   const sessionId = await requirePublicSession(locale, fromPath(), tenantId);
 
   let checkoutURL = "";
   let outcome: CoinPackCheckoutOutcome | null = null;
+
   try {
     const response = await apiClient.coin.startCoinPackCheckout(
       {
@@ -98,20 +105,24 @@ export const startCoinPackCheckoutAction = async (
       },
       buildSessionHeaders(sessionId)
     );
+
     checkoutURL = response.checkoutUrl.trim();
   } catch (error) {
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, fromPath(), tenantId);
     }
+
     rethrowUnclassifiedRpcError(error);
     outcome = isRpcError(error, Code.FailedPrecondition, Code.NotFound)
       ? "unavailable"
       : "error";
   }
+
   if (outcome || !checkoutURL) {
     redirect(
       await tenantLocalePath(tenantId, locale, fromPath(outcome ?? "error"))
     );
   }
+
   redirect(checkoutURL);
 };

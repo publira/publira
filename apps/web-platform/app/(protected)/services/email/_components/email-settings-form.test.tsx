@@ -50,6 +50,7 @@ const storedSettings: PlatformSmtpSettings = {
 
 const idleSaveAction = () =>
   Promise.resolve<PlatformEmailSettingsFormState>(null);
+
 const idleTestAction = () => Promise.resolve<PlatformSmtpTestFormState>(null);
 
 const renderForm = ({
@@ -96,6 +97,7 @@ describe("EmailSettingsForm", () => {
           recipientEmail: "operator@platform.example",
         })
     );
+
     renderForm({ testAction });
 
     const typed = [
@@ -105,6 +107,7 @@ describe("EmailSettingsForm", () => {
       [/From address/u, "edited@platform.example"],
       [/Reply-to address/u, "support@platform.example"],
     ] as const;
+
     for (const [label, value] of typed) {
       fireEvent.change(screen.getByLabelText(label), { target: { value } });
     }
@@ -116,6 +119,7 @@ describe("EmailSettingsForm", () => {
     expect(testAction.mock.calls[0]?.[1].get("host")).toBe(
       "smtp.edited.example"
     );
+
     for (const [label, value] of typed) {
       expect(screen.getByLabelText(label)).toHaveProperty("value", value);
     }
@@ -129,12 +133,15 @@ describe("EmailSettingsForm", () => {
           ok: false,
         })
     );
+
     renderForm({ testAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+
     const sendToSelf = await screen.findByRole("checkbox", {
       name: "Send to me",
     });
+
     expect(screen.queryByLabelText(/Recipient email address/u)).toBeNull();
 
     fireEvent.click(sendToSelf);
@@ -159,6 +166,7 @@ describe("EmailSettingsForm", () => {
           ok: false,
         })
     );
+
     renderForm({ saveAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -180,6 +188,7 @@ describe("EmailSettingsForm", () => {
           ok: false,
         })
     );
+
     const { container } = renderForm({
       initialSettings: { ...storedSettings, hasPassword: false, username: "" },
       saveAction,
@@ -198,9 +207,11 @@ describe("EmailSettingsForm", () => {
     const password = container.querySelector<HTMLInputElement>(
       'input[name="password"]'
     );
+
     if (!password) {
       throw new Error("The form has no password box with nothing stored.");
     }
+
     fireEvent.change(password, { target: { value: "new-secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
@@ -222,6 +233,7 @@ describe("EmailSettingsForm", () => {
           ok: false,
         })
     );
+
     renderForm({ saveAction });
 
     fireEvent.change(screen.getByLabelText(/Username/u), {
@@ -245,6 +257,7 @@ describe("EmailSettingsForm", () => {
     const description = screen.getByText(
       "Leave blank for a relay that takes no credentials; email is then sent without authenticating."
     );
+
     expect(
       screen.getByLabelText(/Username/u).getAttribute("aria-describedby")
     ).toBe(description.id);
@@ -270,6 +283,7 @@ describe("EmailSettingsForm", () => {
   it("shows the refusal of a password without a username on the username field", async () => {
     const refusal =
       "A password needs a username. Enter the username, or remove the password to send without authenticating.";
+
     const saveAction = vi.fn(
       (_previousState: PlatformEmailSettingsFormState, _formData: FormData) =>
         Promise.resolve<PlatformEmailSettingsFormState>({
@@ -278,6 +292,7 @@ describe("EmailSettingsForm", () => {
           ok: false,
         })
     );
+
     const { container } = renderForm({
       initialSettings: { ...storedSettings, hasPassword: false, username: "" },
       saveAction,
@@ -286,9 +301,11 @@ describe("EmailSettingsForm", () => {
     const password = container.querySelector<HTMLInputElement>(
       'input[name="password"]'
     );
+
     if (!password) {
       throw new Error("The form has no password box with nothing stored.");
     }
+
     fireEvent.change(password, { target: { value: "new-secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
@@ -311,15 +328,19 @@ describe("EmailSettingsForm", () => {
           settings: { ...storedSettings, revision: "2" },
         })
     );
+
     const { container } = renderForm({ saveAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
+
     const password = container.querySelector<HTMLInputElement>(
       'input[name="password"]'
     );
+
     if (!password) {
       throw new Error("Change did not open the password box.");
     }
+
     fireEvent.change(password, { target: { value: "new-secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 

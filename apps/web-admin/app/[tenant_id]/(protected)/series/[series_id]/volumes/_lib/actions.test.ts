@@ -99,9 +99,11 @@ const formData = (fields: Record<string, string | File>) => {
   const data = new FormData();
   data.set("tenant_id", "TENANT001");
   data.set("series_id", SERIES_ID);
+
   for (const [name, value] of Object.entries(fields)) {
     data.set(name, value);
   }
+
   return data;
 };
 

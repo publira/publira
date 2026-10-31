@@ -18,8 +18,10 @@ export const resolveTenantBrandMarkVariant = (
   kind: TenantBrandMarkKind
 ): TenantImageVariant | null => {
   const variant = info?.brandMarks?.[kind]?.[0];
+
   if (!(variant?.url.trim() && variant.width > 0 && variant.height > 0)) {
     return null;
   }
+
   return variant;
 };

@@ -28,6 +28,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateTenantSiteVerificationAction: (_state: unknown, formData: FormData) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -43,8 +44,10 @@ vi.mock("#components/message", () => ({
 }));
 
 const SUBMIT = "Save the verification codes";
+
 const ADMIN_ONLY =
   "Only a tenant administrator can change this setting. You have read-only access.";
+
 const INVALID =
   "Paste the whole <meta> tag, or only its content value: up to 128 letters, digits, hyphens, and underscores.";
 

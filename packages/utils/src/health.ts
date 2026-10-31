@@ -67,9 +67,11 @@ const errorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     return error.message;
   }
+
   if (typeof error === "string") {
     return error;
   }
+
   return "unknown error";
 };
 
@@ -86,6 +88,7 @@ const publicErrorCategory = (error: unknown): string => {
   ) {
     return HEALTH_ERROR_TIMEOUT;
   }
+
   return HEALTH_ERROR_DEPENDENCY_FAILED;
 };
 
@@ -115,6 +118,7 @@ const runCheck = async (
   const controller = new AbortController();
   const timeoutGate = new AbortController();
   const checkTask = check.check(controller.signal);
+
   const timeoutTask = (async () => {
     try {
       await delay(timeoutMs, undefined, { signal: timeoutGate.signal });
@@ -122,18 +126,23 @@ const runCheck = async (
       // Check finished first — timer cancelled; resolve harmlessly.
       return;
     }
+
     controller.abort();
     throw new Error(`health check ${check.name} timed out`);
   })();
+
   // Prevent unhandledrejection if the loser settles after the race winner.
   void swallowLate(checkTask);
   void swallowLate(timeoutTask);
+
   try {
     // Race so checks that ignore AbortSignal still fail closed after timeoutMs.
     await Promise.race([checkTask, timeoutTask]);
+
     return { status: HEALTH_STATUS_OK };
   } catch (error) {
     console.error(`health check ${check.name} failed`, error);
+
     return { error: publicErrorCategory(error), status: HEALTH_STATUS_ERROR };
   } finally {
     timeoutGate.abort();
@@ -146,12 +155,15 @@ export const createReadyzResponse = async (
   options: ReadyzOptions = {}
 ): Promise<Response> => {
   const timeoutMs = options.timeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
+
   const results = await Promise.all(
     checks.map(async (check) => {
       const result = await runCheck(check, timeoutMs);
+
       return [check.name, result] as const;
     })
   );
+
   const checkMap: Record<string, HealthCheckResult> =
     Object.fromEntries(results);
 
@@ -160,16 +172,19 @@ export const createReadyzResponse = async (
       checks: checkMap,
       status: HEALTH_STATUS_STARTING,
     };
+
     return jsonResponse(body, 503);
   }
 
   const failed = Object.values(checkMap).some(
     (result) => result.status !== HEALTH_STATUS_OK
   );
+
   const body: ReadyzBody = {
     checks: checkMap,
     status: failed ? HEALTH_STATUS_UNAVAILABLE : HEALTH_STATUS_OK,
   };
+
   return jsonResponse(body, failed ? 503 : 200);
 };
 
@@ -185,11 +200,13 @@ export const checkUpstreamReadyz = async (
   path = "/readyz"
 ): Promise<void> => {
   const trimmed = baseUrl.trim();
+
   if (!trimmed) {
     throw new Error("upstream base URL is not configured");
   }
 
   let url: URL;
+
   try {
     url = new URL(path, trimmed.endsWith("/") ? trimmed : `${trimmed}/`);
   } catch {
@@ -197,6 +214,7 @@ export const checkUpstreamReadyz = async (
   }
 
   let response: Response;
+
   try {
     response = await fetch(url, {
       cache: "no-store",
@@ -207,8 +225,10 @@ export const checkUpstreamReadyz = async (
     });
   } catch (error) {
     const detail = errorMessage(error);
+
     const reason =
       detail === "unknown error" ? "upstream request failed" : detail;
+
     throw new Error(`upstream ${url.toString()}: ${reason}`, { cause: error });
   }
 

@@ -96,29 +96,38 @@ type RawSitemapEntry = Pick<
 
 const sitemapEntryHref = (entry: RawSitemapEntry): string | null => {
   const publicId = entry.publicId?.trim() ?? "";
+
   switch (entry.kind) {
     case SitemapEntryKind.SERIES: {
       return publicId ? `/series/${publicId}` : null;
     }
+
     case SitemapEntryKind.EPISODE: {
       const seriesPublicId = entry.seriesPublicId?.trim() ?? "";
+
       return publicId && seriesPublicId
         ? `/series/${seriesPublicId}/episodes/${publicId}`
         : null;
     }
+
     case SitemapEntryKind.LABEL: {
       return publicId ? `/labels/${publicId}` : null;
     }
+
     case SitemapEntryKind.CREATOR: {
       return publicId ? `/creators/${publicId}` : null;
     }
+
     case SitemapEntryKind.GENRE: {
       return publicId ? `/genres/${publicId}` : null;
     }
+
     case SitemapEntryKind.PAGE: {
       const href = publishedPageHrefFromSlug(entry.slug ?? "");
+
       return href === "/" ? null : href;
     }
+
     default: {
       return null;
     }
@@ -143,14 +152,17 @@ export const toSitemapEntryItem = (
   entry: RawSitemapEntry
 ): SitemapEntryItem[] => {
   const href = sitemapEntryHref(entry);
+
   if (!href) {
     return [];
   }
 
   const lastModifiedAt = entry.lastModifiedAt?.trim();
+
   const item: SitemapEntryItem = lastModifiedAt
     ? { href, lastModifiedAt }
     : { href };
+
   if (!TRANSLATED_KINDS.has(entry.kind)) {
     return [item];
   }
@@ -158,6 +170,7 @@ export const toSitemapEntryItem = (
   const publishedLocales = [
     ...new Set((entry.publishedLocales ?? []).filter(isLocale)),
   ];
+
   return publishedLocales.length > 0 ? [{ ...item, publishedLocales }] : [];
 };
 
@@ -183,7 +196,9 @@ const entryLocales = (
   if (!publishedLocales) {
     return supportedLocales;
   }
+
   const translated = new Set(publishedLocales);
+
   return supportedLocales.filter((locale) => translated.has(locale));
 };
 
@@ -199,12 +214,15 @@ const renderEntryUrls = (
   const { defaultLocale, origin, supportedLocales } = address;
   const { href, lastModifiedAt, publishedLocales } = entry;
   const locales = entryLocales(address, entry);
+
   const lastmod = lastModifiedAt
     ? `<lastmod>${escapeXml(lastModifiedAt)}</lastmod>`
     : "";
+
   // Its URLs name the same alternates but for `x-default`, which is either
   // shared or each URL's own, so the links are written once per `x-default`.
   const linkSets = new Map<string, string>();
+
   return locales
     .map((locale) => {
       const { canonical, languages } = publishedLocales
@@ -216,7 +234,9 @@ const renderEntryUrls = (
             locale
           )
         : localeAlternates(locale, defaultLocale, supportedLocales, href);
+
       const linksKey = languages["x-default"];
+
       const links =
         linkSets.get(linksKey) ??
         Object.entries(languages)
@@ -225,7 +245,9 @@ const renderEntryUrls = (
               `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${absoluteUrl(origin, path)}"/>`
           )
           .join("");
+
       linkSets.set(linksKey, links);
+
       return `<url><loc>${absoluteUrl(origin, canonical)}</loc>${links}${lastmod}</url>`;
     })
     .join("\n");
@@ -241,6 +263,7 @@ export const renderSitemapUrlset = (
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     ...entries.flatMap((entry) => {
       const urls = renderEntryUrls(address, entry);
+
       return urls ? [urls] : [];
     }),
     "</urlset>",
@@ -293,16 +316,20 @@ export const getSitemapChunk = async (
 
   const urlsOf = (entry: SitemapEntryItem): number =>
     entryLocales(address, entry).length;
+
   const pageUrls = SITEMAP_PAGE_SIZE * urlsOf(LONGEST_ENTRY);
+
   const pageBytes =
     SITEMAP_PAGE_SIZE * utf8Bytes(renderEntryUrls(address, LONGEST_ENTRY));
 
   const entries: SitemapEntryItem[] =
     token === "" ? CATALOGUE_INDEX_PATHS.map((href) => ({ href })) : [];
+
   let urls = entries.reduce((sum, entry) => sum + urlsOf(entry), 0);
   let bytes = utf8Bytes(renderSitemapUrlset(address, entries));
   let nextToken = "";
   let stop: CursorWalkStop;
+
   try {
     stop = await forEachPageWithToken(
       async (pageToken, limit) => {
@@ -312,7 +339,9 @@ export const getSitemapChunk = async (
           // The walk starts from "", which for this file is `token`.
           token: pageToken || token,
         });
+
         nextToken = response.nextToken ?? "";
+
         return { items: response.entries ?? [], nextToken };
       },
       (items) => {
@@ -321,6 +350,7 @@ export const getSitemapChunk = async (
           urls += urlsOf(entry);
           bytes += utf8Bytes(renderEntryUrls(address, entry)) + 1;
         }
+
         return (
           urls + pageUrls <= SITEMAP_URL_LIMIT &&
           bytes + pageBytes <= SITEMAP_BYTE_LIMIT
@@ -334,6 +364,7 @@ export const getSitemapChunk = async (
     );
   } catch (error) {
     console.warn("[web-storefront] listSitemapEntries failed", error);
+
     return cachedReadFailure("The sitemap is unavailable.");
   }
 
@@ -342,6 +373,7 @@ export const getSitemapChunk = async (
   if (stop === "repeated-token") {
     return cachedReadFailure("The sitemap is unavailable.");
   }
+
   return { ok: true, value: { entries, nextToken } };
 };
 
@@ -361,16 +393,21 @@ const walkSitemapFileTokens = async (
   if (reads >= MAX_SITEMAP_FILES) {
     return { message: "The sitemap has too many files.", ok: false };
   }
+
   const chunk = await getSitemapChunk(tenantId, address, tokens.at(-1) ?? "");
+
   if (!chunk.ok) {
     return chunk;
   }
 
   const { entries, nextToken } = chunk.value;
+
   const writesUrls = entries.some(
     (entry) => entryLocales(address, entry).length > 0
   );
+
   const kept = writesUrls ? tokens : tokens.slice(0, -1);
+
   return nextToken
     ? walkSitemapFileTokens(tenantId, address, [...kept, nextToken], reads + 1)
     : { ok: true, value: [...kept] };
@@ -402,6 +439,7 @@ export const getSitemapFileTokens = async (
     [""],
     0
   );
+
   return tokens.ok ? tokens : cachedReadFailure(tokens.message);
 };
 
@@ -452,6 +490,7 @@ const tenantAddress = async (
     getTenantSiteInfo(tenantId),
     getTenantPublicOrigin(tenantId),
   ]);
+
   return tenant && origin
     ? {
         defaultLocale: tenant.defaultLocale,
@@ -470,23 +509,29 @@ export const respondWithSitemap = async (
   params: unknown
 ): Promise<Response> => {
   const parsed = parseRouteParams(tenantRouteParamsSchema, params);
+
   if (!parsed) {
     return notFound();
   }
 
   const address = await tenantAddress(parsed.tenant_id);
+
   if (!address) {
     return unavailable();
   }
+
   const tokens = await getSitemapFileTokens(parsed.tenant_id, address);
+
   if (!tokens.ok) {
     return unavailable();
   }
+
   if (tokens.value.length > 1) {
     return xmlResponse(renderSitemapIndex(address.origin, tokens.value.length));
   }
 
   const chunk = await getSitemapChunk(parsed.tenant_id, address, "");
+
   return chunk.ok
     ? xmlResponse(renderSitemapUrlset(address, chunk.value.entries))
     : unavailable();
@@ -506,25 +551,33 @@ export const respondWithSitemapFile = async (
   params: unknown
 ): Promise<Response> => {
   const parsed = parseRouteParams(sitemapFileRouteParamsSchema, params);
+
   if (!parsed) {
     return notFound();
   }
+
   const index = Number(parsed.sitemap_id.slice(0, -".xml".length));
 
   const address = await tenantAddress(parsed.tenant_id);
+
   if (!address) {
     return unavailable();
   }
+
   const tokens = await getSitemapFileTokens(parsed.tenant_id, address);
+
   if (!tokens.ok) {
     return unavailable();
   }
+
   const token = tokens.value[index];
+
   if (token === undefined) {
     return notFound();
   }
 
   const chunk = await getSitemapChunk(parsed.tenant_id, address, token);
+
   return chunk.ok
     ? xmlResponse(renderSitemapUrlset(address, chunk.value.entries))
     : unavailable();

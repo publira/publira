@@ -176,6 +176,7 @@ describe("tenant-detail", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {
       // Asserted below.
     });
+
     const error = new ConnectError("boom", Code.Internal);
     mockGetTenant.mockRejectedValueOnce(error);
 

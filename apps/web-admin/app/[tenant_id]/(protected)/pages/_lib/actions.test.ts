@@ -74,15 +74,18 @@ const saveForm = (values: {
   data.set("initial_title", values.initialTitle);
   data.set("content_markdown", values.contentMarkdown);
   data.set("initial_content_markdown", values.initialContentMarkdown);
+
   if (values.displayInFooter !== undefined) {
     data.set("display_in_footer", String(values.displayInFooter));
   }
+
   if (values.initialDisplayInFooter !== undefined) {
     data.set(
       "initial_display_in_footer",
       String(values.initialDisplayInFooter)
     );
   }
+
   return data;
 };
 
@@ -95,6 +98,7 @@ const unchanged = {
 
 const savePage = async (formData: FormData) => {
   const { savePageAction } = await import("./actions");
+
   return await savePageAction(null, formData);
 };
 
@@ -166,6 +170,7 @@ describe("savePageAction", () => {
       contentMarkdown: "# Privacy\n\nRevised.\n",
       title: "Privacy notice",
     });
+
     data.set("translation_locale", "en");
 
     await savePage(data);
@@ -326,6 +331,7 @@ const createForm = (): FormData => {
   data.set("tenant_id", TENANT_ID);
   data.set("slug", "/login");
   data.set("title", "Help");
+
   return data;
 };
 
@@ -449,6 +455,7 @@ const publishForm = (requireAgreement: string): FormData => {
   data.set("version_id", "VERSION002");
   data.set("translation_locale", "en");
   data.set("require_agreement", requireAgreement);
+
   return data;
 };
 
@@ -487,9 +494,11 @@ const translationForm = (values: Record<string, string>): FormData => {
   const data = new FormData();
   data.set("tenant_id", TENANT_ID);
   data.set("page_id", PAGE_ID);
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -532,6 +541,7 @@ describe("addPageTranslationAction", () => {
 
   it("asks for a title before sending anything", async () => {
     const { addPageTranslationAction } = await import("./actions");
+
     const state = await addPageTranslationAction(
       null,
       translationForm({ title: "  ", translation_locale: "en" })
@@ -543,6 +553,7 @@ describe("addPageTranslationAction", () => {
 
   it("refuses a language the site does not offer", async () => {
     const { addPageTranslationAction } = await import("./actions");
+
     const state = await addPageTranslationAction(
       null,
       translationForm({ title: "Privacy policy", translation_locale: "ko" })
@@ -560,6 +571,7 @@ describe("addPageTranslationAction", () => {
     mockFindTenantLocales.mockResolvedValueOnce(null);
 
     const { addPageTranslationAction } = await import("./actions");
+
     const state = await addPageTranslationAction(
       null,
       translationForm({ title: "Privacy policy", translation_locale: "en" })
@@ -581,6 +593,7 @@ describe("addPageTranslationAction", () => {
     });
 
     const { addPageTranslationAction } = await import("./actions");
+
     const state = await addPageTranslationAction(
       null,
       translationForm({ title: "Privacy policy", translation_locale: "en" })
@@ -628,6 +641,7 @@ describe("deletePageTranslationAction", () => {
     });
 
     const { deletePageTranslationAction } = await import("./actions");
+
     const state = await deletePageTranslationAction(
       null,
       translationForm({ translation_locale: "ja" })

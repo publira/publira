@@ -96,7 +96,9 @@ export const platformPolicyCacheTag = "platform:policy";
 export const platformRetentionDefaultsCacheTag = "platform:retention-defaults";
 
 type RawMinuteDay = Pick<MinuteDayLimit, "perDay" | "perMinute">;
+
 type RawHourDay = Pick<HourDayLimit, "perDay" | "perHour">;
+
 type RawCommunityLimitDefaults = Pick<
   CommunityLimitDefaults,
   | "commentPost"
@@ -108,6 +110,7 @@ type RawCommunityLimitDefaults = Pick<
   | "notificationSettings"
   | "viewerPreferences"
 >;
+
 type RawPlatformPolicy = Pick<
   RawPlatformPolicyMessage,
   | "communityLimitDefaults"
@@ -123,6 +126,7 @@ type RawPlatformPolicy = Pick<
   | "tenantCoinsAllowed"
   | "waitFreeTicketUse"
 >;
+
 type RawRetentionPeriods = Pick<
   RetentionPeriods,
   | "contentEventDays"
@@ -194,6 +198,7 @@ const readFailure = async (
 ): Promise<{ message: string; ok: false }> => {
   dropFailedCacheEntry();
   const t = await getMessagesFor(locale);
+
   return {
     message: rpcErrorMessage(error, t("platform.policy.load_failed"), {
       locale,
@@ -214,6 +219,7 @@ const getPlatformPolicyForLocale = async (
       {},
       withServiceHeaders()
     );
+
     return {
       ok: true,
       revision: String(response.revision),
@@ -234,6 +240,7 @@ export const getPlatformPolicy = async (): Promise<
   GetPlatformSettingsRowResult<PlatformPolicy>
 > => {
   await verifyPlatformSession();
+
   return getPlatformPolicyForLocale(await getPlatformLocale());
 };
 
@@ -249,6 +256,7 @@ const getPlatformRetentionDefaultsForLocale = async (
       {},
       withServiceHeaders()
     );
+
     return {
       ok: true,
       revision: String(response.revision),
@@ -267,6 +275,7 @@ export const getPlatformRetentionDefaults = async (): Promise<
   GetPlatformSettingsRowResult<PlatformRetentionDefaults>
 > => {
   await verifyPlatformSession();
+
   return getPlatformRetentionDefaultsForLocale(await getPlatformLocale());
 };
 
@@ -286,6 +295,7 @@ const saveFailure = async (
   rethrowUnauthenticatedRpcError(error);
   rethrowUnclassifiedRpcError(error);
   const t = await getMessagesFor(locale);
+
   // The same failed precondition as a stale revision, but about the install:
   // a server that cannot seal an authenticator secret refuses to require one
   // of every operator, since nobody could then finish signing in.
@@ -297,6 +307,7 @@ const saveFailure = async (
       ok: false,
     };
   }
+
   return {
     message: rpcErrorMessage(error, t("platform.policy.save_failed"), {
       locale,
@@ -324,8 +335,10 @@ const savePlatformPolicy = async (
   locale: Locale
 ): Promise<SavePlatformSettingsRowResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
@@ -334,6 +347,7 @@ const savePlatformPolicy = async (
       {},
       buildSessionHeaders(sessionId)
     );
+
     const { community, security } = edit(toPlatformPolicy(current.policy));
 
     await apiClient.policy.updatePlatformPolicy(
@@ -381,8 +395,10 @@ export const updatePlatformRetentionDefaults = async (
   locale: Locale
 ): Promise<SavePlatformSettingsRowResult> => {
   const sessionId = await resolveAccessToken();
+
   if (!sessionId) {
     const t = await getMessagesFor(locale);
+
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 

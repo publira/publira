@@ -13,6 +13,7 @@ const reads = vi.hoisted(() => ({
 vi.mock("./open-graph-card-subject", () => ({
   resolveOpenGraphCardText: reads.resolveOpenGraphCardText,
 }));
+
 vi.mock("./tenant", () => ({
   getTenantPublicOrigin: reads.getTenantPublicOrigin,
   getTenantSiteInfo: reads.getTenantSiteInfo,
@@ -35,6 +36,7 @@ const ONE_PIXEL_PNG = Buffer.from(
 /** Width and height from a PNG's IHDR chunk. */
 const pngSize = (bytes: Uint8Array) => {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
   return { height: view.getUint32(20), width: view.getUint32(16) };
 };
 

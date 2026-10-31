@@ -7,7 +7,9 @@
  */
 
 export { SEED_ADMIN, SEED_TENANT_TIME_ZONE } from "./admin-publish";
+
 export { SEED_MEMBER } from "./member-announcements";
+
 export { SEED_PLATFORM_SUPER_ADMIN } from "./platform-tenants";
 
 export const AUTH_E2E_SCENARIO = "040_auth_e2e";

@@ -12,9 +12,11 @@ export const ReaderStatusMessage = ({ status }: { status: ReaderStatus }) => {
     case "active": {
       return <Message message="admin.readers.status_active" />;
     }
+
     case "suspended": {
       return <Message message="admin.readers.status_suspended" />;
     }
+
     default: {
       return <Message message="admin.readers.status_inactive" />;
     }
@@ -27,13 +29,16 @@ export const readerStatusLabel = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   switch (status) {
     case "active": {
       return t("admin.readers.status_active");
     }
+
     case "suspended": {
       return t("admin.readers.status_suspended");
     }
+
     default: {
       return t("admin.readers.status_inactive");
     }
@@ -45,9 +50,11 @@ export const readerStatusTone = (status: ReaderStatus): BadgeTone => {
     case "active": {
       return "success";
     }
+
     case "suspended": {
       return "destructive";
     }
+
     default: {
       return "muted";
     }

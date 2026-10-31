@@ -40,10 +40,12 @@ type PurchasesPageProps = PageProps<"/[tenant_id]/purchases">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -66,10 +68,12 @@ const PurchasesContent = async ({
 }: Pick<PurchasesPageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
   const filters = parsePurchaseFilters(sp);
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const period = purchasePeriod(filters, timeZone);
   const now = Temporal.Now.instant();
 
@@ -88,11 +92,13 @@ const PurchasesContent = async ({
       : Promise.resolve<ListPurchasesResult | null>(null),
     listPaymentProviders(tenantId, locale),
   ]);
+
   if (listResult) {
     await redirectToLoginIfSessionRejected(listResult, providersResult);
   }
 
   let listErrorMessage: string | undefined;
+
   if (!listResult) {
     listErrorMessage = t("admin.purchases.period_invalid");
   } else if (!listResult.ok) {

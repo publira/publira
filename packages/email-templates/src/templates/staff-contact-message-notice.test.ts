@@ -70,6 +70,7 @@ describe("StaffContactMessageNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -96,6 +97,7 @@ describe("StaffContactMessageNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -113,6 +115,7 @@ describe("StaffContactMessageNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }
@@ -132,6 +135,7 @@ describe("StaffContactMessageNoticeEmail", () => {
     });
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) {
       return;
     }

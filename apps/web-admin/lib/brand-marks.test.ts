@@ -142,6 +142,7 @@ describe("brand-marks", () => {
       TenantBrandMarkKind.LINE_SHARE,
       "line_share"
     );
+
     mockListTenantBrandMarksApi.mockResolvedValueOnce({
       brandMarks: [
         storedMarkResponse(99 as TenantBrandMarkKind, "future_mark"),
@@ -204,6 +205,7 @@ describe("brand-marks", () => {
     const { uploadTenantBrandMark } = await import("./brand-marks");
 
     const imageData = new Uint8Array([1, 2, 3]);
+
     const result = await uploadTenantBrandMark(
       {
         imageContentType: "image/png",

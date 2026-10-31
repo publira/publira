@@ -119,15 +119,18 @@ const saveOverrides = async (
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
+
   const invalidArgument = (): string => {
     if (mentionsImageRejection(error)) {
       return t("admin.genres.image_invalid");
     }
+
     // A form opened before a language was switched off saves into a language
     // the site no longer offers.
     if (rpcErrorHasFieldViolation(error, "locale")) {
       return t("admin.genres.locale_not_offered");
     }
+
     return t("admin.genres.name_invalid", {
       count: String(CATALOG_NAME_MAX_LENGTH),
     });
@@ -174,6 +177,7 @@ const mapGenre = (genre: RawGenre): GenreItem => ({
         variantType: variant.variantType ?? "",
         width: variant.width ?? 0,
       };
+
       return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
         ? [mappedVariant]
         : [];
@@ -185,6 +189,7 @@ const mapGenre = (genre: RawGenre): GenreItem => ({
   slug: genre.slug ?? "",
   translations: (genre.translations ?? []).flatMap((translation) => {
     const code = parseLocale(translation.locale ?? "");
+
     return code ? [{ locale: code, name: translation.name ?? "" }] : [];
   }),
 });
@@ -197,8 +202,10 @@ const listGenresForTenant = async (
   cacheTag(genresCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   try {
     const genres: GenreItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.genre.listGenres(
@@ -209,6 +216,7 @@ const listGenresForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.genres ?? [],
           nextToken: response.nextToken ?? "",
@@ -223,6 +231,7 @@ const listGenresForTenant = async (
 
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         genres: [],
         message: t("admin.genres.list_failed"),
@@ -236,6 +245,7 @@ const listGenresForTenant = async (
     // request. The entry is dropped instead, so the list comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       genres: [],
       message: await mapErrorToMessage(
@@ -265,6 +275,7 @@ const listGenresForTenant = async (
  */
 export const listGenres = async (): Promise<ListGenresResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listGenresForTenant(tenantId, locale);
 };
 
@@ -278,6 +289,7 @@ export const getGenre = async (input: {
   publicId: string;
 }): Promise<GetGenreResult> => {
   const result = await listGenres();
+
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
@@ -285,6 +297,7 @@ export const getGenre = async (input: {
   const genre = result.genres.find(
     (candidate) => candidate.publicId === input.publicId
   );
+
   return genre ? { genre, ok: true } : { notFound: true, ok: false };
 };
 
@@ -301,6 +314,7 @@ export const createGenre = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -323,6 +337,7 @@ export const createGenre = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -356,6 +371,7 @@ export const updateGenre = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -382,6 +398,7 @@ export const updateGenre = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -406,6 +423,7 @@ const deleteGenreTranslation = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -419,13 +437,17 @@ const deleteGenreTranslation = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
+
     if (rpcErrorCode(error) === Code.NotFound) {
       return { ok: true };
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -447,10 +469,13 @@ const writeInTurn = async (
   >)[]
 ): Promise<SaveGenreNamesResult> => {
   const [write, ...rest] = writes;
+
   if (!write) {
     return { ok: true };
   }
+
   const result = await write();
+
   return result.ok ? writeInTurn(rest) : result;
 };
 
@@ -512,6 +537,7 @@ export const reorderGenres = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -533,6 +559,7 @@ export const reorderGenres = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -562,6 +589,7 @@ export const deleteGenre = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -579,6 +607,7 @@ export const deleteGenre = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -614,6 +643,7 @@ export const uploadGenreEyeCatchAspectImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -639,9 +669,11 @@ export const uploadGenreEyeCatchAspectImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     if (mentionsAspectImageRejection(error)) {
       return { imageRejected: true, ok: false };
     }
+
     return {
       message: await mapErrorToMessage(
         error,

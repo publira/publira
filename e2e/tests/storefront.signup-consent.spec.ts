@@ -33,8 +33,10 @@ const signupUrl = `${WEB_STOREFRONT_SIGNUP_CONSENT_BASE_URL}${storefrontPath("/s
 const sharedSignupUrl = `${WEB_STOREFRONT_SIGNUP_SHARED_CONSENT_BASE_URL}${storefrontPath("/signup")}`;
 
 const CONSENT_LABEL = "I have read and agree to the following.";
+
 const CONSENT_CHANGED_MESSAGE =
   "The pages to agree to have been updated. Read them and agree again.";
+
 const SIGNUP_SENT_MESSAGE =
   "We sent an email to the address you entered. Open it to continue.";
 

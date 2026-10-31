@@ -14,9 +14,11 @@ import { z } from "zod";
 export const RESET_PASSWORD_REQUESTED_EMAIL_COOKIE = profileCookieName(
   "publira_web_storefront_reset_password_email"
 );
+
 export const SIGNUP_PENDING_EMAIL_COOKIE = profileCookieName(
   "publira_web_storefront_signup_pending_email"
 );
+
 export const RESEND_VERIFICATION_REQUESTED_EMAIL_COOKIE = profileCookieName(
   "publira_web_storefront_resend_verification_email"
 );
@@ -38,6 +40,7 @@ export const emailFlashCookieOptions = {
 
 export const parseEmailFlashValue = (raw?: string): string => {
   const parsed = z.email().safeParse(raw?.trim() ?? "");
+
   return parsed.success ? parsed.data : "";
 };
 
@@ -57,5 +60,6 @@ export const readEmailFlashCookie = async (
   name: EmailFlashCookieName
 ): Promise<string> => {
   const cookieStore = await cookies();
+
   return parseEmailFlashValue(cookieStore.get(name)?.value);
 };

@@ -6,10 +6,12 @@ export {
   MultiComboboxInput as Input,
   MultiComboboxInputGroup as InputGroup,
 } from "./multi-combobox";
+
 export type {
   MultiComboboxItem as Item,
   MultiComboboxProps as RootProps,
 } from "./multi-combobox";
+
 export {
   ComboboxEmpty as Empty,
   ComboboxItems as Items,

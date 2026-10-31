@@ -22,9 +22,11 @@ const RefundReasonContext = createContext<RefundReasonContextValue | null>(
 
 const useRefundReason = (caller: string): RefundReasonContextValue => {
   const context = use(RefundReasonContext);
+
   if (!context) {
     throw new Error(`${caller} must be rendered inside a RefundReason.`);
   }
+
   return context;
 };
 

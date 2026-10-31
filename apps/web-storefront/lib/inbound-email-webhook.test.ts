@@ -41,6 +41,7 @@ const sendGridPost = () => {
     `--${SENDGRID_BOUNDARY}--`,
     "",
   ].join("\r\n");
+
   return {
     body,
     headers: {
@@ -299,17 +300,22 @@ describe("forwardInboundEmailWebhook", () => {
      */
     const streamedPost = (totalBytes: number) => {
       const read = { bytes: 0 };
+
       const body = new ReadableStream<Uint8Array>({
         pull(controller) {
           const size = Math.min(CHUNK_BYTES, totalBytes - read.bytes);
+
           if (size <= 0) {
             controller.close();
+
             return;
           }
+
           read.bytes += size;
           controller.enqueue(new Uint8Array(size));
         },
       });
+
       const request = new Request(
         "https://shop.example.test/api/v1/webhook/email/sendgrid",
         {
@@ -319,6 +325,7 @@ describe("forwardInboundEmailWebhook", () => {
           method: "POST",
         } as RequestInit
       );
+
       return { read, request };
     };
 
@@ -342,6 +349,7 @@ describe("forwardInboundEmailWebhook", () => {
 
     it("acknowledges a larger body without forwarding it or reading it to the end", async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
       const { read, request } = streamedPost(
         MAX_INBOUND_EMAIL_PAYLOAD_BYTES * 2
       );

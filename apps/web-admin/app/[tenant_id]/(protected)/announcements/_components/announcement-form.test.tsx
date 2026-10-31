@@ -107,6 +107,7 @@ describe("AnnouncementForm", () => {
         timeZone: "Asia/Tokyo",
       })
     );
+
     fillIn();
 
     expect(container.querySelector("input[name='pinned_until']")).toBeNull();
@@ -125,10 +126,12 @@ describe("AnnouncementForm", () => {
     await waitFor(() => {
       expect(action).toHaveBeenCalledOnce();
     });
+
     const [, formData] = action.mock.calls[0] as unknown as [
       CreateAnnouncementActionState,
       FormData,
     ];
+
     expect(formData.get("tenant_id")).toBe("TENANT001");
     expect(formData.get("pinned")).toBe("on");
     expect(formData.get("pinned_until")).toBe("2099-06-01T00:00:00Z");
@@ -157,11 +160,14 @@ describe("AnnouncementForm", () => {
       const checkbox = screen.getByRole("checkbox", {
         name: "Send to everyone",
       });
+
       // Off unless the editor turns it on.
       expect(checkbox.getAttribute("aria-checked")).toBe("false");
+
       if (checked) {
         fireEvent.click(checkbox);
       }
+
       fireEvent.click(
         screen.getByRole("button", { name: "Deliver the announcement" })
       );
@@ -169,10 +175,12 @@ describe("AnnouncementForm", () => {
       await waitFor(() => {
         expect(action).toHaveBeenCalledOnce();
       });
+
       const [, formData] = action.mock.calls[0] as unknown as [
         CreateAnnouncementActionState,
         FormData,
       ];
+
       expect(formData.get("delivery")).toBe(delivery);
     }
   );
@@ -237,10 +245,12 @@ describe("AnnouncementForm", () => {
     await waitFor(() => {
       expect(action).toHaveBeenCalledOnce();
     });
+
     const [, formData] = action.mock.calls[0] as unknown as [
       CreateAnnouncementActionState,
       FormData,
     ];
+
     // The tabs post in the row's order, the default language's with an empty
     // locale.
     expect(formData.getAll("translation_locale")).toEqual(["en", ""]);

@@ -29,6 +29,7 @@ export const parseForgotPasswordSearchParams = (
   input: ParseForgotPasswordSearchParamsInput
 ): ForgotPasswordSearchParams => {
   const parsed = forgotPasswordSearchParamsSchema.parse(input);
+
   return {
     defaultEmail: parsed.email,
     errorMessage: parsed.error || undefined,

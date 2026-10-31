@@ -43,6 +43,7 @@ const parseHexColor = (color: string): readonly [number, number, number] => [
 
 const linearizeColorComponent = (component: number): number => {
   const normalized = component / 255;
+
   return normalized <= 0.03928
     ? normalized / 12.92
     : ((normalized + 0.055) / 1.055) ** 2.4;
@@ -65,6 +66,7 @@ export const colorContrastRatio = (
 ): number => {
   const first = relativeLuminance(firstColor);
   const second = relativeLuminance(secondColor);
+
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 };
 
@@ -77,5 +79,6 @@ export const findThemeTextContrastIssues = (
       theme[pair.background],
       theme[pair.foreground]
     );
+
     return ratio >= THEME_TEXT_CONTRAST_MIN_RATIO ? [] : [{ ...pair, ratio }];
   });

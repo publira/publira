@@ -160,6 +160,7 @@ export const EpisodeCampaignPricesDialog = (
     <Dialog.Root
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
+
         if (nextOpen) {
           // A message, a price, or a period typed the last time does not
           // survive into the next campaign.

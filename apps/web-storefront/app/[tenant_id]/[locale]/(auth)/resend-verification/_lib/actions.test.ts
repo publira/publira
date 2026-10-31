@@ -34,9 +34,11 @@ vi.mock("#lib/tenant", () => ({
 
 const formData = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -73,6 +75,7 @@ describe("requestEmailVerificationAction", () => {
     mockRequestPublicEmailVerification.mockResolvedValueOnce(false);
 
     const { requestEmailVerificationAction } = await import("./actions");
+
     const result = await requestEmailVerificationAction(
       { message: "", ok: false },
       formData({ email, locale: "en", tenantId })

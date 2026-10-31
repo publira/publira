@@ -119,11 +119,13 @@ export const EpisodeBody = async ({
     getLocale(),
     resolveAccessToken(),
   ]);
+
   const subscription = {
     acceptsPayments,
     labelPublicId,
     seriesPublicId: series.publicId,
   };
+
   if (!sessionId) {
     return (
       <EpisodeGateFrame
@@ -174,6 +176,7 @@ export const EpisodeBody = async ({
     locale,
     checkoutSessionId
   );
+
   if (!viewer.ok) {
     return (
       <EpisodeBodyNotice>
@@ -192,9 +195,11 @@ export const EpisodeBody = async ({
       </EpisodeBodyNotice>
     );
   }
+
   if (!viewer.value) {
     notFound();
   }
+
   // A free body the age rule withheld from the shared read comes back as free
   // once the reader behind the bearer clears it, so both openings are read here.
   if (
@@ -234,6 +239,7 @@ export const EpisodeBody = async ({
   // coins are asked only where the episode is priced in them, which it is only
   // while the tenant offers them.
   const coinsOffered = episodeOffersCoins(episode);
+
   const [ticketState, coinBalance, coinSettings] = await Promise.all([
     waitFreeEpisodeEligible(waitFree, episode.id)
       ? getMyWaitFreeTicketState(tenantId, series.id, sessionId, locale)
@@ -241,6 +247,7 @@ export const EpisodeBody = async ({
     coinsOffered ? getMyCoinBalance(tenantId, locale) : undefined,
     coinsOffered ? getCoinSettings(tenantId, locale) : undefined,
   ]);
+
   const coinOffer = coinBalance
     ? toCoinOffer({
         acceptsPayments,

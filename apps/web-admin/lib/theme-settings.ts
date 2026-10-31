@@ -124,6 +124,7 @@ const parseErrorMessage = (
   locale: Locale
 ): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+
   return rpcErrorMessage(error, fallback, {
     locale,
     overrides: {
@@ -214,11 +215,13 @@ const toTenantThemeColors = (
 
   const theme = resolveTenantThemeColors(palette);
   const colors = { ...DEFAULT_TENANT_THEME_COLORS };
+
   for (const key of Object.keys(
     DEFAULT_TENANT_THEME_COLORS
   ) as (keyof TenantThemeColors)[]) {
     colors[key] = theme[key];
   }
+
   return colors;
 };
 
@@ -233,8 +236,10 @@ const getTenantThemeSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -268,6 +273,7 @@ const getTenantThemeSettingsForSession = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: parseErrorMessage(
         error,
@@ -304,6 +310,7 @@ export const getTenantThemeLogo = async (
 ): Promise<TenantBrandingImage | null> => {
   try {
     const result = await getTenantThemeSettings(tenantId, locale);
+
     return result.ok ? result.logo : null;
   } catch {
     return null;
@@ -318,7 +325,9 @@ export const updateTenantThemeSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -381,6 +390,7 @@ export const updateTenantThemeSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,
@@ -409,8 +419,10 @@ const getTenantDarkThemeSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -427,6 +439,7 @@ const getTenantDarkThemeSettingsForSession = async (
     return { darkTheme: toTenantThemeColors(response.darkTheme), ok: true };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: parseErrorMessage(
         error,
@@ -457,7 +470,9 @@ export const updateTenantDarkThemeSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -472,6 +487,7 @@ export const updateTenantDarkThemeSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,
@@ -491,7 +507,9 @@ export const deleteTenantDarkThemeSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -506,6 +524,7 @@ export const deleteTenantDarkThemeSettings = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,
@@ -525,7 +544,9 @@ export const uploadTenantIcon = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -550,6 +571,7 @@ export const uploadTenantIcon = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseIconErrorMessage(
         error,
@@ -569,7 +591,9 @@ export const deleteTenantIcon = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -590,6 +614,7 @@ export const deleteTenantIcon = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseIconErrorMessage(
         error,
@@ -609,7 +634,9 @@ export const uploadTenantLogo = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -634,6 +661,7 @@ export const uploadTenantLogo = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseLogoErrorMessage(
         error,
@@ -653,7 +681,9 @@ export const deleteTenantLogo = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -674,6 +704,7 @@ export const deleteTenantLogo = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseLogoErrorMessage(
         error,
@@ -693,7 +724,9 @@ export const uploadTenantSignInImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -718,6 +751,7 @@ export const uploadTenantSignInImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseSignInImageErrorMessage(
         error,
@@ -737,7 +771,9 @@ export const deleteTenantSignInImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -758,6 +794,7 @@ export const deleteTenantSignInImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await parseSignInImageErrorMessage(
         error,

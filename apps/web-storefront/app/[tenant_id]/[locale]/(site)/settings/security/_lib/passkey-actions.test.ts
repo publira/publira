@@ -55,6 +55,7 @@ const credential = '{"id":"credential","type":"public-key"}';
 
 const form = (values: Record<string, string>): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     locale: "en",
     tenantId,
@@ -62,6 +63,7 @@ const form = (values: Record<string, string>): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -69,6 +71,7 @@ const form = (values: Record<string, string>): FormData => {
 const lastFlash = (): { message: string; status: string } => {
   const path = mockRedirect.mock.calls.at(-1)?.[0] ?? "";
   const params = new URLSearchParams(path.slice(path.indexOf("?")));
+
   return {
     message: params.get("message") ?? "",
     status: params.get("status") ?? "",

@@ -31,6 +31,7 @@ type CreatorManagerProps = CursorPageHrefs & {
 
 const excerpt = (text: string, max = 56) => {
   const normalized = text.replaceAll(/\s+/gu, " ").trim();
+
   if (normalized.length <= max) {
     return normalized || "-";
   }
@@ -172,6 +173,7 @@ export const CreatorManager = async ({
 }: CreatorManagerProps) => {
   const t = await getMessagesFor(locale);
   const hasPageLinks = hasCursorPageLinks({ nextHref, previousHref });
+
   // Hide the pager on a failed fetch: tokens are empty then, and a bare
   // "previous/next" chrome next to the error looks like the list exists.
   const showPagination =

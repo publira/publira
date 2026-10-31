@@ -53,10 +53,12 @@ const PATH = "/analytics/revenue";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -110,24 +112,31 @@ const revenueValue = (
     case "date": {
       return row.date;
     }
+
     case "episode": {
       return row.episodeTitle;
     }
+
     case "gross": {
       return row.grossAmount;
     }
+
     case "net": {
       return row.netAmount;
     }
+
     case "purchase_count": {
       return row.purchaseCount;
     }
+
     case "refunded": {
       return row.refundedAmount;
     }
+
     case "series": {
       return row.seriesTitle;
     }
+
     default: {
       return column satisfies never;
     }
@@ -179,6 +188,7 @@ const RevenueTable = ({
 }) => {
   const sorted = (column: RevenueColumn) =>
     sort.column === column ? sort.order : null;
+
   const amount = (value: number) => formatPrice(value, { currency, locale });
   const columnCount = group === "episode" ? 6 : 5;
 
@@ -282,10 +292,12 @@ const RevenueContent = async ({
   searchParams,
 }: Pick<RevenuePageProps, "searchParams">) => {
   const [sp, tenantId] = await Promise.all([searchParams, getTenantId()]);
+
   const [locale, timeZone] = await Promise.all([
     getLocale(tenantId),
     getTenantDisplayTimeZone(tenantId),
   ]);
+
   const { from, to } = parsePeriodSearchParams(sp);
   const period = resolveAnalyticsPeriod({ from, to }, timeZone);
   const group = groupSchema.parse(sp.group);
@@ -299,11 +311,13 @@ const RevenueContent = async ({
       )}
     </PeriodForm>
   );
+
   if (!period.ok) {
     return <ConsoleSection.Stack>{form}</ConsoleSection.Stack>;
   }
 
   const dates = { end: period.end, start: period.start };
+
   const [daily, breakdown, t] = await Promise.all([
     getRevenueStats(tenantId, locale, { ...dates, group: "day" }),
     group === "day"
@@ -311,6 +325,7 @@ const RevenueContent = async ({
       : getRevenueStats(tenantId, locale, { ...dates, group }),
     getMessagesFor(locale),
   ]);
+
   await redirectToLoginIfSessionRejected(
     daily,
     ...(breakdown ? [breakdown] : [])
@@ -335,14 +350,18 @@ const RevenueContent = async ({
   }
 
   const rows = breakdown ?? daily;
+
   const amount = (value: number) =>
     formatPrice(value, { currency: daily.currency, locale });
+
   const query = { from, group: group === "day" ? "" : group, to };
+
   const hrefFor = (column: RevenueColumn) =>
     `${PATH}${buildQueryString({
       ...query,
       ...sortSearchParams(nextSort(sort, column, table.columns)),
     })}`;
+
   const groupHref = (target: RevenueGroup) =>
     `${PATH}${buildQueryString({
       ...query,

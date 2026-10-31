@@ -49,10 +49,12 @@ type AuditLogsPageProps = PageProps<"/[tenant_id]/audit-logs">;
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const tenantId = await getTenantId();
+
   const [locale, isAdmin] = await Promise.all([
     getLocale(tenantId),
     isSignedInTenantAdmin(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return {
@@ -136,6 +138,7 @@ const AuditLogsContent = async ({
         token: result.previousToken,
       })
     : "";
+
   const nextHref = result.nextToken
     ? buildQueryString({
         action: filters.action,

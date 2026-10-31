@@ -98,9 +98,11 @@ const submitButton = () =>
 
 const posted = (name: string) => {
   const { form } = submitButton();
+
   if (!form) {
     throw new Error("the save button belongs to no form");
   }
+
   return new FormData(form).get(name);
 };
 
@@ -284,6 +286,7 @@ describe("TenantSignInSettingsForm", () => {
   it("keeps the value typed and names the refused field beside it", async () => {
     const refusal =
       "Enter a client ID ending in .apps.googleusercontent.com, as the Google Cloud console shows it.";
+
     action.current = vi.fn((): Promise<ActionForm.State> =>
       Promise.resolve({
         fieldErrors: { iosClientId: refusal },
@@ -338,6 +341,7 @@ describe("TenantSignInSettingsForm", () => {
       "button",
       { name: "Copy the callback URL" }
     );
+
     expect(appleCopy?.matches(":disabled")).toBe(false);
     await act(() => {
       fireEvent.click(googleCopy as HTMLButtonElement);
@@ -373,6 +377,7 @@ describe("TenantSignInSettingsForm", () => {
     const [, androidCopy] = screen.getAllByRole<HTMLButtonElement>("button", {
       name: "Copy the callback URL",
     });
+
     await act(() => {
       fireEvent.click(androidCopy as HTMLButtonElement);
     });
@@ -416,6 +421,7 @@ describe("TenantSignInSettingsForm", () => {
     const copy = screen.getByRole<HTMLButtonElement>("button", {
       name: "Copy the sender address",
     });
+
     expect(copy.matches(":disabled")).toBe(false);
     await act(() => {
       fireEvent.click(copy);
@@ -496,6 +502,7 @@ describe("TenantSignInSettingsForm", () => {
         .getByRole<HTMLButtonElement>("button", { name: "Replace" })
         .matches(":disabled")
     ).toBe(true);
+
     // The provider switches are Base UI checkboxes, which say so with
     // `aria-disabled` instead.
     for (const provider of [
@@ -508,6 +515,7 @@ describe("TenantSignInSettingsForm", () => {
           .getAttribute("aria-disabled")
       ).toBe("true");
     }
+
     expect(
       screen.getByText(
         "Only a tenant administrator can change this setting. You have read-only access."

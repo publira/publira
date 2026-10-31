@@ -38,6 +38,7 @@ const readSeriesProgress = async (
 
   try {
     const result = await getMySeriesProgress(tenantId, seriesId, locale);
+
     return result.ok
       ? {
           finishedEpisodePublicIds: result.finishedEpisodePublicIds,
@@ -86,6 +87,7 @@ export const EpisodeReadMark = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
+
   const { finishedEpisodePublicIds, progress, signedIn } =
     await readSeriesProgress(tenantId, seriesId, locale);
 
@@ -132,6 +134,7 @@ export const EpisodeReadMarker = async ({
   tenantId: string;
 }) => {
   const locale = await getLocale();
+
   const { finishedEpisodePublicIds } = await readSeriesProgress(
     tenantId,
     seriesId,

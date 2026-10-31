@@ -1,4 +1,5 @@
 "use client";
+
 import { Checkbox } from "@publira/ui-components/checkbox";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -16,11 +17,13 @@ const ProviderEnabledContext =
 
 const useProviderEnabledState = () => {
   const context = use(ProviderEnabledContext);
+
   if (!context) {
     throw new Error(
       "ProviderEnabled slots must be rendered inside ProviderEnabled."
     );
   }
+
   return context;
 };
 

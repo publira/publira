@@ -69,6 +69,7 @@ const changePasswordForm = (
   overrides: Record<string, string> = {}
 ): FormData => {
   const data = new FormData();
+
   const values: Record<string, string> = {
     confirmPassword: newPassword,
     currentPassword,
@@ -77,9 +78,11 @@ const changePasswordForm = (
     tenantId,
     ...overrides,
   };
+
   for (const [name, value] of Object.entries(values)) {
     data.set(name, value);
   }
+
   return data;
 };
 
@@ -87,6 +90,7 @@ const changePasswordForm = (
 const lastFlash = (): { message: string; status: string } => {
   const path = mockRedirect.mock.calls.at(-1)?.[0] ?? "";
   const params = new URLSearchParams(path.slice(path.indexOf("?")));
+
   return {
     message: params.get("message") ?? "",
     status: params.get("status") ?? "",
@@ -201,6 +205,7 @@ const providerForm = (provider = "google"): FormData => {
   data.set("locale", "en");
   data.set("provider", provider);
   data.set("tenantId", tenantId);
+
   return data;
 };
 
@@ -303,6 +308,7 @@ describe("unlinkIdentityAction", () => {
 
 const emailChangeForm = (overrides: Record<string, string> = {}): FormData => {
   const data = new FormData();
+
   for (const [name, value] of Object.entries({
     currentEmail: "reader@example.com",
     locale: "en",
@@ -312,6 +318,7 @@ const emailChangeForm = (overrides: Record<string, string> = {}): FormData => {
   })) {
     data.set(name, value);
   }
+
   return data;
 };
 

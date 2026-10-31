@@ -46,6 +46,7 @@ describe("EpisodeGateFrame", () => {
       "/images/episodes/page_1/preview",
       "/images/episodes/page_2/preview",
     ]);
+
     for (const image of images) {
       expect(image.getAttribute("width")).toBe("226");
       expect(image.getAttribute("height")).toBe("320");
@@ -60,6 +61,7 @@ describe("EpisodeGateFrame", () => {
     );
 
     expect(screen.queryAllByRole("img")).toHaveLength(0);
+
     for (const image of container.querySelectorAll("img")) {
       expect(image.getAttribute("alt")).toBe("");
       expect(image.closest("[aria-hidden='true']")).not.toBeNull();

@@ -31,6 +31,7 @@ vi.mock("#components/message", () => ({
     values?: MessageValues;
   }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
+
 vi.mock("@publira/ui-components/combobox", () => ({
   Empty: () => null,
   Input: () => null,
@@ -110,6 +111,7 @@ const renderForm = (
       ),
     }
   );
+
 const postedCredits = () =>
   JSON.parse(
     document.querySelector<HTMLInputElement>('input[name="creator_credits"]')

@@ -50,11 +50,13 @@ const StorefrontNotificationBell = async ({
   moreHref: string;
 }) => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [defaultLocale, list, unread] = await Promise.all([
     getTenantLinkDefaultLocale(tenantId),
     listNotifications(tenantId, { limit: notificationMenuLimit, locale }),
     countUnreadNotifications(tenantId, locale),
   ]);
+
   let notificationContent = (
     <NotificationBell.Error>
       <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
@@ -199,10 +201,13 @@ const HeaderActions = async () => {
     getTenantId(),
     getLocale(),
   ]);
+
   const defaultLocale = await getTenantLinkDefaultLocale(tenantId);
+
   const hasSession = Boolean(
     cookieStore.get(PUBLIC_SESSION_COOKIE_NAME)?.value
   );
+
   const moreHref = withLocalePrefix(locale, defaultLocale, "/notifications");
 
   // Signing in and signing up are the pair the phone band hands to the drawer,
@@ -291,6 +296,7 @@ const HeaderActions = async () => {
  */
 const TenantFooterLinks = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   const [defaultLocale, links, t, googleTag] = await Promise.all([
     getTenantLinkDefaultLocale(tenantId),
     listPublishedPageLinks(tenantId, locale),
@@ -529,6 +535,7 @@ const TenantBrand = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
   const tenantInfo = await getTenantSiteInfo(tenantId);
   const variant = resolveTenantLogoVariant(tenantInfo);
+
   if (!variant) {
     return tenantInfo?.name.trim() || undefined;
   }

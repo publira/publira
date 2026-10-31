@@ -118,6 +118,7 @@ const mapVolume = (volume: RawVolume): VolumeItem => ({
       variantType: variant.variantType ?? "",
       width: variant.width ?? 0,
     };
+
     return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
       ? [mappedVariant]
       : [];
@@ -140,16 +141,20 @@ const saveOverrides = async (
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
+
   const invalidArgument = (): string => {
     if (rpcErrorHasFieldViolation(error, "currency")) {
       return t("admin.series.episodes.currency_changed");
     }
+
     if (rpcErrorHasFieldViolation(error, "title")) {
       return t("admin.series.volumes.validation.title_invalid");
     }
+
     if (rpcErrorHasFieldViolation(error, "price")) {
       return t("admin.series.volumes.validation.price_invalid");
     }
+
     return t("errors.validation");
   };
 
@@ -168,8 +173,10 @@ const listVolumesForSession = async (
   cacheTag(volumesCacheTag(input.tenantId, input.seriesId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -193,6 +200,7 @@ const listVolumesForSession = async (
     // request. The entry is dropped instead, so the list comes back as soon
     // as the API does, and an unexpected failure is thrown by the caller.
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(error, t("admin.series.volumes.list_failed"), {
         locale,
@@ -235,6 +243,7 @@ export const getVolume = async (
   locale: Locale
 ): Promise<GetVolumeResult> => {
   const result = await listVolumes(input, locale);
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -246,6 +255,7 @@ export const getVolume = async (
   const volume = result.volumes.find(
     (candidate) => candidate.publicId === input.publicId
   );
+
   return volume
     ? { ok: true, volume, volumes: result.volumes }
     : { notFound: true, ok: false };
@@ -276,12 +286,14 @@ const writeVolume = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
     const response = await write(sessionId);
+
     if (!response.volume?.id?.trim()) {
       return { message: failure.fallback(t), ok: false };
     }
@@ -290,6 +302,7 @@ const writeVolume = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(error, failure.fallback(t), {
         locale,
@@ -325,6 +338,7 @@ export const createVolume = (
       fallback: (t) => t("admin.series.volumes.save_failed"),
       overrides: async (error) => {
         const t = await getMessagesFor(locale);
+
         return {
           ...(await saveOverrides(error, locale)),
           "not-found": t("admin.series.volumes.series_not_found"),
@@ -384,6 +398,7 @@ export const publishVolume = (
       fallback: (t) => t("admin.series.volumes.sale.failed"),
       overrides: async () => {
         const t = await getMessagesFor(locale);
+
         return {
           "not-found": t("admin.series.volumes.not_found"),
           precondition: t("admin.series.volumes.sale.no_episodes"),
@@ -419,6 +434,7 @@ export const setVolumeEpisodes = (
       fallback: (t) => t("admin.series.volumes.episodes.save_failed"),
       overrides: async () => {
         const t = await getMessagesFor(locale);
+
         return {
           "invalid-argument": t("admin.series.volumes.episodes.invalid"),
           "not-found": t("admin.series.volumes.not_found"),
@@ -450,6 +466,7 @@ export const reorderVolumes = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -469,6 +486,7 @@ export const reorderVolumes = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -492,6 +510,7 @@ const coverOverrides = async (
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
+
   return {
     "invalid-argument": t("admin.series.volumes.cover.image_invalid"),
     "not-found": t("admin.series.volumes.not_found"),

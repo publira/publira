@@ -30,11 +30,13 @@ export const setPlatformLocaleAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = localeFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: { kind: "value", name: LOCALE_FIELD_NAME },
     })
   );
+
   if (!parsed.success) {
     return;
   }

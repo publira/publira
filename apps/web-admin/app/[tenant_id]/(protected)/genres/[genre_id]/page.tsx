@@ -69,6 +69,7 @@ const EditGenreTitle = async ({
   searchParams,
 }: Pick<EditGenrePageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.genres.eye_catch_title" />
   ) : (
@@ -80,6 +81,7 @@ const EditGenreDescription = async ({
   searchParams,
 }: Pick<EditGenrePageProps, "searchParams">) => {
   const activeTab = await resolveActiveTab(searchParams);
+
   return activeTab === "eye-catch" ? (
     <Message message="admin.genres.eye_catch_description" />
   ) : (
@@ -95,7 +97,9 @@ const EditGenreTabNav = async ({
     params,
     resolveActiveTab(searchParams),
   ]);
+
   const parsedParams = parseRouteParams(editGenreParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
@@ -112,7 +116,9 @@ const EditGenreFormData = async ({
     resolveActiveTab(searchParams),
     getTenantId(),
   ]);
+
   const parsedParams = parseRouteParams(editGenreParamsSchema, rawParams);
+
   if (!parsedParams) {
     notFound();
   }
@@ -165,6 +171,7 @@ const EditGenreFormData = async ({
     getLocale(tenantId),
     findTenantLocales(tenantId),
   ]);
+
   const t = await getMessagesFor(locale);
 
   return (

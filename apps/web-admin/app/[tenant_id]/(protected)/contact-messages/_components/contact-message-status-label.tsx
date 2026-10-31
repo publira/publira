@@ -16,9 +16,11 @@ export const ContactMessageStatusMessage = ({
     case "handled": {
       return <Message message="admin.contact_messages.status_handled" />;
     }
+
     case "in_progress": {
       return <Message message="admin.contact_messages.status_in_progress" />;
     }
+
     default: {
       return <Message message="admin.contact_messages.status_unhandled" />;
     }
@@ -31,13 +33,16 @@ export const contactMessageStatusLabel = async (
   locale: Locale
 ): Promise<string> => {
   const t = await getMessagesFor(locale);
+
   switch (status) {
     case "handled": {
       return t("admin.contact_messages.status_handled");
     }
+
     case "in_progress": {
       return t("admin.contact_messages.status_in_progress");
     }
+
     default: {
       return t("admin.contact_messages.status_unhandled");
     }
@@ -56,9 +61,11 @@ export const contactMessageStatusTone = (
     case "handled": {
       return "success";
     }
+
     case "in_progress": {
       return "info";
     }
+
     default: {
       return "warning";
     }

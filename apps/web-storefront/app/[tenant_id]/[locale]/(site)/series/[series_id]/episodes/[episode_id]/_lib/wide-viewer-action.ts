@@ -20,10 +20,12 @@ export const saveWideViewerAction = async (
   wideViewerEnabled: unknown
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = saveWideViewerInputSchema.safeParse({
     tenantId,
     wideViewerEnabled,
   });
+
   if (!parsed.success) {
     return;
   }

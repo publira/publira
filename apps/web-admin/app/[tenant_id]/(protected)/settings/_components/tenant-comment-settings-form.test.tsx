@@ -27,6 +27,7 @@ const { save } = vi.hoisted(() => ({
 vi.mock("../_lib/actions", () => ({
   updateTenantCommentSettingsAction: (_state: unknown, formData: FormData) => {
     save.formData = formData;
+
     return save.current.promise;
   },
 }));
@@ -80,6 +81,7 @@ describe("TenantCommentSettingsForm", () => {
     const radios = screen.getAllByRole("radio");
 
     expect(radios).toHaveLength(3);
+
     const approvalRadio = await screen.findByRole("radio", {
       name: /Publish after approval/u,
     });
@@ -158,6 +160,7 @@ describe("TenantCommentSettingsForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(thresholdInput().matches(":disabled")).toBe(true);
     expect(submitButton().disabled).toBe(true);
     expect(
@@ -179,6 +182,7 @@ describe("TenantCommentSettingsForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBe("true");
     }
+
     expect(thresholdInput().matches(":disabled")).toBe(true);
     expect(submitButton().disabled).toBe(true);
     expect(
@@ -208,6 +212,7 @@ describe("TenantCommentSettingsForm", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.getAttribute("aria-disabled")).toBeNull();
     }
+
     expect(thresholdInput().matches(":disabled")).toBe(false);
 
     fireEvent.click(submitButton());
@@ -216,6 +221,7 @@ describe("TenantCommentSettingsForm", () => {
       for (const radio of screen.getAllByRole("radio")) {
         expect(radio.getAttribute("aria-disabled")).toBe("true");
       }
+
       expect(thresholdInput().matches(":disabled")).toBe(true);
     });
   });

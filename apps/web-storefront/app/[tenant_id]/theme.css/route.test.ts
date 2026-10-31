@@ -52,6 +52,7 @@ const toCssProperty = (key: string): string => {
   const kebab = key
     .replace(/Color$/u, "")
     .replaceAll(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`);
+
   return `--publira-color-${kebab}`;
 };
 
@@ -69,13 +70,16 @@ const COLOR_KEY_BY_PROPERTY = new Map(
  */
 const paletteIn = (block: string): TenantThemeColors => {
   const palette = { ...DEFAULT_TENANT_THEME_COLORS };
+
   for (const declaration of block.split(";")) {
     const [property = "", value = ""] = declaration.split(":");
     const key = COLOR_KEY_BY_PROPERTY.get(property);
+
     if (key) {
       palette[key] = value;
     }
   }
+
   return palette;
 };
 
@@ -91,6 +95,7 @@ const requestThemeCss = async () => {
     new NextRequest("https://shop.example.test/theme.css"),
     { params: Promise.resolve({ tenant_id: TENANT_ID }) }
   );
+
   return response.text();
 };
 

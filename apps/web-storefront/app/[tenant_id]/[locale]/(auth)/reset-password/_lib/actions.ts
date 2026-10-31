@@ -35,10 +35,12 @@ export const requestPasswordResetAction = async (
   // The locale field falls back rather than failing, so a rejected submission
   // is still worded in the reader's language.
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     requestPasswordResetFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       email: "value",
@@ -46,6 +48,7 @@ export const requestPasswordResetAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -55,6 +58,7 @@ export const requestPasswordResetAction = async (
 
   const { email, locale, tenantId } = parsed.data;
   const requested = await requestPublicPasswordReset(email, tenantId);
+
   if (!requested) {
     return {
       message: t("storefront.auth.errors.reset_request_failed"),
@@ -63,10 +67,12 @@ export const requestPasswordResetAction = async (
   }
 
   await setEmailFlashCookie(RESET_PASSWORD_REQUESTED_EMAIL_COOKIE, email);
+
   const requestedPath = await tenantLocalePath(
     tenantId,
     locale,
     "/reset-password/requested"
   );
+
   redirect(requestedPath);
 };

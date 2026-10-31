@@ -17,6 +17,7 @@ const PolicyOverrideContext = createContext<PolicyOverrideContextValue | null>(
 
 const usePolicyOverride = () => {
   const context = use(PolicyOverrideContext);
+
   if (!context) {
     throw new Error("Rendered outside a PolicyOverrideGroup.");
   }

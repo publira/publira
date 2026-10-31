@@ -31,6 +31,7 @@ const parseErrorMessage = (
   locale: Locale
 ): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+
   return rpcErrorMessage(error, fallback, {
     locale,
     overrides: { "invalid-argument": serverMessage },
@@ -49,11 +50,13 @@ export const getTenantTimezone = async (
   locale: Locale
 ): Promise<GetTenantTimezoneResult> => {
   const info = await getTenantPublicInfo(tenantId);
+
   if (info?.timezone) {
     return { ok: true, timezone: info.timezone };
   }
 
   const t = await getMessagesFor(locale);
+
   return {
     message: t("admin.settings.timezone.load_failed"),
     ok: false,
@@ -77,6 +80,7 @@ export const getTenantDisplayTimeZone = async (
   tenantId: string
 ): Promise<string> => {
   const info = await getTenantPublicInfo(tenantId);
+
   return info?.timezone ?? DEFAULT_TIME_ZONE;
 };
 
@@ -91,7 +95,9 @@ export const updateTenantTimezone = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -112,6 +118,7 @@ export const updateTenantTimezone = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,

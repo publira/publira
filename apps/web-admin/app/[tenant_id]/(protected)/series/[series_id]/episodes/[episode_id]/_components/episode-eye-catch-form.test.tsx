@@ -113,10 +113,12 @@ describe("EpisodeEyeCatchForm", () => {
         expect(control.disabled).toBe(true);
       }
     });
+
     const [, formData] = pendingAction.mock.calls[0] as unknown as [
       EpisodeEditActionState,
       FormData,
     ];
+
     expect(formData.get("tenant_id")).toBe("TENANT001");
     expect(formData.get("episode_id")).toBe("episode-1");
     expect(formData.get("current_eye_catch_image_updated_at")).toBe(
@@ -147,10 +149,12 @@ describe("EpisodeEyeCatchForm", () => {
     await waitFor(() => {
       expect(pendingAction).toHaveBeenCalled();
     });
+
     const [, formData] = pendingAction.mock.calls[0] as unknown as [
       EpisodeEditActionState,
       FormData,
     ];
+
     expect(formData.get("clear_eye_catch_image")).toBe("1");
   });
 });

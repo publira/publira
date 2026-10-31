@@ -82,12 +82,15 @@ const toServingMode = (
     case RpcGoogleTagServingMode.GOOGLE: {
       return "google";
     }
+
     case RpcGoogleTagServingMode.SERVER_CONTAINER: {
       return "server_container";
     }
+
     case RpcGoogleTagServingMode.GATEWAY: {
       return "gateway";
     }
+
     default: {
       return undefined;
     }
@@ -101,9 +104,11 @@ const toRpcServingMode = (
     case "server_container": {
       return RpcGoogleTagServingMode.SERVER_CONTAINER;
     }
+
     case "gateway": {
       return RpcGoogleTagServingMode.GATEWAY;
     }
+
     default: {
       return RpcGoogleTagServingMode.GOOGLE;
     }
@@ -122,9 +127,11 @@ const toConsentMode = (
     case RpcGoogleTagConsentMode.OPT_IN: {
       return "opt_in";
     }
+
     case RpcGoogleTagConsentMode.EXTERNAL: {
       return "external";
     }
+
     default: {
       return "not_required";
     }
@@ -138,9 +145,11 @@ const toRpcConsentMode = (
     case "opt_in": {
       return RpcGoogleTagConsentMode.OPT_IN;
     }
+
     case "external": {
       return RpcGoogleTagConsentMode.EXTERNAL;
     }
+
     default: {
       return RpcGoogleTagConsentMode.NOT_REQUIRED;
     }
@@ -151,9 +160,11 @@ const toTenantAnalyticsSettings = (
   settings: RawTenantAnalyticsSettings | undefined
 ): TenantAnalyticsSettings | undefined => {
   const servingMode = toServingMode(settings?.servingMode);
+
   if (servingMode === undefined) {
     return undefined;
   }
+
   return {
     consentMode: toConsentMode(settings?.consentMode),
     ga4MeasurementId: settings?.ga4MeasurementId ?? "",
@@ -173,8 +184,10 @@ const getTenantAnalyticsSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -189,18 +202,23 @@ const getTenantAnalyticsSettingsForSession = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     const settings = toTenantAnalyticsSettings(response.settings);
+
     if (settings === undefined) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.settings.google_tag.load_failed"),
         ok: false,
         requiresSignIn: false,
       };
     }
+
     return { ok: true, settings };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -233,6 +251,7 @@ const refusedFieldErrors = (
   t: Awaited<ReturnType<typeof getMessagesFor>>
 ): TenantAnalyticsSettingsFieldErrors | undefined => {
   const fieldErrors: TenantAnalyticsSettingsFieldErrors = {};
+
   if (rpcErrorHasFieldViolation(error, "settings.ga4_measurement_id")) {
     fieldErrors.ga4MeasurementId = /^ua-/iu.test(
       input.settings.ga4MeasurementId
@@ -240,6 +259,7 @@ const refusedFieldErrors = (
       ? t("admin.settings.google_tag.validation.universal_analytics_id")
       : t("admin.settings.google_tag.validation.measurement_id_invalid");
   }
+
   if (rpcErrorHasFieldViolation(error, "settings.gtm_container_id")) {
     fieldErrors.gtmContainerId =
       input.settings.gtmContainerId === "" &&
@@ -247,21 +267,25 @@ const refusedFieldErrors = (
         ? t("admin.settings.google_tag.validation.container_id_required")
         : t("admin.settings.google_tag.validation.container_id_invalid");
   }
+
   if (rpcErrorHasFieldViolation(error, "settings.serving_mode")) {
     fieldErrors.servingMode = t(
       "admin.settings.google_tag.validation.serving_mode_invalid"
     );
   }
+
   if (rpcErrorHasFieldViolation(error, "settings.consent_mode")) {
     fieldErrors.consentMode = t(
       "admin.settings.google_tag.validation.consent_mode_invalid"
     );
   }
+
   if (rpcErrorHasFieldViolation(error, "settings.server_container_url")) {
     fieldErrors.serverContainerUrl = input.settings.serverContainerUrl
       ? t("admin.settings.google_tag.validation.server_container_url_invalid")
       : t("admin.settings.google_tag.validation.server_container_url_required");
   }
+
   return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
 };
 
@@ -274,7 +298,9 @@ export const updateTenantAnalyticsSettings = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -295,21 +321,26 @@ export const updateTenantAnalyticsSettings = async (
         },
         withSessionHeaders(sessionId)
       );
+
     const settings = toTenantAnalyticsSettings(response.settings);
+
     if (settings === undefined) {
       return {
         message: t("admin.settings.google_tag.save_failed"),
         ok: false,
       };
     }
+
     return { ok: true, settings };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const fieldErrors = refusedFieldErrors(error, input, t);
+
     if (fieldErrors) {
       return { fieldErrors, message: t("errors.validation"), ok: false };
     }
+
     return {
       message: rpcErrorMessage(
         error,

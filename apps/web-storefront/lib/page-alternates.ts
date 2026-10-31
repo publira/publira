@@ -8,5 +8,6 @@ export const getPageAlternates = async (
   href: string
 ): Promise<LocaleAlternates | undefined> => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
   return tenantLocaleAlternates(tenantId, locale, href);
 };

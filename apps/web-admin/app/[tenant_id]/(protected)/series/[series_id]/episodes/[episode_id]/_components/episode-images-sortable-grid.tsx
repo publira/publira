@@ -51,6 +51,7 @@ export const EpisodeImagesSortableGrid = ({
   const router = useRouter();
   const { add } = Toast.useManager();
   const [isPending, startTransition] = useTransition();
+
   const [optimisticItems, setOptimisticItems] = useOptimistic(
     images,
     (_currentItems, nextItems: EpisodeImageItem[]) => nextItems
@@ -64,8 +65,10 @@ export const EpisodeImagesSortableGrid = ({
       formData.set("episode_id", episodeId);
       formData.set("episode_public_id", episodePublicId);
       formData.set("ordered_image_ids", JSON.stringify(nextItems.map(imageId)));
+
       try {
         const result = await reorderAction(formData);
+
         if (!result.ok) {
           add({
             title:
@@ -73,6 +76,7 @@ export const EpisodeImagesSortableGrid = ({
             type: "error",
           });
           router.refresh();
+
           return;
         }
 
@@ -105,6 +109,7 @@ export const EpisodeImagesSortableGrid = ({
     (event: DragEndEvent) => {
       const currentItems = optimisticItems;
       const movedItems = Sortable.withItemMoved(currentItems, imageId, event);
+
       if (movedItems === currentItems) {
         return;
       }

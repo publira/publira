@@ -21,7 +21,9 @@ export default defineConfig({
               if (!id.endsWith(BYTES_QUERY)) {
                 return null;
               }
+
               const data = await readFile(id.slice(0, -BYTES_QUERY.length));
+
               return `export default Uint8Array.from(atob(${JSON.stringify(data.toString("base64"))}), (character) => character.charCodeAt(0));`;
             },
             name: "bytes-imports",

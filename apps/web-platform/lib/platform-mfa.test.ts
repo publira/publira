@@ -122,6 +122,7 @@ describe("getPlatformMfaStatus", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {
       // Asserted below.
     });
+
     const error = new ConnectError("boom", Code.Internal);
     mockGetMfaStatus.mockRejectedValueOnce(error);
 

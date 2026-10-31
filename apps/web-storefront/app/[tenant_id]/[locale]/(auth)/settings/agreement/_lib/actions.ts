@@ -57,10 +57,12 @@ export const agreeToLegalPagesAction = async (
 ): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
+
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
     agreementFormSchema(submittedLocale),
   ]);
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       agreedPageVersionIds: "values",
@@ -70,6 +72,7 @@ export const agreeToLegalPagesAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale: submittedLocale }),
@@ -79,10 +82,12 @@ export const agreeToLegalPagesAction = async (
 
   const { agreedPageVersionIds, locale, tenantId } = parsed.data;
   const returnTo = legalPageAgreementReturnTo(parsed.data.returnTo);
+
   const agreementPath = legalPageAgreementHref(
     LEGAL_PAGE_AGREEMENT_PATH,
     returnTo
   );
+
   const accessToken = await requirePublicSession(
     locale,
     agreementPath,
@@ -90,6 +95,7 @@ export const agreeToLegalPagesAction = async (
   );
 
   let outcome: Awaited<ReturnType<typeof agreeToLegalPages>>;
+
   try {
     outcome = await withPublicSessionReauth(
       locale,
@@ -100,6 +106,7 @@ export const agreeToLegalPagesAction = async (
     );
   } catch (error) {
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -112,6 +119,7 @@ export const agreeToLegalPagesAction = async (
 
   if (outcome === "changed") {
     refresh();
+
     return { message: t("storefront.auth.errors.consent_changed"), ok: false };
   }
 

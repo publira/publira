@@ -71,8 +71,10 @@ const getTenantFcmSettingsForSession = async (
 
   const t = await getMessagesFor(locale);
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     dropFailedCacheEntry();
+
     return {
       message: t("errors.rpc.unauthenticated"),
       ok: false,
@@ -87,9 +89,11 @@ const getTenantFcmSettingsForSession = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, settings: toTenantFcmSettings(response.settings) };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: rpcErrorMessage(
         error,
@@ -134,7 +138,9 @@ export const saveTenantFcmCredentials = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = input.tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -148,10 +154,12 @@ export const saveTenantFcmCredentials = async (
       },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, settings: toTenantFcmSettings(response.settings) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,
@@ -181,7 +189,9 @@ export const deleteTenantFcmCredentials = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId || !sessionId) {
     return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
@@ -191,10 +201,12 @@ export const deleteTenantFcmCredentials = async (
       { tenant: { tenantId: normalizedTenantId } },
       withSessionHeaders(sessionId)
     );
+
     return { ok: true, settings: toTenantFcmSettings(response.settings) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: rpcErrorMessage(
         error,

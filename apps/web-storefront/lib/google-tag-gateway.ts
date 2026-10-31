@@ -58,22 +58,30 @@ export const toGoogleTagGateway = (
   if (tag?.servingMode !== GoogleTagServingMode.GATEWAY) {
     return null;
   }
+
   const path = tag.gatewayPath?.trim() ?? "";
+
   const tagId =
     tag.gtmContainerId?.trim() || tag.ga4MeasurementId?.trim() || "";
+
   if (gatewayPathSegmentOf(`/${path}`) !== path || !tagId) {
     return null;
   }
+
   const serverContainerUrl = tag.serverContainerUrl?.trim() ?? "";
+
   if (!serverContainerUrl) {
     return { path, upstream: { mode: "google", tagId } };
   }
+
   let origin: URL;
+
   try {
     origin = new URL(serverContainerUrl);
   } catch {
     return null;
   }
+
   return origin.protocol === "https:"
     ? { path, upstream: { mode: "server_container", origin: origin.origin } }
     : null;
@@ -103,34 +111,42 @@ export const createGoogleTagGatewayResolver = (
 ) => {
   const now = options?.now ?? (() => Temporal.Now.instant().epochMilliseconds);
   const readRevalidatedAt = options?.readRevalidatedAt ?? readTagRevalidatedAt;
+
   const cache = new LRUCache<string, GatewayEntry>({
     max: options?.max ?? 500,
     ttl: options?.ttl ?? 60_000,
   });
+
   const inFlight = new Map<string, Promise<GatewayEntry | null>>();
 
   const read = async (tenantId: string): Promise<GatewayEntry | null> => {
     const readAt = now();
+
     try {
       const response = await publicApiClient.tenant.getTenantAnalyticsSettings({
         tenant: { tenantId },
       });
+
       const entry = { gateway: toGoogleTagGateway(response.googleTag), readAt };
       cache.set(tenantId, entry);
+
       return entry;
     } catch (error) {
       // A failure the client cannot classify is reported rather than taken for
       // a tenant with no gateway, which would send its path to the 404.
       rethrowUnclassifiedRpcError(error);
+
       return null;
     }
   };
 
   const readOnce = (tenantId: string) => {
     const pending = inFlight.get(tenantId);
+
     if (pending) {
       return pending;
     }
+
     const started = (async () => {
       try {
         return await read(tenantId);
@@ -138,7 +154,9 @@ export const createGoogleTagGatewayResolver = (
         inFlight.delete(tenantId);
       }
     })();
+
     inFlight.set(tenantId, started);
+
     return started;
   };
 
@@ -150,9 +168,11 @@ export const createGoogleTagGatewayResolver = (
     tenantId: string
   ): Promise<GoogleTagGateway | null> {
     const cached = cache.get(tenantId);
+
     const revalidatedAt = await readRevalidatedAt(
       tenantAnalyticsSettingsTag(tenantId)
     );
+
     // `undefined` is a Redis that cannot be read; the entry's TTL covers it.
     if (
       cached &&
@@ -162,6 +182,7 @@ export const createGoogleTagGatewayResolver = (
     }
 
     const entry = await readOnce(tenantId);
+
     // A failed read keeps the gateway that was held rather than dropping the
     // tag's requests to the 404 until the API answers again.
     return entry ? entry.gateway : (cached?.gateway ?? null);

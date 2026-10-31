@@ -53,6 +53,7 @@ test.describe("web-admin contact inbox", () => {
         name: CONTACT_INBOX_FROM_READER.subject,
       }),
     });
+
     await expect(
       fromReader.getByRole("link", {
         name: CONTACT_INBOX_FROM_READER.senderName,
@@ -74,6 +75,7 @@ test.describe("web-admin contact inbox", () => {
         name: CONTACT_INBOX_FROM_GUEST.replyToEmail,
       }),
     });
+
     await expect(fromGuest.getByText("Guest", { exact: true })).toBeVisible();
     await expect(
       fromGuest.getByRole("link", { exact: true, name: "No subject" })
@@ -178,6 +180,7 @@ test.describe("web-admin contact inbox", () => {
     const exchange = page.getByRole("list").filter({
       has: page.getByText(`Reply from ${CONTACT_INBOX_HANDLED.replyFromEmail}`),
     });
+
     await expect(exchange.getByRole("listitem")).toHaveText([
       new RegExp(
         `^Answer from ${SEED_ADMIN.name}.*${CONTACT_INBOX_HANDLED.answer}$`,
@@ -195,6 +198,7 @@ test.describe("web-admin contact inbox", () => {
   }) => {
     const answer =
       "We do: search for Publira Reader in your phone's app store.";
+
     await clearMessagesTo(CONTACT_INBOX_FROM_GUEST.replyToEmail);
     await signInAsSeedAdmin(
       page,
@@ -225,9 +229,11 @@ test.describe("web-admin contact inbox", () => {
         "The answer has been saved and will be mailed to the reader."
       )
     ).toBeVisible();
+
     const entry = page
       .getByRole("listitem")
       .filter({ hasText: `Answer from ${SEED_ADMIN.name}` });
+
     await expect(entry).toContainText(answer);
     await expect(message.getByText("Handled", { exact: true })).toBeVisible();
     await expect(
@@ -245,12 +251,14 @@ test.describe("web-admin contact inbox", () => {
       .first()
       .click();
     await expect(page).toHaveURL(/\/contact-messages$/u);
+
     const answered = page.getByRole("row").filter({
       has: page.getByRole("cell", {
         exact: true,
         name: CONTACT_INBOX_FROM_GUEST.replyToEmail,
       }),
     });
+
     await expect(answered.getByText("Answered")).toBeVisible();
   });
 });

@@ -42,6 +42,7 @@ const GenreManagerSkeleton = () => (
 
 const GenreManagerData = async () => {
   const tenantId = await getTenantId();
+
   const [locale, listResult, canEdit, tenantLocales] = await Promise.all([
     getLocale(tenantId),
     listGenres(),

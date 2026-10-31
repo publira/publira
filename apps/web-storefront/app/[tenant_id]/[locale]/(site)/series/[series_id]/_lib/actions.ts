@@ -57,12 +57,15 @@ const startCheckout = async (
   // Guard crafted form posts as well as the hidden controls. A failed
   // availability read is not permission to attempt Checkout.
   const tenant = await getTenantSiteInfo(tenantId);
+
   if (!tenant?.acceptsPayments) {
     redirect(await tenantLocalePath(tenantId, locale, returnTo));
   }
+
   const sessionId = await requirePublicSession(locale, returnTo, tenantId);
 
   let checkoutURL = "";
+
   try {
     const response = await start(sessionId);
     checkoutURL = response.checkoutUrl.trim();
@@ -70,6 +73,7 @@ const startCheckout = async (
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
+
     if (
       isRpcError(
         error,
@@ -80,13 +84,16 @@ const startCheckout = async (
     ) {
       redirect(await tenantLocalePath(tenantId, locale, returnTo));
     }
+
     rethrowUnclassifiedRpcError(error);
   }
+
   if (!checkoutURL) {
     redirect(
       await tenantLocalePath(tenantId, locale, `${returnTo}?checkout=error`)
     );
   }
+
   redirect(checkoutURL);
 };
 
@@ -95,6 +102,7 @@ export const startVolumeCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = volumeCheckoutFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -103,6 +111,7 @@ export const startVolumeCheckoutAction = async (
       volumeId: "value",
     })
   );
+
   if (!parsed.success) {
     redirect("/");
   }
@@ -124,6 +133,7 @@ export const startSeriesRemainderCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
+
   const parsed = remainderCheckoutFormSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -132,6 +142,7 @@ export const startSeriesRemainderCheckoutAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     redirect("/");
   }

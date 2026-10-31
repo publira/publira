@@ -14,12 +14,15 @@ export const TicketStatusLabel = ({ status }: { status: string }) => {
     case "active": {
       return <Message message="admin.access_tickets.status_active" />;
     }
+
     case "expired": {
       return <Message message="admin.access_tickets.status_expired" />;
     }
+
     case "revoked": {
       return <Message message="admin.access_tickets.status_revoked" />;
     }
+
     default: {
       return status;
     }
@@ -31,12 +34,15 @@ export const ticketStatusTone = (status: string): BadgeTone => {
     case "active": {
       return "success";
     }
+
     case "expired": {
       return "warning";
     }
+
     case "revoked": {
       return "muted";
     }
+
     default: {
       return "info";
     }

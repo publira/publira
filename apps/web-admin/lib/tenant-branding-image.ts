@@ -52,6 +52,7 @@ const toVariants = (
       variantType: variant.variantType ?? "",
       width: variant.width ?? 0,
     };
+
     // The preview lays out at the stored master's own width and height, so a
     // variant that arrives without them would render at 0x0. Dropping it leaves
     // the card in its "unset" state instead of showing an invisible image.
@@ -69,9 +70,11 @@ export const toTenantBrandingImage = (
   variants: RawTenantImageVariant[] | undefined
 ): TenantBrandingImage | null => {
   const mapped = toVariants(variants);
+
   if (mapped.length === 0) {
     return null;
   }
+
   return { updatedAt: updatedAt?.trim() ?? "", variants: mapped };
 };
 

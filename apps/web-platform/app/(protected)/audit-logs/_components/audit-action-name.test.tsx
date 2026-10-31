@@ -19,6 +19,7 @@ const renderText = async (node: ReactNode): Promise<unknown> => {
   if (!isValidElement<MessageProps>(node)) {
     return node;
   }
+
   const render = node.type as (props: MessageProps) => Promise<string>;
 
   return await render(node.props);
@@ -50,6 +51,7 @@ describe("AuditActionName", () => {
 
   it("names every action the filter offers with the filter's label", async () => {
     const options = await getAuditActionOptions("en");
+
     const names = await Promise.all(
       options.map(({ value }) => renderText(AuditActionName({ action: value })))
     );

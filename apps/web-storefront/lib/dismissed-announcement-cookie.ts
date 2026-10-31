@@ -22,6 +22,7 @@ const DISMISSED_ANNOUNCEMENT_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 export const readDismissedAnnouncementId = async (): Promise<string> => {
   const cookieStore = await cookies();
+
   return cookieStore.get(DISMISSED_ANNOUNCEMENT_COOKIE)?.value?.trim() ?? "";
 };
 

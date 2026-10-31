@@ -113,6 +113,7 @@ describe("findProblems", () => {
         webRpcs: new Set(["GetSeriesDetail", "ListPublishedGenres"]),
       })
     );
+
     assert.equal(problems.length, 2);
     assert.match(problems[0] ?? "", /\[locale\]\/\(site\)\/genres/u);
     assert.match(problems[1] ?? "", /ListPublishedGenres/u);
@@ -124,6 +125,7 @@ describe("findProblems", () => {
       name: "Genres",
       web: { routes: ["[locale]/(site)/genres"] },
     };
+
     assert.deepEqual(
       findProblems(
         [seriesDetail, genres],
@@ -140,12 +142,14 @@ describe("findProblems", () => {
 
   it("requires a mobile path or an exception, not both and not neither", () => {
     const neither: Capability = { name: "Neither", web: {} };
+
     const both: Capability = {
       exception: "Reason.",
       mobile: { rpcs: ["GetSeriesDetail"] },
       name: "Both",
       web: {},
     };
+
     const problems = findProblems([seriesDetail, neither, both], inventory());
     assert.equal(problems.length, 2);
     assert.match(problems[0] ?? "", /"Neither" has neither/u);
@@ -162,6 +166,7 @@ describe("findProblems", () => {
         rpcs: ["GetSeriesDetail", "ListGone"],
       },
     };
+
     const problems = findProblems([seriesDetail, stale], inventory());
     assert.equal(problems.length, 4);
     assert.match(problems[0] ?? "", /web route \[locale\]\/\(site\)\/gone/u);
@@ -177,6 +182,7 @@ describe("findProblems", () => {
       sharedRecord: true,
       web: {},
     };
+
     const problems = findProblems([seriesDetail, shared], inventory());
     assert.equal(problems.length, 1);
     assert.match(problems[0] ?? "", /"Shared" is a shared record/u);

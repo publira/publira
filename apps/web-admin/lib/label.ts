@@ -135,6 +135,7 @@ const mapLabel = (label: RawLabel): LabelItem => ({
         variantType: variant.variantType ?? "",
         width: variant.width ?? 0,
       };
+
       return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
         ? [mappedVariant]
         : [];
@@ -174,6 +175,7 @@ const listLabelsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       labels: [],
@@ -198,6 +200,7 @@ export const listLabels = async (
   options: CursorPageOptions = {}
 ): Promise<ListLabelsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listLabelsForTenant(tenantId, locale, options);
 };
 
@@ -212,6 +215,7 @@ const listAllLabelsForTenant = async (
 
   try {
     const labels: LabelItem[] = [];
+
     const walkStop = await forEachPageWithToken(
       async (token, limit) => {
         const response = await apiClient.label.listLabels(
@@ -222,6 +226,7 @@ const listAllLabelsForTenant = async (
           },
           withServiceHeaders()
         );
+
         return {
           items: response.labels ?? [],
           nextToken: response.nextToken ?? "",
@@ -238,6 +243,7 @@ const listAllLabelsForTenant = async (
     // option list that looks complete.
     if (walkStop !== "completed") {
       dropFailedCacheEntry();
+
       return {
         ...emptyCursorPageTokens,
         labels: [],
@@ -258,6 +264,7 @@ const listAllLabelsForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       ...emptyCursorPageTokens,
       labels: [],
@@ -284,6 +291,7 @@ const listAllLabelsForTenant = async (
  */
 export const listAllLabels = async (): Promise<ListLabelsResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return listAllLabelsForTenant(tenantId, locale);
 };
 
@@ -300,6 +308,7 @@ export const createLabel = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -332,6 +341,7 @@ export const createLabel = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -358,6 +368,7 @@ export const updateLabel = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -392,6 +403,7 @@ export const updateLabel = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -417,6 +429,7 @@ const getLabelForTenant = async (
 ): Promise<GetLabelResult> => {
   "use cache";
   const parsed = getLabelInputSchema.safeParse(input);
+
   if (!parsed.success) {
     // Same notFound as a missing / other-tenant label: the URL is not a
     // resource, and wording that said "malformed" would only help an
@@ -440,6 +453,7 @@ const getLabelForTenant = async (
 
     if (!response.label?.publicId?.trim()) {
       dropFailedCacheEntry();
+
       return {
         message: t("admin.labels.list_failed"),
         ok: false,
@@ -454,10 +468,12 @@ const getLabelForTenant = async (
     if (isMissingResourceRpcError(error)) {
       return { notFound: true, ok: false };
     }
+
     // A `"use cache"` scope cannot rethrow: the fill would fail the whole
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(
         error,
@@ -473,6 +489,7 @@ export const getLabel = async (input: {
   publicId: string;
 }): Promise<GetLabelResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return getLabelForTenant({ ...input, tenantId }, locale);
 };
 
@@ -507,6 +524,7 @@ export const uploadLabelEyeCatchAspectImage = async (
     getMessagesFor(locale),
     getAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -538,9 +556,11 @@ export const uploadLabelEyeCatchAspectImage = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     if (mentionsAspectImageRejection(error)) {
       return { imageRejected: true, ok: false };
     }
+
     return {
       message: await mapErrorToMessage(
         error,

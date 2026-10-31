@@ -62,11 +62,14 @@ export const paymentSettingsStatus = (
   if (settings.ready) {
     return "ready";
   }
+
   if (settings.enabled) {
     return "incomplete";
   }
+
   if (settings.fields.some((field) => field.configured)) {
     return "disabled";
   }
+
   return "unset";
 };

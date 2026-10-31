@@ -21,6 +21,7 @@ const {
 vi.mock("#lib/action-messages", async () => {
   const { bindMessages } = await import("@publira/i18n");
   const { sharedCatalog } = await import("@publira/i18n/catalog");
+
   return {
     getActionLocale: () => Promise.resolve("en"),
     getActionMessages: () =>
@@ -59,9 +60,11 @@ vi.mock("#lib/store-payment-settings", () => ({
 
 const textFormData = (values: Record<string, string>): FormData => {
   const formData = new FormData();
+
   for (const [name, value] of Object.entries(values)) {
     formData.set(name, value);
   }
+
   return formData;
 };
 
@@ -114,6 +117,7 @@ describe("updateTenantPaymentSettingsAction", () => {
         const provider = [stripe, examplePay].find(
           (candidate) => candidate.id === providerId
         );
+
         return Promise.resolve(
           provider
             ? { ok: true, provider }
@@ -428,6 +432,7 @@ describe("updateTenantPurchaseSettingsAction", () => {
     });
 
     const { updateTenantPurchaseSettingsAction } = await import("./actions");
+
     const result = await updateTenantPurchaseSettingsAction(
       null,
       textFormData({
@@ -460,6 +465,7 @@ describe("updateTenantPurchaseSettingsAction", () => {
   // checked before they are saved rather than left to the API alone.
   it("returns a field error for each address that is not an https:// URL and skips the API", async () => {
     const { updateTenantPurchaseSettingsAction } = await import("./actions");
+
     const result = await updateTenantPurchaseSettingsAction(
       null,
       textFormData({
@@ -488,6 +494,7 @@ describe("updateTenantPurchaseSettingsAction", () => {
   // has nothing above it, so it has to name one of the three.
   it("refuses a default that names no surface", async () => {
     const { updateTenantPurchaseSettingsAction } = await import("./actions");
+
     const result = await updateTenantPurchaseSettingsAction(
       null,
       textFormData({
@@ -516,6 +523,7 @@ describe("updateTenantPurchaseSettingsAction", () => {
     });
 
     const { updateTenantPurchaseSettingsAction } = await import("./actions");
+
     const result = await updateTenantPurchaseSettingsAction(
       null,
       textFormData({
@@ -573,9 +581,11 @@ const storeFormData = (
     tenant_id: "TENANT001",
     ...values,
   });
+
   for (const [name, file] of Object.entries(files)) {
     formData.set(name, file);
   }
+
   return formData;
 };
 
@@ -594,6 +604,7 @@ describe("updateTenantStorePaymentSettingsAction", () => {
 
     const { updateTenantStorePaymentSettingsAction } =
       await import("./actions");
+
     const result = await updateTenantStorePaymentSettingsAction(
       null,
       storeFormData(
@@ -642,6 +653,7 @@ describe("updateTenantStorePaymentSettingsAction", () => {
 
     const { updateTenantStorePaymentSettingsAction } =
       await import("./actions");
+
     await updateTenantStorePaymentSettingsAction(
       null,
       storeFormData({
@@ -694,6 +706,7 @@ describe("updateTenantStorePaymentSettingsAction", () => {
   it("asks for every App Store credential and a Google Play key before saving an enabled store", async () => {
     const { updateTenantStorePaymentSettingsAction } =
       await import("./actions");
+
     const result = await updateTenantStorePaymentSettingsAction(
       null,
       storeFormData({
@@ -720,6 +733,7 @@ describe("updateTenantStorePaymentSettingsAction", () => {
   it("refuses a file too large to be a key", async () => {
     const { updateTenantStorePaymentSettingsAction } =
       await import("./actions");
+
     const result = await updateTenantStorePaymentSettingsAction(
       null,
       storeFormData(
@@ -755,6 +769,7 @@ describe("updateTenantStorePaymentSettingsAction", () => {
 
     const { updateTenantStorePaymentSettingsAction } =
       await import("./actions");
+
     const result = await updateTenantStorePaymentSettingsAction(
       null,
       storeFormData({ app_purchase_route: "store" })

@@ -488,10 +488,12 @@ for (const locale of DOCS_LOCALES) {
 
       test("receiving replies, turned on", async ({ page }) => {
         await openScreen(page, locale, "/integrations/email");
+
         const inbound = docsSection(
           page,
           t("admin.settings.inbound_email.title")
         );
+
         await inbound
           .getByRole("checkbox", {
             name: t("admin.settings.inbound_email.enabled"),
@@ -527,9 +529,11 @@ for (const locale of DOCS_LOCALES) {
     test.describe("your account", () => {
       test("the account menu", async ({ page }) => {
         await openScreen(page, locale, "/");
+
         const trigger = page.getByRole("button", {
           name: docsTextPattern(locale, "admin.shell.account_menu"),
         });
+
         await trigger.click();
 
         await expectDocsScreenshot(page, {
@@ -582,9 +586,11 @@ for (const locale of DOCS_LOCALES) {
             name: t("admin.settings.mfa.enable_submit"),
           })
           .click();
+
         const qrCode = page.getByRole("img", {
           name: t("admin.auth.mfa.enroll_qr_label"),
         });
+
         const setupKey = page.getByText(/^[A-Z2-7]{16,}$/u);
         await expect(setupKey).toBeVisible();
         const setupKeyText = await setupKey.textContent();

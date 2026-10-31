@@ -20,15 +20,19 @@ const getUnitFormatter = (
 ): Intl.NumberFormat => {
   const key = `${intlLocale}\0${unit}\0${style}`;
   const cached = numberFormatterCache.get(key);
+
   if (cached) {
     return cached;
   }
+
   const formatter = new Intl.NumberFormat(intlLocale, {
     style: "unit",
     unit,
     unitDisplay: style,
   });
+
   numberFormatterCache.set(key, formatter);
+
   return formatter;
 };
 
@@ -40,16 +44,20 @@ const getUnitListFormatter = (
 ): Intl.ListFormat => {
   const key = `${intlLocale}\0${style}`;
   const cached = listFormatterCache.get(key);
+
   if (cached) {
     return cached;
   }
+
   // `narrow` joins "5 hr" and "12 min" with a space alone, which is how a
   // short duration is written; `long` says "5 hours, 12 minutes".
   const formatter = new Intl.ListFormat(intlLocale, {
     style: style === "long" ? "long" : "narrow",
     type: "unit",
   });
+
   listFormatterCache.set(key, formatter);
+
   return formatter;
 };
 
@@ -74,11 +82,14 @@ export const formatDuration = (
   const minutes = Math.max(0, Math.trunc(duration.minutes ?? 0));
 
   const parts: string[] = [];
+
   if (hours > 0) {
     parts.push(getUnitFormatter(intlLocale, "hour", style).format(hours));
   }
+
   if (minutes > 0 || parts.length === 0) {
     parts.push(getUnitFormatter(intlLocale, "minute", style).format(minutes));
   }
+
   return getUnitListFormatter(intlLocale, style).format(parts);
 };

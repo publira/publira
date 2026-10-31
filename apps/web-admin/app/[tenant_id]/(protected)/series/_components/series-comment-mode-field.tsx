@@ -28,6 +28,7 @@ const TenantDefaultOptionLabel = ({
     if (tenantCommentMode === "disabled") {
       return t("admin.series.form.comment_mode_options.disabled");
     }
+
     if (tenantCommentMode === "immediate") {
       return t("admin.series.form.comment_mode_options.immediate");
     }

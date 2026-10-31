@@ -48,19 +48,23 @@ export const parseTenantPrice = async (
     getMessagesFor(locale),
     getTenantCurrency(tenantId),
   ]);
+
   if (!currency) {
     return {
       message: t("admin.series.episodes.currency_unavailable"),
       ok: false,
     };
   }
+
   if (formCurrency !== currency) {
     return {
       message: t("admin.series.episodes.currency_changed"),
       ok: false,
     };
   }
+
   const parsed = priceFormSchema(currency, t(invalidMessage)).safeParse(raw);
+
   return parsed.success
     ? { currency, ok: true, value: parsed.data }
     : { message: t(invalidMessage), ok: false };
@@ -79,6 +83,7 @@ export const parseCampaignPrice = async (
 ): Promise<TenantPriceResult> => {
   const invalidMessage =
     "admin.series.episodes.campaign_prices.validation.price_invalid";
+
   const parsed = await parseTenantPrice(
     input.price,
     input.priceCurrency,
@@ -86,12 +91,15 @@ export const parseCampaignPrice = async (
     locale,
     invalidMessage
   );
+
   if (parsed.ok && parsed.value <= 0) {
     const t = await getMessagesFor(locale);
+
     return {
       message: t(invalidMessage),
       ok: false,
     };
   }
+
   return parsed;
 };

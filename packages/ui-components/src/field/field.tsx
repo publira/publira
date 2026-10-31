@@ -25,10 +25,13 @@ export type FieldProps = BaseField.Root.Props;
 
 export const Field = ({ className, ...props }: FieldProps) => {
   const [hasPopupTrigger, setHasPopupTrigger] = useState(false);
+
   const registerPopupTrigger = useCallback(() => {
     setHasPopupTrigger(true);
+
     return () => setHasPopupTrigger(false);
   }, []);
+
   const popupTrigger = useMemo(
     () => ({ hasPopupTrigger, registerPopupTrigger }),
     [hasPopupTrigger, registerPopupTrigger]
@@ -95,18 +98,23 @@ export const FieldPopupTrigger = ({
   ...props
 }: FieldPopupTriggerProps) => {
   const { registerPopupTrigger } = use(FieldPopupTriggerContext);
+
   const hydrated = useSyncExternalStore(
     subscribeToNothing,
     () => true,
     () => false
   );
+
   const triggerRef = useCallback(
     (element: HTMLButtonElement) => {
       const unregister = registerPopupTrigger?.();
+
       if (typeof ref === "function") {
         const cleanup = ref(element);
+
         return () => {
           unregister?.();
+
           if (typeof cleanup === "function") {
             cleanup();
           } else {
@@ -114,11 +122,14 @@ export const FieldPopupTrigger = ({
           }
         };
       }
+
       if (ref) {
         ref.current = element;
       }
+
       return () => {
         unregister?.();
+
         if (ref) {
           ref.current = null;
         }

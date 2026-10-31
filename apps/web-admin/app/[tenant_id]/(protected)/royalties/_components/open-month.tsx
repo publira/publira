@@ -67,6 +67,7 @@ const CloseStatus = ({
         </p>
       );
     }
+
     case "in-progress": {
       return (
         <p className="text-sm">
@@ -79,8 +80,10 @@ const CloseStatus = ({
         </p>
       );
     }
+
     case "ready": {
       const periodLabel = formatPlainYearMonth(period, { locale });
+
       return (
         <div className="grid gap-3">
           <p className="text-sm">
@@ -114,6 +117,7 @@ const CloseStatus = ({
         </div>
       );
     }
+
     default: {
       return null;
     }

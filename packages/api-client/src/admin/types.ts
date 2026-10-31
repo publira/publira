@@ -3,25 +3,35 @@ export * from "../gen/publira/types/v1/types_pb.js";
 // Admin.v1 entity messages, so mappers can Pick them the same way as
 // types.v1. Request/response wrappers stay on the per-service modules.
 export type { AdminAccessTicket } from "../gen/publira/admin/v1/access_ticket_pb.js";
+
 export type { AdminAnnouncement } from "../gen/publira/admin/v1/announcement_pb.js";
+
 export type { AdminAuditLog } from "../gen/publira/admin/v1/audit_pb.js";
+
 export type { AdminTenantBrandMark } from "../gen/publira/admin/v1/brand_mark_pb.js";
+
 export type { AdminCampaignBanner } from "../gen/publira/admin/v1/campaign_banner_pb.js";
+
 export type {
   CoinNameTranslation,
   CoinPack,
   TenantCoinSettings,
 } from "../gen/publira/admin/v1/coin_pb.js";
+
 export type {
   AdminComment,
   CommentReport,
 } from "../gen/publira/admin/v1/comment_pb.js";
+
 export type {
   ContactMessage,
   ContactMessageEntry,
 } from "../gen/publira/admin/v1/contact_pb.js";
+
 export type { CreatorAccount } from "../gen/publira/admin/v1/creator_pb.js";
+
 export type { TenantEmailSettings } from "../gen/publira/admin/v1/email_pb.js";
+
 export type {
   AudienceStatsRow,
   AudienceStatsTotals,
@@ -31,16 +41,21 @@ export type {
   RevenueStatsRow,
   RevenueStatsTotals,
 } from "../gen/publira/admin/v1/engagement_pb.js";
+
 export type { TenantFcmSettings } from "../gen/publira/admin/v1/fcm_pb.js";
+
 export type {
   InboundEmailProvider,
   TenantInboundEmailSettings,
 } from "../gen/publira/admin/v1/inbound_email_pb.js";
+
 export type {
   TenantAdminInvitation,
   TenantMember,
 } from "../gen/publira/admin/v1/member_pb.js";
+
 export type { AdminNotification } from "../gen/publira/admin/v1/notification_pb.js";
+
 export type {
   PaymentProvider,
   TenantAppStorePaymentSettings,
@@ -49,13 +64,16 @@ export type {
   TenantStorePaymentSettings,
   TenantStoreProduct,
 } from "../gen/publira/admin/v1/payment_pb.js";
+
 export type { AdminPurchase } from "../gen/publira/admin/v1/purchase_pb.js";
+
 export type {
   RoyaltyConfig,
   RoyaltyStatement,
   RoyaltyStatementLine,
   RoyaltyStatementTotals,
 } from "../gen/publira/admin/v1/royalty_pb.js";
+
 export type {
   AdminEpisodeCampaignPrice,
   AdminEpisodeFreeWindow,
@@ -64,7 +82,9 @@ export type {
   SeriesFreeAfterSettings,
   SeriesWaitFreeSettings,
 } from "../gen/publira/admin/v1/series_pb.js";
+
 export type { AdminSubscriptionPlan } from "../gen/publira/admin/v1/subscription_plan_pb.js";
+
 export type {
   KnownCrawler,
   TenantAnalyticsSettings,
@@ -82,6 +102,7 @@ export type {
   TenantSignUpSettings,
   TenantSiteVerification,
 } from "../gen/publira/admin/v1/tenant_pb.js";
+
 export type {
   AdminReader,
   AdminTenantUser,

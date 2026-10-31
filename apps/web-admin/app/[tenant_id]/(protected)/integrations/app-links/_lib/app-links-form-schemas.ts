@@ -27,6 +27,7 @@ const fingerprintLines = (value: unknown): string[] =>
   typeof value === "string"
     ? value.split(/\r?\n/u).flatMap((line) => {
         const fingerprint = line.trim().toUpperCase();
+
         return fingerprint ? [fingerprint] : [];
       })
     : [];
@@ -72,7 +73,9 @@ export const appLinksFormSchema = async (
             path: ["androidApplicationId"],
           });
         }
+
         const fingerprints = data.androidFingerprints;
+
         if (
           fingerprints.length === 0 ||
           fingerprints.length > MAX_ANDROID_CERT_FINGERPRINTS
@@ -88,12 +91,15 @@ export const appLinksFormSchema = async (
             path: ["androidFingerprints"],
           });
         }
+
         const malformed = fingerprints.find(
           (fingerprint) => !SHA256_FINGERPRINT_RE.test(fingerprint)
         );
+
         const repeated = fingerprints.find(
           (fingerprint, index) => fingerprints.indexOf(fingerprint) !== index
         );
+
         if (malformed !== undefined) {
           ctx.addIssue({
             code: "custom",
@@ -114,6 +120,7 @@ export const appLinksFormSchema = async (
           });
         }
       }
+
       if (data.iosEnabled) {
         if (!APPLE_TEAM_ID_RE.test(data.iosTeamId)) {
           ctx.addIssue({
@@ -122,6 +129,7 @@ export const appLinksFormSchema = async (
             path: ["iosTeamId"],
           });
         }
+
         if (!IOS_BUNDLE_IDENTIFIER_RE.test(data.iosBundleIdentifier)) {
           ctx.addIssue({
             code: "custom",

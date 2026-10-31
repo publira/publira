@@ -56,15 +56,18 @@ export const inboundEmailSettingsStatus = (
   if (settings.ready) {
     return "ready";
   }
+
   if (settings.enabled) {
     return "incomplete";
   }
+
   if (
     settings.domain !== "" ||
     settings.fields.some((field) => field.configured)
   ) {
     return "disabled";
   }
+
   return "unset";
 };
 
@@ -105,7 +108,9 @@ export const inboundEmailWebhookUrl = (
 ): string => {
   if (BASIC_AUTH_PROVIDERS.has(provider.id)) {
     const url = new URL(provider.webhookPath, origin);
+
     return `${url.protocol}//inbound:${WEBHOOK_TOKEN_PLACEHOLDER}@${url.host}${url.pathname}`;
   }
+
   return `${origin}${provider.webhookPath}`;
 };

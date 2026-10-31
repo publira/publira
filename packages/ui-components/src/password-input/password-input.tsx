@@ -34,6 +34,7 @@ const PasswordInputContext = createContext<PasswordInputContextValue | null>(
 
 const usePasswordInputContext = (caller: string) => {
   const context = use(PasswordInputContext);
+
   if (!context) {
     throw new Error(`${caller} must be rendered inside a PasswordInput.`);
   }
@@ -62,6 +63,7 @@ export const PasswordInput = ({
 }: ComponentPropsWithoutRef<"div">) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [revealed, setRevealed] = useState(false);
+
   const context = useMemo(
     () => ({ inputRef, revealed, setRevealed }),
     [revealed]
@@ -153,9 +155,11 @@ export const PasswordInputToggle = ({ children }: PasswordInputToggleProps) => {
     const input = inputRef.current;
     const start = input?.selectionStart ?? null;
     const end = input?.selectionEnd ?? null;
+
     if (!input || start === null || end === null) {
       return;
     }
+
     const direction = input.selectionDirection ?? undefined;
     requestAnimationFrame(() => {
       input.setSelectionRange(start, end, direction);

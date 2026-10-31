@@ -82,6 +82,7 @@ const getDashboardForTenant = async (
     // request. The entry is dropped instead, so the answer comes back as soon
     // as the API does.
     dropFailedCacheEntry();
+
     return {
       message: await mapErrorToMessage(error, locale),
       ok: false,
@@ -97,5 +98,6 @@ const getDashboardForTenant = async (
  */
 export const getDashboard = async (): Promise<GetDashboardResult> => {
   const { locale, tenantId } = await verifyAdminPageSession();
+
   return getDashboardForTenant(tenantId, locale);
 };

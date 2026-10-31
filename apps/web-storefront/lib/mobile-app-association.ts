@@ -48,6 +48,7 @@ export const getTenantMobileAppAssociation = async (
     const response = await apiClient.tenant.getTenantMobileAppAssociation({
       tenant: { tenantId: normalizedTenantId },
     });
+
     return {
       ok: true,
       value: {
@@ -65,10 +66,12 @@ export const getTenantMobileAppAssociation = async (
     if (isMissingResourceRpcError(error)) {
       return { ok: true, value: {} };
     }
+
     console.warn(
       "[web-storefront] getTenantMobileAppAssociation failed",
       error
     );
+
     return cachedReadFailure("The mobile app association is unavailable.");
   }
 };
@@ -127,6 +130,7 @@ export const toAppleAppSiteAssociation = (
   supportedLocales: readonly Locale[]
 ) => {
   const appID = `${ios.teamId}.${ios.bundleIdentifier}`;
+
   return {
     applinks: {
       details: [
@@ -164,11 +168,13 @@ const respondWithDocument = async (
   readDocument: (tenantId: string) => Promise<CachedReadResult<unknown>>
 ): Promise<Response> => {
   const parsed = parseRouteParams(associationRouteParamsSchema, params);
+
   if (!parsed) {
     return new Response("Not Found", { status: 404 });
   }
 
   const document = await readDocument(parsed.tenant_id);
+
   if (!document.ok) {
     return new Response("Service Unavailable", {
       headers: { "Cache-Control": "no-store", "Retry-After": "30" },
@@ -196,11 +202,13 @@ const respondWithDocument = async (
 export const respondWithAssetLinks = (params: unknown): Promise<Response> =>
   respondWithDocument(params, async (tenantId) => {
     const association = await getTenantMobileAppAssociation(tenantId);
+
     if (!association.ok) {
       return association;
     }
 
     const { android } = association.value;
+
     return { ok: true, value: android ? toAssetLinks(android) : undefined };
   });
 
@@ -216,14 +224,17 @@ export const respondWithAppleAppSiteAssociation = (
       getTenantMobileAppAssociation(tenantId),
       getTenantSiteInfo(tenantId),
     ]);
+
     if (!association.ok) {
       return association;
     }
 
     const { ios } = association.value;
+
     if (!ios) {
       return { ok: true, value: undefined };
     }
+
     if (!tenant) {
       return { message: "The tenant's locales are unavailable.", ok: false };
     }

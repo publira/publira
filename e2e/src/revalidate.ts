@@ -6,6 +6,7 @@ const revalidateTags = async (
   tags: readonly string[]
 ): Promise<void> => {
   const token = process.env.PUBLIRA_REVALIDATE_TOKEN?.trim();
+
   if (!token) {
     throw new Error(
       `PUBLIRA_REVALIDATE_TOKEN is required to drop ${app} cache tags (set by e2e scripts)`
@@ -20,6 +21,7 @@ const revalidateTags = async (
     },
     method: "POST",
   });
+
   if (!response.ok) {
     throw new Error(
       `revalidating ${app} tags failed: ${response.status} ${await response.text()}`

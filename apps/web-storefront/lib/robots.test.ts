@@ -203,6 +203,7 @@ describe("buildRobotsTxt", () => {
       expect(text).toContain(`Disallow: ${prefix}/drafts/`);
       expect(text).toContain(`Disallow: ${prefix}/drafts?`);
     }
+
     expect(text.filter((line) => line.includes("drafts"))).toHaveLength(9);
     expect(text.filter((line) => line.startsWith("User-agent:"))).toStrictEqual(
       ["User-agent: *"]

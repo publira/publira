@@ -56,9 +56,11 @@ const replaceForm = (image?: File) => {
   const formData = new FormData();
   formData.set("episode_id", EPISODE_ID);
   formData.set("image_id", IMAGE_ID);
+
   if (image) {
     formData.set("image", image);
   }
+
   return formData;
 };
 
@@ -71,6 +73,7 @@ const replace = async (
 ) => {
   const encoded = new Request(URL, { body: formData, method: "POST" });
   const body = await encoded.arrayBuffer();
+
   const request = new NextRequest(URL, {
     body,
     headers: {
@@ -81,6 +84,7 @@ const replace = async (
     },
     method: "POST",
   });
+
   return { request, response: await POST(request) };
 };
 

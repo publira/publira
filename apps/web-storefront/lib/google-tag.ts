@@ -31,16 +31,21 @@ const toServing = (tag: RawTenantGoogleTag): GoogleTagServing | null => {
     case GoogleTagServingMode.GOOGLE: {
       return { mode: "google" };
     }
+
     case GoogleTagServingMode.SERVER_CONTAINER: {
       const serverContainerUrl = tag.serverContainerUrl?.trim() ?? "";
+
       return serverContainerUrl
         ? { mode: "server_container", serverContainerUrl }
         : null;
     }
+
     case GoogleTagServingMode.GATEWAY: {
       const gatewayPath = tag.gatewayPath?.trim() ?? "";
+
       return gatewayPath ? { gatewayPath, mode: "gateway" } : null;
     }
+
     default: {
       return null;
     }
@@ -61,12 +66,15 @@ const toConsentMode = (
     case GoogleTagConsentMode.NOT_REQUIRED: {
       return "not_required";
     }
+
     case GoogleTagConsentMode.OPT_IN: {
       return "opt_in";
     }
+
     case GoogleTagConsentMode.EXTERNAL: {
       return "external";
     }
+
     default: {
       return null;
     }
@@ -79,13 +87,16 @@ export const toGoogleTagSettings = (
   if (!tag) {
     return null;
   }
+
   const ga4MeasurementId = tag.ga4MeasurementId?.trim() ?? "";
   const gtmContainerId = tag.gtmContainerId?.trim() ?? "";
   const serving = toServing(tag);
   const consentMode = toConsentMode(tag.consentMode);
+
   if (!(ga4MeasurementId || gtmContainerId) || !serving || !consentMode) {
     return null;
   }
+
   return { consentMode, ga4MeasurementId, gtmContainerId, serving };
 };
 
@@ -106,6 +117,7 @@ export const getTenantGoogleTag = async (
   cacheLife({ stale: 30 });
 
   const normalizedTenantId = tenantId.trim();
+
   if (!normalizedTenantId) {
     return null;
   }
@@ -116,12 +128,14 @@ export const getTenantGoogleTag = async (
     const response = await apiClient.tenant.getTenantAnalyticsSettings({
       tenant: { tenantId: normalizedTenantId },
     });
+
     return toGoogleTagSettings(response.googleTag);
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {
       console.warn("[web-storefront] getTenantGoogleTag failed", error);
       dropFailedCacheEntry();
     }
+
     return null;
   }
 };

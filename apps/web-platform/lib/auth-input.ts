@@ -46,6 +46,7 @@ export const nextPathFormSchema = z.preprocess((value) => {
   }
 
   const trimmed = value.trim();
+
   if (trimmed.length === 0 || trimmed.length > NEXT_PATH_MAX_LENGTH) {
     return "/";
   }

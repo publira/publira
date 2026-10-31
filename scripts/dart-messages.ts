@@ -139,6 +139,7 @@ const capitalize = (segment: string): string =>
  */
 const segmentsOf = (name: string, what: string): string[] => {
   const segments = name.split(/[._-]+/u);
+
   if (segments.some((segment) => !SEGMENT_PATTERN.test(segment))) {
     throw new Error(
       `${what} ${JSON.stringify(name)} cannot become a Dart identifier: use letters, digits, '.', '_' and '-'`
@@ -162,12 +163,15 @@ export const dartIdentifier = (key: string): string => {
   const path = key.startsWith(`${OWN_NAMESPACE}.`)
     ? key.slice(OWN_NAMESPACE.length + 1)
     : key;
+
   const identifier = camelCase(segmentsOf(path, "key"));
+
   if (!/^[a-z]/u.test(identifier)) {
     throw new Error(
       `key ${JSON.stringify(key)} cannot become a Dart identifier: it has to start with a letter`
     );
   }
+
   if (DART_RESERVED.has(identifier) || CLASS_MEMBERS.has(identifier)) {
     throw new Error(
       `key ${JSON.stringify(key)} compiles into ${identifier}, which ${CLASS_NAME} cannot declare`
@@ -180,6 +184,7 @@ export const dartIdentifier = (key: string): string => {
 /** The parameter a `{$name}` placeholder compiles into. */
 export const dartParameter = (variable: string): string => {
   const parameter = camelCase(segmentsOf(variable, "variable"));
+
   if (!/^[a-z]/u.test(parameter) || DART_RESERVED.has(parameter)) {
     throw new Error(
       `variable ${JSON.stringify(variable)} cannot become a Dart parameter`
@@ -204,15 +209,19 @@ export const dartStringLiteral = (text: string): string =>
 const dartLocale = (code: string): string => {
   const [language, ...subtags] = code.split("-");
   const script = subtags.find((subtag) => /^[A-Za-z]{4}$/u.test(subtag));
+
   const country = subtags.find((subtag) =>
     /^(?:[A-Za-z]{2}|\d{3})$/u.test(subtag)
   );
+
   const recognized = [script, country].filter((subtag) => subtag !== undefined);
+
   if (recognized.length !== subtags.length) {
     throw new Error(
       `locale ${JSON.stringify(code)} carries a subtag a dart:ui Locale cannot hold`
     );
   }
+
   if (script === undefined) {
     return country === undefined
       ? `Locale('${language}')`
@@ -261,22 +270,28 @@ const likelyScripts = (
 ): ReadonlyMap<string, string> => {
   const scripts = new Map<string, string>();
   const seen = new Set<string>();
+
   for (const { code } of locales) {
     const [language] = code.split("-");
+
     if (seen.has(language)) {
       continue;
     }
+
     seen.add(language);
 
     const languageScript = new Intl.Locale(language).maximize().script;
+
     if (languageScript === undefined) {
       continue;
     }
+
     scripts.set(language, languageScript);
 
     for (const region of REGION_SUBTAGS) {
       const regionScript = new Intl.Locale(`${language}-${region}`).maximize()
         .script;
+
       if (regionScript !== undefined && regionScript !== languageScript) {
         scripts.set(`${language}-${region}`, regionScript);
       }
@@ -297,6 +312,7 @@ const fitted = (
   tail: string
 ): string => {
   const line = `${indent}${head}${entries.join(", ")}${tail}`;
+
   if (line.length <= LINE_WIDTH) {
     return line;
   }
@@ -346,9 +362,11 @@ const parametersOf = (
 ): Parameter[] => {
   const variables = new Set<string>();
   const numeric = new Set<string>();
+
   for (const [code, source] of sources) {
     for (const variable of variablesOf(key, code, source)) {
       variables.add(variable.name);
+
       if (variable.numeric) {
         numeric.add(variable.name);
       }
@@ -360,6 +378,7 @@ const parametersOf = (
     type: numeric.has(variable) ? ("num" as const) : ("String" as const),
     variable,
   }));
+
   if (new Set(parameters.map(({ name }) => name)).size !== parameters.length) {
     throw new Error(
       `${key}: two variables compile into the same parameter (${parameters.map(({ variable }) => variable).join(", ")})`
@@ -381,19 +400,23 @@ const collectMessages = (
 
   const identifiers = new Map<string, string>();
   const messages: Message[] = [];
+
   for (const key of keys) {
     const identifier = dartIdentifier(key);
     const taken = identifiers.get(identifier);
+
     if (taken !== undefined) {
       throw new Error(
         `keys ${JSON.stringify(taken)} and ${JSON.stringify(key)} both compile into ${identifier}`
       );
     }
+
     identifiers.set(identifier, key);
 
     const sources = new Map(
       [...leavesByCode].map(([code, leaves]) => [code, leaves.get(key) ?? ""])
     );
+
     messages.push({
       identifier,
       key,
@@ -426,6 +449,7 @@ const signature = (message: Message): string => {
 const formatStatement = (message: Message): string => {
   const indent = INDENT.repeat(2);
   const key = dartStringLiteral(message.key);
+
   if (message.parameters.length === 0) {
     return fitted(indent, "return _format(", [key], ");");
   }
@@ -433,12 +457,15 @@ const formatStatement = (message: Message): string => {
   const entries = message.parameters.map(
     ({ name, variable }) => `${dartStringLiteral(variable)}: ${name}`
   );
+
   const line = `${indent}return _format(${key}, {${entries.join(", ")}});`;
+
   if (line.length <= LINE_WIDTH) {
     return line;
   }
 
   const head = `${indent}return _format(${key}, {`;
+
   if (head.length <= LINE_WIDTH) {
     return [
       head,
@@ -482,9 +509,11 @@ export const renderDartMessages = (
   catalogs: ReadonlyMap<string, unknown>
 ): string => {
   const messages = collectMessages(locales, catalogs);
+
   const namespaces = DART_NAMESPACES.map(
     (namespace) => `\`${namespace}\``
   ).join(" and ");
+
   const lines: string[] = [
     "// Code generated by scripts/generate-locale-registry.ts; DO NOT EDIT.",
     "",
@@ -537,6 +566,7 @@ export const renderDartMessages = (
       "};"
     ),
   ];
+
   for (const { code, intl, label } of locales) {
     lines.push(
       "",
@@ -552,6 +582,7 @@ export const renderDartMessages = (
       )
     );
   }
+
   lines.push(
     "",
     `${INDENT}/// The catalog whose code is [locale]'s language tag, or \`null\` when`,
@@ -585,6 +616,7 @@ export const renderDartMessages = (
     `${INDENT}${INDENT}return formatCatalogMessage(intlLocale, _sources[key]!, values);`,
     `${INDENT}}`
   );
+
   for (const message of messages) {
     lines.push(
       "",
@@ -594,6 +626,7 @@ export const renderDartMessages = (
       `${INDENT}}`
     );
   }
+
   lines.push("}");
 
   for (const { code } of locales) {

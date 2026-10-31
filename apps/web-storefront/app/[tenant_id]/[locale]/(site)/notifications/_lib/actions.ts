@@ -43,6 +43,7 @@ export const markNotificationAsReadAction = async (
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+
   const parsed = markOneSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
@@ -50,6 +51,7 @@ export const markNotificationAsReadAction = async (
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     // The locale field parses on its own — it falls back rather than failing —
     // so the rejection can still be worded in the reader's language.
@@ -61,12 +63,14 @@ export const markNotificationAsReadAction = async (
 
   const { locale, tenantId, ...input } = parsed.data;
   await requirePublicSession(locale, NOTIFICATIONS_RETURN_TO, tenantId);
+
   const result = await withPublicSessionReauth(
     locale,
     NOTIFICATIONS_RETURN_TO,
     () => markNotificationAsRead({ locale, tenantId, ...input }),
     tenantId
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -75,6 +79,7 @@ export const markNotificationAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
+
   return { message: "", ok: true };
 };
 
@@ -84,12 +89,14 @@ export const markAllNotificationsAsReadAction = async (
 ): Promise<MarkNotificationActionState> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
+
   const parsed = markAllSchema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
       tenantId: "value",
     })
   );
+
   if (!parsed.success) {
     return {
       message: validationErrorMessage(submittedLocale),
@@ -99,12 +106,14 @@ export const markAllNotificationsAsReadAction = async (
 
   const { locale, tenantId } = parsed.data;
   await requirePublicSession(locale, NOTIFICATIONS_RETURN_TO, tenantId);
+
   const result = await withPublicSessionReauth(
     locale,
     NOTIFICATIONS_RETURN_TO,
     () => markAllNotificationsAsRead(tenantId, locale),
     tenantId
   );
+
   if (!result.ok) {
     return {
       message: result.message,
@@ -113,5 +122,6 @@ export const markAllNotificationsAsReadAction = async (
   }
 
   updateTag(notificationsCacheTag(parsed.data.tenantId));
+
   return { message: "", ok: true };
 };

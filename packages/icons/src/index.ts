@@ -1,69 +1,137 @@
 export { ActivityIcon } from "./activity-icon";
+
 export { ArchiveIcon } from "./archive-icon";
+
 export { BellIcon } from "./bell-icon";
+
 export { BoldIcon } from "./bold-icon";
+
 export { BookOpenIcon } from "./book-open-icon";
+
 export { BuildingIcon } from "./building-icon";
+
 export { CalendarIcon } from "./calendar-icon";
+
 export { ChartIcon } from "./chart-icon";
+
 export { CheckIcon } from "./check-icon";
+
 export { ChevronDownIcon } from "./chevron-down-icon";
+
 export { ChevronLeftIcon } from "./chevron-left-icon";
+
 export { ChevronRightIcon } from "./chevron-right-icon";
+
 export { ChevronUpIcon } from "./chevron-up-icon";
+
 export { CloseIcon } from "./close-icon";
+
 export { CodeIcon } from "./code-icon";
+
 export { CoinsIcon } from "./coins-icon";
+
 export { CollectionIcon } from "./collection-icon";
+
 export { CommentIcon } from "./comment-icon";
+
 export { CopyIcon } from "./copy-icon";
+
 export { CreditCardIcon } from "./credit-card-icon";
+
 export { DashboardIcon } from "./dashboard-icon";
+
 export { EyeIcon } from "./eye-icon";
+
 export { EyeOffIcon } from "./eye-off-icon";
+
 export { FileTextIcon } from "./file-text-icon";
+
 export { FoldHorizontalIcon } from "./fold-horizontal-icon";
+
 export { GripVerticalIcon } from "./grip-vertical-icon";
+
 export { Heading2Icon } from "./heading-2-icon";
+
 export { Heading3Icon } from "./heading-3-icon";
+
 export { HeartIcon } from "./heart-icon";
+
 export { IdCardIcon } from "./id-card-icon";
+
 export { ImageIcon } from "./image-icon";
+
 export { ItalicIcon } from "./italic-icon";
+
 export { KeyRoundIcon } from "./key-round-icon";
+
 export { LanguageIcon } from "./language-icon";
+
 export { LinkIcon } from "./link-icon";
+
 export { ListIcon } from "./list-icon";
+
 export { ListOrderedIcon } from "./list-ordered-icon";
+
 export { LockIcon } from "./lock-icon";
+
 export { LogoutIcon } from "./logout-icon";
+
 export { MailIcon } from "./mail-icon";
+
 export { MaximizeIcon } from "./maximize-icon";
+
 export { MegaphoneIcon } from "./megaphone-icon";
+
 export { MenuIcon } from "./menu-icon";
+
 export { MinimizeIcon } from "./minimize-icon";
+
 export { PaletteIcon } from "./palette-icon";
+
 export { PenLineIcon } from "./pen-line-icon";
+
 export { PlusIcon } from "./plus-icon";
+
 export { ReceiptIcon } from "./receipt-icon";
+
 export { RepeatIcon } from "./repeat-icon";
+
 export { ScrollTextIcon } from "./scroll-text-icon";
+
 export { SearchIcon } from "./search-icon";
+
 export { SendIcon } from "./send-icon";
+
 export { SettingsIcon } from "./settings-icon";
+
 export { ShapesIcon } from "./shapes-icon";
+
 export { ShareIcon } from "./share-icon";
+
 export { ShieldUserIcon } from "./shield-user-icon";
+
 export { SquareCodeIcon } from "./square-code-icon";
+
 export { StrikethroughIcon } from "./strikethrough-icon";
+
 export { SunMoonIcon } from "./sun-moon-icon";
+
 export { TagIcon } from "./tag-icon";
+
 export { TextQuoteIcon } from "./text-quote-icon";
+
 export { TicketIcon } from "./ticket-icon";
+
 export { TrendingUpIcon } from "./trending-up-icon";
+
 export type { IconProps } from "./types";
+
 export { UnfoldHorizontalIcon } from "./unfold-horizontal-icon";
+
 export { UserIcon } from "./user-icon";
+
 export { UsersIcon } from "./users-icon";
+
 export { WalletIcon } from "./wallet-icon";
+
 export { WifiOffIcon } from "./wifi-off-icon";

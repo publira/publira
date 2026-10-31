@@ -46,6 +46,7 @@ const { GET } = await import("./route");
 const CSV = new TextEncoder().encode(
   "﻿time,actor_public_id,actor_name,actor_role,action,outcome,reason,target_type,target_id,client_ip,tenant_public_id,tenant_name,target_public_id,target_name\r\n"
 );
+
 const SESSION = { headers: { Authorization: "Bearer session-token" } };
 
 const download = (query: string) =>

@@ -11,6 +11,7 @@ const sameHost = (left: string, right: string): boolean =>
 const isMatchingOrigin = (value: string, host: string): boolean => {
   try {
     const origin = new URL(value);
+
     return (
       isHttpOrigin(origin) &&
       origin.origin === value &&
@@ -24,6 +25,7 @@ const isMatchingOrigin = (value: string, host: string): boolean => {
 const isMatchingReferer = (value: string, host: string): boolean => {
   try {
     const referer = new URL(value);
+
     return isHttpOrigin(referer) && sameHost(referer.host, host);
   } catch {
     return false;
@@ -53,10 +55,12 @@ export const assertSameOrigin = async (): Promise<void> => {
     if (!isMatchingOrigin(origin, host)) {
       forbidden();
     }
+
     return;
   }
 
   const referer = requestHeaders.get("referer")?.trim();
+
   if (!referer || !isMatchingReferer(referer, host)) {
     forbidden();
   }

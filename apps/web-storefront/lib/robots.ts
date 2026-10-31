@@ -87,6 +87,7 @@ const shadowingPagePatterns = (
   const shadowing = publishedSlugs.filter((slug) =>
     READER_ONLY_PATHS.some((path) => isWithin(slug, path))
   );
+
   return localePrefixes(supportedLocales).flatMap((prefix) =>
     shadowing.flatMap((slug) =>
       excludedPaths.some(
@@ -117,11 +118,13 @@ const everyCrawlerGroup = (
       "Allow: /sitemap/",
     ];
   }
+
   // An excluded path the reader-only paths already cover is written once.
   const disallowed = new Set([
     ...pathPatterns(supportedLocales, READER_ONLY_PATHS),
     ...pathPatterns(supportedLocales, excludedPaths),
   ]);
+
   return [
     "User-agent: *",
     "Allow: /",
@@ -181,10 +184,12 @@ export const getPublishedPageSlugs = async (
     const response = await apiClient.pages.listPublishedPageSlugs({
       tenant: { tenantId: normalizedTenantId },
     });
+
     return { ok: true, value: response.slugs ?? [] };
   } catch (error) {
     // A cache fill must not throw, so every failure is reported as a value.
     console.warn("[web-storefront] listPublishedPageSlugs failed", error);
+
     return cachedReadFailure("The published pages are unavailable.");
   }
 };
@@ -207,6 +212,7 @@ export const getCrawlerExclusions = async (
     const response = await apiClient.tenant.getTenantCrawlerSettings({
       tenant: { tenantId: normalizedTenantId },
     });
+
     return {
       ok: true,
       value: {
@@ -217,6 +223,7 @@ export const getCrawlerExclusions = async (
   } catch (error) {
     // A cache fill must not throw, so every failure is reported as a value.
     console.warn("[web-storefront] getTenantCrawlerSettings failed", error);
+
     return cachedReadFailure("The crawler exclusions are unavailable.");
   }
 };
@@ -239,6 +246,7 @@ export const respondWithRobotsTxt = async (
   params: unknown
 ): Promise<Response> => {
   const parsed = parseRouteParams(robotsRouteParamsSchema, params);
+
   if (!parsed) {
     return new Response("Not Found", { status: 404 });
   }
@@ -249,6 +257,7 @@ export const respondWithRobotsTxt = async (
     getPublishedPageSlugs(parsed.tenant_id),
     getCrawlerExclusions(parsed.tenant_id),
   ]);
+
   if (!(tenant && origin && slugs.ok && exclusions.ok)) {
     return new Response("Service Unavailable", {
       headers: { "Cache-Control": "no-store", "Retry-After": "30" },

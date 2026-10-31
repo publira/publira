@@ -61,6 +61,7 @@ export const getJsonLdSite = async (
     getTenantPublicOrigin(tenantId),
     getTenantSiteInfo(tenantId),
   ]);
+
   if (!(origin && tenant)) {
     return null;
   }
@@ -89,6 +90,7 @@ export const jsonLdUrl = (site: JsonLdSite, href: string): string => {
     withLocalePrefix(site.locale, site.defaultLocale, href),
     site.origin
   );
+
   return url.pathname === "/" && url.search === "" ? url.origin : url.href;
 };
 
@@ -133,11 +135,14 @@ const creditAuthors = (
 ): Person[] => {
   const seen = new Set<string>();
   const authors: Person[] = [];
+
   for (const credit of credits) {
     const key = credit.publicId || `name:${credit.name}`;
+
     if (seen.has(key)) {
       continue;
     }
+
     seen.add(key);
     authors.push(
       credit.publicId
@@ -150,6 +155,7 @@ const creditAuthors = (
         : { "@type": "Person", name: credit.name }
     );
   }
+
   return authors;
 };
 
@@ -167,6 +173,7 @@ const workImages = (
 ): string[] =>
   SEARCH_IMAGE_VARIANT_TYPES.flatMap((variantType) => {
     let largest: EyeCatchImageVariant | null = null;
+
     for (const variant of variants ?? []) {
       if (
         variant.variantType === variantType &&
@@ -175,6 +182,7 @@ const workImages = (
         largest = variant;
       }
     }
+
     return largest ? [absoluteUrl(site, largest.url)] : [];
   });
 
@@ -212,6 +220,7 @@ const seriesPublisher = (
  */
 export const websiteJsonLd = (site: JsonLdSite): WithContext<WebSite> => {
   const url = jsonLdUrl(site, "/");
+
   return {
     "@context": "https://schema.org",
     "@id": `${url}#website`,
@@ -232,6 +241,7 @@ export const organizationJsonLd = (
 ): WithContext<Organization> => {
   const { tenant } = site;
   const logo = resolveTenantLogoVariant(tenant);
+
   const sameAs = [tenant.appStoreUrl, tenant.googlePlayUrl].filter(
     (url): url is string => Boolean(url)
   );
@@ -330,10 +340,12 @@ const isAccessibleForFree = (
     case "free": {
       return true;
     }
+
     case "entitled":
     case "locked": {
       return false;
     }
+
     default: {
       return undefined;
     }
@@ -365,6 +377,7 @@ export const episodeJsonLd = (
     jsonLdSiteIn(site, episode.locale),
     `${seriesHref(series.publicId)}/episodes/${episode.publicId}`
   );
+
   const servedSeries = jsonLdSiteIn(site, series.locale);
   const authors = creditAuthors(site, episode.credits);
   const free = isAccessibleForFree(access);

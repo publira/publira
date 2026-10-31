@@ -18,10 +18,12 @@ export const buildSecuritySettingsPath = async (
   message: string
 ): Promise<string> => {
   const params = new URLSearchParams({ message, status });
+
   const path = await tenantLocalePath(
     tenantId,
     locale,
     SECURITY_SETTINGS_RETURN_TO
   );
+
   return `${path}?${params.toString()}`;
 };

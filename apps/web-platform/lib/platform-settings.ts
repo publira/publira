@@ -82,6 +82,7 @@ const parseErrorMessage = (
   conflictMessage?: string
 ): string => {
   const serverMessage = rpcErrorRawMessage(error)?.trim() || fallback;
+
   return rpcErrorMessage(error, fallback, {
     locale,
     overrides: {
@@ -106,6 +107,7 @@ const getPlatformSettingsForLocale = async (
 
     const defaultLocale = parseLocale(response.settings?.defaultLocale.trim());
     const defaultCurrency = response.settings?.defaultCurrency.trim();
+
     if (defaultLocale === undefined || !defaultCurrency) {
       // `default_locale` is documented as never empty and already resolved
       // against the platform default, so a code that fails to parse is one
@@ -113,6 +115,7 @@ const getPlatformSettingsForLocale = async (
       // either, and an empty one is no currency to show or keep.
       dropFailedCacheEntry();
       const t = await getMessagesFor(locale);
+
       return {
         defaultTimezone: DEFAULT_TIME_ZONE,
         message: t("platform.settings.load_failed"),
@@ -135,6 +138,7 @@ const getPlatformSettingsForLocale = async (
     // stand-in after the API recovers.
     dropFailedCacheEntry();
     const t = await getMessagesFor(locale);
+
     return {
       defaultTimezone: DEFAULT_TIME_ZONE,
       message: parseErrorMessage(
@@ -157,6 +161,7 @@ const getPlatformSettingsForLocale = async (
 export const getPlatformSettings =
   async (): Promise<GetPlatformSettingsResult> => {
     await verifyPlatformSession();
+
     return getPlatformSettingsForLocale(await getPlatformLocale());
   };
 
@@ -177,9 +182,11 @@ const readPlatformDefaultTimezone = async (): Promise<string | null> => {
       {},
       withServiceHeaders()
     );
+
     return response.settings?.defaultTimezone.trim() || DEFAULT_TIME_ZONE;
   } catch {
     dropFailedCacheEntry();
+
     return null;
   }
 };
@@ -191,6 +198,7 @@ const readPlatformDefaultTimezone = async (): Promise<string | null> => {
  */
 export const getPlatformDisplayTimeZone = async (): Promise<string> => {
   await verifyPlatformSession();
+
   return (await readPlatformDefaultTimezone()) ?? DEFAULT_TIME_ZONE;
 };
 
@@ -228,15 +236,18 @@ const readStoredPlatformSettings = async (
     {},
     buildSessionHeaders(sessionId)
   );
+
   const defaultTimezone = current.settings?.defaultTimezone.trim();
   const defaultLocale = current.settings?.defaultLocale.trim();
   const defaultCurrency = current.settings?.defaultCurrency.trim();
   const revision = current.settings?.revision;
+
   if (!(defaultTimezone && defaultLocale && defaultCurrency && revision)) {
     return null;
   }
 
   const parsedLocale = parseLocale(defaultLocale);
+
   if (parsedLocale === undefined) {
     return null;
   }
@@ -258,6 +269,7 @@ export const updatePlatformDefaultTimezone = async (
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -267,6 +279,7 @@ export const updatePlatformDefaultTimezone = async (
 
   try {
     const stored = await readStoredPlatformSettings(sessionId);
+
     if (!stored) {
       return {
         message: t("platform.settings.timezone_save_failed"),
@@ -291,6 +304,7 @@ export const updatePlatformDefaultTimezone = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: parseErrorMessage(
         error,
@@ -318,6 +332,7 @@ export const updatePlatformDefaultLocale = async (
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -327,6 +342,7 @@ export const updatePlatformDefaultLocale = async (
 
   try {
     const stored = await readStoredPlatformSettings(sessionId);
+
     if (!stored) {
       return {
         message: t("platform.settings.locale_save_failed"),
@@ -344,6 +360,7 @@ export const updatePlatformDefaultLocale = async (
     );
 
     const saved = parseLocale(response.settings?.defaultLocale.trim());
+
     if (saved === undefined) {
       return {
         message: t("platform.settings.locale_save_failed"),
@@ -355,6 +372,7 @@ export const updatePlatformDefaultLocale = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     // The form offers exactly the supported codes, so an `invalid-argument`
     // here is a forged request rather than something the operator can act on:
     // the shared copy says more than the server's field message would.
@@ -392,6 +410,7 @@ export const updatePlatformDefaultCurrency = async (
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -401,12 +420,14 @@ export const updatePlatformDefaultCurrency = async (
 
   try {
     const stored = await readStoredPlatformSettings(sessionId);
+
     if (!stored) {
       return {
         message: t("platform.settings.currency_save_failed"),
         ok: false,
       };
     }
+
     if (
       stored.defaultCurrencyLocked &&
       stored.defaultCurrency !== defaultCurrency
@@ -435,6 +456,7 @@ export const updatePlatformDefaultCurrency = async (
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
+
     // The list offers the runtime's codes, which the server's table can lag
     // behind, so a `default_currency` violation is a code it does not know.
     return {
@@ -479,7 +501,9 @@ const readStoredCurrency = async (): Promise<{
       {},
       withServiceHeaders()
     );
+
     const defaultCurrency = response.settings?.defaultCurrency.trim();
+
     return defaultCurrency
       ? {
           defaultCurrency,
@@ -501,6 +525,7 @@ const readStoredCurrency = async (): Promise<{
 const hasSavedSettings = async (): Promise<boolean | null> => {
   try {
     const status = await apiClient.setup.checkSetupStatus({});
+
     return status.defaultLocale.trim() !== "";
   } catch {
     // Inside a `"use cache"` scope, as above.
@@ -532,12 +557,16 @@ export const getPlatformCurrencyForSetup =
     cacheTag(platformSettingsCacheTag);
 
     const stored = await readStoredCurrency();
+
     if (stored) {
       return { ...stored, state: "saved" };
     }
+
     if ((await hasSavedSettings()) === false) {
       return { state: "none" };
     }
+
     dropFailedCacheEntry();
+
     return { state: "failed" };
   };

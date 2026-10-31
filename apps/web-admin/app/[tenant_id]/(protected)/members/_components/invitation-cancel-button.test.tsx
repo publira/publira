@@ -65,6 +65,7 @@ const renderButton = async () => {
 
 const openConfirmation = async () => {
   fireEvent.click(screen.getByRole("button", { name: "Cancel invitation" }));
+
   return within(await screen.findByRole("alertdialog"));
 };
 

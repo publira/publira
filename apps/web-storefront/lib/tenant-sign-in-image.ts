@@ -12,8 +12,10 @@ export const resolveTenantSignInImageVariant = (
   info: Pick<TenantSiteInfo, "signInImageVariants"> | null
 ): TenantImageVariant | null => {
   const variant = info?.signInImageVariants?.[0];
+
   if (!(variant?.url.trim() && variant.width > 0 && variant.height > 0)) {
     return null;
   }
+
   return variant;
 };

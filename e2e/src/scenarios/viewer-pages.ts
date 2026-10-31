@@ -54,6 +54,7 @@ export const LAST_EPISODE_PATH = `/series/${SEED_TENANT.series.publicId}/episode
  */
 export const FREE_LAST_EPISODE_SERIES_TITLE = "Seed Series 002";
 export const FREE_LAST_EPISODE_TITLE = "Seed Episode 002-10";
+
 export const FREE_LAST_EPISODE_PATH =
   "/series/SeedSERSAAA2/episodes/SeedEPSDAA2A";
 
@@ -99,5 +100,6 @@ export const viewerPageImageId = (page: number): string => {
     (VIEWER_EPISODE_NO - 1) * VIEWER_PAGE_COUNT +
     page
   ).toString(16);
+
   return `018f0e7c-${sequence.padStart(4, "0")}-7000-8000-${sequence.padStart(12, "0")}`;
 };

@@ -60,6 +60,7 @@ const takePaymentsThroughStripe = async (page: Page): Promise<string> => {
   await expect(
     page.getByText("The payment settings were saved.")
   ).toBeVisible();
+
   return secretKey;
 };
 
@@ -145,6 +146,7 @@ test.describe("Subscription plans", () => {
     ).toBeVisible();
 
     const secretKey = await takePaymentsThroughStripe(page);
+
     const priceId = await createStripePrice(secretKey, {
       amount: 1200,
       currency: "jpy",

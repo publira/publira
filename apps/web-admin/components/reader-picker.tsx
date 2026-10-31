@@ -50,6 +50,7 @@ export const ReaderPicker = ({ name, onValueChange }: ReaderPickerProps) => {
       selectedReader && !readers.some((item) => item.id === selectedReader.id)
         ? [selectedReader, ...readers]
         : readers;
+
     return options.map((item) => ({
       label: t("admin.reader_picker.option", {
         email: item.email,
@@ -68,9 +69,11 @@ export const ReaderPicker = ({ name, onValueChange }: ReaderPickerProps) => {
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
       window.clearTimeout(searchTimerRef.current);
+
       if (query.trim() === "") {
         setReaders([]);
         setErrorMessage(undefined);
+
         return;
       }
 
@@ -78,9 +81,11 @@ export const ReaderPicker = ({ name, onValueChange }: ReaderPickerProps) => {
       searchTimerRef.current = window.setTimeout(() => {
         startTransition(async () => {
           const result = await listReaderOptionsAction(tenantId, query, locale);
+
           if (requestId !== requestIdRef.current) {
             return;
           }
+
           setReaders(result.readers);
           setErrorMessage(result.ok ? undefined : result.message);
         });

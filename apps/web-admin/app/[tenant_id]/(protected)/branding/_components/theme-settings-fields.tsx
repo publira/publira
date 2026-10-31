@@ -55,6 +55,7 @@ const DarkThemeContext = createContext<DarkThemeContextValue | null>(null);
 
 const useThemeSettings = () => {
   const context = use(ThemeSettingsContext);
+
   if (!context) {
     throw new Error("ThemeSettingsScope is required.");
   }
@@ -64,6 +65,7 @@ const useThemeSettings = () => {
 
 const useDarkTheme = () => {
   const context = use(DarkThemeContext);
+
   if (!context) {
     throw new Error("ThemeSettingsScope is required.");
   }
@@ -74,17 +76,20 @@ const useDarkTheme = () => {
 /** The colors of a theme, without the typefaces the dark palette has none of. */
 const pickThemeColors = (theme: TenantThemeColors): TenantThemeColors => {
   const colors = { ...DEFAULT_TENANT_THEME_COLORS };
+
   for (const key of Object.keys(
     DEFAULT_TENANT_THEME_COLORS
   ) as (keyof TenantThemeColors)[]) {
     colors[key] = theme[key];
   }
+
   return colors;
 };
 
 const applyThemePreview = (theme: TenantTheme) => {
   const vars = toPubliraThemeCssVariables(theme);
   const root = document.documentElement;
+
   for (const [property, value] of Object.entries(vars)) {
     root.style.setProperty(property, value);
   }
@@ -108,13 +113,16 @@ const ThemeSettingsScope = ({
   initialTheme: TenantTheme;
 }) => {
   const [theme, setTheme] = useState<TenantTheme>(initialTheme);
+
   const [darkTheme, setDarkTheme] = useState<TenantThemeColors>(
     () => initialDarkTheme ?? deriveDarkPalette(initialTheme)
   );
+
   const context = useMemo(
     () => ({ paintsDocument: true, setTheme, theme }),
     [theme]
   );
+
   const darkContext = useMemo(
     () => ({ darkTheme, lightTheme: theme, setDarkTheme }),
     [darkTheme, theme]
@@ -139,6 +147,7 @@ const ThemeSettingsScope = ({
 const DarkThemeScope = ({ children }: { children: ReactNode }) => {
   const { darkTheme, lightTheme, setDarkTheme } = useDarkTheme();
   const { sansFontFamily, serifFontFamily } = lightTheme;
+
   const context = useMemo(() => {
     const withTypefaces = (colors: TenantThemeColors): TenantTheme => ({
       ...colors,
@@ -212,13 +221,16 @@ const DeriveDarkThemeFromLight = ({ children }: { children: ReactNode }) => {
 
 const useThemeField = (field: ThemeKey) => {
   const { paintsDocument, setTheme, theme } = useThemeSettings();
+
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value;
     setTheme((previous) => {
       const next = { ...previous, [field]: nextValue };
+
       if (paintsDocument) {
         applyThemePreview(next);
       }
+
       return next;
     });
   };

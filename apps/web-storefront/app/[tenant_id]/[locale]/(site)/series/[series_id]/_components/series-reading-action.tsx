@@ -74,6 +74,7 @@ export const SeriesReadingAction = async ({
 }) => {
   const locale = await getLocale();
   const result = await getMySeriesProgress(tenantId, seriesId, locale);
+
   const offer = resolveContinueOffer(
     episodes,
     result.ok ? result.progress : null

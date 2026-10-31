@@ -45,6 +45,7 @@ const render = async (
     template: "purchase_receipt",
     timeZone: "Asia/Tokyo",
   });
+
   if (!result.ok) {
     throw new Error(result.message);
   }

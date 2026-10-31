@@ -28,31 +28,37 @@ const BrandMarkTitle = ({ kind }: { kind: BrandMarkKind }) => {
         <Message message="admin.settings.brand_marks.kinds.x_share.title" />
       );
     }
+
     case "line_share": {
       return (
         <Message message="admin.settings.brand_marks.kinds.line_share.title" />
       );
     }
+
     case "app_store_badge": {
       return (
         <Message message="admin.settings.brand_marks.kinds.app_store_badge.title" />
       );
     }
+
     case "google_play_badge": {
       return (
         <Message message="admin.settings.brand_marks.kinds.google_play_badge.title" />
       );
     }
+
     case "apple_sign_in": {
       return (
         <Message message="admin.settings.brand_marks.kinds.apple_sign_in.title" />
       );
     }
+
     case "google_sign_in": {
       return (
         <Message message="admin.settings.brand_marks.kinds.google_sign_in.title" />
       );
     }
+
     default: {
       return null;
     }
@@ -67,31 +73,37 @@ const BrandMarkGuideline = ({ kind }: { kind: BrandMarkKind }) => {
         <Message message="admin.settings.brand_marks.kinds.x_share.guideline" />
       );
     }
+
     case "line_share": {
       return (
         <Message message="admin.settings.brand_marks.kinds.line_share.guideline" />
       );
     }
+
     case "app_store_badge": {
       return (
         <Message message="admin.settings.brand_marks.kinds.app_store_badge.guideline" />
       );
     }
+
     case "google_play_badge": {
       return (
         <Message message="admin.settings.brand_marks.kinds.google_play_badge.guideline" />
       );
     }
+
     case "apple_sign_in": {
       return (
         <Message message="admin.settings.brand_marks.kinds.apple_sign_in.guideline" />
       );
     }
+
     case "google_sign_in": {
       return (
         <Message message="admin.settings.brand_marks.kinds.google_sign_in.guideline" />
       );
     }
+
     default: {
       return null;
     }
@@ -124,6 +136,7 @@ export const TenantBrandMarkCard = async ({
   const formId = `tenant-brand-mark-${kind}`;
   const preview = mark ? tenantBrandingVariant(mark.image) : null;
   const guidelineUrl = BRAND_MARK_GUIDELINE_URLS[kind];
+
   const acceptedAt = mark?.termsAcceptedAt
     ? formatDateTime(mark.termsAcceptedAt, { locale, timeZone })
     : "";

@@ -33,6 +33,7 @@ export const TenantLegalPagesForm = ({
 }: TenantLegalPagesFormProps) => {
   const termsPage = initialPages?.termsPage;
   const privacyPage = initialPages?.privacyPage;
+
   // Without the saved nominations a save would clear them, and without the
   // page list the pickers could offer nothing but "None".
   const fieldsDisabled =

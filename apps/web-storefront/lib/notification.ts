@@ -137,6 +137,7 @@ const readNotificationList = async (
 
   const { locale } = input;
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     return {
       ...emptyListPage,
@@ -172,6 +173,7 @@ const readNotificationList = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       ...emptyListPage,
       message: mapErrorMessage(
@@ -195,6 +197,7 @@ const readUnreadNotificationCount = async (
   applyCacheTag(notificationsCacheTag(tenantId));
 
   const t = await getMessagesFor(locale);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -217,6 +220,7 @@ const readUnreadNotificationCount = async (
     };
   } catch (error) {
     dropFailedCacheEntry();
+
     return {
       message: mapErrorMessage(
         error,
@@ -244,10 +248,12 @@ export const listNotifications = async (
     readNotificationList(tenantId, input, await resolveAccessToken()),
     getMessagesFor(input.locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("storefront.notifications.list_failed") : result.message
   );
+
   return result;
 };
 
@@ -264,10 +270,12 @@ export const countUnreadNotifications = async (
     readUnreadNotificationCount(tenantId, locale, await resolveAccessToken()),
     getMessagesFor(locale),
   ]);
+
   throwIfUnexpected(
     unexpected,
     result.ok ? t("storefront.notifications.count_failed") : result.message
   );
+
   return result;
 };
 
@@ -280,6 +288,7 @@ export const markNotificationAsRead = async (input: {
     getMessagesFor(input.locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -295,12 +304,15 @@ export const markNotificationAsRead = async (input: {
       },
       buildSessionHeaders(sessionId)
     );
+
     return { ok: true };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,
@@ -322,6 +334,7 @@ export const markAllNotificationsAsRead = async (
     getMessagesFor(locale),
     resolveAccessToken(),
   ]);
+
   if (!sessionId) {
     return {
       message: t("errors.rpc.unauthenticated"),
@@ -334,6 +347,7 @@ export const markAllNotificationsAsRead = async (
       { tenant: { tenantId } },
       buildSessionHeaders(sessionId)
     );
+
     return {
       markedCount: response.markedCount ?? 0,
       ok: true,
@@ -342,7 +356,9 @@ export const markAllNotificationsAsRead = async (
     if (isUnauthenticatedRpcError(error)) {
       throw error;
     }
+
     rethrowUnclassifiedRpcError(error);
+
     return {
       message: mapErrorMessage(
         error,

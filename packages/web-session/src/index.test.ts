@@ -24,8 +24,10 @@ const FUTURE = "2027-01-15T08:01:00.000Z";
 const setSecret = (value?: string) => {
   if (value === undefined) {
     delete process.env.PUBLIRA_AUTH_SECRET;
+
     return;
   }
+
   process.env.PUBLIRA_AUTH_SECRET = value;
 };
 
@@ -74,6 +76,7 @@ describe("web-session", () => {
       accessToken: "token-abc",
       expiresAt: FUTURE,
     };
+
     const sealed = await encryptSessionPayload(payload, SECRET);
 
     expect(() => encryptSessionPayload(payload, "too-short")).toThrow(
@@ -135,8 +138,10 @@ describe("web-session", () => {
     afterEach(() => {
       if (originalNodeEnv === undefined) {
         delete process.env.NODE_ENV;
+
         return;
       }
+
       process.env.NODE_ENV = originalNodeEnv;
     });
 

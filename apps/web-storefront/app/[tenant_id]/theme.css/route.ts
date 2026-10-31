@@ -34,5 +34,6 @@ export const GET = async (
   }
 
   const theme = await getTenantTheme(tenantId.trim());
+
   return cssResponse(toPubliraThemeCssText(theme?.light, theme?.dark));
 };
