@@ -11,7 +11,7 @@ import (
 )
 
 // previousReleaseRecordSubscriptionFromStripe is RecordSubscriptionFromStripe
-// as v0.5.2 ships it, which names no provider and none of a store's columns.
+// as v0.6.0 ships it, which names no provider and none of a store's columns.
 // Its server runs it for every Stripe webhook for as long as an upgrade leaves
 // that server running, and again after one is rolled back.
 const previousReleaseRecordSubscriptionFromStripe = `
@@ -54,10 +54,12 @@ SET plan_id = EXCLUDED.plan_id,
     updated_at = NOW()
 RETURNING id`
 
-// previousReleaseUserHoldsLiveSubscription and
-// previousReleaseListBilledStripeSubscriptionIDsForUser are the v0.5.2 reads of
-// billed_subscriptions: whether a reader may start a checkout, and which
-// subscriptions closing the account cancels through Stripe.
+// previousReleaseUserHoldsLiveSubscription,
+// previousReleaseListBilledStripeSubscriptionIDsForUser, and
+// previousReleaseGetLatestStripeCustomerIDForUser are the v0.6.0 reads of a
+// reader's subscriptions: whether the reader may start a checkout, which
+// subscriptions closing the account cancels through Stripe, and the Stripe
+// customer a checkout and the billing portal name.
 const (
 	previousReleaseUserHoldsLiveSubscription = `
 SELECT EXISTS (
@@ -71,8 +73,18 @@ SELECT stripe_subscription_id
 FROM billed_subscriptions
 WHERE tenant_id = $1
     AND user_id = $2
+    AND stripe_subscription_id IS NOT NULL
 ORDER BY created_at,
     id`
+	previousReleaseGetLatestStripeCustomerIDForUser = `
+SELECT stripe_customer_id
+FROM subscriptions
+WHERE tenant_id = $1
+    AND user_id = $2
+    AND stripe_customer_id IS NOT NULL
+ORDER BY created_at DESC,
+    id DESC
+LIMIT 1`
 )
 
 // The previous release goes on recording Stripe subscriptions on the schema
@@ -115,12 +127,12 @@ func TestPreviousReleaseRecordsAStripeSubscriptionBesideStoreOnes(t *testing.T) 
 	}
 }
 
-// The previous release reads billed_subscriptions as the Stripe subscriptions
-// a reader holds, and goes on reading only those: a reader holding a store
-// one alone is one it would let start a checkout, which it could refuse no
-// other way, and one whose account deletion it would cancel nothing for, which
-// is what this release does too.
-func TestPreviousReleaseReadsOnlyStripeSubscriptionsAsBilled(t *testing.T) {
+// The previous release reads a store subscription the way this one does: as a
+// subscription the reader holds, so it refuses them a second one through the
+// web checkout, and as no Stripe customer or Stripe subscription, so the
+// billing portal and the cancellations an account deletion queues name only
+// what Stripe bills, even when a store subscription is the reader's latest.
+func TestPreviousReleaseReadsAStoreSubscriptionAsHeldAndNotStripes(t *testing.T) {
 	pg := testutil.StartIsolatedPostgres(t)
 	t.Parallel()
 
@@ -131,8 +143,14 @@ func TestPreviousReleaseReadsOnlyStripeSubscriptionsAsBilled(t *testing.T) {
 	stripeReader := pg.SeedEndUser(t, tenant.ID, "READER000001", "stripe@example.com", "Stripe")
 	storeReader := pg.SeedEndUser(t, tenant.ID, "READER000002", "store@example.com", "Store")
 	plan := pg.SeedSubscriptionPlan(t, tenant.ID, testutil.SubscriptionPlanSeed{GooglePlayProductID: "plan_monthly"})
-	pg.SeedSubscription(t, tenant.ID, stripeReader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_billed"})
-	pg.SeedSubscription(t, tenant.ID, storeReader.ID, plan.ID, testutil.SubscriptionSeed{Provider: "google_play"})
+	pg.SeedSubscription(t, tenant.ID, stripeReader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_billed", StripeCustomerID: "cus_billed"})
+	// The store reader once subscribed through Stripe, and their latest
+	// subscription is the store one.
+	pg.SeedSubscription(t, tenant.ID, storeReader.ID, plan.ID, testutil.SubscriptionSeed{StripeSubscriptionID: "sub_ended", StripeCustomerID: "cus_earlier", Status: "canceled"})
+	storeID := pg.SeedSubscription(t, tenant.ID, storeReader.ID, plan.ID, testutil.SubscriptionSeed{Provider: "google_play"})
+	if _, err := pg.DB.ExecContext(ctx, "UPDATE subscriptions SET created_at = now() + interval '1 minute' WHERE id = $1", storeID); err != nil {
+		t.Fatalf("make the store subscription the latest: %v", err)
+	}
 
 	holds := func(readerID uuid.UUID) bool {
 		t.Helper()
@@ -142,9 +160,10 @@ func TestPreviousReleaseReadsOnlyStripeSubscriptionsAsBilled(t *testing.T) {
 		}
 		return held
 	}
-	if !holds(stripeReader.ID) || holds(storeReader.ID) {
-		t.Fatalf("previous release holds: stripe %v, store %v, want the Stripe subscriber alone", holds(stripeReader.ID), holds(storeReader.ID))
+	if !holds(stripeReader.ID) || !holds(storeReader.ID) {
+		t.Fatalf("previous release holds: stripe %v, store %v, want both readers subscribed", holds(stripeReader.ID), holds(storeReader.ID))
 	}
+
 	billed := func(readerID uuid.UUID) []string {
 		t.Helper()
 		rows, err := pg.DB.QueryContext(ctx, previousReleaseListBilledStripeSubscriptionIDsForUser, tenant.ID, readerID)
@@ -166,18 +185,18 @@ func TestPreviousReleaseReadsOnlyStripeSubscriptionsAsBilled(t *testing.T) {
 		return ids
 	}
 	if got := billed(stripeReader.ID); len(got) != 1 || got[0] != "sub_billed" {
-		t.Fatalf("billed subscriptions of the Stripe subscriber = %v, want sub_billed", got)
+		t.Fatalf("billed Stripe subscriptions of the Stripe subscriber = %v, want sub_billed", got)
 	}
 	if got := billed(storeReader.ID); len(got) != 0 {
-		t.Fatalf("billed subscriptions of the store subscriber = %v, want none", got)
+		t.Fatalf("billed Stripe subscriptions of the store subscriber = %v, want none", got)
 	}
 
-	var live int
-	if err := pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM live_subscriptions WHERE tenant_id = $1", tenant.ID).Scan(&live); err != nil {
-		t.Fatalf("count live subscriptions: %v", err)
+	var customerID string
+	if err := pg.DB.QueryRowContext(ctx, previousReleaseGetLatestStripeCustomerIDForUser, tenant.ID, storeReader.ID).Scan(&customerID); err != nil {
+		t.Fatalf("previous release's GetLatestStripeCustomerIDForUser: %v", err)
 	}
-	if live != 2 {
-		t.Fatalf("live subscriptions = %d, want both", live)
+	if customerID != "cus_earlier" {
+		t.Fatalf("previous release's Stripe customer of the store subscriber = %q, want cus_earlier", customerID)
 	}
 }
 

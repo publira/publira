@@ -86,7 +86,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
 -- failed starts again.
 SELECT EXISTS (
         SELECT 1
-        FROM live_subscriptions
+        FROM billed_subscriptions
         WHERE tenant_id = $1
             AND user_id = $2
     ) AS holds;
