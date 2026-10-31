@@ -17,6 +17,8 @@ import { Message } from "#components/message";
 import { searchPublishedSeries } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
+import { isNarrowedSeriesSearch } from "#lib/series-filters";
+import type { SeriesSearchFilters } from "#lib/series-filters";
 import { getTenantId } from "#lib/tenant-id";
 
 import type { SearchGroupView } from "../_lib/search-group";
@@ -64,10 +66,12 @@ const SeriesPaginationNav = async ({ children }: { children: ReactNode }) => {
 
 /** The two directions, written once for both places this group shows them. */
 const SeriesPagination = ({
+  filters,
   nextToken,
   previousToken,
   query,
 }: {
+  filters: SeriesSearchFilters;
   nextToken: string;
   previousToken: string;
   query: string;
@@ -76,7 +80,14 @@ const SeriesPagination = ({
     <SeriesPaginationNav>
       <ListPagination.Step
         href={
-          previousToken ? searchPageHref(query, "series", previousToken) : ""
+          previousToken
+            ? searchPageHref({
+                filters,
+                kind: "series",
+                query,
+                token: previousToken,
+              })
+            : ""
         }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -84,7 +95,16 @@ const SeriesPagination = ({
         </Suspense>
       </ListPagination.Step>
       <ListPagination.Step
-        href={nextToken ? searchPageHref(query, "series", nextToken) : ""}
+        href={
+          nextToken
+            ? searchPageHref({
+                filters,
+                kind: "series",
+                query,
+                token: nextToken,
+              })
+            : ""
+        }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
@@ -95,7 +115,7 @@ const SeriesPagination = ({
 );
 
 /**
- * The series that match the keyword.
+ * The series that match the keyword, narrowed and sorted by `filters`.
  *
  * In `page` view this is the whole group, one cursor page at a time. In
  * `overview` view it is the first few rows, and the link under them appears
@@ -103,10 +123,12 @@ const SeriesPagination = ({
  * same rows the reader is already looking at is a dead end.
  */
 export const SeriesResults = async ({
+  filters,
   query,
   token,
   view,
 }: {
+  filters: SeriesSearchFilters;
   query: string;
   token: string;
   view: SearchGroupView;
@@ -115,9 +137,13 @@ export const SeriesResults = async ({
   const overview = view === "overview";
 
   const result = await searchPublishedSeries(tenantId, {
+    genrePublicId: filters.genre,
+    hasFreeEpisodes: filters.free,
     limit: overview ? SERIES_OVERVIEW_SIZE : SERIES_PAGE_SIZE,
     locale,
+    order: filters.order || undefined,
     query,
+    status: filters.status || undefined,
     token,
   });
 
@@ -144,10 +170,17 @@ export const SeriesResults = async ({
         <EmptyState.Root>
           <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-              <Message
-                message="storefront.search.series_no_results"
-                values={{ query }}
-              />
+              {isNarrowedSeriesSearch(filters) ? (
+                <Message
+                  message="storefront.search.series_filtered_no_results"
+                  values={{ query }}
+                />
+              ) : (
+                <Message
+                  message="storefront.search.series_no_results"
+                  values={{ query }}
+                />
+              )}
             </Suspense>
           </EmptyState.Description>
         </EmptyState.Root>
@@ -168,6 +201,7 @@ export const SeriesResults = async ({
         </EmptyState.Root>
         {previousToken || nextToken ? (
           <SeriesPagination
+            filters={filters}
             nextToken={nextToken}
             previousToken={previousToken}
             query={query}
@@ -176,7 +210,7 @@ export const SeriesResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "series")}
+              href={searchPageHref({ filters, kind: "series", query })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="storefront.search.series_first_page" />
@@ -231,7 +265,7 @@ export const SeriesResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "series")}
+              href={searchPageHref({ kind: "series", query })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="storefront.search.series_show_all" />
@@ -241,6 +275,7 @@ export const SeriesResults = async ({
         )
       ) : (
         <SeriesPagination
+          filters={filters}
           nextToken={nextToken}
           previousToken={previousToken}
           query={query}

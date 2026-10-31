@@ -73,8 +73,8 @@ const collisions = (controls: HeaderControl[]): string[] => {
  * The site header at a phone width.
  *
  * The band is one row of 36px controls and 342px wide between its margins,
- * which is not enough for the catalog field, the language, and both account
- * actions beside the tenant's name. They are behind the menu button instead,
+ * which is not enough for the search, the language, and both account actions
+ * beside the tenant's name. They are behind the menu button instead,
  * and these tests hold both halves of that: nothing in the row lands on
  * anything else, and everything the row stopped drawing is still reachable.
  */
@@ -101,7 +101,7 @@ test.describe("web-storefront header at a phone width", () => {
     ).toBeLessThanOrEqual(PHONE_VIEWPORT.width);
   });
 
-  test("reaches the catalog field, the language, and both account actions through the menu", async ({
+  test("reaches the search, the language, and both account actions through the menu", async ({
     page,
   }) => {
     await page.goto(storefrontPath("/series"));
@@ -120,12 +120,13 @@ test.describe("web-storefront header at a phone width", () => {
     // flat list of every author and a flat list of every series are not among
     // them, so the drawer offers neither as a destination.
     await expect(links.getByRole("link")).toHaveText(["Labels", "Genres"]);
+    // One door to the results rather than two: the row that opens the search
+    // dialog is the drawer's search, so the rows beside it do not repeat it as
+    // a destination, and the drawer keeps no form of its own.
     await expect(
-      menu.getByRole("searchbox", { name: "Search works" })
+      menu.getByRole("button", { name: "Search works" })
     ).toBeVisible();
-    // One door to the results rather than two: the field is the drawer's
-    // search, so the rows beside it do not repeat it as a destination.
-    await expect(menu.getByRole("search")).toHaveCount(1);
+    await expect(menu.getByRole("search")).toHaveCount(0);
     await expect(links.getByRole("link", { name: "Search" })).toHaveCount(0);
     // The language is one row until it is asked for, so the catalog rows above
     // it are not outnumbered by the five the registry holds.
@@ -201,17 +202,17 @@ test.describe("web-storefront header at a phone width", () => {
  * The site header at a desktop width, where the band draws the whole row.
  *
  * The row names the ways in that stay useful as the catalog grows — the labels,
- * the genres, and the field — and nothing that grows into a wall of names with
- * it. The field is the one way into the results: a link beside it would be a
- * second door to the same room, and the page behind that door opens by asking
- * for the keyword the field already takes.
+ * the genres, and the search — and nothing that grows into a wall of names
+ * with it. The search is the one way into the results: a link beside it would
+ * be a second door to the same room, and the page behind that door opens by
+ * asking for the keyword the search dialog already takes.
  */
 test.describe("web-storefront header at a desktop width", () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(DESKTOP_VIEWPORT);
   });
 
-  test("starts a search from the field, the only entry the band draws", async ({
+  test("starts a search from the one control the band draws for it", async ({
     page,
   }) => {
     await page.goto(storefrontPath("/series"));
@@ -226,23 +227,30 @@ test.describe("web-storefront header at a desktop width", () => {
     const nav = banner.getByRole("navigation");
     await expect(nav.getByRole("link", { name: "Genres" })).toBeVisible();
 
-    await expect(banner.getByRole("search")).toHaveCount(1);
+    // The band holds a button shaped like the field and nothing it submits:
+    // the field and the filters are in the dialog the button opens.
+    await expect(banner.getByRole("search")).toHaveCount(0);
+    await expect(banner.getByRole("searchbox")).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Search" })).toHaveCount(0);
+
+    await banner.getByRole("button", { name: "Search works" }).click();
 
     // The keyword is typed and submitted from the field itself, so the results
     // are reachable without a pointer ever landing on the submit button.
-    const field = banner.getByRole("searchbox", { name: "Search works" });
-    await field.fill(SEED_TENANT.series.title);
+    const field = page
+      .getByRole("dialog", { name: "Search" })
+      .getByRole("searchbox", { name: "Search works" });
+
     await expect(field).toBeFocused();
+    await field.fill(SEED_TENANT.series.title);
     await field.press("Enter");
 
     await expect(page).toHaveURL(/\/search\?q=/u);
     expect(new URL(page.url()).searchParams.get("q")).toBe(
       SEED_TENANT.series.title
     );
-    // The page the field lands on is the overview of all three result groups,
-    // so the narrowing `/search` offers is still one submission away from the
-    // band that no longer links to it.
+    // A keyword nobody narrowed lands on the overview of all three result
+    // groups.
     await expect(
       page.getByRole("heading", { level: 1, name: "Search" })
     ).toBeVisible();
@@ -255,6 +263,7 @@ test.describe("web-storefront header at a desktop width", () => {
     await expect(
       page.getByRole("heading", { level: 2, name: "Labels" })
     ).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Search" })).toBeHidden();
   });
 
   test("links to the labels and the genres, and to neither flat list", async ({

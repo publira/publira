@@ -7,6 +7,16 @@ import { z } from "zod";
 
 import { SEARCH_QUERY_MAX_LENGTH } from "#lib/catalog";
 import { cursorTokenSchema } from "#lib/cursor-token";
+import {
+  appendSeriesSearchFilters,
+  genreFilterSchema,
+  isNarrowedSeriesSearch,
+  seriesFreeFilterSchema,
+  seriesSearchOrderSchema,
+  seriesStatusFilterSchema,
+  UNNARROWED_SERIES_SEARCH,
+} from "#lib/series-filters";
+import type { SeriesSearchFilters } from "#lib/series-filters";
 
 /**
  * Which of the three result groups the screen is showing. `all` is the
@@ -26,22 +36,32 @@ export type SearchKind = (typeof searchKinds)[number];
 export const DEFAULT_SEARCH_KIND: SearchKind = "all";
 
 const searchPageSearchParamsSchema = z.object({
+  free: seriesFreeFilterSchema,
+  genre: genreFilterSchema,
   kind: searchParamEnum(searchKinds, { fallback: DEFAULT_SEARCH_KIND }),
+  order: seriesSearchOrderSchema,
   q: searchParamString({
     fallback: "",
     maxLength: SEARCH_QUERY_MAX_LENGTH,
     truncate: true,
   }),
+  status: seriesStatusFilterSchema,
   token: cursorTokenSchema,
 });
 
 interface ParseSearchPageSearchParamsInput {
+  free?: SearchParamValue;
+  genre?: SearchParamValue;
   kind?: SearchParamValue;
+  order?: SearchParamValue;
   q?: SearchParamValue;
+  status?: SearchParamValue;
   token?: SearchParamValue;
 }
 
 export interface SearchPageSearchParams {
+  /** The sort and the filters of the series group. */
+  filters: SeriesSearchFilters;
   /** Which result group is on screen. */
   kind: SearchKind;
   /** Trimmed keyword. Empty when the page is showing the prompt. */
@@ -55,21 +75,43 @@ export const parseSearchPageSearchParams = (
 ): SearchPageSearchParams => {
   const parsed = searchPageSearchParamsSchema.parse(input);
 
+  const filters: SeriesSearchFilters = {
+    free: parsed.free,
+    genre: parsed.genre,
+    order: parsed.order,
+    status: parsed.status,
+  };
+
+  // Only the series have a genre, a serialization status, or a price, so a
+  // search narrowed by any of them is answered by that group alone, whatever
+  // group the URL names. The overview is what an unnarrowed keyword shows.
+  const kind = isNarrowedSeriesSearch(filters) ? "series" : parsed.kind;
+
   return {
-    kind: parsed.kind,
+    filters,
+    kind,
     query: parsed.q,
     // The overview shows the head of three lists side by side and pages none of
     // them, so a token arriving with it names a position nothing on screen has.
     // Each group's own view is where a token means something.
-    token: parsed.kind === DEFAULT_SEARCH_KIND ? "" : parsed.token,
+    token: kind === DEFAULT_SEARCH_KIND ? "" : parsed.token,
   };
 };
 
-export const searchPageHref = (
-  query: string,
-  kind: SearchKind = DEFAULT_SEARCH_KIND,
-  token = ""
-): string => {
+interface SearchPageHrefInput {
+  /** Written only for the series group, the one group they narrow. */
+  filters?: SeriesSearchFilters;
+  kind?: SearchKind;
+  query: string;
+  token?: string;
+}
+
+export const searchPageHref = ({
+  filters = UNNARROWED_SERIES_SEARCH,
+  kind = DEFAULT_SEARCH_KIND,
+  query,
+  token = "",
+}: SearchPageHrefInput): string => {
   const params = new URLSearchParams();
 
   if (query) {
@@ -78,10 +120,14 @@ export const searchPageHref = (
 
   if (kind !== DEFAULT_SEARCH_KIND) {
     params.set("kind", kind);
+  }
 
-    if (token) {
-      params.set("token", token);
-    }
+  if (kind === "series") {
+    appendSeriesSearchFilters(params, filters);
+  }
+
+  if (kind !== DEFAULT_SEARCH_KIND && token) {
+    params.set("token", token);
   }
 
   const serialized = params.toString();

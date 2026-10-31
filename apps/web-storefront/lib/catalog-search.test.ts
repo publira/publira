@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { ClientSurface } from "@publira/api-client/public/types";
+import { SeriesOrder } from "@publira/api-client/public/catalog";
+import { ClientSurface, SeriesStatus } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { searchPublishedSeries } from "./catalog";
@@ -50,9 +51,13 @@ describe("searchPublishedSeries", () => {
     });
 
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "",
+      hasFreeEpisodes: false,
       limit: 12,
       locale: "en",
+      order: SeriesOrder.UNSPECIFIED,
       query: "Series",
+      status: SeriesStatus.UNSPECIFIED,
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "abc",
@@ -91,9 +96,43 @@ describe("searchPublishedSeries", () => {
     await searchPublishedSeries("TENANT_1", { locale: "en", query: "Seed" });
 
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "",
+      hasFreeEpisodes: false,
       limit: 20,
       locale: "en",
+      order: SeriesOrder.UNSPECIFIED,
       query: "Seed",
+      status: SeriesStatus.UNSPECIFIED,
+      surface: ClientSurface.WEB,
+      tenant: { tenantId: "TENANT_1" },
+      token: "",
+    });
+  });
+
+  it("Sends the sort and the filters a reader narrowed the search with", async () => {
+    mockSearchPublishedSeries.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      series: [],
+    });
+
+    await searchPublishedSeries("TENANT_1", {
+      genrePublicId: "GENRE123abcd",
+      hasFreeEpisodes: true,
+      locale: "en",
+      order: "updated",
+      query: "Seed",
+      status: "completed",
+    });
+
+    expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
+      genrePublicId: "GENRE123abcd",
+      hasFreeEpisodes: true,
+      limit: 20,
+      locale: "en",
+      order: SeriesOrder.LATEST_EPISODE_AT_DESC,
+      query: "Seed",
+      status: SeriesStatus.COMPLETED,
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
       token: "",

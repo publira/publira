@@ -69,7 +69,9 @@ const CreatorPagination = ({
     <CreatorPaginationNav>
       <ListPagination.Step
         href={
-          previousToken ? searchPageHref(query, "creators", previousToken) : ""
+          previousToken
+            ? searchPageHref({ kind: "creators", query, token: previousToken })
+            : ""
         }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -77,7 +79,11 @@ const CreatorPagination = ({
         </Suspense>
       </ListPagination.Step>
       <ListPagination.Step
-        href={nextToken ? searchPageHref(query, "creators", nextToken) : ""}
+        href={
+          nextToken
+            ? searchPageHref({ kind: "creators", query, token: nextToken })
+            : ""
+        }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
@@ -171,7 +177,7 @@ export const CreatorResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "creators")}
+              href={searchPageHref({ kind: "creators", query })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="storefront.search.creators_first_page" />
@@ -213,7 +219,7 @@ export const CreatorResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "creators")}
+              href={searchPageHref({ kind: "creators", query })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="storefront.search.creators_show_all" />

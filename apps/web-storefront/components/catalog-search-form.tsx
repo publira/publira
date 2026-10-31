@@ -1,66 +1,209 @@
+import { Button } from "@publira/ui-components/button";
 import { Skeleton } from "@publira/ui-components/skeleton";
+import { cn } from "@publira/utils";
 import Form from "next/form";
 
-import { SEARCH_QUERY_MAX_LENGTH } from "#lib/catalog";
-import { getMessages } from "#lib/get-messages";
-import { localePath } from "#lib/locale";
+import { listPublishedGenres, SEARCH_QUERY_MAX_LENGTH } from "#lib/catalog";
+import { getLocale, localePath } from "#lib/locale";
+import { getMessagesFor } from "#lib/messages";
+import { UNNARROWED_SERIES_SEARCH } from "#lib/series-filters";
+import type { SeriesSearchFilters } from "#lib/series-filters";
+import { getTenantId } from "#lib/tenant-id";
 
-/** Same footprint as the rendered control, so the header does not shift. */
+const CONTROL_LABEL = cn("text-xs font-medium text-muted-foreground");
+
+const CONTROL = cn(
+  "h-9 w-full min-w-0 rounded-control border border-input bg-card px-3 text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:h-11"
+);
+
+/** Same footprint as the rendered form, so what is below it does not shift. */
 export const CatalogSearchFormSkeleton = () => (
-  <div
-    aria-hidden="true"
-    className="flex max-w-64 min-w-0 flex-1 items-center gap-2"
-  >
-    <Skeleton className="h-9 min-w-0 flex-1 pointer-coarse:h-11" />
-    <Skeleton className="h-9 w-14 shrink-0 pointer-coarse:h-11" />
+  <div aria-hidden="true" className="@container grid w-full gap-4">
+    <div className="flex items-center gap-2">
+      <Skeleton className="h-9 min-w-0 flex-1 pointer-coarse:h-11" />
+      <Skeleton className="h-9 w-20 shrink-0 pointer-coarse:h-11" />
+    </div>
+    <div className="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-4">
+      <Skeleton className="h-14" />
+      <Skeleton className="h-14" />
+      <Skeleton className="h-14" />
+      <Skeleton className="h-14" />
+    </div>
   </div>
 );
 
 /**
- * The whole control resolves the accessor at once rather than per string: the
- * label and the placeholder are attributes, which cannot stream, and the form's
- * own action needs the locale prefix. The caller wraps this in the
- * `<Suspense>` whose fallback is {@link CatalogSearchFormSkeleton}.
- * Its string `action` is a search GET navigation, not a state-changing Server
- * Action, so the same-origin policy does not apply.
+ * The catalog search: the keyword, and the sort and filters of the series list
+ * written under the series list's own keys, as one `GET` form whose fields are
+ * the query string of `/search`. A narrowed result is therefore a plain URL a
+ * reader can share and reload.
+ *
+ * The whole form resolves the accessor at once rather than per string: the
+ * labels, the option text, and the placeholder belong to controls that submit
+ * as one unit, and the form's own action needs the locale prefix. The caller
+ * wraps this in the `<Suspense>` whose fallback is
+ * {@link CatalogSearchFormSkeleton}. Its string `action` is a search
+ * navigation, not a state-changing Server Action, so the same-origin policy
+ * does not apply.
+ *
+ * The filters are a fieldset of their own because only the series group has a
+ * genre, a serialization status, or a price; its legend says so, and the
+ * search screen answers a narrowed search with that group alone. A tenant that
+ * curates no genre, and a genre read that could not answer, leave the other
+ * three controls rather than holding the search behind one dropdown.
+ *
+ * No `token` field, which is what makes a new submission start at page one: a
+ * cursor names a row of the result it was built for, and the server rejects
+ * one sent with a different keyword, sort, or filter (`proto/README.md`).
  */
 export const CatalogSearchForm = async ({
+  defaultFilters = UNNARROWED_SERIES_SEARCH,
   defaultQuery = "",
-  id = "catalog-search",
+  id,
 }: {
+  defaultFilters?: SeriesSearchFilters;
   defaultQuery?: string;
-  id?: string;
+  /** Prefix of every control's id, unique to the place the form renders in. */
+  id: string;
 }) => {
-  const t = await getMessages();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+
+  const [t, action, genres] = await Promise.all([
+    getMessagesFor(locale),
+    localePath("/search"),
+    listPublishedGenres(tenantId, locale),
+  ]);
+
   const label = t("storefront.nav.search_label");
-  const action = await localePath("/search");
+  const genreOptions = genres.ok ? genres.value : [];
 
   return (
-    <search className="flex max-w-64 min-w-0 flex-1 items-center gap-2">
+    <search className="@container w-full">
       <Form
         action={action}
-        className="flex min-w-0 flex-1 items-center gap-2"
-        key={defaultQuery}
+        className="grid gap-4"
+        // The controls are uncontrolled, so a navigation that changes the query
+        // has to bring new elements with it rather than new default values.
+        key={JSON.stringify([defaultQuery, defaultFilters])}
       >
-        <label className="sr-only" htmlFor={id}>
-          {label}
-        </label>
-        <input
-          autoComplete="off"
-          className="h-9 min-w-0 flex-1 rounded-control border border-input bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:h-11"
-          defaultValue={defaultQuery}
-          id={id}
-          maxLength={SEARCH_QUERY_MAX_LENGTH}
-          name="q"
-          placeholder={label}
-          type="search"
-        />
-        <button
-          className="h-9 shrink-0 rounded-control border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors duration-state ease-state hover:bg-muted pointer-coarse:h-11"
-          type="submit"
-        >
-          {t("storefront.nav.search_submit")}
-        </button>
+        <div className="flex items-center gap-2">
+          <label className="sr-only" htmlFor={`${id}-keyword`}>
+            {label}
+          </label>
+          <input
+            autoComplete="off"
+            className={cn(CONTROL, "flex-1 placeholder:text-muted-foreground")}
+            defaultValue={defaultQuery}
+            id={`${id}-keyword`}
+            maxLength={SEARCH_QUERY_MAX_LENGTH}
+            name="q"
+            placeholder={label}
+            type="search"
+          />
+          {/* Outlined rather than filled: the one filled control a storefront
+              screen is allowed is the Shu the reading action takes. */}
+          <Button className="shrink-0" type="submit" variant="outline">
+            {t("storefront.nav.search_submit")}
+          </Button>
+        </div>
+
+        <fieldset className="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-4">
+          <legend className="mb-3 text-sm font-medium text-foreground">
+            {t("storefront.search.filters_legend")}
+          </legend>
+
+          {genreOptions.length > 0 && (
+            <div className="grid gap-1.5">
+              <label className={CONTROL_LABEL} htmlFor={`${id}-genre`}>
+                {t("storefront.series.filter_genre")}
+              </label>
+              <select
+                className={CONTROL}
+                defaultValue={defaultFilters.genre}
+                id={`${id}-genre`}
+                name="genre"
+              >
+                <option value="">
+                  {t("storefront.series.filter_genre_all")}
+                </option>
+                {genreOptions.map((genre) => (
+                  <option
+                    key={genre.publicId}
+                    lang={genre.locale}
+                    value={genre.publicId}
+                  >
+                    {genre.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid gap-1.5">
+            <label className={CONTROL_LABEL} htmlFor={`${id}-order`}>
+              {t("storefront.series.filter_order")}
+            </label>
+            <select
+              className={CONTROL}
+              defaultValue={defaultFilters.order}
+              id={`${id}-order`}
+              name="order"
+            >
+              <option value="">{t("storefront.search.order_relevance")}</option>
+              <option value="newest">
+                {t("storefront.series.order_newest")}
+              </option>
+              <option value="updated">
+                {t("storefront.series.order_updated")}
+              </option>
+              <option value="title">
+                {t("storefront.series.order_title")}
+              </option>
+            </select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <label className={CONTROL_LABEL} htmlFor={`${id}-status`}>
+              {t("storefront.series.filter_status")}
+            </label>
+            <select
+              className={CONTROL}
+              defaultValue={defaultFilters.status}
+              id={`${id}-status`}
+              name="status"
+            >
+              <option value="">
+                {t("storefront.series.filter_status_all")}
+              </option>
+              <option value="ongoing">
+                {t("storefront.series.status_ongoing")}
+              </option>
+              <option value="completed">
+                {t("storefront.series.status_completed")}
+              </option>
+              <option value="hiatus">
+                {t("storefront.series.status_hiatus")}
+              </option>
+            </select>
+          </div>
+
+          <div className="flex items-end">
+            <label
+              className="flex min-h-9 items-center gap-2 text-sm text-foreground pointer-coarse:min-h-11"
+              htmlFor={`${id}-free`}
+            >
+              <input
+                className="size-4 rounded-control border-input accent-primary"
+                defaultChecked={defaultFilters.free}
+                id={`${id}-free`}
+                name="free"
+                type="checkbox"
+                value="1"
+              />
+              {t("storefront.series.filter_free")}
+            </label>
+          </div>
+        </fieldset>
       </Form>
     </search>
   );

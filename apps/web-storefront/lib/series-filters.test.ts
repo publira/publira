@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
+  appendSeriesSearchFilters,
   genreFilterSchema,
+  isNarrowedSeriesSearch,
   seriesFreeFilterSchema,
   seriesListQueryHref,
   seriesOrderSchema,
+  seriesSearchOrderSchema,
   seriesStatusFilterSchema,
+  UNNARROWED_SERIES_SEARCH,
 } from "./series-filters";
 
 const schema = z.object({
@@ -27,6 +31,20 @@ describe("seriesOrderSchema", () => {
     expect(schema.parse({}).order).toBe("newest");
     expect(seriesOrderSchema.parse("published_at_asc")).toBe("newest");
     expect(seriesOrderSchema.parse(["title", "newest"])).toBe("newest");
+  });
+});
+
+describe("seriesSearchOrderSchema", () => {
+  it("Takes the three sorts the series list offers, newest included", () => {
+    expect(seriesSearchOrderSchema.parse("newest")).toBe("newest");
+    expect(seriesSearchOrderSchema.parse("updated")).toBe("updated");
+    expect(seriesSearchOrderSchema.parse("title")).toBe("title");
+  });
+
+  it("An absent, empty, or unknown value is the search's own order", () => {
+    expect(seriesSearchOrderSchema.parse(undefined)).toBe("");
+    expect(seriesSearchOrderSchema.parse("")).toBe("");
+    expect(seriesSearchOrderSchema.parse("relevance")).toBe("");
   });
 });
 
@@ -101,5 +119,52 @@ describe("seriesListQueryHref", () => {
         token: "",
       })
     ).toBe("/genres/SeedGENRAAA1?order=updated");
+  });
+});
+
+describe("isNarrowedSeriesSearch", () => {
+  it("Is false for the search nobody narrowed", () => {
+    expect(isNarrowedSeriesSearch(UNNARROWED_SERIES_SEARCH)).toBe(false);
+  });
+
+  it("Is true for a sort or any one filter", () => {
+    expect(
+      isNarrowedSeriesSearch({ ...UNNARROWED_SERIES_SEARCH, order: "newest" })
+    ).toBe(true);
+    expect(
+      isNarrowedSeriesSearch({ ...UNNARROWED_SERIES_SEARCH, free: true })
+    ).toBe(true);
+    expect(
+      isNarrowedSeriesSearch({
+        ...UNNARROWED_SERIES_SEARCH,
+        genre: "SeedGENRAAA1",
+      })
+    ).toBe(true);
+    expect(
+      isNarrowedSeriesSearch({ ...UNNARROWED_SERIES_SEARCH, status: "hiatus" })
+    ).toBe(true);
+  });
+});
+
+describe("appendSeriesSearchFilters", () => {
+  it("Writes nothing for the search nobody narrowed", () => {
+    const params = new URLSearchParams();
+    appendSeriesSearchFilters(params, UNNARROWED_SERIES_SEARCH);
+
+    expect(params.toString()).toBe("");
+  });
+
+  it("Writes a chosen sort out, the newest first included", () => {
+    const params = new URLSearchParams();
+    appendSeriesSearchFilters(params, {
+      free: true,
+      genre: "SeedGENRAAA1",
+      order: "newest",
+      status: "ongoing",
+    });
+
+    expect(params.toString()).toBe(
+      "genre=SeedGENRAAA1&order=newest&status=ongoing&free=1"
+    );
   });
 });
