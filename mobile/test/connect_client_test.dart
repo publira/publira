@@ -79,6 +79,66 @@ void main() {
     );
   });
 
+  test(
+    'a call maps a 429 without an error body to resource_exhausted',
+    () async {
+      for (final response in [
+        http.Response('', 429),
+        http.Response(
+          'Too Many Requests',
+          429,
+          headers: {'content-type': 'text/plain; charset=utf-8'},
+        ),
+        http.Response(
+          '<html><head><title>429 Too Many Requests</title></head></html>',
+          429,
+          headers: {'content-type': 'text/html'},
+        ),
+      ]) {
+        final client = ConnectClient(
+          baseUrl: 'https://example.test',
+          httpClient: MockClient((_) async => response),
+        );
+
+        await expectLater(
+          _listSeries(client),
+          throwsA(
+            isA<ConnectException>().having(
+              (error) => error.code,
+              'code',
+              'resource_exhausted',
+            ),
+          ),
+          reason: 'body "${response.body}"',
+        );
+      }
+    },
+  );
+
+  test('a call keeps the code a 429 error body names', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient((_) async {
+        return http.Response(
+          jsonEncode(const {
+            'code': 'unavailable',
+            'message': 'try again later',
+          }),
+          429,
+        );
+      }),
+    );
+
+    expect(
+      () => _listSeries(client),
+      throwsA(
+        isA<ConnectException>()
+            .having((error) => error.code, 'code', 'unavailable')
+            .having((error) => error.message, 'message', 'try again later'),
+      ),
+    );
+  });
+
   test('a call maps a success body that does not decode to internal', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
