@@ -13,7 +13,11 @@ import { unexpectedServerLogLines } from "../src/server-log";
  * agreement, through a Server Action nothing on the page waits for, so a reader
  * who moves on or closes the page straight after one — a spec ending on the
  * announcement list it just paged through, for one — leaves its body unread,
- * and Next.js reports the connection reset as `aborted`.
+ * and Next.js reports the connection reset as `aborted`. It reports it without
+ * the `⨯` prefix when the reset lands while `proxy.ts` holds the request:
+ * Next.js copies the body of every request the proxy sees and waits for the
+ * rest of it before rendering, and when that wait fails it logs the error
+ * itself through `console.error`, outside the request boundary.
  *
  * `catalog.outage.spec.ts` renders the site while the API is down, and any
  * cached site-chrome read whose entry is missing or stale at that moment
@@ -27,6 +31,7 @@ const EXPECTED_ERRORS = [
   /^⨯ Error \[ConnectError\]: \[unauthenticated\] invalid token$/u,
   /^⨯ Error: The destination stream closed early\.$/u,
   /^⨯ Error: aborted$/u,
+  /^Error: aborted$/u,
   /^\[web-storefront\] \w+ failed Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
 ];
 
