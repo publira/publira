@@ -199,6 +199,7 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
           sectionKey: widget.sectionKey,
           message: catalogFailureCopy(messages, failure, failureMessage),
           onRetry: () => setState(_load),
+          failure: failure,
         ),
       );
     }

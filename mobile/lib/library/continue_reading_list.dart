@@ -101,6 +101,7 @@ class _ContinueReadingListState extends State<ContinueReadingList> {
             actionKey: const ValueKey('library-continue-retry'),
             actionLabel: messages.commonRetry,
             onAction: _pager.restart,
+            failure: failure,
           );
         }
         final items = _pager.items;
@@ -139,6 +140,7 @@ class _ContinueReadingListState extends State<ContinueReadingList> {
                         messages.commonMoreSeriesFailed,
                       ),
                 onRetry: _pager.retryMore,
+                failure: _pager.moreFailure,
               );
             }
             return ColumnRow(

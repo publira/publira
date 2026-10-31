@@ -837,6 +837,7 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
           actionKey: const ValueKey('catalog-retry'),
           actionLabel: messages.commonRetry,
           onAction: () => setState(_loadFirstPage),
+          failure: failure,
         ),
       );
     }
@@ -887,6 +888,7 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
                 });
                 _readMore();
               },
+              failure: _moreFailure,
             );
           }
           return ColumnRow(
@@ -904,13 +906,20 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
 /// The page under the catalog list, at the bottom of it: a spinner while that
 /// page is being read, and what went wrong when it could not be.
 class _CatalogPageFooter extends StatelessWidget {
-  const _CatalogPageFooter({required this.message, required this.onRetry});
+  const _CatalogPageFooter({
+    required this.message,
+    required this.onRetry,
+    required this.failure,
+  });
 
   /// What went wrong reading the page, and `null` while it is still on its
   /// way.
   final String? message;
 
   final VoidCallback onRetry;
+
+  /// The failure [message] reports, whose rate limit holds [onRetry] back.
+  final Object? failure;
 
   @override
   Widget build(BuildContext context) {
@@ -928,6 +937,7 @@ class _CatalogPageFooter extends StatelessWidget {
         sectionKey: 'catalog-more',
         message: message,
         onRetry: onRetry,
+        failure: failure,
       ),
     );
   }

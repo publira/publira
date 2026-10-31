@@ -117,6 +117,7 @@ class _LabelScreenState extends State<LabelScreen> {
         actionKey: const ValueKey('label-retry'),
         actionLabel: messages.commonRetry,
         onAction: pager.restart,
+        failure: failure,
       );
     }
     if (label == null || pager.items == null) {

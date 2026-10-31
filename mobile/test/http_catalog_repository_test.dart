@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/error_details.dart';
@@ -2702,6 +2703,50 @@ void main() {
           'kind',
           CatalogFailureKind.network,
         ),
+      ),
+    );
+  });
+
+  test('listSeries maps a rate limit to rateLimited with its wait', () async {
+    const config = AppConfig(
+      baseUrl: 'https://example.test',
+      tenantHost: 'localhost',
+    );
+    final refused = HttpCatalogRepository(
+      config: config,
+      client: ConnectClient(
+        baseUrl: config.baseUrl,
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/GetTenantByDomain')) {
+            return protoResponse(
+              pb.GetTenantByDomainResponse(
+                tenantId: ConnectFixtureServer.defaultTenantId,
+              ),
+            );
+          }
+          return http.Response(
+            '{"code":"resource_exhausted","message":"too many reads"}',
+            HttpStatus.tooManyRequests,
+            headers: {'retry-after': '30'},
+          );
+        }),
+      ),
+    );
+
+    await expectLater(
+      refused.listSeries(locale: 'en'),
+      throwsA(
+        isA<CatalogFailure>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              CatalogFailureKind.rateLimited,
+            )
+            .having(
+              (error) => error.retryAfter,
+              'retryAfter',
+              const Duration(seconds: 30),
+            ),
       ),
     );
   });

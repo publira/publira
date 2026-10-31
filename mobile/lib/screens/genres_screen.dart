@@ -89,6 +89,7 @@ class _GenresScreenState extends State<GenresScreen> {
         actionKey: const ValueKey('genres-retry'),
         actionLabel: messages.commonRetry,
         onAction: () => setState(_load),
+        failure: failure,
       );
     }
     final genres = _genres;

@@ -9,6 +9,7 @@ import 'package:publira/auth/reader_age.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/campaign_price_note.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
 import 'package:publira/catalog/free_until_badge.dart';
@@ -598,9 +599,13 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             body: _ViewerMessage(
               key: const ValueKey('episode-viewer-error'),
               message: _errorCopy(messages, snapshot.error),
-              action: FilledButton(
-                onPressed: _reload,
-                child: AutospacedText(messages.commonRetry),
+              action: RetryHold(
+                key: ObjectKey(snapshot.error),
+                wait: catalogRetryAfter(snapshot.error),
+                builder: (context, held) => FilledButton(
+                  onPressed: held ? null : _reload,
+                  child: AutospacedText(messages.commonRetry),
+                ),
               ),
             ),
           );
@@ -1077,6 +1082,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       CatalogFailureKind.notSaved => messages.viewerOfflineNotSaved,
       CatalogFailureKind.saveExpired => messages.viewerSaveExpired,
       CatalogFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
+      CatalogFailureKind.rateLimited => messages.errorsRpcRateLimited,
       CatalogFailureKind.unexpected => messages.viewerLoadFailed,
     };
   }

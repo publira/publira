@@ -115,6 +115,70 @@ void main() {
     },
   );
 
+  test('a refusal carries the wait its Retry-After names', () async {
+    for (final response in [
+      // publira server's own refusal: a Connect error body.
+      http.Response(
+        jsonEncode(const {
+          'code': 'resource_exhausted',
+          'message': 'too many reads',
+        }),
+        429,
+        headers: {'content-type': 'application/json', 'retry-after': '12'},
+      ),
+      // An edge's refusal, in a body of its own.
+      http.Response(
+        '<html><head><title>429 Too Many Requests</title></head></html>',
+        429,
+        headers: {'content-type': 'text/html', 'retry-after': '12'},
+      ),
+    ]) {
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient((_) async => response),
+      );
+
+      await expectLater(
+        _listSeries(client),
+        throwsA(
+          isA<ConnectException>()
+              .having((error) => error.code, 'code', 'resource_exhausted')
+              .having(
+                (error) => error.retryAfter,
+                'retryAfter',
+                const Duration(seconds: 12),
+              ),
+        ),
+        reason: 'body "${response.body}"',
+      );
+    }
+  });
+
+  test('a refusal without a Retry-After in seconds carries no wait', () async {
+    for (final headers in [
+      const <String, String>{},
+      const {'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT'},
+      const {'retry-after': '-1'},
+    ]) {
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient(
+          (_) async => http.Response('', 429, headers: headers),
+        ),
+      );
+
+      await expectLater(
+        _listSeries(client),
+        throwsA(
+          isA<ConnectException>()
+              .having((error) => error.code, 'code', 'resource_exhausted')
+              .having((error) => error.retryAfter, 'retryAfter', isNull),
+        ),
+        reason: 'headers $headers',
+      );
+    }
+  });
+
   test('a call keeps the code a 429 error body names', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',

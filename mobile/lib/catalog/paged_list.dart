@@ -56,6 +56,7 @@ class PagedList<T> extends StatelessWidget {
             actionKey: ValueKey('$sectionKey-retry'),
             actionLabel: messages.commonRetry,
             onAction: pager.restart,
+            failure: failure,
           );
         }
         final items = pager.items;
@@ -95,6 +96,7 @@ class PagedList<T> extends StatelessWidget {
                         failedMessage,
                       ),
                 onRetry: onRetryMore ?? pager.retryMore,
+                failure: pager.moreFailure,
               );
             }
             return ColumnRow(

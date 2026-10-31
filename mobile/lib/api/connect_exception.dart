@@ -7,6 +7,7 @@ class ConnectException implements Exception {
     required this.message,
     this.fieldViolations = const [],
     this.reasons = const [],
+    this.retryAfter,
   });
 
   /// Connect code such as `not_found` or `unavailable`. Transport and invalid
@@ -22,6 +23,10 @@ class ConnectException implements Exception {
   /// `READER_CREDITED_ON_EPISODE`, which tell apart refusals that share a
   /// [code].
   final List<String> reasons;
+
+  /// How long the refusal asked the caller to wait before asking again, read
+  /// from its `Retry-After`, or `null` when it named no wait.
+  final Duration? retryAfter;
 
   bool get isNotFound => code == 'not_found' || code == 'permission_denied';
 

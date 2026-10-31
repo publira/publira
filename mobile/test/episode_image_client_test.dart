@@ -307,6 +307,29 @@ void main() {
     );
   });
 
+  test('fetch reports a 429 as a rate limit with its wait', () async {
+    final client = clientAnswering(
+      (_) async => http.Response('', 429, headers: {'retry-after': '7'}),
+    );
+
+    await expectLater(
+      client.fetch(Uri.parse(_pageUrl)),
+      throwsA(
+        isA<EpisodeImageException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              EpisodeImageFailureKind.rateLimited,
+            )
+            .having(
+              (error) => error.retryAfter,
+              'retryAfter',
+              const Duration(seconds: 7),
+            ),
+      ),
+    );
+  });
+
   test('fetch reports an unreachable image server', () async {
     final client = clientAnswering((_) async {
       throw http.ClientException('connection refused');

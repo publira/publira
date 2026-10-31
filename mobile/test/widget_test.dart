@@ -627,6 +627,47 @@ void main() {
     expect(find.text(fixtureSeries.first.title), findsOneWidget);
   });
 
+  testWidgets('a rate-limited catalog read holds its retry until '
+      'Retry-After has passed', (tester) async {
+    catalog = FakeCatalogRepository(
+      listError: const CatalogFailure(
+        CatalogFailureKind.rateLimited,
+        retryAfter: Duration(seconds: 30),
+      ),
+    );
+    await pumpApp(tester);
+
+    expect(find.byKey(const ValueKey('catalog-error')), findsOneWidget);
+    expect(
+      find.text(
+        'Too many requests in a short time. '
+        'Please wait a moment and try again.',
+      ),
+      findsOneWidget,
+    );
+    final reads = catalog.seriesTokens.length;
+    catalog
+      ..listError = null
+      ..series = fixtureSeries
+      ..details = fixtureDetails();
+
+    await tester.tap(find.byKey(const ValueKey('catalog-retry')));
+    await tester.pump(const Duration(seconds: 29));
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const ValueKey('catalog-retry')))
+          .onPressed,
+      isNull,
+    );
+    expect(catalog.seriesTokens, hasLength(reads));
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.byKey(const ValueKey('catalog-retry')));
+    await pumpUntilFound(tester, find.text(fixtureSeries.first.title));
+
+    expect(catalog.seriesTokens, hasLength(reads + 1));
+  });
+
   testWidgets('series detail network error offers retry', (tester) async {
     catalog = FakeCatalogRepository(
       series: fixtureSeries,

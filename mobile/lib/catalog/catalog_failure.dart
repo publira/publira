@@ -15,6 +15,12 @@ enum CatalogFailureKind {
   /// sent with, so asking again with it cannot succeed.
   sessionExpired,
 
+  /// Connect `resource_exhausted`: the API, or an edge in front of it, has
+  /// answered as many reads from this client as it allows for now, and asking
+  /// again before [CatalogFailure.retryAfter] has passed is refused the same
+  /// way.
+  rateLimited,
+
   /// Anything else, including Connect `internal`.
   unexpected,
 }
@@ -27,6 +33,7 @@ class CatalogFailure implements Exception {
     this.message = '',
     this.refused = false,
     this.reasons = const [],
+    this.retryAfter,
   });
 
   final CatalogFailureKind kind;
@@ -40,6 +47,10 @@ class CatalogFailure implements Exception {
   /// The ErrorInfo reasons the API named for a refusal, which is what tells a
   /// screen why it was refused where the Connect code alone does not.
   final List<String> reasons;
+
+  /// How long a [CatalogFailureKind.rateLimited] refusal asked the app to wait
+  /// before asking again, or `null` when it named no wait.
+  final Duration? retryAfter;
 
   @override
   String toString() => 'CatalogFailure($kind, $message)';

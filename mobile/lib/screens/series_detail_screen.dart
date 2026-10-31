@@ -8,6 +8,7 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
 import 'package:publira/catalog/campaign_price_note.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/creator_credits.dart';
@@ -141,6 +142,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
               message: _errorCopy(messages, snapshot.error),
               actionLabel: messages.commonRetry,
               onAction: _reload,
+              failure: snapshot.error,
             ),
           );
         }
@@ -200,6 +202,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
       CatalogFailureKind.notSaved ||
       CatalogFailureKind.saveExpired => messages.seriesOfflineNotSaved,
       CatalogFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
+      CatalogFailureKind.rateLimited => messages.errorsRpcRateLimited,
       CatalogFailureKind.unexpected => messages.seriesLoadFailed,
     };
   }
@@ -211,11 +214,15 @@ class _DetailMessage extends StatelessWidget {
     required this.message,
     required this.actionLabel,
     required this.onAction,
+    this.failure,
   });
 
   final String message;
   final String actionLabel;
   final VoidCallback onAction;
+
+  /// The failure [message] reports, whose rate limit holds [onAction] back.
+  final Object? failure;
 
   @override
   Widget build(BuildContext context) {
@@ -227,9 +234,13 @@ class _DetailMessage extends StatelessWidget {
           children: [
             AutospacedText(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: onAction,
-              child: AutospacedText(actionLabel),
+            RetryHold(
+              key: ObjectKey(failure),
+              wait: catalogRetryAfter(failure),
+              builder: (context, held) => FilledButton(
+                onPressed: held ? null : onAction,
+                child: AutospacedText(actionLabel),
+              ),
             ),
           ],
         ),

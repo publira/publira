@@ -131,6 +131,7 @@ class _ReadingHistoryListState extends State<_ReadingHistoryList> {
             onAction: signIn
                 ? () => context.pushInTab(AppRoutes.signIn)
                 : _pager.restart,
+            failure: failure,
           );
         }
         final reads = _pager.items;
@@ -181,6 +182,7 @@ class _ReadingHistoryListState extends State<_ReadingHistoryList> {
                             messages.readingHistoryFailed,
                           ),
                     onRetry: _pager.retryMore,
+                    failure: _pager.moreFailure,
                   );
                 }
                 return _ReadingHistoryRow(read: reads[index]);

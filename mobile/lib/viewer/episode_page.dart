@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:publira/api/episode_image_client.dart';
+import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/typography/autospaced_text.dart';
@@ -81,6 +82,7 @@ class _EpisodePageState extends State<EpisodePage> {
           },
           errorBuilder: (context, error, stackTrace) => _PageError(
             key: const ValueKey('episode-page-error'),
+            error: error,
             onRetry: _retry,
           ),
         ),
@@ -90,13 +92,22 @@ class _EpisodePageState extends State<EpisodePage> {
 }
 
 class _PageError extends StatelessWidget {
-  const _PageError({super.key, required this.onRetry});
+  const _PageError({super.key, required this.error, required this.onRetry});
+
+  /// What the page failed with, which tells a rate limit from the rest.
+  final Object error;
 
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
+    final error = this.error;
+    final rateLimit =
+        error is EpisodeImageException &&
+            error.kind == EpisodeImageFailureKind.rateLimited
+        ? error
+        : null;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -104,19 +115,30 @@ class _PageError extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             AutospacedText(
-              messages.viewerPageFailed,
+              rateLimit == null
+                  ? messages.viewerPageFailed
+                  : messages.errorsRpcRateLimited,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white),
             ),
             const SizedBox(height: 12),
-            OutlinedButton(
-              key: const ValueKey('episode-page-retry'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white70),
+            RetryHold(
+              key: ObjectKey(error),
+              wait: rateLimit?.retryAfter,
+              builder: (context, held) => OutlinedButton(
+                key: const ValueKey('episode-page-retry'),
+                // The page is drawn on black whatever the app's theme, so the
+                // held button is dimmed against black too.
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  disabledForegroundColor: Colors.white38,
+                  side: BorderSide(
+                    color: held ? Colors.white24 : Colors.white70,
+                  ),
+                ),
+                onPressed: held ? null : onRetry,
+                child: AutospacedText(messages.viewerReload),
               ),
-              onPressed: onRetry,
-              child: AutospacedText(messages.viewerReload),
             ),
           ],
         ),

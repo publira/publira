@@ -247,6 +247,7 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
           actionKey: ValueKey('$key-retry'),
           actionLabel: messages.commonRetry,
           onAction: _restart,
+          failure: failure,
         );
       }
       return Center(
@@ -291,6 +292,7 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
               messages.commonMoreSeriesFailed,
             ),
             onRetry: _restart,
+            failure: failure,
           ),
         ),
       ];

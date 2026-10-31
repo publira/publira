@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/image_cipher.dart';
+import 'package:publira/api/retry_after.dart';
 
 /// Why a body page could not be turned into image bytes.
 enum EpisodeImageFailureKind {
@@ -13,6 +14,10 @@ enum EpisodeImageFailureKind {
 
   /// image-server answered, but not with an image this build can read.
   response,
+
+  /// image-server, or an edge in front of it, answered `429`: it has served as
+  /// many pages to this client as it allows for now.
+  rateLimited,
 
   /// The response was encrypted and this reader could not reverse it.
   decryption,
@@ -24,10 +29,14 @@ enum EpisodeImageFailureKind {
 
 /// A body page that did not arrive as displayable bytes.
 class EpisodeImageException implements Exception {
-  const EpisodeImageException(this.kind, this.message);
+  const EpisodeImageException(this.kind, this.message, {this.retryAfter});
 
   final EpisodeImageFailureKind kind;
   final String message;
+
+  /// How long a [EpisodeImageFailureKind.rateLimited] refusal asked the app to
+  /// wait before asking again, or `null` when it named no wait.
+  final Duration? retryAfter;
 
   @override
   String toString() => 'EpisodeImageException(${kind.name}, $message)';
@@ -141,6 +150,13 @@ class EpisodeImageClient {
       return (await _saved(url, error.message), _nothing);
     }
 
+    if (response.statusCode == HttpStatus.tooManyRequests) {
+      throw EpisodeImageException(
+        EpisodeImageFailureKind.rateLimited,
+        'image request was rate limited',
+        retryAfter: retryAfterOf(response.headers),
+      );
+    }
     if (response.statusCode != HttpStatus.ok) {
       throw EpisodeImageException(
         EpisodeImageFailureKind.response,

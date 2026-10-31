@@ -179,6 +179,7 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
         CatalogFailureKind.network ||
         CatalogFailureKind.notSaved => CommentFailureKind.network,
         CatalogFailureKind.sessionExpired => CommentFailureKind.sessionExpired,
+        CatalogFailureKind.rateLimited => CommentFailureKind.rateLimited,
         _ => CommentFailureKind.unexpected,
       }, message: failure.message);
     }

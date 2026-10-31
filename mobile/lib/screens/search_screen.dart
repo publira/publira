@@ -430,6 +430,7 @@ class _OverviewSection<T> extends StatelessWidget {
                 sectionKey: 'search-$name',
                 message: catalogFailureCopy(messages, failure, failedMessage),
                 onRetry: pager.restart,
+                failure: failure,
               )
             else if (items == null)
               Padding(

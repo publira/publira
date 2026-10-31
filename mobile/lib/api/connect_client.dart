@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
+import 'package:publira/api/retry_after.dart';
 import 'package:publira/api/unknown_enum.dart';
 import 'package:publira/tenant/tenant_availability.dart';
 
@@ -152,6 +153,9 @@ class ConnectClient implements RpcClient {
       return _decodeMessage(response, emptyResponse);
     }
 
+    // Connect writes a refusal's metadata as headers of the answer, so the
+    // wait reads the same off the API's own envelope and off an edge's page.
+    final retryAfter = retryAfterOf(response.headers);
     late final Map<String, Object?> decoded;
     try {
       decoded = _decodeBody(response.body);
@@ -159,6 +163,7 @@ class ConnectClient implements RpcClient {
       throw ConnectException(
         code: _fallbackCode(response.statusCode),
         message: 'HTTP ${response.statusCode} returned a non-JSON response',
+        retryAfter: retryAfter,
       );
     }
     final responseCode = _readString(decoded, 'code');
@@ -172,6 +177,7 @@ class ConnectClient implements RpcClient {
           : responseMessage,
       fieldViolations: fieldViolationsOf(decoded['details']),
       reasons: errorReasonsOf(decoded['details']),
+      retryAfter: retryAfter,
     );
     if (error.isTenantSuspended) {
       _availability?.reportSuspended();
