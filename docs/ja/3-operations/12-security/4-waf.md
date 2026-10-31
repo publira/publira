@@ -2,6 +2,7 @@
 title: WAF
 description: Publiraの前段に置くWAFで有効にするマネージドルール、Publiraのリクエストのうち例外にしないと拒否されるもの、管理画面を自社のネットワークに限る方法を説明します。
 published: 2026-10-30
+updated: 2026-10-31
 source_updated: 2026-10-30
 ---
 

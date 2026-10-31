@@ -2,6 +2,7 @@
 title: Kubernetes
 description: KubernetesクラスターでPubliraを動かす手順を、SecretとDeploymentの作成から、その前に置くGatewayかIngress、テナント管理画面への最初のログインまで説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-23
 ---
 

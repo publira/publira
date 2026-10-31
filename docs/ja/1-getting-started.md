@@ -2,6 +2,7 @@
 title: はじめに
 description: Publiraとは何か、誰が運用するのか、どこから読めばよいかを紹介します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-22
 ---
 

@@ -2,6 +2,7 @@
 title: ビルドと署名
 description: マニフェストをもとに、テナントのアプリの署名済みAndroid App BundleとiOSのアーカイブを作成します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-25
 ---
 

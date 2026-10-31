@@ -2,6 +2,7 @@
 title: ストアへの申請
 description: テナントのアプリをApp StoreとGoogle Playに掲載し、各ストアの審査で出版社が求められるものを用意します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-06
 ---
 

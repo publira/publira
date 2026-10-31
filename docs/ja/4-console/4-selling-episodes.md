@@ -2,6 +2,7 @@
 title: エピソードの販売
 description: エピソードへの価格の付け方、StripeやPAY.JPでの決済、販売先の選び方、返金の方法を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-28
 ---
 

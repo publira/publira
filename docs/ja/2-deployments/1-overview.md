@@ -2,6 +2,7 @@
 title: 構成の概要
 description: Publiraで動かすプロセスと、Publiraが依存するサービスを説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-25
 ---
 

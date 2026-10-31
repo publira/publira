@@ -2,6 +2,7 @@
 title: デプロイ
 description: Publiraを構成するものと、Publiraを稼働させるまでの手順を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-22
 ---
 

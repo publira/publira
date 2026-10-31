@@ -2,6 +2,7 @@
 title: 定期ジョブとメンテナンスジョブ
 description: publira workerが自動で実行する処理と、停止後の追いつき方、メールやプッシュ通知やキャッシュの再検証の再試行、publiractl jobで手動実行すべき場面を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-26
 ---
 

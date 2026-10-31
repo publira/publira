@@ -2,6 +2,7 @@
 title: Docker Compose
 description: リリースごとに公開されるComposeファイルで、Publira全体を1台のホストで動かします。ファイルのダウンロードから、テナント管理画面への最初のログインまでを説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-28
 ---
 

@@ -2,6 +2,7 @@
 title: Web Push
 description: 読者が各テナントのサイトから受け取れるブラウザー通知を有効にする方法と、通知の署名に使う鍵ペアを説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-22
 ---
 

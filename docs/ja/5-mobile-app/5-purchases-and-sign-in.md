@@ -2,6 +2,7 @@
 title: アプリ内課金とログイン
 description: テナントのアプリでApp StoreとGoogle Playを通じてエピソードを販売し、Apple、Google、パスキーで読者がログインできるようにするための設定を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-26
 ---
 

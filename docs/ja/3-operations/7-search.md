@@ -2,6 +2,7 @@
 title: 検索
 description: ストアフロントで作品、著者、レーベルを探す検索エンジンの選び方と、データベースからOpenSearchやElasticsearchへの切り替え、インデックスの再構築を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-17
 ---
 

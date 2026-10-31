@@ -2,6 +2,7 @@
 title: メンバー
 description: 出版社のスタッフを必要なロールで管理画面に招待し、ロールを変更し、辞めたスタッフを外します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-09
 ---
 

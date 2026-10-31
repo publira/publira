@@ -2,6 +2,7 @@
 title: AppleとGoogleでのログイン
 description: 読者がAppleやGoogleのアカウントでサイトとアプリにログインできるようにする方法と、そのためにAppleとGoogleで作成するものを説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-17
 ---
 

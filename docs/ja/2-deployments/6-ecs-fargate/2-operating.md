@@ -2,6 +2,7 @@
 title: Amazon ECSでの運用
 description: Amazon ECS(Fargate)で動かすPubliraで、テナントを追加する方法、管理画面の認証情報をテナントのドメインから切り離す方法、画像と公開APIを分けて配信する方法、アップグレードの方法を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-26
 ---
 

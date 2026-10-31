@@ -2,6 +2,7 @@
 title: 監視
 description: /livezと/readyzによる各プロセスの監視、アラートを設定すべきログとメトリクス、OpenTelemetryのメトリクスとトレースの有効化を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-28
 ---
 

@@ -2,6 +2,7 @@
 title: プラットフォーム管理画面とpubliractl
 description: publiractlとプラットフォーム管理画面の使い分け、最初のオペレーターの作成、ログインするオペレーターの管理、オペレーターがなくした2段階認証の解除を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-12
 ---
 

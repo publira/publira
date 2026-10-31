@@ -2,6 +2,7 @@
 title: ジャンル
 description: 読者がテナントの作品を探すときに使うジャンルについて、作成と並び順、画像の設定を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-20
 ---
 

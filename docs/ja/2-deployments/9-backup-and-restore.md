@@ -2,6 +2,7 @@
 title: バックアップと復元
 description: Publiraが保持していてバックアップすべきもの、確実に復元できるバックアップの取り方、空のサービスにPubliraを復元する方法を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-28
 ---
 

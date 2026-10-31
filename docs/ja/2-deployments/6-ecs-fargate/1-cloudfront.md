@@ -2,6 +2,7 @@
 title: CloudFrontを使った公開
 description: Amazon ECS(Fargate)で動かすPubliraの内部向けApplication Load Balancerの前にCloudFrontを置き、VPCの外から動作を確かめます。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-22
 ---
 

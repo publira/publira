@@ -2,6 +2,7 @@
 title: Kubernetesでの運用
 description: Kubernetesクラスターで動かしているPubliraで、テナントを追加する、管理画面の認証情報をテナントのドメインから切り離す、画像と公開APIを別々に提供する、メトリクスを公開する、アップグレードするといった作業の手順を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-25
 ---
 

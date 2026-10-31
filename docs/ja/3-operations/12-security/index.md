@@ -2,7 +2,7 @@
 title: セキュリティ
 description: Publiraがテナント同士と認証情報をどう分けているか、各シークレットをどこに置いてよいか、脆弱性をどう報告するかを説明します。
 published: 2026-10-29
-updated: 2026-10-30
+updated: 2026-10-31
 source_updated: 2026-10-30
 ---
 

@@ -2,7 +2,7 @@
 title: 運用
 description: テナントの追加やログインできる人の管理から、Publiraが依存するサービスの設定まで、稼働中のインストールを日々運用する方法を説明します。
 published: 2026-10-29
-updated: 2026-10-30
+updated: 2026-10-31
 source_updated: 2026-10-30
 ---
 

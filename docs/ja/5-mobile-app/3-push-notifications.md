@@ -2,6 +2,7 @@
 title: プッシュ通知
 description: テナントのアプリがプッシュ通知を受け取るためのFirebaseプロジェクトを設定し、通知を送るための認証情報をテナント管理画面に登録します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-22
 ---
 

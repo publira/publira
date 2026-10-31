@@ -2,6 +2,7 @@
 title: モバイルアプリ
 description: テナント独自のiOSアプリとAndroidアプリをビルドし、署名してストアで公開する方法を説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-28
 ---
 

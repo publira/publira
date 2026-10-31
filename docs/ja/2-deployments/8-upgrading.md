@@ -2,6 +2,7 @@
 title: アップグレード
 description: 稼働中のPubliraを新しいリリースに上げる手順を、事前のバックアップから新しいリリースのプロセスが動き出すまで説明します。
 published: 2026-10-29
+updated: 2026-10-31
 source_updated: 2026-10-24
 ---
 

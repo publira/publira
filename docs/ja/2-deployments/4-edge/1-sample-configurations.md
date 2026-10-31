@@ -2,7 +2,7 @@
 title: リバースプロキシの設定例
 description: リバースプロキシの要件を満たすTraefik、nginx、Caddyの設定例と、それを自分のPubliraに合わせて使う方法を説明します。
 published: 2026-10-29
-updated: 2026-10-30
+updated: 2026-10-31
 source_updated: 2026-10-30
 ---
 
