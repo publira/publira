@@ -124,6 +124,7 @@ class _CreatorScreenState extends State<CreatorScreen> {
         actionKey: const ValueKey('creator-retry'),
         actionLabel: messages.commonRetry,
         onAction: pager.restart,
+        failure: failure,
       );
     }
     if (creator == null || pager.items == null) {

@@ -1200,6 +1200,13 @@ class HttpCatalogRepository implements CatalogRepository {
     if (error.isUnavailable) {
       return CatalogFailure(CatalogFailureKind.network, message: error.message);
     }
+    if (error.code == 'resource_exhausted') {
+      return CatalogFailure(
+        CatalogFailureKind.rateLimited,
+        message: error.message,
+        retryAfter: error.retryAfter,
+      );
+    }
     return CatalogFailure(
       error.code == 'unauthenticated'
           ? CatalogFailureKind.sessionExpired

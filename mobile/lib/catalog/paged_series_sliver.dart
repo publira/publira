@@ -67,6 +67,7 @@ class PagedSeriesSliver extends StatelessWidget {
                     messages.commonMoreSeriesFailed,
                   ),
             onRetry: pager.retryMore,
+            failure: pager.moreFailure,
           );
         }
         return ColumnRow(

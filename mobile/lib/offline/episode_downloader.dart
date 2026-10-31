@@ -57,6 +57,14 @@ class EpisodeDownloader extends ChangeNotifier {
   /// the same library, which the default one does.
   final EpisodeImageClient Function()? _openImages;
 
+  /// The longest `Retry-After` a save waits out on a refused page.
+  ///
+  /// A save is something the reader watches, so a refusal asking for longer
+  /// fails it instead of leaving a progress bar that does not move; the reader
+  /// can start it again, and the pages already on the device are not fetched
+  /// twice.
+  static const maxPageWait = Duration(minutes: 1);
+
   /// Share of pages fetched so far, keyed by [savedEpisodeKey].
   final _progress = <String, double>{};
   final _running = <String, Future<void>>{};
@@ -127,16 +135,7 @@ class EpisodeDownloader extends ChangeNotifier {
         // An episode the reader turned through part of holds those pages
         // already, and finishing it fetches only the rest.
         if (await _library.readPage(episodePageKey(url)) == null) {
-          try {
-            await images.keep(url, headers: detail.imageRequestHeaders);
-          } on EpisodeImageException catch (error) {
-            throw EpisodeDownloadFailure(
-              error.kind == EpisodeImageFailureKind.storage
-                  ? EpisodeDownloadFailureKind.storage
-                  : EpisodeDownloadFailureKind.network,
-              message: '$error',
-            );
-          }
+          await _keep(images, url, detail.imageRequestHeaders);
         }
         _progress[key] = (index + 1) / pages.length;
         notifyListeners();
@@ -154,6 +153,39 @@ class EpisodeDownloader extends ChangeNotifier {
       _progress.remove(key);
       unawaited(_running.remove(key));
       notifyListeners();
+    }
+  }
+
+  /// Keeps the page at [url], asking for it again once a rate limit's wait
+  /// has passed.
+  ///
+  /// The pages of an episode go out one after another, so a long episode can
+  /// outrun the allowance image-server gives a client partway through, and
+  /// the rest of it is served once the wait it names is over.
+  Future<void> _keep(
+    EpisodeImageClient images,
+    Uri url,
+    Map<String, String> headers,
+  ) async {
+    while (true) {
+      try {
+        await images.keep(url, headers: headers);
+        return;
+      } on EpisodeImageException catch (error) {
+        final wait = error.retryAfter;
+        if (error.kind == EpisodeImageFailureKind.rateLimited &&
+            wait != null &&
+            wait <= maxPageWait) {
+          await Future<void>.delayed(wait);
+          continue;
+        }
+        throw EpisodeDownloadFailure(
+          error.kind == EpisodeImageFailureKind.storage
+              ? EpisodeDownloadFailureKind.storage
+              : EpisodeDownloadFailureKind.network,
+          message: '$error',
+        );
+      }
     }
   }
 }

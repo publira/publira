@@ -156,6 +156,37 @@ void main() {
     expect(find.byKey(const ValueKey('episode-page-view')), findsOneWidget);
   });
 
+  testWidgets('a rate-limited page says so and holds its retry until '
+      'Retry-After has passed', (tester) async {
+    var requests = 0;
+    final client = EpisodeImageClient(
+      httpClient: MockClient((_) async {
+        requests++;
+        return http.Response('', 429, headers: const {'retry-after': '5'});
+      }),
+    );
+
+    await _pumpReader(tester, client: client, headers: headers);
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('episode-page-error')), findsOneWidget);
+    expect(
+      find.text(
+        'Too many requests in a short time. '
+        'Please wait a moment and try again.',
+      ),
+      findsOneWidget,
+    );
+    OutlinedButton retry() => tester.widget<OutlinedButton>(
+      find.byKey(const ValueKey('episode-page-retry')),
+    );
+    expect(retry().onPressed, isNull);
+
+    await tester.pump(const Duration(seconds: 5));
+    expect(retry().onPressed, isNotNull);
+    expect(requests, 1);
+  });
+
   testWidgets('a failed page keeps its copy off the edges of the page', (
     tester,
   ) async {

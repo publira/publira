@@ -185,8 +185,11 @@ class ProgressOutbox {
     try {
       await send();
     } on CatalogFailure catch (failure) {
+      // A rate limit refuses every entry behind this one as well, and each
+      // of them would spend the allowance the flush is waiting on.
       if (failure.kind == CatalogFailureKind.network ||
-          failure.kind == CatalogFailureKind.sessionExpired) {
+          failure.kind == CatalogFailureKind.sessionExpired ||
+          failure.kind == CatalogFailureKind.rateLimited) {
         return _Delivery.stop;
       }
       // A server fault passes, so it is kept for the next flush; only this

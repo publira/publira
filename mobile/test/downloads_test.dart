@@ -191,6 +191,10 @@ void main() {
   /// at a save while it runs.
   Completer<void>? imageGate;
 
+  /// Answers the image request it is given the number of, counted from 1,
+  /// in place of the page, when it returns a response.
+  http.Response? Function(int request)? imageRefusal;
+
   setUp(() async {
     root = await Directory.systemTemp.createTemp('publira-downloads-');
     library = _RealTimeLibrary(
@@ -207,6 +211,7 @@ void main() {
     );
     imageRequests = [];
     imageGate = null;
+    imageRefusal = null;
   });
 
   tearDown(() async {
@@ -321,7 +326,8 @@ void main() {
             httpClient: MockClient((request) async {
               imageRequests.add(request.url);
               await imageGate?.future;
-              return http.Response.bytes(_page(imageRequests.length), 200);
+              return imageRefusal?.call(imageRequests.length) ??
+                  http.Response.bytes(_page(imageRequests.length), 200);
             }),
           ),
         ),
@@ -816,6 +822,69 @@ void main() {
       find.byKey(ValueKey('episode-save-offline-${_paidEpisode.id}')),
       findsNothing,
     );
+  });
+
+  testWidgets('a save whose page is rate limited waits out Retry-After and '
+      'finishes', (tester) async {
+    final episode = body(_freeEpisode.id);
+    imageRefusal = (request) => request == 2
+        ? http.Response('', 429, headers: {'retry-after': '2'})
+        : null;
+    await pumpApp(
+      tester,
+      initialLocation: AppRoutes.seriesDetailPath(_series.id),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+
+    await tester.tap(
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+    await pumpUntilTrue(
+      tester,
+      () => imageRequests.length == 2,
+      description: 'the second page to be refused',
+    );
+    await tester.pump(const Duration(milliseconds: 1900));
+    expect(imageRequests, hasLength(2));
+    await pumpUntilFound(
+      tester,
+      find.text('“${_freeEpisode.title}” is saved on this device.'),
+    );
+
+    final urls = [for (final image in episode.images) image.url];
+    expect(imageRequests, [urls[0], urls[1], ...urls.skip(1)]);
+    expect(find.byKey(const ValueKey('episode-saved-offline')), findsOne);
+  });
+
+  testWidgets('a save whose page is rate limited past the bound fails', (
+    tester,
+  ) async {
+    final wait = EpisodeDownloader.maxPageWait + const Duration(seconds: 1);
+    imageRefusal = (request) => request == 2
+        ? http.Response('', 429, headers: {'retry-after': '${wait.inSeconds}'})
+        : null;
+    await pumpApp(
+      tester,
+      initialLocation: AppRoutes.seriesDetailPath(_series.id),
+    );
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+
+    await tester.tap(
+      find.byKey(ValueKey('episode-save-offline-${_freeEpisode.id}')),
+    );
+    await pumpUntilFound(
+      tester,
+      find.text('Could not save “${_freeEpisode.title}”. Try again.'),
+    );
+
+    expect(imageRequests, hasLength(2));
+    expect(find.byKey(const ValueKey('episode-saved-offline')), findsNothing);
   });
 
   testWidgets('a save the API refuses is reported and marks nothing', (

@@ -131,6 +131,7 @@ class _FollowUpdatesListState extends State<_FollowUpdatesList> {
             onAction: signIn
                 ? () => context.pushInTab(AppRoutes.signIn)
                 : _pager.restart,
+            failure: failure,
           );
         }
         final updates = _pager.items;
@@ -181,6 +182,7 @@ class _FollowUpdatesListState extends State<_FollowUpdatesList> {
                             messages.followUpdatesFailed,
                           ),
                     onRetry: _pager.retryMore,
+                    failure: _pager.moreFailure,
                   );
                 }
                 return _FollowUpdateRow(update: updates[index]);
