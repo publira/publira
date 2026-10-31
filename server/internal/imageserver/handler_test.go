@@ -366,7 +366,7 @@ func newTestServerWithSites(t *testing.T, resolver ResolverQuerier, public, admi
 			site.Objects = store
 		}
 	}
-	srv, err := NewHandler(public, admin, nil, tokens)
+	srv, err := NewHandler(public, admin, nil, tokens, nil)
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
 	}
@@ -1302,7 +1302,7 @@ func TestAHostOfASiteTheServerIsNotGivenIsNotFound(t *testing.T) {
 			} else {
 				admin = site
 			}
-			srv, err := NewHandler(public, admin, nil, auth.NewTokenManager([]byte(testMediaJWTSecret)))
+			srv, err := NewHandler(public, admin, nil, auth.NewTokenManager([]byte(testMediaJWTSecret)), nil)
 			if err != nil {
 				t.Fatalf("NewHandler: %v", err)
 			}

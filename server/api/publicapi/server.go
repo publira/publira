@@ -32,6 +32,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/readguard"
 	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -60,7 +61,9 @@ type apiServer struct {
 	mail      *mailguard.Guard
 	// login bounds how often a password may be tried at sign-in.
 	login *loginguard.Guard
-	reval *revalidate.Requester
+	// readGuard bounds how fast one client may call the public API.
+	readGuard *readguard.Guard
+	reval     *revalidate.Requester
 	// webPushKeys answers the VAPID public key browsers subscribe with, empty
 	// while Web Push is not configured.
 	webPushKeys webPushPublicKeySource
@@ -201,7 +204,10 @@ type API struct {
 // tenant console sign in, and mail, the same accounts, and a source reaching
 // all three holds one allowance of each, so the counts have to be one even when
 // they are kept in this process. A nil one counts on its own.
-func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, payments *paymentprovider.Registry, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
+//
+// reads bounds how fast one client may call the public API, and is the guard
+// the process hands image delivery as well. A nil one counts on its own.
+func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, payments *paymentprovider.Registry, login *loginguard.Guard, mail *mailguard.Guard, reads *readguard.Guard) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
@@ -213,6 +219,10 @@ func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider,
 		login = loginguard.NewShared(policy, logger)
 	}
 	server.login = login
+	if reads == nil {
+		reads = readguard.NewFromEnv(logger)
+	}
+	server.readGuard = reads
 	server.idTokens = signin.NewVerifier(idTokens)
 	if payments != nil {
 		server.paymentProviders = payments
@@ -266,6 +276,7 @@ func newAPIServer(
 		guards:           guards,
 		mail:             mail,
 		login:            loginguard.NewDefault(),
+		readGuard:        readguard.NewDefault(),
 		reval:            revalidator,
 		webPushKeys:      webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),
 		paymentProviders: providers.Registry(),
@@ -301,7 +312,8 @@ var readLimits = map[string]int{
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	traced := tracing.ConnectServerInterceptors(ServiceName)
 	limits := rpcmiddleware.ReadLimits(readLimits)
-	tenantScoped := slices.Concat(traced, []connect.ServerInterceptor{server.tenantScopedQuerierInterceptor(), server.readerLocaleInterceptor()})
+	guarded := slices.Concat(traced, []connect.ServerInterceptor{server.readGuardInterceptor()})
+	tenantScoped := slices.Concat(guarded, []connect.ServerInterceptor{server.tenantScopedQuerierInterceptor(), server.readerLocaleInterceptor()})
 
 	services := connect.NewServer(tenantScoped...)
 	publirav1connect.RegisterCatalogServiceHandler(services, server)
@@ -323,7 +335,7 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 
 	// DomainService is used before tenant context is known (e.g. proxy domain resolution),
 	// so it must not require tenant-scoped interception.
-	domain := connect.NewServer(traced...)
+	domain := connect.NewServer(guarded...)
 	publirav1connect.RegisterDomainServiceHandler(domain, server)
 	connecthttp.Mount(mux, domain, limits...)
 }

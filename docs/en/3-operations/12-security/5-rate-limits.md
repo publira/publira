@@ -2,9 +2,10 @@
 title: Rate limits
 description: Which requests to limit per client in front of an install, which never to limit, and how to write the limits as AWS WAF, Cloud Armor, or Cloudflare rules, or in the proxy you run.
 published: 2026-10-30
+updated: 2026-10-31
 ---
 
-`publira server` limits what it can tell apart: password attempts, the mail it sends, and each reader action, such as posting a comment or using a wait-for-free ticket, as [Rate limits](../9-platform-policies.md#rate-limits) describes. It does not limit anonymous reads. The catalog, the search, and the images answer as fast as a client asks, so one client can fetch every page of every free episode, or run the search until the database falls behind, and the first sign of it is `/readyz` failing. Those requests have to be limited per client in front of it: by a managed WAF or CDN, or by the proxy at the edge.
+`publira server` limits what it can tell apart: password attempts, the mail it sends, and each reader action, such as posting a comment or using a wait-for-free ticket, as [Rate limits](../9-platform-policies.md#rate-limits) describes. It limits anonymous reads too, but only loosely, as [What publira server limits itself](#what-publira-server-limits-itself) describes: under that limit, one client can still fetch every page of every free episode, or run the search until the database falls behind, and the first sign of it is `/readyz` failing. Those requests have to be limited per client in front of it as well: by a managed WAF or CDN, or by the proxy at the edge.
 
 ## What to limit
 
@@ -47,6 +48,20 @@ A window admits its whole count at once, so prefer the shortest one your WAF off
 ## In the proxy you run
 
 A proxy you run limits requests when nothing in front of it does. The Traefik and nginx [sample configurations](../../2-deployments/4-edge/1-sample-configurations.md#what-each-sample-does) limit the paths above as they ship, and the Caddy one carries its limits commented out, since they need a module the `caddy` image does not include.
+
+## What publira server limits itself
+
+Behind the edge, `publira server` keeps a limit of its own on the same reads, so that an edge that limits nothing, such as the stock `caddy` image of the [Docker Compose](../../2-deployments/3-docker-compose.md) install, leaves an install less protected rather than unprotected. It counts each reader's address over windows of 10 seconds, sharing the count between every instance through Redis when `PUBLIRA_REDIS_URL` names one, and allows twice the 10-second column of the table above:
+
+| Requests | In 10 seconds |
+| --- | --- |
+| The public API, `/rpc/publira.v1.`, except the search | 640 |
+| The search procedures, `/rpc/publira.v1.CatalogService/SearchPublished…` | 80 |
+| The images of a tenant's domain and image host, `/images` | 2,400 |
+
+A call past it is refused with `resource_exhausted`, and an image with `429`, each with a `Retry-After` header naming the wait. Behind an edge with the limits above, a reader is refused by the edge first. The server's limit cannot be changed, and it applies whatever the edge allows: an edge allowance raised past it, for readers who share one address such as a carrier's NAT, admits requests the server then refuses. Readers behind one address share the server's limit as they share the edge's.
+
+The server cannot count what reaches it from inside the install. A request whose every hop is one of the [trusted proxies](../../2-deployments/4-edge/index.md#the-proxies-publira-trusts) is a web app calling as itself for all of its readers at once, so it is not counted. That covers the site's search page, which `web-storefront` runs on the server: only the edge limits `/search`. The console hosts, the webhooks, and the health checks are not counted either.
 
 ## Distributed denial of service
 

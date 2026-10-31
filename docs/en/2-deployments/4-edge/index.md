@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-10-30
+updated: 2026-10-31
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -169,7 +169,7 @@ Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 
 A web application firewall in front of the edge, such as AWS WAF, Cloud Armor, or Cloudflare, refuses requests that look like an attack before they reach anything you run. Its managed rules refuse some of Publira's own requests, the uploads and the webhooks among them, until you make exceptions for them, as [A web application firewall](../../3-operations/12-security/4-waf.md) describes.
 
-`publira server` does not limit anonymous reads, so the public API, the search, and the images have to be limited per client in front of it, in that WAF or in the proxy at the edge, and the webhooks and the health checks never. [Rate limits](../../3-operations/12-security/5-rate-limits.md) says what to limit and by how much.
+`publira server` limits anonymous reads per client itself, but only loosely, at twice what the sample configurations admit, and never a call a web app makes as itself, the site's search page among them. That limit is behind the edge's, for an edge that limits nothing, not in place of it: the public API, the search, and the images have to be limited per client in front of it, in that WAF or in the proxy at the edge, and the webhooks and the health checks never. [Rate limits](../../3-operations/12-security/5-rate-limits.md) says what to limit and by how much, and what the server limits itself.
 
 ## In this section
 

@@ -150,6 +150,13 @@ func ParseTrustedProxies(raw string) ([]netip.Prefix, error) {
 // obfuscated identifiers, are skipped, as Rails skips them. When every address
 // in the chain is trusted, the one furthest from the server is the client.
 func (r *Resolver) Resolve(header http.Header, remoteAddr string) string {
+	client, _ := r.resolve(header, remoteAddr)
+	return client
+}
+
+// resolve is [Resolver.Resolve], and also reports whether every address the
+// chain names, the peer included, is a trusted proxy.
+func (r *Resolver) resolve(header http.Header, remoteAddr string) (string, bool) {
 	host := remoteAddr
 	if h, _, err := net.SplitHostPort(remoteAddr); err == nil {
 		host = h
@@ -158,7 +165,7 @@ func (r *Resolver) Resolve(header http.Header, remoteAddr string) string {
 	if !ok {
 		// A peer that is not an address cannot be a trusted proxy, so what it
 		// forwarded is not believed either.
-		return host
+		return host, false
 	}
 
 	var chain []netip.Addr
@@ -173,10 +180,10 @@ func (r *Resolver) Resolve(header http.Header, remoteAddr string) string {
 
 	for i := len(chain) - 1; i >= 0; i-- {
 		if !r.trusts(chain[i]) {
-			return chain[i].String()
+			return chain[i].String(), false
 		}
 	}
-	return chain[0].String()
+	return chain[0].String(), true
 }
 
 // Host returns the host a request was sent to, port included, as the browser
@@ -227,10 +234,13 @@ func (r *Resolver) trusts(addr netip.Addr) bool {
 }
 
 // Middleware stores the client address and the host of every request in its
-// context, for [FromContext] and [HostFromContext] to read.
+// context, for [FromContext], [InternalFromContext], and [HostFromContext] to
+// read.
 func (r *Resolver) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ctx := NewContext(req.Context(), r.Resolve(req.Header, req.RemoteAddr))
+		client, internal := r.resolve(req.Header, req.RemoteAddr)
+		ctx := NewContext(req.Context(), client)
+		ctx = context.WithValue(ctx, internalContextKey{}, internal)
 		ctx = context.WithValue(ctx, hostContextKey{}, r.Host(req))
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
@@ -239,6 +249,18 @@ func (r *Resolver) Middleware(next http.Handler) http.Handler {
 type contextKey struct{}
 
 type hostContextKey struct{}
+
+type internalContextKey struct{}
+
+// InternalFromContext reports whether every address the request ctx belongs
+// to passed through, the client's included, is a trusted proxy: no client
+// outside the install sent it, and it is one of the install's own processes,
+// such as a web app calling as itself for every reader at once. It is false
+// for a context that did not pass through [Resolver.Middleware].
+func InternalFromContext(ctx context.Context) bool {
+	internal, _ := ctx.Value(internalContextKey{}).(bool)
+	return internal
+}
 
 // HostFromContext returns the host [Resolver.Middleware] determined for the
 // request ctx belongs to, and false for a context that did not pass through

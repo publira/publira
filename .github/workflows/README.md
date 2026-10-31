@@ -210,7 +210,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
 | `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**`, every Markdown file, every shell script, which may hold commands a page quotes, and a deletion or a rename of any file |
 | `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
-| `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**`, and `scripts/go-test-share.sh` |
+| `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**`, and `scripts/go-test-share.sh`; and, through the separate `test_go_docs` filter, the routing contract `infra/proxy/README.md`, whose allowances the server's read limits are tested against |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
 | `Test / Bash` | Every tracked Bash file, `scripts/dev-env.sh`, `scripts/dev-env/**`, `e2e/scripts/**`, and their Taskfiles |
 | `Test / DB Migrations` | `db/**`, `sqlc.yaml` |
