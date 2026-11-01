@@ -183,10 +183,15 @@ const tenantCommentSettingsSchema = async (locale: Locale) => {
  * Both boxes are written together. An unchecked box is absent from the form,
  * which is off. Sales on while the pages stay off is a pair the server keeps.
  */
-const tenantCreatorPageSettingsSchema = z.object({
-  creatorPagesEnabled: checkboxOnFormSchema,
-  creatorPagesShowSales: checkboxOnFormSchema,
-});
+const tenantCreatorPageSettingsSchema = async (locale: Locale) => {
+  const tenantId = await tenantIdFormSchema(locale);
+
+  return z.object({
+    creatorPagesEnabled: checkboxOnFormSchema,
+    creatorPagesShowSales: checkboxOnFormSchema,
+    tenantId,
+  });
+};
 
 const tenantAgeVerificationSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -564,23 +569,20 @@ export const updateTenantCreatorPageSettingsAction = async (
 ): Promise<TenantCreatorPageSettingsActionState> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
-  const t = await getMessagesFor(locale);
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
 
-  if (!tenantId) {
-    return {
-      message: t("admin.settings.tenant_missing"),
-      ok: false,
-    };
-  }
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantCreatorPageSettingsSchema(locale),
+  ]);
 
-  const parsed = tenantCreatorPageSettingsSchema.safeParse(
+  const parsed = schema.safeParse(
     toFormDataInput(formData, {
       creatorPagesEnabled: { kind: "value", name: "creator_pages_enabled" },
       creatorPagesShowSales: {
         kind: "value",
         name: "creator_pages_show_sales",
       },
+      tenantId: { kind: "value", name: "tenant_id" },
     })
   );
 
@@ -591,13 +593,11 @@ export const updateTenantCreatorPageSettingsAction = async (
     };
   }
 
+  const { creatorPagesEnabled, creatorPagesShowSales, tenantId } = parsed.data;
+
   const result = await withAdminSessionReauth(() =>
     updateTenantCreatorPageSettings(
-      {
-        creatorPagesEnabled: parsed.data.creatorPagesEnabled,
-        creatorPagesShowSales: parsed.data.creatorPagesShowSales,
-        tenantId,
-      },
+      { creatorPagesEnabled, creatorPagesShowSales, tenantId },
       locale
     )
   );
