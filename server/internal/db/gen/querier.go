@@ -2668,9 +2668,11 @@ type Querier interface {
 	//
 	// It is also left out where its recipient turned the push off for the row's
 	// category: the Web Push cell decides for a browser, and the mobile push cell
-	// for a phone. A recipient who saved nothing holds every cell on, and a
-	// category with no push cell — one the push allowlist does not admit, or the
-	// staff one no preference governs — keeps the device.
+	// for a phone. A recipient who saved nothing holds every cell on, except the
+	// announcement push cells, which start off, so an announcement reaches no
+	// device of theirs. A category with no push cell — one the push allowlist does
+	// not admit, or the staff one no preference governs — keeps the device. An
+	// announcement sent to everyone takes the same announcement push cells.
 	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The keyset scan behind the ranking screen: one snapshot's items, in the
 	// positions it recorded, restricted to the series that are still published on

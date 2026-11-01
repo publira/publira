@@ -4689,6 +4689,8 @@ class UpdateNotificationSettingsRequest extends $pb.GeneratedMessage {
     $core.bool? followedCreatorsEmailEnabled,
     $core.bool? commentsEmailEnabled,
     $core.bool? announcementsEmailEnabled,
+    $core.bool? announcementsWebPushEnabled,
+    $core.bool? announcementsMobilePushEnabled,
   }) {
     final result = UpdateNotificationSettingsRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -4720,6 +4722,10 @@ class UpdateNotificationSettingsRequest extends $pb.GeneratedMessage {
       result.commentsEmailEnabled = commentsEmailEnabled;
     if (announcementsEmailEnabled != null)
       result.announcementsEmailEnabled = announcementsEmailEnabled;
+    if (announcementsWebPushEnabled != null)
+      result.announcementsWebPushEnabled = announcementsWebPushEnabled;
+    if (announcementsMobilePushEnabled != null)
+      result.announcementsMobilePushEnabled = announcementsMobilePushEnabled;
     return result;
   }
 
@@ -4752,6 +4758,8 @@ class UpdateNotificationSettingsRequest extends $pb.GeneratedMessage {
     ..aOB(12, _omitFieldNames ? '' : 'followedCreatorsEmailEnabled')
     ..aOB(13, _omitFieldNames ? '' : 'commentsEmailEnabled')
     ..aOB(14, _omitFieldNames ? '' : 'announcementsEmailEnabled')
+    ..aOB(15, _omitFieldNames ? '' : 'announcementsWebPushEnabled')
+    ..aOB(16, _omitFieldNames ? '' : 'announcementsMobilePushEnabled')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4920,6 +4928,24 @@ class UpdateNotificationSettingsRequest extends $pb.GeneratedMessage {
   $core.bool hasAnnouncementsEmailEnabled() => $_has(13);
   @$pb.TagNumber(14)
   void clearAnnouncementsEmailEnabled() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.bool get announcementsWebPushEnabled => $_getBF(14);
+  @$pb.TagNumber(15)
+  set announcementsWebPushEnabled($core.bool value) => $_setBool(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasAnnouncementsWebPushEnabled() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearAnnouncementsWebPushEnabled() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.bool get announcementsMobilePushEnabled => $_getBF(15);
+  @$pb.TagNumber(16)
+  set announcementsMobilePushEnabled($core.bool value) => $_setBool(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasAnnouncementsMobilePushEnabled() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearAnnouncementsMobilePushEnabled() => $_clearField(16);
 }
 
 class UpdateNotificationSettingsResponse extends $pb.GeneratedMessage {
@@ -5006,23 +5032,23 @@ class UpdateNotificationSettingsResponse extends $pb.GeneratedMessage {
 
 /// Which notifications reach a reader on each channel, one cell per category
 /// and channel the server delivers, named <category>_<channel>_enabled. Every
-/// field carries a value: a reader who has saved nothing reads every cell on
-/// rather than an absent message, so a client never has to tell "unset" from
-/// "off".
+/// field carries a value: a reader who has saved nothing reads every cell on,
+/// except the announcement push cells, which start off, rather than an absent
+/// message, so a client never has to tell "unset" from "off".
 ///
 /// A category is why a notification reached the reader. An episode the reader
 /// is told about takes the most direct follow that earned it: the episode or
 /// its series before a creator credited on it, so turning the creators off
 /// still lets an episode of a followed series through. A combination the server
-/// does not deliver — a push of a comment or an announcement — has no cell
-/// until it does, and the next cell is a field here and a column behind it,
-/// not a second pair of RPCs.
+/// does not deliver — a push of a comment — has no cell until it does, and the
+/// next cell is a field here and a column behind it, not a second pair of RPCs.
 ///
 /// An inbox cell that is off keeps the notification out of the inbox and its
 /// unread count without stopping its push or its mail, a push cell that is off
 /// stops the push to that kind of device alone, and an email cell that is off
 /// stops the mail to the reader's confirmed address. An announcement the tenant
-/// sends to everyone reaches every channel whatever its cells say.
+/// sends to everyone reaches the inbox and the mail whatever those cells say.
+/// Its push still answers to the announcement push cells.
 class NotificationPreferences extends $pb.GeneratedMessage {
   factory NotificationPreferences({
     $core.bool? followedEpisodesInboxEnabled,
@@ -5037,6 +5063,8 @@ class NotificationPreferences extends $pb.GeneratedMessage {
     $core.bool? followedCreatorsEmailEnabled,
     $core.bool? commentsEmailEnabled,
     $core.bool? announcementsEmailEnabled,
+    $core.bool? announcementsWebPushEnabled,
+    $core.bool? announcementsMobilePushEnabled,
   }) {
     final result = NotificationPreferences._();
     if (followedEpisodesInboxEnabled != null)
@@ -5065,6 +5093,10 @@ class NotificationPreferences extends $pb.GeneratedMessage {
       result.commentsEmailEnabled = commentsEmailEnabled;
     if (announcementsEmailEnabled != null)
       result.announcementsEmailEnabled = announcementsEmailEnabled;
+    if (announcementsWebPushEnabled != null)
+      result.announcementsWebPushEnabled = announcementsWebPushEnabled;
+    if (announcementsMobilePushEnabled != null)
+      result.announcementsMobilePushEnabled = announcementsMobilePushEnabled;
     return result;
   }
 
@@ -5093,6 +5125,8 @@ class NotificationPreferences extends $pb.GeneratedMessage {
     ..aOB(10, _omitFieldNames ? '' : 'followedCreatorsEmailEnabled')
     ..aOB(11, _omitFieldNames ? '' : 'commentsEmailEnabled')
     ..aOB(12, _omitFieldNames ? '' : 'announcementsEmailEnabled')
+    ..aOB(13, _omitFieldNames ? '' : 'announcementsWebPushEnabled')
+    ..aOB(14, _omitFieldNames ? '' : 'announcementsMobilePushEnabled')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5187,7 +5221,7 @@ class NotificationPreferences extends $pb.GeneratedMessage {
   @$pb.TagNumber(7)
   void clearCommentsInboxEnabled() => $_clearField(7);
 
-  /// An announcement the tenant posted.
+  /// An announcement the tenant posted. The push cells start off.
   @$pb.TagNumber(8)
   $core.bool get announcementsInboxEnabled => $_getBF(7);
   @$pb.TagNumber(8)
@@ -5232,6 +5266,24 @@ class NotificationPreferences extends $pb.GeneratedMessage {
   $core.bool hasAnnouncementsEmailEnabled() => $_has(11);
   @$pb.TagNumber(12)
   void clearAnnouncementsEmailEnabled() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.bool get announcementsWebPushEnabled => $_getBF(12);
+  @$pb.TagNumber(13)
+  set announcementsWebPushEnabled($core.bool value) => $_setBool(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasAnnouncementsWebPushEnabled() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearAnnouncementsWebPushEnabled() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.bool get announcementsMobilePushEnabled => $_getBF(13);
+  @$pb.TagNumber(14)
+  set announcementsMobilePushEnabled($core.bool value) => $_setBool(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasAnnouncementsMobilePushEnabled() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearAnnouncementsMobilePushEnabled() => $_clearField(14);
 }
 
 /// A reader's own choices about how the viewer is laid out, stored against the

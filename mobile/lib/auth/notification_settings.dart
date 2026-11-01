@@ -20,10 +20,11 @@ enum NotificationChannel { inbox, webPush, mobilePush, email }
 /// One switch of the notification preferences: a category on a channel.
 typedef NotificationCell = (NotificationCategory, NotificationChannel);
 
-/// Every cell the server delivers, in the order the screen shows them.
+/// Every cell the screen shows, in the order it shows them.
 ///
-/// A combination the server does not deliver, such as a push of a comment,
-/// has no cell, so no switch stands for something that would never arrive.
+/// A combination the screen does not offer has no switch. A push of a comment
+/// is not delivered. An announcement push is delivered, and its cells start
+/// off. This screen does not show them.
 const notificationCells = <NotificationCell>[
   (NotificationCategory.followedEpisodes, NotificationChannel.inbox),
   (NotificationCategory.followedEpisodes, NotificationChannel.webPush),

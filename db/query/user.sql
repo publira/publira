@@ -848,6 +848,8 @@ INSERT INTO user_notification_settings (
     comments_email_enabled,
     announcements_inbox_enabled,
     announcements_email_enabled,
+    announcements_web_push_enabled,
+    announcements_mobile_push_enabled,
     updated_at
 )
 VALUES (
@@ -865,6 +867,8 @@ VALUES (
     COALESCE(sqlc.narg('comments_email_enabled')::boolean, true),
     COALESCE(sqlc.narg('announcements_inbox_enabled')::boolean, true),
     COALESCE(sqlc.narg('announcements_email_enabled')::boolean, true),
+    COALESCE(sqlc.narg('announcements_web_push_enabled')::boolean, false),
+    COALESCE(sqlc.narg('announcements_mobile_push_enabled')::boolean, false),
     NOW()
 )
 ON CONFLICT (user_id) DO UPDATE
@@ -880,6 +884,8 @@ SET followed_episodes_inbox_enabled = COALESCE(sqlc.narg('followed_episodes_inbo
     comments_email_enabled = COALESCE(sqlc.narg('comments_email_enabled')::boolean, user_notification_settings.comments_email_enabled),
     announcements_inbox_enabled = COALESCE(sqlc.narg('announcements_inbox_enabled')::boolean, user_notification_settings.announcements_inbox_enabled),
     announcements_email_enabled = COALESCE(sqlc.narg('announcements_email_enabled')::boolean, user_notification_settings.announcements_email_enabled),
+    announcements_web_push_enabled = COALESCE(sqlc.narg('announcements_web_push_enabled')::boolean, user_notification_settings.announcements_web_push_enabled),
+    announcements_mobile_push_enabled = COALESCE(sqlc.narg('announcements_mobile_push_enabled')::boolean, user_notification_settings.announcements_mobile_push_enabled),
     updated_at = NOW()
 RETURNING *;
 
