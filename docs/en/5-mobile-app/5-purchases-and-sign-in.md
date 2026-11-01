@@ -2,7 +2,7 @@
 title: In-app purchase and sign-in
 description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple, Google, and passkeys.
 published: 2026-10-06
-updated: 2026-10-31
+updated: 2026-11-01
 ---
 
 Selling episodes and signing in with Apple or Google are set up once for the whole tenant, in the tenant console, and the site and the app share that setup. This page covers what is particular to the app: the parts of each store's and each provider's console that only the app needs, and how the app decides what to offer. The app's build needs nothing for either beyond the [manifest](./1-app-manifest.md) and [App links](./4-app-links.md), except the Google client named in the manifest for Google sign-in on iOS.

@@ -2,8 +2,8 @@
 title: リバースプロキシの設定
 description: Publiraの前に置くロードバランサー、リバースプロキシ、CDNが満たすべき要件を説明します。
 published: 2026-10-29
-updated: 2026-10-31
-source_updated: 2026-10-31
+updated: 2026-11-01
+source_updated: 2026-11-01
 redirect_from:
   - /deployments/reverse-proxy
 ---
