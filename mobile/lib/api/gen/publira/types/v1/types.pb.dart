@@ -1728,6 +1728,7 @@ class Episode extends $pb.GeneratedMessage {
     $core.int? coinPrice,
     $core.int? coinRentalPrice,
     $core.String? coinName,
+    $core.int? previewPageCount,
   }) {
     final result = Episode._();
     if (publicId != null) result.publicId = publicId;
@@ -1760,6 +1761,7 @@ class Episode extends $pb.GeneratedMessage {
     if (coinPrice != null) result.coinPrice = coinPrice;
     if (coinRentalPrice != null) result.coinRentalPrice = coinRentalPrice;
     if (coinName != null) result.coinName = coinName;
+    if (previewPageCount != null) result.previewPageCount = previewPageCount;
     return result;
   }
 
@@ -1809,6 +1811,7 @@ class Episode extends $pb.GeneratedMessage {
     ..aI(24, _omitFieldNames ? '' : 'coinPrice')
     ..aI(25, _omitFieldNames ? '' : 'coinRentalPrice')
     ..aOS(26, _omitFieldNames ? '' : 'coinName')
+    ..aI(27, _omitFieldNames ? '' : 'previewPageCount')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2141,6 +2144,22 @@ class Episode extends $pb.GeneratedMessage {
   $core.bool hasCoinName() => $_has(25);
   @$pb.TagNumber(26)
   void clearCoinName() => $_clearField(26);
+
+  /// How many of the body's opening pages anyone may read without buying the
+  /// episode: GetEpisodeDetailResponse.preview_pages, on a reader's read. 0
+  /// opens none. A free episode opens its whole body, so the count means
+  /// nothing until the episode is priced.
+  ///
+  /// Set on GetEpisodeDetail and on the console's reads of one episode and of
+  /// a series' episodes; 0 elsewhere.
+  @$pb.TagNumber(27)
+  $core.int get previewPageCount => $_getIZ(26);
+  @$pb.TagNumber(27)
+  set previewPageCount($core.int value) => $_setSignedInt32(26, value);
+  @$pb.TagNumber(27)
+  $core.bool hasPreviewPageCount() => $_has(26);
+  @$pb.TagNumber(27)
+  void clearPreviewPageCount() => $_clearField(27);
 }
 
 class EpisodeImage extends $pb.GeneratedMessage {

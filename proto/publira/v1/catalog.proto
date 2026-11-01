@@ -336,7 +336,8 @@ message GetEpisodeDetailResponse {
   publira.types.v1.Episode episode = 1;
   publira.types.v1.Series series = 2;
   // Body images. Empty when access is EPISODE_ACCESS_LOCKED or
-  // EPISODE_ACCESS_AGE_RESTRICTED; preview_images stands in for them there.
+  // EPISODE_ACCESS_AGE_RESTRICTED; preview_images stands in for them there,
+  // and preview_pages for as many of them as the episode opens as a preview.
   repeated publira.types.v1.EpisodeImage images = 3;
   // Viewer access state for this episode.
   EpisodeAccess access = 4;
@@ -380,6 +381,18 @@ message GetEpisodeDetailResponse {
   // code order: the language alternates of the episode. It includes
   // Episode.locale whenever the tenant offers that locale.
   repeated string published_locales = 11;
+  // The body's opening pages that the episode opens to every reader as a
+  // preview: the first Episode.preview_page_count of them, in reading order,
+  // or fewer when the body is shorter. They are the pages themselves, in the
+  // shape `images` carries them, and a reader goes on to the purchase gate
+  // after the last of them. Set only when access is EPISODE_ACCESS_LOCKED and
+  // empty otherwise: an open body is all in `images`, and a reader the
+  // tenant's age rule stops is shown no page.
+  //
+  // Each image_url carries the media token a free body's pages carry, so it
+  // is the same for every reader on a series the age rule does not cover and
+  // the reader's own on one it does.
+  repeated publira.types.v1.EpisodeImage preview_pages = 12;
 }
 
 // A creator that currently has at least one published series.

@@ -409,6 +409,14 @@ message Episode {
   int32 coin_price = 24;
   int32 coin_rental_price = 25;
   string coin_name = 26;
+  // How many of the body's opening pages anyone may read without buying the
+  // episode: GetEpisodeDetailResponse.preview_pages, on a reader's read. 0
+  // opens none. A free episode opens its whole body, so the count means
+  // nothing until the episode is priced.
+  //
+  // Set on GetEpisodeDetail and on the console's reads of one episode and of
+  // a series' episodes; 0 elsewhere.
+  int32 preview_page_count = 27;
 }
 
 // Which way the pages of a work are turned. A series states it for every one
