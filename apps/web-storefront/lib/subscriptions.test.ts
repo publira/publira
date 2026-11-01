@@ -1,6 +1,7 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import {
   ClientSurface,
+  InAppPurchaseStore,
   SubscriptionInterval,
   SubscriptionPlanScope,
   SubscriptionStatus,
@@ -213,6 +214,7 @@ describe("getMySubscription", () => {
         currentPeriodEnd: "2026-11-25T00:00:00Z",
         plan: { name: "Night pass" },
         status: "active",
+        store: null,
       },
     });
     expect(mockGetMySubscription).toHaveBeenCalledWith(
@@ -227,6 +229,55 @@ describe("getMySubscription", () => {
     await expect(getMySubscription(TENANT_ID, "en")).resolves.toEqual({
       ok: true,
       subscription: null,
+    });
+  });
+
+  it("names the store a subscription is billed through", async () => {
+    mockGetMySubscription.mockResolvedValueOnce({
+      subscription: {
+        cancelAtPeriodEnd: false,
+        currentPeriodEnd: "2026-12-01T00:00:00Z",
+        plan: { name: "Night pass" },
+        status: SubscriptionStatus.ACTIVE,
+        store: InAppPurchaseStore.APP_STORE,
+      },
+    });
+
+    await expect(getMySubscription(TENANT_ID, "en")).resolves.toMatchObject({
+      ok: true,
+      subscription: { store: "app_store" },
+    });
+
+    mockGetMySubscription.mockResolvedValueOnce({
+      subscription: {
+        cancelAtPeriodEnd: false,
+        currentPeriodEnd: "2026-12-01T00:00:00Z",
+        plan: { name: "Night pass" },
+        status: SubscriptionStatus.ACTIVE,
+        store: InAppPurchaseStore.GOOGLE_PLAY,
+      },
+    });
+
+    await expect(getMySubscription(TENANT_ID, "en")).resolves.toMatchObject({
+      ok: true,
+      subscription: { store: "google_play" },
+    });
+  });
+
+  it("reads a subscription Stripe bills as billed through no store", async () => {
+    mockGetMySubscription.mockResolvedValueOnce({
+      subscription: {
+        cancelAtPeriodEnd: false,
+        currentPeriodEnd: "2026-12-01T00:00:00Z",
+        plan: { name: "Night pass" },
+        status: SubscriptionStatus.ACTIVE,
+        store: InAppPurchaseStore.UNSPECIFIED,
+      },
+    });
+
+    await expect(getMySubscription(TENANT_ID, "en")).resolves.toMatchObject({
+      ok: true,
+      subscription: { store: null },
     });
   });
 
@@ -275,12 +326,14 @@ describe("getMySubscription", () => {
 });
 
 const subscriptionIn = (
-  status: SubscriptionItem["status"]
+  status: SubscriptionItem["status"],
+  store: SubscriptionItem["store"] = null
 ): SubscriptionItem => ({
   cancelAtPeriodEnd: false,
   currentPeriodEnd: "",
   plan: { name: "Night pass" },
   status,
+  store,
 });
 
 describe("holdsSubscription", () => {
@@ -294,6 +347,13 @@ describe("holdsSubscription", () => {
     ] as const) {
       expect(holdsSubscription(subscriptionIn(status))).toBe(true);
     }
+  });
+
+  it("holds a live store subscription and none that has ended", () => {
+    expect(holdsSubscription(subscriptionIn("active", "app_store"))).toBe(true);
+    expect(holdsSubscription(subscriptionIn("canceled", "google_play"))).toBe(
+      false
+    );
   });
 
   it("holds none that is over or never started", () => {
