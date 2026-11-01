@@ -99,9 +99,12 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@publira/brand": "workspace:*",
     "@publira/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "next": "catalog:",
+    "postcss": "8.5.31",
+    "tailwindcss": "catalog:",
     "temporal-polyfill": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
