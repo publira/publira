@@ -1,5 +1,6 @@
--- The readers an announcement is addressed to, and the function that answers
--- who they are at the moment it is delivered.
+-- The readers an announcement is addressed to, the policy that keeps a
+-- targeted one from every other reader, and the function that answers who they
+-- are at the moment it is delivered.
 --
 -- The column is nullable, so the previous release's INSERT, which names no
 -- audience, goes on posting for everyone. Its CHECK constraint is added NOT
@@ -18,6 +19,31 @@
 ALTER TABLE ONLY announcements
     ADD COLUMN audience jsonb,
     ADD CONSTRAINT announcements_audience_check CHECK (((audience IS NULL) OR ((jsonb_typeof(audience) = 'object'::text) AND (NOT pinned) AND (delivery = 'preferred'::text)))) NOT VALID;
+
+-- POLICY: announcements announcements_audience_visibility
+-- The storefront and the app read a targeted announcement only as the reader
+-- it was delivered to: the one holding its notification row. The public
+-- queries say so themselves, and this policy says it for every query
+-- publira_public runs, the previous release's included, which reads every row
+-- of the tenant and is still serving while this migration runs. It names the
+-- role by current_user rather than with TO, because the migrations run before
+-- the roles exist on a new install. Every other role reads every row, as the
+-- console's list and the worker do.
+CREATE POLICY announcements_audience_visibility ON announcements
+    AS RESTRICTIVE
+    FOR SELECT
+    USING (
+        (audience IS NULL)
+        OR (CURRENT_USER <> 'publira_public'::name)
+        OR (EXISTS (
+            SELECT 1
+            FROM notifications nt
+            WHERE nt.tenant_id = announcements.tenant_id
+                AND nt.notification_type = 'announcement_posted'
+                AND nt.subject_key = 'announcement:' || announcements.id::text
+                AND nt.user_id = (NULLIF(current_setting('app.current_user_id'::text, true), ''::text))::uuid
+        ))
+    );
 
 -- FUNCTION: announcement_audience_members
 -- Every user of the tenant an audience selects: all of them for a NULL

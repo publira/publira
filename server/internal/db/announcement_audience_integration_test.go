@@ -2,6 +2,7 @@ package dbtest
 
 import (
 	"context"
+	"database/sql"
 	"slices"
 	"strings"
 	"testing"
@@ -304,6 +305,67 @@ func TestAnnouncementAudienceMembersReadsNoAudienceAsEveryoneAndAnUnknownOneAsNo
 	} {
 		if got := f.members(&audience); len(got) != 0 {
 			t.Fatalf("members of %s = %v, want nobody", audience, got)
+		}
+	}
+}
+
+// The storefront's role reads a targeted announcement only as the reader it
+// was delivered to, whatever the query asks: the previous release's reads
+// filter by tenant alone and are still serving while the migration runs. The
+// console's role reads every row.
+func TestTargetedAnnouncementIsHiddenFromThePublicRoleBeyondItsReaders(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	f := newAudienceFixture(t, pg)
+	recipient, other := f.reader("Recipient"), f.reader("Other reader")
+
+	broadcastID, targetedID := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
+	f.exec("INSERT INTO announcements (id, tenant_id, announcement_type) VALUES ($1, $2, 'announcement')", broadcastID, f.tenant.ID)
+	f.exec(`INSERT INTO announcements (id, tenant_id, announcement_type, audience)
+		VALUES ($1, $2, 'announcement', '{"version": 1, "conditions": [{"type": "never_purchased"}]}')`, targetedID, f.tenant.ID)
+	f.exec(`INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, payload, category)
+		VALUES (uuidv7(), $1, $2, 'announcement_posted', 'announcement:' || $3::text, '{}', 'announcements')`, f.tenant.ID, recipient, targetedID)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	listed := func(db *sql.DB, userID uuid.UUID) []uuid.UUID {
+		t.Helper()
+		conn := scopedConn(t, ctx, db, f.tenant.ID, userID)
+		// The shape of the previous release's ListAnnouncementsForUserDesc: the
+		// tenant's rows, and nothing about who they are for.
+		rows, err := conn.QueryContext(ctx, "SELECT id FROM announcements WHERE tenant_id = $1 ORDER BY id", f.tenant.ID)
+		if err != nil {
+			t.Fatalf("list announcements: %v", err)
+		}
+		defer rows.Close() //nolint:errcheck
+		var ids []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			if err := rows.Scan(&id); err != nil {
+				t.Fatalf("scan announcement: %v", err)
+			}
+			ids = append(ids, id)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("iterate announcements: %v", err)
+		}
+		return ids
+	}
+
+	public := pg.OpenPublicDB(t)
+	for _, tc := range []struct {
+		name   string
+		db     *sql.DB
+		userID uuid.UUID
+		want   []uuid.UUID
+	}{
+		{"a visitor", public, uuid.Nil, []uuid.UUID{broadcastID}},
+		{"a reader it was not delivered to", public, other, []uuid.UUID{broadcastID}},
+		{"its reader", public, recipient, []uuid.UUID{broadcastID, targetedID}},
+		{"the console", pg.OpenAdminDB(t), uuid.Nil, []uuid.UUID{broadcastID, targetedID}},
+	} {
+		if got := listed(tc.db, tc.userID); !slices.Equal(got, tc.want) {
+			t.Fatalf("%s reads %v, want %v", tc.name, got, tc.want)
 		}
 	}
 }
