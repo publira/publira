@@ -103,7 +103,7 @@
     "@publira/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "next": "catalog:",
-    "postcss": "8.5.31",
+    "postcss": "8.5.32",
     "tailwindcss": "catalog:",
     "temporal-polyfill": "catalog:",
     "tsdown": "catalog:",
