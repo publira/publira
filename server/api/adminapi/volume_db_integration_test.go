@@ -356,6 +356,7 @@ func TestDBSetVolumeBookstoreLinksRefusesWhatALinkCannotBe(t *testing.T) {
 		"an http URL":              {[]*publirattypesv1.BookstoreLink{kept, {Label: "Store", Url: "http://example.com/store"}}, "bookstore_links[1].url"},
 		"an HTTPS URL in capitals": {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "HTTPS://example.com/store"}}, "bookstore_links[0].url"},
 		"a URL with no host":       {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "https:///store"}}, "bookstore_links[0].url"},
+		"a URL with only a port":   {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "https://:443/store"}}, "bookstore_links[0].url"},
 		"a URL of 2049 characters": {[]*publirattypesv1.BookstoreLink{{Label: "Store", Url: "https://example.com/" + strings.Repeat("a", 2029)}}, "bookstore_links[0].url"},
 		"a label of 51 characters": {[]*publirattypesv1.BookstoreLink{{Label: strings.Repeat("a", 51), Url: "https://example.com/store"}}, "bookstore_links[0].label"},
 		"no label":                 {[]*publirattypesv1.BookstoreLink{{Label: "  ", Url: "https://example.com/store"}}, "bookstore_links[0].label"},

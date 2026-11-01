@@ -679,7 +679,7 @@ func volumeBookstoreLinks(links []*publirattypesv1.BookstoreLink) (labels, urls 
 		// The prefix is checked as written, since the column's CHECK is: a
 		// parser would also accept HTTPS:// in capitals.
 		parsed, err := url.Parse(raw)
-		if err != nil || !strings.HasPrefix(raw, "https://") || parsed.Host == "" || parsed.User != nil {
+		if err != nil || !strings.HasPrefix(raw, "https://") || parsed.Hostname() == "" || parsed.User != nil {
 			return nil, nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("url must be an absolute https URL"), urlField)
 		}
 		labels = append(labels, label)
