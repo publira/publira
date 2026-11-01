@@ -7,6 +7,7 @@ import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_inte
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
+import 'package:publira/purchase/store_subscriber.dart';
 
 /// How a purchase through the store's payment sheet ended.
 enum StorePurchaseOutcome {
@@ -62,16 +63,26 @@ InAppPurchasePlatform? registerDeviceInAppPurchasePlatform() {
 /// — no session, no network, a store that has not settled — stays with the
 /// store, which reports it again on the next launch, and is confirmed again on
 /// sign-in.
+///
+/// A transaction of a subscription is [StoreSubscriber]'s, which listens to
+/// the same store, and is left to it.
 class StorePurchaser {
   StorePurchaser({
     required this.platform,
     required this.store,
     required this.repository,
+    this.isSubscription = _buysNoSubscription,
   });
 
   final InAppPurchasePlatform platform;
   final InAppPurchaseStore store;
   final PurchaseRepository repository;
+
+  /// Whether a transaction is of a subscription, which this leaves alone:
+  /// [StoreSubscriber.isSubscription] where the app sells plans.
+  final Future<bool> Function(PurchaseDetails purchase) isSubscription;
+
+  static Future<bool> _buysNoSubscription(PurchaseDetails _) async => false;
 
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
@@ -307,6 +318,9 @@ class StorePurchaser {
     PurchaseDetails purchase,
     String transaction,
   ) async {
+    if (await _leftToSubscriber(purchase)) {
+      return;
+    }
     _unconfirmed[transaction] = purchase;
     try {
       await repository.confirmStorePurchase(
@@ -335,6 +349,14 @@ class StorePurchaser {
       // the server answers it with the same purchase, and it is finished then.
     }
     _settle(purchase, StorePurchaseOutcome.purchased);
+  }
+
+  Future<bool> _leftToSubscriber(PurchaseDetails purchase) async {
+    try {
+      return await isSubscription(purchase);
+    } on Object {
+      return false;
+    }
   }
 
   /// Finishes a transaction the server has recorded. A Google Play purchase is

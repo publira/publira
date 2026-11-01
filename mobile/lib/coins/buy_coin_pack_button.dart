@@ -104,6 +104,7 @@ class _BuyCoinPackButtonState extends State<BuyCoinPackButton> {
           widget.onChanged();
         case PurchaseFailureKind.alreadyPurchased ||
             PurchaseFailureKind.notSettled ||
+            PurchaseFailureKind.otherAccount ||
             PurchaseFailureKind.unexpected:
           say(messages.purchaseStartFailed);
       }

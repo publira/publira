@@ -23,6 +23,7 @@ import 'package:publira/pages/page_repository.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
+import 'package:publira/purchase/store_subscriber.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_scope.dart';
 import 'package:publira/router.dart';
@@ -764,10 +765,17 @@ class _PurchasesEntry extends StatelessWidget {
 /// opens the billing portal in the system browser, only where the app sells
 /// through that checkout: an app that sells through the store does not send
 /// the reader to an outside payment page. A plan a store bills is changed in
-/// that store, which the section names instead.
+/// that store, which the section names, and **Manage subscription** opens the
+/// store's own page of the reader's subscriptions.
 ///
-/// Left out for a reader who has never subscribed, and in a build carrying no
-/// [PurchaseScope].
+/// Where the app sells through the store, **Restore purchases** asks the
+/// store for the subscriptions it holds and confirms them, which is how a
+/// plan bought on another phone reaches this account, and says what it
+/// found. It is offered to a reader who holds no plan too, which is the
+/// reader it is for.
+///
+/// Left out for a reader who has never subscribed in an app that does not
+/// sell through the store, and in a build carrying no [PurchaseScope].
 class _PlanSection extends StatefulWidget {
   const _PlanSection({super.key});
 
@@ -780,12 +788,18 @@ class _PlanSectionState extends State<_PlanSection> {
 
   /// Whether the plan offers **Manage billing**.
   var _managesBilling = false;
+
+  /// Whether the app sells through the store on this device, which offers
+  /// **Restore purchases**.
+  var _restores = false;
   var _failed = false;
   var _opening = false;
+  var _restoring = false;
   var _reads = 0;
 
-  /// Whether the billing portal was handed to the browser since the plan was
-  /// last read, so the reader's return to the app reads it again.
+  /// Whether the billing portal or the store's subscriptions were handed to
+  /// the browser since the plan was last read, so the reader's return to the
+  /// app reads it again.
   var _portalOpened = false;
 
   /// Whether the account tab was on screen when last asked.
@@ -826,19 +840,24 @@ class _PlanSectionState extends State<_PlanSection> {
     _portalOpened = false;
     final purchase = PurchaseScope.repositoryOf(context);
     final launcher = PurchaseScope.maybeOf(context)?.launcher;
+    final subscriber = PurchaseScope.maybeOf(context)?.storeSubscriber;
     if (purchase == null) {
       return;
     }
     MySubscription? subscription;
     var managesBilling = false;
+    var restores = false;
     var failed = false;
     try {
       subscription = await purchase.mySubscription();
-      if (subscription != null && subscription.store == null) {
+      final stripe = subscription != null && subscription.store == null;
+      if ((stripe && launcher != null) || subscriber != null) {
+        final route = await purchase.appPurchaseRoute();
         managesBilling =
+            stripe &&
             launcher != null &&
-            await purchase.appPurchaseRoute() ==
-                AppPurchaseRoute.externalCheckout;
+            route == AppPurchaseRoute.externalCheckout;
+        restores = subscriber != null && route == AppPurchaseRoute.store;
       }
     } on PurchaseFailure {
       // A route that cannot be read still shows the plan, with no way out of
@@ -851,6 +870,7 @@ class _PlanSectionState extends State<_PlanSection> {
     setState(() {
       _subscription = subscription;
       _managesBilling = managesBilling;
+      _restores = restores;
       _failed = failed;
     });
   }
@@ -889,6 +909,7 @@ class _PlanSectionState extends State<_PlanSection> {
             PurchaseFailureKind.gone ||
             PurchaseFailureKind.storeUnavailable ||
             PurchaseFailureKind.notSettled ||
+            PurchaseFailureKind.otherAccount ||
             PurchaseFailureKind.unexpected:
           report(messages.accountBillingFailed);
       }
@@ -897,6 +918,94 @@ class _PlanSectionState extends State<_PlanSection> {
         setState(() {
           _opening = false;
         });
+      }
+    }
+  }
+
+  /// Opens the store's page of the reader's subscriptions, where a plan the
+  /// store bills is changed and canceled.
+  Future<void> _manageSubscription(MySubscription subscription) async {
+    final purchase = PurchaseScope.maybeOf(context);
+    final store = subscription.store;
+    if (purchase == null || store == null || _opening) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final messages = AppMessages.of(context);
+    setState(() {
+      _opening = true;
+    });
+    try {
+      final url =
+          await purchase.storeSubscriber?.manageUrl(
+            store,
+            subscription.productId,
+          ) ??
+          storeSubscriptionsUrl(store);
+      if (await purchase.launcher!.open(url)) {
+        _portalOpened = true;
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: AutospacedText(messages.accountManageSubscriptionFailed),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _opening = false;
+        });
+      }
+    }
+  }
+
+  /// Confirms every subscription the store holds, says what was found, and
+  /// reads the plan again.
+  Future<void> _restore() async {
+    final subscriber = PurchaseScope.maybeOf(context)?.storeSubscriber;
+    if (subscriber == null || _restoring) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final messages = AppMessages.of(context);
+    void report(String message) =>
+        messenger.showSnackBar(SnackBar(content: AutospacedText(message)));
+    setState(() {
+      _restoring = true;
+    });
+    try {
+      final outcome = await subscriber.restore();
+      report(switch (outcome) {
+        StoreRestoreOutcome.restored => messages.accountRestoreFound,
+        StoreRestoreOutcome.otherAccount => messages.accountRestoreOtherAccount,
+        StoreRestoreOutcome.none => messages.accountRestoreNone,
+      });
+    } on PurchaseFailure catch (failure) {
+      if (!mounted) {
+        return;
+      }
+      switch (failure.kind) {
+        case PurchaseFailureKind.sessionExpired:
+          unawaited(context.pushInTab(AppRoutes.signInPath()));
+        case PurchaseFailureKind.network:
+          report(messages.errorsRpcUnavailable);
+        case PurchaseFailureKind.storeUnavailable:
+          report(messages.purchaseStoreUnavailable);
+        case PurchaseFailureKind.alreadyPurchased ||
+            PurchaseFailureKind.gone ||
+            PurchaseFailureKind.notSold ||
+            PurchaseFailureKind.notSettled ||
+            PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.unexpected:
+          report(messages.accountRestoreFailed);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _restoring = false;
+        });
+        unawaited(_read());
       }
     }
   }
@@ -929,8 +1038,29 @@ class _PlanSectionState extends State<_PlanSection> {
       );
     }
     final subscription = _subscription;
+    final restore = _restores
+        ? _button(
+            key: const ValueKey('account-restore-purchases'),
+            onPressed: _restoring ? null : () => unawaited(_restore()),
+            label: messages.accountRestorePurchases,
+          )
+        : null;
     if (subscription == null) {
-      return const SizedBox.shrink();
+      if (restore == null) {
+        return const SizedBox.shrink();
+      }
+      return Column(
+        key: const ValueKey('account-plan-none'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            title: AutospacedText(messages.accountPlanHeading),
+            subtitle: AutospacedText(messages.accountPlanRestoreHint),
+          ),
+          restore,
+          const Divider(height: 1),
+        ],
+      );
     }
     final state = _stateOf(messages, subscription);
     final store = subscription.status.held ? subscription.store : null;
@@ -961,21 +1091,40 @@ class _PlanSectionState extends State<_PlanSection> {
           ),
         ),
         if (_managesBilling)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: OutlinedButton(
-                key: const ValueKey('account-manage-billing'),
-                onPressed: _opening ? null : () => unawaited(_manageBilling()),
-                child: AutospacedText(messages.accountManageBilling),
-              ),
-            ),
+          _button(
+            key: const ValueKey('account-manage-billing'),
+            onPressed: _opening ? null : () => unawaited(_manageBilling()),
+            label: messages.accountManageBilling,
           ),
+        if (store != null && PurchaseScope.maybeOf(context) != null)
+          _button(
+            key: const ValueKey('account-manage-subscription'),
+            onPressed: _opening
+                ? null
+                : () => unawaited(_manageSubscription(subscription)),
+            label: messages.accountManageSubscription,
+          ),
+        ?restore,
         const Divider(height: 1),
       ],
     );
   }
+
+  static Widget _button({
+    required Key key,
+    required VoidCallback? onPressed,
+    required String label,
+  }) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: OutlinedButton(
+        key: key,
+        onPressed: onPressed,
+        child: AutospacedText(label),
+      ),
+    ),
+  );
 
   /// Where [subscription] stands, or `null` for a running plan whose period
   /// end the API did not report, which leaves nothing to say about it.

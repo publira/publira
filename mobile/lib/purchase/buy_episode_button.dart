@@ -163,6 +163,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
           );
         case PurchaseFailureKind.gone ||
             PurchaseFailureKind.notSettled ||
+            PurchaseFailureKind.otherAccount ||
             PurchaseFailureKind.unexpected:
           messenger.showSnackBar(
             SnackBar(content: AutospacedText(messages.purchaseStartFailed)),

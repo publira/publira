@@ -8,6 +8,7 @@ import 'package:publira/models/my_purchase.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/store_purchaser.dart';
+import 'package:publira/purchase/store_subscriber.dart';
 
 /// How many rows one page of the reader's purchases holds unless a read asks
 /// for another number, which is also the API's own fallback for a request
@@ -105,14 +106,29 @@ enum SubscriptionPlanScope {
   series,
 }
 
-/// A plan the tenant sells, as `ListSubscriptionPlans` answers it, reduced to
-/// what decides whether it opens a work.
+/// A plan the tenant sells, as `ListSubscriptionPlans` answers it: what
+/// decides whether it opens a work, and what the app's own list of plans says
+/// about it.
 class SubscriptionPlan {
   const SubscriptionPlan({
     required this.scope,
+    this.id = '',
+    this.name = '',
+    this.description = '',
     this.labelIds = const {},
     this.seriesIds = const {},
+    this.labelNames = const [],
+    this.seriesTitles = const [],
+    this.appStoreProductId = '',
+    this.googlePlayProductId = '',
   });
+
+  /// The plan's internal id, which `StartStoreSubscription` addresses it by.
+  final String id;
+  final String name;
+
+  /// Plain text; empty when the tenant wrote none.
+  final String description;
 
   final SubscriptionPlanScope scope;
 
@@ -123,6 +139,23 @@ class SubscriptionPlan {
   /// Public ids of the series a [SubscriptionPlanScope.series] plan opens,
   /// among those the app may show.
   final Set<String> seriesIds;
+
+  /// The names of the labels and the titles of the series the plan opens,
+  /// among those the app may show, in the order the plan names them.
+  final List<String> labelNames;
+  final List<String> seriesTitles;
+
+  /// The auto-renewable subscription the plan is sold as in the App Store and
+  /// in Google Play; empty where the app does not sell it there.
+  final String appStoreProductId;
+  final String googlePlayProductId;
+
+  /// The product the plan is sold as in [store], or an empty string where it
+  /// is not.
+  String productIdIn(InAppPurchaseStore store) => switch (store) {
+    InAppPurchaseStore.appStore => appStoreProductId,
+    InAppPurchaseStore.googlePlay => googlePlayProductId,
+  };
 
   /// Whether the plan opens the series [seriesId] names, which is filed under
   /// the label [labelId] names. An empty [labelId] is a series under no label,
@@ -179,6 +212,7 @@ class MySubscription {
     this.currentPeriodEnd,
     this.cancelAtPeriodEnd = false,
     this.store,
+    this.productId = '',
   });
 
   final String planName;
@@ -196,6 +230,10 @@ class MySubscription {
   /// change or cancel it, or `null` for a subscription the tenant's web
   /// checkout bills, which the billing portal manages.
   final InAppPurchaseStore? store;
+
+  /// The product the plan is sold as in [store], which Google Play's page of
+  /// subscriptions is opened on; empty for a subscription no store bills.
+  final String productId;
 }
 
 /// What the reader in front of the app holds of one series, as
@@ -377,6 +415,33 @@ abstract class PurchaseRepository {
     required String productId,
   });
 
+  /// Opens a subscription to the plan [planId] names through [store] for the
+  /// signed-in reader. Asking again for the same plan answers the same intent.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when the
+  /// reader already holds a plan, [PurchaseFailureKind.gone] when the plan is
+  /// no longer published, and [PurchaseFailureKind.notSold] when the tenant
+  /// does not sell it through [store] right now.
+  Future<StorePurchaseIntent> startStoreSubscription(
+    String planId,
+    InAppPurchaseStore store,
+  );
+
+  /// Hands a transaction of a subscription [store] charged to the server,
+  /// which verifies it with the store and records the reader's subscription,
+  /// or records what the store has changed of one it has already. Its
+  /// arguments are those of [confirmStorePurchase].
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.otherAccount] for a
+  /// subscription recorded for another account, which stays there, and
+  /// [PurchaseFailureKind.network] for a store the server could not reach,
+  /// which is confirmed again later.
+  Future<void> confirmStoreSubscription({
+    required InAppPurchaseStore store,
+    required String transaction,
+    required String productId,
+  });
+
   /// The page of the signed-in reader's purchases [token] names, newest
   /// first, and the first page for an empty one, holding at most [limit]
   /// rows. A guest has bought nothing, so they are answered
@@ -391,14 +456,15 @@ abstract class PurchaseRepository {
   });
 }
 
-/// Looks up the [PurchaseRepository], [CheckoutLauncher], and
-/// [StorePurchaser] installed by [PubliraApp].
+/// Looks up the [PurchaseRepository], [CheckoutLauncher], [StorePurchaser],
+/// and [StoreSubscriber] installed by [PubliraApp].
 class PurchaseScope extends InheritedWidget {
   const PurchaseScope({
     super.key,
     this.repository,
     this.launcher,
     this.storePurchaser,
+    this.storeSubscriber,
     required super.child,
   });
 
@@ -408,6 +474,10 @@ class PurchaseScope extends InheritedWidget {
   /// `null` on a device with no store to buy through, which a tenant on the
   /// store route offers no purchase on.
   final StorePurchaser? storePurchaser;
+
+  /// `null` on a device with no store to subscribe through, which a tenant on
+  /// the store route offers no plan on.
+  final StoreSubscriber? storeSubscriber;
 
   /// `null` when this run offers no purchase at all, which is what a widget
   /// test that does not care about buying builds.
@@ -428,5 +498,6 @@ class PurchaseScope extends InheritedWidget {
   bool updateShouldNotify(PurchaseScope oldWidget) =>
       repository != oldWidget.repository ||
       launcher != oldWidget.launcher ||
-      storePurchaser != oldWidget.storePurchaser;
+      storePurchaser != oldWidget.storePurchaser ||
+      storeSubscriber != oldWidget.storeSubscriber;
 }
