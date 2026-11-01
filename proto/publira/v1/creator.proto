@@ -1,0 +1,223 @@
+syntax = "proto3";
+
+package publira.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1";
+
+import "publira/types/v1/types.proto";
+
+// A creator the signed-in reader's account is linked to: the link
+// AdminCreatorService.LinkCreatorAccount makes, which is also what opens the
+// creator's episodes to the reader and marks their comments.
+message MyCreator {
+  // The creator's primary key, which the other CreatorService RPCs name it
+  // by.
+  string id = 1;
+  string public_id = 2;
+  string name = 3;
+  // Empty for a creator with no icon.
+  string icon_image_url = 4;
+  // The series crediting the creator that the calling surface shows now.
+  int32 published_series_count = 5;
+}
+
+message ListMyCreatorsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The client making the read. Unspecified is answered as the web storefront.
+  publira.types.v1.ClientSurface surface = 2;
+}
+
+message ListMyCreatorsResponse {
+  // Oldest link first. Empty for an account linked to none, and for an
+  // account that holds a staff role in the tenant.
+  repeated MyCreator creators = 1;
+  // Whether the tenant shows its creators their sales: when false,
+  // GetMyCreatorStats sets no sales field and the statement RPCs are refused
+  // with CREATOR_SALES_HIDDEN.
+  bool sales_visible = 2;
+}
+
+// One episode crediting the creator, with how it was read over the window and,
+// where the tenant shows sales, how it sold.
+message MyCreatorEpisodeStats {
+  string series_public_id = 1;
+  string series_title = 2;
+  string episode_public_id = 3;
+  string episode_title = 4;
+  // Members who opened the episode, and members who read it to the end, as
+  // the console's read-through report counts them.
+  int64 member_view_count = 5;
+  int64 complete_count = 6;
+  // The sales of the episode made in the window, as the console's revenue
+  // report by episode counts them, and their net of refunds in the minor unit
+  // of GetMyCreatorStatsResponse.currency. Both unset while the tenant does
+  // not show its creators their sales.
+  optional int64 purchase_count = 7;
+  optional int64 net_amount = 8;
+}
+
+// Cursor pagination over the episodes. Field shape and token rules:
+// proto/README.md.
+message GetMyCreatorStatsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  publira.types.v1.ClientSurface surface = 2;
+  // MyCreator.id of a creator the account is linked to. Any other is
+  // not_found.
+  string creator_id = 3;
+  // The reader's locale, which every title is given in. Empty means the
+  // tenant's default locale.
+  string locale = 4;
+  // Max episodes in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 5;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // issued for another creator or another surface is invalid_argument.
+  string token = 6;
+}
+
+message GetMyCreatorStatsResponse {
+  // YYYY-MM-DD: the 28 days of the tenant ending with the last whole one,
+  // which the console's read-through report covers too, in time_zone.
+  string period_start = 1;
+  string period_end = 2;
+  string time_zone = 3;
+  // The readers following the creator now.
+  int64 follower_count = 4;
+  // Over every episode crediting the creator, not only this page's.
+  int64 total_member_view_count = 5;
+  int64 total_complete_count = 6;
+  // The ISO 4217 code, in capitals, of the tenant currency every net_amount
+  // is in.
+  string currency = 7;
+  // Every episode crediting the creator that the calling surface shows now,
+  // those nobody read in the window included, most completions first, then
+  // by episode.
+  repeated MyCreatorEpisodeStats episodes = 8;
+  string previous_token = 9;
+  string next_token = 10;
+}
+
+// The creator's part of one closed month: the sum of the creator's own lines of
+// that month's royalty statement, its adjustments included. What the
+// statement holds for other creators, and its totals, are never answered.
+message MyCreatorStatement {
+  // The month, as YYYY-MM.
+  string period = 1;
+  // The IANA zone the month was cut in.
+  string time_zone = 2;
+  // RFC3339.
+  string closed_at = 3;
+  // The ISO 4217 code every amount is in: the tenant's at close.
+  string currency = 4;
+  // Each a sum over the creator's lines, as AdminRoyaltyService's
+  // RoyaltyStatementLine states them, so an adjustment takes off what it
+  // carries and sale_count counts the subscription payments a subscription
+  // line shares beside the sales. All zero for a month that credited the
+  // creator nothing.
+  int64 sale_count = 5;
+  int64 gross_amount = 6;
+  int64 refunded_amount = 7;
+  int64 payout_amount = 8;
+}
+
+// What one line of a creator's statement credits.
+enum CreatorStatementLineSource {
+  CREATOR_STATEMENT_LINE_SOURCE_UNSPECIFIED = 0;
+  // The episode's sales.
+  CREATOR_STATEMENT_LINE_SOURCE_SALE = 1;
+  // The parts of the month's subscription payments shared to the episode.
+  CREATOR_STATEMENT_LINE_SOURCE_SUBSCRIPTION = 2;
+}
+
+// One of the creator's lines of a closed statement, as
+// AdminRoyaltyService.GetRoyaltyStatement answers it. Names are as they stood
+// at close; a public ID is empty once the row it named has been deleted.
+message MyCreatorStatementLine {
+  // Position in the statement, from 1. The creator's lines are a subset of
+  // the statement's, so the numbers have gaps.
+  int32 line_number = 1;
+  string series_public_id = 2;
+  string series_title = 3;
+  string episode_public_id = 4;
+  string episode_title = 5;
+  // Empty for a credit that states no role.
+  string role_name = 6;
+  int32 sale_count = 7;
+  int64 gross_amount = 8;
+  int64 refunded_amount = 9;
+  // The credit's share in basis points (10000 is all of it), as applied.
+  int32 share_bps = 10;
+  int64 payout_amount = 11;
+  // YYYY-MM of the closed month an adjustment line adjusts. Empty for a line
+  // of the month's own sales or subscription payments.
+  string adjusted_period = 12;
+  // What the line credits. On a subscription line, sale_count is the payments
+  // shared to the episode and the amounts are its parts of them. An
+  // adjustment line has the source of the line it adjusts.
+  CreatorStatementLineSource source = 13;
+}
+
+// Cursor pagination. Field shape and token rules: proto/README.md.
+message ListMyCreatorStatementsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  publira.types.v1.ClientSurface surface = 2;
+  // MyCreator.id of a creator the account is linked to. Any other is
+  // not_found.
+  string creator_id = 3;
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 4;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // issued for another creator is invalid_argument.
+  string token = 5;
+}
+
+message ListMyCreatorStatementsResponse {
+  // Every closed month, newest first.
+  repeated MyCreatorStatement statements = 1;
+  string previous_token = 2;
+  string next_token = 3;
+}
+
+// Cursor pagination over the lines. Field shape and token rules:
+// proto/README.md.
+message GetMyCreatorStatementRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  publira.types.v1.ClientSurface surface = 2;
+  // MyCreator.id of a creator the account is linked to. Any other is
+  // not_found.
+  string creator_id = 3;
+  // YYYY-MM of a closed month. A month not closed is not_found.
+  string period = 4;
+  // Max lines in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 5;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // issued for another creator or another period is invalid_argument.
+  string token = 6;
+}
+
+message GetMyCreatorStatementResponse {
+  MyCreatorStatement statement = 1;
+  // The creator's own lines in line order: the month's sales, then its
+  // subscription payments, then its adjustments.
+  repeated MyCreatorStatementLine lines = 2;
+  string previous_token = 3;
+  string next_token = 4;
+}
+
+// What a signed-in reader linked to a creator reads of that creator's works.
+// Every RPC requires a session and answers about the session account's links
+// alone. While GetTenantResponse.creator_pages_enabled is false every RPC is
+// failed_precondition with the CREATOR_PAGES_DISABLED reason.
+service CreatorService {
+  // The creators the account is linked to.
+  rpc ListMyCreators(ListMyCreatorsRequest) returns (ListMyCreatorsResponse) {}
+  // How the creator's episodes were read over the last 28 whole days of the
+  // tenant, and how many readers follow the creator.
+  rpc GetMyCreatorStats(GetMyCreatorStatsRequest) returns (GetMyCreatorStatsResponse) {}
+  // The creator's part of every closed month. failed_precondition with the
+  // CREATOR_SALES_HIDDEN reason while ListMyCreatorsResponse.sales_visible is
+  // false.
+  rpc ListMyCreatorStatements(ListMyCreatorStatementsRequest) returns (ListMyCreatorStatementsResponse) {}
+  // The creator's part of one closed month, line by line. Refused as
+  // ListMyCreatorStatements is.
+  rpc GetMyCreatorStatement(GetMyCreatorStatementRequest) returns (GetMyCreatorStatementResponse) {}
+}

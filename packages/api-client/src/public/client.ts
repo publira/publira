@@ -16,6 +16,7 @@ import {
 import { CoinService } from "../gen/publira/v1/coin_pb.js";
 import { CommentService } from "../gen/publira/v1/comment_pb.js";
 import { ContactService } from "../gen/publira/v1/contact_pb.js";
+import { CreatorService } from "../gen/publira/v1/creator_pb.js";
 import { DomainService } from "../gen/publira/v1/domain_pb.js";
 import { NotificationService } from "../gen/publira/v1/notification_pb.js";
 import { PublicPagesService } from "../gen/publira/v1/page_pb.js";
@@ -42,6 +43,7 @@ export interface PublicApiClient {
   comment: Client<typeof CommentService>;
   contact: Client<typeof ContactService>;
   contentView: Client<typeof ContentViewService>;
+  creator: Client<typeof CreatorService>;
   episodeRead: Client<typeof EpisodeReadService>;
   follow: Client<typeof FollowService>;
   notification: Client<typeof NotificationService>;
@@ -94,6 +96,7 @@ export const createPublicApiClient = (
     comment: createClient(CommentService, transportInstance),
     contact: createClient(ContactService, transportInstance),
     contentView: createClient(ContentViewService, transportInstance),
+    creator: createClient(CreatorService, transportInstance),
     domain: createClient(DomainService, transportInstance),
     episodeRead: createClient(EpisodeReadService, transportInstance),
     follow: createClient(FollowService, transportInstance),

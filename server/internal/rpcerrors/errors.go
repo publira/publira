@@ -51,7 +51,13 @@ const (
 	// ReasonCoinsUnavailable refuses every coin RPC while the platform does
 	// not allow tenant coins or the tenant has not turned its coins on.
 	ReasonCoinsUnavailable = "COINS_UNAVAILABLE"
-	ReasonCreatorRoleInUse = "CREATOR_ROLE_IN_USE"
+	// ReasonCreatorPagesDisabled refuses every CreatorService RPC while the
+	// tenant does not show its creators their pages.
+	ReasonCreatorPagesDisabled = "CREATOR_PAGES_DISABLED"
+	ReasonCreatorRoleInUse     = "CREATOR_ROLE_IN_USE"
+	// ReasonCreatorSalesHidden refuses a creator's royalty statements while
+	// the tenant does not show its creators their sales.
+	ReasonCreatorSalesHidden = "CREATOR_SALES_HIDDEN"
 	// ReasonIdentityLinkedToAnotherAccount refuses linking a provider account
 	// that signs in to another reader of the tenant.
 	ReasonIdentityLinkedToAnotherAccount = "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT"

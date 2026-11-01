@@ -390,6 +390,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     $core.String? signUpClosedMessage,
     $core.Iterable<$0.TenantBrandMark>? brandMarks,
     $0.TenantThemePalette? darkTheme,
+    $core.bool? creatorPagesEnabled,
   }) {
     final result = GetTenantResponse._();
     if (tenantPublicId != null) result.tenantPublicId = tenantPublicId;
@@ -423,6 +424,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
       result.signUpClosedMessage = signUpClosedMessage;
     if (brandMarks != null) result.brandMarks.addAll(brandMarks);
     if (darkTheme != null) result.darkTheme = darkTheme;
+    if (creatorPagesEnabled != null)
+      result.creatorPagesEnabled = creatorPagesEnabled;
     return result;
   }
 
@@ -473,6 +476,7 @@ class GetTenantResponse extends $pb.GeneratedMessage {
         subBuilder: $0.TenantBrandMark.$_createMessage)
     ..aOM<$0.TenantThemePalette>(28, _omitFieldNames ? '' : 'darkTheme',
         subBuilder: $0.TenantThemePalette.$_createMessage)
+    ..aOB(29, _omitFieldNames ? '' : 'creatorPagesEnabled')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -786,6 +790,18 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   void clearDarkTheme() => $_clearField(28);
   @$pb.TagNumber(28)
   $0.TenantThemePalette ensureDarkTheme() => $_ensure(25);
+
+  /// Whether the tenant shows a reader linked to a creator that creator's
+  /// pages. While it is false every CreatorService RPC is refused, so a client
+  /// offers no Author page and calls none of them.
+  @$pb.TagNumber(29)
+  $core.bool get creatorPagesEnabled => $_getBF(26);
+  @$pb.TagNumber(29)
+  set creatorPagesEnabled($core.bool value) => $_setBool(26, value);
+  @$pb.TagNumber(29)
+  $core.bool hasCreatorPagesEnabled() => $_has(26);
+  @$pb.TagNumber(29)
+  void clearCreatorPagesEnabled() => $_clearField(29);
 }
 
 /// How a client signs a reader in with Apple. The iOS app signs in with its own

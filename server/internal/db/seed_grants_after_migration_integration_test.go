@@ -83,7 +83,7 @@ func TestSeedReachesTablesALaterMigrationCreatesWhenItRunsAgain(t *testing.T) {
 	} {
 		assertRefused(t, ctx, conn, role, "SELECT count(*) FROM platform_grants_probe")
 		assertRefused(t, ctx, conn, role, "INSERT INTO platform_grants_probe VALUES (1)")
-		for _, table := range []string{"episode_rating_counts", "series_rating_counts", "series_follower_counts", "series_follow_changes"} {
+		for _, table := range []string{"episode_rating_counts", "series_rating_counts", "series_follower_counts", "series_follow_changes", "creator_follower_counts"} {
 			assertRefused(t, ctx, conn, role, "DELETE FROM "+table)
 		}
 	}

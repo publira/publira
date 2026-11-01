@@ -139,6 +139,10 @@ message GetTenantResponse {
   // dark. Absent where the tenant has saved no dark palette, and a client then
   // derives one of its own or stays on theme's.
   publira.types.v1.TenantThemePalette dark_theme = 28;
+  // Whether the tenant shows a reader linked to a creator that creator's
+  // pages. While it is false every CreatorService RPC is refused, so a client
+  // offers no Author page and calls none of them.
+  bool creator_pages_enabled = 29;
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own
