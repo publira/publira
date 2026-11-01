@@ -206,6 +206,23 @@ func TestAnnouncementNotificationCompletesWhenTheTenantHasNoUsers(t *testing.T) 
 	}
 }
 
+// A retry evaluates the audience again. When it selects nobody now, the rows an
+// earlier attempt wrote are still owed their mail.
+func TestAnnouncementNotificationQueuesTheMailOfAnEarlierAttemptsRows(t *testing.T) {
+	queries := &stubAnnouncementQuerier{
+		audience: json.RawMessage(`{"version": 1, "conditions": [{"type": "never_purchased"}]}`),
+		written:  true,
+	}
+
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.queued) != 1 || queries.queued[0].EventType != EventTypeNotificationEmail {
+		t.Fatalf("outbox events = %v, want the one notification_email", queries.queued)
+	}
+}
+
 func TestAnnouncementNotificationRetriesAFailedLookup(t *testing.T) {
 	queries := &stubAnnouncementQuerier{listErr: errors.New("connection refused")}
 
@@ -278,7 +295,10 @@ type stubAnnouncementQuerier struct {
 	// delivery is what GetAnnouncementDelivery answers, preferred when empty.
 	delivery string
 	// audience is the stored audience it answers, none when nil.
-	audience           json.RawMessage
+	audience json.RawMessage
+	// written is what AnnouncementHasNotifications answers: whether an earlier
+	// attempt already wrote a row for the announcement.
+	written            bool
 	deliveryErr        error
 	users              []dbmodels.ListAnnouncementRecipientsRow
 	listedTenant       uuid.NullUUID
@@ -343,6 +363,13 @@ func (s *stubAnnouncementQuerier) ListAnnouncementRecipients(
 		return nil, nil
 	}
 	return s.users[start:end], nil
+}
+
+func (s *stubAnnouncementQuerier) AnnouncementHasNotifications(
+	context.Context,
+	dbmodels.AnnouncementHasNotificationsParams,
+) (bool, error) {
+	return s.written || len(s.created) > 0, nil
 }
 
 func (s *stubAnnouncementQuerier) CreateNotification(

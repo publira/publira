@@ -20,6 +20,10 @@ type Querier interface {
 	AdvanceContentStatsThrough(ctx context.Context, arg AdvanceContentStatsThroughParams) error
 	AdvanceRankingsThrough(ctx context.Context, arg AdvanceRankingsThroughParams) error
 	AdvanceRecommendFeaturesThrough(ctx context.Context, arg AdvanceRecommendFeaturesThroughParams) error
+	// Worker fan-out: whether an earlier attempt at the announcement's event
+	// already wrote a notification row for someone, whose mail is still owed when
+	// the audience selects nobody by the time the event is retried.
+	AnnouncementHasNotifications(ctx context.Context, arg AnnouncementHasNotificationsParams) (bool, error)
 	// Revokes the purchase that has since been created for a held dispute, and
 	// records the dispute lost if it was held as lost, by the same rules
 	// RecordDisputeOnPurchase and RecordLostDisputeOnPurchase use. Nothing matches

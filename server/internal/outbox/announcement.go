@@ -109,6 +109,7 @@ type AnnouncementNotificationHandlerConfig struct {
 type announcementNotificationQuerier interface {
 	GetAnnouncementDelivery(ctx context.Context, arg dbmodels.GetAnnouncementDeliveryParams) (dbmodels.GetAnnouncementDeliveryRow, error)
 	ListAnnouncementRecipients(ctx context.Context, arg dbmodels.ListAnnouncementRecipientsParams) ([]dbmodels.ListAnnouncementRecipientsRow, error)
+	AnnouncementHasNotifications(ctx context.Context, arg dbmodels.AnnouncementHasNotificationsParams) (bool, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
 }
@@ -232,6 +233,19 @@ func announcementNotificationHandler(
 			}
 		}
 		if notified == 0 {
+			// A retry evaluates the audience again, and a reader an earlier
+			// attempt wrote a row for may no longer meet it. The mail reads
+			// the rows that were written, so it is still owed for them.
+			written, err := queries.AnnouncementHasNotifications(ctx, dbmodels.AnnouncementHasNotificationsParams{
+				TenantID:   tenantID,
+				SubjectKey: AnnouncementSubjectKey(announcementID),
+			})
+			if err != nil {
+				return fmt.Errorf("check announcement notifications: %w", err)
+			}
+			if written {
+				return queueNotificationEmail(ctx, queries, tenantID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID))
+			}
 			// A tenant with no users, or an audience nobody meets, still has
 			// the announcement on its own list. Completing is the honest
 			// answer: a retry would find the same empty readership, and a

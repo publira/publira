@@ -15,6 +15,31 @@ import (
 	"github.com/lib/pq"
 )
 
+const AnnouncementHasNotifications = `-- name: AnnouncementHasNotifications :one
+SELECT EXISTS (
+        SELECT 1
+        FROM notifications
+        WHERE tenant_id = $1
+            AND notification_type = 'announcement_posted'
+            AND subject_key = $2
+    ) AS has_notifications
+`
+
+type AnnouncementHasNotificationsParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	SubjectKey string    `json:"subject_key"`
+}
+
+// Worker fan-out: whether an earlier attempt at the announcement's event
+// already wrote a notification row for someone, whose mail is still owed when
+// the audience selects nobody by the time the event is retried.
+func (q *Queries) AnnouncementHasNotifications(ctx context.Context, arg AnnouncementHasNotificationsParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, AnnouncementHasNotifications, arg.TenantID, arg.SubjectKey)
+	var has_notifications bool
+	err := row.Scan(&has_notifications)
+	return has_notifications, err
+}
+
 const ClearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
 UPDATE announcements
 SET pinned = false

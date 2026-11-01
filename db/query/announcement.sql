@@ -54,6 +54,18 @@ FROM announcements
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('announcement_id');
 
+-- name: AnnouncementHasNotifications :one
+-- Worker fan-out: whether an earlier attempt at the announcement's event
+-- already wrote a notification row for someone, whose mail is still owed when
+-- the audience selects nobody by the time the event is retried.
+SELECT EXISTS (
+        SELECT 1
+        FROM notifications
+        WHERE tenant_id = sqlc.arg('tenant_id')
+            AND notification_type = 'announcement_posted'
+            AND subject_key = sqlc.arg('subject_key')
+    ) AS has_notifications;
+
 -- name: ListAnnouncementAudienceSeries :many
 -- The tenant's series an audience names, by public id as the console sends
 -- them or by id as the audience stores them, so one query turns either into
