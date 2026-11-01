@@ -137,6 +137,67 @@ class SubscriptionPlan {
   }
 }
 
+/// Where a reader's subscription stands, as
+/// `publira.types.v1.SubscriptionStatus` names it.
+enum SubscriptionStatus {
+  /// The first payment has not gone through yet.
+  incomplete,
+
+  /// The first payment never went through, so the subscription never began.
+  incompleteExpired,
+  trialing,
+  active,
+
+  /// The latest payment did not go through, and the plan still opens what it
+  /// covers while it is retried.
+  pastDue,
+  canceled,
+
+  /// The payments stopped going through, and the plan opens nothing until one
+  /// does.
+  unpaid,
+  paused,
+
+  /// A status this build has no name for, read as over.
+  unknown;
+
+  /// Whether the plan still opens what it covers, or will again once a
+  /// payment goes through: what a reader holds, as opposed to a plan that is
+  /// over.
+  bool get held => switch (this) {
+    trialing || active || pastDue || unpaid || paused => true,
+    incomplete || incompleteExpired || canceled || unknown => false,
+  };
+}
+
+/// The signed-in reader's subscription, as `GetMySubscription` answers it:
+/// the latest one that is not over, or failing that the latest one that is.
+class MySubscription {
+  const MySubscription({
+    required this.planName,
+    required this.status,
+    this.currentPeriodEnd,
+    this.cancelAtPeriodEnd = false,
+    this.store,
+  });
+
+  final String planName;
+  final SubscriptionStatus status;
+
+  /// The end of the period paid for, or of the grace period a store gives a
+  /// past due subscription; `null` when the API reported none.
+  final DateTime? currentPeriodEnd;
+
+  /// Whether the reader has canceled it, which ends it at [currentPeriodEnd]
+  /// rather than renewing it.
+  final bool cancelAtPeriodEnd;
+
+  /// The store the reader subscribed through in the app, which is where they
+  /// change or cancel it, or `null` for a subscription the tenant's web
+  /// checkout bills, which the billing portal manages.
+  final InAppPurchaseStore? store;
+}
+
 /// What the reader in front of the app holds of one series, as
 /// `GetSeriesEpisodeAccess` answers it.
 class SeriesPurchaseState {
@@ -218,6 +279,23 @@ abstract class PurchaseRepository {
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<List<SubscriptionPlan>> subscriptionPlans();
+
+  /// The signed-in reader's subscription, or `null` for a reader who has
+  /// never subscribed. A guest holds none, so they are answered `null`
+  /// without a request.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.sessionExpired] when the
+  /// API no longer accepts the session.
+  Future<MySubscription?> mySubscription();
+
+  /// A page of the billing portal of the tenant's payment provider, where the
+  /// signed-in reader changes their payment method, reads their invoices, and
+  /// cancels the subscription the tenant's web checkout bills.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.notSold] when there is no
+  /// portal to open: the reader never subscribed through the web checkout, or
+  /// the tenant takes no payments through it.
+  Future<Uri> startBillingPortal();
 
   /// The series public id [episodePublicId] belongs to, or `null` when the
   /// episode is not public. A checkout return names the episode alone, and

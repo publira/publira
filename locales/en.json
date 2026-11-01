@@ -5679,6 +5679,8 @@
   },
   "mobile": {
     "account": {
+      "billing_failed": "Could not open billing. Try again.",
+      "billing_unavailable": "Billing cannot be managed on this site at the moment.",
       "birth_date": "Date of birth",
       "birth_date_confirm_description": "Your date of birth cannot be changed once it is saved.",
       "birth_date_confirm_title": "Save {$date} as your date of birth?",
@@ -5718,6 +5720,7 @@
       "icon_uploaded": "Your icon has been updated.",
       "icon_uploading": "Uploading…",
       "linked_accounts": "Linked accounts",
+      "manage_billing": "Manage billing",
       "name": "Name",
       "name_unset": "Not set",
       "notification_category_announcements": "Announcements",
@@ -5739,6 +5742,16 @@
       "pages": "About this site",
       "pages_description": "Terms of service, privacy policy, and the other pages this site publishes.",
       "passkeys": "Passkeys",
+      "plan_ended": "This plan has ended.",
+      "plan_ends_on": "Ends on {$date}. You can keep reading until then.",
+      "plan_heading": "Your plan",
+      "plan_incomplete": "Your first payment has not gone through yet.",
+      "plan_load_failed": "Could not load your plan.",
+      "plan_managed_in_app_store": "You subscribed through the App Store. Change or cancel the plan there.",
+      "plan_managed_in_google_play": "You subscribed through Google Play. Change or cancel the plan there.",
+      "plan_on_hold": "Your plan is on hold until a payment goes through. Update your payment method.",
+      "plan_past_due": "Your last payment did not go through. Update your payment method to keep reading.",
+      "plan_renews_on": "Renews on {$date}.",
       "sign_out": "Sign out",
       "signed_out": "You are not signed in.",
       "title": "Account"

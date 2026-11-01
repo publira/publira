@@ -163,6 +163,82 @@ class HttpPurchaseRepository implements PurchaseRepository {
     }
   }
 
+  @override
+  Future<MySubscription?> mySubscription() async {
+    // Read once and sent explicitly, so the plan is never answered for a
+    // reader other than the one the screen was opened for.
+    final accessToken = _client.accessToken;
+    if (accessToken.isEmpty) {
+      return null;
+    }
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.SubscriptionServiceApi(_client).getMySubscription(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.GetMySubscriptionRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      // The wire format omits the unset message, which is how a reader who
+      // has never subscribed arrives.
+      if (!body.hasSubscription()) {
+        return null;
+      }
+      final subscription = body.subscription;
+      return MySubscription(
+        planName: subscription.plan.name.trim(),
+        status:
+            _subscriptionStatuses[subscription.status] ??
+            SubscriptionStatus.unknown,
+        currentPeriodEnd: _readInstant(subscription.currentPeriodEnd),
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        store: switch (subscription.store) {
+          pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_APP_STORE =>
+            InAppPurchaseStore.appStore,
+          pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_GOOGLE_PLAY =>
+            InAppPurchaseStore.googlePlay,
+          _ => null,
+        },
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  static const _subscriptionStatuses = {
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_INCOMPLETE:
+        SubscriptionStatus.incomplete,
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_INCOMPLETE_EXPIRED:
+        SubscriptionStatus.incompleteExpired,
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_TRIALING:
+        SubscriptionStatus.trialing,
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_ACTIVE: SubscriptionStatus.active,
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_PAST_DUE:
+        SubscriptionStatus.pastDue,
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_CANCELED:
+        SubscriptionStatus.canceled,
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_UNPAID: SubscriptionStatus.unpaid,
+    pb.SubscriptionStatus.SUBSCRIPTION_STATUS_PAUSED: SubscriptionStatus.paused,
+  };
+
+  @override
+  Future<Uri> startBillingPortal() async {
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.SubscriptionServiceApi(_client)
+          .createBillingPortalSession(
+            ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+            pb.CreateBillingPortalSessionRequest(
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      return _checkoutUrl(body.url);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
   static const _planScopes = {
     pb.SubscriptionPlanScope.SUBSCRIPTION_PLAN_SCOPE_ALL:
         SubscriptionPlanScope.all,
@@ -281,8 +357,8 @@ class HttpPurchaseRepository implements PurchaseRepository {
     }
   }
 
-  /// The page a checkout answered, which the system browser is handed, so
-  /// nothing but an https URL is.
+  /// The page a checkout or the billing portal answered, which the system
+  /// browser is handed, so nothing but an https URL is.
   static Uri _checkoutUrl(String raw) {
     final url = Uri.tryParse(raw.trim());
     if (url == null || url.scheme != 'https') {

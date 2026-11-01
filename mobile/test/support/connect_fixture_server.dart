@@ -618,6 +618,17 @@ class ConnectFixtureServer {
   /// The plans `ListSubscriptionPlans` answers, whoever asks.
   List<pb.SubscriptionPlan> subscriptionPlans = const [];
 
+  /// The subscription `GetMySubscription` answers the signed-in member, or
+  /// `null` for a member who has never subscribed.
+  pb.Subscription? mySubscription;
+
+  /// The page `CreateBillingPortalSession` answers the signed-in member.
+  String billingPortalUrl = 'https://billing.stripe.test/p/session/member';
+
+  /// The Connect code `CreateBillingPortalSession` refuses a signed-in member
+  /// with, or `null` to answer it.
+  String? billingPortalRefusal;
+
   /// The Connect code `StartVolumeCheckout` and
   /// `StartSeriesRemainderCheckout` refuse a signed-in member with, or `null`
   /// to answer them.
@@ -2184,6 +2195,34 @@ class ConnectFixtureServer {
       await _writeMessage(
         request,
         pb.ListSubscriptionPlansResponse(plans: subscriptionPlans),
+      );
+      return;
+    }
+
+    if (path.endsWith('/GetMySubscription')) {
+      recorded.decode(pb.GetMySubscriptionRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.GetMySubscriptionResponse(subscription: mySubscription),
+      );
+      return;
+    }
+
+    if (path.endsWith('/CreateBillingPortalSession')) {
+      recorded.decode(pb.CreateBillingPortalSessionRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (billingPortalRefusal case final code?) {
+        await _writeError(request, HttpStatus.badRequest, code, 'refused');
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.CreateBillingPortalSessionResponse(url: billingPortalUrl),
       );
       return;
     }

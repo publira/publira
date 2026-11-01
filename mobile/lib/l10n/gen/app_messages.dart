@@ -218,6 +218,16 @@ final class AppMessages {
     return _format('errors.validation');
   }
 
+  /// `mobile.account.billing_failed`
+  String get accountBillingFailed {
+    return _format('mobile.account.billing_failed');
+  }
+
+  /// `mobile.account.billing_unavailable`
+  String get accountBillingUnavailable {
+    return _format('mobile.account.billing_unavailable');
+  }
+
   /// `mobile.account.birth_date`
   String get accountBirthDate {
     return _format('mobile.account.birth_date');
@@ -413,6 +423,11 @@ final class AppMessages {
     return _format('mobile.account.linked_accounts');
   }
 
+  /// `mobile.account.manage_billing`
+  String get accountManageBilling {
+    return _format('mobile.account.manage_billing');
+  }
+
   /// `mobile.account.name`
   String get accountName {
     return _format('mobile.account.name');
@@ -516,6 +531,56 @@ final class AppMessages {
   /// `mobile.account.passkeys`
   String get accountPasskeys {
     return _format('mobile.account.passkeys');
+  }
+
+  /// `mobile.account.plan_ended`
+  String get accountPlanEnded {
+    return _format('mobile.account.plan_ended');
+  }
+
+  /// `mobile.account.plan_ends_on`
+  String accountPlanEndsOn({required String date}) {
+    return _format('mobile.account.plan_ends_on', {'date': date});
+  }
+
+  /// `mobile.account.plan_heading`
+  String get accountPlanHeading {
+    return _format('mobile.account.plan_heading');
+  }
+
+  /// `mobile.account.plan_incomplete`
+  String get accountPlanIncomplete {
+    return _format('mobile.account.plan_incomplete');
+  }
+
+  /// `mobile.account.plan_load_failed`
+  String get accountPlanLoadFailed {
+    return _format('mobile.account.plan_load_failed');
+  }
+
+  /// `mobile.account.plan_managed_in_app_store`
+  String get accountPlanManagedInAppStore {
+    return _format('mobile.account.plan_managed_in_app_store');
+  }
+
+  /// `mobile.account.plan_managed_in_google_play`
+  String get accountPlanManagedInGooglePlay {
+    return _format('mobile.account.plan_managed_in_google_play');
+  }
+
+  /// `mobile.account.plan_on_hold`
+  String get accountPlanOnHold {
+    return _format('mobile.account.plan_on_hold');
+  }
+
+  /// `mobile.account.plan_past_due`
+  String get accountPlanPastDue {
+    return _format('mobile.account.plan_past_due');
+  }
+
+  /// `mobile.account.plan_renews_on`
+  String accountPlanRenewsOn({required String date}) {
+    return _format('mobile.account.plan_renews_on', {'date': date});
   }
 
   /// `mobile.account.sign_out`
@@ -3855,6 +3920,8 @@ const _jaSources = <String, String>{
   'errors.smtp_test.tls': 'TLS接続に失敗しました。SMTPの設定を確認して再試行してください。',
   'errors.smtp_test.unknown': 'SMTP接続テストに失敗しました。SMTPの設定を確認して再試行してください。',
   'errors.validation': '入力内容を確認してください。',
+  'mobile.account.billing_failed': '支払いの管理を開けませんでした。もう一度お試しください。',
+  'mobile.account.billing_unavailable': '現在このサイトでは支払いの管理を利用できません。',
   'mobile.account.birth_date': '生年月日',
   'mobile.account.birth_date_confirm_description': '生年月日は一度登録すると変更できません。',
   'mobile.account.birth_date_confirm_title': '生年月日を{\$date}で登録しますか？',
@@ -3899,6 +3966,7 @@ const _jaSources = <String, String>{
   'mobile.account.icon_uploaded': 'アイコンを更新しました。',
   'mobile.account.icon_uploading': 'アップロード中…',
   'mobile.account.linked_accounts': '連携アカウント',
+  'mobile.account.manage_billing': '支払いの管理',
   'mobile.account.name': 'お名前',
   'mobile.account.name_unset': '(未設定)',
   'mobile.account.notification_category_announcements': 'お知らせ',
@@ -3923,6 +3991,18 @@ const _jaSources = <String, String>{
   'mobile.account.pages': 'このサイトについて',
   'mobile.account.pages_description': '利用規約やプライバシーポリシーなど、このサイトが公開しているページです。',
   'mobile.account.passkeys': 'パスキー',
+  'mobile.account.plan_ended': 'このプランは終了しました。',
+  'mobile.account.plan_ends_on': '{\$date}に終了します。それまでは引き続き読めます。',
+  'mobile.account.plan_heading': 'ご利用中のプラン',
+  'mobile.account.plan_incomplete': '初回の支払いがまだ完了していません。',
+  'mobile.account.plan_load_failed': 'ご利用中のプランを読み込めませんでした。',
+  'mobile.account.plan_managed_in_app_store':
+      'App Storeで登録したプランです。変更や解約はApp Storeで行ってください。',
+  'mobile.account.plan_managed_in_google_play':
+      'Google Playで登録したプランです。変更や解約はGoogle Playで行ってください。',
+  'mobile.account.plan_on_hold': '支払いが完了するまでプランは停止しています。支払い方法を更新してください。',
+  'mobile.account.plan_past_due': '前回の支払いが完了しませんでした。読み続けるには、支払い方法を更新してください。',
+  'mobile.account.plan_renews_on': '{\$date}に更新されます。',
   'mobile.account.sign_out': 'サインアウト',
   'mobile.account.signed_out': 'サインインしていません',
   'mobile.account.title': 'アカウント',
@@ -4664,6 +4744,9 @@ const _enSources = <String, String>{
   'errors.smtp_test.unknown':
       'The SMTP connection test failed. Check the SMTP settings and try again.',
   'errors.validation': 'Please check the information you entered.',
+  'mobile.account.billing_failed': 'Could not open billing. Try again.',
+  'mobile.account.billing_unavailable':
+      'Billing cannot be managed on this site at the moment.',
   'mobile.account.birth_date': 'Date of birth',
   'mobile.account.birth_date_confirm_description':
       'Your date of birth cannot be changed once it is saved.',
@@ -4719,6 +4802,7 @@ const _enSources = <String, String>{
   'mobile.account.icon_uploaded': 'Your icon has been updated.',
   'mobile.account.icon_uploading': 'Uploading…',
   'mobile.account.linked_accounts': 'Linked accounts',
+  'mobile.account.manage_billing': 'Manage billing',
   'mobile.account.name': 'Name',
   'mobile.account.name_unset': 'Not set',
   'mobile.account.notification_category_announcements': 'Announcements',
@@ -4749,6 +4833,22 @@ const _enSources = <String, String>{
   'mobile.account.pages_description':
       'Terms of service, privacy policy, and the other pages this site publishes.',
   'mobile.account.passkeys': 'Passkeys',
+  'mobile.account.plan_ended': 'This plan has ended.',
+  'mobile.account.plan_ends_on':
+      'Ends on {\$date}. You can keep reading until then.',
+  'mobile.account.plan_heading': 'Your plan',
+  'mobile.account.plan_incomplete':
+      'Your first payment has not gone through yet.',
+  'mobile.account.plan_load_failed': 'Could not load your plan.',
+  'mobile.account.plan_managed_in_app_store':
+      'You subscribed through the App Store. Change or cancel the plan there.',
+  'mobile.account.plan_managed_in_google_play':
+      'You subscribed through Google Play. Change or cancel the plan there.',
+  'mobile.account.plan_on_hold':
+      'Your plan is on hold until a payment goes through. Update your payment method.',
+  'mobile.account.plan_past_due':
+      'Your last payment did not go through. Update your payment method to keep reading.',
+  'mobile.account.plan_renews_on': 'Renews on {\$date}.',
   'mobile.account.sign_out': 'Sign out',
   'mobile.account.signed_out': 'You are not signed in.',
   'mobile.account.title': 'Account',
@@ -5606,6 +5706,8 @@ const _koSources = <String, String>{
   'errors.smtp_test.tls': 'TLS 연결을 설정할 수 없습니다',
   'errors.smtp_test.unknown': 'SMTP 연결 테스트에 실패했습니다',
   'errors.validation': '입력한 내용을 확인해 주세요.',
+  'mobile.account.billing_failed': '결제 관리를 열 수 없습니다. 다시 시도해 주세요.',
+  'mobile.account.billing_unavailable': '현재 이 사이트에서는 결제 관리를 이용할 수 없습니다.',
   'mobile.account.birth_date': '생년월일',
   'mobile.account.birth_date_confirm_description': '생년월일은 한 번 등록하면 변경할 수 없습니다.',
   'mobile.account.birth_date_confirm_title': '생년월일을 {\$date}(으)로 등록할까요?',
@@ -5652,6 +5754,7 @@ const _koSources = <String, String>{
   'mobile.account.icon_uploaded': '아이콘을 변경했습니다.',
   'mobile.account.icon_uploading': '업로드 중…',
   'mobile.account.linked_accounts': '연결된 계정',
+  'mobile.account.manage_billing': '결제 관리',
   'mobile.account.name': '이름',
   'mobile.account.name_unset': '미설정',
   'mobile.account.notification_category_announcements': '공지사항',
@@ -5677,6 +5780,18 @@ const _koSources = <String, String>{
   'mobile.account.pages': '이 사이트에 대하여',
   'mobile.account.pages_description': '이용약관, 개인정보 처리방침 등 이 사이트가 공개한 페이지입니다.',
   'mobile.account.passkeys': '패스키',
+  'mobile.account.plan_ended': '이 플랜은 종료되었습니다.',
+  'mobile.account.plan_ends_on': '{\$date}에 종료됩니다. 그때까지 계속 읽을 수 있습니다.',
+  'mobile.account.plan_heading': '이용 중인 플랜',
+  'mobile.account.plan_incomplete': '첫 결제가 아직 완료되지 않았습니다.',
+  'mobile.account.plan_load_failed': '이용 중인 플랜을 불러오지 못했습니다.',
+  'mobile.account.plan_managed_in_app_store':
+      'App Store에서 가입한 플랜입니다. 변경이나 해지는 App Store에서 해 주세요.',
+  'mobile.account.plan_managed_in_google_play':
+      'Google Play에서 가입한 플랜입니다. 변경이나 해지는 Google Play에서 해 주세요.',
+  'mobile.account.plan_on_hold': '결제가 완료될 때까지 플랜이 일시 정지됩니다. 결제 수단을 변경해 주세요.',
+  'mobile.account.plan_past_due': '지난 결제가 완료되지 않았습니다. 계속 읽으려면 결제 수단을 변경해 주세요.',
+  'mobile.account.plan_renews_on': '{\$date}에 갱신됩니다.',
   'mobile.account.sign_out': '로그아웃',
   'mobile.account.signed_out': '로그인되어 있지 않습니다',
   'mobile.account.title': '계정',
@@ -6420,6 +6535,8 @@ const _zhHansSources = <String, String>{
   'errors.smtp_test.tls': '无法建立TLS连接。',
   'errors.smtp_test.unknown': 'SMTP连接测试失败。',
   'errors.validation': '请检查您输入的内容。',
+  'mobile.account.billing_failed': '无法打开付款管理。请重试。',
+  'mobile.account.billing_unavailable': '本站目前无法管理付款。',
   'mobile.account.birth_date': '出生日期',
   'mobile.account.birth_date_confirm_description': '出生日期登记后无法更改。',
   'mobile.account.birth_date_confirm_title': '要将{\$date}登记为您的出生日期吗？',
@@ -6461,6 +6578,7 @@ const _zhHansSources = <String, String>{
   'mobile.account.icon_uploaded': '您的头像已更新。',
   'mobile.account.icon_uploading': '正在上传…',
   'mobile.account.linked_accounts': '关联账户',
+  'mobile.account.manage_billing': '管理付款',
   'mobile.account.name': '昵称',
   'mobile.account.name_unset': '未设置',
   'mobile.account.notification_category_announcements': '公告',
@@ -6483,6 +6601,18 @@ const _zhHansSources = <String, String>{
   'mobile.account.pages': '关于本站点',
   'mobile.account.pages_description': '本站点发布的服务条款、隐私政策等页面。',
   'mobile.account.passkeys': '通行密钥',
+  'mobile.account.plan_ended': '此方案已结束。',
+  'mobile.account.plan_ends_on': '将于{\$date}结束，在此之前可继续阅读。',
+  'mobile.account.plan_heading': '您的方案',
+  'mobile.account.plan_incomplete': '您的首次付款尚未完成。',
+  'mobile.account.plan_load_failed': '无法加载您的方案。',
+  'mobile.account.plan_managed_in_app_store':
+      '此方案通过App Store订阅。请在App Store中更改或取消。',
+  'mobile.account.plan_managed_in_google_play':
+      '此方案通过Google Play订阅。请在Google Play中更改或取消。',
+  'mobile.account.plan_on_hold': '在付款完成前，您的方案已暂停。请更新付款方式。',
+  'mobile.account.plan_past_due': '您上次的付款未能完成。如需继续阅读，请更新付款方式。',
+  'mobile.account.plan_renews_on': '将于{\$date}续订。',
   'mobile.account.sign_out': '退出登录',
   'mobile.account.signed_out': '您尚未登录。',
   'mobile.account.title': '账户',
@@ -7158,6 +7288,8 @@ const _zhHantSources = <String, String>{
   'errors.smtp_test.tls': '無法建立TLS連線。',
   'errors.smtp_test.unknown': 'SMTP連線測試失敗。',
   'errors.validation': '請檢查您輸入的內容。',
+  'mobile.account.billing_failed': '無法開啟付款管理。請重試。',
+  'mobile.account.billing_unavailable': '本站目前無法管理付款。',
   'mobile.account.birth_date': '出生日期',
   'mobile.account.birth_date_confirm_description': '出生日期登錄後無法變更。',
   'mobile.account.birth_date_confirm_title': '要將{\$date}登錄為您的出生日期嗎？',
@@ -7199,6 +7331,7 @@ const _zhHantSources = <String, String>{
   'mobile.account.icon_uploaded': '您的頭像已更新。',
   'mobile.account.icon_uploading': '正在上傳…',
   'mobile.account.linked_accounts': '已連結的帳戶',
+  'mobile.account.manage_billing': '管理付款',
   'mobile.account.name': '名稱',
   'mobile.account.name_unset': '未設定',
   'mobile.account.notification_category_announcements': '公告',
@@ -7221,6 +7354,18 @@ const _zhHantSources = <String, String>{
   'mobile.account.pages': '關於本網站',
   'mobile.account.pages_description': '本網站發布的服務條款、隱私權政策等頁面。',
   'mobile.account.passkeys': '通行金鑰',
+  'mobile.account.plan_ended': '此方案已結束。',
+  'mobile.account.plan_ends_on': '將於{\$date}結束，在此之前可繼續閱讀。',
+  'mobile.account.plan_heading': '您的方案',
+  'mobile.account.plan_incomplete': '您的首次付款尚未完成。',
+  'mobile.account.plan_load_failed': '無法載入您的方案。',
+  'mobile.account.plan_managed_in_app_store':
+      '此方案透過App Store訂閱。請在App Store中變更或取消。',
+  'mobile.account.plan_managed_in_google_play':
+      '此方案透過Google Play訂閱。請在Google Play中變更或取消。',
+  'mobile.account.plan_on_hold': '在付款完成前，您的方案已暫停。請更新付款方式。',
+  'mobile.account.plan_past_due': '您上次的付款未能完成。如需繼續閱讀，請更新付款方式。',
+  'mobile.account.plan_renews_on': '將於{\$date}續訂。',
   'mobile.account.sign_out': '登出',
   'mobile.account.signed_out': '您尚未登入。',
   'mobile.account.title': '帳戶',

@@ -5679,6 +5679,8 @@
   },
   "mobile": {
     "account": {
+      "billing_failed": "无法打开付款管理。请重试。",
+      "billing_unavailable": "本站目前无法管理付款。",
       "birth_date": "出生日期",
       "birth_date_confirm_description": "出生日期登记后无法更改。",
       "birth_date_confirm_title": "要将{$date}登记为您的出生日期吗？",
@@ -5718,6 +5720,7 @@
       "icon_uploaded": "您的头像已更新。",
       "icon_uploading": "正在上传…",
       "linked_accounts": "关联账户",
+      "manage_billing": "管理付款",
       "name": "昵称",
       "name_unset": "未设置",
       "notification_category_announcements": "公告",
@@ -5739,6 +5742,16 @@
       "pages": "关于本站点",
       "pages_description": "本站点发布的服务条款、隐私政策等页面。",
       "passkeys": "通行密钥",
+      "plan_ended": "此方案已结束。",
+      "plan_ends_on": "将于{$date}结束，在此之前可继续阅读。",
+      "plan_heading": "您的方案",
+      "plan_incomplete": "您的首次付款尚未完成。",
+      "plan_load_failed": "无法加载您的方案。",
+      "plan_managed_in_app_store": "此方案通过App Store订阅。请在App Store中更改或取消。",
+      "plan_managed_in_google_play": "此方案通过Google Play订阅。请在Google Play中更改或取消。",
+      "plan_on_hold": "在付款完成前，您的方案已暂停。请更新付款方式。",
+      "plan_past_due": "您上次的付款未能完成。如需继续阅读，请更新付款方式。",
+      "plan_renews_on": "将于{$date}续订。",
       "sign_out": "退出登录",
       "signed_out": "您尚未登录。",
       "title": "账户"

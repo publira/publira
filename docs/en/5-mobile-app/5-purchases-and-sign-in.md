@@ -2,7 +2,7 @@
 title: In-app purchase and sign-in
 description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple, Google, and passkeys.
 published: 2026-10-06
-updated: 2026-10-26
+updated: 2026-11-01
 ---
 
 Selling episodes and signing in with Apple or Google are set up once for the whole tenant, in the tenant console, and the site and the app share that setup. This page covers what is particular to the app: the parts of each store's and each provider's console that only the app needs, and how the app decides what to offer. The app's build needs nothing for either beyond the [manifest](./1-app-manifest.md) and [App links](./4-app-links.md), except the Google client named in the manifest for Google sign-in on iOS.
@@ -23,6 +23,8 @@ A series' volumes and the rest of a series are sold through **Web checkout** too
 A pack of the tenant's coins the reader bought is listed in **Purchases** too, named by the coins it granted in the tenant's word for them in the reader's language, such as `1,100 Points (including 100 bonus)`, with what they paid and whether it was refunded. It opens nothing and has no reading period, and **Export as CSV** writes it as the site's purchase history does.
 
 A reader who subscribes to one of the tenant's subscription plans reads every episode it covers in the app as well, and the episode list says **Included in your plan** in place of those episodes' prices. Plans are sold on the site alone. With **Web checkout**, a locked episode that a published plan covers offers **See plans**, which opens the site's plan page in the phone's browser; the reader subscribes there, and the app reads the episode again when they come back to it. With **In-app purchase**, the store sells no plan, so the app does not send the reader to the site for one.
+
+A subscriber's **Account** screen shows **Your plan** as **My Page** on the site does: the plan's name and, depending on where the subscription stands, when it renews, when it ends after a cancellation, a payment to fix, or that it has ended. With **Web checkout**, **Manage billing** there opens Stripe's customer portal in the phone's browser, where the reader updates their card, reads their invoices, or cancels, and the app reads the plan again when they come back to it. With **In-app purchase**, the plan is shown without **Manage billing**: the app does not send the reader to a payment page outside the store.
 
 ### Coins
 
