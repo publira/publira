@@ -562,18 +562,29 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     final [
       tenant as pb.GetTenantResponse,
-      legalPages as pb.GetTenantLegalPagesResponse,
+      legalPages as TenantLegalPages,
     ] = await Future.wait<Object>([
       _getTenant(),
-      _readTenant(
-        (service, ctx, tenant) => service.getTenantLegalPages(
-          ctx,
-          pb.GetTenantLegalPagesRequest(tenant: tenant, locale: locale),
-        ),
-      ),
+      readTenantLegalPages(locale: locale),
     ]);
     return SignUpRequirements(
       ageVerification: _ageVerification(tenant),
+      termsPage: legalPages.termsPage,
+      privacyPage: legalPages.privacyPage,
+    );
+  }
+
+  @override
+  Future<TenantLegalPages> readTenantLegalPages({
+    required String locale,
+  }) async {
+    final legalPages = await _readTenant(
+      (service, ctx, tenant) => service.getTenantLegalPages(
+        ctx,
+        pb.GetTenantLegalPagesRequest(tenant: tenant, locale: locale),
+      ),
+    );
+    return TenantLegalPages(
       termsPage: _legalPage(legalPages.termsPage),
       privacyPage: _legalPage(legalPages.privacyPage),
     );

@@ -199,6 +199,14 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<SignUpRequirements> readSignUpRequirements({required String locale});
 
+  /// The tenant's terms of service and privacy policy, read without a
+  /// session. Each page is read in its translation in [locale], as
+  /// [readSignUpRequirements] reads it. A role the tenant names nothing for
+  /// is `null`.
+  ///
+  /// Throws [AuthFailure].
+  Future<TenantLegalPages> readTenantLegalPages({required String locale});
+
   /// The pages the reader behind [session] has still to agree to: the
   /// tenant's terms of service and privacy policy where a version published
   /// since they last agreed asks every reader again. Empty when they owe

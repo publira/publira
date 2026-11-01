@@ -53,6 +53,27 @@ class LegalPage {
   int get hashCode => Object.hash(slug, title, versionId);
 }
 
+/// The tenant's terms of service and privacy policy, as
+/// `GetTenantLegalPages` names them. A role the tenant names nothing for
+/// is `null`.
+@immutable
+class TenantLegalPages {
+  const TenantLegalPages({this.termsPage, this.privacyPage});
+
+  final LegalPage? termsPage;
+  final LegalPage? privacyPage;
+
+  @override
+  bool operator ==(Object other) {
+    return other is TenantLegalPages &&
+        other.termsPage == termsPage &&
+        other.privacyPage == privacyPage;
+  }
+
+  @override
+  int get hashCode => Object.hash(termsPage, privacyPage);
+}
+
 /// The pages a reader is asked to agree to, terms first, from the roles a
 /// `TenantLegalPage` pair names. A page named for both roles is one page, and
 /// the API takes one version of it.

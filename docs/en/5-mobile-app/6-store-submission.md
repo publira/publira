@@ -22,6 +22,7 @@ Make sure the tenant has published at least one series with an episode the accou
 ### The pages a listing links to
 
 - **A privacy policy.** Publish it as a page of the tenant's site, and choose it under **Settings** › **Terms and privacy policy** in the tenant console so the app links to it as well. Both stores ask for its address.
+- **Terms of use, when the app sells subscription plans.** Publish them as a page of the tenant's site and choose that page under **Settings** › **Terms and privacy policy**, beside the privacy policy. **See plans** links to the terms of use and the privacy policy, and leaves out a page the tenant has not set. Set both before submitting an app that sells plans.
 - **A support address.** The site's contact form, `https://<tenant.host>/contact`, serves, and it reaches the staff under **Contact messages** in the tenant console.
 - **Where a reader deletes their account.** The app deletes an account from **Account** › **Delete account**, as the App Store requires. Google Play also asks for a web address, which is the site's account settings, `https://<tenant.host>/settings`, under **Delete account**.
 
