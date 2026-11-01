@@ -38,6 +38,7 @@ import { resolveTenantLogoVariant } from "#lib/tenant-logo";
 
 import { AnalyticsConsentBanner } from "./analytics-consent-banner";
 import { AnalyticsConsentSettingsButton } from "./analytics-consent-settings-button";
+import * as CatalogSearchDialog from "./catalog-search-dialog";
 import { LegalPageAgreementGate } from "./legal-page-agreement-gate";
 import { PinnedAnnouncementBanner } from "./pinned-announcement-banner";
 import * as ThemeSwitch from "./theme-switch";
@@ -367,6 +368,47 @@ const SiteNav = async () => {
   );
 };
 
+/** The dialog's close button, which carries its name as an attribute. */
+const CatalogSearchCloseButton = async () => {
+  const t = await getMessages();
+
+  return (
+    <CatalogSearchDialog.Close
+      aria-label={t("storefront.search.dialog_close")}
+    />
+  );
+};
+
+/**
+ * The search control and the dialog it opens, drawn once in the band and once
+ * in the drawer. The trigger is structure and stands in the static shell; only
+ * its wording, the dialog's close button, and the form behind it wait on reads,
+ * each behind a boundary of its own. `id` keeps the form's controls apart from
+ * the other copy's, since a reader at either width can reach both.
+ */
+const SiteSearch = ({ id }: { id: string }) => (
+  <CatalogSearchDialog.Root>
+    <CatalogSearchDialog.Trigger>
+      <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+        <Message message="storefront.nav.search_label" />
+      </Suspense>
+    </CatalogSearchDialog.Trigger>
+    <CatalogSearchDialog.Popup>
+      <CatalogSearchDialog.Title>
+        <Suspense fallback={null}>
+          <Message message="storefront.search.title" />
+        </Suspense>
+      </CatalogSearchDialog.Title>
+      <Suspense fallback={<CatalogSearchFormSkeleton variant="dialog" />}>
+        <CatalogSearchForm id={id} variant="dialog" />
+      </Suspense>
+      <Suspense fallback={<CatalogSearchDialog.CloseSkeleton />}>
+        <CatalogSearchCloseButton />
+      </Suspense>
+    </CatalogSearchDialog.Popup>
+  </CatalogSearchDialog.Root>
+);
+
 /** Same footprint as the rendered menu button, so the header does not shift. */
 const MobileNavigationOpenButtonSkeleton = () => (
   <Skeleton className="size-9 rounded-control md:hidden pointer-coarse:size-11" />
@@ -478,14 +520,14 @@ const MobileNavigationLinks = async () => {
 };
 
 /**
- * What the band stops drawing below `md`: the catalog field, the navigation,
+ * What the band stops drawing below `md`: the search, the navigation,
  * the language, and — for a reader who is not signed in — the account actions.
  * Four controls and a 342px row do not fit, and the band would rather truncate
  * the tenant's name than any of them, so a phone reaches all four through the
  * menu button this renders beside the drawer holding them.
  *
- * The drawer itself is structure and resolves nothing: its rows, its field, and
- * its buttons are drawn from the start, and only the strings inside them, the
+ * The drawer itself is structure and resolves nothing: its rows, its search
+ * control, and its buttons are drawn from the start, and only the strings inside them, the
  * hrefs that need the tenant's stored default, the language row a tenant that
  * offers one locale does without, and the one answer that needs a cookie arrive
  * behind boundaries of their own.
@@ -508,9 +550,7 @@ const SiteMobileNavigation = () => (
         </Suspense>
       </SiteLayout.MobileNavigationHeader>
       <SiteLayout.MobileNavigationSearch>
-        <Suspense fallback={<CatalogSearchFormSkeleton />}>
-          <CatalogSearchForm id="catalog-search-menu" />
-        </Suspense>
+        <SiteSearch id="catalog-search-menu" />
       </SiteLayout.MobileNavigationSearch>
       <Suspense fallback={<MobileNavigationLinksSkeleton />}>
         <MobileNavigationLinks />
@@ -629,9 +669,7 @@ export const SiteChrome = ({ children }: { children: ReactNode }) => (
         <SiteNav />
       </Suspense>
       <SiteLayout.HeaderSearch>
-        <Suspense fallback={<CatalogSearchFormSkeleton />}>
-          <CatalogSearchForm id="catalog-search-header" />
-        </Suspense>
+        <SiteSearch id="catalog-search-header" />
       </SiteLayout.HeaderSearch>
       <SiteLayout.HeaderWideControls>
         <Suspense fallback={<ThemeSwitch.Skeleton />}>

@@ -41,6 +41,17 @@ export const seriesOrderSchema = searchParamEnum(SERIES_LIST_ORDERS, {
   fallback: "newest" as const,
 });
 
+/**
+ * The same three sorts on the search screen, where an absent `order` is not
+ * the newest first but the search's own order: the server ranks the hits on a
+ * backend that can, and sorts them by title on one that cannot. A sort a reader
+ * chose is written out, `newest` included, so `order=newest` means the newest
+ * first on every screen that carries it.
+ */
+export const seriesSearchOrderSchema = searchParamEnum(SERIES_LIST_ORDERS, {
+  fallback: "" as const,
+});
+
 /** Empty is every state, which is what a list nobody narrowed holds. */
 export const seriesStatusFilterSchema = searchParamEnum(SERIES_STATUS_FILTERS, {
   fallback: "" as const,
@@ -76,6 +87,68 @@ export interface SeriesListQuery {
   /** Empty on the first page. */
   token: string;
 }
+
+/**
+ * The sort and filters a keyword search of the series carries, already
+ * validated. The keys are the series list's own, so a reader who narrowed one
+ * screen reads the same words in the other's URL.
+ */
+export interface SeriesSearchFilters {
+  /** Empty applies no genre filter. */
+  genre: string;
+  /** Empty is the search's own order. */
+  order: SeriesListOrder | "";
+  /** Empty applies no status filter. */
+  status: SeriesSerializationStatus | "";
+  /** Keep only the series a reader can start without paying. */
+  free: boolean;
+}
+
+/** The search nobody narrowed: every series, in the search's own order. */
+export const UNNARROWED_SERIES_SEARCH: SeriesSearchFilters = {
+  free: false,
+  genre: "",
+  order: "",
+  status: "",
+};
+
+/**
+ * Whether a search sorts or narrows the series. Only the series group has a
+ * genre, a serialization status, or a price, so a search that names any of
+ * them answers with that group alone.
+ */
+export const isNarrowedSeriesSearch = ({
+  free,
+  genre,
+  order,
+  status,
+}: SeriesSearchFilters): boolean =>
+  free || genre.length > 0 || order.length > 0 || status.length > 0;
+
+/**
+ * Write `filters` into `params` under the series list's keys, leaving out each
+ * one that is not set so the unnarrowed search keeps a single address.
+ */
+export const appendSeriesSearchFilters = (
+  params: URLSearchParams,
+  { free, genre, order, status }: SeriesSearchFilters
+): void => {
+  if (genre) {
+    params.set("genre", genre);
+  }
+
+  if (order) {
+    params.set("order", order);
+  }
+
+  if (status) {
+    params.set("status", status);
+  }
+
+  if (free) {
+    params.set("free", "1");
+  }
+};
 
 /**
  * The URL of one state of a list screen.

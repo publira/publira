@@ -67,7 +67,9 @@ const LabelPagination = ({
     <LabelPaginationNav>
       <ListPagination.Step
         href={
-          previousToken ? searchPageHref(query, "labels", previousToken) : ""
+          previousToken
+            ? searchPageHref({ kind: "labels", query, token: previousToken })
+            : ""
         }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
@@ -75,7 +77,11 @@ const LabelPagination = ({
         </Suspense>
       </ListPagination.Step>
       <ListPagination.Step
-        href={nextToken ? searchPageHref(query, "labels", nextToken) : ""}
+        href={
+          nextToken
+            ? searchPageHref({ kind: "labels", query, token: nextToken })
+            : ""
+        }
       >
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.next_page" />
@@ -168,7 +174,7 @@ export const LabelResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "labels")}
+              href={searchPageHref({ kind: "labels", query })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
                 <Message message="storefront.search.labels_first_page" />
@@ -208,7 +214,7 @@ export const LabelResults = async ({
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
-              href={searchPageHref(query, "labels")}
+              href={searchPageHref({ kind: "labels", query })}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="storefront.search.labels_show_all" />

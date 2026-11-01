@@ -82,7 +82,9 @@ const SearchResultsSkeleton = () => (
  * `kind` decides how many of them are on screen: the overview shows all three,
  * each behind its own boundary so a creator match arrives whether or not a
  * series matched, and a group's own view shows that group alone with its cursor
- * pagination. The heading of each group sits outside its boundary, so the shape
+ * pagination. A search narrowed by the series filters is always the series
+ * group's own view, and the way back to the overview drops the filters with
+ * the group. The heading of each group sits outside its boundary, so the shape
  * of the answer is on screen before any of the three reads comes back.
  */
 const SearchResults = async ({
@@ -92,7 +94,7 @@ const SearchResults = async ({
 }) => {
   const resolvedSearchParams = await searchParams;
 
-  const { kind, query, token } =
+  const { filters, kind, query, token } =
     parseSearchPageSearchParams(resolvedSearchParams);
 
   if (!query) {
@@ -119,7 +121,12 @@ const SearchResults = async ({
             </Suspense>
           </h2>
           <Suspense fallback={<SeriesResultsSkeleton />}>
-            <SeriesResults query={query} token={token} view={view} />
+            <SeriesResults
+              filters={filters}
+              query={query}
+              token={token}
+              view={view}
+            />
           </Suspense>
         </section>
       )}
@@ -154,7 +161,7 @@ const SearchResults = async ({
         <p>
           <LocaleLink
             className="text-sm text-primary underline underline-offset-4"
-            href={searchPageHref(query)}
+            href={searchPageHref({ query })}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="storefront.search.back_to_all" />
@@ -172,9 +179,15 @@ const SearchFormFromParams = async ({
   searchParams: SearchPageProps["searchParams"];
 }) => {
   const resolved = await searchParams;
-  const { query } = parseSearchPageSearchParams(resolved);
+  const { filters, query } = parseSearchPageSearchParams(resolved);
 
-  return <CatalogSearchForm defaultQuery={query} id="catalog-search-page" />;
+  return (
+    <CatalogSearchForm
+      defaultFilters={filters}
+      defaultQuery={query}
+      id="catalog-search-page"
+    />
+  );
 };
 
 const SearchPage = ({ searchParams }: SearchPageProps) => (

@@ -1823,16 +1823,29 @@ export const SEARCH_QUERY_MAX_LENGTH = 100;
  * Cursor pagination: `token` is whatever the previous response returned as
  * `previousToken` / `nextToken`, and is opaque to the caller. Contract:
  * `proto/README.md`. `query` is the keyword the token was built for — sending
- * a token from another query is rejected by the server.
+ * a token from another query is rejected by the server, and so is one sent
+ * with another sort or filter.
+ *
+ * An `order` left out is the search's own order rather than the newest first
+ * {@link listPublishedSeries} falls back to. A `genrePublicId` naming no genre
+ * of this tenant is `not_found` on the RPC and arrives as the read failure
+ * every other RPC error does.
  */
 export const searchPublishedSeries = async (
   tenantId: string,
   {
+    genrePublicId = "",
+    hasFreeEpisodes = false,
     limit = 20,
     locale,
+    order,
     query,
+    status,
     token = "",
-  }: { limit?: number; locale: Locale; query: string; token?: string }
+  }: Pick<
+    SeriesListFilters,
+    "genrePublicId" | "hasFreeEpisodes" | "order" | "status"
+  > & { limit?: number; locale: Locale; query: string; token?: string }
 ): Promise<CachedReadResult<SeriesListPage>> => {
   "use cache";
 
@@ -1846,9 +1859,13 @@ export const searchPublishedSeries = async (
 
   try {
     response = await apiClient.catalog.searchPublishedSeries({
+      genrePublicId,
+      hasFreeEpisodes,
       limit,
       locale,
+      order: order ? seriesOrders[order] : SeriesOrder.UNSPECIFIED,
       query,
+      status: status ? seriesStatusFilters[status] : SeriesStatus.UNSPECIFIED,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,

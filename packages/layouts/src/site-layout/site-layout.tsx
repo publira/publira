@@ -152,9 +152,9 @@ export const SiteLayoutNavSkeleton = () => (
 );
 
 /**
- * The catalog field's slot in the band. It is the child that gives up width
+ * The catalog search's slot in the band. It is the child that gives up width
  * first, and below `md` the band does not draw it at all: the drawer holds the
- * field there, where the row has room for it.
+ * search there, where the row has room for it.
  *
  * Between `md` and `lg` it is the width a tablet held upright leaves once the
  * brand, the navigation, and the account controls are drawn — measured at

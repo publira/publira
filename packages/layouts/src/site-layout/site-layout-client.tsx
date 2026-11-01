@@ -38,7 +38,7 @@ const useSiteMobileNavigation = (): SiteMobileNavigationContextValue => {
  * The shell, and the drawer the band opens below `md`.
  *
  * A phone band holds the brand, the account controls, and the menu button; the
- * catalog field, the navigation, the language, and the signed-out account
+ * catalog search, the navigation, the language, and the signed-out account
  * actions are inside the drawer. Every one of them navigates, and the layout
  * stays mounted across a navigation within the same locale, so each closes the
  * drawer on its way out — which is what the context here carries.
@@ -140,9 +140,10 @@ export const SiteLayoutMobileNavigationCloseButton = ({
 );
 
 /**
- * The catalog field inside the drawer. Submitting it is a navigation to the
+ * The catalog search inside the drawer. Submitting it is a navigation to the
  * results, which the drawer would otherwise stay open over, so the submit
- * closes it — the event reaches here because a submit bubbles.
+ * closes it — the event reaches here because a submit bubbles, through the
+ * React tree, out of a dialog this row opens as well as out of a form in it.
  */
 export const SiteLayoutMobileNavigationSearch = ({
   children,

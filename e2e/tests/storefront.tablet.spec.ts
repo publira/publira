@@ -18,7 +18,7 @@ import { storefrontPath } from "../src/urls";
  */
 test.describe("web-storefront header on a tablet", () => {
   for (const width of TABLET_WIDTHS) {
-    test(`draws the navigation, the field, and the account actions at ${width}px`, async ({
+    test(`draws the navigation, the search, and the account actions at ${width}px`, async ({
       page,
     }) => {
       await page.setViewportSize({ height: TABLET_HEIGHT, width });
@@ -28,7 +28,7 @@ test.describe("web-storefront header on a tablet", () => {
       await expect(header.getByRole("link", { name: "Labels" })).toBeVisible();
       await expect(header.getByRole("link", { name: "Genres" })).toBeVisible();
       await expect(
-        header.getByRole("searchbox", { name: "Search works" })
+        header.getByRole("button", { name: "Search works" })
       ).toBeVisible();
       await expect(header.getByRole("link", { name: "Sign in" })).toBeVisible();
       await expect(
@@ -43,6 +43,20 @@ test.describe("web-storefront header on a tablet", () => {
       await expectTapTargets(header);
     });
   }
+
+  test("opens the search dialog on a tap", async ({ page }) => {
+    await page.goto(storefrontPath("/"));
+
+    await page
+      .getByRole("banner")
+      .getByRole("button", { name: "Search works" })
+      .tap();
+
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    await expect(
+      dialog.getByRole("searchbox", { name: "Search works" })
+    ).toBeFocused();
+  });
 
   test("opens the language menu on a tap", async ({ page }) => {
     await page.goto(storefrontPath("/"));

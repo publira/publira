@@ -319,6 +319,41 @@ test.describe("web-storefront screenshots", () => {
         await expectScreenshot(page, viewport, "search-results");
       });
 
+      test("the search dialog", async ({ page }) => {
+        await page.goto(storefrontPath("/series"));
+
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Series" })
+        ).toBeVisible();
+
+        // A phone band hands the search to the drawer, and the dialog opens
+        // over it from there; a wider band draws the control itself.
+        if (viewport === PHONE_VIEWPORT) {
+          await page.getByRole("button", { name: "Open navigation" }).click();
+          await page
+            .getByRole("dialog", { name: "Menu" })
+            .getByRole("button", { name: "Search works" })
+            .click();
+        } else {
+          await page
+            .getByRole("banner")
+            .getByRole("button", { name: "Search works" })
+            .click();
+        }
+
+        const dialog = page.getByRole("dialog", { name: "Search" });
+        // The genres are the one read the form waits on, so the dialog is
+        // settled once their control is there.
+        await expect(
+          dialog.getByRole("combobox", { name: "Genre" })
+        ).toBeVisible();
+        await expect(
+          dialog.getByRole("searchbox", { name: "Search works" })
+        ).toBeFocused();
+
+        await expectElementScreenshot(page, viewport, dialog, "search-dialog");
+      });
+
       test("the sign-in screen", async ({ page }) => {
         await page.goto(storefrontPath("/login"));
 
