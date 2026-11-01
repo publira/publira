@@ -152,6 +152,17 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 			},
 		},
 		{
+			name: "author pages", action: "tenant_creator_page_settings_updated", targetType: "tenant_creator_page_settings",
+			save: func() error {
+				_, err := settings.UpdateTenantCreatorPageSettings(ctx, &publiraadminv1.UpdateTenantCreatorPageSettingsRequest{
+					Tenant:                tenant.tenantContext(),
+					CreatorPagesEnabled:   true,
+					CreatorPagesShowSales: true,
+				})
+				return err
+			},
+		},
+		{
 			name: "age verification", action: "tenant_age_verification_updated", targetType: "tenant_age_verification",
 			save: func() error {
 				_, err := settings.UpdateTenantAgeVerification(ctx, &publiraadminv1.UpdateTenantAgeVerificationRequest{

@@ -592,6 +592,12 @@ const settingsActionName = (action: string) => {
       );
     }
 
+    case "tenant_creator_page_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_creator_page_settings_updated" />
+      );
+    }
+
     case "tenant_age_verification_updated": {
       return (
         <Message message="admin.audit.actions.tenant_age_verification_updated" />
@@ -977,6 +983,12 @@ const settingTargetName = (targetType: string) => {
 
     case "tenant_crawler_settings": {
       return <Message message="admin.audit.targets.tenant_crawler_settings" />;
+    }
+
+    case "tenant_creator_page_settings": {
+      return (
+        <Message message="admin.audit.targets.tenant_creator_page_settings" />
+      );
     }
 
     case "tenant_default_locale": {

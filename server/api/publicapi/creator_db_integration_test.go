@@ -11,6 +11,8 @@ import (
 
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/pagination"
+	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -24,7 +26,7 @@ func (e *publicDBEnv) creatorClient() publirav1connect.CreatorServiceClient {
 }
 
 // setCreatorPages turns the tenant's Author pages and their sales figures on
-// or off, as the console setting will.
+// or off, as UpdateTenantCreatorPageSettings does.
 func (e *publicDBEnv) setCreatorPages(t *testing.T, tenantID uuid.UUID, enabled, showSales bool) {
 	t.Helper()
 	if _, err := e.PG.DB.ExecContext(context.Background(), `
@@ -417,5 +419,75 @@ func TestDBCreatorServiceKeepsToTheTenantsSwitches(t *testing.T) {
 		"GetMyCreatorStatement":   getErr,
 	} {
 		assertFailedPreconditionReason(t, name, err, rpcerrors.ReasonCreatorPagesDisabled)
+	}
+}
+
+// Saving the switches through the admin API is what the public reads then
+// follow: sales on while the pages are off shows nothing, pages on with sales
+// off answers the reads and refuses the statements, and both on answers the
+// statements.
+func TestDBCreatorPagesFollowTheAdminSave(t *testing.T) {
+	t.Parallel()
+
+	env := newPublicDBEnv(t)
+	f := env.seedCreatorPages(t, "CRPAGEH")
+	admin := env.PG.SeedTenantAdmin(t, f.tenant.ID, "CRPAGEHADM", "admin@CRPAGEH.example.com", "Admin")
+	console := env.openAdminConsole(t, f.tenant, admin)
+	settings := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(console.server.Client(), console.server.URL)))
+	adminCtx := testutil.WithBearer(context.Background(), console.token)
+	readerCtx := testutil.WithBearer(context.Background(), tokenFor(t, f.tenant, f.reader))
+	client := env.creatorClient()
+
+	save := func(enabled, showSales bool) {
+		t.Helper()
+		saved, err := settings.UpdateTenantCreatorPageSettings(adminCtx, &publiraadminv1.UpdateTenantCreatorPageSettingsRequest{
+			Tenant:                &publirattypesv1.TenantContext{TenantId: f.tenant.ID.String()},
+			CreatorPagesEnabled:   enabled,
+			CreatorPagesShowSales: showSales,
+		})
+		if err != nil {
+			t.Fatalf("UpdateTenantCreatorPageSettings enabled=%v showSales=%v: %v", enabled, showSales, err)
+		}
+		if saved.CreatorPagesEnabled != enabled || saved.CreatorPagesShowSales != showSales {
+			t.Fatalf("saved = enabled %v show sales %v, want enabled %v show sales %v", saved.CreatorPagesEnabled, saved.CreatorPagesShowSales, enabled, showSales)
+		}
+	}
+	tenantEnabled := func() bool {
+		t.Helper()
+		tenant, err := env.tenantAPIClient().GetTenant(context.Background(), &publirav1.GetTenantRequest{Tenant: tenantContext(f.tenant)})
+		if err != nil {
+			t.Fatalf("GetTenant: %v", err)
+		}
+		return tenant.CreatorPagesEnabled
+	}
+
+	save(false, true)
+	if tenantEnabled() {
+		t.Fatal("creator_pages_enabled = true while the pages are saved off")
+	}
+	_, err := client.ListMyCreators(readerCtx, &publirav1.ListMyCreatorsRequest{Tenant: tenantContext(f.tenant)})
+	assertFailedPreconditionReason(t, "ListMyCreators", err, rpcerrors.ReasonCreatorPagesDisabled)
+
+	save(true, false)
+	if !tenantEnabled() {
+		t.Fatal("creator_pages_enabled = false after the pages were saved on")
+	}
+	creators, err := client.ListMyCreators(readerCtx, &publirav1.ListMyCreatorsRequest{Tenant: tenantContext(f.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyCreators with the pages on: %v", err)
+	}
+	if creators.SalesVisible {
+		t.Fatal("sales_visible = true, want false")
+	}
+	_, err = client.ListMyCreatorStatements(readerCtx, &publirav1.ListMyCreatorStatementsRequest{
+		Tenant: tenantContext(f.tenant), CreatorId: f.creator.ID.String(),
+	})
+	assertFailedPreconditionReason(t, "ListMyCreatorStatements", err, rpcerrors.ReasonCreatorSalesHidden)
+
+	save(true, true)
+	if _, err := client.ListMyCreatorStatements(readerCtx, &publirav1.ListMyCreatorStatementsRequest{
+		Tenant: tenantContext(f.tenant), CreatorId: f.creator.ID.String(),
+	}); err != nil {
+		t.Fatalf("ListMyCreatorStatements with sales shown: %v", err)
 	}
 }

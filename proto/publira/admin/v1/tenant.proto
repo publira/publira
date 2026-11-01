@@ -88,6 +88,32 @@ message UpdateTenantCommentSettingsResponse {
   uint32 auto_hide_report_threshold = 2;
 }
 
+// Whether the tenant shows a linked reader each Author they are linked to,
+// and whether those pages include statements and sales figures. Both start
+// off. creator_pages_show_sales may be true while creator_pages_enabled is
+// false: the choice is kept, and nothing is shown until the pages are on.
+message GetTenantCreatorPageSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantCreatorPageSettingsResponse {
+  bool creator_pages_enabled = 1;
+  bool creator_pages_show_sales = 2;
+}
+
+message UpdateTenantCreatorPageSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Both are written. creator_pages_show_sales true with
+  // creator_pages_enabled false is accepted.
+  bool creator_pages_enabled = 2;
+  bool creator_pages_show_sales = 3;
+}
+
+message UpdateTenantCreatorPageSettingsResponse {
+  bool creator_pages_enabled = 1;
+  bool creator_pages_show_sales = 2;
+}
+
 message GetTenantReaderIconPolicyRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
@@ -689,6 +715,12 @@ service TenantSettingsService {
   rpc GetTenantCommentSettings(GetTenantCommentSettingsRequest) returns (GetTenantCommentSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantCommentSettings(UpdateTenantCommentSettingsRequest) returns (UpdateTenantCommentSettingsResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetTenantCreatorPageSettings(GetTenantCreatorPageSettingsRequest) returns (GetTenantCreatorPageSettingsResponse) {}
+  // A save with creator_pages_show_sales true and creator_pages_enabled false
+  // is kept. The pages stay hidden until they are turned on.
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantCreatorPageSettings(UpdateTenantCreatorPageSettingsRequest) returns (UpdateTenantCreatorPageSettingsResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetTenantReaderIconPolicy(GetTenantReaderIconPolicyRequest) returns (GetTenantReaderIconPolicyResponse) {}
   // Minimum role: tenant_admin.

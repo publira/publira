@@ -42,6 +42,12 @@ const (
 	// TenantSettingsServiceUpdateTenantCommentSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantCommentSettings RPC.
 	TenantSettingsServiceUpdateTenantCommentSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCommentSettings"
+	// TenantSettingsServiceGetTenantCreatorPageSettingsProcedure is the procedure name of the
+	// TenantSettingsService's GetTenantCreatorPageSettings RPC.
+	TenantSettingsServiceGetTenantCreatorPageSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantCreatorPageSettings"
+	// TenantSettingsServiceUpdateTenantCreatorPageSettingsProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantCreatorPageSettings RPC.
+	TenantSettingsServiceUpdateTenantCreatorPageSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCreatorPageSettings"
 	// TenantSettingsServiceGetTenantReaderIconPolicyProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantReaderIconPolicy RPC.
 	TenantSettingsServiceGetTenantReaderIconPolicyProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantReaderIconPolicy"
@@ -172,6 +178,20 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantCommentSettings"),
 			Procedure:  TenantSettingsServiceUpdateTenantCommentSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceGetTenantCreatorPageSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantCreatorPageSettings"),
+			Procedure:  TenantSettingsServiceGetTenantCreatorPageSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantCreatorPageSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantCreatorPageSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantCreatorPageSettingsProcedure,
 		}
 	})
 	tenantSettingsServiceGetTenantReaderIconPolicySpec = sync.OnceValue(func() connect.Spec {
@@ -394,6 +414,12 @@ type TenantSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantCreatorPageSettings(context.Context, *v1.GetTenantCreatorPageSettingsRequest) (*v1.GetTenantCreatorPageSettingsResponse, error)
+	// A save with creator_pages_show_sales true and creator_pages_enabled false
+	// is kept. The pages stay hidden until they are turned on.
+	// Minimum role: tenant_admin.
+	UpdateTenantCreatorPageSettings(context.Context, *v1.UpdateTenantCreatorPageSettingsRequest) (*v1.UpdateTenantCreatorPageSettingsResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantReaderIconPolicy(context.Context, *v1.UpdateTenantReaderIconPolicyRequest) (*v1.UpdateTenantReaderIconPolicyResponse, error)
@@ -482,6 +508,12 @@ type TenantSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error)
 	// Minimum role: tenant_auditor.
+	GetTenantCreatorPageSettings(context.Context, *v1.GetTenantCreatorPageSettingsRequest) (*v1.GetTenantCreatorPageSettingsResponse, error)
+	// A save with creator_pages_show_sales true and creator_pages_enabled false
+	// is kept. The pages stay hidden until they are turned on.
+	// Minimum role: tenant_admin.
+	UpdateTenantCreatorPageSettings(context.Context, *v1.UpdateTenantCreatorPageSettingsRequest) (*v1.UpdateTenantCreatorPageSettingsResponse, error)
+	// Minimum role: tenant_auditor.
 	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantReaderIconPolicy(context.Context, *v1.UpdateTenantReaderIconPolicyRequest) (*v1.UpdateTenantReaderIconPolicyResponse, error)
@@ -559,6 +591,8 @@ func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSett
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantDefaultLocaleSpec(), Handler: adapter.updateTenantDefaultLocale},
 		connect.Method{Spec: tenantSettingsServiceGetTenantCommentSettingsSpec(), Handler: adapter.getTenantCommentSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantCommentSettingsSpec(), Handler: adapter.updateTenantCommentSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantCreatorPageSettingsSpec(), Handler: adapter.getTenantCreatorPageSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantCreatorPageSettingsSpec(), Handler: adapter.updateTenantCreatorPageSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantReaderIconPolicySpec(), Handler: adapter.getTenantReaderIconPolicy},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantReaderIconPolicySpec(), Handler: adapter.updateTenantReaderIconPolicy},
 		connect.Method{Spec: tenantSettingsServiceListReaderIconPresetsSpec(), Handler: adapter.listReaderIconPresets},
@@ -616,6 +650,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantCommentSettings(contex
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCommentSettings(context.Context, *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantCreatorPageSettings(context.Context, *v1.GetTenantCreatorPageSettingsRequest) (*v1.GetTenantCreatorPageSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantCreatorPageSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCreatorPageSettings(context.Context, *v1.UpdateTenantCreatorPageSettingsRequest) (*v1.UpdateTenantCreatorPageSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantCreatorPageSettings is not implemented")
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error) {
@@ -781,6 +823,22 @@ func (c *tenantSettingsServiceClient) GetTenantCommentSettings(ctx context.Conte
 func (c *tenantSettingsServiceClient) UpdateTenantCommentSettings(ctx context.Context, req *v1.UpdateTenantCommentSettingsRequest) (*v1.UpdateTenantCommentSettingsResponse, error) {
 	var res v1.UpdateTenantCommentSettingsResponse
 	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantCommentSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantCreatorPageSettings(ctx context.Context, req *v1.GetTenantCreatorPageSettingsRequest) (*v1.GetTenantCreatorPageSettingsResponse, error) {
+	var res v1.GetTenantCreatorPageSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantCreatorPageSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantCreatorPageSettings(ctx context.Context, req *v1.UpdateTenantCreatorPageSettingsRequest) (*v1.UpdateTenantCreatorPageSettingsResponse, error) {
+	var res v1.UpdateTenantCreatorPageSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantCreatorPageSettingsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1086,6 +1144,30 @@ func (h tenantSettingsServiceHandler) updateTenantCommentSettings(ctx context.Co
 		return err
 	}
 	res, err := h.svc.UpdateTenantCommentSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantCreatorPageSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantCreatorPageSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantCreatorPageSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantCreatorPageSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantCreatorPageSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantCreatorPageSettings(ctx, &req)
 	if err != nil {
 		return err
 	}
