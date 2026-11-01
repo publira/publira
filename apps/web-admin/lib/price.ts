@@ -64,19 +64,38 @@ export const maxPriceInputValue = (currency: string): string =>
   toPriceInputValue(MAX_INT32, currency);
 
 /**
- * A price typed in `currency`, read into the integer of its minor unit the API
- * stores: `"4.99"` in USD is `499`. A blank is `0`, the free price, as it has
- * always been. A value with more decimal places than the currency has is
- * refused rather than rounded, since a rounded price is one the operator did
- * not set, and so is one past what an `int32` holds.
+ * An amount typed in `currency`, read into the integer of its minor unit the
+ * API sends: `"4.99"` in USD is `499`. `null` for anything that is not an
+ * amount, including a value with more decimal places than the currency has,
+ * which is refused rather than rounded since a rounded amount is one nobody
+ * typed. The caller decides what a blank means.
+ */
+export const parsePriceInput = (
+  value: string,
+  currency: string
+): number | null => {
+  const digits = currencyFractionDigits(currency);
+  const match = PRICE_RE.exec(value.trim());
+  const units = match?.groups?.units;
+  const fraction = match?.groups?.fraction ?? "";
+
+  if (units === undefined || fraction.length > digits) {
+    return null;
+  }
+
+  return Number(units) * 10 ** digits + Number(fraction.padEnd(digits, "0"));
+};
+
+/**
+ * A price typed in `currency`, read by {@link parsePriceInput} into the
+ * integer of its minor unit the API stores. A blank is `0`, the free price, as
+ * it has always been, and a price past what an `int32` holds is refused.
  */
 export const priceFormSchema = (
   currency: string,
   message: string
-): z.ZodType<number, unknown> => {
-  const digits = currencyFractionDigits(currency);
-
-  return z.preprocess(
+): z.ZodType<number, unknown> =>
+  z.preprocess(
     (value) => {
       const raw = isFormText(value) ? value.trim() : "";
 
@@ -84,17 +103,7 @@ export const priceFormSchema = (
         return 0;
       }
 
-      const match = PRICE_RE.exec(raw);
-      const units = match?.groups?.units;
-      const fraction = match?.groups?.fraction ?? "";
-
-      if (units === undefined || fraction.length > digits) {
-        return;
-      }
-
-      return (
-        Number(units) * 10 ** digits + Number(fraction.padEnd(digits, "0"))
-      );
+      return parsePriceInput(raw, currency) ?? undefined;
     },
     z
       .number({ error: message })
@@ -102,4 +111,3 @@ export const priceFormSchema = (
       .min(0, message)
       .max(MAX_INT32, message)
   );
-};

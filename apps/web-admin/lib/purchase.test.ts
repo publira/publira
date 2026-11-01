@@ -1,5 +1,9 @@
 import { PurchaseRevocationReason } from "@publira/api-client/admin/purchase";
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -10,6 +14,7 @@ const {
   mockListPurchases,
   mockListReaderPurchases,
   mockRefundPurchase,
+  mockRefundPurchaseInPart,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
@@ -18,6 +23,7 @@ const {
   mockListPurchases: vi.fn(),
   mockListReaderPurchases: vi.fn(),
   mockRefundPurchase: vi.fn(),
+  mockRefundPurchaseInPart: vi.fn(),
 }));
 
 vi.mock("./session", () => ({
@@ -31,6 +37,7 @@ vi.mock("./api", () => ({
       listPurchases: mockListPurchases,
       listReaderPurchases: mockListReaderPurchases,
       refundPurchase: mockRefundPurchase,
+      refundPurchaseInPart: mockRefundPurchaseInPart,
     },
   },
   withSessionHeaders: (sessionId: string) => ({
@@ -58,6 +65,7 @@ const purchase = (
     episodePublicId: string;
     episodeTitle: string;
     refundable: boolean;
+    refundRequestedAmount: bigint;
     revocationReason: PurchaseRevocationReason;
     revokedAt: string;
     seriesBundle: {
@@ -82,6 +90,7 @@ const purchase = (
   readerEmail: "reader@example.com",
   readerName: "Reader",
   readerPublicId: "READER001",
+  refundRequestedAmount: 0n,
   refundable: true,
   refundedAmount: 0n,
   refundedAt: "",
@@ -401,5 +410,97 @@ describe("refundPurchase", () => {
         "en"
       )
     ).rejects.toBeInstanceOf(ConnectError);
+  });
+});
+
+describe("refundPurchaseInPart", () => {
+  const input = {
+    amount: 200,
+    purchaseId: PURCHASE_ID,
+    reason: "Half of the pages would not load.",
+    tenantId: "TENANT001",
+  };
+
+  it("sends the amount with the reason and answers the purchase still open", async () => {
+    mockRefundPurchaseInPart.mockResolvedValue({
+      purchase: purchase({ refundRequestedAmount: 200n }),
+    });
+
+    const { refundPurchaseInPart } = await import("./purchase");
+    const result = await refundPurchaseInPart(input, "en");
+
+    expect(mockRefundPurchaseInPart).toHaveBeenCalledWith(
+      {
+        amount: 200n,
+        purchaseId: PURCHASE_ID,
+        reason: "Half of the pages would not load.",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockRefundPurchase).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: true,
+      purchase: { refundRequestedAmount: 200, revocationReason: "" },
+    });
+  });
+
+  it("says a server without the RPC refunded nothing, rather than refunding it all", async () => {
+    mockRefundPurchaseInPart.mockRejectedValue(
+      new ConnectError("not implemented", Code.Unimplemented)
+    );
+
+    const { refundPurchaseInPart } = await import("./purchase");
+    const result = await refundPurchaseInPart(input, "en");
+
+    expect(mockRefundPurchase).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      message:
+        "The API server has not been upgraded to refund part of a purchase yet, so nothing was refunded. Refund all that is left, or try again once the upgrade is finished.",
+      ok: false,
+    });
+  });
+
+  it("says when the amount has come to exceed what is left", async () => {
+    mockRefundPurchaseInPart.mockRejectedValue(
+      new ConnectError(
+        "amount is more than is left to refund",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "amount" }] },
+          },
+        ]
+      )
+    );
+
+    const { refundPurchaseInPart } = await import("./purchase");
+    const result = await refundPurchaseInPart(input, "en");
+
+    expect(result).toEqual({
+      message:
+        "The amount is more than is left to refund now. Open the purchase again to see what is left.",
+      ok: false,
+    });
+  });
+
+  it("words a refund the API refuses as one that cannot be made here", async () => {
+    mockRefundPurchaseInPart.mockRejectedValue(
+      new ConnectError(
+        "a refund in part is waiting for the payment provider",
+        Code.FailedPrecondition
+      )
+    );
+
+    const { refundPurchaseInPart } = await import("./purchase");
+    const result = await refundPurchaseInPart(input, "en");
+
+    expect(result).toEqual({
+      message:
+        "This purchase cannot be refunded. The payment provider refused the refund, or the purchase can no longer be refunded from the console.",
+      ok: false,
+    });
   });
 });

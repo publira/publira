@@ -4413,6 +4413,19 @@
       "refund_confirm_title": "要為這次購買退款嗎？",
       "refund_confirm_description": "將請求金流服務向讀者退還其支付的金額，讀者將立即無法閱讀所購買的內容。退款無法撤銷。",
       "refund_confirm_action": "退款",
+      "refund_confirm_description_amount": "將請求金流服務向讀者退還您輸入的金額。退款無法撤銷。",
+      "refund_amount": "退款金額",
+      "refund_amount_description": "最多可退還剩餘的{$amount}。",
+      "refund_amount_waiting_description": "{$amount}的退款正在等待金流服務處理。在金流服務回報之前，只能以相同金額重新申請。",
+      "refund_amount_note": {
+        "invalid": "請輸入大於零且不超過剩餘可退金額的金額。",
+        "closes": "退還全部金額後，讀者將立即無法閱讀所購買的內容。",
+        "stays_open": "讀者仍可閱讀所購買的內容。"
+      },
+      "refund_requested_amount": "已申請退款金額",
+      "refund_in_part_pending": "已申請退還部分價款，讀者仍可閱讀所購買的內容。金流服務回報後，該金額會計入已退金額。如果申請未送達金流服務，請以相同金額再次退款。",
+      "refund_requested_toast": "已申請退款{$amount}。",
+      "refund_in_part_unavailable": "API伺服器尚未升級到支援部分退款的版本，因此未進行任何退款。請退還剩餘的全部金額，或在升級完成後重試。",
       "reason": "理由",
       "reason_description": "將與退款一同記錄在稽核記錄中。",
       "reason_placeholder": "例如：讀者誤將同一章節購買了兩次",
@@ -4422,7 +4435,9 @@
       "validation": {
         "refund_target": "要退款的購買記錄無效。",
         "reason_required": "請輸入退款理由。",
-        "reason_too_long": "理由請控制在1,000個字元以內。"
+        "reason_too_long": "理由請控制在1,000個字元以內。",
+        "amount_invalid": "退款金額須大於零且不超過剩餘可退金額。",
+        "amount_over_left": "金額超過了目前剩餘可退金額。請重新開啟這次購買，查看剩餘金額。"
       }
     },
     "coins": {

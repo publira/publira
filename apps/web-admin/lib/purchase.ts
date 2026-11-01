@@ -2,9 +2,12 @@ import { PurchaseRevocationReason } from "@publira/api-client/admin/purchase";
 import type { AdminPurchase } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  Code,
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
+  rpcErrorCode,
   rpcErrorDisposition,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -61,6 +64,11 @@ export interface PurchaseItem {
   refundable: boolean;
   refundedAmount: number;
   refundedAt: string;
+  /**
+   * What of a refund in part staff asked for the provider has yet to report,
+   * or `0` while none is waiting.
+   */
+  refundRequestedAmount: number;
   revocationReason: PurchaseRevocationReasonValue;
   revokedAt: string;
   seriesPublicId: string;
@@ -127,6 +135,7 @@ type RawPurchase = Pick<
   | "readerName"
   | "readerPublicId"
   | "refundable"
+  | "refundRequestedAmount"
   | "refundedAmount"
   | "refundedAt"
   | "revocationReason"
@@ -183,6 +192,7 @@ export const mapPurchase = (item: RawPurchase): PurchaseItem => ({
   readerEmail: item.readerEmail,
   readerName: item.readerName,
   readerPublicId: item.readerPublicId,
+  refundRequestedAmount: Number(item.refundRequestedAmount),
   refundable: item.refundable,
   refundedAmount: Number(item.refundedAmount),
   refundedAt: item.refundedAt,
@@ -465,6 +475,85 @@ export const refundPurchase = async (
     return { ok: true, purchase: mapPurchase(response.purchase) };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+
+    return {
+      message: rpcErrorMessage(error, t("admin.purchases.refund_failed"), {
+        locale,
+        overrides: {
+          precondition: t("admin.purchases.refund_refused"),
+        },
+      }),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Asks the provider the reader paid through to give back `amount` of what they
+ * paid, in the minor unit of the purchase's currency, and leaves what they
+ * bought open to them. `reason` is recorded on the audit log entry.
+ *
+ * A server of the release before this console has no such RPC and answers
+ * `unimplemented`, having refunded nothing; that is said as it is, rather than
+ * refunding the whole payment in its place.
+ */
+export const refundPurchaseInPart = async (
+  input: {
+    amount: number;
+    purchaseId: string;
+    reason: string;
+    tenantId: string;
+  },
+  locale: Locale
+): Promise<RefundPurchaseResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.purchases.refundPurchaseInPart(
+      {
+        amount: BigInt(input.amount),
+        purchaseId: input.purchaseId,
+        reason: input.reason,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.purchase) {
+      return { message: t("admin.purchases.refund_failed"), ok: false };
+    }
+
+    return { ok: true, purchase: mapPurchase(response.purchase) };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+
+    if (rpcErrorCode(error) === Code.Unimplemented) {
+      return {
+        message: t("admin.purchases.refund_in_part_unavailable"),
+        ok: false,
+      };
+    }
+
+    // What is left can shrink between reading the purchase and refunding it,
+    // when the provider reports a refund made in its dashboard meanwhile.
+    if (rpcErrorHasFieldViolation(error, "amount")) {
+      return {
+        message: t("admin.purchases.validation.amount_over_left"),
+        ok: false,
+      };
+    }
+
     rethrowUnclassifiedRpcError(error);
 
     return {

@@ -15,6 +15,7 @@ const purchase = (item: PurchasedItem): PurchaseItem => ({
   readerEmail: "reader@example.com",
   readerName: "Reader",
   readerPublicId: "READER001",
+  refundRequestedAmount: 0,
   refundable: true,
   refundedAmount: 0,
   refundedAt: "",

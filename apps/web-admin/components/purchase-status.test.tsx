@@ -7,7 +7,7 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PurchasePaidThrough } from "./purchase-status";
+import { PurchasePaidThrough, purchaseStatus } from "./purchase-status";
 
 vi.mock("#components/message", () => ({
   Message: ({
@@ -18,6 +18,33 @@ vi.mock("#components/message", () => ({
     values?: MessageValues;
   }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
+
+const NOW = Temporal.Instant.from("2026-06-01T00:00:00Z");
+
+const standing = {
+  expiresAt: "",
+  refundRequestedAmount: 0,
+  refundedAmount: 0,
+  refundedAt: "",
+  revocationReason: "",
+} as const;
+
+describe("purchaseStatus", () => {
+  it("reports a refund in part waiting for the provider as requested", () => {
+    expect(
+      purchaseStatus(
+        { ...standing, refundRequestedAmount: 200, refundedAmount: 100 },
+        NOW
+      )
+    ).toBe("refunding");
+  });
+
+  it("reports a refund in part the provider has recorded as a partial refund", () => {
+    expect(purchaseStatus({ ...standing, refundedAmount: 200 }, NOW)).toBe(
+      "partly_refunded"
+    );
+  });
+});
 
 const providerNames = new Map([["stripe", "Stripe"]]);
 

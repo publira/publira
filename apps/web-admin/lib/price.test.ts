@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   maxPriceInputValue,
+  parsePriceInput,
   priceFormSchema,
   priceInputStep,
   readCurrency,
@@ -42,6 +43,22 @@ describe("maxPriceInputValue", () => {
   it("writes the largest int32 in the currency", () => {
     expect(maxPriceInputValue("JPY")).toBe("2147483647");
     expect(maxPriceInputValue("USD")).toBe("21474836.47");
+  });
+});
+
+describe("parsePriceInput", () => {
+  it("reads an amount into the currency's minor unit", () => {
+    expect(parsePriceInput("500", "JPY")).toBe(500);
+    expect(parsePriceInput(" 1.5 ", "USD")).toBe(150);
+  });
+
+  it("leaves a blank to the caller as no amount", () => {
+    expect(parsePriceInput("", "USD")).toBeNull();
+  });
+
+  it("refuses more decimal places than the currency has", () => {
+    expect(parsePriceInput("1.5", "JPY")).toBeNull();
+    expect(parsePriceInput("1.999", "USD")).toBeNull();
   });
 });
 

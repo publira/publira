@@ -18,6 +18,7 @@ import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
 import { getPurchase } from "#lib/purchase";
 
+import type { RefundAmountBounds } from "./refund-draft";
 import { RefundPurchaseButton } from "./refund-purchase-button";
 
 interface PurchaseDetailProps {
@@ -64,6 +65,26 @@ const NotRefundableNote = ({ purchase }: { purchase: PurchaseItem }) => {
   }
 
   return <Message message="admin.purchases.not_refundable.provider" />;
+};
+
+/**
+ * What a refund can be asked for on `purchase`, or `null` where only all that
+ * is left can be: a pack of coins is refunded in full, and a purchase whose
+ * currency could not be read cannot be given an amount.
+ */
+const refundAmountBounds = (
+  purchase: PurchaseItem,
+  currency: string | null
+): RefundAmountBounds | null => {
+  if (!currency || purchase.item.kind === "coin_pack") {
+    return null;
+  }
+
+  return {
+    currency,
+    left: purchase.price - purchase.refundedAmount,
+    requested: purchase.refundRequestedAmount,
+  };
 };
 
 /** The revocation's reason, one branch at a time. */
@@ -254,6 +275,22 @@ export const PurchaseDetail = async ({
           </>
         ) : null}
 
+        {purchase.refundRequestedAmount > 0 ? (
+          <>
+            <dt className={labelClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="admin.purchases.refund_requested_amount" />
+              </Suspense>
+            </dt>
+            <dd className={`${valueClassName} tabular-nums`}>
+              {formatTenantAmount(purchase.refundRequestedAmount, {
+                currency,
+                locale,
+              })}
+            </dd>
+          </>
+        ) : null}
+
         {purchase.revokedAt ? (
           <>
             <dt className={labelClassName}>
@@ -293,7 +330,21 @@ export const PurchaseDetail = async ({
       </dl>
 
       {purchase.refundable ? (
-        <RefundPurchaseButton purchaseId={purchase.id} tenantId={tenantId} />
+        <div className="grid gap-3">
+          {purchase.refundRequestedAmount > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                <Message message="admin.purchases.refund_in_part_pending" />
+              </Suspense>
+            </p>
+          ) : null}
+          <RefundPurchaseButton
+            bounds={refundAmountBounds(purchase, currency)}
+            locale={locale}
+            purchaseId={purchase.id}
+            tenantId={tenantId}
+          />
+        </div>
       ) : (
         <p className="text-sm text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>

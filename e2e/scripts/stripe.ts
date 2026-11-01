@@ -31,11 +31,16 @@
  * back to the session's return URL.
  *
  * The console's refund reaches `POST /v1/refunds`, which refunds whatever is
- * left of a payment intent the secret key paid, and
+ * left of a payment intent the secret key paid, or the amount it names,
+ * `GET /v1/refunds` lists what has been refunded of one, and
  * `GET /v1/payment_intents/:id` answers one with its latest charge expanded.
  * The payment intents are those the checkout page paid, and those a spec
  * registered with `POST /payment-intents` for the payment ID a scenario seeds,
- * which Stripe's own API has no call for. No refund event is delivered.
+ * which Stripe's own API has no call for. A refund is reported only when a
+ * spec asks with `POST /refund-events`, another call of the stand-in's own,
+ * which delivers `charge.refunded` for what has been refunded of the payment
+ * intent so far: Stripe reports a refund some time after it accepted it, and a
+ * spec decides where that time falls.
  *
  * Everything is kept in memory and by secret key, as each Stripe account keeps
  * its own, so a suite that starts over on a stack that already ran it uses a
@@ -98,6 +103,11 @@ interface CheckoutSession {
 /** A payment intent paid in full, and what has been refunded of it since. */
 interface PaymentIntent {
   amount: number;
+  /**
+   * The `Stripe-Version` the last refund of it was asked under, which an event
+   * reporting the refund carries, or `""` before any refund.
+   */
+  apiVersion: string;
   currency: string;
   id: string;
   refunded: number;
@@ -147,6 +157,24 @@ const coupons = new Map<string, number>();
 /** The subscriptions each secret key's checkouts started, by secret key and id. */
 const subscriptions = new Map<string, Subscription>();
 const portals = new Map<string, BillingPortalSession>();
+
+/** A refund made from a payment intent, as `POST /v1/refunds` answers it. */
+interface Refund {
+  amount: number;
+  charge: string;
+  currency: string;
+  id: string;
+  metadata: Record<string, string>;
+  object: "refund";
+  payment_intent: string;
+  status: "succeeded";
+}
+
+/**
+ * The refunds made from each secret key's payment intents, newest first, by
+ * secret key and payment intent id, which `GET /v1/refunds` lists.
+ */
+const refunds = new Map<string, Refund[]>();
 
 /** An object a create request answered, as Stripe's API names its kind. */
 interface CreatedObject {
@@ -636,6 +664,7 @@ const registerPaymentIntent = async (
 
   const intent: PaymentIntent = {
     amount,
+    apiVersion: "",
     currency: currency.toLowerCase(),
     id,
     refunded: 0,
@@ -741,16 +770,31 @@ const createRefund = async (
   }
 
   intent.refunded += amount;
+  intent.apiVersion = String(request.headers["stripe-version"] ?? "");
 
-  const created = {
+  const metadata: Record<string, string> = {};
+
+  for (const [name, value] of form) {
+    const key = /^metadata\[(?<key>[^\]]+)\]$/u.exec(name)?.groups?.key;
+
+    if (key) {
+      metadata[key] = value;
+    }
+  }
+
+  const created: Refund = {
     amount,
     charge: `ch_${intent.id}`,
     currency: intent.currency,
     id: randomId("re_test_"),
+    metadata,
     object: "refund",
     payment_intent: intent.id,
     status: "succeeded",
   };
+
+  const made = `${secretKey}\n${intent.id}`;
+  refunds.set(made, [created, ...(refunds.get(made) ?? [])]);
 
   if (replayKey) {
     idempotent.set(replayKey, created);
@@ -946,6 +990,135 @@ const deliver = async (
   return { body: await readBody(incoming), status: incoming.statusCode ?? 0 };
 };
 
+/** What an event the stand-in delivers is about: a checkout, or a charge. */
+type EventObject =
+  | ReturnType<typeof paymentIntentObject>["latest_charge"]
+  | ReturnType<typeof sessionObject>;
+
+/**
+ * Sign an event of `type` about `object`, under `apiVersion`, and deliver it to
+ * every endpoint the secret key registered for it, answering what each one
+ * answered.
+ */
+const deliverEvent = async (
+  secretKey: string,
+  type: string,
+  apiVersion: string,
+  object: EventObject
+): Promise<{ body: string; status: number; url: string }[]> => {
+  const payload = JSON.stringify({
+    api_version: apiVersion,
+    created: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
+    data: { object },
+    id: randomId("evt_test_"),
+    livemode: false,
+    object: "event",
+    pending_webhooks: 1,
+    type,
+  });
+
+  const subscribed = (endpoints.get(secretKey) ?? []).filter(
+    ({ enabledEvents }) =>
+      enabledEvents.includes("*") || enabledEvents.includes(type)
+  );
+
+  return await Promise.all(
+    subscribed.map(async (endpoint) => ({
+      ...(await deliver(endpoint, payload)),
+      url: endpoint.url,
+    }))
+  );
+};
+
+/**
+ * The refunds made from the payment intent `payment_intent` names, newest
+ * first, in one page: publira server looks a refund up by the metadata it
+ * made it with before it asks for an amount again.
+ */
+const listRefunds = (
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const { searchParams } = new URL(request.url ?? "/", origin);
+  const id = searchParams.get("payment_intent") ?? "";
+
+  answerJSON(response, 200, {
+    data: refunds.get(`${secretKeyOf(request)}\n${id}`) ?? [],
+    has_more: false,
+    object: "list",
+    url: "/v1/refunds",
+  });
+};
+
+/** The body of `POST /refund-events`, as `e2e/src/stripe.ts` sends it. */
+interface RefundEventRequest {
+  id: string;
+}
+
+const isRefundEventRequest = (body: unknown): body is RefundEventRequest =>
+  typeof body === "object" &&
+  body !== null &&
+  "id" in body &&
+  typeof body.id === "string" &&
+  body.id !== "";
+
+/**
+ * Report what has been refunded of the payment intent `id` names so far: sign
+ * `charge.refunded` about its charge and deliver it to the secret key's
+ * endpoints. An endpoint that refuses it is answered as a 502 with what it
+ * said, so a spec fails on the delivery rather than on a refund that never
+ * shows.
+ */
+const reportRefunds = async (
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const body: unknown = JSON.parse(await readBody(request));
+  const secretKey = secretKeyOf(request);
+
+  if (!isRefundEventRequest(body)) {
+    answerError(response, 400, "A refund event needs a payment intent id.");
+
+    return;
+  }
+
+  const intent = paymentIntents.get(`${secretKey}\n${body.id}`);
+
+  if (!intent || intent.refunded <= 0) {
+    answerError(
+      response,
+      404,
+      `No refund of payment_intent: '${body.id}'`,
+      "resource_missing"
+    );
+
+    return;
+  }
+
+  const deliveries = await deliverEvent(
+    secretKey,
+    "charge.refunded",
+    intent.apiVersion,
+    paymentIntentObject(intent).latest_charge
+  );
+
+  const refused = deliveries.find(
+    ({ status }) => status < 200 || status >= 300
+  );
+
+  if (refused) {
+    answerError(
+      response,
+      502,
+      `${refused.url} answered ${refused.status}: ${refused.body}`
+    );
+
+    return;
+  }
+
+  answerJSON(response, 200, { delivered: deliveries.length });
+};
+
 const escapeHTML = (value: string): string =>
   value
     .replaceAll("&", "&amp;")
@@ -1046,27 +1219,11 @@ const pay = async (
     });
   }
 
-  const payload = JSON.stringify({
-    api_version: session.apiVersion,
-    created: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
-    data: { object: sessionObject(paid) },
-    id: randomId("evt_test_"),
-    livemode: false,
-    object: "event",
-    pending_webhooks: 1,
+  const deliveries = await deliverEvent(
+    session.secretKey,
     type,
-  });
-
-  const subscribed = (endpoints.get(session.secretKey) ?? []).filter(
-    ({ enabledEvents }) =>
-      enabledEvents.includes("*") || enabledEvents.includes(type)
-  );
-
-  const deliveries = await Promise.all(
-    subscribed.map(async (endpoint) => ({
-      ...(await deliver(endpoint, payload)),
-      url: endpoint.url,
-    }))
+    session.apiVersion,
+    sessionObject(paid)
   );
 
   for (const delivered of deliveries) {
@@ -1092,6 +1249,7 @@ const pay = async (
   if (session.mode === "payment") {
     paymentIntents.set(`${session.secretKey}\n${session.paymentIntent}`, {
       amount: session.amount,
+      apiVersion: session.apiVersion,
       currency: session.currency,
       id: session.paymentIntent,
       refunded: 0,
@@ -1153,20 +1311,22 @@ const handleCheckout = async (
 type Handler = (
   request: IncomingMessage,
   response: ServerResponse
-) => Promise<void>;
+) => Promise<void> | void;
 
 /**
  * The calls that answer one path, by method and path. Each is made under a
  * secret key: Stripe's own under `/v1/`, and the registration of a payment
- * intent, which a spec makes on behalf of an account as Stripe's dashboard
- * would.
+ * intent and the report of its refunds, which a spec makes on behalf of an
+ * account as Stripe's dashboard and Stripe itself would.
  */
 const apiRoutes = new Map<string, Handler>([
   ["POST /payment-intents", registerPaymentIntent],
+  ["POST /refund-events", reportRefunds],
   ["POST /v1/billing_portal/sessions", createBillingPortalSession],
   ["POST /v1/checkout/sessions", createCheckoutSession],
   ["POST /v1/coupons", createCoupon],
   ["POST /v1/prices", createPrice],
+  ["GET /v1/refunds", listRefunds],
   ["POST /v1/refunds", createRefund],
   ["POST /v1/webhook_endpoints", createWebhookEndpoint],
 ]);

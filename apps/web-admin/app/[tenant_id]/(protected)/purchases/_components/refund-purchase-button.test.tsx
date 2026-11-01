@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
+import type { RefundAmountBounds } from "./refund-draft";
 import { RefundPurchaseButton } from "./refund-purchase-button";
 
 const refund =
@@ -47,11 +48,16 @@ vi.mock("#components/message", () => ({
 
 const PURCHASE_ID = "018f0e6a-5000-7000-8000-000000000001";
 
-const renderButton = () =>
+const renderButton = (bounds: RefundAmountBounds | null = null) =>
   render(
     <AdminLocaleTestProvider locale="en">
       <Toast.Provider>
-        <RefundPurchaseButton purchaseId={PURCHASE_ID} tenantId="TENANT001" />
+        <RefundPurchaseButton
+          bounds={bounds}
+          locale="en"
+          purchaseId={PURCHASE_ID}
+          tenantId="TENANT001"
+        />
         <Toast.Viewport />
       </Toast.Provider>
     </AdminLocaleTestProvider>
@@ -130,5 +136,110 @@ describe("RefundPurchaseButton", () => {
       "value",
       "Asked by the reader."
     );
+  });
+
+  it("asks for no amount where only all that is left can be refunded", async () => {
+    renderButton();
+
+    const dialog = await openDialog();
+
+    expect(dialog.queryByRole("spinbutton")).toBeNull();
+  });
+
+  it("starts at all that is left, and says the purchase then closes", async () => {
+    renderButton({ currency: "JPY", left: 300, requested: 0 });
+
+    const dialog = await openDialog();
+
+    const amount = dialog.getByRole("spinbutton", {
+      name: "Amount to refund*",
+    });
+
+    expect(amount).toHaveProperty("value", "300");
+    expect(
+      dialog.getByText(/Up to ¥300, all that is left to refund\./u)
+    ).toBeTruthy();
+    expect(
+      dialog.getByText(
+        /Refunding all of it closes what the reader bought to them at once\./u
+      )
+    ).toBeTruthy();
+  });
+
+  it("posts an amount below what is left, saying the purchase stays open", async () => {
+    refund.mockResolvedValue({
+      message: "A refund of ¥120 was requested.",
+      ok: true,
+    });
+    renderButton({ currency: "JPY", left: 300, requested: 0 });
+
+    const dialog = await openDialog();
+    fireEvent.change(
+      dialog.getByRole("spinbutton", { name: "Amount to refund*" }),
+      { target: { value: "120" } }
+    );
+    expect(
+      dialog.getByText(/What the reader bought stays open to them\./u)
+    ).toBeTruthy();
+    fireEvent.change(dialog.getByRole("textbox", { name: "Reason*" }), {
+      target: { value: "Half of the pages would not load." },
+    });
+    fireEvent.click(dialog.getByRole("button", { name: "Refund" }));
+
+    await waitFor(() => {
+      expect(refund).toHaveBeenCalledTimes(1);
+    });
+    const [[, formData]] = refund.mock.calls;
+    expect(formData.get("amount")).toBe("120");
+    expect(formData.get("currency")).toBe("JPY");
+    expect(formData.get("left")).toBe("300");
+    expect(
+      await screen.findByText("A refund of ¥120 was requested.")
+    ).toBeTruthy();
+  });
+
+  it.each([
+    ["zero", "0"],
+    ["more than is left", "301"],
+    ["a fraction of a yen", "1.5"],
+  ])("cannot be confirmed for %s", async (_label, value) => {
+    renderButton({ currency: "JPY", left: 300, requested: 0 });
+
+    const dialog = await openDialog();
+    fireEvent.change(dialog.getByRole("textbox", { name: "Reason*" }), {
+      target: { value: "Asked by the reader." },
+    });
+    fireEvent.change(
+      dialog.getByRole("spinbutton", { name: "Amount to refund*" }),
+      { target: { value } }
+    );
+
+    expect(dialog.getByRole("button", { name: "Refund" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(
+      dialog.getByText(
+        /Enter an amount above zero and no more than what is left to refund\./u
+      )
+    ).toBeTruthy();
+  });
+
+  it("asks again only for the refund in part waiting for the provider", async () => {
+    renderButton({ currency: "JPY", left: 300, requested: 120 });
+
+    const dialog = await openDialog();
+
+    const amount = dialog.getByRole("spinbutton", {
+      name: "Amount to refund*",
+    });
+
+    expect(amount).toHaveProperty("value", "120");
+    expect(amount).toHaveProperty("readOnly", true);
+    expect(
+      dialog.getByText(
+        /A refund of ¥120 is waiting for the payment provider\./u
+      )
+    ).toBeTruthy();
   });
 });
