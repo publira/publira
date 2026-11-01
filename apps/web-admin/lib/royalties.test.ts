@@ -1,4 +1,7 @@
-import { RoyaltyCloseMode } from "@publira/api-client/admin/royalty";
+import {
+  RoyaltyCloseMode,
+  RoyaltyLineSource,
+} from "@publira/api-client/admin/royalty";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -24,6 +27,8 @@ vi.mock("@publira/api-client/admin/client", () => ({
 }));
 
 // Amounts are int64, so the wire value is a `bigint` and the mapper narrows it.
+// A line that states no source, as a server before the field answers it, is a
+// sale.
 const wireLine = {
   creatorName: "Aki",
   creatorPublicId: "CR001",
@@ -54,6 +59,7 @@ const mappedLine = {
   saleCount: 10,
   seriesTitle: "Series A",
   shareBps: 3000,
+  source: "sale",
 };
 
 // An adjustment names the closed month it takes refunds back from.
@@ -73,6 +79,24 @@ const mappedAdjustment = {
   lineNumber: 2,
   payoutAmount: -150,
   saleCount: -1,
+};
+
+const wireSubscriptionLine = {
+  ...wireLine,
+  grossAmount: 490n,
+  lineNumber: 3,
+  payoutAmount: 147n,
+  saleCount: 1,
+  source: RoyaltyLineSource.SUBSCRIPTION,
+};
+
+const mappedSubscriptionLine = {
+  ...mappedLine,
+  grossAmount: 490,
+  lineNumber: 3,
+  payoutAmount: 147,
+  saleCount: 1,
+  source: "subscription",
 };
 
 const wireTotals = {
@@ -186,7 +210,7 @@ describe("royalties", () => {
     mockApi.previewRoyaltyStatement.mockResolvedValueOnce({
       currency: "USD",
       endsAt: "2026-08-31T15:00:00Z",
-      lines: [wireLine, wireAdjustment],
+      lines: [wireLine, wireAdjustment, wireSubscriptionLine],
       period: "2026-08",
       startsAt: "2026-07-31T15:00:00Z",
       timeZone: "Asia/Tokyo",
@@ -198,7 +222,7 @@ describe("royalties", () => {
       {
         currency: "USD",
         endsAt: "2026-08-31T15:00:00Z",
-        lines: [mappedLine, mappedAdjustment],
+        lines: [mappedLine, mappedAdjustment, mappedSubscriptionLine],
         ok: true,
         period: "2026-08",
         startsAt: "2026-07-31T15:00:00Z",

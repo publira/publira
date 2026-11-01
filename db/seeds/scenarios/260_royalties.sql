@@ -1,7 +1,9 @@
--- Scenario: a tenant with one month of sales to close into a royalty statement
+-- Scenario: a tenant with one month of sales and of a subscription payment to
+-- close into a royalty statement
 --
--- `admin.royalties.spec.ts` previews January 2026 on this tenant's console,
--- closes it, and reads the statement back; then it switches the tenant to
+-- `admin.royalties.spec.ts` reads January 2026 on this tenant's Revenue
+-- screen, previews the month, closes it, and reads the statement back,
+-- subscription lines included; then it switches the tenant to
 -- automatic closing. A close is tenant-wide and never reopened, so no tenant
 -- another suite reads can absorb it.
 --
@@ -13,10 +15,22 @@
 --   admin   RoyaADMNAAA1 (royalty-admin@example.com)
 --   series  RoyaSERSAAA1, episode RoyaEPSDAAA1 (500 yen)
 --   authors RoyaAUTHAAA1 (Artist, 30%), RoyaAUTHAAA2 (Original Author, 20%)
+--   reader  RoyaMMBRAAA1, subscribed to RoyaPLANAAA1 (the whole catalog,
+--           980 yen a month)
 
--- Sales and the catalog restrict the deletes that would reach them from the
--- tenant, so they go first, in the order deleteTenantsByPublicIds uses.
+-- Sales, subscriptions, and the catalog restrict the deletes that would reach
+-- them from the tenant, so they go first, in the order deleteTenantsByPublicIds
+-- uses.
 DELETE FROM purchases
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RoyaTNNTAAA1');
+
+DELETE FROM subscription_payments
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RoyaTNNTAAA1');
+
+DELETE FROM subscriptions
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RoyaTNNTAAA1');
+
+DELETE FROM subscription_plans
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RoyaTNNTAAA1');
 
 DELETE FROM content_events
@@ -275,4 +289,145 @@ SELECT
     CASE WHEN n = 11 THEN 'refund' END
 FROM episodes e
 CROSS JOIN generate_series(1, 11) AS n
+WHERE e.public_id = 'RoyaEPSDAAA1';
+
+-- A reader who subscribes to a plan of the whole catalog, paid 980 yen on
+-- 1 January 2026 for a period that ends in January, and finished the episode
+-- in that period. The month shares the payment to the episode alone, so its
+-- authors are credited 294 and 196 yen on a subscription line each.
+INSERT INTO users (
+    id,
+    tenant_id,
+    public_id,
+    email,
+    password_hash,
+    name,
+    status,
+    email_verified_at
+)
+SELECT
+    '018f0f80-000b-7000-8000-000000000001'::uuid,
+    t.id,
+    'RoyaMMBRAAA1',
+    'royalty-reader@example.com',
+    '$2a$10$IWG04mPtZmFUnCi7UTCT6uMdMwgBorh/EYQDZdmReiMcqdSpcNT9.',
+    'Royalty Subscriber',
+    'active',
+    NOW()
+FROM tenants t
+WHERE t.public_id = 'RoyaTNNTAAA1';
+
+INSERT INTO subscription_plans (
+    id,
+    tenant_id,
+    public_id,
+    name,
+    description,
+    stripe_price_id,
+    price_amount,
+    currency,
+    recurring_interval,
+    recurring_interval_count,
+    scope,
+    is_published
+)
+SELECT
+    '018f0f80-000c-7000-8000-000000000001'::uuid,
+    t.id,
+    'RoyaPLANAAA1',
+    'Royalty pass',
+    'Every episode, every month.',
+    'price_royalties_e2e',
+    980,
+    'JPY',
+    'month',
+    1,
+    'all',
+    true
+FROM tenants t
+WHERE t.public_id = 'RoyaTNNTAAA1';
+
+INSERT INTO subscriptions (
+    id,
+    tenant_id,
+    user_id,
+    plan_id,
+    stripe_customer_id,
+    stripe_subscription_id,
+    stripe_price_id,
+    status,
+    current_period_end
+)
+SELECT
+    '018f0f80-000d-7000-8000-000000000001'::uuid,
+    p.tenant_id,
+    '018f0f80-000b-7000-8000-000000000001'::uuid,
+    p.id,
+    'cus_royalties_e2e',
+    'sub_royalties_e2e',
+    p.stripe_price_id,
+    'active',
+    '2026-01-31T00:00:00Z'::timestamptz
+FROM subscription_plans p
+WHERE p.public_id = 'RoyaPLANAAA1';
+
+INSERT INTO subscription_payments (
+    id,
+    tenant_id,
+    subscription_id,
+    plan_id,
+    stripe_invoice_id,
+    stripe_payment_intent_id,
+    amount,
+    currency,
+    period_start,
+    period_end,
+    paid_at
+)
+SELECT
+    '018f0f80-000e-7000-8000-000000000001'::uuid,
+    s.tenant_id,
+    s.id,
+    s.plan_id,
+    'in_royalties_e2e',
+    'pi_royalties_e2e',
+    980,
+    'JPY',
+    '2026-01-01T00:00:00Z'::timestamptz,
+    '2026-01-31T00:00:00Z'::timestamptz,
+    '2026-01-01T00:00:00Z'::timestamptz
+FROM subscriptions s
+WHERE s.id = '018f0f80-000d-7000-8000-000000000001'::uuid;
+
+-- The finish is months old, and the worker purges the content events past a
+-- tenant's retention period, the platform's 90 days unless the tenant keeps
+-- them longer. Without this the month would have nothing to share the payment
+-- by once a purge had run.
+INSERT INTO tenant_retention_settings (tenant_id, content_event_days)
+SELECT t.id, 3650
+FROM tenants t
+WHERE t.public_id = 'RoyaTNNTAAA1';
+
+INSERT INTO content_events (
+    id,
+    tenant_id,
+    event_type,
+    user_id,
+    series_id,
+    episode_id,
+    source_table,
+    source_id,
+    occurred_at
+)
+SELECT
+    '018f0f80-000f-7000-8000-000000000001'::uuid,
+    e.tenant_id,
+    'episode_complete',
+    '018f0f80-000b-7000-8000-000000000001'::uuid,
+    e.series_id,
+    e.id,
+    'episode_reads',
+    '018f0f80-0010-7000-8000-000000000001'::uuid,
+    '2026-01-15T12:00:00Z'::timestamptz
+FROM episodes e
 WHERE e.public_id = 'RoyaEPSDAAA1';

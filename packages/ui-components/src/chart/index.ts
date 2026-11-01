@@ -4,7 +4,12 @@ export {
   ChartAxisLabel as AxisLabel,
   ChartBars as Bars,
   ChartCaption as Caption,
+  ChartLegend as Legend,
+  ChartLegendItem as LegendItem,
   ChartLine as Line,
+  ChartStackedBars as StackedBars,
   ChartSteps as Steps,
   type ChartPlotProps as PlotProps,
+  type ChartSeries as Series,
+  type ChartStackedBarsProps as StackedBarsProps,
 } from "./chart";

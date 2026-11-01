@@ -6,6 +6,8 @@ import {
   linePoints,
   PLOT_HEIGHT,
   SLOT_WIDTH,
+  stackedBarGeometry,
+  stackedScale,
   stepPath,
 } from "./chart-geometry";
 
@@ -80,5 +82,49 @@ describe("linePoints", () => {
 describe("stepPath", () => {
   it("keeps each figure level across its slot and changes at the edges", () => {
     expect(stepPath([4, 2, 2, 0])).toBe("M0 0 H10 V50 H20 V50 H30 V100 H40");
+  });
+});
+
+describe("stackedScale", () => {
+  it("runs from the deepest slot's losses to the tallest slot's sum", () => {
+    const scale = stackedScale([
+      [2, -1],
+      [1, -2],
+    ]);
+
+    expect(scale.y(3)).toBe(0);
+    expect(scale.y(-3)).toBe(PLOT_HEIGHT);
+    expect(scale.baseline).toBe(PLOT_HEIGHT / 2);
+    expect(scale.width).toBe(2 * SLOT_WIDTH);
+  });
+});
+
+describe("stackedBarGeometry", () => {
+  it("stands the second series on the first, and leaves out a zero", () => {
+    const [first, second, alone] = stackedBarGeometry([
+      [1, 0],
+      [3, 2],
+    ]);
+
+    expect(first).toMatchObject({ height: 25, series: 0, y: 75 });
+    expect(second).toMatchObject({ height: 75, series: 1, y: 0 });
+    expect(alone).toMatchObject({ height: 50, series: 1, y: 50 });
+    expect(alone?.x).toBe((first?.x ?? 0) + SLOT_WIDTH);
+  });
+
+  it("hangs a slot's negative figures from the baseline, one under another", () => {
+    const [sale, firstLoss, secondLoss] = stackedBarGeometry([
+      [2, -1],
+      [0, -1],
+    ]);
+
+    expect(sale).toMatchObject({ height: 50, negative: false, y: 0 });
+    expect(firstLoss).toMatchObject({ height: 25, negative: true, y: 50 });
+    expect(secondLoss).toMatchObject({
+      height: 25,
+      negative: true,
+      series: 1,
+      y: 75,
+    });
   });
 });

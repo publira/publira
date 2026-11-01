@@ -43,6 +43,33 @@ describe("Chart", () => {
     expect(bars[1]?.getAttribute("class")).toBe("fill-destructive");
   });
 
+  it("stacks two series in tones of their own, which the legend names", () => {
+    const { container } = render(
+      <Chart.Root>
+        <Chart.StackedBars
+          series={[
+            [3, -1],
+            [2, 0],
+          ]}
+        />
+        <Chart.Legend>
+          <Chart.LegendItem series={0}>Sales</Chart.LegendItem>
+          <Chart.LegendItem series={1}>Subscriptions</Chart.LegendItem>
+        </Chart.Legend>
+      </Chart.Root>
+    );
+
+    expect(
+      [...container.querySelectorAll("rect")].map((bar) =>
+        bar.getAttribute("class")
+      )
+    ).toEqual(["fill-primary", "fill-primary/40", "fill-destructive"]);
+    expect(
+      screen.getByText("Subscriptions").querySelector("span")?.className
+    ).toContain("bg-primary/40");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+
   it("stretches the plot to its box without thickening the strokes", () => {
     const { container } = render(<Chart.Steps values={[3, 2, 1]} />);
 

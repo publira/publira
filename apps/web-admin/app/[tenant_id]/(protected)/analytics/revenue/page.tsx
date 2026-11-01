@@ -24,7 +24,11 @@ import {
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { getRevenueStats, statsCsvPath } from "#lib/engagement";
-import type { RevenueGroup, RevenueStatsItem } from "#lib/engagement";
+import type {
+  RevenueGroup,
+  RevenueStatsItem,
+  RevenueStatsTotalsItem,
+} from "#lib/engagement";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { buildQueryString } from "#lib/query-string";
@@ -78,7 +82,9 @@ type RevenueColumn =
   | "net"
   | "purchase_count"
   | "refunded"
-  | "series";
+  | "series"
+  | "subscription"
+  | "subscription_refunded";
 
 const figureColumns = {
   gross: "desc",
@@ -87,18 +93,61 @@ const figureColumns = {
   refunded: "desc",
 } as const;
 
-/** The columns of each breakdown, and the one it is sorted by at first. */
-const revenueTables: Record<
-  RevenueGroup,
-  { columns: SortColumns<RevenueColumn>; fallback: RevenueColumn }
-> = {
-  day: { columns: { date: "asc", ...figureColumns }, fallback: "date" },
-  episode: {
-    columns: { episode: "asc", series: "asc", ...figureColumns },
-    fallback: "net",
-  },
-  series: { columns: { series: "asc", ...figureColumns }, fallback: "net" },
+const subscriptionColumns = {
+  subscription: "desc",
+  subscription_refunded: "desc",
+} as const;
+
+/** The columns a breakdown can be sorted by, and the one it is at first. */
+interface RevenueSortColumns {
+  columns: SortColumns<RevenueColumn>;
+  fallback: RevenueColumn;
+}
+
+/**
+ * The columns of each breakdown. Only a day carries subscription payments, and
+ * only a period that has any shows their columns.
+ */
+const revenueSortColumns = (
+  group: RevenueGroup,
+  withSubscriptions: boolean
+): RevenueSortColumns => {
+  switch (group) {
+    case "day": {
+      const columns = { date: "asc", ...figureColumns } as const;
+
+      return {
+        columns: withSubscriptions
+          ? { ...columns, ...subscriptionColumns }
+          : columns,
+        fallback: "date",
+      };
+    }
+
+    case "episode": {
+      return {
+        columns: { episode: "asc", series: "asc", ...figureColumns },
+        fallback: "net",
+      };
+    }
+
+    case "series": {
+      return { columns: { series: "asc", ...figureColumns }, fallback: "net" };
+    }
+
+    default: {
+      return group satisfies never;
+    }
+  }
 };
+
+/**
+ * What the tenant kept: the purchases net of their refunds, and the
+ * subscription payments net of theirs, which a series or an episode row has
+ * none of.
+ */
+const netOf = (row: RevenueStatsTotalsItem): number =>
+  row.netAmount + row.subscriptionAmount - row.subscriptionRefundedAmount;
 
 const revenueGroups = ["day", "series", "episode"] as const;
 
@@ -122,7 +171,7 @@ const revenueValue = (
     }
 
     case "net": {
-      return row.netAmount;
+      return netOf(row);
     }
 
     case "purchase_count": {
@@ -135,6 +184,14 @@ const revenueValue = (
 
     case "series": {
       return row.seriesTitle;
+    }
+
+    case "subscription": {
+      return row.subscriptionAmount;
+    }
+
+    case "subscription_refunded": {
+      return row.subscriptionRefundedAmount;
     }
 
     default: {
@@ -178,6 +235,7 @@ const RevenueTable = ({
   locale,
   rows,
   sort,
+  withSubscriptions,
 }: {
   currency: string;
   group: RevenueGroup;
@@ -185,12 +243,17 @@ const RevenueTable = ({
   locale: Locale;
   rows: RevenueStatsItem[];
   sort: SortState<RevenueColumn>;
+  /** Whether the period has subscription payments, which a day row carries. */
+  withSubscriptions: boolean;
 }) => {
   const sorted = (column: RevenueColumn) =>
     sort.column === column ? sort.order : null;
 
   const amount = (value: number) => formatPrice(value, { currency, locale });
-  const columnCount = group === "episode" ? 6 : 5;
+  const subscriptionCells = group === "day" && withSubscriptions;
+
+  const columnCount =
+    (group === "episode" ? 6 : 5) + (subscriptionCells ? 2 : 0);
 
   return (
     <Table.Root>
@@ -243,6 +306,28 @@ const RevenueTable = ({
               <Message message="admin.analytics.revenue.columns.refunded" />
             </Suspense>
           </SortHead>
+          {subscriptionCells ? (
+            <>
+              <SortHead
+                className="w-36"
+                href={hrefFor("subscription")}
+                sorted={sorted("subscription")}
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.analytics.revenue.columns.subscription" />
+                </Suspense>
+              </SortHead>
+              <SortHead
+                className="w-36"
+                href={hrefFor("subscription_refunded")}
+                sorted={sorted("subscription_refunded")}
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+                  <Message message="admin.analytics.revenue.columns.subscription_refunded" />
+                </Suspense>
+              </SortHead>
+            </>
+          ) : null}
           <SortHead
             className="w-36"
             href={hrefFor("net")}
@@ -277,8 +362,16 @@ const RevenueTable = ({
               <Table.Cell>{formatCount(row.purchaseCount, locale)}</Table.Cell>
               <Table.Cell>{amount(row.grossAmount)}</Table.Cell>
               <Table.Cell>{amount(row.refundedAmount)}</Table.Cell>
+              {subscriptionCells ? (
+                <>
+                  <Table.Cell>{amount(row.subscriptionAmount)}</Table.Cell>
+                  <Table.Cell>
+                    {amount(row.subscriptionRefundedAmount)}
+                  </Table.Cell>
+                </>
+              ) : null}
               <Table.Cell className="font-medium">
-                {amount(row.netAmount)}
+                {amount(netOf(row))}
               </Table.Cell>
             </Table.Row>
           ))
@@ -301,8 +394,6 @@ const RevenueContent = async ({
   const { from, to } = parsePeriodSearchParams(sp);
   const period = resolveAnalyticsPeriod({ from, to }, timeZone);
   const group = groupSchema.parse(sp.group);
-  const table = revenueTables[group];
-  const sort = parseSortSearchParams(sp, table.columns, table.fallback);
 
   const form = (
     <PeriodForm period={period} resetHref={PATH} timeZone={timeZone}>
@@ -350,6 +441,10 @@ const RevenueContent = async ({
   }
 
   const rows = breakdown ?? daily;
+  // A payment is never zero, so a period with none has a total of zero.
+  const withSubscriptions = daily.totals.subscriptionAmount > 0;
+  const table = revenueSortColumns(group, withSubscriptions);
+  const sort = parseSortSearchParams(sp, table.columns, table.fallback);
 
   const amount = (value: number) =>
     formatPrice(value, { currency: daily.currency, locale });
@@ -416,22 +511,57 @@ const RevenueContent = async ({
               {amount(daily.totals.refundedAmount)}
             </FigureLine.Value>
           </FigureLine.Figure>
+          {withSubscriptions ? (
+            <>
+              <FigureLine.Figure>
+                <FigureLine.Label>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                    <Message message="admin.analytics.revenue.subscription_label" />
+                  </Suspense>
+                </FigureLine.Label>
+                <FigureLine.Value>
+                  {amount(daily.totals.subscriptionAmount)}
+                </FigureLine.Value>
+              </FigureLine.Figure>
+              <FigureLine.Figure>
+                <FigureLine.Label>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                    <Message message="admin.analytics.revenue.subscription_refunded_label" />
+                  </Suspense>
+                </FigureLine.Label>
+                <FigureLine.Value>
+                  {amount(daily.totals.subscriptionRefundedAmount)}
+                </FigureLine.Value>
+              </FigureLine.Figure>
+            </>
+          ) : null}
           <FigureLine.Figure>
             <FigureLine.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.analytics.revenue.net_label" />
               </Suspense>
             </FigureLine.Label>
-            <FigureLine.Value>
-              {amount(daily.totals.netAmount)}
-            </FigureLine.Value>
+            <FigureLine.Value>{amount(netOf(daily.totals))}</FigureLine.Value>
           </FigureLine.Figure>
         </FigureLine.Root>
         <Chart.Root>
-          <Chart.Bars
-            aria-label={t("admin.analytics.revenue.chart_label")}
-            values={daily.rows.map((row) => row.netAmount)}
-          />
+          {withSubscriptions ? (
+            <Chart.StackedBars
+              aria-label={t("admin.analytics.revenue.chart_label")}
+              series={[
+                daily.rows.map((row) => row.netAmount),
+                daily.rows.map(
+                  (row) =>
+                    row.subscriptionAmount - row.subscriptionRefundedAmount
+                ),
+              ]}
+            />
+          ) : (
+            <Chart.Bars
+              aria-label={t("admin.analytics.revenue.chart_label")}
+              values={daily.rows.map((row) => row.netAmount)}
+            />
+          )}
           <Chart.Axis>
             <Chart.AxisLabel>
               {formatPlainDate(daily.period.start, { locale })}
@@ -440,6 +570,20 @@ const RevenueContent = async ({
               {formatPlainDate(daily.period.end, { locale })}
             </Chart.AxisLabel>
           </Chart.Axis>
+          {withSubscriptions ? (
+            <Chart.Legend>
+              <Chart.LegendItem series={0}>
+                <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
+                  <Message message="admin.analytics.revenue.chart_purchases" />
+                </Suspense>
+              </Chart.LegendItem>
+              <Chart.LegendItem series={1}>
+                <Suspense fallback={<SkeletonLine className="h-3 w-20" />}>
+                  <Message message="admin.analytics.revenue.chart_subscriptions" />
+                </Suspense>
+              </Chart.LegendItem>
+            </Chart.Legend>
+          ) : null}
           <Chart.Caption>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.analytics.revenue.chart_label" />
@@ -451,6 +595,13 @@ const RevenueContent = async ({
             <Message message="admin.analytics.revenue.definition" />
           </Suspense>
         </p>
+        {withSubscriptions ? (
+          <p className="max-w-3xl text-xs text-muted-foreground">
+            <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+              <Message message="admin.analytics.revenue.subscription_definition" />
+            </Suspense>
+          </p>
+        ) : null}
       </ConsoleSection.Root>
 
       <ConsoleSection.Root>
@@ -505,6 +656,7 @@ const RevenueContent = async ({
             locale={locale}
             rows={rows.rows}
             sort={sort}
+            withSubscriptions={withSubscriptions}
           />
         ) : (
           <SectionError.Root>

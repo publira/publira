@@ -125,6 +125,8 @@ test.describe("admin analytics", () => {
     await expect(summaryValue(page, "Net sales")).toHaveText(
       ANALYTICS_REVENUE.net
     );
+    // A tenant with no subscription payments sees no figure for them.
+    await expect(summaryValue(page, "Subscriptions")).toHaveCount(0);
     await expect(
       page.getByRole("img", { name: "Net sales per day" })
     ).toBeVisible();

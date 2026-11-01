@@ -254,12 +254,25 @@ export interface RevenueStatsItem {
   purchaseCount: number;
   grossAmount: number;
   refundedAmount: number;
+  /** `grossAmount` less `refundedAmount`: the purchases alone. */
   netAmount: number;
+  /**
+   * What subscribers paid for the tenant's plans on a day row, zero on a
+   * series or an episode row, which no payment belongs to.
+   */
+  subscriptionAmount: number;
+  /** What went back on those payments, taken off the day they were paid. */
+  subscriptionRefundedAmount: number;
 }
 
 export type RevenueStatsTotalsItem = Pick<
   RevenueStatsItem,
-  "grossAmount" | "netAmount" | "purchaseCount" | "refundedAmount"
+  | "grossAmount"
+  | "netAmount"
+  | "purchaseCount"
+  | "refundedAmount"
+  | "subscriptionAmount"
+  | "subscriptionRefundedAmount"
 >;
 
 export type GetRevenueStatsResult =
@@ -288,11 +301,18 @@ type RawRevenueStatsRow = Pick<
   | "refundedAmount"
   | "seriesPublicId"
   | "seriesTitle"
+  | "subscriptionAmount"
+  | "subscriptionRefundedAmount"
 >;
 
 type RawRevenueStatsTotals = Pick<
   RevenueStatsTotals,
-  "grossAmount" | "netAmount" | "purchaseCount" | "refundedAmount"
+  | "grossAmount"
+  | "netAmount"
+  | "purchaseCount"
+  | "refundedAmount"
+  | "subscriptionAmount"
+  | "subscriptionRefundedAmount"
 >;
 
 const mapRevenueStatsTotals = (
@@ -302,6 +322,8 @@ const mapRevenueStatsTotals = (
   netAmount: Number(totals?.netAmount ?? 0),
   purchaseCount: Number(totals?.purchaseCount ?? 0),
   refundedAmount: Number(totals?.refundedAmount ?? 0),
+  subscriptionAmount: Number(totals?.subscriptionAmount ?? 0),
+  subscriptionRefundedAmount: Number(totals?.subscriptionRefundedAmount ?? 0),
 });
 
 const mapRevenueStatsRow = (row: RawRevenueStatsRow): RevenueStatsItem => ({
