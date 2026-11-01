@@ -2,7 +2,7 @@
 title: Series
 description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, Free if you wait, and Free after publication, and sell its episodes in volumes.
 published: 2026-10-07
-updated: 2026-11-01
+updated: 2026-10-28
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -197,9 +197,3 @@ A volume is sold only where every one of its episodes can be bought, since buyin
 ![The Sale section of a volume on sale, with the On sale status and Take off sale.](./series-volume-sale.png)
 
 The site and the app do not offer volumes to readers yet, and royalty statements do not yet credit the sale of a volume to the Authors of its episodes.
-
-### Bookstore links
-
-A volume can link to where its printed edition is sold at online bookstores, with up to 10 links in an order of their own. Each link is a label of up to 50 characters, which is what its button says, such as the bookstore's name, and an `https` URL of up to 2048 characters.
-
-The volume's screen does not edit bookstore links yet: they are set through `SetVolumeBookstoreLinks` in the admin API, and the site and the app do not show them to readers yet.
