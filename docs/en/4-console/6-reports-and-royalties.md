@@ -292,6 +292,8 @@ A reader whose account is linked to an Author, as [Authors and Author roles](./1
 
 They never read the statement's totals, another Author's lines, or the open month. Lines are as they were at the close, like everything else on a statement.
 
+**Download CSV** on a month saves the Author's own lines of it in the file [Exporting a statement as CSV](#exporting-a-statement-as-csv) describes, with three columns left out: `creator_id` and `creator_name`, which would name the same Author on every row, and `role_id`. `series_id` and `episode_id` hold the IDs the site's addresses carry rather than the internal ones the console's file holds. The file is named `royalties-<author>-<YYYY-MM>.csv`, after the Author's public ID and the month.
+
 ### Closing months automatically
 
 **Closing settings**, on **Royalties**, chooses how months are closed:

@@ -17,6 +17,7 @@ import {
   getTenantLinkSupportedLocales,
   getTenantPublicOrigin,
   getTenantSignInClients,
+  getTenantCreatorPagesEnabled,
   getTenantSignUp,
   getTenantSiteCopy,
   getTenantSiteInfo,
@@ -390,6 +391,27 @@ describe("tenant", () => {
     await expect(getTenantSignUp("TENANT_001")).resolves.toEqual({
       open: true,
     });
+  });
+
+  it("Show the Author pages where the tenant turned them on", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      creatorPagesEnabled: true,
+    });
+
+    await expect(getTenantCreatorPagesEnabled("TENANT_001")).resolves.toBe(
+      true
+    );
+  });
+
+  it("Hide the way to the Author pages while the tenant cannot be obtained", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(getTenantCreatorPagesEnabled("TENANT_001")).resolves.toBe(
+      false
+    );
   });
 
   it("Carry the ratings the tenant makes a reader prove an age for", async () => {

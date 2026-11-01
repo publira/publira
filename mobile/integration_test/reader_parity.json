@@ -527,6 +527,24 @@
       }
     },
     {
+      "name": "An Author's own pages: figures and closed statements",
+      "web": {
+        "routes": [
+          "[locale]/(site)/my/creators",
+          "[locale]/(site)/my/creators/[creator_id]",
+          "[locale]/(site)/my/creators/[creator_id]/statements/[period]",
+          "api/v1/my/creators/[creator_id]/statements/[period]/csv"
+        ],
+        "rpcs": [
+          "ListMyCreators",
+          "GetMyCreatorStats",
+          "ListMyCreatorStatements",
+          "GetMyCreatorStatement"
+        ]
+      },
+      "exception": "Not in the app yet: #4896."
+    },
+    {
       "name": "Signing in",
       "web": {
         "routes": ["[locale]/(auth)/login"],

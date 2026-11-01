@@ -8,6 +8,7 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   ageVerification: "none",
   appPayments: { appStore: false, googlePlay: false },
   commentMode: "disabled",
+  creatorPagesEnabled: false,
   currency: "JPY",
   defaultLocale: "ja",
   domain: "example.test",
